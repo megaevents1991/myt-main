@@ -28,15 +28,6 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   events,
   flights,
   hotels,
@@ -98,7 +89,7 @@ export default function OrderPage() {
 
   const [filteredFlights, setFilteredFlights] = useState(flights);
   const [sortOption, setSortOption] = useState("price_asc");
-  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  //const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 
   const updateOrder = (key: keyof Order, value: string | number | Date) => {
     setOrder((prev) => ({ ...prev, [key]: value }));
@@ -211,7 +202,7 @@ export default function OrderPage() {
       if (response.ok) {
         const result = await response.json();
         console.log("Order confirmed:", result);
-        setIsConfirmationOpen(false);
+        //setIsConfirmationOpen(false);
 
         const queryParams = new URLSearchParams();
         Object.entries({
@@ -628,7 +619,7 @@ export default function OrderPage() {
           {step === 4 && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-2xl font-semibold mb-4">Review Your Order</h2>
-              <div className="space-y-4">
+              <div className="space-y-4 mb-6">
                 <p>
                   <strong>Event:</strong> {event.name}
                 </p>
@@ -681,38 +672,15 @@ export default function OrderPage() {
                 Previous
               </Button>
             )}
-            {step < 4 ? (
+            {step < 4 && (
               <Button onClick={nextStep} className="ml-auto">
                 Next <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            ) : (
-              <Dialog
-                open={isConfirmationOpen}
-                onOpenChange={setIsConfirmationOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button className="ml-auto">Confirm Order</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Your Order</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to confirm this order? Once
-                      confirmed, you will be charged and your booking will be
-                      finalized.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsConfirmationOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={handleConfirmOrder}>Confirm</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+            )}
+            {step == 4 && (
+              <Button onClick={handleConfirmOrder} className="ml-auto">
+                Confirm Order
+              </Button>
             )}
           </div>
         </div>

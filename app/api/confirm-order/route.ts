@@ -3,10 +3,6 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { events, flights, hotels } from "@/lib/events-data";
 
-process.env.SALES_REP_EMAIL = "giladlesh@gmail.com"; //"alonsamnon@gmail.com";
-process.env.EMAIL_SERVER_USER = "studio.gta@gmail.com";
-process.env.EMAIL_SERVER_PASSWORD = "uxcjowkgihhfyibv";
-
 export async function POST(req: Request) {
   const orderDetails = await req.json();
 
