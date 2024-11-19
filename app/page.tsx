@@ -1,20 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Music, Search } from "lucide-react";
-import { Event } from "@/lib/events-data";
-// CalendarDays, Globe,
-async function getEvents(): Promise<Event[]> {
-  const res = await fetch("http://localhost:3000/api/events");
-  if (!res.ok) {
-    throw new Error("Failed to fetch events");
-  }
-  return res.json();
-}
+import { Event, events as staticEvents } from "@/lib/events-data";
 
-export default async function Home() {
-  const events = await getEvents();
+// Remove the getEvents function that uses fetch
+
+export default function Home() {
+  // Use the staticEvents directly instead of fetching
+  const events = staticEvents;
 
   return (
     <div className="flex flex-col min-h-screen">
