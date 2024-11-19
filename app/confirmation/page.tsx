@@ -1,54 +1,25 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Ticket, Check } from "lucide-react";
-import { Event } from "@/lib/events-data";
+import { Check, Ticket } from "lucide-react";
 
 export default function ConfirmationPage() {
-  const [event, setEvent] = useState<Event | null>(null);
-  const [isEmailSent, setIsEmailSent] = useState(false);
   const searchParams = useSearchParams();
 
-  const eventId = searchParams.get("eventId");
-  const tickets = searchParams.get("tickets");
-  const flight = searchParams.get("flight");
-  const hotel = searchParams.get("hotel");
-
-  useEffect(() => {
-    if (eventId) {
-      fetch(`/api/events?id=${eventId}`)
-        .then((res) => res.json())
-        .then((data) => setEvent(data))
-        .catch((error) => console.error("Failed to fetch event:", error));
-    }
-
-    // Simulate sending an email to the agent
-    fetch("/api/send-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        to: "alonsamnon@gmail.com",
-        subject: "New Event Booking",
-        text: `New booking for event ${eventId}. Tickets: ${tickets}, Flight: ${flight}, Hotel: ${hotel}`,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          setIsEmailSent(true);
-        }
-      })
-      .catch((error) => console.error("Error:", error));
-  }, [eventId, tickets, flight, hotel]);
-
-  if (!event) {
-    return <div>Loading...</div>;
-  }
+  const eventId = searchParams.get("eventId") || "";
+  const ticketType = searchParams.get("ticketType") || "";
+  const quantity = searchParams.get("quantity") || "0";
+  const flight = searchParams.get("flight") || "";
+  const hotel = searchParams.get("hotel") || "";
+  const checkInDate = searchParams.get("checkInDate") || "";
+  const checkOutDate = searchParams.get("checkOutDate") || "";
+  const bookingReference = searchParams.get("bookingReference") || "";
+  const eventName = searchParams.get("eventName") || "";
+  const eventDate = searchParams.get("eventDate") || "";
+  const eventLocation = searchParams.get("eventLocation") || "";
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -62,20 +33,23 @@ export default function ConfirmationPage() {
         <div className="max-w-4xl mx-auto text-center">
           <Check className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-4">Booking Confirmed!</h1>
-          <p className="text-xl mb-8">Thank you for booking {event.name}.</p>
+          <p className="text-xl mb-8">Thank you for booking {eventName}.</p>
           <div className="bg-gray-100 p-6 rounded-lg mb-8">
             <h2 className="text-2xl font-semibold mb-4">Booking Details</h2>
             <p>
-              <strong>Event:</strong> {event.name}
+              <strong>Booking Reference:</strong> {bookingReference}
             </p>
             <p>
-              <strong>Date:</strong> {event.date}
+              <strong>Event:</strong> {eventName}
             </p>
             <p>
-              <strong>Location:</strong> {event.location}
+              <strong>Date:</strong> {eventDate}
             </p>
             <p>
-              <strong>Tickets:</strong> {tickets}
+              <strong>Location:</strong> {eventLocation}
+            </p>
+            <p>
+              <strong>Tickets:</strong> {ticketType} (x{quantity})
             </p>
             <p>
               <strong>Flight:</strong> {flight}
@@ -83,12 +57,17 @@ export default function ConfirmationPage() {
             <p>
               <strong>Hotel:</strong> {hotel}
             </p>
-          </div>
-          {isEmailSent && (
-            <p className="text-green-500 mb-8">
-              An email has been sent to our agent with your booking details.
+            <p>
+              <strong>Check-in:</strong> {checkInDate}
             </p>
-          )}
+            <p>
+              <strong>Check-out:</strong> {checkOutDate}
+            </p>
+          </div>
+          <p className="text-green-500 mb-8">
+            Your booking is confirmed. Our team will contact you shortly with
+            further details.
+          </p>
           <Link href="/">
             <Button>Return to Home</Button>
           </Link>

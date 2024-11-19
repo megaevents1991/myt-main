@@ -8,6 +8,28 @@ export interface Event {
   price: number;
 }
 
+export interface Flight {
+  id: string;
+  airline: string;
+  departureTime: string;
+  arrivalTime: string;
+  departureAirport: string;
+  arrivalAirport: string;
+  price: number;
+  duration: string;
+  stops: number;
+  returnDepartureTime: string;
+  returnArrivalTime: string;
+}
+
+export interface Hotel {
+  id: string;
+  name: string;
+  price: number;
+  rating: number;
+  amenities: string[];
+}
+
 export const events: Event[] = [
   {
     id: "1",
@@ -40,5 +62,51 @@ export const events: Event[] = [
     imageUrl:
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
     price: 300,
+  },
+];
+
+export const flights: Flight[] = [
+  {
+    id: "1",
+    airline: "Emirates",
+    departureTime: "07:10",
+    arrivalTime: "17:45",
+    departureAirport: "JFK",
+    arrivalAirport: "LGA",
+    price: 450,
+    duration: "1h 35m",
+    stops: 0,
+    returnDepartureTime: "19:30",
+    returnArrivalTime: "05:45",
+  },
+  {
+    id: "2",
+    airline: "Delta",
+    departureTime: "14:05",
+    arrivalTime: "15:55",
+    departureAirport: "JFK",
+    arrivalAirport: "LGA",
+    price: 380,
+    duration: "1h 50m",
+    stops: 0,
+    returnDepartureTime: "18:00",
+    returnArrivalTime: "19:50",
+  },
+];
+
+export const hotels: Hotel[] = [
+  {
+    id: "1",
+    name: "Luxury Hotel",
+    price: 300,
+    rating: 5,
+    amenities: ["Free Wi-Fi", "Pool", "Spa"],
+  },
+  {
+    id: "2",
+    name: "Budget Inn",
+    price: 100,
+    rating: 3,
+    amenities: ["Free Wi-Fi", "Breakfast"],
   },
 ];
