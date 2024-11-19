@@ -1,10 +1,21 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Music, Search } from "lucide-react";
+import { Event } from "@/lib/events-data";
+// CalendarDays, Globe,
+async function getEvents(): Promise<Event[]> {
+  const res = await fetch("http://localhost:3000/api/events");
+  if (!res.ok) {
+    throw new Error("Failed to fetch events");
+  }
+  return res.json();
+}
 
-export default function LandingPage() {
+export default async function Home() {
+  const events = await getEvents();
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center justify-between">
@@ -71,30 +82,28 @@ export default function LandingPage() {
               Featured Events
             </h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
+              {events.map((event) => (
                 <div
-                  key={i}
+                  key={event.id}
                   className="relative group overflow-hidden rounded-lg shadow-lg"
                 >
-                  <img
-                    alt="Event"
+                  <Image
+                    src={event.imageUrl}
+                    alt={event.name}
+                    width={400}
+                    height={300}
                     className="object-cover w-full h-60 transition-transform group-hover:scale-105"
-                    height="300"
-                    src={`/placeholder.svg?height=300&width=400`}
-                    style={{
-                      aspectRatio: "400/300",
-                      objectFit: "cover",
-                    }}
-                    width="400"
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-50 transition-opacity group-hover:bg-opacity-75" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-                        Event Name1
+                        {event.name}
                       </h3>
-                      <p className="text-white mb-4">Location • Date</p>
-                      <Link href="/order">
+                      <p className="text-white mb-4">
+                        {event.location} • {event.date}
+                      </p>
+                      <Link href={`/order?eventId=${event.id}`}>
                         <Button variant="secondary">Book Now</Button>
                       </Link>
                     </div>
