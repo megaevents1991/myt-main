@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "N/A";
@@ -20,7 +20,16 @@ function formatDate(dateString: string | null): string {
   });
 }
 
-export default function ConfirmationPage() {
+function LoadingUI() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+      <p className="text-lg text-muted-foreground">Loading confirmation...</p>
+    </div>
+  );
+}
+
+function ConfirmationContent() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -110,5 +119,13 @@ export default function ConfirmationPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={<LoadingUI />}>
+      <ConfirmationContent />
+    </Suspense>
   );
 }
