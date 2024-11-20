@@ -1,42 +1,75 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, Ticket } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 
-function ConfirmationContent() {
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleString("en-US", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function ConfirmationPage() {
   const searchParams = useSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const eventId = searchParams.get("eventId") || "";
-  const ticketType = searchParams.get("ticketType") || "";
-  const quantity = searchParams.get("quantity") || "0";
-  const flight = searchParams.get("flight") || "";
-  const hotel = searchParams.get("hotel") || "";
-  const checkInDate = searchParams.get("checkInDate") || "";
-  const checkOutDate = searchParams.get("checkOutDate") || "";
-  const bookingReference = searchParams.get("bookingReference") || "";
-  const eventName = searchParams.get("eventName") || "";
-  const eventDate = searchParams.get("eventDate") || "";
-  const eventLocation = searchParams.get("eventLocation") || "";
+  // Simulate loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-lg text-muted-foreground">
+          Confirming your booking...
+        </p>
+      </div>
+    );
+  }
+
+  const bookingReference = searchParams.get("bookingReference");
+  const eventName = searchParams.get("eventName");
+  const eventDate = searchParams.get("eventDate");
+  const eventLocation = searchParams.get("eventLocation");
+  const ticketType = searchParams.get("ticketType");
+  const quantity = searchParams.get("quantity");
+  const flight = searchParams.get("flight");
+  const hotel = searchParams.get("hotel");
+  const checkInDate = searchParams.get("checkInDate");
+  const checkOutDate = searchParams.get("checkOutDate");
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="px-4 lg:px-6 h-16 flex items-center justify-between border-b">
-        <Link className="flex items-center justify-center" href="/">
-          <Ticket className="h-6 w-6 mr-2" />
-          <span className="text-lg font-bold">MYT Events</span>
-        </Link>
-      </header>
-      <main className="flex-1 py-12 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <Check className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-4">Booking Confirmed!</h1>
-          <p className="text-xl mb-8">Thank you for booking {eventName}.</p>
-          <div className="bg-gray-100 p-6 rounded-lg mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Booking Details</h2>
+    <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
+      <div className="max-w-md w-full space-y-8 text-center">
+        <div className="flex flex-col items-center">
+          <div className="rounded-full bg-green-100 p-3 mb-4">
+            <Check className="h-8 w-8 text-green-600" />
+          </div>
+          <h1 className="text-3xl font-bold">Booking Confirmed!</h1>
+          <p className="mt-2 text-xl">Thank you for booking {eventName}.</p>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-6 text-left">
+          <h2 className="text-2xl font-semibold mb-4 text-center">
+            Booking Details
+          </h2>
+          <div className="space-y-3">
             <p>
               <strong>Booking Reference:</strong> {bookingReference}
             </p>
@@ -44,7 +77,7 @@ function ConfirmationContent() {
               <strong>Event:</strong> {eventName}
             </p>
             <p>
-              <strong>Date:</strong> {eventDate}
+              <strong>Date:</strong> {formatDate(eventDate)}
             </p>
             <p>
               <strong>Location:</strong> {eventLocation}
@@ -59,50 +92,23 @@ function ConfirmationContent() {
               <strong>Hotel:</strong> {hotel}
             </p>
             <p>
-              <strong>Check-in:</strong> {checkInDate}
+              <strong>Check-in:</strong> {formatDate(checkInDate)}
             </p>
             <p>
-              <strong>Check-out:</strong> {checkOutDate}
+              <strong>Check-out:</strong> {formatDate(checkOutDate)}
             </p>
           </div>
-          <p className="text-green-500 mb-8">
-            Your booking is confirmed. Our team will contact you shortly with
-            further details.
-          </p>
-          <Link href="/">
-            <Button>Return to Home</Button>
-          </Link>
         </div>
-      </main>
-      <footer className="py-6 w-full px-4 md:px-6 border-t">
-        <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
-            © 2023 MYT Events. All rights reserved.
-          </p>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link
-              className="text-xs hover:underline underline-offset-4"
-              href="#"
-            >
-              Terms of Service
-            </Link>
-            <Link
-              className="text-xs hover:underline underline-offset-4"
-              href="#"
-            >
-              Privacy
-            </Link>
-          </nav>
-        </div>
-      </footer>
-    </div>
-  );
-}
 
-export default function ConfirmationPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ConfirmationContent />
-    </Suspense>
+        <p className="text-green-600">
+          Your booking is confirmed. Our team will contact you shortly with
+          further details.
+        </p>
+
+        <Link href="/">
+          <Button className="w-full">Return to Home</Button>
+        </Link>
+      </div>
+    </div>
   );
 }

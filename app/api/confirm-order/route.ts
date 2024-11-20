@@ -1,7 +1,18 @@
-// File: app/api/confirm-order/route.ts
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { events, flights, hotels } from "@/lib/events-data";
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleString("en-US", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export async function POST(req: Request) {
   const orderDetails = await req.json();
@@ -26,26 +37,26 @@ export async function POST(req: Request) {
     },
   });
 
-  const salesRepEmail = process.env.SALES_REP_EMAIL;
-
   const emailContent = `
     New Order Details:
     Event: ${event.name}
-    Date: ${event.date}
+    Date: ${formatDate(event.date)}
     Ticket Type: ${orderDetails.ticketType}
     Quantity: ${orderDetails.quantity}
-    Flight: ${flight.airline} (${flight.departureTime} - ${flight.arrivalTime})
+    Flight: ${flight.airline} (${formatDate(
+    flight.departureTime
+  )} - ${formatDate(flight.arrivalTime)})
     Hotel: ${hotel.name}
-    Check-in: ${orderDetails.checkInDate}
-    Check-out: ${orderDetails.checkOutDate}
-    Total Price: $${orderDetails.totalPrice}
+    Check-in: ${formatDate(orderDetails.checkInDate)}
+    Check-out: ${formatDate(orderDetails.checkOutDate)}
+    Total Price: $${orderDetails.totalPrice.toFixed(2)}
   `;
 
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_SERVER_USER,
-      to: salesRepEmail,
-      subject: "New Order Confirmation",
+      to: process.env.SALES_REP_EMAIL,
+      subject: `New Order Confirmation - ${event.name}`,
       text: emailContent,
     });
     console.log("Sent");
