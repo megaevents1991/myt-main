@@ -21,7 +21,6 @@ export interface Flight {
   returnDepartureTime: string;
   returnArrivalTime: string;
 }
-
 export interface Hotel {
   id: string;
   name: string;

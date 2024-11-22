@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
@@ -52,16 +53,16 @@ function ConfirmationContent() {
     );
   }
 
-  const bookingReference = searchParams.get("bookingReference");
-  const eventName = searchParams.get("eventName");
-  const eventDate = searchParams.get("eventDate");
-  const eventLocation = searchParams.get("eventLocation");
-  const ticketType = searchParams.get("ticketType");
-  const quantity = searchParams.get("quantity");
-  const flight = searchParams.get("flight");
-  const hotel = searchParams.get("hotel");
-  const checkInDate = searchParams.get("checkInDate");
-  const checkOutDate = searchParams.get("checkOutDate");
+  let bookingReference = searchParams.get("bookingReference");
+  let eventName = searchParams.get("eventName");
+  let eventDate = searchParams.get("eventDate");
+  let eventLocation = searchParams.get("eventLocation");
+  let ticketType = searchParams.get("ticketType");
+  let quantity = searchParams.get("quantity");
+  let flight = searchParams.get("flight");
+  let hotel = searchParams.get("hotel");
+  let checkInDate = searchParams.get("checkInDate");
+  let checkOutDate = searchParams.get("checkOutDate");
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
