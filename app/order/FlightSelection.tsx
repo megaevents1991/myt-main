@@ -1,7 +1,5 @@
-"use client";
-
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
-import { Flight } from "@/lib/events-data";
 import { Order } from "./useOrderState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +13,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plane, ArrowRight, Filter } from "lucide-react";
+import { Plane, ArrowRight, Filter, Loader2 } from "lucide-react";
+
+interface Flight {
+  id: string;
+  airline: string;
+  price: number;
+  departureTime: string;
+  arrivalTime: string;
+  departureAirport: string;
+  arrivalAirport: string;
+  stops: number;
+  duration: string;
+  returnDepartureTime: string;
+  returnArrivalTime: string;
+}
 
 interface FlightSelectionProps {
   order: Order;
@@ -35,23 +47,38 @@ export default function FlightSelection({
     airline: "all",
   });
   const [sortOption, setSortOption] = useState("price_asc");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchFlights() {
-      const res = await fetch(`/api/flights?eventId=${order.eventId}`);
-      const data = await res.json();
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/flights?eventId=${order.eventId}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch flights");
+        }
+        const data = await res.json();
 
-      // Sort the data before setting it
-      const sortedData = [...data].sort((a, b) => {
-        if (sortOption === "price_asc") return a.price - b.price;
-        if (sortOption === "price_desc") return b.price - a.price;
-        if (sortOption === "duration")
-          return a.duration.localeCompare(b.duration);
-        return 0;
-      });
+        // Sort the data before setting it
+        const sortedData = [...data].sort((a, b) => {
+          if (sortOption === "price_asc") return a.price - b.price;
+          if (sortOption === "price_desc") return b.price - a.price;
+          if (sortOption === "duration")
+            return a.duration.localeCompare(b.duration);
+          return 0;
+        });
 
-      setFlights(data);
-      setFilteredFlights(sortedData);
+        setFlights(data);
+        setFilteredFlights(sortedData);
+      } catch (err) {
+        setError(
+          "An error occurred while fetching flights. Please try again later."
+        );
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchFlights();
   }, [order.eventId, sortOption]);
@@ -89,6 +116,26 @@ export default function FlightSelection({
   };
 
   const airlines = Array.from(new Set(flights.map((flight) => flight.airline)));
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <span className="ml-2">Loading flights...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500">
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -7,6 +7,8 @@
     "strict": true,
     "noImplicitAny": true,
     "noEmit": true,
+    "outDir": ".next",
+    "sourceMap": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -23,6 +25,12 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "amadeus.d.ts"
+  ],
   "exclude": ["node_modules"]
 }

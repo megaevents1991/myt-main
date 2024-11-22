@@ -33,7 +33,7 @@ export const events: Event[] = [
   {
     id: "1",
     name: "Summer Music Festival",
-    date: "2023-07-15",
+    date: "2025-01-15",
     location: "Central Park, New York",
     description:
       "A day-long music festival featuring top artists from around the world.",
