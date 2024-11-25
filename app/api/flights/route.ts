@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { events } from "@/lib/events-data";
 import Amadeus from "amadeus";
+import { FlightSearchOptions } from "@/lib/app.types";
 
 process.env.AMADEUS_CLIENT_ID = "306M5ysI3BdNXNuruBjACYZTo8lOb3WC";
 process.env.AMADEUS_CLIENT_SECRET = "qnUSdtaUuMeWspSV";
@@ -13,7 +12,7 @@ const amadeus = new Amadeus({
   clientSecret: process.env.AMADEUS_CLIENT_SECRET as string,
 });
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   if (!amadeus) {
     return NextResponse.json(
       {
@@ -41,41 +40,67 @@ export async function GET(request: Request) {
   }
 
   try {
-    const destinationIataCode = "JFK";
-    const originIataCode = "TLV";
+    const {
+      returnDate,
+      departureDate,
+      originLocationCode = "TLV",
+      adults,
+      destinationLocationCode,
+      nonStop,
+    }: FlightSearchOptions = await request.json();
+
+    // Get airports for the city
+    const locations = await amadeus.referenceData.locations.get({
+      keyword: event.citi,
+      subType: "AIRPORT",
+    });
+
+    const iataCodes = locations.data.map(({ iataCode }) => iataCode);
 
     // Search for flights
     const response = await amadeus.shopping.flightOffersSearch.get({
-      originLocationCode: originIataCode,
-      destinationLocationCode: destinationIataCode,
-      departureDate: event.date,
-      returnDate: new Date(new Date(event.date).getTime() + 86400000)
-        .toISOString()
-        .split("T")[0],
-      adults: "1",
-      max: "10",
+      originLocationCode,
+      destinationLocationCode: destinationLocationCode || iataCodes[0],
+      departureDate:
+        departureDate ||
+        new Date(new Date(event.date).getTime() - 2 * 8.64e7)
+          .toISOString()
+          .split("T")[0],
+      returnDate:
+        returnDate ||
+        new Date(new Date(event.date).getTime() + 8.64e7)
+          .toISOString()
+          .split("T")[0],
+      adults: adults || 1,
+      max: 10,
+      nonStop,
     });
 
     // Transform Amadeus response to match our flight data structure
-    const flights = response.result.data.map((offer: any) => ({
-      id: offer.id,
-      airline: offer.validatingAirlineCodes[0],
-      price: parseFloat(offer.price.total),
-      departureTime: offer.itineraries[0].segments[0].departure.at,
-      arrivalTime:
-        offer.itineraries[0].segments[offer.itineraries[0].segments.length - 1]
-          .arrival.at,
-      departureAirport: offer.itineraries[0].segments[0].departure.iataCode,
-      arrivalAirport:
-        offer.itineraries[0].segments[offer.itineraries[0].segments.length - 1]
-          .arrival.iataCode,
-      stops: offer.itineraries[0].segments.length - 1,
-      duration: offer.itineraries[0].duration,
-      returnDepartureTime: offer.itineraries[1].segments[0].departure.at,
-      returnArrivalTime:
-        offer.itineraries[1].segments[offer.itineraries[1].segments.length - 1]
-          .arrival.at,
-    }));
+    const flights = response.result.data.map(
+      ({ id, validatingAirlineCodes, price, itineraries }) => {
+        const toDeparture = itineraries[0].segments[0];
+        const toArrival = itineraries[0].segments.at(-1);
+
+        const fromDeparture = itineraries[1].segments[0];
+        const fromArrival = itineraries[1].segments.at(-1);
+
+        return {
+          id,
+          price: parseFloat(price.total),
+          duration: itineraries[0].duration,
+          stops:
+            itineraries[0].segments.length + itineraries[1].segments.length - 2,
+          airline: validatingAirlineCodes[0],
+          departureTime: toDeparture.departure.at,
+          departureAirport: toDeparture.departure.iataCode,
+          arrivalAirport: toArrival?.arrival.iataCode,
+          arrivalTime: toArrival?.arrival.at || 0,
+          returnDepartureTime: fromDeparture.departure.at,
+          returnArrivalTime: fromArrival?.arrival.at || 0,
+        };
+      }
+    );
 
     return NextResponse.json(flights);
   } catch (error) {

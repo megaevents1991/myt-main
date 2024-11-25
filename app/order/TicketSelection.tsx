@@ -1,8 +1,7 @@
 "use client";
 
+import { Order, Event } from "@/lib/app.types";
 import { useState, useEffect } from "react";
-import { Event } from "@/lib/events-data";
-import { Order } from "./useOrderState";
 
 interface Ticket {
   type: string;

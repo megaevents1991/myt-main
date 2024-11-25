@@ -1,33 +1,4 @@
-export interface Event {
-  id: string;
-  name: string;
-  date: string;
-  location: string;
-  description: string;
-  imageUrl: string;
-  price: number;
-}
-
-export interface Flight {
-  id: string;
-  airline: string;
-  departureTime: string;
-  arrivalTime: string;
-  departureAirport: string;
-  arrivalAirport: string;
-  price: number;
-  duration: string;
-  stops: number;
-  returnDepartureTime: string;
-  returnArrivalTime: string;
-}
-export interface Hotel {
-  id: string;
-  name: string;
-  price: number;
-  rating: number;
-  amenities: string[];
-}
+import { Event, Flight, Hotel } from "./app.types";
 
 export const events: Event[] = [
   {
@@ -35,6 +6,7 @@ export const events: Event[] = [
     name: "Summer Music Festival",
     date: "2025-01-15",
     location: "Central Park, New York",
+    citi: "New York",
     description:
       "A day-long music festival featuring top artists from around the world.",
     imageUrl:
@@ -50,6 +22,7 @@ export const events: Event[] = [
     imageUrl:
       "https://images.unsplash.com/photo-1522778119026-d647f0596c20?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
     price: 500,
+    citi: "New York",
   },
   {
     id: "3",
@@ -61,6 +34,7 @@ export const events: Event[] = [
     imageUrl:
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
     price: 300,
+    citi: "New York",
   },
 ];
 

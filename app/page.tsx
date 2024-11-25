@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Music, Search } from "lucide-react";
-import { Event, events as staticEvents } from "@/lib/events-data";
+import { events as staticEvents } from "@/lib/events-data";
 
 // Remove the getEvents function that uses fetch
 

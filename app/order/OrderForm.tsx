@@ -1,16 +1,15 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState } from "react";
-import { Event } from "@/lib/events-data";
 import TicketSelection from "./TicketSelection";
 import FlightSelection from "./FlightSelection";
 import HotelSelection from "./HotelSelection";
 import OrderReview from "./OrderReview";
-import { useOrderState, Order } from "./useOrderState";
+import { useOrderState } from "./useOrderState";
 import { Button } from "@/components/ui/button";
+import { Event } from "@/lib/app.types";
 
-export default function OrderForm({ event }: { event: Event }) {
+export const OrderForm = ({ event }: { event: Event }) => {
   const [step, setStep] = useState(1);
   const { order, updateOrder, submitOrder } = useOrderState(event);
 
@@ -29,9 +28,7 @@ export default function OrderForm({ event }: { event: Event }) {
           updateOrder={updateOrder}
         />
       )}
-      {step === 2 && (
-        <FlightSelection order={order} updateOrder={updateOrder} />
-      )}
+      {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection order={order} updateOrder={updateOrder} />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
       <div className="flex justify-between mt-8">
@@ -48,4 +45,4 @@ export default function OrderForm({ event }: { event: Event }) {
       </div>
     </div>
   );
-}
+};

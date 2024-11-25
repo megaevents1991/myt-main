@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect } from "react";
-import { Order } from "./useOrderState";
+import { useState, useEffect, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,30 +12,13 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plane, ArrowRight, Filter, Loader2 } from "lucide-react";
+import { Flight, FlightSearchOptions } from "@/lib/app.types";
+import { OrderContext } from "../context";
+import { flightSort, SortOptions } from "@/lib/flightSort";
+import { TimeSlider } from "@/components/ui/timeSlider";
+import { applyFiltersAndSorting } from "@/lib/flightFilter";
 
-interface Flight {
-  id: string;
-  airline: string;
-  price: number;
-  departureTime: string;
-  arrivalTime: string;
-  departureAirport: string;
-  arrivalAirport: string;
-  stops: number;
-  duration: string;
-  returnDepartureTime: string;
-  returnArrivalTime: string;
-}
-
-interface FlightSelectionProps {
-  order: Order;
-  updateOrder: (key: keyof Order, value: string | number) => void;
-}
-
-export default function FlightSelection({
-  order,
-  updateOrder,
-}: FlightSelectionProps) {
+const FlightSelection = () => {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -46,73 +27,90 @@ export default function FlightSelection({
     maxPrice: "",
     airline: "all",
   });
-  const [sortOption, setSortOption] = useState("price_asc");
+  const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { setFlight, flight: orderFlight, event } = useContext(OrderContext);
+  const [duration, setDuration] = useState(30 * 60);
 
   useEffect(() => {
-    async function fetchFlights() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/flights?eventId=${order.eventId}`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch flights");
-        }
-        const data = await res.json();
-
-        // Sort the data before setting it
-        const sortedData = [...data].sort((a, b) => {
-          if (sortOption === "price_asc") return a.price - b.price;
-          if (sortOption === "price_desc") return b.price - a.price;
-          if (sortOption === "duration")
-            return a.duration.localeCompare(b.duration);
-          return 0;
-        });
-
-        setFlights(data);
-        setFilteredFlights(sortedData);
-      } catch (err) {
-        setError(
-          "An error occurred while fetching flights. Please try again later."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
     fetchFlights();
-  }, [order.eventId, sortOption]);
+  }, []);
 
-  useEffect(() => {
-    let result = flights;
+  const fetchFlights = async (options: Partial<FlightSearchOptions> = {}) => {
+    setIsLoading(true);
+    setError(null);
 
-    if (filters.directOnly) {
-      result = result.filter((flight) => flight.stops === 0);
-    }
+    try {
+      const res = await fetch(`/api/flights?eventId=${event?.id}`, {
+        body: JSON.stringify(options),
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch flights");
+      }
+      const flights = await res.json();
 
-    if (filters.maxPrice) {
-      result = result.filter(
-        (flight) => flight.price <= parseInt(filters.maxPrice)
+      setFlights(flights);
+      setFilters((prev) => ({ ...prev, airline: "all" }));
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: "all",
+        directOnly: filters.directOnly,
+        sortOption,
+        flightDuration: duration,
+      });
+
+      setFilteredFlights(filteredFlights);
+    } catch (err) {
+      console.error(err);
+      setError(
+        "An error occurred while fetching flights. Please try again later."
       );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSortChange = (selectedSortOption: SortOptions) => {
+    setSortOption(selectedSortOption);
+
+    const sortedData = flightSort(filteredFlights, selectedSortOption);
+
+    setFilteredFlights(sortedData);
+  };
+
+  const handleFilterChange = async (key: string, value: string | boolean) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+
+    if (key === "directOnly" && value !== filters[key]) {
+      await fetchFlights({ nonStop: !!value });
+      return;
     }
 
-    if (filters.airline && filters.airline !== "all") {
-      result = result.filter((flight) => flight.airline === filters.airline);
-    }
+    if (key === "airline" && typeof value === "string") {
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: value,
+        directOnly: filters.directOnly,
+        sortOption,
+        flightDuration: duration,
+      });
 
-    result.sort((a, b) => {
-      if (sortOption === "price_asc") return a.price - b.price;
-      if (sortOption === "price_desc") return b.price - a.price;
-      if (sortOption === "duration")
-        return a.duration.localeCompare(b.duration);
-      return 0;
+      setFilteredFlights(filteredFlights);
+    }
+  };
+
+  const handleDurationChange = (duration: number) => {
+    const flightDuration = duration * 60;
+    setDuration(flightDuration);
+
+    const filteredFlights = applyFiltersAndSorting(flights, {
+      airline: filters.airline,
+      directOnly: filters.directOnly,
+      sortOption,
+      flightDuration,
     });
 
-    setFilteredFlights(result);
-  }, [flights, filters, sortOption]);
-
-  const handleFilterChange = (key: string, value: string | boolean) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilteredFlights(filteredFlights);
   };
 
   const airlines = Array.from(new Set(flights.map((flight) => flight.airline)));
@@ -146,7 +144,7 @@ export default function FlightSelection({
           <Filter className="w-4 h-4 mr-2" />
           {showFilters ? "Hide Filters" : "Show Filters"}
         </Button>
-        <Select value={sortOption} onValueChange={setSortOption}>
+        <Select value={sortOption} onValueChange={handleSortChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -157,7 +155,7 @@ export default function FlightSelection({
           </SelectContent>
         </Select>
       </div>
-
+      <TimeSlider handleOnChangeEnd={(value) => handleDurationChange(value)} />
       {showFilters && (
         <div className="bg-gray-100 p-4 rounded-lg space-y-4">
           <div className="flex items-center space-x-2">
@@ -184,7 +182,9 @@ export default function FlightSelection({
             <Label htmlFor="airline">Airline</Label>
             <Select
               value={filters.airline}
-              onValueChange={(value) => handleFilterChange("airline", value)}
+              onValueChange={async (value) =>
+                await handleFilterChange("airline", value)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select airline" />
@@ -203,14 +203,16 @@ export default function FlightSelection({
       )}
 
       <RadioGroup
-        value={order.flightId}
-        onValueChange={(value) => updateOrder("flightId", value)}
+        value={orderFlight?.id}
+        onValueChange={(value) =>
+          setFlight(flights.find((f) => f.id === value))
+        }
       >
         {filteredFlights.map((flight) => (
           <div
             key={flight.id}
             className={`mb-4 p-4 border rounded-lg transition-colors hover:bg-gray-50 ${
-              order.flightId === flight.id ? "selected-flight" : ""
+              orderFlight?.id === flight.id ? "selected-flight" : ""
             }`}
           >
             <RadioGroupItem
@@ -276,4 +278,6 @@ export default function FlightSelection({
       )}
     </div>
   );
-}
+};
+
+export default FlightSelection;

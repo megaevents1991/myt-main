@@ -1,25 +1,39 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Suspense } from "react";
-import { events, Event } from "@/lib/events-data";
-import OrderForm from "./OrderForm";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { events } from "@/lib/events-data";
+import { OrderForm } from "./OrderForm";
 import Link from "next/link";
 import { Music } from "lucide-react";
+import { Flight, Hotel, Event } from "@/lib/app.types";
+import { OrderContext } from "../context";
+import { useSearchParams } from "next/navigation";
+import { MantineProvider } from "@mantine/core";
 
-interface OrderPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
+export default function OrderPage() {
+  const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
+  const [event, setEvent] = useState<Event | undefined>({} as Event);
+  const [hotel, setHotel] = useState<Hotel | undefined>({} as Hotel);
+  const eventId = useSearchParams().get("eventId") as string;
 
-export default async function OrderPage({ searchParams }: OrderPageProps) {
+  useEffect(() => {
+    setEvent(() => events.find((e) => e.id === eventId));
+  }, []);
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <OrderPageContent searchParams={searchParams} />
+      <MantineProvider>
+        <OrderContext.Provider
+          value={{ setEvent, setFlight, setHotel, event, flight, hotel }}
+        >
+          <OrderPageContent eventId={eventId} />
+        </OrderContext.Provider>
+      </MantineProvider>
     </Suspense>
   );
 }
 
-async function OrderPageContent({ searchParams }: OrderPageProps) {
-  const params = await searchParams;
-  const eventId = params.eventId as string;
+const OrderPageContent = ({ eventId }: { eventId?: string }) => {
   const event = events.find((e) => e.id === eventId);
 
   if (!event) {
@@ -82,4 +96,4 @@ async function OrderPageContent({ searchParams }: OrderPageProps) {
       </footer>
     </div>
   );
-}
+};

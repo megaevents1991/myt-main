@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Order } from "./useOrderState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -14,6 +13,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { events, flights, hotels } from "@/lib/events-data";
+import { Order } from "@/lib/app.types";
 
 interface OrderReviewProps {
   order: Order;

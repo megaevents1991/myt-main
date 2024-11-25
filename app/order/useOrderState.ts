@@ -1,18 +1,8 @@
-/* eslint-disable prefer-const */
+import { Event, Order } from "@/lib/app.types";
 import { useState } from "react";
-import { Event } from "@/lib/events-data";
-
-export interface Order {
-  eventId: string;
-  ticketType: string;
-  quantity: number;
-  flightId: string;
-  hotelId: string;
-  totalPrice: number;
-}
 
 export function useOrderState(event: Event) {
-  let [order, setOrder] = useState<Order>({
+  const [order, setOrder] = useState<Order>({
     eventId: event.id,
     ticketType: "",
     quantity: 1,

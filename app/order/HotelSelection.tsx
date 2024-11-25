@@ -1,8 +1,7 @@
 "use client";
 
+import { Hotel, Order } from "@/lib/app.types";
 import { useState, useEffect } from "react";
-import { Hotel } from "@/lib/events-data";
-import { Order } from "./useOrderState";
 
 interface HotelSelectionProps {
   order: Order;
