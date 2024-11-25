@@ -8,8 +8,8 @@ export const applyFiltersAndSorting = (
     airline: string | "all";
     directOnly: boolean;
     sortOption: SortOptions;
-    outBoundRange?: { departure: number; arrival: number };
-    inBoundRange?: { departure: number; arrival: number };
+    outboundRange: [number, number];
+    inboundRange: [number, number];
     flightDuration: number;
   }
 ): Flight[] => {
@@ -17,8 +17,8 @@ export const applyFiltersAndSorting = (
     airline,
     directOnly,
     sortOption,
-    outBoundRange = true,
-    inBoundRange = true,
+    outboundRange,
+    inboundRange,
     flightDuration,
   } = options;
 
@@ -27,21 +27,20 @@ export const applyFiltersAndSorting = (
     const matchesAirline =
       airline === "all" ? true : flight.airline === airline;
     const matchesDirectOnly = directOnly ? flight.stops === 0 : true;
-    const matchesOutBoundRange = outBoundRange;
-    // new Date(flight.departureTime).getTime() >= outBoundRange.departure &&
-    // new Date(flight.arrivalTime).getDate() <= outBoundRange.arrival;
-    const matchesInBoundRange = inBoundRange;
-    // new Date(flight.returnDepartureTime).getTime() >=
-    //   inBoundRange.departure &&
-    // new Date(flight.returnArrivalTime).getTime() <= inBoundRange.arrival;
+    const matchesOutboundRange =
+      new Date(flight.departureTime).getHours() >= outboundRange[0] &&
+      new Date(flight.arrivalTime).getHours() <= outboundRange[1];
+    const matchesInboundRange =
+      new Date(flight.returnDepartureTime).getHours() >= inboundRange[0] &&
+      new Date(flight.returnArrivalTime).getHours() <= inboundRange[1];
     const matchesFlightDuration =
       parseDuration(flight.duration) <= flightDuration;
 
     return (
       matchesAirline &&
       matchesDirectOnly &&
-      matchesOutBoundRange &&
-      matchesInBoundRange &&
+      matchesOutboundRange &&
+      matchesInboundRange &&
       matchesFlightDuration
     );
   });

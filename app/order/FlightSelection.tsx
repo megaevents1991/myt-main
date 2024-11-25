@@ -17,6 +17,11 @@ import { OrderContext } from "../context";
 import { flightSort, SortOptions } from "@/lib/flightSort";
 import { TimeSlider } from "@/components/ui/timeSlider";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
+import TimeRangeSlider from "@/components/ui/timeRangeSlider";
+import { Text } from "@mantine/core";
+
+const MAX_FLIGHT_DURATION = 30 * 60;
+const DEFAULT_FLIGHT_RANGE = [0, 24] as [number, number];
 
 const FlightSelection = () => {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -31,15 +36,29 @@ const FlightSelection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { setFlight, flight: orderFlight, event } = useContext(OrderContext);
-  const [duration, setDuration] = useState(30 * 60);
+  const [duration, setDuration] = useState(MAX_FLIGHT_DURATION);
+  const [inboundRange, setInboundRange] =
+    useState<[number, number]>(DEFAULT_FLIGHT_RANGE);
+  const [outboundRange, setOutboundRange] =
+    useState<[number, number]>(DEFAULT_FLIGHT_RANGE);
 
   useEffect(() => {
     fetchFlights();
   }, []);
 
   const fetchFlights = async (options: Partial<FlightSearchOptions> = {}) => {
+    const directOnly = !!options.nonStop;
+
     setIsLoading(true);
     setError(null);
+    setFilters((prev) => ({
+      ...prev,
+      airline: "all",
+      directOnly,
+    }));
+    setDuration(MAX_FLIGHT_DURATION);
+    setInboundRange(DEFAULT_FLIGHT_RANGE);
+    setOutboundRange(DEFAULT_FLIGHT_RANGE);
 
     try {
       const res = await fetch(`/api/flights?eventId=${event?.id}`, {
@@ -51,21 +70,16 @@ const FlightSelection = () => {
       }
       const flights = await res.json();
 
-      const directOnly = !!options.nonStop;
-
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: "all",
         directOnly,
         sortOption,
-        flightDuration: duration,
+        flightDuration: MAX_FLIGHT_DURATION,
+        inboundRange: DEFAULT_FLIGHT_RANGE,
+        outboundRange: DEFAULT_FLIGHT_RANGE,
       });
 
       setFlights(flights);
-      setFilters((prev) => ({
-        ...prev,
-        airline: "all",
-        directOnly,
-      }));
       setFilteredFlights(filteredFlights);
     } catch (err) {
       console.error(err);
@@ -86,12 +100,12 @@ const FlightSelection = () => {
   };
 
   const handleFilterChange = async (key: string, value: string | boolean) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-
     if (key === "directOnly" && value !== filters[key]) {
       await fetchFlights({ nonStop: !!value });
       return;
     }
+
+    setFilters((prev) => ({ ...prev, [key]: value }));
 
     if (key === "airline" && typeof value === "string") {
       const filteredFlights = applyFiltersAndSorting(flights, {
@@ -99,6 +113,8 @@ const FlightSelection = () => {
         directOnly: filters.directOnly,
         sortOption,
         flightDuration: duration,
+        inboundRange,
+        outboundRange,
       });
 
       setFilteredFlights(filteredFlights);
@@ -114,6 +130,33 @@ const FlightSelection = () => {
       directOnly: filters.directOnly,
       sortOption,
       flightDuration,
+      inboundRange,
+      outboundRange,
+    });
+
+    setFilteredFlights(filteredFlights);
+  };
+
+  const handleRangeChange = ({
+    range,
+    name,
+  }: {
+    range: [number, number];
+    name: "inbound" | "outbound";
+  }) => {
+    if (name === "inbound") {
+      setInboundRange(range);
+    } else {
+      setOutboundRange(range);
+    }
+
+    const filteredFlights = applyFiltersAndSorting(flights, {
+      airline: filters.airline,
+      directOnly: filters.directOnly,
+      sortOption,
+      flightDuration: duration,
+      inboundRange: name === "inbound" ? range : inboundRange,
+      outboundRange: name === "outbound" ? range : outboundRange,
     });
 
     setFilteredFlights(filteredFlights);
@@ -162,6 +205,14 @@ const FlightSelection = () => {
         </Select>
       </div>
       <TimeSlider handleOnChangeEnd={(value) => handleDurationChange(value)} />
+      <Text mb="xs">Outbound</Text>
+      <TimeRangeSlider
+        onChangeEnd={(range) => handleRangeChange({ range, name: "outbound" })}
+      />
+      <Text mb="xs">Inbound</Text>
+      <TimeRangeSlider
+        onChangeEnd={(range) => handleRangeChange({ range, name: "inbound" })}
+      />
       {showFilters && (
         <div className="bg-gray-100 p-4 rounded-lg space-y-4">
           <div className="flex items-center space-x-2">
