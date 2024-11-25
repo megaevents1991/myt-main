@@ -8,7 +8,7 @@ export const parseDuration = (duration: string) => {
 
   try {
     const hours = +matches[1];
-    const minutes = +matches[2];
+    const minutes = +(matches[2] ? matches[2] : 0);
     return hours * 60 + minutes; // Total minutes
   } catch (error) {
     console.log(`Error parsing duration : ${error}`, duration);
