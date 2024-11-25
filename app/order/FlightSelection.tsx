@@ -51,15 +51,21 @@ const FlightSelection = () => {
       }
       const flights = await res.json();
 
+      const directOnly = !!options.nonStop;
+
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: "all",
-        directOnly: !!options.nonStop,
+        directOnly,
         sortOption,
         flightDuration: duration,
       });
 
       setFlights(flights);
-      setFilters((prev) => ({ ...prev, airline: "all" }));
+      setFilters((prev) => ({
+        ...prev,
+        airline: "all",
+        directOnly,
+      }));
       setFilteredFlights(filteredFlights);
     } catch (err) {
       console.error(err);
