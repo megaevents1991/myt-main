@@ -9,6 +9,7 @@ export const TimeRangeSlider = ({
   const [value, setValue] = useState<[number, number]>([0, 24]); // Initial range: 12 AM to 12 AM
 
   // Convert slider values to time format (e.g., 12:00 AM, 1:00 PM)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const formatTime = (hour: number) => {
     const period = hour >= 12 ? "PM" : "AM";
     const adjustedHour = hour % 12 === 0 ? 12 : hour % 12;
