@@ -9,6 +9,8 @@ import { Flight, Hotel, Event } from "@/lib/app.types";
 import { OrderContext } from "../context";
 import { useSearchParams } from "next/navigation";
 import { MantineProvider } from "@mantine/core";
+import { DatesProvider } from "@mantine/dates";
+import "dayjs/locale/he";
 
 export default function OrderPage() {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
@@ -23,11 +25,20 @@ export default function OrderPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <MantineProvider>
-        <OrderContext.Provider
-          value={{ setEvent, setFlight, setHotel, event, flight, hotel }}
+        <DatesProvider
+          settings={{
+            locale: "he",
+            firstDayOfWeek: 0,
+            weekendDays: [6],
+            timezone: "UTC",
+          }}
         >
-          <OrderPageContent eventId={eventId} />
-        </OrderContext.Provider>
+          <OrderContext.Provider
+            value={{ setEvent, setFlight, setHotel, event, flight, hotel }}
+          >
+            <OrderPageContent eventId={eventId} />
+          </OrderContext.Provider>
+        </DatesProvider>
       </MantineProvider>
     </Suspense>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import TicketSelection from "./TicketSelection";
-import FlightSelection from "./FlightSelection";
+import { FlightSelection } from "./FlightSelection";
 import HotelSelection from "./HotelSelection";
 import OrderReview from "./OrderReview";
 import { useOrderState } from "./useOrderState";

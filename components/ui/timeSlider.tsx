@@ -1,13 +1,16 @@
 import { Slider, Text } from "@mantine/core";
-import { useState } from "react";
 
 export const TimeSlider = ({
-  handleOnChangeEnd,
+  onChangeEnd,
+  onChange,
+  value,
+  maxValue = 30,
 }: {
-  handleOnChangeEnd: (value: number) => void;
+  onChangeEnd: (value: number) => void;
+  onChange: (value: number) => void;
+  value: number;
+  maxValue: number;
 }) => {
-  const [value, setValue] = useState(30); // Default value (e.g., noon)
-
   // Function to convert hour to 24-hour time format
   const formatTime = (value: number) => {
     const hours = Math.floor(value);
@@ -17,22 +20,22 @@ export const TimeSlider = ({
       .padStart(2, "0")}`;
   };
 
-  const onChangeEnd = (value: number) => {
-    handleOnChangeEnd(value);
+  const handleOnChangeEnd = (value: number) => {
+    onChangeEnd(value);
   };
   const handleOnChange = (value: number) => {
-    setValue(value);
+    onChange(value);
   };
 
   return (
     <div style={{ width: 300, margin: "auto" }}>
       <Slider
         min={0} // 12:00 AM
-        max={30} // 11:00 PM
+        max={maxValue} // 11:00 PM
         step={0.5} // Each tick represents an hour
         value={value}
         onChange={handleOnChange}
-        onChangeEnd={onChangeEnd}
+        onChangeEnd={handleOnChangeEnd}
         label={formatTime(value)}
       />
       <Text>Trip Duration: {formatTime(value)}</Text>

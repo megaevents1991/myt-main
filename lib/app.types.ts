@@ -51,3 +51,14 @@ export type FlightSearchOptions = {
   destination: string;
   nonStop: boolean;
 };
+
+export type TimeRange = [
+  {
+    hours: number;
+    minutes: number;
+  },
+  {
+    hours: number;
+    minutes: number;
+  }
+];

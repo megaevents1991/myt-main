@@ -41,8 +41,8 @@ export async function POST(request: Request) {
 
   try {
     const {
-      returnDate,
-      departureDate,
+      returnDate: returnDateFromUi,
+      departureDate: departureDateFromUi,
       originLocationCode = "TLV",
       adults,
       destinationLocationCode,
@@ -57,20 +57,23 @@ export async function POST(request: Request) {
 
     const iataCodes = locations.data.map(({ iataCode }) => iataCode);
 
-    // Search for flights
+    const departureDate = new Date(
+      departureDateFromUi || new Date(event.date).getTime() - 2 * 8.64e7
+    )
+      .toISOString()
+      .split("T")[0];
+
+    const returnDate = new Date(
+      returnDateFromUi || new Date(event.date).getTime() + 8.64e7
+    )
+      .toISOString()
+      .split("T")[0];
+
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode,
       destinationLocationCode: destinationLocationCode || iataCodes[0],
-      departureDate:
-        departureDate ||
-        new Date(new Date(event.date).getTime() - 2 * 8.64e7)
-          .toISOString()
-          .split("T")[0],
-      returnDate:
-        returnDate ||
-        new Date(new Date(event.date).getTime() + 8.64e7)
-          .toISOString()
-          .split("T")[0],
+      departureDate,
+      returnDate,
       adults: adults || 1,
       max: 10,
       nonStop,
