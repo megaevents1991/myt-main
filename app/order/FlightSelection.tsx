@@ -61,6 +61,11 @@ export const FlightSelection = () => {
 
     setIsLoading(true);
     setError(null);
+    setFilters((prev) => ({
+      ...prev,
+      airline: [],
+      directOnly,
+    }));
     setInboundRange(DEFAULT_FLIGHT_RANGE);
     setOutboundRange(DEFAULT_FLIGHT_RANGE);
 
@@ -231,6 +236,28 @@ export const FlightSelection = () => {
           onChange={(value) => handleSortChange(value as SortOptions)}
         />
       </div>
+      {showFilters && (
+        <div className="bg-gray-100 p-4 rounded-lg space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="directOnly"
+              checked={filters.directOnly}
+              onChange={(e) =>
+                handleFilterChange("directOnly", e.currentTarget.checked)
+              }
+            />
+            <Label htmlFor="directOnly">Direct flights only</Label>
+          </div>
+          <div>
+            <Label htmlFor="airline">Airline</Label>
+            <MultiSelect
+              data={airlines}
+              value={filters.airline}
+              onChange={(value) => handleFilterChange("airline", value)}
+            />
+          </div>
+        </div>
+      )}
       <TimeSlider
         onChangeEnd={handleChangeDurartionEnd}
         value={durationValue}
@@ -247,28 +274,6 @@ export const FlightSelection = () => {
         onChangeEnd={(range) => handleRangeChange({ range, name: "inbound" })}
       />
       <Button onClick={handleFlightSearch}>Find a flight</Button>
-      {showFilters && (
-        <div className="bg-gray-100 p-4 rounded-lg space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="directOnly"
-              checked={filters.directOnly}
-              onChange={(e) =>
-                handleFilterChange("directOnly", e.target.checked === true)
-              }
-            />
-            <Label htmlFor="directOnly">Direct flights only</Label>
-          </div>
-          <div>
-            <Label htmlFor="airline">Airline</Label>
-            <MultiSelect
-              data={airlines}
-              value={filters.airline}
-              onChange={(value) => handleFilterChange("airline", value)}
-            />
-          </div>
-        </div>
-      )}
       <LoaderWrapper isLoading={isLoading}>
         <RadioGroup
           value={orderFlight?.id}
