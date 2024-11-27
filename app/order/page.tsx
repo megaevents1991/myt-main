@@ -8,7 +8,6 @@ import { Music } from "lucide-react";
 import { Flight, Hotel, Event } from "@/lib/app.types";
 import { OrderContext } from "../context";
 import { useSearchParams } from "next/navigation";
-import { MantineProvider } from "@mantine/core";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
 
@@ -24,22 +23,20 @@ export default function OrderPage() {
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <MantineProvider>
-        <DatesProvider
-          settings={{
-            locale: "he",
-            firstDayOfWeek: 0,
-            weekendDays: [6],
-            timezone: "UTC",
-          }}
+      <DatesProvider
+        settings={{
+          locale: "he",
+          firstDayOfWeek: 0,
+          weekendDays: [6],
+          timezone: "UTC",
+        }}
+      >
+        <OrderContext.Provider
+          value={{ setEvent, setFlight, setHotel, event, flight, hotel }}
         >
-          <OrderContext.Provider
-            value={{ setEvent, setFlight, setHotel, event, flight, hotel }}
-          >
-            <OrderPageContent eventId={eventId} />
-          </OrderContext.Provider>
-        </DatesProvider>
-      </MantineProvider>
+          <OrderPageContent eventId={eventId} />
+        </OrderContext.Provider>
+      </DatesProvider>
     </Suspense>
   );
 }

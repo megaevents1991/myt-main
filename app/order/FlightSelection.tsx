@@ -1,6 +1,4 @@
-import { Checkbox } from "@/components/ui/checkbox";
 import { DateRange } from "@/components/ui/dateInput";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -9,7 +7,7 @@ import { TimeSlider } from "@/components/ui/timeSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
-import { Button, MultiSelect, Select, Text } from "@mantine/core";
+import { Button, Checkbox, MultiSelect, Select, Text } from "@mantine/core";
 import { ArrowRight, Filter, Plane } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../context";
@@ -255,21 +253,11 @@ export const FlightSelection = () => {
             <Checkbox
               id="directOnly"
               checked={filters.directOnly}
-              onCheckedChange={(checked) =>
-                handleFilterChange("directOnly", checked === true)
+              onChange={(e) =>
+                handleFilterChange("directOnly", e.target.checked === true)
               }
             />
             <Label htmlFor="directOnly">Direct flights only</Label>
-          </div>
-          <div>
-            <Label htmlFor="maxPrice">Maximum Price</Label>
-            <Input
-              id="maxPrice"
-              type="number"
-              value={filters.maxPrice}
-              onChange={(e) => handleFilterChange("maxPrice", e.target.value)}
-              placeholder="Enter max price"
-            />
           </div>
           <div>
             <Label htmlFor="airline">Airline</Label>

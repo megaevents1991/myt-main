@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import { Suspense } from "react";
+import { MantineProvider } from "@mantine/core";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Suspense>{children}</Suspense>
+        <Suspense>
+          <MantineProvider>{children}</MantineProvider>
+        </Suspense>
       </body>
     </html>
   );
