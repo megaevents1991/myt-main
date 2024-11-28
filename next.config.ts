@@ -11,6 +11,12 @@ const nextConfig: import("next").NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "www.avcodes.co.uk",
+        port: "",
+        pathname: "/images/logos/**",
+      },
     ],
   },
 };

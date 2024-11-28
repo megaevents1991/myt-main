@@ -8,10 +8,11 @@ import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
 import { Button, Checkbox, MultiSelect, Select, Text } from "@mantine/core";
-import { ArrowRight, Filter, Plane } from "lucide-react";
+import { ArrowRight, Filter } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../context";
 import { parseDuration } from "@/lib/parseDuration";
+import Image from "next/image";
 
 const MAX_FLIGHT_DURATION = 30;
 const DEFAULT_FLIGHT_RANGE = [
@@ -197,7 +198,14 @@ export const FlightSelection = () => {
     setFilteredFlights(filteredFlights);
   };
 
-  const airlines = Array.from(new Set(flights.map((flight) => flight.airline)));
+  const airlines = Array.from(
+    new Map(
+      flights.map((flight) => [
+        flight.airline, // Use airline as the key
+        { value: flight.airline, label: flight.metadata.name }, // Object as the value
+      ])
+    ).values() // Extract the unique values
+  );
 
   // if (isLoading) {
   //   return (
@@ -258,13 +266,13 @@ export const FlightSelection = () => {
           </div>
         </div>
       )}
+      <DateRange dateRange={dateRange} setDateRange={setDateRange} />
       <TimeSlider
         onChangeEnd={handleChangeDurartionEnd}
         value={durationValue}
         onChange={setDurationValue}
         maxValue={maxDuration}
       />
-      <DateRange dateRange={dateRange} setDateRange={setDateRange} />
       <Text mb="xs">Outbound</Text>
       <TimeRangeSlider
         onChangeEnd={(range) => handleRangeChange({ range, name: "outbound" })}
@@ -297,24 +305,22 @@ export const FlightSelection = () => {
                 htmlFor={flight.id}
                 className="flex flex-col cursor-pointer"
               >
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Plane className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{flight.airline}</p>
-                      <p className="text-sm text-gray-500">
-                        Duration: {flight.duration}
-                      </p>
-                    </div>
+                <div className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                  <div className="relative w-16 h-16">
+                    <Image
+                      src={flight.metadata.logo || ""}
+                      alt={`${flight.metadata.name} logo`}
+                      layout="fill"
+                      objectFit="contain"
+                      className="rounded-full"
+                    />
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">${flight.price}</p>
-                    <p className="text-sm text-gray-500">
-                      {flight.stops === 0
-                        ? "Direct"
-                        : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800">
+                      {flight.metadata.name}
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      {flight.metadata.iataCode}
                     </p>
                   </div>
                 </div>

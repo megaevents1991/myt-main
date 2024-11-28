@@ -51,6 +51,7 @@ export const flights: Flight[] = [
     stops: 0,
     returnDepartureTime: "19:30",
     returnArrivalTime: "05:45",
+    metadata: {} as Flight["metadata"],
   },
   {
     id: "2",
@@ -64,6 +65,7 @@ export const flights: Flight[] = [
     stops: 0,
     returnDepartureTime: "18:00",
     returnArrivalTime: "19:50",
+    metadata: {} as Flight["metadata"],
   },
 ];
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { events } from "@/lib/events-data";
 import Amadeus from "amadeus";
 import { FlightSearchOptions } from "@/lib/app.types";
-
+import { getAirlineByIata } from "aircodes";
 process.env.AMADEUS_CLIENT_ID = "306M5ysI3BdNXNuruBjACYZTo8lOb3WC";
 process.env.AMADEUS_CLIENT_SECRET = "qnUSdtaUuMeWspSV";
 
@@ -101,6 +101,9 @@ export async function POST(request: Request) {
           arrivalTime: toArrival?.arrival.at || 0,
           returnDepartureTime: fromDeparture.departure.at,
           returnArrivalTime: fromArrival?.arrival.at || 0,
+          metadata: {
+            ...getAirlineByIata(validatingAirlineCodes[0]),
+          },
         };
       }
     );

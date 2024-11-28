@@ -1,3 +1,5 @@
+import { Airline } from "aircodes";
+
 export type Event = {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ export type Flight = {
   stops: number;
   returnDepartureTime: string;
   returnArrivalTime: string;
+  metadata: Airline;
 };
 
 export type Hotel = {
