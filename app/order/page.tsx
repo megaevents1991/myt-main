@@ -6,7 +6,7 @@ import { OrderForm } from "./OrderForm";
 import Link from "next/link";
 import { Music } from "lucide-react";
 import { Flight, Hotel, Event } from "@/lib/app.types";
-import { OrderContext } from "../context";
+import { OrderContext } from "../app.context";
 import { useSearchParams } from "next/navigation";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
@@ -15,6 +15,8 @@ export default function OrderPage() {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>({} as Event);
   const [hotel, setHotel] = useState<Hotel | undefined>({} as Hotel);
+  const [numberOfEventTickets, setNumberOfEventTickets] = useState(1);
+  const [planeTickets, setPlaneTickets] = useState({ adults: 1, children: 0 });
   const eventId = useSearchParams().get("eventId") as string;
 
   useEffect(() => {
@@ -32,7 +34,18 @@ export default function OrderPage() {
         }}
       >
         <OrderContext.Provider
-          value={{ setEvent, setFlight, setHotel, event, flight, hotel }}
+          value={{
+            setEvent,
+            setFlight,
+            setHotel,
+            event,
+            flight,
+            hotel,
+            numberOfEventTickets,
+            setNumberOfEventTickets,
+            planeTickets,
+            setPlaneTickets,
+          }}
         >
           <OrderPageContent eventId={eventId} />
         </OrderContext.Provider>

@@ -1,64 +1,86 @@
 "use client";
 
-import { Order, Event } from "@/lib/app.types";
-import { useState, useEffect } from "react";
+import { events } from "@/lib/events-data";
+import {
+  Badge,
+  Button,
+  Card,
+  Grid,
+  Group,
+  NumberInput,
+  Text,
+} from "@mantine/core";
+import { useSearchParams } from "next/navigation";
+import { useContext, useState } from "react";
+import { OrderContext } from "../app.context";
 
-interface Ticket {
-  type: string;
-  price: number;
-}
+export const TicketSelection = () => {
+  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
+  const eventId = useSearchParams().get("eventId") as string;
+  const event = events.find((e) => e.id === eventId);
 
-interface TicketSelectionProps {
-  event: Event;
-  order: Order;
-  updateOrder: (key: keyof Order, value: string | number) => void;
-}
+  const { numberOfEventTickets, setNumberOfEventTickets } =
+    useContext(OrderContext);
 
-export default function TicketSelection({
-  event,
-  order,
-  updateOrder,
-}: TicketSelectionProps) {
-  const [availableTickets, setAvailableTickets] = useState<Ticket[]>([]);
+  const handleTicketSelect = (id: string) => {
+    setSelectedTicket(id);
+  };
 
-  useEffect(() => {
-    async function fetchTickets() {
-      const res = await fetch(`/api/tickets?eventId=${event.id}`);
-      const data = await res.json();
-      setAvailableTickets(data);
-    }
-    fetchTickets();
-  }, [event.id]);
+  const handleQuantityChange = (value: number | string) => {
+    setNumberOfEventTickets(+value);
+  };
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">Select Your Tickets</h2>
-      {availableTickets.map((ticket) => (
-        <div key={ticket.type} className="mb-4">
-          <label className="flex items-center">
-            <input
-              type="radio"
-              name="ticketType"
-              value={ticket.type}
-              checked={order.ticketType === ticket.type}
-              onChange={(e) => updateOrder("ticketType", e.target.value)}
-            />
-            <span className="ml-2">
-              {ticket.type} - ${ticket.price}
-            </span>
-          </label>
-        </div>
-      ))}
-      <div>
-        <label className="block mb-2">Quantity:</label>
-        <input
-          type="number"
-          min="1"
-          value={order.quantity}
-          onChange={(e) => updateOrder("quantity", parseInt(e.target.value))}
-          className="border p-2"
-        />
-      </div>
+      <NumberInput
+        value={numberOfEventTickets}
+        onChange={handleQuantityChange}
+        label="Quantity"
+        min={1}
+        placeholder="Enter number of tickets"
+        step={1}
+      />
+      <Text
+        size="xl"
+        mb="lg"
+        style={{ fontWeight: 700, alignContent: "center" }}
+      >
+        Choose Your Ticket
+      </Text>
+      <Grid>
+        {event?.tickets.map((ticket) => (
+          <Grid.Col key={ticket.id} span={12}>
+            <Card shadow="sm" padding="lg" radius="md" withBorder>
+              <Group mb="xs">
+                <Text style={{ fontWeight: 700 }}>{ticket.type}</Text>
+                <Badge
+                  color={selectedTicket === ticket.id ? "green" : "gray"}
+                  variant="light"
+                >
+                  {selectedTicket === ticket.id ? "Selected" : "Available"}
+                </Badge>
+              </Group>
+
+              <Text size="sm" color="dimmed" mb="md">
+                {ticket.description}
+              </Text>
+
+              <Text style={{ fontWeight: 700 }} size="lg" mb="md">
+                {ticket.price}
+              </Text>
+
+              <Button
+                variant={selectedTicket === ticket.id ? "filled" : "light"}
+                color="blue"
+                fullWidth
+                onClick={() => handleTicketSelect(ticket.id)}
+              >
+                {selectedTicket === ticket.id ? "Selected" : "Select Ticket"}
+              </Button>
+            </Card>
+          </Grid.Col>
+        ))}
+      </Grid>
     </div>
   );
-}
+};

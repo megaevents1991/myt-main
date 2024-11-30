@@ -10,12 +10,27 @@ export const events: Event[] = [
       longitude: -73.968285,
       name: "Central Park, New York",
     },
-    citi: "New York",
+    city: "New York",
     description:
       "A day-long music festival featuring top artists from around the world.",
     imageUrl:
       "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
-    price: 150,
+
+    tickets: [
+      {
+        type: "General Admission",
+        price: 100,
+        description: "General Admission",
+        id: "1",
+      },
+      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      {
+        type: "Backstage Pass",
+        price: 500,
+        description: "Backstage Pass",
+        id: "3",
+      },
+    ],
   },
   {
     id: "2",
@@ -29,8 +44,22 @@ export const events: Event[] = [
     description: "The final match of the FIFA World Cup 2023.",
     imageUrl:
       "https://images.unsplash.com/photo-1522778119026-d647f0596c20?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
-    price: 500,
-    citi: "New York",
+    tickets: [
+      {
+        type: "General Admission",
+        price: 100,
+        description: "General Admission",
+        id: "1",
+      },
+      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      {
+        type: "Backstage Pass",
+        price: 500,
+        description: "Backstage Pass",
+        id: "3",
+      },
+    ],
+    city: "New York",
   },
   {
     id: "3",
@@ -45,8 +74,22 @@ export const events: Event[] = [
       "Annual conference showcasing the latest in technology and innovation.",
     imageUrl:
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
-    price: 300,
-    citi: "New York",
+    tickets: [
+      {
+        type: "General Admission",
+        price: 100,
+        description: "General Admission",
+        id: "1",
+      },
+      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      {
+        type: "Backstage Pass",
+        price: 500,
+        description: "Backstage Pass",
+        id: "3",
+      },
+    ],
+    city: "New York",
   },
 ];
 

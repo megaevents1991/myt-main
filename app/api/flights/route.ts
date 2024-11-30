@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     // Get airports for the city
     const locations = await amadeus.referenceData.locations.get({
-      keyword: event.citi,
+      keyword: event.city,
       subType: "AIRPORT",
     });
 

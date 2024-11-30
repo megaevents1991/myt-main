@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import TicketSelection from "./TicketSelection";
+import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
@@ -11,7 +11,7 @@ import { Event } from "@/lib/app.types";
 
 export const OrderForm = ({ event }: { event: Event }) => {
   const [step, setStep] = useState(1);
-  const { order, updateOrder, submitOrder } = useOrderState(event);
+  const { order, submitOrder } = useOrderState(event);
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
@@ -21,13 +21,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       <h1 className="text-3xl font-bold mb-6">
         Book Your Experience: {event.name}
       </h1>
-      {step === 1 && (
-        <TicketSelection
-          event={event}
-          order={order}
-          updateOrder={updateOrder}
-        />
-      )}
+      {step === 1 && <TicketSelection />}
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}

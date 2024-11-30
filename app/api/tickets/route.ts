@@ -19,8 +19,8 @@ export async function GET(request: Request) {
   }
 
   const tickets = [
-    { type: "standard", price: event.price },
-    { type: "vip", price: event.price * 2 },
+    { type: "standard", price: event.tickets[0].price },
+    { type: "vip", price: event.tickets[1].price },
   ];
 
   return NextResponse.json(tickets);

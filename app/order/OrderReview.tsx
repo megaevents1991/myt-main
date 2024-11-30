@@ -52,7 +52,9 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
   }
 
   const totalPrice =
-    (order.ticketType === "vip" ? event.price * 2 : event.price) *
+    (order.ticketType === "vip"
+      ? event.tickets[1].price * 2
+      : event.tickets[0].price) *
       order.quantity +
     selectedFlight.price +
     selectedHotel.price;
@@ -79,8 +81,9 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
               </p>
               <p className="font-medium text-foreground">
                 $
-                {(order.ticketType === "vip" ? event.price * 2 : event.price) *
-                  order.quantity}
+                {(order.ticketType === "vip"
+                  ? event.tickets[0].price * 2
+                  : event.tickets[0].price) * order.quantity}
               </p>
             </div>
           </CardContent>

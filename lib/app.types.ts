@@ -11,8 +11,13 @@ export type Event = {
   };
   description: string;
   imageUrl: string;
-  price: number;
-  citi: string;
+  city: string;
+  tickets: {
+    type: string;
+    price: number;
+    description: string;
+    id: string;
+  }[];
 };
 
 export type Flight = {

@@ -1,16 +1,23 @@
 import { DateRange } from "@/components/ui/dateInput";
-import { Label } from "@/components/ui/label";
 import { LoaderWrapper } from "@/components/ui/loader";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { TimeRangeSlider } from "@/components/ui/timeRangeSlider";
 import { TimeSlider } from "@/components/ui/timeSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
-import { Button, Checkbox, MultiSelect, Select, Text } from "@mantine/core";
+import {
+  Button,
+  Checkbox,
+  MultiSelect,
+  NumberInput,
+  RadioCard,
+  RadioGroup,
+  Select,
+  Text,
+} from "@mantine/core";
 import { ArrowRight, Filter } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
-import { OrderContext } from "../context";
+import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
 import Image from "next/image";
 
@@ -40,6 +47,9 @@ export const FlightSelection = () => {
     setFlight,
     flight: orderFlight,
     event = {} as Event,
+    numberOfEventTickets,
+    setPlaneTickets,
+    planeTickets,
   } = useContext(OrderContext);
   const [durationValue, setDurationValue] = useState(MAX_FLIGHT_DURATION);
   const [maxDuration, setMaxDuration] = useState(MAX_FLIGHT_DURATION);
@@ -54,7 +64,8 @@ export const FlightSelection = () => {
 
   useEffect(() => {
     // setDateRange(DEFALUT_DATE_RANGE);
-    fetchFlights();
+    setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
+    fetchFlights({ adults: numberOfEventTickets });
   }, []);
 
   const fetchFlights = async (options: Partial<FlightSearchOptions> = {}) => {
@@ -74,6 +85,7 @@ export const FlightSelection = () => {
       const res = await fetch(`/api/flights?eventId=${event?.id}`, {
         body: JSON.stringify({
           ...options,
+          adults: options.adults || planeTickets.adults,
           departureDate: dateRange[0]?.getTime(),
           returnDate: dateRange[1]?.getTime(),
         }),
@@ -92,25 +104,24 @@ export const FlightSelection = () => {
         ...flights.map((flight: Flight) => parseDuration(flight.duration))
       );
 
-      setDurationValue(Math.ceil(maxDuration / 60));
-      setMaxDuration(Math.ceil(maxDuration / 60));
-
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: airlines,
         directOnly,
         sortOption,
-        flightDuration: 30 * 60,
+        flightDuration: maxDuration,
         inboundRange: DEFAULT_FLIGHT_RANGE,
         outboundRange: DEFAULT_FLIGHT_RANGE,
       });
 
-      setFlights(flights);
       setFilteredFlights(filteredFlights);
+      setDurationValue(Math.ceil(maxDuration / 60));
+      setMaxDuration(Math.ceil(maxDuration / 60));
       setFilters((prev) => ({
         ...prev,
         airline: airlines,
         directOnly,
       }));
+      setFlights(flights);
     } catch (err) {
       console.error(err);
       setError(
@@ -149,7 +160,7 @@ export const FlightSelection = () => {
         airline: value,
         directOnly: filters.directOnly,
         sortOption,
-        flightDuration: durationValue,
+        flightDuration: durationValue * 60,
         inboundRange,
         outboundRange,
       });
@@ -158,7 +169,8 @@ export const FlightSelection = () => {
     }
   };
 
-  const handleChangeDurartionEnd = (duration: number) => {
+  const handleChangeDurationEnd = (duration: number) => {
+    setDurationValue(duration);
     const flightDuration = duration * 60;
 
     const filteredFlights = applyFiltersAndSorting(flights, {
@@ -231,6 +243,10 @@ export const FlightSelection = () => {
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold mb-4">Select Your Flight</h2>
       <div className="flex justify-between items-center">
+        <NumberInput
+          onChange={(value) => setPlaneTickets({ adults: +value, children: 0 })}
+          value={planeTickets.adults}
+        />
         <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
           <Filter className="w-4 h-4 mr-2" />
           {showFilters ? "Hide Filters" : "Show Filters"}
@@ -254,10 +270,10 @@ export const FlightSelection = () => {
                 handleFilterChange("directOnly", e.currentTarget.checked)
               }
             />
-            <Label htmlFor="directOnly">Direct flights only</Label>
+            <Text>Direct flights only</Text>
           </div>
           <div>
-            <Label htmlFor="airline">Airline</Label>
+            <Text>Airline</Text>
             <MultiSelect
               data={airlines}
               value={filters.airline}
@@ -268,7 +284,7 @@ export const FlightSelection = () => {
       )}
       <DateRange dateRange={dateRange} setDateRange={setDateRange} />
       <TimeSlider
-        onChangeEnd={handleChangeDurartionEnd}
+        onChangeEnd={handleChangeDurationEnd}
         value={durationValue}
         onChange={setDurationValue}
         maxValue={maxDuration}
@@ -285,9 +301,7 @@ export const FlightSelection = () => {
       <LoaderWrapper isLoading={isLoading}>
         <RadioGroup
           value={orderFlight?.id}
-          onValueChange={(value) =>
-            setFlight(flights.find((f) => f.id === value))
-          }
+          onChange={(value) => setFlight(flights.find((f) => f.id === value))}
         >
           {filteredFlights.map((flight) => (
             <div
@@ -296,15 +310,8 @@ export const FlightSelection = () => {
                 orderFlight?.id === flight.id ? "selected-flight" : ""
               }`}
             >
-              <RadioGroupItem
-                value={flight.id}
-                id={flight.id}
-                className="sr-only"
-              />
-              <Label
-                htmlFor={flight.id}
-                className="flex flex-col cursor-pointer"
-              >
+              <RadioCard value={flight.id} id={flight.id} className="sr-only" />
+              <Text className="flex flex-col cursor-pointer">
                 <div className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
                   <div className="relative w-16 h-16">
                     <Image
@@ -320,7 +327,10 @@ export const FlightSelection = () => {
                       {flight.metadata.name}
                     </h2>
                     <p className="text-sm text-gray-600">
-                      {flight.metadata.iataCode}
+                      {flight.metadata.iata}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {flight.duration} - {flight.stops} stops
                     </p>
                   </div>
                 </div>
@@ -348,7 +358,7 @@ export const FlightSelection = () => {
                     </p>
                   </div>
                 </div>
-              </Label>
+              </Text>
             </div>
           ))}
         </RadioGroup>
