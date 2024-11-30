@@ -5,7 +5,11 @@ export const events: Event[] = [
     id: "1",
     name: "Summer Music Festival",
     date: "2025-01-15",
-    location: "Central Park, New York",
+    location: {
+      latitude: 40.785091,
+      longitude: -73.968285,
+      name: "Central Park, New York",
+    },
     citi: "New York",
     description:
       "A day-long music festival featuring top artists from around the world.",
@@ -17,7 +21,11 @@ export const events: Event[] = [
     id: "2",
     name: "World Cup Final",
     date: "2023-12-18",
-    location: "Lusail Stadium, Qatar",
+    location: {
+      latitude: 25.406566,
+      longitude: 51.435725,
+      name: "Lusail Stadium, Qatar",
+    },
     description: "The final match of the FIFA World Cup 2023.",
     imageUrl:
       "https://images.unsplash.com/photo-1522778119026-d647f0596c20?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
@@ -28,7 +36,11 @@ export const events: Event[] = [
     id: "3",
     name: "Tech Conference 2023",
     date: "2023-09-22",
-    location: "Moscone Center, San Francisco",
+    location: {
+      name: "Moscone Center, San Francisco",
+      latitude: 37.783083,
+      longitude: -122.403354,
+    },
     description:
       "Annual conference showcasing the latest in technology and innovation.",
     imageUrl:

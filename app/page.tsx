@@ -96,7 +96,7 @@ export default function Home() {
                         {event.name}
                       </h3>
                       <p className="text-white mb-4">
-                        {event.location} • {event.date}
+                        {event.location.name} • {event.date}
                       </p>
                       <Link href={`/order?eventId=${event.id}`}>
                         <Button variant="secondary">Book Now</Button>

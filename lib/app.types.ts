@@ -4,7 +4,11 @@ export type Event = {
   id: string;
   name: string;
   date: string;
-  location: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    name: string;
+  };
   description: string;
   imageUrl: string;
   price: number;

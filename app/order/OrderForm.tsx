@@ -3,7 +3,7 @@
 import { useState } from "react";
 import TicketSelection from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
-import HotelSelection from "./HotelSelection";
+import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
 import { useOrderState } from "./useOrderState";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         />
       )}
       {step === 2 && <FlightSelection />}
-      {step === 3 && <HotelSelection order={order} updateOrder={updateOrder} />}
+      {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
       <div className="flex justify-between mt-8">
         {step > 1 && (

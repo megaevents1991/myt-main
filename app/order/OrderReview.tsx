@@ -72,7 +72,7 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
             <div className="text-sm space-y-1 text-muted-foreground">
               <p>{new Date(event.date).toLocaleDateString()}</p>
               <p className="flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {event.location}
+                <MapPin className="w-3 h-3" /> {event.location.name}
               </p>
               <p>
                 {order.ticketType.toUpperCase()} Ticket × {order.quantity}
