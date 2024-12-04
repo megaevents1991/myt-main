@@ -10,10 +10,10 @@ import {
   Checkbox,
   MultiSelect,
   NumberInput,
-  RadioCard,
-  RadioGroup,
+  Radio,
   Select,
   Text,
+  Stack,
 } from "@mantine/core";
 import { ArrowRight, Filter } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
@@ -51,7 +51,8 @@ export const FlightSelection = () => {
     setPlaneTickets,
     planeTickets,
   } = useContext(OrderContext);
-  const [durationValue, setDurationValue] = useState(MAX_FLIGHT_DURATION);
+  const [selectedFlightDuration, setSelectedFlightDuration] =
+    useState(MAX_FLIGHT_DURATION);
   const [maxDuration, setMaxDuration] = useState(MAX_FLIGHT_DURATION);
   const [inboundRange, setInboundRange] =
     useState<TimeRange>(DEFAULT_FLIGHT_RANGE);
@@ -63,7 +64,7 @@ export const FlightSelection = () => {
   ]);
 
   useEffect(() => {
-    // setDateRange(DEFALUT_DATE_RANGE);
+    // setDateRange(DEFAULT_DATE_RANGE);
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
     fetchFlights({ adults: numberOfEventTickets });
   }, []);
@@ -114,7 +115,7 @@ export const FlightSelection = () => {
       });
 
       setFilteredFlights(filteredFlights);
-      setDurationValue(Math.ceil(maxDuration / 60));
+      setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setMaxDuration(Math.ceil(maxDuration / 60));
       setFilters((prev) => ({
         ...prev,
@@ -160,7 +161,7 @@ export const FlightSelection = () => {
         airline: value,
         directOnly: filters.directOnly,
         sortOption,
-        flightDuration: durationValue * 60,
+        flightDuration: selectedFlightDuration * 60,
         inboundRange,
         outboundRange,
       });
@@ -170,7 +171,7 @@ export const FlightSelection = () => {
   };
 
   const handleChangeDurationEnd = (duration: number) => {
-    setDurationValue(duration);
+    setSelectedFlightDuration(duration);
     const flightDuration = duration * 60;
 
     const filteredFlights = applyFiltersAndSorting(flights, {
@@ -202,7 +203,7 @@ export const FlightSelection = () => {
       airline: filters.airline,
       directOnly: filters.directOnly,
       sortOption,
-      flightDuration: durationValue,
+      flightDuration: selectedFlightDuration,
       inboundRange: name === "inbound" ? range : inboundRange,
       outboundRange: name === "outbound" ? range : outboundRange,
     });
@@ -227,6 +228,10 @@ export const FlightSelection = () => {
   //     </div>
   //   );
   // }
+
+  const handleFlightChange = (value: string) => {
+    setFlight(flights.find((f) => f.id === value));
+  };
 
   if (error) {
     return (
@@ -285,8 +290,8 @@ export const FlightSelection = () => {
       <DateRange dateRange={dateRange} setDateRange={setDateRange} />
       <TimeSlider
         onChangeEnd={handleChangeDurationEnd}
-        value={durationValue}
-        onChange={setDurationValue}
+        value={selectedFlightDuration}
+        onChange={setSelectedFlightDuration}
         maxValue={maxDuration}
       />
       <Text mb="xs">Outbound</Text>
@@ -299,69 +304,70 @@ export const FlightSelection = () => {
       />
       <Button onClick={handleFlightSearch}>Find a flight</Button>
       <LoaderWrapper isLoading={isLoading}>
-        <RadioGroup
-          value={orderFlight?.id}
-          onChange={(value) => setFlight(flights.find((f) => f.id === value))}
+        <Radio.Group
+          value={orderFlight?.id || filteredFlights[0]?.id}
+          onChange={handleFlightChange}
         >
           {filteredFlights.map((flight) => (
-            <div
+            <Radio.Card
+              value={flight.id}
+              id={flight.id}
               key={flight.id}
-              className={`mb-4 p-4 border rounded-lg transition-colors hover:bg-gray-50 ${
-                orderFlight?.id === flight.id ? "selected-flight" : ""
-              }`}
+              style={{ margin: 20 }}
             >
-              <RadioCard value={flight.id} id={flight.id} className="sr-only" />
-              <Text className="flex flex-col cursor-pointer">
-                <div className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                  <div className="relative w-16 h-16">
-                    <Image
-                      src={flight.metadata.logo || ""}
-                      alt={`${flight.metadata.name} logo`}
-                      layout="fill"
-                      objectFit="contain"
-                      className="rounded-full"
-                    />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-800">
-                      {flight.metadata.name}
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      {flight.metadata.iata}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {flight.duration} - {flight.stops} stops
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold">Outbound</p>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <p>{flight.departureTime}</p>
-                      <ArrowRight className="w-4 h-4 mx-2" />
-                      <p>{flight.arrivalTime}</p>
+              <Stack gap="lg" style={{ padding: 10 }}>
+                <Text className="flex flex-col cursor-pointer">
+                  <div className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <div className="relative w-16 h-16">
+                      <Image
+                        src={flight.metadata.logo || ""}
+                        alt={`${flight.metadata.name} logo`}
+                        layout="fill"
+                        objectFit="contain"
+                        className="rounded-full"
+                      />
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {flight.departureAirport} to {flight.arrivalAirport}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">Return</p>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <p>{flight.returnDepartureTime}</p>
-                      <ArrowRight className="w-4 h-4 mx-2" />
-                      <p>{flight.returnArrivalTime}</p>
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">
+                        {flight.metadata.name}
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        {flight.metadata.iata}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {flight.duration} - {flight.stops} stops
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {flight.arrivalAirport} to {flight.departureAirport}
-                    </p>
                   </div>
-                </div>
-              </Text>
-            </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">Outbound</p>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <p>{flight.departureTime}</p>
+                        <ArrowRight className="w-4 h-4 mx-2" />
+                        <p>{flight.arrivalTime}</p>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {flight.departureAirport} to {flight.arrivalAirport}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">Return</p>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <p>{flight.returnDepartureTime}</p>
+                        <ArrowRight className="w-4 h-4 mx-2" />
+                        <p>{flight.returnArrivalTime}</p>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {flight.arrivalAirport} to {flight.departureAirport}
+                      </p>
+                    </div>
+                  </div>
+                </Text>
+              </Stack>
+            </Radio.Card>
           ))}
-        </RadioGroup>
+        </Radio.Group>
         {filteredFlights.length === 0 && (
           <p className="text-center text-gray-500">
             No flights match your criteria. Please adjust your filters.

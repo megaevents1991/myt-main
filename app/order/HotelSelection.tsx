@@ -3,13 +3,16 @@
 import { events } from "@/lib/events-data";
 import { formatHotelName } from "@/lib/formatHotelName";
 import { Hotel, HotelResponse } from "@/lib/hotel.type";
+import { Hotel as OrderHotel } from "@/lib/app.types";
 import { Card, Button, Text, Grid, Group, Badge } from "@mantine/core";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
+import { OrderContext } from "../app.context";
 
 const event = events[0];
 
 export const HotelSelection = () => {
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const { setHotel } = useContext(OrderContext);
 
   useEffect(() => {
     fetchHotels();
@@ -70,7 +73,14 @@ export const HotelSelection = () => {
                 fullWidth
                 mt="md"
                 radius="md"
-                onClick={() => alert(`You selected ${hotelName}`)}
+                onClick={() =>
+                  setHotel({
+                    ...({} as OrderHotel),
+                    name: hotelName,
+                    id: hotel.id,
+                    price: +hotel.rates[0].daily_prices[0],
+                  })
+                }
               >
                 Book Now
               </Button>

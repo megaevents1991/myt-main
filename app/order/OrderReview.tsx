@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,8 +12,9 @@ import {
   Hotel,
   CreditCard,
 } from "lucide-react";
-import { events, flights, hotels } from "@/lib/events-data";
+import { events } from "@/lib/events-data";
 import { Order } from "@/lib/app.types";
+import { OrderContext } from "../app.context";
 
 interface OrderReviewProps {
   order: Order;
@@ -22,11 +23,13 @@ interface OrderReviewProps {
 
 export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { flight: selectedFlight, hotel: selectedHotel } =
+    useContext(OrderContext);
   const router = useRouter();
 
   const event = events.find((e) => e.id === order.eventId);
-  const selectedFlight = flights.find((f) => f.id === order.flightId);
-  const selectedHotel = hotels.find((h) => h.id === order.hotelId);
+  // const selectedFlight = flights.find((f) => f.id === order.flightId);
+  // const selectedHotel = hotels.find((h) => h.id === order.hotelId);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
