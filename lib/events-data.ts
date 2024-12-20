@@ -13,9 +13,8 @@ export const events: Event[] = [
     city: "New York",
     description:
       "A day-long music festival featuring top artists from around the world.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
-
+    imageUrl: "/events/1_main.png",
+    mapUrl: "/events/1_main.png",
     tickets: [
       {
         type: "General Admission",
@@ -42,8 +41,8 @@ export const events: Event[] = [
       name: "Lusail Stadium, Qatar",
     },
     description: "The final match of the FIFA World Cup 2023.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1522778119026-d647f0596c20?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    imageUrl: "/events/2_main.png",
+    mapUrl: "/events/2_main.png",
     tickets: [
       {
         type: "General Admission",
@@ -72,8 +71,39 @@ export const events: Event[] = [
     },
     description:
       "Annual conference showcasing the latest in technology and innovation.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80",
+    imageUrl: "/events/3_main.png",
+    mapUrl: "/events/3_main.png",
+
+    tickets: [
+      {
+        type: "General Admission",
+        price: 100,
+        description: "General Admission",
+        id: "1",
+      },
+      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      {
+        type: "Backstage Pass",
+        price: 500,
+        description: "Backstage Pass",
+        id: "3",
+      },
+    ],
+    city: "New York",
+  },
+  {
+    id: "4",
+    name: "Tech Conference 2023",
+    date: "2023-09-22",
+    location: {
+      name: "Moscone Center, San Francisco",
+      latitude: 37.783083,
+      longitude: -122.403354,
+    },
+    description:
+      "Annual conference showcasing the latest in technology and innovation.",
+    imageUrl: "/events/4_main.png",
+    mapUrl: "/events/4_main.png",
     tickets: [
       {
         type: "General Admission",

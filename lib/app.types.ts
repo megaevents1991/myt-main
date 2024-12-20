@@ -9,10 +9,12 @@ export type Event = {
     longitude: number;
     name: string;
   };
+  mapUrl: string;
   description: string;
   imageUrl: string;
   city: string;
   tickets: {
+    discount?: number;
     type: string;
     price: number;
     description: string;

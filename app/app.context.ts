@@ -1,5 +1,5 @@
 import { Flight, Hotel, Event } from "@/lib/app.types";
-import { createContext } from "react";
+import { createContext, Dispatch, SetStateAction } from "react";
 
 type AppContext = {
   flight?: Flight;
@@ -15,6 +15,8 @@ type AppContext = {
     children: number;
   };
   setPlaneTickets: (planeTickets: { adults: number; children: number }) => void;
+  step: number;
+  setStep: Dispatch<SetStateAction<number>>;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

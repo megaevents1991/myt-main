@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useContext } from "react";
 import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
@@ -8,10 +8,11 @@ import OrderReview from "./OrderReview";
 import { useOrderState } from "./useOrderState";
 import { Button } from "@/components/ui/button";
 import { Event } from "@/lib/app.types";
+import { OrderContext } from "../app.context";
 
 export const OrderForm = ({ event }: { event: Event }) => {
-  const [step, setStep] = useState(1);
   const { order, submitOrder } = useOrderState(event);
+  const { step, setStep } = useContext(OrderContext);
 
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
