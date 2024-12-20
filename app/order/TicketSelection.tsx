@@ -1,18 +1,14 @@
 "use client";
 
 import { events } from "@/lib/events-data";
-import {
-  Badge,
-  Button,
-  Card,
-  Grid,
-  Group,
-  NumberInput,
-  Text,
-} from "@mantine/core";
+import { Text, Spoiler, ScrollArea } from "@mantine/core";
 import { useSearchParams } from "next/navigation";
 import { useContext, useState } from "react";
 import { OrderContext } from "../app.context";
+import OptionSelect from "@/components/ui/selector";
+import { TicketCard } from "@/components/ui/ticketCard";
+import Image from "next/image";
+import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 
 export const TicketSelection = () => {
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
@@ -32,13 +28,9 @@ export const TicketSelection = () => {
 
   return (
     <div>
-      <NumberInput
+      <OptionSelect
         value={numberOfEventTickets}
         onChange={handleQuantityChange}
-        label="Quantity"
-        min={1}
-        placeholder="Enter number of tickets"
-        step={1}
       />
       <Text
         size="xl"
@@ -47,12 +39,53 @@ export const TicketSelection = () => {
       >
         Choose Your Ticket
       </Text>
-      <Grid>
+      <div className="flex flex-col sm:flex-row">
+        <Spoiler
+          className="w-full sm:w-1/3"
+          maxHeight={120}
+          showLabel={<ChevronDownCircle fill="black" width={"100%"} />}
+          controlRef={(ref) => {
+            ref?.setAttribute(
+              "style",
+              "left: 50%; transform: translate(-50%, -120%); color: white; width:100%;"
+            );
+          }}
+          hideLabel={<ChevronUpCircle fill="black" width={"100%"} />}
+        >
+          <Image
+            className="rounded-lg"
+            width={600}
+            height={800}
+            src={event?.mapUrl || ""}
+            alt="Event map"
+          />
+        </Spoiler>
+        <div className="w-full sm:w-2/3">
+          <ScrollArea h={"50vh"}>
+            <div className="flex flex-col gap-2">
+              {event?.tickets.map((ticket, index) => (
+                <TicketCard
+                  index={index}
+                  onClick={() => handleTicketSelect(ticket.id)}
+                  key={ticket.id}
+                  category={ticket.category}
+                  categoryDescription={ticket.description}
+                  colorOnTheMap={ticket.colorOnTheMap || ""}
+                  isSelected={selectedTicket === ticket.id}
+                  price={ticket.price}
+                  basePrice={event?.tickets[0].price || 0}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+      {/* <Grid>
         {event?.tickets.map((ticket) => (
           <Grid.Col key={ticket.id} span={12}>
             <Card shadow="sm" padding="lg" radius="md" withBorder>
               <Group mb="xs">
-                <Text style={{ fontWeight: 700 }}>{ticket.type}</Text>
+                <Text style={{ fontWeight: 700 }}>{ticket.category}</Text>
                 <Badge
                   color={selectedTicket === ticket.id ? "green" : "gray"}
                   variant="light"
@@ -80,7 +113,7 @@ export const TicketSelection = () => {
             </Card>
           </Grid.Col>
         ))}
-      </Grid>
+      </Grid> */}
     </div>
   );
 };

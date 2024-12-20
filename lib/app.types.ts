@@ -14,11 +14,11 @@ export type Event = {
   imageUrl: string;
   city: string;
   tickets: {
-    discount?: number;
-    type: string;
-    price: number;
+    category: string;
     description: string;
+    price: number;
     id: string;
+    colorOnTheMap?: string;
   }[];
 };
 

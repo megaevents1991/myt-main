@@ -17,17 +17,46 @@ export const events: Event[] = [
     mapUrl: "/events/1_main.png",
     tickets: [
       {
-        type: "General Admission",
+        category: "קטגוריה 1",
         price: 100,
-        description: "General Admission",
+        description: "הסבר על הקטגוריה",
+        colorOnTheMap: "red",
         id: "1",
       },
-      { type: "VIP", price: 200, description: "VIP", id: "2" },
       {
-        type: "Backstage Pass",
-        price: 500,
-        description: "Backstage Pass",
+        category: "קטגוריה 2",
+        price: 120,
+        description: "הסבר על הקטגוריה",
+        colorOnTheMap: "green",
+        id: "2",
+      },
+      {
+        category: "קטגוריה 3",
+        price: 137,
+        description: "הסבר על הקטגוריה",
+        colorOnTheMap: "blue",
         id: "3",
+      },
+      {
+        category: "קטגוריה 4",
+        price: 160,
+        description: "הסבר על הקטגוריה",
+        colorOnTheMap: "yellow",
+        id: "4",
+      },
+      {
+        category: "קטגוריה 5",
+        price: 201,
+        description: "הסבר על הקטגוריה",
+        colorOnTheMap: "cyan",
+        id: "5",
+      },
+      {
+        category: "קטגוריה 6",
+        price: 250,
+        description: "הסבר על הקטגוריה",
+        colorOnTheMap: "violet",
+        id: "6",
       },
     ],
   },
@@ -45,14 +74,14 @@ export const events: Event[] = [
     mapUrl: "/events/2_main.png",
     tickets: [
       {
-        type: "General Admission",
+        category: "General Admission",
         price: 100,
         description: "General Admission",
         id: "1",
       },
-      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      { category: "VIP", price: 200, description: "VIP", id: "2" },
       {
-        type: "Backstage Pass",
+        category: "Backstage Pass",
         price: 500,
         description: "Backstage Pass",
         id: "3",
@@ -76,14 +105,14 @@ export const events: Event[] = [
 
     tickets: [
       {
-        type: "General Admission",
+        category: "General Admission",
         price: 100,
         description: "General Admission",
         id: "1",
       },
-      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      { category: "VIP", price: 200, description: "VIP", id: "2" },
       {
-        type: "Backstage Pass",
+        category: "Backstage Pass",
         price: 500,
         description: "Backstage Pass",
         id: "3",
@@ -106,14 +135,14 @@ export const events: Event[] = [
     mapUrl: "/events/4_main.png",
     tickets: [
       {
-        type: "General Admission",
+        category: "General Admission",
         price: 100,
         description: "General Admission",
         id: "1",
       },
-      { type: "VIP", price: 200, description: "VIP", id: "2" },
+      { category: "VIP", price: 200, description: "VIP", id: "2" },
       {
-        type: "Backstage Pass",
+        category: "Backstage Pass",
         price: 500,
         description: "Backstage Pass",
         id: "3",
