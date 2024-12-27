@@ -1,7 +1,7 @@
 "use client";
 
 import { events } from "@/lib/events-data";
-import { Text, Spoiler, ScrollArea } from "@mantine/core";
+import { Spoiler, ScrollArea } from "@mantine/core";
 import { useSearchParams } from "next/navigation";
 import { useContext, useState } from "react";
 import { OrderContext } from "../app.context";
@@ -28,21 +28,40 @@ export const TicketSelection = () => {
 
   return (
     <div>
-      <OptionSelect
-        value={numberOfEventTickets}
-        onChange={handleQuantityChange}
-      />
-      <Text
-        size="xl"
-        mb="lg"
-        style={{ fontWeight: 700, alignContent: "center" }}
-      >
-        Choose Your Ticket
-      </Text>
-      <div className="flex flex-col sm:flex-row">
+      <div className="flex flex-col items-center">
+        <div
+          dir="rtl"
+          className="w-screen gap-2 flex flex-col sm:flex-row  justify-center p-4 bg-gray-200 "
+        >
+          <div className="text-xs w-full sm:w-1/2 lg:w-1/3">
+            <div className="text-center sm:text-right">
+              <span className="text-2xl font-bold pre ml-2">{event?.name}</span>
+              <span className="whitespace-nowrap hidden sm:inline">
+                {event?.date} | {event?.location.name}
+              </span>
+            </div>
+            <div>{event?.description}</div>
+          </div>
+          <div className="flex flex-row-reverse	sm:flex-col gap-2 w-full sm:w-1/2 lg:w-1/3">
+            <div className="whitespace-nowrap w-1/2 text-center block sm:hidden">
+              {event?.date} <br></br>
+              {event?.location.name}
+            </div>
+            <div className="flex w-1/2 sm:w-full flex-row sm:flex-col gap-2 text-xs">
+              <div className="w-1/3">כמות כרטיסים</div>
+              <OptionSelect
+                value={numberOfEventTickets}
+                onChange={handleQuantityChange}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-4 flex-col sm:flex-row mt-6">
         <Spoiler
-          className="w-full sm:w-1/3"
-          maxHeight={120}
+          className="w-full sm:w-1/3 sm:hidden"
+          style={{ margin: 0 }}
+          maxHeight={90}
           showLabel={<ChevronDownCircle fill="black" width={"100%"} />}
           controlRef={(ref) => {
             ref?.setAttribute(
@@ -60,8 +79,15 @@ export const TicketSelection = () => {
             alt="Event map"
           />
         </Spoiler>
+        <Image
+          className="rounded-lg hidden sm:block sm:w-1/3"
+          width={600}
+          height={800}
+          src={event?.mapUrl || ""}
+          alt="Event map"
+        />
         <div className="w-full sm:w-2/3">
-          <ScrollArea h={"50vh"}>
+          <ScrollArea h={"40vh"}>
             <div className="flex flex-col gap-2">
               {event?.tickets.map((ticket, index) => (
                 <TicketCard
@@ -80,40 +106,6 @@ export const TicketSelection = () => {
           </ScrollArea>
         </div>
       </div>
-      {/* <Grid>
-        {event?.tickets.map((ticket) => (
-          <Grid.Col key={ticket.id} span={12}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder>
-              <Group mb="xs">
-                <Text style={{ fontWeight: 700 }}>{ticket.category}</Text>
-                <Badge
-                  color={selectedTicket === ticket.id ? "green" : "gray"}
-                  variant="light"
-                >
-                  {selectedTicket === ticket.id ? "Selected" : "Available"}
-                </Badge>
-              </Group>
-
-              <Text size="sm" color="dimmed" mb="md">
-                {ticket.description}
-              </Text>
-
-              <Text style={{ fontWeight: 700 }} size="lg" mb="md">
-                {ticket.price}
-              </Text>
-
-              <Button
-                variant={selectedTicket === ticket.id ? "filled" : "light"}
-                color="blue"
-                fullWidth
-                onClick={() => handleTicketSelect(ticket.id)}
-              >
-                {selectedTicket === ticket.id ? "Selected" : "Select Ticket"}
-              </Button>
-            </Card>
-          </Grid.Col>
-        ))}
-      </Grid> */}
     </div>
   );
 };

@@ -3,14 +3,14 @@ import { Event, Flight, Hotel } from "./app.types";
 export const events: Event[] = [
   {
     id: "1",
-    name: "Summer Music Festival",
+    name: "באיירן מינכן - דורטמונד",
     date: "2025-01-15",
     location: {
       latitude: 40.785091,
       longitude: -73.968285,
-      name: "Central Park, New York",
+      name: "מדריד, ספרד",
     },
-    city: "New York",
+    city: "Madrid",
     description:
       "A day-long music festival featuring top artists from around the world.",
     imageUrl: "/events/1_main.png",

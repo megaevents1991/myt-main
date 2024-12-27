@@ -94,7 +94,7 @@ export default function Home() {
                     <div className="flex-col text-center w-1/2 sm:w-auto">
                       <div className="p-2 px-4 font-bold">{event.name}</div>
                       <div className="py-1 bg-secondary ">
-                        {event.date} | {event.city}
+                        {event.date} | {event.location.name}
                       </div>
                       <div className="p-2 px-4 text-right" dir="rtl">
                         <div>בממוצע כ-</div>

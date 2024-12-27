@@ -38,7 +38,7 @@ export const TicketCard = ({
           צבע אזור
         </div>
       </div>
-      <div className="sm:w-2/5 w-full text-left sm:text-right">
+      <div className="w-3/5 sm:w-2/5 text-left sm:text-right">
         {index === 0 ? (
           "כלול במחיר"
         ) : (
