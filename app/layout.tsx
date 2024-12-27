@@ -57,16 +57,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               },
             }}
           >
-            <Link href="/">
-              <Container className="pt-4" fluid bg={"#05203C"}>
-                <div className="flex scale-25 justify-center md:justify-end">
+            <Container className="pt-4 h-[14vh] min-h-20" fluid bg={"#05203C"}>
+              <div className="flex scale-25 justify-center md:justify-end">
+                <Link href="/">
                   <MYT className="scale-75 md:scale-100" />
-                </div>
-              </Container>
-            </Link>
-            {children}
+                </Link>
+              </div>
+            </Container>
+            <div className="h-[98h]">{children}</div>
             <footer className="py-6 w-full px-4 md:px-6 border-t">
-              <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center">
+              <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
                   © 2023 MYT Events. All rights reserved.
                 </p>

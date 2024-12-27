@@ -13,9 +13,9 @@ import {
   Select,
   Text,
   ScrollArea,
-  Popover,
+  Modal,
 } from "@mantine/core";
-import { Settings2Icon } from "lucide-react";
+import { Settings2Icon, ArrowLeftIcon } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
@@ -61,6 +61,7 @@ export const FlightSelection = () => {
     new Date(new Date(event.date).getTime() - 2 * 8.64e7),
     new Date(new Date(event.date).getTime() + 8.64e7),
   ]);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     // setDateRange(DEFAULT_DATE_RANGE);
@@ -245,6 +246,55 @@ export const FlightSelection = () => {
 
   return (
     <div className="space-y-6">
+      <Modal
+        opened={showFilters}
+        fullScreen
+        keepMounted
+        onClose={() => setShowFilters(false)}
+        closeButtonProps={{
+          style: { position: "absolute" },
+          icon: <ArrowLeftIcon />,
+        }}
+      >
+        <div className="bg-gray-100 p-4 rounded-lg space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="directOnly"
+              checked={filters.directOnly}
+              onChange={(e) =>
+                handleFilterChange("directOnly", e.currentTarget.checked)
+              }
+            />
+            <Text>Direct flights only</Text>
+          </div>
+          <div>
+            <Text>Airline</Text>
+            <MultiSelect
+              data={airlines}
+              value={filters.airline}
+              onChange={(value) => handleFilterChange("airline", value)}
+            />
+          </div>
+          <Text mb="xs">Outbound</Text>
+          <TimeRangeSlider
+            onChangeEnd={(range) =>
+              handleRangeChange({ range, name: "outbound" })
+            }
+          />
+          <Text mb="xs">Inbound</Text>
+          <TimeRangeSlider
+            onChangeEnd={(range) =>
+              handleRangeChange({ range, name: "inbound" })
+            }
+          />
+          <TimeSlider
+            onChangeEnd={handleChangeDurationEnd}
+            value={selectedFlightDuration}
+            onChange={setSelectedFlightDuration}
+            maxValue={maxDuration}
+          />
+        </div>
+      </Modal>
       <h2 className="text-2xl font-semibold mb-4">Select Your Flight</h2>
       <div className="flex justify-between items-center">
         <NumberInput
@@ -267,57 +317,7 @@ export const FlightSelection = () => {
           dir="rtl"
           className="w-screen gap-2 flex flex-col sm:flex-row  justify-center p-4 bg-gray-200"
         >
-          <Popover
-            keepMounted
-            position="bottom"
-            floatingStrategy="fixed"
-            width={"100%"}
-            shadow="md"
-          >
-            <Popover.Target>
-              <Settings2Icon />
-            </Popover.Target>
-            <Popover.Dropdown>
-              <div className="bg-gray-100 p-4 rounded-lg space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="directOnly"
-                    checked={filters.directOnly}
-                    onChange={(e) =>
-                      handleFilterChange("directOnly", e.currentTarget.checked)
-                    }
-                  />
-                  <Text>Direct flights only</Text>
-                </div>
-                <div>
-                  <Text>Airline</Text>
-                  <MultiSelect
-                    data={airlines}
-                    value={filters.airline}
-                    onChange={(value) => handleFilterChange("airline", value)}
-                  />
-                </div>
-                <Text mb="xs">Outbound</Text>
-                <TimeRangeSlider
-                  onChangeEnd={(range) =>
-                    handleRangeChange({ range, name: "outbound" })
-                  }
-                />
-                <Text mb="xs">Inbound</Text>
-                <TimeRangeSlider
-                  onChangeEnd={(range) =>
-                    handleRangeChange({ range, name: "inbound" })
-                  }
-                />
-                <TimeSlider
-                  onChangeEnd={handleChangeDurationEnd}
-                  value={selectedFlightDuration}
-                  onChange={setSelectedFlightDuration}
-                  maxValue={maxDuration}
-                />
-              </div>
-            </Popover.Dropdown>
-          </Popover>
+          <Settings2Icon onClick={() => setShowFilters(true)} />
         </div>
       </div>
       <LoaderWrapper isLoading={isLoading}>
