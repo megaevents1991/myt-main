@@ -29,7 +29,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
-      <div className="flex justify-between mt-4">
+      <div className="flex justify-between mt-4 sticky bottom-5 z-10">
         {/* {step > 1 && (
           <button
             onClick={prevStep}
@@ -41,7 +41,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         {step < 4 && (
           <button
             onClick={nextStep}
-            className="bg-main mt-4 text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
+            className="bg-main mt-4 text-white rounded-lg p-2 font-bold w-full sm:w-1/4 "
           >
             {buttonText[step]}
           </button>
