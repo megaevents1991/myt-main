@@ -15,7 +15,7 @@ import {
   ScrollArea,
   Popover,
 } from "@mantine/core";
-import { Filter, Settings2Icon } from "lucide-react";
+import { Settings2Icon } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
