@@ -1,3 +1,5 @@
+import { CardWrapper } from "./cardWrapper";
+
 export type TicketCardProps = {
   price: number;
   basePrice: number;
@@ -21,13 +23,7 @@ export const TicketCard = ({
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
   return (
-    <div
-      onClick={onClick}
-      dir="rtl"
-      className={`flex flex-row items-center justify-between px-6 py-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:shadow-xl hover:border-main ${
-        isSelected ? "border-main border-2" : ""
-      }`}
-    >
+    <CardWrapper isSelected={isSelected} onClick={onClick}>
       <div className="w-2/5">
         <div>{category}</div>
         <div>{categoryDescription}</div>
@@ -60,6 +56,6 @@ export const TicketCard = ({
           {isSelected ? "הבחירה שלך" : "בחר"}
         </button>
       </div>
-    </div>
+    </CardWrapper>
   );
 };

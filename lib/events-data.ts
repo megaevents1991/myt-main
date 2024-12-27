@@ -151,7 +151,6 @@ export const events: Event[] = [
     city: "New York",
   },
 ];
-
 export const flights: Flight[] = [
   {
     id: "1",
@@ -181,7 +180,7 @@ export const flights: Flight[] = [
     returnArrivalTime: "19:50",
     metadata: {} as Flight["metadata"],
   },
-];
+] as Flight[];
 
 export const hotels: Hotel[] = [
   {

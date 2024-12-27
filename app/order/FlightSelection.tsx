@@ -10,16 +10,15 @@ import {
   Checkbox,
   MultiSelect,
   NumberInput,
-  Radio,
   Select,
   Text,
-  Stack,
+  ScrollArea,
 } from "@mantine/core";
-import { ArrowRight, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
-import Image from "next/image";
+import { FlightTicketCard } from "@/components/ui/flightTicketCard";
 
 const MAX_FLIGHT_DURATION = 30;
 const DEFAULT_FLIGHT_RANGE = [
@@ -304,70 +303,21 @@ export const FlightSelection = () => {
       />
       <Button onClick={handleFlightSearch}>Find a flight</Button>
       <LoaderWrapper isLoading={isLoading}>
-        <Radio.Group
-          value={orderFlight?.id || filteredFlights[0]?.id}
-          onChange={handleFlightChange}
-        >
-          {filteredFlights.map((flight) => (
-            <Radio.Card
-              value={flight.id}
-              id={flight.id}
-              key={flight.id}
-              style={{ margin: 20 }}
-            >
-              <Stack gap="lg" style={{ padding: 10 }}>
-                <Text className="flex flex-col cursor-pointer">
-                  <div className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-                    <div className="relative w-16 h-16">
-                      <Image
-                        src={flight.metadata.logo || ""}
-                        alt={`${flight.metadata.name} logo`}
-                        layout="fill"
-                        objectFit="contain"
-                        className="rounded-full"
-                      />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-800">
-                        {flight.metadata.name}
-                      </h2>
-                      <p className="text-sm text-gray-600">
-                        {flight.metadata.iata}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {flight.duration} - {flight.stops} stops
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold">Outbound</p>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <p>{flight.departureTime}</p>
-                        <ArrowRight className="w-4 h-4 mx-2" />
-                        <p>{flight.arrivalTime}</p>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {flight.departureAirport} to {flight.arrivalAirport}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">Return</p>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <p>{flight.returnDepartureTime}</p>
-                        <ArrowRight className="w-4 h-4 mx-2" />
-                        <p>{flight.returnArrivalTime}</p>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {flight.arrivalAirport} to {flight.departureAirport}
-                      </p>
-                    </div>
-                  </div>
-                </Text>
-              </Stack>
-            </Radio.Card>
-          ))}
-        </Radio.Group>
+        <ScrollArea className="h-96">
+          <div className="grid grid-cols-1 gap-4">
+            {filteredFlights.map((flight) => {
+              return (
+                <FlightTicketCard
+                  key={flight.id}
+                  {...flight}
+                  flightId={flight.id}
+                  isSelected={orderFlight?.id === flight.id}
+                  onClick={handleFlightChange}
+                />
+              );
+            })}
+          </div>
+        </ScrollArea>
         {filteredFlights.length === 0 && (
           <p className="text-center text-gray-500">
             No flights match your criteria. Please adjust your filters.

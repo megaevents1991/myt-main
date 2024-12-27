@@ -35,6 +35,18 @@ export type Flight = {
   returnDepartureTime: string;
   returnArrivalTime: string;
   metadata: Airline;
+  outbound: {
+    departureTime: string;
+    arrivalTime: string;
+    departureAirport: string;
+    arrivalAirport: string;
+  };
+  inbound: {
+    departureTime: string;
+    arrivalTime: string;
+    departureAirport: string;
+    arrivalAirport: string;
+  };
 };
 
 export type Hotel = {

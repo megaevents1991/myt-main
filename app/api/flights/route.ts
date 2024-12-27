@@ -95,6 +95,18 @@ export async function POST(request: Request) {
           stops:
             itineraries[0].segments.length + itineraries[1].segments.length - 2,
           airline: validatingAirlineCodes[0],
+          outbound: {
+            departureTime: toDeparture.departure.at,
+            departureAirport: toDeparture.departure.iataCode,
+            arrivalAirport: toArrival?.arrival.iataCode,
+            arrivalTime: toArrival?.arrival.at || 0,
+          },
+          inbound: {
+            departureTime: fromDeparture.departure.at,
+            departureAirport: fromDeparture.departure.iataCode,
+            arrivalAirport: fromArrival?.arrival.iataCode,
+            arrivalTime: fromArrival?.arrival.at || 0,
+          },
           departureTime: toDeparture.departure.at,
           departureAirport: toDeparture.departure.iataCode,
           arrivalAirport: toArrival?.arrival.iataCode,
@@ -103,6 +115,9 @@ export async function POST(request: Request) {
           returnArrivalTime: fromArrival?.arrival.at || 0,
           metadata: {
             ...getAirlineByIata(validatingAirlineCodes[0]),
+            name: response.result.dictionaries.carriers[
+              validatingAirlineCodes[0]
+            ],
           },
         };
       }

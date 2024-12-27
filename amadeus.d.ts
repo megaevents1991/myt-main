@@ -139,6 +139,9 @@ type AmadeusResponse = {
         }>;
       }>;
     }[];
+    dictionaries: {
+      carriers: Record<string, string>;
+    };
   };
 };
 
