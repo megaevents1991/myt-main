@@ -21,13 +21,25 @@ export const FlightTicketCard = ({
 }: FlightTicketCardProps) => {
   return (
     <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
-      <div className="flex flex-col w-full py-2">
-        <FlightCard {...outbound} metadata={metadata} stops={stops} />
-        <div className="border w-full my-2"></div>
-        <FlightCard {...inbound} metadata={metadata} stops={stops} />
-        <div className="font-bold mt-2">
+      <div className="flex flex-col items-center sm:flex-row w-full py-2">
+        <div className="w-full md:w-2/3">
+          <FlightCard {...outbound} metadata={metadata} stops={stops} />
+          <div className="border w-full my-2"></div>
+          <FlightCard {...inbound} metadata={metadata} stops={stops} />
+        </div>
+        <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
+        <div className="font-bold mt-2 w-full sm:w-1/3 text-right sm:text-center">
           מחיר: {price}
           &#8364;
+          <div className="hidden sm:block">
+            <button
+              className={`${
+                isSelected ? "bg-main" : "bg-secondary"
+              } text-white rounded-lg p-2 font-bold sm:w-full md:w-1/2`}
+            >
+              {isSelected ? "הבחירה שלך" : "בחר"}
+            </button>
+          </div>
         </div>
       </div>
     </CardWrapper>
