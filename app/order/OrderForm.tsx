@@ -41,7 +41,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         {step < 4 && (
           <button
             onClick={nextStep}
-            className="bg-main mt-4 text-white rounded-lg p-2 font-bold w-full sm:w-1/4 "
+            className="bg-main mt-4 text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
           >
             {buttonText[step]}
           </button>

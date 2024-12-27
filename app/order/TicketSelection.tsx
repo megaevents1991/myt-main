@@ -11,9 +11,12 @@ import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 
 export const TicketSelection = () => {
-  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const eventId = useSearchParams().get("eventId") as string;
   const event = events.find((e) => e.id === eventId);
+
+  const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
+    event?.id
+  );
 
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
