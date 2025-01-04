@@ -1,13 +1,21 @@
 import { Flight } from "@/lib/app.types";
 import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
+import { Tooltip } from "@mantine/core";
 
 type FlightTicketCardProps = {
   isSelected: boolean;
   onClick: (flightId: string) => void;
   flightId: string;
 } & Flight;
+
+const stopsMap: { [key: number]: string } = {
+  0: "טיסה ישירה",
+  1: "עצירה אחת",
+  2: "עצירות 2",
+  3: "עצירות 3",
+};
 
 export const FlightTicketCard = ({
   onClick,
@@ -16,16 +24,15 @@ export const FlightTicketCard = ({
   inbound,
   metadata,
   flightId,
-  stops,
   price,
 }: FlightTicketCardProps) => {
   return (
     <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
       <div className="flex flex-col items-center sm:flex-row w-full py-2">
         <div className="w-full md:w-2/3">
-          <FlightCard {...outbound} metadata={metadata} stops={stops} />
+          <FlightCard {...outbound} metadata={metadata} />
           <div className="border w-full my-2"></div>
-          <FlightCard {...inbound} metadata={metadata} stops={stops} />
+          <FlightCard {...inbound} metadata={metadata} />
         </div>
         <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
         <div className="font-bold mt-2 w-full sm:w-1/3 text-right sm:text-center">
@@ -46,7 +53,7 @@ export const FlightTicketCard = ({
   );
 };
 
-type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata" | "stops"> &
+type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
   (FlightTicketCardProps["inbound"] | FlightTicketCardProps["outbound"]);
 
 const FlightCard = ({
@@ -54,8 +61,8 @@ const FlightCard = ({
   arrivalTime,
   departureAirport,
   departureTime,
-  metadata,
   stops,
+  metadata,
 }: FlightCardProps) => {
   return (
     <div className="flex flex-row items-center justify-between w-full">
@@ -73,7 +80,8 @@ const FlightCard = ({
       <div className="w-3/6">
         <div className="text-lg font-bold">
           {String(new Date(departureTime).getHours()).padStart(2, "0")}:
-          {String(new Date(departureTime).getMinutes()).padStart(2, "0")} -{" "}
+          {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
+          <ArrowLeft size={12} />
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
         </div>
@@ -82,10 +90,16 @@ const FlightCard = ({
           {arrivalAirport}
         </div>
       </div>
-      <div className="w-1/6 text-center">
-        <div className="text-sm font-bold">
-          {stops === 0 ? "טיסה ישירה" : "עצירה אחת"}
-        </div>
+      <div className="w-1/6 text-center display flex flex-col items-center">
+        <div className="text-sm font-bold">{stopsMap[stops.length - 1]}</div>
+        {stops.length - 1 ? (
+          <Tooltip
+            label={`${stops.slice(0, -1).join(", ")} עצירה ב`}
+            position="top"
+          >
+            <Info size={12} />
+          </Tooltip>
+        ) : null}
       </div>
     </div>
   );

@@ -6,19 +6,19 @@ export const applyFiltersAndSorting = (
   flights: Flight[],
   options: {
     airline: string[];
-    directOnly: boolean;
     sortOption: SortOptions;
-    outboundRange: TimeRange;
-    inboundRange: TimeRange;
+    departureRanges: TimeRange[] | [];
+    arrivalRanges: TimeRange[] | [];
     flightDuration: number;
+    maxPrice: number;
+    numOfStops: string[];
   }
 ): Flight[] => {
   const {
     airline,
-    directOnly,
     sortOption,
-    outboundRange,
-    inboundRange,
+    departureRanges,
+    arrivalRanges,
     flightDuration,
   } = options;
 
@@ -28,35 +28,54 @@ export const applyFiltersAndSorting = (
     const departureTime = getTimeValue(new Date(flight.departureTime));
     const arrivalTime = getTimeValue(new Date(flight.arrivalTime));
 
-    const outboundStart =
-      outboundRange[0].hours * 60 + outboundRange[0].minutes;
-    const outboundEnd = outboundRange[1].hours * 60 + outboundRange[1].minutes;
+    const departureRangesToDateTime: [number, number][] = departureRanges.map(
+      (range) => {
+        return [
+          range[0].hours * 60 + range[0].minutes,
+          range[1].hours * 60 + range[1].minutes,
+        ];
+      }
+    );
 
-    const matchesOutboundRange =
-      departureTime >= outboundStart && arrivalTime <= outboundEnd;
+    const matchesDepartureRange =
+      !departureRangesToDateTime.length ||
+      departureRangesToDateTime.some(([start, end]) => {
+        return departureTime >= start && departureTime <= end;
+      });
 
-    const returnDepartureTime = getTimeValue(new Date(flight.departureTime));
-    const returnArrivalTime = getTimeValue(new Date(flight.arrivalTime));
+    const arrivalRangesToDateTime: [number, number][] = arrivalRanges.map(
+      (range) => {
+        return [
+          range[0].hours * 60 + range[0].minutes,
+          range[1].hours * 60 + range[1].minutes,
+        ];
+      }
+    );
 
-    const inboundStart = inboundRange[0].hours * 60 + inboundRange[0].minutes;
-    const inboundEnd = inboundRange[1].hours * 60 + inboundRange[1].minutes;
-
-    const matchesInboundRange =
-      returnDepartureTime >= inboundStart && returnArrivalTime <= inboundEnd;
+    const matchesArrivalRange =
+      !arrivalRangesToDateTime.length ||
+      arrivalRangesToDateTime.some(([start, end]) => {
+        return arrivalTime >= start && arrivalTime <= end;
+      });
 
     const matchesAirline = !airline.length
       ? true
       : airline.includes(flight.airline);
-    const matchesDirectOnly = directOnly ? flight.stops === 0 : true;
+    const matchesStops =
+      !options.numOfStops.length ||
+      options.numOfStops.includes(flight.stops.toString());
     const matchesFlightDuration =
-      parseDuration(flight.duration) <= flightDuration;
+      parseDuration(flight.duration) / 60 <= flightDuration;
+
+    const matchesMaxPrice = flight.price <= options.maxPrice;
 
     return (
       matchesAirline &&
-      matchesDirectOnly &&
-      matchesOutboundRange &&
-      matchesInboundRange &&
-      matchesFlightDuration
+      matchesStops &&
+      matchesDepartureRange &&
+      matchesArrivalRange &&
+      matchesFlightDuration &&
+      matchesMaxPrice
     );
   });
 

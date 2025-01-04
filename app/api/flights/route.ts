@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       departureDate,
       returnDate,
       adults: adults || 1,
-      max: 10,
+      max: 100,
       nonStop,
     });
 
@@ -88,24 +88,35 @@ export async function POST(request: Request) {
         const fromDeparture = itineraries[1].segments[0];
         const fromArrival = itineraries[1].segments.at(-1);
 
+        const toStops = itineraries[0].segments.map(
+          (segment) => segment.arrival.iataCode
+        );
+
+        const fromStops = itineraries[1].segments.map(
+          (segment) => segment.arrival.iataCode
+        );
+
         return {
           id,
           price: parseFloat(price.total),
           duration: itineraries[0].duration,
-          stops:
-            itineraries[0].segments.length + itineraries[1].segments.length - 2,
+          stops: itineraries[0].segments.length - 1,
           airline: validatingAirlineCodes[0],
           outbound: {
+            stops: toStops,
             departureTime: toDeparture.departure.at,
             departureAirport: toDeparture.departure.iataCode,
             arrivalAirport: toArrival?.arrival.iataCode,
             arrivalTime: toArrival?.arrival.at || 0,
+            duration: itineraries[0].duration,
           },
           inbound: {
             departureTime: fromDeparture.departure.at,
             departureAirport: fromDeparture.departure.iataCode,
             arrivalAirport: fromArrival?.arrival.iataCode,
             arrivalTime: fromArrival?.arrival.at || 0,
+            stops: fromStops,
+            duration: itineraries[1].duration,
           },
           departureTime: toDeparture.departure.at,
           departureAirport: toDeparture.departure.iataCode,

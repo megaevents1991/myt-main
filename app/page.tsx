@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { Event } from "@/lib/app.types";
+import { cn } from "@/lib/utils";
 
 const SearchCombobox = ({
   searchValue,
@@ -60,9 +61,11 @@ const SearchCombobox = ({
       <Combobox.Target>
         <input
           ref={ref}
-          className={`w-full ${
-            inline ? "rounded-r " : "rounded border-secondary "
-          } p-2 text-main border`}
+          className={cn(
+            "w-full",
+            inline ? "rounded-r" : "rounded border-secondary",
+            "p-2 text-main border"
+          )}
           dir="rtl"
           placeholder="חפש אירוע..."
           value={searchValue}
@@ -208,17 +211,6 @@ export default function Home() {
                       height={300}
                       className="object-cover w-full h-60 transition-transform group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-black bg-opacity-50 transition-opacity group-hover:bg-opacity-75" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-                          {event.name}
-                        </h3>
-                        <p className="text-white mb-4">
-                          {event.location.name} • {event.date}
-                        </p>
-                      </div>
-                    </div>
                   </div>
                   <div className="flex-col text-center w-1/2 sm:w-auto">
                     <div className="p-2 px-4 font-bold">{event.name}</div>

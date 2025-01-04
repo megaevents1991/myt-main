@@ -40,12 +40,16 @@ export type Flight = {
     arrivalTime: string;
     departureAirport: string;
     arrivalAirport: string;
+    stops: string[];
+    duration: string;
   };
   inbound: {
     departureTime: string;
     arrivalTime: string;
     departureAirport: string;
     arrivalAirport: string;
+    stops: string[];
+    duration: string;
   };
 };
 

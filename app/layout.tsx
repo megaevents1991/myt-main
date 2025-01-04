@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </Link>
               </div>
             </Container>
-            <div className="h-[98h]">{children}</div>
+            {children}
             <footer className="py-6 w-full px-4 md:px-6 border-t">
               <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">

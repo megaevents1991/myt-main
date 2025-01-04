@@ -1,41 +1,41 @@
 import { DateRange } from "@/components/ui/dateInput";
 import { LoaderWrapper } from "@/components/ui/loader";
-import { TimeRangeSlider } from "@/components/ui/timeRangeSlider";
 import { TimeSlider } from "@/components/ui/timeSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
+import { Button, ScrollArea, Modal } from "@mantine/core";
 import {
-  Button,
-  Checkbox,
-  MultiSelect,
-  NumberInput,
-  Select,
-  Text,
-  ScrollArea,
-  Modal,
-} from "@mantine/core";
-import { Settings2Icon, ArrowLeftIcon } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+  Settings2Icon,
+  ArrowLeftIcon,
+  Search,
+  PersonStanding,
+} from "lucide-react";
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
 import { FlightTicketCard } from "@/components/ui/flightTicketCard";
+import { SelectWithIcon } from "@/components/ui/inputWithIcon";
+import { FlightFilter } from "@/components/ui/filters";
+import { useMediaQuery } from "@mantine/hooks";
 
 const MAX_FLIGHT_DURATION = 30;
-const DEFAULT_FLIGHT_RANGE = [
-  { hours: 0, minutes: 0 },
-  { hours: 23, minutes: 59 },
-] as TimeRange;
 
 export const FlightSelection = () => {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [filters, setFilters] = useState<{
-    directOnly: boolean;
+    numOfStops: string[];
     airline: string[];
     maxPrice: string;
   }>({
-    directOnly: false,
+    numOfStops: ["0", "1", "2"],
     maxPrice: "",
     airline: [],
   });
@@ -52,16 +52,32 @@ export const FlightSelection = () => {
   } = useContext(OrderContext);
   const [selectedFlightDuration, setSelectedFlightDuration] =
     useState(MAX_FLIGHT_DURATION);
-  const [maxDuration, setMaxDuration] = useState(MAX_FLIGHT_DURATION);
-  const [inboundRange, setInboundRange] =
-    useState<TimeRange>(DEFAULT_FLIGHT_RANGE);
-  const [outboundRange, setOutboundRange] =
-    useState<TimeRange>(DEFAULT_FLIGHT_RANGE);
+  const [flightsMeta, setFlightsMeta] = useState({
+    maxDuration: MAX_FLIGHT_DURATION,
+    minDuration: MAX_FLIGHT_DURATION,
+    maxPrice: 0,
+    minPrice: 0,
+  });
+
+  const [selectedFlightPrice, setSelectedFlightPrice] = useState(0);
+
+  const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
+  const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date(event.date).getTime() - 2 * 8.64e7),
     new Date(new Date(event.date).getTime() + 8.64e7),
   ]);
   const [showFilters, setShowFilters] = useState(false);
+  const matches = useMediaQuery("(min-width: 768px");
+
+  const [scrollerHeight, setScrollerHeight] = useState(0);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (filterRef.current) {
+      setScrollerHeight(filterRef.current.offsetHeight);
+    }
+  }, [flights]);
 
   useEffect(() => {
     // setDateRange(DEFAULT_DATE_RANGE);
@@ -79,8 +95,8 @@ export const FlightSelection = () => {
       airline: [],
       directOnly,
     }));
-    setInboundRange(DEFAULT_FLIGHT_RANGE);
-    setOutboundRange(DEFAULT_FLIGHT_RANGE);
+    setDepartureRanges([]);
+    setArrivalRanges([]);
 
     try {
       const res = await fetch(`/api/flights?eventId=${event?.id}`, {
@@ -100,23 +116,37 @@ export const FlightSelection = () => {
       const airlines: string[] = Array.from(
         new Set(flights.map((flight: Flight) => flight.airline))
       );
-
-      const maxDuration = Math.max(
-        ...flights.map((flight: Flight) => parseDuration(flight.duration))
+      const durations = flights.map((flight: Flight) =>
+        parseDuration(flight.duration)
       );
+      const prices = flights.map((flight: Flight) => flight.price);
 
+      const maxDuration = Math.max(...durations);
+      const minDuration = Math.min(...durations);
+
+      const maxPrice = Math.max(...prices);
+      const minPrice = Math.min(...prices);
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: airlines,
-        directOnly,
         sortOption,
         flightDuration: maxDuration,
-        inboundRange: DEFAULT_FLIGHT_RANGE,
-        outboundRange: DEFAULT_FLIGHT_RANGE,
+        departureRanges: [],
+        arrivalRanges: [],
+        maxPrice,
+        numOfStops: filters.numOfStops,
       });
 
       setFilteredFlights(filteredFlights);
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
-      setMaxDuration(Math.ceil(maxDuration / 60));
+      setSelectedFlightPrice(Math.ceil(maxPrice));
+
+      setFlightsMeta({
+        maxDuration: Math.ceil(maxDuration / 60),
+        minDuration: Math.ceil(minDuration / 60),
+        maxPrice,
+        minPrice,
+      });
+
       setFilters((prev) => ({
         ...prev,
         airline: airlines,
@@ -149,21 +179,31 @@ export const FlightSelection = () => {
     key: string,
     value: string | boolean | string[]
   ) => {
-    if (key === "directOnly" && value !== filters[key]) {
-      await fetchFlights({ nonStop: !!value });
-      return;
-    }
-
     setFilters((prev) => ({ ...prev, [key]: value }));
 
     if (key === "airline" && Array.isArray(value)) {
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: value,
-        directOnly: filters.directOnly,
         sortOption,
         flightDuration: selectedFlightDuration * 60,
-        inboundRange,
-        outboundRange,
+        departureRanges,
+        arrivalRanges,
+        maxPrice: selectedFlightPrice,
+        numOfStops: filters.numOfStops,
+      });
+
+      setFilteredFlights(filteredFlights);
+    }
+
+    if (key === "numOfStops" && Array.isArray(value)) {
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: filters.airline,
+        sortOption,
+        flightDuration: selectedFlightDuration * 60,
+        departureRanges,
+        arrivalRanges,
+        maxPrice: selectedFlightPrice,
+        numOfStops: value,
       });
 
       setFilteredFlights(filteredFlights);
@@ -172,15 +212,31 @@ export const FlightSelection = () => {
 
   const handleChangeDurationEnd = (duration: number) => {
     setSelectedFlightDuration(duration);
-    const flightDuration = duration * 60;
 
     const filteredFlights = applyFiltersAndSorting(flights, {
       airline: filters.airline,
-      directOnly: filters.directOnly,
       sortOption,
-      flightDuration,
-      inboundRange,
-      outboundRange,
+      flightDuration: duration,
+      departureRanges,
+      arrivalRanges,
+      maxPrice: selectedFlightPrice,
+      numOfStops: filters.numOfStops,
+    });
+
+    setFilteredFlights(filteredFlights);
+  };
+
+  const handlePriceChange = (price: number) => {
+    setSelectedFlightPrice(price);
+
+    const filteredFlights = applyFiltersAndSorting(flights, {
+      airline: filters.airline,
+      sortOption,
+      flightDuration: selectedFlightDuration,
+      departureRanges,
+      arrivalRanges,
+      maxPrice: price,
+      numOfStops: filters.numOfStops,
     });
 
     setFilteredFlights(filteredFlights);
@@ -190,22 +246,23 @@ export const FlightSelection = () => {
     range,
     name,
   }: {
-    range: TimeRange;
-    name: "inbound" | "outbound";
+    range: TimeRange[] | [];
+    name: "departure" | "arrival";
   }) => {
-    if (name === "inbound") {
-      setInboundRange(range);
+    if (name === "departure") {
+      setDepartureRanges(range);
     } else {
-      setOutboundRange(range);
+      setArrivalRanges(range);
     }
 
     const filteredFlights = applyFiltersAndSorting(flights, {
       airline: filters.airline,
-      directOnly: filters.directOnly,
       sortOption,
       flightDuration: selectedFlightDuration,
-      inboundRange: name === "inbound" ? range : inboundRange,
-      outboundRange: name === "outbound" ? range : outboundRange,
+      departureRanges: name === "departure" ? range : departureRanges,
+      arrivalRanges: name === "arrival" ? range : arrivalRanges,
+      maxPrice: selectedFlightPrice,
+      numOfStops: filters.numOfStops,
     });
 
     setFilteredFlights(filteredFlights);
@@ -246,102 +303,168 @@ export const FlightSelection = () => {
 
   return (
     <div className="space-y-6">
-      <Modal
-        opened={showFilters}
-        fullScreen
-        keepMounted
-        onClose={() => setShowFilters(false)}
-        closeButtonProps={{
-          style: { position: "absolute" },
-          icon: <ArrowLeftIcon />,
-        }}
-      >
-        <div className="bg-gray-100 p-4 rounded-lg space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="directOnly"
-              checked={filters.directOnly}
-              onChange={(e) =>
-                handleFilterChange("directOnly", e.currentTarget.checked)
+      {!matches && (
+        <Modal
+          opened={showFilters}
+          fullScreen
+          keepMounted
+          onClose={() => setShowFilters(false)}
+          closeButtonProps={{
+            style: { position: "absolute" },
+            icon: <ArrowLeftIcon />,
+          }}
+        >
+          <div className="bg-gray-100 p-4 rounded-lg space-y-4">
+            <FlightFilter
+              priceComponent={
+                <TimeSlider
+                  onChange={setSelectedFlightPrice}
+                  variant="price"
+                  onChangeEnd={handlePriceChange}
+                  value={selectedFlightPrice}
+                  maxValue={flightsMeta.maxPrice}
+                  minValue={flightsMeta.minPrice}
+                />
               }
+              flightDurationComponent={
+                <TimeSlider
+                  onChangeEnd={handleChangeDurationEnd}
+                  value={selectedFlightDuration}
+                  onChange={setSelectedFlightDuration}
+                  maxValue={flightsMeta.maxDuration}
+                  minValue={flightsMeta.minDuration}
+                />
+              }
+              handleTimeRangeChange={handleRangeChange}
+              airlines={airlines}
+              filters={filters}
+              handleFilterChange={handleFilterChange}
             />
-            <Text>Direct flights only</Text>
           </div>
-          <div>
-            <Text>Airline</Text>
-            <MultiSelect
-              data={airlines}
-              value={filters.airline}
-              onChange={(value) => handleFilterChange("airline", value)}
-            />
-          </div>
-          <Text mb="xs">Outbound</Text>
-          <TimeRangeSlider
-            onChangeEnd={(range) =>
-              handleRangeChange({ range, name: "outbound" })
-            }
-          />
-          <Text mb="xs">Inbound</Text>
-          <TimeRangeSlider
-            onChangeEnd={(range) =>
-              handleRangeChange({ range, name: "inbound" })
-            }
-          />
-          <TimeSlider
-            onChangeEnd={handleChangeDurationEnd}
-            value={selectedFlightDuration}
-            onChange={setSelectedFlightDuration}
-            maxValue={maxDuration}
-          />
-        </div>
-      </Modal>
-      <h2 className="text-2xl font-semibold mb-4">Select Your Flight</h2>
-      <div className="flex justify-between items-center">
-        <NumberInput
-          onChange={(value) => setPlaneTickets({ adults: +value, children: 0 })}
-          value={planeTickets.adults}
-        />
-        <Select
-          data={[
-            { value: "price_asc", label: "Cheapest" },
-            { value: "duration", label: "Fastes" },
-          ]}
-          value={sortOption}
-          onChange={(value) => handleSortChange(value as SortOptions)}
-        />
-      </div>
-      <DateRange dateRange={dateRange} setDateRange={setDateRange} />
-      <Button onClick={handleFlightSearch}>Find a flight</Button>
+        </Modal>
+      )}
       <div className="flex flex-col items-center">
         <div
           dir="rtl"
-          className="w-screen gap-2 flex flex-col sm:flex-row  justify-center p-4 bg-gray-200"
+          className="w-screen gap-2 flex flex-col justify-center p-4 bg-gray-200 items-center"
         >
-          <Settings2Icon onClick={() => setShowFilters(true)} />
+          <div className="text-xs w-full flex-col text-center">
+            <div className="text-2xl font-bold pre ml-2">{event?.name}</div>
+            <div className="whitespace-nowrap">
+              {event?.date} | {event?.location.name}
+            </div>
+          </div>
+          <div className="flex w-full md:w-1/2 lg:w-1/3 flex-row gap-2 text-xs justify-center margin-auto">
+            <div className="w-1/5">
+              <SelectWithIcon
+                value={planeTickets.adults}
+                onChange={(value) =>
+                  setPlaneTickets({ adults: +(value || 0), children: 0 })
+                }
+                icon={<PersonStanding />}
+              />
+            </div>
+            <div className="flex gap-2 flex-row w-4/5">
+              <DateRange
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+                eventDay={event?.date}
+              />
+              <Button
+                onClick={handleFlightSearch}
+                size="md"
+                style={{ borderRadius: "var(--radius)" }}
+              >
+                <Search size={30} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col items-center">
+        <div
+          dir="rtl"
+          className="w-screen gap-2 justify-evenly flex flex-row sm:flex-row justify-center p-4 bg-gray-200"
+        >
+          <div className="w-full flex text-center gap-2 flex-row">
+            <div>סדר לפי</div>
+            <button
+              className="font-bold"
+              onClick={() => handleSortChange("price_asc")}
+            >
+              מחיר
+            </button>
+            <button
+              className="font-bold"
+              onClick={() => handleSortChange("duration")}
+            >
+              משך טיסה{" "}
+            </button>
+          </div>
+          {!matches && (
+            <button>
+              <Settings2Icon onClick={() => setShowFilters(true)} />
+            </button>
+          )}
         </div>
       </div>
       <LoaderWrapper isLoading={isLoading}>
-        <ScrollArea className="h-96">
-          <div className="grid grid-cols-1 gap-4">
-            {filteredFlights.map((flight) => {
-              return (
-                <FlightTicketCard
-                  key={flight.id}
-                  {...flight}
-                  flightId={flight.id}
-                  isSelected={orderFlight?.id === flight.id}
-                  onClick={handleFlightChange}
-                />
-              );
-            })}
-          </div>
-        </ScrollArea>
-        {filteredFlights.length === 0 && (
-          <p className="text-center text-gray-500">
-            No flights match your criteria. Please adjust your filters.
-          </p>
-        )}
+        <div className="flex flex-row gap-8 flex-row-reverse items-center w-full">
+          {matches && (
+            <div
+              className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg"
+              ref={filterRef}
+            >
+              <FlightFilter
+                priceComponent={
+                  <TimeSlider
+                    onChange={setSelectedFlightPrice}
+                    variant="price"
+                    onChangeEnd={handlePriceChange}
+                    value={selectedFlightPrice}
+                    maxValue={flightsMeta.maxPrice}
+                    minValue={flightsMeta.minPrice}
+                  />
+                }
+                flightDurationComponent={
+                  <TimeSlider
+                    onChange={setSelectedFlightDuration}
+                    onChangeEnd={handleChangeDurationEnd}
+                    value={selectedFlightDuration}
+                    maxValue={flightsMeta.maxDuration}
+                    minValue={flightsMeta.minDuration}
+                  />
+                }
+                handleTimeRangeChange={handleRangeChange}
+                airlines={airlines}
+                filters={filters}
+                handleFilterChange={handleFilterChange}
+              />
+            </div>
+          )}
+          <ScrollArea.Autosize mah={scrollerHeight} className="w-full md:w-2/3">
+            <div className="grid grid-cols-1 gap-4 items-start">
+              {filteredFlights.map((flight) => {
+                return (
+                  <FlightTicketCard
+                    key={flight.id}
+                    {...flight}
+                    flightId={flight.id}
+                    isSelected={orderFlight?.id === flight.id}
+                    onClick={handleFlightChange}
+                  />
+                );
+              })}
+              {filteredFlights.length === 0 && (
+                <div className="text-center w-full md:w-2/3 text-gray-500">
+                  No flights match your criteria. Please adjust your filters.
+                </div>
+              )}
+            </div>
+          </ScrollArea.Autosize>
+        </div>
       </LoaderWrapper>
+      {filteredFlights.length}
     </div>
   );
 };

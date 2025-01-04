@@ -91,7 +91,6 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">

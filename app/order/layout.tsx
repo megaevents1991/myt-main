@@ -5,6 +5,8 @@ import { OrderContext } from "../app.context";
 import { Event, Flight, Hotel } from "@/lib/app.types";
 import { events } from "@/lib/events-data";
 import { useSearchParams } from "next/navigation";
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);

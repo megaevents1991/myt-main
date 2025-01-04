@@ -1,44 +1,73 @@
-import { Slider, Text } from "@mantine/core";
+import { Slider } from "@mantine/core";
+
+const themeColor = "#05203C";
+
+const formatTime = (value: number) => {
+  const hours = Math.floor(value);
+  const minutes = Math.floor((value - hours) * 60);
+  return `${hours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}`;
+};
 
 export const TimeSlider = ({
   onChangeEnd,
   onChange,
   value,
-  maxValue = 30,
+  maxValue = 3000,
+  minValue = 0,
+  variant = "time",
 }: {
-  onChangeEnd: (value: number) => void;
   onChange: (value: number) => void;
+  onChangeEnd: (value: number) => void;
   value: number;
   maxValue: number;
+  minValue: number;
+  variant?: "price" | "time";
 }) => {
-  // Function to convert hour to 24-hour time format
-  const formatTime = (value: number) => {
-    const hours = Math.floor(value);
-    const minutes = Math.floor((value - hours) * 60);
-    return `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  const handleOnChangeEnd = (value: number) => {
-    onChangeEnd(value);
-  };
   const handleOnChange = (value: number) => {
     onChange(value);
   };
+  const handleOnChangeEnd = (value: number) => {
+    onChangeEnd(value);
+  };
+
+  const marks =
+    variant === "time"
+      ? [
+          {
+            value: 0,
+            label: <>{minValue} שעות</>,
+          },
+          { value: 1439, label: <>{maxValue} שעות</> },
+        ]
+      : [
+          {
+            value: 0,
+            label: <>{Math.ceil(minValue)} &#8364;</>,
+          },
+          { value: maxValue, label: <>{Math.ceil(maxValue)} &#8364;</> },
+        ];
 
   return (
-    <div style={{ width: 300, margin: "auto" }}>
+    <div style={{ margin: "auto", maxWidth: "90%" }}>
       <Slider
-        min={0} // 12:00 AM
-        max={maxValue} // 11:00 PM
-        step={0.5} // Each tick represents an hour
+        thumbSize={20}
+        min={variant === "time" ? minValue : Math.ceil(minValue)}
+        max={variant === "time" ? maxValue : Math.ceil(maxValue)}
+        step={variant === "time" ? 0.5 : Math.floor((maxValue - minValue) / 10)}
         value={value}
+        styles={{
+          bar: { backgroundColor: themeColor },
+          mark: { backgroundColor: "transparent", borderColor: "transparent" },
+          label: { backgroundColor: themeColor },
+          thumb: { backgroundColor: themeColor, borderColor: themeColor },
+        }}
         onChange={handleOnChange}
         onChangeEnd={handleOnChangeEnd}
-        label={formatTime(value)}
+        label={variant === "time" ? formatTime(value) : value}
+        marks={marks}
       />
-      <Text>Trip Duration: {formatTime(value)}</Text>
     </div>
   );
 };
