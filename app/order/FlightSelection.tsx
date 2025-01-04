@@ -70,14 +70,16 @@ export const FlightSelection = () => {
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 768px");
 
-  const [scrollerHeight, setScrollerHeight] = useState(0);
+  const [scrollerHeight, setScrollerHeight] = useState(400);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    if (filterRef.current) {
+    if (filterRef.current && matches) {
       setScrollerHeight(filterRef.current.offsetHeight);
+    } else if (!matches) {
+      setScrollerHeight(400);
     }
-  }, [flights]);
+  }, [matches, flights]);
 
   useEffect(() => {
     // setDateRange(DEFAULT_DATE_RANGE);
@@ -409,7 +411,7 @@ export const FlightSelection = () => {
         </div>
       </div>
       <LoaderWrapper isLoading={isLoading}>
-        <div className="flex flex-row gap-8 flex-row-reverse items-center w-full">
+        <div className="flex flex-row gap-8 flex-row-reverse items-start w-full">
           {matches && (
             <div
               className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg"
@@ -464,7 +466,6 @@ export const FlightSelection = () => {
           </ScrollArea.Autosize>
         </div>
       </LoaderWrapper>
-      {filteredFlights.length}
     </div>
   );
 };
