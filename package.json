@@ -22,6 +22,7 @@
     "next": "15.0.3",
     "nodemailer": "^6.9.16",
     "react": "19.0.0-rc-66855b96-20241106",
+    "react-device-detect": "^2.2.3",
     "react-dom": "19.0.0-rc-66855b96-20241106",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7"

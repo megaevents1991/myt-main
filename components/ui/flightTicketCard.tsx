@@ -3,6 +3,9 @@ import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
 import { ArrowLeft, Info } from "lucide-react";
 import { Tooltip } from "@mantine/core";
+import { isMobile } from "react-device-detect";
+import { useState } from "react";
+import { useClickOutside } from "@mantine/hooks";
 
 type FlightTicketCardProps = {
   isSelected: boolean;
@@ -64,8 +67,14 @@ const FlightCard = ({
   stops,
   metadata,
 }: FlightCardProps) => {
+  const [tooltipOpened, setTooltipOpened] = useState(false);
+  const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
+
   return (
-    <div className="flex flex-row items-center justify-between w-full">
+    <div
+      className="flex flex-row items-center justify-between w-full"
+      ref={ref}
+    >
       <div className="w-2/6">
         <div className="mb-2">
           <Image
@@ -90,12 +99,16 @@ const FlightCard = ({
           {arrivalAirport}
         </div>
       </div>
-      <div className="w-1/6 text-center display flex flex-col items-center">
+      <div
+        className="w-1/6 text-center display flex flex-col items-center"
+        onTouchStart={() => setTooltipOpened((curr) => !curr)}
+      >
         <div className="text-sm font-bold">{stopsMap[stops.length - 1]}</div>
         {stops.length - 1 ? (
           <Tooltip
             label={`${stops.slice(0, -1).join(", ")} עצירה ב`}
             position="top"
+            opened={isMobile ? tooltipOpened : undefined}
           >
             <Info size={12} />
           </Tooltip>
