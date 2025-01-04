@@ -2,7 +2,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Hebrew } from "next/font/google";
 import "@mantine/core/styles.css";
-import "@mantine/dates/styles.css";
 import { Suspense, ReactNode } from "react";
 import { Container, MantineProvider } from "@mantine/core";
 import Link from "next/link";
@@ -26,36 +25,36 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={inter.className}>
         <Suspense>
           <MantineProvider
-            theme={{
-              colors: {
-                // Add your color
-                deepBlue: [
-                  "#eef3ff",
-                  "#dce4f5",
-                  "#b9c7e2",
-                  "#94a8d0",
-                  "#748dc1",
-                  "#5f7cb8",
-                  "#5474b4",
-                  "#44639f",
-                  "#39588f",
-                  "#2d4b81",
-                ],
-                // or replace default theme color
-                blue: [
-                  "#e3fbfd",
-                  "#d8f0f2",
-                  "#b8dde0",
-                  "#94cace",
-                  "#76b9bf",
-                  "#62afb5",
-                  "#55aab1",
-                  "#42959c",
-                  "#33848b",
-                  "#19737a",
-                ],
-              },
-            }}
+          // theme={{
+          //   colors: {
+          //     // Add your color
+          //     deepBlue: [
+          //       "#eef3ff",
+          //       "#dce4f5",
+          //       "#b9c7e2",
+          //       "#94a8d0",
+          //       "#748dc1",
+          //       "#5f7cb8",
+          //       "#5474b4",
+          //       "#44639f",
+          //       "#39588f",
+          //       "#2d4b81",
+          //     ],
+          //     // or replace default theme color
+          //     blue: [
+          //       "#e3fbfd",
+          //       "#d8f0f2",
+          //       "#b8dde0",
+          //       "#94cace",
+          //       "#76b9bf",
+          //       "#62afb5",
+          //       "#55aab1",
+          //       "#42959c",
+          //       "#33848b",
+          //       "#19737a",
+          //     ],
+          //   },
+          // }}
           >
             <Container className="pt-4 h-[14vh] min-h-20" fluid bg={"#05203C"}>
               <div className="flex scale-25 justify-center md:justify-end">
