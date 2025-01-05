@@ -2,6 +2,7 @@ import React from "react";
 import { DatePickerInput } from "@mantine/dates";
 import { Calendar } from "lucide-react";
 import { Indicator } from "@mantine/core";
+import { isMobile } from "react-device-detect";
 
 export const DateRange = ({
   dateRange,
@@ -12,13 +13,20 @@ export const DateRange = ({
   setDateRange: (value: [Date | null, Date | null]) => void;
   eventDay: string;
 }) => {
+  const inputRef = React.useRef<HTMLButtonElement>(null);
   return (
     <DatePickerInput
+      ref={inputRef}
       className="w-full"
       size="md"
       type="range"
       highlightToday
-      rightSection={<Calendar />}
+      rightSection={
+        <Calendar
+          className="cursor-pointer	"
+          onClick={() => inputRef.current?.click()}
+        />
+      }
       placeholder="Pick dates range"
       value={dateRange}
       valueFormat="DD/MM/YY"
@@ -36,7 +44,7 @@ export const DateRange = ({
         );
       }}
       onChange={setDateRange}
-      dropdownType="modal"
+      dropdownType={isMobile ? "modal" : "popover"}
       styles={{
         input: {
           borderRadius: "var(--radius)",

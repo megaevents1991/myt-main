@@ -57,8 +57,6 @@ export type Hotel = {
   id: string;
   name: string;
   price: number;
-  rating: number;
-  amenities: string[];
 };
 
 export type Order = {

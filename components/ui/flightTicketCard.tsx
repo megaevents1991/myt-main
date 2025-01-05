@@ -94,8 +94,9 @@ const FlightCard = ({
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
         </div>
-        <div className="text-sm inline-flex items-center">
-          {departureAirport} <ArrowLeft size={12} />
+        <div className="text-sm inline-flex items-center flex-row">
+          {departureAirport}
+          <ArrowLeft size={12} />
           {arrivalAirport}
         </div>
       </div>

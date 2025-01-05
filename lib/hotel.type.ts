@@ -42,7 +42,7 @@ export type Hotel = {
   rates: Rate[];
 };
 
-type Rate = {
+export type Rate = {
   match_hash: string;
   daily_prices: string[];
   meal: string;

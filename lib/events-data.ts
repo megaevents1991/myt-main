@@ -187,14 +187,10 @@ export const hotels: Hotel[] = [
     id: "1",
     name: "Luxury Hotel",
     price: 300,
-    rating: 5,
-    amenities: ["Free Wi-Fi", "Pool", "Spa"],
   },
   {
     id: "2",
     name: "Budget Inn",
     price: 100,
-    rating: 3,
-    amenities: ["Free Wi-Fi", "Breakfast"],
   },
 ];

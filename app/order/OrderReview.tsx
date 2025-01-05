@@ -127,7 +127,6 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
             </div>
             <h3 className="font-medium mb-1">{selectedHotel.name}</h3>
             <div className="text-sm space-y-1 text-muted-foreground">
-              <p>{selectedHotel.rating} Stars</p>
               <p>Check-in: {new Date(event.date).toLocaleDateString()}</p>
               <p>
                 Check-out:{" "}
