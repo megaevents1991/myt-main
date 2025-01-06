@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 type StepperProps = {
   steps: { label: string }[];
   currentStep: number;
@@ -14,16 +16,15 @@ type StepProps = {
 const Step = ({ label, state, isFirst, isLast, index }: StepProps) => {
   return (
     <div
-      className={`
-        "flex-1 h-12 flex p-5 items-center justify-center text-xl font-medium" 
-        ${state === "completed" && "bg-foreground text-secondary"} 
-        ${
-          state === "active" &&
-          "bg-secondary text-primary-foreground shadow-2xl rounded-lg"
-        } 
-        ${state === "inactive" && "bg-foreground text-secondary"}
-        ${isFirst && "rounded-r-lg"}
-        ${isLast && "rounded-l-lg"}`}
+      className={cn(
+        "flex-1 h-12 flex p-5 items-center justify-center text-xl font-medium",
+        state === "completed" && "bg-foreground text-secondary",
+        state === "active" &&
+          "bg-secondary text-primary-foreground shadow-2xl rounded-lg",
+        state === "inactive" && "bg-foreground text-secondary",
+        isFirst && "rounded-r-lg",
+        isLast && "rounded-l-lg"
+      )}
     >
       <span className="sr-only">
         {state === "completed"
@@ -47,7 +48,7 @@ const Step = ({ label, state, isFirst, isLast, index }: StepProps) => {
 export const PillStepper = ({ steps, currentStep }: StepperProps) => {
   return (
     <div
-      className="flex w-full max-w-2xl mx-auto overflow-hidden rounded-full justify-center mt-4"
+      className="flex w-full max-w-2xl mx-auto overflow-hidden justify-center mt-4 "
       dir="rtl"
     >
       {steps.map((step, index) => (

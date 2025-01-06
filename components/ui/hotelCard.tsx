@@ -1,7 +1,7 @@
 import { Hotel, Rate } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
 import { formatHotelName } from "@/lib/formatHotelName";
-import { ArrowDownCircle, HotelIcon, CircleArrowUpIcon } from "lucide-react";
+import { ChevronUp, HotelIcon, ChevronDown } from "lucide-react";
 import { Collapse, ScrollArea } from "@mantine/core";
 import { useState } from "react";
 import { RoomCard } from "./roomCard";
@@ -21,21 +21,25 @@ export const HotelCard = ({
 
   return (
     <CardWrapper isSelected={isSelected} onClick={() => handleSelect(hotel)}>
-      <div className="p-2 w-full flex flex-col items-right gap-2">
+      <div className="px-2 w-full flex flex-col items-right gap-2">
         <div className="text-2xl font-black mb-2">{hotelName}</div>
         {/* <Image src={""} alt={""} height={200} width={200} /> */}
         <HotelIcon className="border rounded-lg" size={150} />
-        <div className="w-full flex flex-col justify-between items-center border border-main rounded-lg">
-          <button
-            className="w-full items-center p-2 text-center bg-main text-white rounded-lg"
+        <div className="w-full flex flex-col justify-between items-center rounded-lg">
+          <div
+            className="w-full items-center pt-2 text-center  border-t border-main cursor-pointer"
             onClick={() => setOpened((prev) => !prev)}
           >
             {opened ? (
-              <CircleArrowUpIcon className="m-auto" />
+              <ChevronUp className="m-auto" color="black" />
             ) : (
-              <ArrowDownCircle className="m-auto" />
+              <div className="flex items-center justify-center gap-2">
+                {hotel.rates.length}
+                <span>סוגי חדרים נוספים</span>
+                <ChevronDown color="black" />
+              </div>
             )}
-          </button>
+          </div>
           <Collapse in={opened} className="mt-4">
             {isSelected && (
               <ScrollArea className="w-full h-96" scrollbarSize={0}>

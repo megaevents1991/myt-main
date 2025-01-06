@@ -124,14 +124,14 @@ export default function Home() {
       )}
       <section className="w-full py-6 md:py-12 lg:py-18 xl:py-22 px-4 md:px-6 text-white bg-main relative">
         <div className="container mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
+          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
             <span> כל האירועים השווים בחו״ל</span>
             <span className="text-secondary whitespace-nowrap text-5xl">
               {" "}
               במקום אחד
             </span>
           </h1>
-          <p className="text-3xl tracking-tighter sm:text-4xl md:text-5xl mb-4 mb-8">
+          <p className="text-3xl sm:text-4xl md:text-5xl mb-4 mb-8">
             !בחרו ותתחילו לתכנן
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function Home() {
               />
             )}
             <button
-              className="w-1/3 bg-secondary text-main rounded-l"
+              className="w-1/3 bg-secondary text-white rounded-l"
               onClick={(e) => {
                 e.preventDefault();
                 if (!matches) {
@@ -214,7 +214,7 @@ export default function Home() {
                   </div>
                   <div className="flex-col text-center w-1/2 sm:w-auto">
                     <div className="p-2 px-4 font-bold">{event.name}</div>
-                    <div className="py-1 bg-secondary ">
+                    <div className="py-1 bg-secondary text-white">
                       {event.date} | {event.location.name}
                     </div>
                     <div className="p-2 px-4 text-right" dir="rtl">
