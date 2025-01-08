@@ -121,3 +121,12 @@ type Guest = {
   adults: number;
   children: number[];
 };
+export type Room = {
+  name: string;
+  images: string[];
+  amenities: string[];
+};
+
+export type RoomsInfo = Record<string, Record<string, Room>> & {
+  general: { hotelAmenity: string[]; images: string[] };
+};

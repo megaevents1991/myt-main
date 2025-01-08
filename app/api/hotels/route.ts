@@ -1,10 +1,7 @@
-import { HotelSearchRequest } from "@/lib/hotel.type";
+import { HotelResponse, HotelSearchRequest } from "@/lib/hotel.type";
 import { NextResponse } from "next/server";
+import { authHeader } from "../keys";
 
-const API_KEY = process.env.EMERGING_TRAVEL_API_KEY || "8317";
-const API_SECRET =
-  process.env.EMERGING_TRAVEL_API_SECRET ||
-  "13b36e90-d7f6-45a1-9eb0-c0a561369f17";
 const API_URL = "https://api.worldota.net/api/b2b/v3/search/serp/geo";
 
 export async function POST(request: Request) {
@@ -39,8 +36,6 @@ export async function POST(request: Request) {
     currency: "EUR",
   };
 
-  const authHeader = Buffer.from(`${API_KEY}:${API_SECRET}`).toString("base64");
-
   try {
     const response = await fetch(API_URL, {
       method: "POST",
@@ -54,7 +49,8 @@ export async function POST(request: Request) {
       throw new Error("API request failed");
     }
 
-    const data = await response.json();
+    const data: HotelResponse = await response.json();
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("API error:", error);

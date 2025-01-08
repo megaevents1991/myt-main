@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mantine/carousel": "^7.15.3",
     "@mantine/core": "7.15.1",
     "@mantine/dates": "^7.15.1",
     "@mantine/hooks": "7.15.1",
@@ -18,6 +19,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
+    "embla-carousel-react": "^8.5.2",
     "lucide-react": "^0.460.0",
     "next": "15.0.3",
     "nodemailer": "^6.9.16",

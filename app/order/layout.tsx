@@ -7,6 +7,7 @@ import { events } from "@/lib/events-data";
 import { useSearchParams } from "next/navigation";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+import "@mantine/carousel/styles.css";
 
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);

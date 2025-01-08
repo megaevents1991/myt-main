@@ -1,6 +1,5 @@
 import { Rate } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
-import { Badge } from "@mantine/core";
 
 export const RoomCard = ({
   room,
@@ -13,13 +12,14 @@ export const RoomCard = ({
 }) => {
   return (
     <CardWrapper isSelected={isSelected} onClick={() => onRoomSelect(room)}>
-      <div className="p-2 w-full flex flex-col items-right">
+      <div className="p-2 w-full flex flex-col items-right cursor-pointer">
         {room.room_name}
-        <Badge color="pink" variant="light">
+        {/* <Badge color="pink" variant="light">
           {room.room_name} ★
-        </Badge>
+        </Badge> */}
         <div>Meal: {room.meal}</div>
-        {room.room_name_info}
+        {room.daily_prices[0]} / night
+        {/* {room.room_name_info}
         {room.daily_prices[0]} / night
         {room.amenities_data.map((amenity) => (
           <Badge
@@ -31,7 +31,7 @@ export const RoomCard = ({
           >
             {amenity}
           </Badge>
-        ))}
+        ))} */}
       </div>
     </CardWrapper>
   );

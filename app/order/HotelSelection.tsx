@@ -2,7 +2,7 @@
 
 import { events } from "@/lib/events-data";
 import { formatHotelName } from "@/lib/formatHotelName";
-import { Hotel, HotelResponse } from "@/lib/hotel.type";
+import { Hotel, HotelResponse, RoomsInfo } from "@/lib/hotel.type";
 import { Button, Popover } from "@mantine/core";
 import { useState, useEffect, useContext } from "react";
 import { OrderContext } from "../app.context";
@@ -11,6 +11,9 @@ import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { HotelCard } from "@/components/ui/hotelCard";
 import { Search } from "lucide-react";
+import { useMediaQuery } from "@mantine/hooks";
+import { HotelFilters } from "@/components/ui/HotelFilters";
+import { applyFiltersAndSorting } from "@/lib/hotelFilter";
 
 const event = events[0];
 
@@ -32,6 +35,14 @@ export const HotelSelection = () => {
     adults: planeTickets.adults,
   });
 
+  const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
+  const [maxPrice, setMaxPrice] = useState<number>(0);
+  const [hotelsInfo, setHotelsInfo] = useState<RoomsInfo>({} as RoomsInfo);
+
+  const [, setPriceRange] = useState<[number, number]>([0, maxPrice]);
+
+  const matches = useMediaQuery("(min-width: 768px");
+
   useEffect(() => {
     fetchHotels();
   }, []);
@@ -48,7 +59,39 @@ export const HotelSelection = () => {
       }),
     });
     const data: HotelResponse = await res.json();
+
+    const hotels = data.data.hotels.map((hotel) => {
+      const allRooms = hotel.rates.map(
+        (rate) =>
+          rate.room_data_trans.main_name +
+          (rate.room_data_trans.bedding_type
+            ? " " + rate.room_data_trans.bedding_type
+            : "")
+      );
+
+      const rooms = [...new Set(allRooms)];
+      return { id: hotel.id, rooms };
+    });
+
+    const hotelsInfoRes = await fetch(`/api/hotels-info`, {
+      method: "POST",
+      body: JSON.stringify({
+        hotels,
+      }),
+    });
+
+    const hotelsInfo = await hotelsInfoRes.json();
+
+    const maxPrice = Math.max(
+      ...data.data.hotels.map(
+        (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
+      )
+    );
+    setPriceRange([0, maxPrice]);
+    setHotelsInfo(hotelsInfo);
+    setMaxPrice(maxPrice);
     setHotels(data.data.hotels);
+    setFilteredHotels(data.data.hotels);
     setIsLoading(false);
   };
 
@@ -58,6 +101,13 @@ export const HotelSelection = () => {
       id: hotel.id,
       price: +hotel.rates[0].daily_prices[0],
     });
+  };
+
+  const handlePriceChange = (priceRange: [number, number]) => {
+    setPriceRange(priceRange);
+    const hotelsToSet = applyFiltersAndSorting({ hotels, priceRange });
+
+    setFilteredHotels(hotelsToSet);
   };
 
   return (
@@ -73,8 +123,8 @@ export const HotelSelection = () => {
               {event?.date} | {event?.location.name}
             </div>
           </div>
-          <div className="flex w-full md:w-1/2 lg:w-1/3 flex-row gap-2 text-xs">
-            <div className="w-2/5">
+          <div className="flex w-full md:w-2/3 lg:w-1/2 flex-col gap-2 text-xs md:flex-row">
+            <div className="w-full md:w-1/2">
               <Popover
                 width={300}
                 trapFocus
@@ -98,7 +148,7 @@ export const HotelSelection = () => {
                 </Popover.Dropdown>
               </Popover>
             </div>
-            <div className="flex gap-2 flex-row w-3/5">
+            <div className="flex gap-2 flex-row md:w-1/2">
               <DateRange
                 dateRange={dateRange}
                 setDateRange={setDateRange}
@@ -116,18 +166,31 @@ export const HotelSelection = () => {
         </div>
       </div>
       <LoaderWrapper isLoading={isLoading}>
-        <div className="grid grid-cols-1 gap-4 items-start">
-          {" "}
-          {hotels.map((hotel) => {
-            return (
-              <HotelCard
-                isSelected={hotel.id === selectedHotel?.id}
-                key={hotel.id}
-                hotel={hotel}
-                handleSelect={handleSelect}
+        <div className="flex flex-row gap-4 flex-row-reverse items-start w-full">
+          {matches && (
+            <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg">
+              <HotelFilters
+                maxPrice={maxPrice}
+                onPriceRangeChange={handlePriceChange}
+                onSearchChange={() => {}}
               />
-            );
-          })}
+            </div>
+          )}
+          <div className="w-full">
+            <div className="grid grid-cols-1 gap-4 items-start">
+              {filteredHotels.map((hotel) => {
+                return (
+                  <HotelCard
+                    isSelected={hotel.id === selectedHotel?.id}
+                    key={hotel.id}
+                    hotel={hotel}
+                    roomsInfo={hotelsInfo[hotel.id]}
+                    handleSelect={handleSelect}
+                  />
+                );
+              })}
+            </div>
+          </div>
         </div>
       </LoaderWrapper>
     </div>

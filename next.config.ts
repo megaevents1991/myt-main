@@ -17,6 +17,12 @@ const nextConfig: import("next").NextConfig = {
         port: "",
         pathname: "/images/logos/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.worldota.net",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };

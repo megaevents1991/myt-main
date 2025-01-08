@@ -1,33 +1,97 @@
-import { Hotel, Rate } from "@/lib/hotel.type";
+import { Hotel, Rate, Room } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
 import { formatHotelName } from "@/lib/formatHotelName";
-import { ChevronUp, HotelIcon, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { Collapse, ScrollArea } from "@mantine/core";
-import { useState } from "react";
+import { Carousel } from "@mantine/carousel";
+
+import { useEffect, useState } from "react";
 import { RoomCard } from "./roomCard";
+import Image from "next/image";
 
 export const HotelCard = ({
   hotel,
   handleSelect,
   isSelected,
+  roomsInfo,
 }: {
   hotel: Hotel;
   handleSelect: (id: Hotel) => void;
   isSelected: boolean;
+  roomsInfo: Record<string, Room>;
 }) => {
   const hotelName = formatHotelName(hotel.id);
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
+  const [roomInfo, setRoomInfo] = useState<Room | null>(null);
+
+  useEffect(() => {
+    if (hotel.rates.length) {
+      const firstRoom = hotel.rates[0];
+      const roomName =
+        firstRoom.room_data_trans.main_name +
+        " " +
+        firstRoom.room_data_trans.bedding_type;
+      setSelectedRoom(hotel.rates[0]);
+      setRoomInfo(roomsInfo?.[roomName]);
+    }
+  }, []);
+
+  const handleRoomSelect = (room: Rate) => {
+    const roomName =
+      room.room_data_trans.main_name + " " + room.room_data_trans.bedding_type;
+    setSelectedRoom(room);
+    setRoomInfo(roomsInfo[roomName]);
+  };
 
   return (
     <CardWrapper isSelected={isSelected} onClick={() => handleSelect(hotel)}>
       <div className="px-2 w-full flex flex-col items-right gap-2">
-        <div className="text-2xl font-black mb-2">{hotelName}</div>
-        {/* <Image src={""} alt={""} height={200} width={200} /> */}
-        <HotelIcon className="border rounded-lg" size={150} />
-        <div className="w-full flex flex-col justify-between items-center rounded-lg">
+        <div className="flex flex-col md:flex-row md:content-between  gap-2">
+          <div className="flex flex-col md:w-4/5 items-right gap-2">
+            <div>{hotelName}</div>
+            <div className="flex flex-row gap-2">
+              <Carousel withIndicators className="w-1/3" dir="ltr">
+                {[
+                  ...(roomInfo?.images || ""),
+                  ...(roomsInfo?.["general"]?.images.slice(0, 5) || ""),
+                ].map((image, i) => {
+                  return image ? (
+                    <Carousel.Slide key={i}>
+                      <Image
+                        className="border rounded-lg"
+                        width={240}
+                        height={240}
+                        src={image.replace("{size}", "240x240")}
+                        alt="image"
+                      />
+                    </Carousel.Slide>
+                  ) : null;
+                })}
+              </Carousel>
+              {/* <HotelIcon className="border rounded-lg" size={150} /> */}
+              <div className="w-2/3">
+                <div>{selectedRoom?.room_data_trans.main_name}</div>
+                {roomInfo?.amenities.map((amenity) => (
+                  <span
+                    style={{ display: "inline-block" }}
+                    className="bg-gray-200 rounded-lg text-xs p-1 m-1"
+                    key={amenity}
+                  >
+                    {amenity}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex md:w-1/5 md:justify-center md:items-center md:border-r whitespace-pre md:pr-6">
+            מחיר לחדר{" "}
+            {selectedRoom?.payment_options.payment_types[0].show_amount}&#8364;
+          </div>
+        </div>
+        <div className="w-full flex flex-col justify-between items-center rounded-lg md:items-right">
           <div
-            className="w-full items-center pt-2 text-center  border-t border-main cursor-pointer"
+            className="w-full items-center pt-2 text-center border-t md:border-none border-main md:text-right cursor-pointer"
             onClick={() => setOpened((prev) => !prev)}
           >
             {opened ? (
@@ -49,7 +113,7 @@ export const HotelCard = ({
                       key={room.match_hash}
                       room={room}
                       isSelected={selectedRoom?.match_hash === room.match_hash}
-                      onRoomSelect={setSelectedRoom}
+                      onRoomSelect={handleRoomSelect}
                     />
                   ))}
                 </div>

@@ -48,7 +48,7 @@ const Step = ({ label, state, isFirst, isLast, index }: StepProps) => {
 export const PillStepper = ({ steps, currentStep }: StepperProps) => {
   return (
     <div
-      className="flex w-full max-w-2xl mx-auto overflow-hidden justify-center mt-4 "
+      className="flex w-full max-w-2xl mx-auto overflow-hidden justify-center mt-4 px-10"
       dir="rtl"
     >
       {steps.map((step, index) => (
