@@ -1,4 +1,4 @@
-import { Hotel, Rate, Room } from "@/lib/hotel.type";
+import { Hotel, Info, Rate, Room } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
 import { formatHotelName } from "@/lib/formatHotelName";
 import { ChevronUp, ChevronDown } from "lucide-react";
@@ -8,6 +8,7 @@ import { Carousel } from "@mantine/carousel";
 import { useEffect, useState } from "react";
 import { RoomCard } from "./roomCard";
 import Image from "next/image";
+import { Stars } from "./stars";
 
 export const HotelCard = ({
   hotel,
@@ -18,7 +19,7 @@ export const HotelCard = ({
   hotel: Hotel;
   handleSelect: (id: Hotel) => void;
   isSelected: boolean;
-  roomsInfo: Record<string, Room>;
+  roomsInfo: Info;
 }) => {
   const hotelName = formatHotelName(hotel.id);
   const [opened, setOpened] = useState(false);
@@ -33,7 +34,7 @@ export const HotelCard = ({
         " " +
         firstRoom.room_data_trans.bedding_type;
       setSelectedRoom(hotel.rates[0]);
-      setRoomInfo(roomsInfo?.[roomName]);
+      setRoomInfo(roomsInfo?.rooms[roomName]);
     }
   }, []);
 
@@ -41,7 +42,7 @@ export const HotelCard = ({
     const roomName =
       room.room_data_trans.main_name + " " + room.room_data_trans.bedding_type;
     setSelectedRoom(room);
-    setRoomInfo(roomsInfo[roomName]);
+    setRoomInfo(roomsInfo?.rooms[roomName]);
   };
 
   return (
@@ -49,12 +50,25 @@ export const HotelCard = ({
       <div className="px-2 w-full flex flex-col items-right gap-2">
         <div className="flex flex-col md:flex-row md:content-between  gap-2">
           <div className="flex flex-col md:w-4/5 items-right gap-2">
-            <div>{hotelName}</div>
+            <div className="flex flex-row justify-start items-center gap-2">
+              <div className="font-bold text-lg">{hotelName}</div>
+              <Stars rating={roomsInfo.rating} />
+            </div>
             <div className="flex flex-row gap-2">
-              <Carousel withIndicators className="w-1/3" dir="ltr">
+              <Carousel
+                withIndicators
+                className="w-1/3"
+                dir="ltr"
+                styles={{
+                  indicators: {
+                    maxWidth: "90%",
+                    justifySelf: "center",
+                  },
+                }}
+              >
                 {[
                   ...(roomInfo?.images || ""),
-                  ...(roomsInfo?.["general"]?.images.slice(0, 5) || ""),
+                  ...(roomsInfo?.general.images || ""),
                 ].map((image, i) => {
                   return image ? (
                     <Carousel.Slide key={i}>

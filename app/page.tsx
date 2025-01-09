@@ -97,7 +97,7 @@ const SearchCombobox = ({
 };
 
 export default function Home() {
-  const matches = useMediaQuery("(min-width: 768px");
+  const matches = useMediaQuery("(min-width: 768px)");
   const events = staticEvents;
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);

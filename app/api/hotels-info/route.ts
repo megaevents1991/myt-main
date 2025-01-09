@@ -45,11 +45,18 @@ const getHotelInfo = async (hotelId: string, rooms: string[]) => {
 
     return {
       id: hotelId,
+      rating: hotelInfoData.data.star_rating,
       rooms: filteredRooms,
       general: {
         name: "general",
         amenities: hotelAmenity[0].amenities,
-        images: hotelInfoData.data.images,
+        images: hotelInfoData.data.images_ext
+          .filter(
+            (image) =>
+              image.category_slug === "hotel_front" ||
+              image.category_slug === "lobby"
+          )
+          .map((image) => image.url),
       },
     };
   } catch (error) {
@@ -78,7 +85,11 @@ export async function POST(request: Request) {
 
     const roomsDict = data.reduce((acc, hotel) => {
       if (hotel) {
-        acc[hotel.id] = { ...hotel.rooms, general: hotel.general };
+        acc[hotel.id] = {
+          rating: hotel.rating,
+          rooms: hotel.rooms,
+          general: hotel.general,
+        };
       }
       return acc;
     }, {} as RoomsInfo);

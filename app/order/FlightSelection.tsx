@@ -68,7 +68,7 @@ export const FlightSelection = () => {
     new Date(new Date(event.date).getTime() + 8.64e7),
   ]);
   const [showFilters, setShowFilters] = useState(false);
-  const matches = useMediaQuery("(min-width: 768px");
+  const matches = useMediaQuery("(min-width: 768px)");
 
   const [scrollerHeight, setScrollerHeight] = useState(400);
   const filterRef = useRef<HTMLDivElement>(null);

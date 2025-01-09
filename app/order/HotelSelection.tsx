@@ -38,10 +38,17 @@ export const HotelSelection = () => {
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
   const [hotelsInfo, setHotelsInfo] = useState<RoomsInfo>({} as RoomsInfo);
+  const [rating, setRating] = useState<boolean[]>([
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
 
-  const [, setPriceRange] = useState<[number, number]>([0, maxPrice]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
 
-  const matches = useMediaQuery("(min-width: 768px");
+  const matches = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     fetchHotels();
@@ -105,7 +112,24 @@ export const HotelSelection = () => {
 
   const handlePriceChange = (priceRange: [number, number]) => {
     setPriceRange(priceRange);
-    const hotelsToSet = applyFiltersAndSorting({ hotels, priceRange });
+    const hotelsToSet = applyFiltersAndSorting({
+      hotels,
+      priceRange,
+      rating,
+      hotelsInfo,
+    });
+
+    setFilteredHotels(hotelsToSet);
+  };
+
+  const handleRatingChange = (rating: boolean[]) => {
+    setRating(rating);
+    const hotelsToSet = applyFiltersAndSorting({
+      hotels,
+      priceRange,
+      rating,
+      hotelsInfo,
+    });
 
     setFilteredHotels(hotelsToSet);
   };
@@ -173,6 +197,7 @@ export const HotelSelection = () => {
                 maxPrice={maxPrice}
                 onPriceRangeChange={handlePriceChange}
                 onSearchChange={() => {}}
+                onRatingChange={handleRatingChange}
               />
             </div>
           )}

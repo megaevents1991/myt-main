@@ -127,6 +127,10 @@ export type Room = {
   amenities: string[];
 };
 
-export type RoomsInfo = Record<string, Record<string, Room>> & {
-  general: { hotelAmenity: string[]; images: string[] };
+export type Info = {
+  rooms: Record<string, Room>;
+  general: Room;
+  rating: number;
 };
+
+export type RoomsInfo = Record<string, Info>;

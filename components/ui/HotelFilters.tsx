@@ -1,5 +1,6 @@
 import { RangeSlider } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { StarsGroup } from "./starGroup";
 
 const themeColor = "#05203C";
 
@@ -7,10 +8,12 @@ export const HotelFilters = ({
   maxPrice,
   onPriceRangeChange,
   onSearchChange,
+  onRatingChange,
 }: {
   maxPrice: number;
   onPriceRangeChange: (range: [number, number]) => void;
   onSearchChange: (search: string) => void;
+  onRatingChange: (rating: boolean[]) => void;
 }) => {
   const [value, setValue] = useState<[number, number]>([0, 2000]);
   const handleOnChangeEnd = (value: [number, number]) => {
@@ -19,6 +22,19 @@ export const HotelFilters = ({
 
   const handleOnChange = (value: [number, number]) => {
     setValue(value);
+  };
+
+  const [stars, setStars] = useState<boolean[]>([
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+
+  const handleRatingChange = (value: boolean[]) => {
+    setStars(value);
+    onRatingChange(value);
   };
 
   useEffect(() => {
@@ -34,16 +50,16 @@ export const HotelFilters = ({
   ];
 
   return (
-    <div>
+    <div className="flex flex-col gap-4 items-center">
       <h1>Filters</h1>
-      <div>כוכבים</div>
+      <StarsGroup value={stars} onChange={handleRatingChange} />
       <div>ביקורת</div>
-      <div style={{ margin: "auto", maxWidth: "90%" }}>
+      <div style={{ margin: "auto", width: "100%" }}>
         <RangeSlider
           thumbSize={20}
           min={0}
           max={Math.ceil(maxPrice)}
-          step={10}
+          step={5}
           value={value}
           styles={{
             bar: { backgroundColor: themeColor },
