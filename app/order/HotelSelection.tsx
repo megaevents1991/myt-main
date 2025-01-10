@@ -10,14 +10,17 @@ import { DateRange } from "@/components/ui/dateInput";
 import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { HotelCard } from "@/components/ui/hotelCard";
-import { Search } from "lucide-react";
+import { Search, Settings2Icon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
 import { applyFiltersAndSorting } from "@/lib/hotelFilter";
+import { FiltersModal } from "@/components/ui/FiltersModal";
+import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 
 const event = events[0];
 
 export const HotelSelection = () => {
+  const [showFilters, setShowFilters] = useState(false);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const {
     setHotel,
@@ -135,7 +138,15 @@ export const HotelSelection = () => {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
+      <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
+        <HotelFilters
+          maxPrice={maxPrice}
+          onPriceRangeChange={handlePriceChange}
+          onSearchChange={() => {}}
+          onRatingChange={handleRatingChange}
+        />
+      </FiltersModal>
       <div className="flex flex-col w-full items-center">
         <div
           dir="rtl"
@@ -189,6 +200,24 @@ export const HotelSelection = () => {
           </div>
         </div>
       </div>
+      <SortOptionsContainer
+        sortOptions={
+          <>
+            <div>סדר לפי</div>
+            <button className="font-bold" onClick={() => {}}>
+              מחיר
+            </button>
+            <button className="font-bold" onClick={() => {}}>
+              משך טיסה
+            </button>
+          </>
+        }
+        settings={
+          <button>
+            <Settings2Icon onClick={() => setShowFilters(true)} />
+          </button>
+        }
+      />
       <LoaderWrapper isLoading={isLoading}>
         <div className="flex flex-row gap-4 flex-row-reverse items-start w-full">
           {matches && (

@@ -4,13 +4,8 @@ import { TimeSlider } from "@/components/ui/timeSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
-import { Button, ScrollArea, Modal } from "@mantine/core";
-import {
-  Settings2Icon,
-  ArrowLeftIcon,
-  Search,
-  PersonStanding,
-} from "lucide-react";
+import { Button, ScrollArea } from "@mantine/core";
+import { Settings2Icon, Search, PersonStanding } from "lucide-react";
 import {
   useContext,
   useEffect,
@@ -20,10 +15,12 @@ import {
 } from "react";
 import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
-import { FlightTicketCard } from "@/components/ui/flightTicketCard";
+import { FlightTicketCard } from "@/components/ui/FlightTicketCard";
 import { SelectWithIcon } from "@/components/ui/inputWithIcon";
-import { FlightFilter } from "@/components/ui/filters";
+import { FlightFilters } from "@/components/ui/FlightFilters";
 import { useMediaQuery } from "@mantine/hooks";
+import { FiltersModal } from "@/components/ui/FiltersModal";
+import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -306,44 +303,33 @@ export const FlightSelection = () => {
   return (
     <div className="space-y-6">
       {!matches && (
-        <Modal
-          opened={showFilters}
-          fullScreen
-          keepMounted
-          onClose={() => setShowFilters(false)}
-          closeButtonProps={{
-            style: { position: "absolute" },
-            icon: <ArrowLeftIcon />,
-          }}
-        >
-          <div className="bg-gray-100 p-4 rounded-lg space-y-4">
-            <FlightFilter
-              priceComponent={
-                <TimeSlider
-                  onChange={setSelectedFlightPrice}
-                  variant="price"
-                  onChangeEnd={handlePriceChange}
-                  value={selectedFlightPrice}
-                  maxValue={flightsMeta.maxPrice}
-                  minValue={flightsMeta.minPrice}
-                />
-              }
-              flightDurationComponent={
-                <TimeSlider
-                  onChangeEnd={handleChangeDurationEnd}
-                  value={selectedFlightDuration}
-                  onChange={setSelectedFlightDuration}
-                  maxValue={flightsMeta.maxDuration}
-                  minValue={flightsMeta.minDuration}
-                />
-              }
-              handleTimeRangeChange={handleRangeChange}
-              airlines={airlines}
-              filters={filters}
-              handleFilterChange={handleFilterChange}
-            />
-          </div>
-        </Modal>
+        <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
+          <FlightFilters
+            priceComponent={
+              <TimeSlider
+                onChange={setSelectedFlightPrice}
+                variant="price"
+                onChangeEnd={handlePriceChange}
+                value={selectedFlightPrice}
+                maxValue={flightsMeta.maxPrice}
+                minValue={flightsMeta.minPrice}
+              />
+            }
+            flightDurationComponent={
+              <TimeSlider
+                onChangeEnd={handleChangeDurationEnd}
+                value={selectedFlightDuration}
+                onChange={setSelectedFlightDuration}
+                maxValue={flightsMeta.maxDuration}
+                minValue={flightsMeta.minDuration}
+              />
+            }
+            handleTimeRangeChange={handleRangeChange}
+            airlines={airlines}
+            filters={filters}
+            handleFilterChange={handleFilterChange}
+          />
+        </FiltersModal>
       )}
       <div className="flex flex-col items-center">
         <div
@@ -383,12 +369,14 @@ export const FlightSelection = () => {
           </div>
         </div>
       </div>
-      <div className="flex flex-col items-center">
-        <div
-          dir="rtl"
-          className="w-screen gap-2 justify-evenly flex flex-row sm:flex-row justify-center p-4 bg-gray-200"
-        >
-          <div className="w-full flex text-center gap-2 flex-row">
+      <SortOptionsContainer
+        settings={
+          <button>
+            <Settings2Icon onClick={() => setShowFilters(true)} />
+          </button>
+        }
+        sortOptions={
+          <>
             <div>סדר לפי</div>
             <button
               className="font-bold"
@@ -402,14 +390,9 @@ export const FlightSelection = () => {
             >
               משך טיסה{" "}
             </button>
-          </div>
-          {!matches && (
-            <button>
-              <Settings2Icon onClick={() => setShowFilters(true)} />
-            </button>
-          )}
-        </div>
-      </div>
+          </>
+        }
+      />
       <LoaderWrapper isLoading={isLoading}>
         <div className="flex flex-row gap-8 flex-row-reverse items-start w-full">
           {matches && (
@@ -417,7 +400,7 @@ export const FlightSelection = () => {
               className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg"
               ref={filterRef}
             >
-              <FlightFilter
+              <FlightFilters
                 priceComponent={
                   <TimeSlider
                     onChange={setSelectedFlightPrice}

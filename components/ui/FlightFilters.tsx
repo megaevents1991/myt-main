@@ -59,7 +59,7 @@ const TimeBlock = ({
   </div>
 );
 
-export const FlightFilter = ({
+export const FlightFilters = ({
   airlines,
   handleFilterChange,
   filters,

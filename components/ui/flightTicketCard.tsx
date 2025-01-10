@@ -70,6 +70,9 @@ const FlightCard = ({
   const [tooltipOpened, setTooltipOpened] = useState(false);
   const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
 
+  const plusOne =
+    new Date(departureTime).getDay() !== new Date(arrivalTime).getDay();
+
   return (
     <div
       className="flex flex-row items-center justify-between w-full"
@@ -87,12 +90,17 @@ const FlightCard = ({
         <div className="text-sm">{metadata.name}</div>
       </div>
       <div className="w-3/6">
-        <div className="text-lg font-bold">
-          {String(new Date(departureTime).getHours()).padStart(2, "0")}:
-          {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
+        <div className="text-lg font-bold flex flex-row items-center">
+          <div>
+            {String(new Date(departureTime).getHours()).padStart(2, "0")}:
+            {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
+          </div>
           <ArrowLeft size={12} />
-          {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
-          {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
+          <div className="flex flex-row items-center">
+            {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
+            {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
+            <sup className="mr-1 text-secondary">{plusOne ? "1+" : ""}</sup>
+          </div>
         </div>
         <div className="text-sm inline-flex items-center flex-row">
           {departureAirport}

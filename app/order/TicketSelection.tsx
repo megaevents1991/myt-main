@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useContext, useState } from "react";
 import { OrderContext } from "../app.context";
 import OptionSelect from "@/components/ui/selector";
-import { TicketCard } from "@/components/ui/ticketCard";
+import { TicketCard } from "@/components/ui/TicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 

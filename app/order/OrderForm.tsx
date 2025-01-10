@@ -24,12 +24,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
   // const prevStep = () => setStep((prev) => prev - 1);
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-5xl mx-auto px-6 pt-6">
       {step === 1 && <TicketSelection />}
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
-      <div className="flex justify-between mt-4 sticky bottom-5 z-10">
+      <div className="mt-4 sticky z-10 w-screen justify-self-center	">
         {/* {step > 1 && (
           <button
             onClick={prevStep}
@@ -39,12 +39,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
           </button>
         )} */}
         {step < 4 && (
-          <button
-            onClick={nextStep}
-            className="bg-main mt-4 text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
-          >
-            {buttonText[step]}
-          </button>
+          <div className="w-full bg-black p-4 flex bg-gray-200">
+            <button
+              onClick={nextStep}
+              className="bg-main  text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
+            >
+              {buttonText[step]}
+            </button>
+          </div>
         )}
       </div>
     </div>
