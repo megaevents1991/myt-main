@@ -29,8 +29,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
-      <div className="mt-4 sticky z-10 w-screen justify-self-center	">
-        {/* {step > 1 && (
+      <div className="flex w-full flex-col items-center">
+        <div className="mt-4 sticky z-10 w-screen justify-center flex flex-col">
+          {/* {step > 1 && (
           <button
             onClick={prevStep}
             className={`${"bg-main"}  text-white rounded-lg p-2 font-bold w-full`}
@@ -38,16 +39,17 @@ export const OrderForm = ({ event }: { event: Event }) => {
             {buttonText[step]}
           </button>
         )} */}
-        {step < 4 && (
-          <div className="w-full bg-black p-4 flex bg-gray-200">
-            <button
-              onClick={nextStep}
-              className="bg-main  text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
-            >
-              {buttonText[step]}
-            </button>
-          </div>
-        )}
+          {step < 4 && (
+            <div className="w-full bg-black p-4 flex bg-gray-200 flex ">
+              <button
+                onClick={nextStep}
+                className="bg-main text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
+              >
+                {buttonText[step]}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

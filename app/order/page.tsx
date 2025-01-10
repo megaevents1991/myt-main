@@ -21,9 +21,7 @@ export default function OrderPage() {
           timezone: "UTC",
         }}
       >
-        <main className="flex-1">
-          <OrderForm event={events.find((e) => e.id === eventId) as Event} />
-        </main>
+        <OrderForm event={events.find((e) => e.id === eventId) as Event} />
       </DatesProvider>
     </Suspense>
   );

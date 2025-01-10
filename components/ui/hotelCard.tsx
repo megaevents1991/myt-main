@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { RoomCard } from "./roomCard";
 import Image from "next/image";
 import { Stars } from "./stars";
+import { cn } from "@/lib/utils";
 
 export const HotelCard = ({
   hotel,
@@ -25,6 +26,7 @@ export const HotelCard = ({
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
   const [roomInfo, setRoomInfo] = useState<Room | null>(null);
+  const [showHotelData, setShowHotelData] = useState(false);
 
   useEffect(() => {
     if (hotel.rates.length) {
@@ -56,6 +58,7 @@ export const HotelCard = ({
             </div>
             <div className="flex flex-row gap-2">
               <Carousel
+                initialSlide={0}
                 withIndicators
                 className="w-1/3"
                 dir="ltr"
@@ -67,8 +70,8 @@ export const HotelCard = ({
                 }}
               >
                 {[
-                  ...(roomInfo?.images || ""),
                   ...(roomsInfo?.general.images || ""),
+                  ...(roomInfo?.images || ""),
                 ].map((image, i) => {
                   return image ? (
                     <Carousel.Slide key={i}>
@@ -86,15 +89,36 @@ export const HotelCard = ({
               {/* <HotelIcon className="border rounded-lg" size={150} /> */}
               <div className="w-2/3">
                 <div>{selectedRoom?.room_data_trans.main_name}</div>
-                {roomInfo?.amenities.map((amenity) => (
-                  <span
-                    style={{ display: "inline-block" }}
-                    className="bg-gray-200 rounded-lg text-xs p-1 m-1"
-                    key={amenity}
-                  >
-                    {amenity}
-                  </span>
-                ))}
+                <button
+                  onClick={() => setShowHotelData(true)}
+                  className={cn(
+                    showHotelData && "bg-main text-white",
+                    "px-1 border rounded-md mr-1"
+                  )}
+                >
+                  שירותי המלון
+                </button>
+                <button
+                  onClick={() => setShowHotelData(false)}
+                  className={cn(
+                    !showHotelData && "bg-main text-white",
+                    "px-1 border rounded-md mr-1"
+                  )}
+                >
+                  פרטי חדר
+                </button>
+                <br />
+                {(showHotelData ? roomInfo : roomsInfo?.general)?.amenities.map(
+                  (amenity) => (
+                    <span
+                      style={{ display: "inline-block" }}
+                      className="bg-gray-200 rounded-md text-xs px-1 py-0.5 m-1"
+                      key={amenity}
+                    >
+                      {amenity}
+                    </span>
+                  )
+                )}
               </div>
             </div>
           </div>
