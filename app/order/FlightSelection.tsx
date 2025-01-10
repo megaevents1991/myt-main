@@ -15,7 +15,7 @@ import {
 } from "react";
 import { OrderContext } from "../app.context";
 import { parseDuration } from "@/lib/parseDuration";
-import { FlightTicketCard } from "@/components/ui/FlightTicketCard";
+import { FlightTicketCard } from "@/components/ui/FlightCard";
 import { SelectWithIcon } from "@/components/ui/inputWithIcon";
 import { FlightFilters } from "@/components/ui/FlightFilters";
 import { useMediaQuery } from "@mantine/hooks";

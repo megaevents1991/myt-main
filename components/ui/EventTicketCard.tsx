@@ -11,7 +11,7 @@ export type TicketCardProps = {
   index: number;
 };
 
-export const TicketCard = ({
+export const EventTicketCard = ({
   isSelected,
   price,
   basePrice,

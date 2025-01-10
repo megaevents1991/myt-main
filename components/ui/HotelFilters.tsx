@@ -1,6 +1,6 @@
 import { RangeSlider } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { StarsGroup } from "./StarGroup";
+import { StarsGroup } from "@/components/ui/StarsGroup";
 
 const themeColor = "#05203C";
 

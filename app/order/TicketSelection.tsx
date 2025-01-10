@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useContext, useState } from "react";
 import { OrderContext } from "../app.context";
 import OptionSelect from "@/components/ui/selector";
-import { TicketCard } from "@/components/ui/TicketCard";
+import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 
@@ -93,7 +93,7 @@ export const TicketSelection = () => {
           <ScrollArea h={"40vh"}>
             <div className="flex flex-col gap-2">
               {event?.tickets.map((ticket, index) => (
-                <TicketCard
+                <EventTicketCard
                   index={index}
                   onClick={() => handleTicketSelect(ticket.id)}
                   key={ticket.id}
