@@ -4,9 +4,11 @@ import { Star } from "lucide-react";
 export const StarsGroup = ({
   onChange,
   value,
+  className,
 }: {
   onChange: (value: boolean[]) => void;
   value: boolean[];
+  className?: string;
 }) => {
   const handleOnChange = (index: number) => {
     const newValue = [...value];
@@ -17,7 +19,7 @@ export const StarsGroup = ({
   };
 
   return (
-    <div className="flex gap-1">
+    <div className={cn("flex gap-1", className)}>
       {[...Array(5)].reverse().map((_, i) => {
         const isSelected = value[i];
         return (

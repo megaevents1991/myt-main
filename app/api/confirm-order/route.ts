@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { events, flights, hotels } from "@/lib/events-data";
+import { events, flights } from "@/lib/events-data";
 
 process.env.EMAIL_SERVER_USER = "studio.gta@gmail.com";
 process.env.EMAIL_SERVER_PASSWORD = "uxcjowkgihhfyibv";
@@ -24,9 +24,13 @@ export async function POST(req: Request) {
   // Validate and process the order details
   const event = events.find((e) => e.id === orderDetails.eventId);
   const flight = flights.find((f) => f.id === orderDetails.flightId);
-  const hotel = hotels.find((h) => h.id === orderDetails.hotelId);
+  // const hotel = hotels.find((h) => h.id === orderDetails.hotelId);
 
-  if (!event || !flight || !hotel) {
+  if (
+    !event ||
+    !flight
+    // || !hotel
+  ) {
     return NextResponse.json(
       { error: "Invalid order details" },
       { status: 400 }
@@ -50,7 +54,9 @@ export async function POST(req: Request) {
     Flight: ${flight.airline} (${formatDate(
     flight.departureTime
   )} - ${formatDate(flight.arrivalTime)})
-    Hotel: ${hotel.name}
+
+    Hotel: hotel.name
+  
     Check-in: ${formatDate(orderDetails.checkInDate)}
     Check-out: ${formatDate(orderDetails.checkOutDate)}
     Total Price: $${orderDetails.totalPrice.toFixed(2)}

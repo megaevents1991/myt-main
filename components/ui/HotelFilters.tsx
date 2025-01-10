@@ -46,11 +46,13 @@ export const HotelFilters = ({
   ];
 
   return (
-    <div className="flex flex-col gap-4 items-center">
-      <h1>Filters</h1>
-      <StarsGroup value={stars} onChange={handleRatingChange} />
-      <div>ביקורת</div>
-      <div style={{ margin: "auto", width: "100%" }}>
+    <div className="flex flex-col items-center p-5 gap-5">
+      <StarsGroup
+        value={stars}
+        onChange={handleRatingChange}
+        className="mt-5"
+      />
+      <div className="m-auto w-full mt-5">
         <RangeSlider
           thumbSize={20}
           min={0}

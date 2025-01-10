@@ -1,4 +1,4 @@
-import { Hotel, Info, Rate, Room } from "@/lib/hotel.type";
+import { Hotel, HotelInfoClient, Rate, Room } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
 import { formatHotelName } from "@/lib/formatHotelName";
 import { ChevronUp, ChevronDown } from "lucide-react";
@@ -10,33 +10,35 @@ import { RoomCard } from "./roomCard";
 import Image from "next/image";
 import { Stars } from "./stars";
 import { cn } from "@/lib/utils";
+import { OrderHotel } from "@/lib/app.types";
 
 export const HotelCard = ({
-  hotel,
+  hotelRates,
   handleSelect,
   isSelected,
-  roomsInfo,
+  hotelInfo,
+  handleSelectedRate,
 }: {
-  hotel: Hotel;
-  handleSelect: (id: Hotel) => void;
+  hotelRates: Hotel["rates"];
+  handleSelect: () => void;
   isSelected: boolean;
-  roomsInfo: Info;
+  hotelInfo: HotelInfoClient;
+  handleSelectedRate: (orderHotel: OrderHotel) => void;
 }) => {
-  const hotelName = formatHotelName(hotel.id);
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
-  const [roomInfo, setRoomInfo] = useState<Room | null>(null);
+  const [selectedRoomInfo, setSelectedRoomInfo] = useState<Room | null>(null);
   const [showHotelData, setShowHotelData] = useState(false);
 
   useEffect(() => {
-    if (hotel.rates.length) {
-      const firstRoom = hotel.rates[0];
+    if (hotelRates.length) {
+      const firstRoom = hotelRates[0];
       const roomName =
         firstRoom.room_data_trans.main_name +
         " " +
         firstRoom.room_data_trans.bedding_type;
-      setSelectedRoom(hotel.rates[0]);
-      setRoomInfo(roomsInfo?.rooms[roomName]);
+      setSelectedRoom(hotelRates[0]);
+      setSelectedRoomInfo(hotelInfo?.rooms[roomName]);
     }
   }, []);
 
@@ -50,17 +52,26 @@ export const HotelCard = ({
     const roomName =
       room.room_data_trans.main_name + " " + room.room_data_trans.bedding_type;
     setSelectedRoom(room);
-    setRoomInfo(roomsInfo?.rooms[roomName]);
+    setSelectedRoomInfo(hotelInfo?.rooms[roomName]);
+    handleSelectedRate({
+      rate: room,
+      address: hotelInfo.metadata.address,
+      name: hotelInfo.metadata.hotelName,
+      id: hotelInfo.metadata.id,
+      price: room.payment_options.payment_types[0].show_amount,
+    });
   };
 
   return (
-    <CardWrapper isSelected={isSelected} onClick={() => handleSelect(hotel)}>
+    <CardWrapper isSelected={isSelected} onClick={handleSelect}>
       <div className="px-2 w-full flex flex-col items-right gap-2">
         <div className="flex flex-col md:flex-row md:content-between  gap-2">
           <div className="flex flex-col md:w-4/5 items-right gap-2">
             <div className="flex flex-row justify-start items-center gap-2">
-              <div className="font-bold text-lg">{hotelName}</div>
-              <Stars rating={roomsInfo.rating} />
+              <div className="font-bold text-lg">
+                {formatHotelName(hotelInfo.metadata.hotelName)}
+              </div>
+              <Stars rating={hotelInfo.metadata.rating} />
             </div>
             <div className="flex flex-row gap-2">
               <Carousel
@@ -76,8 +87,8 @@ export const HotelCard = ({
                 }}
               >
                 {[
-                  ...(roomsInfo?.general.images || ""),
-                  ...(roomInfo?.images || ""),
+                  ...(hotelInfo?.general.images || ""),
+                  ...(selectedRoomInfo?.images || ""),
                 ].map((image, i) => {
                   return image ? (
                     <Carousel.Slide key={i}>
@@ -114,17 +125,18 @@ export const HotelCard = ({
                   פרטי חדר
                 </button>
                 <br />
-                {(showHotelData ? roomInfo : roomsInfo?.general)?.amenities.map(
-                  (amenity) => (
-                    <span
-                      style={{ display: "inline-block" }}
-                      className="bg-gray-200 rounded-md text-xs px-1 py-0.5 m-1"
-                      key={amenity}
-                    >
-                      {amenity}
-                    </span>
-                  )
-                )}
+                {(showHotelData
+                  ? selectedRoomInfo
+                  : hotelInfo?.general
+                )?.amenities.map((amenity) => (
+                  <span
+                    style={{ display: "inline-block" }}
+                    className="bg-gray-200 rounded-md text-xs px-1 py-0.5 m-1"
+                    key={amenity}
+                  >
+                    {amenity}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -142,7 +154,7 @@ export const HotelCard = ({
               <ChevronUp className="m-auto" color="black" />
             ) : (
               <div className="flex items-center justify-center gap-2">
-                {hotel.rates.length}
+                {hotelRates.length}
                 <span>סוגי חדרים נוספים</span>
                 <ChevronDown color="black" />
               </div>
@@ -152,7 +164,7 @@ export const HotelCard = ({
             {isSelected && (
               <ScrollArea className="w-full h-96" scrollbarSize={0}>
                 <div className="flex flex-col gap-2">
-                  {hotel.rates.map((room) => (
+                  {hotelRates.map((room) => (
                     <RoomCard
                       key={room.match_hash}
                       room={room}

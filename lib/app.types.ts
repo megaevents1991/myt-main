@@ -1,4 +1,5 @@
 import { Airline } from "aircodes";
+import { Rate } from "./hotel.type";
 
 export type Event = {
   id: string;
@@ -53,10 +54,12 @@ export type Flight = {
   };
 };
 
-export type Hotel = {
-  id: string;
+export type OrderHotel = {
+  rate: Rate;
+  address: string;
   name: string;
-  price: number;
+  id: string;
+  price: string;
 };
 
 export type Order = {

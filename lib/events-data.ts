@@ -1,4 +1,4 @@
-import { Event, Flight, Hotel } from "./app.types";
+import { Event, Flight } from "./app.types";
 
 export const events: Event[] = [
   {
@@ -181,16 +181,3 @@ export const flights: Flight[] = [
     metadata: {} as Flight["metadata"],
   },
 ] as Flight[];
-
-export const hotels: Hotel[] = [
-  {
-    id: "1",
-    name: "Luxury Hotel",
-    price: 300,
-  },
-  {
-    id: "2",
-    name: "Budget Inn",
-    price: 100,
-  },
-];

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authHeader } from "../keys";
 import { HotelInfo } from "@/lib/hotelInfo.type";
-import { Room, RoomsInfo } from "@/lib/hotel.type";
+import { Room, HotelsInfoClient } from "@/lib/hotel.type";
 
 const HOTEL_INFO_URL = "https://api.worldota.net/api/b2b/v3/hotel/info/";
 
@@ -45,8 +45,13 @@ const getHotelInfo = async (hotelId: string, rooms: string[]) => {
 
     return {
       id: hotelId,
-      rating: hotelInfoData.data.star_rating,
       rooms: filteredRooms,
+      metadata: {
+        hotelName: hotelInfoData.data.name,
+        address: hotelInfoData.data.address,
+        rating: hotelInfoData.data.star_rating,
+        id: hotelInfoData.data.id,
+      },
       general: {
         name: "general",
         amenities: hotelAmenity[0].amenities,
@@ -83,18 +88,14 @@ export async function POST(request: Request) {
       hotels.map(({ id, rooms }) => getHotelInfo(id, rooms))
     );
 
-    const roomsDict = data.reduce((acc, hotel) => {
+    const HotelInfoByKey = data.reduce((acc, hotel) => {
       if (hotel) {
-        acc[hotel.id] = {
-          rating: hotel.rating,
-          rooms: hotel.rooms,
-          general: hotel.general,
-        };
+        acc[hotel.id] = hotel;
       }
       return acc;
-    }, {} as RoomsInfo);
+    }, {} as HotelsInfoClient);
 
-    return NextResponse.json(roomsDict);
+    return NextResponse.json(HotelInfoByKey);
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json(

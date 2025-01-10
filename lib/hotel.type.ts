@@ -127,10 +127,15 @@ export type Room = {
   amenities: string[];
 };
 
-export type Info = {
+export type HotelInfoClient = {
   rooms: Record<string, Room>;
   general: Room;
-  rating: number;
+  metadata: {
+    hotelName: string;
+    address: string;
+    rating: number;
+    id: string;
+  };
 };
 
-export type RoomsInfo = Record<string, Info>;
+export type HotelsInfoClient = Record<string, HotelInfoClient>;

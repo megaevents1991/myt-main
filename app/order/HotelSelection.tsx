@@ -1,8 +1,7 @@
 "use client";
 
 import { events } from "@/lib/events-data";
-import { formatHotelName } from "@/lib/formatHotelName";
-import { Hotel, HotelResponse, RoomsInfo } from "@/lib/hotel.type";
+import { Hotel, HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
 import { Button, Popover } from "@mantine/core";
 import { useState, useEffect, useContext } from "react";
 import { OrderContext } from "../app.context";
@@ -13,19 +12,21 @@ import { HotelCard } from "@/components/ui/hotelCard";
 import { Search, Settings2Icon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
-import { applyFiltersAndSorting } from "@/lib/hotelFilter";
+import { applyFiltersAndSorting, SortOptions } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
+import { OrderHotel } from "@/lib/app.types";
 
 const event = events[0];
 
 export const HotelSelection = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [selectedHotelId, setSelectedHotelId] = useState("");
   const {
     setHotel,
     planeTickets,
-    hotel: selectedHotel,
+    hotel: selectedOrderHotel,
   } = useContext(OrderContext);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date(event.date).getTime() - 2 * 8.64e7),
@@ -40,7 +41,9 @@ export const HotelSelection = () => {
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
-  const [hotelsInfo, setHotelsInfo] = useState<RoomsInfo>({} as RoomsInfo);
+  const [hotelsInfo, setHotelsInfo] = useState<HotelsInfoClient>(
+    {} as HotelsInfoClient
+  );
   const [rating, setRating] = useState<boolean[]>([
     false,
     false,
@@ -53,12 +56,15 @@ export const HotelSelection = () => {
 
   const matches = useMediaQuery("(min-width: 768px)");
 
+  const [, setSortOption] = useState<SortOptions>("price_asc");
+
   useEffect(() => {
     fetchHotels();
   }, []);
 
   const fetchHotels = async () => {
     setIsLoading(true);
+    setHotel(undefined);
     const res = await fetch(`/api/hotels`, {
       method: "POST",
       body: JSON.stringify({
@@ -105,15 +111,8 @@ export const HotelSelection = () => {
     setIsLoading(false);
   };
 
-  const handleSelect = (hotel: Hotel) => {
-    setHotel({
-      name: formatHotelName(hotel.id),
-      id: hotel.id,
-      price: +hotel.rates[0].daily_prices[0],
-    });
-  };
-
   const handlePriceChange = (priceRange: [number, number]) => {
+    setHotel(undefined);
     setPriceRange(priceRange);
     const hotelsToSet = applyFiltersAndSorting({
       hotels,
@@ -126,12 +125,30 @@ export const HotelSelection = () => {
   };
 
   const handleRatingChange = (rating: boolean[]) => {
+    setHotel(undefined);
     setRating(rating);
     const hotelsToSet = applyFiltersAndSorting({
       hotels,
       priceRange,
       rating,
       hotelsInfo,
+    });
+
+    setFilteredHotels(hotelsToSet);
+  };
+
+  const handleSelectedRate = (orderHotel: OrderHotel) => {
+    setHotel(orderHotel);
+  };
+
+  const handleSortChange = (sortOption: SortOptions) => {
+    setSortOption(sortOption);
+    const hotelsToSet = applyFiltersAndSorting({
+      hotels,
+      priceRange,
+      rating,
+      hotelsInfo,
+      sortOption,
     });
 
     setFilteredHotels(hotelsToSet);
@@ -205,11 +222,17 @@ export const HotelSelection = () => {
         sortOptions={
           <>
             <div>סדר לפי</div>
-            <button className="font-bold" onClick={() => {}}>
+            <button
+              className="font-bold"
+              onClick={() => handleSortChange("price_asc")}
+            >
               מחיר
             </button>
-            <button className="font-bold" onClick={() => {}}>
-              משך טיסה
+            <button
+              className="font-bold"
+              onClick={() => handleSortChange("rating")}
+            >
+              כוכבים
             </button>
           </>
         }
@@ -237,11 +260,21 @@ export const HotelSelection = () => {
               {filteredHotels.map((hotel) => {
                 return (
                   <HotelCard
-                    isSelected={hotel.id === selectedHotel?.id}
+                    isSelected={hotel.id === selectedHotelId}
                     key={hotel.id}
-                    hotel={hotel}
-                    roomsInfo={hotelsInfo[hotel.id]}
-                    handleSelect={handleSelect}
+                    hotelRates={hotel.rates}
+                    hotelInfo={hotelsInfo[hotel.id]}
+                    handleSelect={() => {
+                      if (
+                        selectedOrderHotel &&
+                        selectedOrderHotel?.id !== hotel.id
+                      ) {
+                        setHotel(undefined);
+                      }
+
+                      setSelectedHotelId(hotel.id);
+                    }}
+                    handleSelectedRate={handleSelectedRate}
                   />
                 );
               })}

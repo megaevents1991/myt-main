@@ -2,7 +2,7 @@
 import { PillStepper } from "@/components/ui/pillStepper";
 import { ReactNode, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
-import { Event, Flight, Hotel } from "@/lib/app.types";
+import { Event, Flight, OrderHotel } from "@/lib/app.types";
 import { events } from "@/lib/events-data";
 import { useSearchParams } from "next/navigation";
 import "@mantine/core/styles.css";
@@ -12,7 +12,7 @@ import "@mantine/carousel/styles.css";
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>({} as Event);
-  const [hotel, setHotel] = useState<Hotel | undefined>({} as Hotel);
+  const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(1);
   const [planeTickets, setPlaneTickets] = useState({ adults: 1, children: 0 });
   const [step, setStep] = useState(1);

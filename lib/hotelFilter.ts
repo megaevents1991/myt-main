@@ -1,22 +1,26 @@
-import { Hotel, RoomsInfo } from "./hotel.type";
+import { Hotel, HotelsInfoClient } from "./hotel.type";
+
+export type SortOptions = "price_asc" | "rating";
 
 export const applyFiltersAndSorting = ({
   hotels,
   priceRange,
   rating,
   hotelsInfo,
+  sortOption = "price_asc",
 }: {
   hotels: Hotel[];
   priceRange: [number, number];
   rating: boolean[];
-  hotelsInfo: RoomsInfo;
+  hotelsInfo: HotelsInfoClient;
+  sortOption?: SortOptions;
 }) => {
   // Apply filters
 
   const filteredHotels = hotels.filter((hotel) => {
     const price = +hotel.rates[0].payment_options.payment_types[0].show_amount;
 
-    const hotelRating = hotelsInfo[hotel.id].rating;
+    const hotelRating = hotelsInfo[hotel.id].metadata.rating;
 
     const matchesRating =
       rating.every((r) => r) ||
@@ -28,5 +32,30 @@ export const applyFiltersAndSorting = ({
     return matchesPriceRange && matchesRating;
   });
 
-  return filteredHotels;
+  const sortedHotels = hotelSort(filteredHotels, sortOption, hotelsInfo);
+
+  return sortedHotels;
+};
+
+export const hotelSort = (
+  hotels: Hotel[],
+  sortOption: SortOptions,
+  hotelsInfo: HotelsInfoClient
+) => {
+  return [...hotels].sort((a, b) => {
+    switch (sortOption) {
+      case "price_asc":
+        return (
+          +a.rates[0].payment_options.payment_types[0].show_amount -
+          +b.rates[0].payment_options.payment_types[0].show_amount
+        );
+      case "rating":
+        return (
+          hotelsInfo[b.id].metadata.rating - hotelsInfo[a.id].metadata.rating
+        );
+
+      default:
+        return 0;
+    }
+  });
 };

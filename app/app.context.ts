@@ -1,11 +1,11 @@
-import { Flight, Hotel, Event } from "@/lib/app.types";
+import { Flight, OrderHotel, Event } from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
 
 type AppContext = {
   flight?: Flight;
   event?: Event;
-  hotel?: Hotel;
-  setHotel: (hotel: Hotel) => void;
+  hotel?: OrderHotel;
+  setHotel: (hotel?: OrderHotel) => void;
   setFlight: (flight?: Flight) => void;
   setEvent: (event: Event) => void;
   numberOfEventTickets: number;
