@@ -40,6 +40,12 @@ export const HotelCard = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (!isSelected && opened) {
+      setOpened(false);
+    }
+  }, [isSelected]);
+
   const handleRoomSelect = (room: Rate) => {
     const roomName =
       room.room_data_trans.main_name + " " + room.room_data_trans.bedding_type;

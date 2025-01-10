@@ -96,6 +96,7 @@ export const FlightSelection = () => {
     }));
     setDepartureRanges([]);
     setArrivalRanges([]);
+    setFlight(undefined);
 
     try {
       const res = await fetch(`/api/flights?eventId=${event?.id}`, {
@@ -179,6 +180,7 @@ export const FlightSelection = () => {
     value: string | boolean | string[]
   ) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setFlight(undefined);
 
     if (key === "airline" && Array.isArray(value)) {
       const filteredFlights = applyFiltersAndSorting(flights, {
@@ -210,6 +212,7 @@ export const FlightSelection = () => {
   };
 
   const handleChangeDurationEnd = (duration: number) => {
+    setFlight(undefined);
     setSelectedFlightDuration(duration);
 
     const filteredFlights = applyFiltersAndSorting(flights, {
@@ -226,6 +229,7 @@ export const FlightSelection = () => {
   };
 
   const handlePriceChange = (price: number) => {
+    setFlight(undefined);
     setSelectedFlightPrice(price);
 
     const filteredFlights = applyFiltersAndSorting(flights, {
@@ -248,6 +252,7 @@ export const FlightSelection = () => {
     range: TimeRange[] | [];
     name: "departure" | "arrival";
   }) => {
+    setFlight(undefined);
     if (name === "departure") {
       setDepartureRanges(range);
     } else {

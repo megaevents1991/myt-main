@@ -141,6 +141,7 @@ export const HotelSelection = () => {
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
+          selectedRating={rating}
           maxPrice={maxPrice}
           onPriceRangeChange={handlePriceChange}
           onSearchChange={() => {}}
@@ -223,6 +224,7 @@ export const HotelSelection = () => {
           {matches && (
             <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg">
               <HotelFilters
+                selectedRating={rating}
                 maxPrice={maxPrice}
                 onPriceRangeChange={handlePriceChange}
                 onSearchChange={() => {}}

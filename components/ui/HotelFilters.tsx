@@ -9,11 +9,13 @@ export const HotelFilters = ({
   onPriceRangeChange,
   onSearchChange,
   onRatingChange,
+  selectedRating,
 }: {
   maxPrice: number;
   onPriceRangeChange: (range: [number, number]) => void;
   onSearchChange: (search: string) => void;
   onRatingChange: (rating: boolean[]) => void;
+  selectedRating: boolean[];
 }) => {
   const [value, setValue] = useState<[number, number]>([0, 2000]);
   const handleOnChangeEnd = (value: [number, number]) => {
@@ -24,13 +26,7 @@ export const HotelFilters = ({
     setValue(value);
   };
 
-  const [stars, setStars] = useState<boolean[]>([
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
+  const [stars, setStars] = useState<boolean[]>(selectedRating);
 
   const handleRatingChange = (value: boolean[]) => {
     setStars(value);

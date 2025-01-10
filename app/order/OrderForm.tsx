@@ -8,6 +8,7 @@ import OrderReview from "./OrderReview";
 import { useOrderState } from "./useOrderState";
 import { Event } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
+import { cn } from "@/lib/utils";
 
 const buttonText: Record<number, string> = {
   1: "המשך לבחירת טיסה",
@@ -18,7 +19,10 @@ const buttonText: Record<number, string> = {
 
 export const OrderForm = ({ event }: { event: Event }) => {
   const { order, submitOrder } = useOrderState(event);
-  const { step, setStep } = useContext(OrderContext);
+  const { step, setStep, flight, hotel } = useContext(OrderContext);
+
+  const buttonDisabled =
+    (!flight?.id && step === 2) || (!hotel?.id && step === 3);
 
   const nextStep = () => setStep((prev) => prev + 1);
   // const prevStep = () => setStep((prev) => prev - 1);
@@ -42,8 +46,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
           {step < 4 && (
             <div className="w-full bg-black p-4 flex bg-gray-200 flex ">
               <button
+                disabled={buttonDisabled}
                 onClick={nextStep}
-                className="bg-main text-white rounded-lg p-2 font-bold w-full sm:w-1/4"
+                className={cn(
+                  "bg-main text-white rounded-lg p-2 font-bold w-full sm:w-1/4",
+                  buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                )}
               >
                 {buttonText[step]}
               </button>
