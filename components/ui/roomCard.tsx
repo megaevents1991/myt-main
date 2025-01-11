@@ -15,12 +15,12 @@ export const RoomCard = ({
     <div onClick={() => onRoomSelect(room)}>
       <div
         className={cn(
-          "p-2 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 hover:border-main flex flex-row justify-between items-center",
+          "p-2 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 hover:border-main text-sm flex flex-row justify-between items-center",
           isSelected && "text-secondary font-bold"
         )}
       >
-        <div className="text-sm">
-          {room.room_data_trans.bedding_type} {room.room_data_trans.main_name}
+        <div>
+          {room.room_data_trans.main_name}
           {room.room_data_trans.bedding_type
             ? ` - ${room.room_data_trans.bedding_type}`
             : ""}
