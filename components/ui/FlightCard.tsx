@@ -1,7 +1,7 @@
-import { Flight } from "@/lib/app.types";
+import { Flight, FlightSegment } from "@/lib/app.types";
 import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, Info, Luggage } from "lucide-react";
 import { Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 import { useState } from "react";
@@ -32,13 +32,13 @@ export const FlightTicketCard = ({
   return (
     <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
       <div className="flex flex-col items-center sm:flex-row w-full py-2">
-        <div className="w-full md:w-2/3">
+        <div className="w-full md:w-5/6">
           <FlightCard {...outbound} metadata={metadata} />
           <div className="border w-full my-2"></div>
           <FlightCard {...inbound} metadata={metadata} />
         </div>
         <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
-        <div className="font-bold text-lg lg:text-3xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
+        <div className="font-bold md:w-1/6 text-lg lg:text-2xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
           {price}
           &#8364;
           <div className="hidden sm:block"></div>
@@ -49,7 +49,7 @@ export const FlightTicketCard = ({
 };
 
 type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
-  (FlightTicketCardProps["inbound"] | FlightTicketCardProps["outbound"]);
+  FlightSegment;
 
 const FlightCard = ({
   arrivalAirport,
@@ -58,6 +58,7 @@ const FlightCard = ({
   departureTime,
   stops,
   metadata,
+  checkBagsIncluded,
 }: FlightCardProps) => {
   const [tooltipOpened, setTooltipOpened] = useState(false);
   const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
@@ -67,10 +68,10 @@ const FlightCard = ({
 
   return (
     <div
-      className="flex flex-row items-center justify-between w-full"
+      className="flex flex-row items-center justify-between w-full gap-1"
       ref={ref}
     >
-      <div className="w-2/6">
+      <div className="w-2/6 md:w-[30%]">
         <div className="mb-2">
           <Image
             src={metadata.logo || ""}
@@ -81,7 +82,7 @@ const FlightCard = ({
         </div>
         <div className="text-sm">{metadata.name}</div>
       </div>
-      <div className="w-3/6">
+      <div className="md:w-[25%]">
         <div className="text-lg font-bold flex flex-row items-center">
           <div>
             {String(new Date(departureTime).getHours()).padStart(2, "0")}:
@@ -100,20 +101,27 @@ const FlightCard = ({
           {arrivalAirport}
         </div>
       </div>
-      <div
-        className="w-1/6 text-center display flex flex-col items-center"
-        onTouchStart={() => setTooltipOpened((curr) => !curr)}
-      >
-        <div className="text-sm font-bold">{stopsMap[stops.length - 1]}</div>
-        {stops.length - 1 ? (
-          <Tooltip
-            label={`${stops.slice(0, -1).join(", ")} עצירה ב`}
-            position="top"
-            opened={isMobile ? tooltipOpened : undefined}
-          >
-            <Info size={12} />
-          </Tooltip>
-        ) : null}
+      <div className="md:w-[25%] text-center display flex flex-col items-center md:items-start gap-2">
+        <div
+          className="text-sm font-bold flex flex-col md:flex-row gap-2 text-right items-center"
+          onTouchStart={() => setTooltipOpened((curr) => !curr)}
+        >
+          {stops.length - 1 ? (
+            <Tooltip
+              label={`${stops.slice(0, -1).join(", ")} עצירה ב`}
+              position="top"
+              opened={isMobile ? tooltipOpened : undefined}
+            >
+              <Info />
+            </Tooltip>
+          ) : null}
+          {stopsMap[stops.length - 1]}
+        </div>
+        {checkBagsIncluded && (
+          <div className="text-sm font-bold flex flex-col md:flex-row gap-2 text-right items-center">
+            <Luggage /> כולל מזוודה
+          </div>
+        )}
       </div>
     </div>
   );

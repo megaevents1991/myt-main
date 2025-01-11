@@ -15,7 +15,7 @@ export const CardWrapper = ({
     <div
       onClick={onClick}
       dir="rtl"
-      className={`flex cursor-pointer flex-row items-center justify-between px-6 py-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:shadow-xl hover:border-main ${
+      className={`flex cursor-pointer flex-row items-center justify-between px-4 py-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:shadow-xl hover:border-main ${
         isSelected ? "border-main border-2" : ""
       }`}
     >

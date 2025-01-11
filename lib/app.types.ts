@@ -36,22 +36,18 @@ export type Flight = {
   returnDepartureTime: string;
   returnArrivalTime: string;
   metadata: Airline;
-  outbound: {
-    departureTime: string;
-    arrivalTime: string;
-    departureAirport: string;
-    arrivalAirport: string;
-    stops: string[];
-    duration: string;
-  };
-  inbound: {
-    departureTime: string;
-    arrivalTime: string;
-    departureAirport: string;
-    arrivalAirport: string;
-    stops: string[];
-    duration: string;
-  };
+  outbound: FlightSegment;
+  inbound: FlightSegment;
+};
+
+export type FlightSegment = {
+  departureTime: string;
+  arrivalTime: string;
+  departureAirport: string;
+  arrivalAirport: string;
+  stops: string[];
+  duration: string;
+  checkBagsIncluded: boolean;
 };
 
 export type OrderHotel = {

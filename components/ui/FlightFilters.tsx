@@ -55,7 +55,9 @@ const TimeBlock = ({
   >
     {icon}
     <div className="text-lg font-medium text-right">{label}</div>
-    <div className="text-sm text-muted-foreground">{time}</div>
+    <div className="text-xs text-muted-foreground whitespace-nowrap">
+      {time}
+    </div>
   </div>
 );
 
@@ -124,7 +126,7 @@ export const FlightFilters = ({
   };
 
   return (
-    <div className="w-full max-w-md p-6 space-y-8">
+    <div className="w-full max-w-md p-2 space-y-8">
       {/* Stops Section */}
       <div dir="rtl">
         <h3 className="text-lg font-semibold mb-4">עצירות</h3>

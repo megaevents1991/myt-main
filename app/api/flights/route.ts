@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { events } from "@/lib/events-data";
 import Amadeus from "amadeus";
-import { FlightSearchOptions } from "@/lib/app.types";
+import { FlightSearchOptions, FlightSegment } from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
 process.env.AMADEUS_CLIENT_ID = "306M5ysI3BdNXNuruBjACYZTo8lOb3WC";
 process.env.AMADEUS_CLIENT_SECRET = "qnUSdtaUuMeWspSV";
@@ -81,7 +81,13 @@ export async function POST(request: Request) {
 
     // Transform Amadeus response to match our flight data structure
     const flights = response.result.data.map(
-      ({ id, validatingAirlineCodes, price, itineraries }) => {
+      ({
+        id,
+        validatingAirlineCodes,
+        price,
+        itineraries,
+        travelerPricings,
+      }) => {
         const toDeparture = itineraries[0].segments[0];
         const toArrival = itineraries[0].segments.at(-1);
 
@@ -96,34 +102,60 @@ export async function POST(request: Request) {
           (segment) => segment.arrival.iataCode
         );
 
+        const fromCheckBagsIncluded = itineraries[0].segments.every(
+          (segment) => {
+            return travelerPricings[0].fareDetailsBySegment.some((fare) => {
+              return (
+                fare.segmentId === segment.id &&
+                fare.includedCheckedBags?.quantity
+              );
+            });
+          }
+        );
+
+        const toCheckBagsIncluded = itineraries[1].segments.every((segment) => {
+          return travelerPricings[0].fareDetailsBySegment.some((fare) => {
+            return (
+              fare.segmentId === segment.id &&
+              fare.includedCheckedBags?.quantity
+            );
+          });
+        });
+
+        const outbound: FlightSegment = {
+          stops: toStops,
+          departureTime: toDeparture.departure.at,
+          departureAirport: toDeparture.departure.iataCode,
+          arrivalAirport: toArrival?.arrival.iataCode || "",
+          arrivalTime: toArrival?.arrival.at || "0",
+          duration: itineraries[0].duration,
+          checkBagsIncluded: fromCheckBagsIncluded,
+        };
+
+        const inbound: FlightSegment = {
+          departureTime: fromDeparture.departure.at,
+          departureAirport: fromDeparture.departure.iataCode,
+          arrivalAirport: fromArrival?.arrival.iataCode || "",
+          arrivalTime: fromArrival?.arrival.at || "0",
+          stops: fromStops,
+          duration: itineraries[1].duration,
+          checkBagsIncluded: toCheckBagsIncluded,
+        };
+
         return {
           id,
           price: parseFloat(price.total),
           duration: itineraries[0].duration,
           stops: itineraries[0].segments.length - 1,
           airline: validatingAirlineCodes[0],
-          outbound: {
-            stops: toStops,
-            departureTime: toDeparture.departure.at,
-            departureAirport: toDeparture.departure.iataCode,
-            arrivalAirport: toArrival?.arrival.iataCode,
-            arrivalTime: toArrival?.arrival.at || 0,
-            duration: itineraries[0].duration,
-          },
-          inbound: {
-            departureTime: fromDeparture.departure.at,
-            departureAirport: fromDeparture.departure.iataCode,
-            arrivalAirport: fromArrival?.arrival.iataCode,
-            arrivalTime: fromArrival?.arrival.at || 0,
-            stops: fromStops,
-            duration: itineraries[1].duration,
-          },
-          departureTime: toDeparture.departure.at,
-          departureAirport: toDeparture.departure.iataCode,
-          arrivalAirport: toArrival?.arrival.iataCode,
-          arrivalTime: toArrival?.arrival.at || 0,
-          returnDepartureTime: fromDeparture.departure.at,
-          returnArrivalTime: fromArrival?.arrival.at || 0,
+          outbound,
+          inbound,
+          // departureTime: toDeparture.departure.at,
+          // departureAirport: toDeparture.departure.iataCode,
+          // arrivalAirport: toArrival?.arrival.iataCode,
+          // arrivalTime: toArrival?.arrival.at || 0,
+          // returnDepartureTime: fromDeparture.departure.at,
+          // returnArrivalTime: fromArrival?.arrival.at || 0,
           metadata: {
             ...getAirlineByIata(validatingAirlineCodes[0]),
             name: response.result.dictionaries.carriers[
