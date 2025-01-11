@@ -1,5 +1,4 @@
 import { Rate } from "@/lib/hotel.type";
-import { CardWrapper } from "./cardWrapper";
 import { cn } from "@/lib/utils";
 
 export const RoomCard = ({
