@@ -83,7 +83,7 @@ export const TicketSelection = () => {
           />
         </Spoiler>
         <Image
-          className="rounded-lg hidden sm:block sm:w-1/3"
+          className="rounded-lg hidden w-full sm:block w-auto h-auto max-w-[50%]"
           width={600}
           height={800}
           src={event?.mapUrl || ""}

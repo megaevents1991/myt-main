@@ -33,9 +33,11 @@ export const HotelSelection = () => {
     new Date(new Date(event.date).getTime() + 8.64e7),
   ]);
   const [isLoading, setIsLoading] = useState(true);
-  const [roomParams, setRoomParams] = useState({
-    rooms: 1,
-    beds: 2,
+  const [roomParams, setRoomParams] = useState<{
+    adults: number;
+    children: number[];
+  }>({
+    children: [],
     adults: planeTickets.adults,
   });
 
@@ -71,7 +73,7 @@ export const HotelSelection = () => {
         location: event.location,
         checkin: dateRange?.[0]?.toISOString().split("T")[0],
         checkout: dateRange?.[1]?.toISOString().split("T")[0],
-        adults: 1,
+        guests: [{ adults: roomParams.adults, children: roomParams.children }],
       }),
     });
     const data: HotelResponse = await res.json();
@@ -187,15 +189,15 @@ export const HotelSelection = () => {
               >
                 <Popover.Target>
                   <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
-                    {`${roomParams.rooms} חדרים | ${roomParams.beds} מיטות | ${roomParams.adults} מבוגרים`}
+                    {`${roomParams.children.length + roomParams.adults} אורחים`}
                   </div>
                 </Popover.Target>
                 <Popover.Dropdown>
                   <RoomsAndGuestsInput
-                    initialGuests={roomParams.adults}
-                    initialRooms={roomParams.rooms}
-                    onUnmount={({ guests, rooms }) => {
-                      setRoomParams({ ...roomParams, rooms, adults: guests });
+                    initialChildren={roomParams.children}
+                    initialAdults={roomParams.adults}
+                    onChange={({ adults, children }) => {
+                      setRoomParams({ children, adults });
                     }}
                   />
                 </Popover.Dropdown>

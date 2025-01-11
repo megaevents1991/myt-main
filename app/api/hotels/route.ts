@@ -5,9 +5,9 @@ import { authHeader } from "../keys";
 const API_URL = "https://api.worldota.net/api/b2b/v3/search/serp/geo";
 
 export async function POST(request: Request) {
-  const { location, checkin, checkout, adults } = await request.json();
+  const { location, checkin, checkout, guests } = await request.json();
 
-  if (!location || !checkin || !checkout || !adults) {
+  if (!location || !checkin || !checkout || !guests?.length) {
     return NextResponse.json(
       {
         error:
@@ -24,12 +24,7 @@ export async function POST(request: Request) {
     checkout,
     residency: "il",
     language: "en",
-    guests: [
-      {
-        adults,
-        children: [],
-      },
-    ],
+    guests,
     longitude,
     latitude,
     radius: 1000,
@@ -46,6 +41,7 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
+      console.log(await response.text());
       throw new Error("API request failed");
     }
 

@@ -24,7 +24,7 @@ export const EventTicketCard = ({
   const priceToDisplay = price - basePrice;
   return (
     <CardWrapper isSelected={isSelected} onClick={onClick}>
-      <div className="w-2/5">
+      <div className="w-2/3">
         <div>{category}</div>
         <div>{categoryDescription}</div>
         <div
@@ -34,7 +34,7 @@ export const EventTicketCard = ({
           צבע אזור
         </div>
       </div>
-      <div className="w-3/5 sm:w-2/5 text-left sm:text-right">
+      <div className="w-1/3 text-left">
         {index === 0 ? (
           "כלול במחיר"
         ) : (
@@ -46,15 +46,6 @@ export const EventTicketCard = ({
             <div className="text-xs">{"תוספת לכל כרטיס"}</div>
           </>
         )}
-      </div>
-      <div className="w-1/5 hidden sm:block">
-        <button
-          className={`${
-            isSelected ? "bg-main" : "bg-secondary"
-          }  text-white rounded-lg p-2 font-bold w-full`}
-        >
-          {isSelected ? "הבחירה שלך" : "בחר"}
-        </button>
       </div>
     </CardWrapper>
   );

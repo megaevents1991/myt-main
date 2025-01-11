@@ -9,6 +9,7 @@ interface CounterInputProps {
   value: number;
   onIncrement: () => void;
   onDecrement: () => void;
+  minValue?: number;
 }
 
 const CounterInput: React.FC<CounterInputProps> = ({
@@ -16,18 +17,19 @@ const CounterInput: React.FC<CounterInputProps> = ({
   value,
   onIncrement,
   onDecrement,
+  minValue = 1,
 }) => (
-  <div className="flex items-center space-x-2">
+  <div className="flex items-center justify-between">
     <span className="w-20">{label}</span>
     <Button
       variant="outline"
       size="icon"
       onClick={onDecrement}
-      disabled={value <= 1}
+      disabled={+value <= minValue}
     >
       <Minus className="h-4 w-4" />
     </Button>
-    <input type="number" value={value} readOnly className="w-16 text-center" />
+    <div className="w-16 text-center">{value}</div>
     <Button variant="outline" size="icon" onClick={onIncrement}>
       <Plus className="h-4 w-4" />
     </Button>
@@ -35,42 +37,94 @@ const CounterInput: React.FC<CounterInputProps> = ({
 );
 
 export default function RoomsAndGuestsInput({
-  initialGuests,
-  initialRooms,
-  onUnmount,
+  initialAdults,
+  initialChildren = [],
+  onChange,
 }: {
-  initialGuests: number;
-  initialRooms: number;
-  onUnmount: ({ guests, rooms }: { guests: number; rooms: number }) => void;
+  initialChildren: number[];
+  initialAdults: number;
+  onChange: ({
+    adults,
+    children,
+  }: {
+    adults: number;
+    children: number[];
+  }) => void;
 }) {
+  const [children, setChildren] = useState(initialChildren);
+  const [adults, setAdults] = useState(initialAdults);
+
   useEffect(() => {
-    return () => {
-      onUnmount({ guests, rooms });
-    };
-  }, []);
+    onChange({ adults, children });
+  }, [children, adults]);
 
-  const [rooms, setRooms] = useState(initialRooms);
-  const [guests, setGuests] = useState(initialGuests);
-
-  const incrementRooms = () => setRooms((prev) => prev + 1);
-  const decrementRooms = () => setRooms((prev) => Math.max(1, prev - 1));
-  const incrementGuests = () => setGuests((prev) => prev + 1);
-  const decrementGuests = () => setGuests((prev) => Math.max(1, prev - 1));
+  const incrementChildren = () => setChildren((prev) => [...prev, 1]);
+  const decrementChildren = () =>
+    setChildren((prev) => {
+      const next = [...prev];
+      next.pop();
+      return next;
+    });
+  const incrementGuests = () => setAdults((prev) => prev + 1);
+  const decrementGuests = () => setAdults((prev) => Math.max(1, prev - 1));
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg">
+    <div className="space-y-4 p-4 border rounded-md" dir="rtl">
       <CounterInput
-        label="Rooms"
-        value={rooms}
-        onIncrement={incrementRooms}
-        onDecrement={decrementRooms}
-      />
-      <CounterInput
-        label="Guests"
-        value={guests}
+        label="מבוגרים"
+        value={adults}
         onIncrement={incrementGuests}
         onDecrement={decrementGuests}
       />
+      <CounterInput
+        label="ילדים"
+        minValue={0}
+        value={children.length}
+        onIncrement={incrementChildren}
+        onDecrement={decrementChildren}
+      />
+      <div>
+        {Array.from({ length: children.length }, (_, i) => (
+          <div key={i} className="inline-block mr-2 mb-2">
+            <ChildrenAgeSelect
+              age={children[i]}
+              onChange={(age) =>
+                setChildren((prev) => [
+                  ...prev.slice(0, i),
+                  age,
+                  ...prev.slice(i + 1),
+                ])
+              }
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
+const ChildrenAgeSelect = ({
+  onChange,
+  age,
+}: {
+  onChange: (age: number) => void;
+  age: number;
+}) => {
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onChange(+e.target.value);
+  };
+  return (
+    <select
+      value={age}
+      onChange={handleChange}
+      className="text-center border border-gray-300 rounded-md px-2 py-1"
+    >
+      <option value="1">0-1</option>
+      {Array.from({ length: 16 }, (_, i) => i).map((age) => (
+        <option key={age + 2} value={age + 2}>
+          {age + 2}
+        </option>
+      ))}
+    </select>
+  );
+};

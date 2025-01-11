@@ -49,8 +49,11 @@ export const HotelCard = ({
   }, [isSelected]);
 
   const handleRoomSelect = (room: Rate) => {
-    const roomName =
-      room.room_data_trans.main_name + " " + room.room_data_trans.bedding_type;
+    const roomName = `${room.room_data_trans.main_name}${
+      room.room_data_trans.bedding_type
+        ? " " + room.room_data_trans.bedding_type
+        : ""
+    }`;
     setSelectedRoom(room);
     setSelectedRoomInfo(hotelInfo?.rooms[roomName]);
     handleSelectedRate({
@@ -125,7 +128,7 @@ export const HotelCard = ({
                   פרטי חדר
                 </button>
                 <br />
-                {(showHotelData
+                {(!showHotelData
                   ? selectedRoomInfo
                   : hotelInfo?.general
                 )?.amenities.map((amenity) => (
@@ -160,7 +163,7 @@ export const HotelCard = ({
               </div>
             )}
           </div>
-          <Collapse in={opened} className="mt-4">
+          <Collapse in={opened} className="mt-4 w-full">
             {isSelected && (
               <ScrollArea className="w-full h-96" scrollbarSize={0}>
                 <div className="flex flex-col gap-2">

@@ -33,8 +33,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
-      <div className="flex w-full flex-col items-center">
-        <div className="mt-4 sticky z-10 w-screen justify-center flex flex-col">
+      <div className="flex w-full flex-col items-center bottom-0 sticky z-10">
+        <div className="mt-4 w-screen justify-center flex flex-col bg-gray-200">
           {/* {step > 1 && (
           <button
             onClick={prevStep}
@@ -44,7 +44,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           </button>
         )} */}
           {step < 4 && (
-            <div className="w-full bg-black p-4 flex bg-gray-200 flex ">
+            <div className="w-full p-4 flex">
               <button
                 disabled={buttonDisabled}
                 onClick={nextStep}
