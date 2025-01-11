@@ -135,6 +135,8 @@ export type HotelInfoClient = {
     address: string;
     rating: number;
     id: string;
+    longitude: number;
+    latitude: number;
   };
 };
 

@@ -17,6 +17,7 @@ import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import { OrderHotel } from "@/lib/app.types";
 import dayjs from "dayjs";
+import { getDistance } from "geolib";
 
 const event = events[0];
 
@@ -263,6 +264,17 @@ export const HotelSelection = () => {
               {filteredHotels.map((hotel) => {
                 return (
                   <HotelCard
+                    distanceFromCenter={getDistance(
+                      {
+                        latitude: event.location.latitude,
+                        longitude: event.location.longitude,
+                      },
+                      {
+                        latitude: hotelsInfo[hotel.id].metadata.latitude,
+                        longitude: hotelsInfo[hotel.id].metadata.longitude,
+                      },
+                      1
+                    )}
                     isSelected={hotel.id === selectedHotelId}
                     key={hotel.id}
                     hotelRates={hotel.rates}

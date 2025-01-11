@@ -18,12 +18,14 @@ export const HotelCard = ({
   isSelected,
   hotelInfo,
   handleSelectedRate,
+  distanceFromCenter,
 }: {
   hotelRates: Hotel["rates"];
   handleSelect: () => void;
   isSelected: boolean;
   hotelInfo: HotelInfoClient;
   handleSelectedRate: (orderHotel: OrderHotel) => void;
+  distanceFromCenter: number;
 }) => {
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
@@ -75,6 +77,10 @@ export const HotelCard = ({
                 {formatHotelName(hotelInfo.metadata.hotelName)}
               </div>
               <Stars rating={hotelInfo.metadata.rating} />
+            </div>
+            <div>
+              {Math.round((distanceFromCenter / 1000) * 10) / 10} ק&quot;מ ממרכז
+              העיר
             </div>
             <div className="flex flex-row gap-2">
               <Carousel

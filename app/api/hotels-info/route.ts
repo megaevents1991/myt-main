@@ -51,6 +51,8 @@ const getHotelInfo = async (hotelId: string, rooms: string[]) => {
         address: hotelInfoData.data.address,
         rating: hotelInfoData.data.star_rating,
         id: hotelInfoData.data.id,
+        longitude: hotelInfoData.data.longitude,
+        latitude: hotelInfoData.data.latitude,
       },
       general: {
         name: "general",
