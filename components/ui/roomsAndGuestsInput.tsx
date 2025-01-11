@@ -84,9 +84,11 @@ export default function RoomsAndGuestsInput({
         onDecrement={decrementChildren}
       />
       <div>
+        {children.length ? <div className="w-20">גילאים</div> : undefined}
         {Array.from({ length: children.length }, (_, i) => (
           <div key={i} className="inline-block mr-2 mb-2">
             <ChildrenAgeSelect
+              key={i}
               age={children[i]}
               onChange={(age) =>
                 setChildren((prev) => [

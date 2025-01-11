@@ -43,20 +43,22 @@ export const OrderForm = ({ event }: { event: Event }) => {
             {buttonText[step]}
           </button>
         )} */}
-          {step < 4 && (
-            <div className="w-full p-4 flex">
-              <button
-                disabled={buttonDisabled}
-                onClick={nextStep}
-                className={cn(
-                  "bg-main text-white rounded-lg p-2 font-bold w-full sm:w-1/4",
-                  buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                )}
-              >
-                {buttonText[step]}
-              </button>
-            </div>
-          )}
+          <div className="w-full">
+            {step < 4 && (
+              <div className="p-4 m-auto max-w-5xl">
+                <button
+                  disabled={buttonDisabled}
+                  onClick={nextStep}
+                  className={cn(
+                    "bg-main text-white rounded-lg p-2 font-bold w-full sm:w-1/4",
+                    buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                  )}
+                >
+                  {buttonText[step]}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

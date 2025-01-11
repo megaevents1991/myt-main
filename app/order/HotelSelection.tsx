@@ -16,6 +16,7 @@ import { applyFiltersAndSorting, SortOptions } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import { OrderHotel } from "@/lib/app.types";
+import dayjs from "dayjs";
 
 const event = events[0];
 
@@ -175,7 +176,7 @@ export const HotelSelection = () => {
           <div className="text-xs w-full flex-col text-center">
             <div className="text-2xl font-bold pre">{event?.name}</div>
             <div className="whitespace-nowrap">
-              {event?.date} | {event?.location.name}
+              {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
             </div>
           </div>
           <div className="flex w-full md:w-2/3 lg:w-1/2 flex-col gap-2 text-xs md:flex-row">

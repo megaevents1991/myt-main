@@ -9,6 +9,7 @@ import OptionSelect from "@/components/ui/selector";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
+import dayjs from "dayjs";
 
 export const TicketSelection = () => {
   const eventId = useSearchParams().get("eventId") as string;
@@ -40,14 +41,14 @@ export const TicketSelection = () => {
             <div className="text-center sm:text-right">
               <span className="text-2xl font-bold pre ml-2">{event?.name}</span>
               <span className="whitespace-nowrap hidden sm:inline">
-                {event?.date} | {event?.location.name}
+                {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
               </span>
             </div>
             <div>{event?.description}</div>
           </div>
           <div className="flex flex-row-reverse	sm:flex-col gap-2 w-full sm:w-1/2 lg:w-1/3">
             <div className="whitespace-nowrap w-1/2 text-center block sm:hidden">
-              {event?.date} <br></br>
+              {dayjs(event?.date).format("DD/MM/YY")} <br></br>
               {event?.location.name}
             </div>
             <div className="flex w-1/2 sm:w-full flex-row sm:flex-col gap-2 text-xs">

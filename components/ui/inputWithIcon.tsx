@@ -19,7 +19,7 @@ export const SelectWithIcon = ({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-10 pr-4 py-[6px] border rounded-lg w-full text-xl appearance-none cursor-pointer"
+        className="pl-10 pr-4 py-[6px] border border-gray-300 rounded-lg w-full text-xl appearance-none cursor-pointer"
       >
         <option value="1">1</option>
         <option value="2">2</option>

@@ -10,6 +10,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { Event } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
+import dayjs from "dayjs";
 
 const SearchCombobox = ({
   searchValue,
@@ -215,15 +216,16 @@ export default function Home() {
                   <div className="flex-col text-center w-1/2 sm:w-auto">
                     <div className="p-2 px-4 font-bold">{event.name}</div>
                     <div className="py-1 bg-secondary text-white">
-                      {event.date} | {event.location.name}
+                      {dayjs(event.date).format("DD/MM/YY")} |{" "}
+                      {event.location.name}
                     </div>
                     <div className="p-2 px-4 text-right" dir="rtl">
                       <div>בממוצע כ-</div>
-                      <div className="whitespace-pre">
-                        <span className="text-sm line-through">$1000</span>
-                        <span className="text-xl font-bold">
+                      <div className="flex items-baseline gap-1">
+                        <div className="text-2xl font-bold">
                           ${event.tickets[0].price}
-                        </span>
+                        </div>
+                        <div className="text-sm line-through">$1000</div>{" "}
                       </div>
                       <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
                     </div>

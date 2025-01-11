@@ -38,18 +38,10 @@ export const FlightTicketCard = ({
           <FlightCard {...inbound} metadata={metadata} />
         </div>
         <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
-        <div className="font-bold mt-2 w-full sm:w-1/3 text-right sm:text-center">
-          מחיר: {price}
+        <div className="font-bold text-lg lg:text-3xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
+          {price}
           &#8364;
-          <div className="hidden sm:block">
-            <button
-              className={`${
-                isSelected ? "bg-main" : "bg-secondary"
-              } text-white rounded-lg p-2 font-bold sm:w-full md:w-1/2`}
-            >
-              {isSelected ? "הבחירה שלך" : "בחר"}
-            </button>
-          </div>
+          <div className="hidden sm:block"></div>
         </div>
       </div>
     </CardWrapper>

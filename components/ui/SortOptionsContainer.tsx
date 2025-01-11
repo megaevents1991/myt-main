@@ -11,13 +11,15 @@ export const SortOptionsContainer = ({
   const matches = useMediaQuery("(min-width: 768px)");
 
   return (
-    <div className="flex flex-col items-center">
-      <div dir="rtl" className="w-screen  p-4 bg-gray-200">
-        <div className="justify-evenly flex flex-row sm:flex-row justify-center w-full">
-          <div className="w-full md:w-2/3 flex text-center gap-2 flex-row">
-            {sortOptions}
+    <div className="flex w-full flex-col items-center ">
+      <div dir="rtl" className="mt-4 w-screen bg-gray-200">
+        <div className="w-full">
+          <div className="px-6 py-4 m-auto max-w-5xl">
+            <div className="w-full flex text-center justify-between">
+              <div className="flex items-center gap-2">{sortOptions}</div>
+              {!matches && <div className="flex items-center">{settings}</div>}
+            </div>
           </div>
-          {!matches && settings}
         </div>
       </div>
     </div>

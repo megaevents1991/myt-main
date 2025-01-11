@@ -5,7 +5,7 @@ import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea } from "@mantine/core";
-import { Settings2Icon, Search, PersonStanding } from "lucide-react";
+import { Settings2Icon, Search, UsersRound } from "lucide-react";
 import {
   useContext,
   useEffect,
@@ -21,6 +21,7 @@ import { FlightFilters } from "@/components/ui/FlightFilters";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
+import dayjs from "dayjs";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -344,17 +345,18 @@ export const FlightSelection = () => {
           <div className="text-xs w-full flex-col text-center">
             <div className="text-2xl font-bold pre ml-2">{event?.name}</div>
             <div className="whitespace-nowrap">
-              {event?.date} | {event?.location.name}
+              <span>{dayjs(event?.date).format("DD/MM/YY")}</span> |{" "}
+              {event?.location.name}
             </div>
           </div>
-          <div className="flex w-full md:w-1/2 lg:w-1/3 flex-row gap-2 text-xs justify-center margin-auto">
+          <div className="flex w-full md:w-1/2 lg:w-1/3 flex-row gap-2 text-xs justify-center m§argin-auto">
             <div className="w-1/5">
               <SelectWithIcon
                 value={planeTickets.adults}
                 onChange={(value) =>
                   setPlaneTickets({ adults: +(value || 0), children: 0 })
                 }
-                icon={<PersonStanding />}
+                icon={<UsersRound />}
               />
             </div>
             <div className="flex gap-2 flex-row w-4/5">

@@ -143,7 +143,7 @@ export const HotelCard = ({
               </div>
             </div>
           </div>
-          <div className="flex md:w-1/5 md:justify-center md:items-center md:border-r whitespace-pre md:pr-6">
+          <div className="flex md:w-1/5 md:justify-center md:items-center md:border-r md:pr-6">
             מחיר לחדר{" "}
             {selectedRoom?.payment_options.payment_types[0].show_amount}&#8364;
           </div>
