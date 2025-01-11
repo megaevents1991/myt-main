@@ -52,8 +52,8 @@ export async function POST(req: Request) {
     Ticket Type: ${orderDetails.ticketType}
     Quantity: ${orderDetails.quantity}
     Flight: ${flight.airline} (${formatDate(
-    flight.departureTime
-  )} - ${formatDate(flight.arrivalTime)})
+    flight.outbound.departureTime
+  )} - ${formatDate(flight.outbound.arrivalTime)})
 
     Hotel: hotel.name
   

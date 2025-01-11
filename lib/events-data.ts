@@ -155,10 +155,6 @@ export const flights: Flight[] = [
   {
     id: "1",
     airline: "Emirates",
-    departureTime: "07:10",
-    arrivalTime: "17:45",
-    departureAirport: "JFK",
-    arrivalAirport: "LGA",
     price: 450,
     duration: "1h 35m",
     stops: 0,
@@ -169,9 +165,6 @@ export const flights: Flight[] = [
   {
     id: "2",
     airline: "Delta",
-    departureTime: "14:05",
-    arrivalTime: "15:55",
-    departureAirport: "JFK",
     arrivalAirport: "LGA",
     price: 380,
     duration: "1h 50m",

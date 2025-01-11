@@ -26,10 +26,6 @@ export type Event = {
 export type Flight = {
   id: string;
   airline: string;
-  departureTime: string;
-  arrivalTime: string;
-  departureAirport: string;
-  arrivalAirport: string;
   price: number;
   duration: string;
   stops: number;

@@ -105,8 +105,8 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
                   : `${selectedFlight.stops} Stops`}
               </p>
               <p>
-                Out: {selectedFlight.departureTime} -{" "}
-                {selectedFlight.arrivalTime}
+                Out: {selectedFlight.outbound.departureTime} -{" "}
+                {selectedFlight.outbound.arrivalTime}
               </p>
               <p>
                 Return: {selectedFlight.returnDepartureTime} -{" "}

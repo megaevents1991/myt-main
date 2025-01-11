@@ -25,8 +25,8 @@ export const applyFiltersAndSorting = (
   const getTimeValue = (date: Date) => date.getHours() * 60 + date.getMinutes();
 
   const filteredFlights = flights.filter((flight) => {
-    const departureTime = getTimeValue(new Date(flight.departureTime));
-    const arrivalTime = getTimeValue(new Date(flight.arrivalTime));
+    const departureTime = getTimeValue(new Date(flight.outbound.departureTime));
+    const arrivalTime = getTimeValue(new Date(flight.outbound.arrivalTime));
 
     const departureRangesToDateTime: [number, number][] = departureRanges.map(
       (range) => {
