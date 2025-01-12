@@ -83,10 +83,18 @@ export default function RoomsAndGuestsInput({
         onIncrement={incrementChildren}
         onDecrement={decrementChildren}
       />
-      <div>
-        {children.length ? <div className="w-20">גילאים</div> : undefined}
-        {Array.from({ length: children.length }, (_, i) => (
-          <div key={i} className="inline-block mr-2 mb-2">
+      <div className="flex items-start justify-between gap-1">
+        <div>
+          {children.length ? <div className="w-20">גילאים</div> : undefined}
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "0.5rem",
+          }}
+        >
+          {Array.from({ length: children.length }, (_, i) => (
             <ChildrenAgeSelect
               key={i}
               age={children[i]}
@@ -98,8 +106,8 @@ export default function RoomsAndGuestsInput({
                 ])
               }
             />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
