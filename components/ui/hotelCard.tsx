@@ -104,8 +104,8 @@ export const HotelCard = ({
                     }}
                   >
                     {[
-                      ...(hotelInfo?.general.images || ""),
                       ...(selectedRoomInfo?.images || ""),
+                      ...(hotelInfo?.general.images || ""),
                     ].map((image, i) => {
                       return image ? (
                         <Carousel.Slide key={i}>
