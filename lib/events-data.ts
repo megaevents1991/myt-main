@@ -4,7 +4,7 @@ export const events: Event[] = [
   {
     id: "1",
     name: "באיירן מינכן - דורטמונד",
-    date: "2025-01-15",
+    date: "2025-08-22",
     location: {
       latitude: 40.785091,
       longitude: -73.968285,
@@ -62,12 +62,12 @@ export const events: Event[] = [
   },
   {
     id: "2",
-    name: "World Cup Final",
-    date: "2023-12-18",
+    name: "Coldplay, London - קולדפליי בלונדון",
+    date: "2025-08-22",
     location: {
       latitude: 25.406566,
       longitude: 51.435725,
-      name: "Lusail Stadium, Qatar",
+      name: "וומבלי- לונדון, אנגליה",
     },
     description: "The final match of the FIFA World Cup 2023.",
     imageUrl: "/events/2_main.png",

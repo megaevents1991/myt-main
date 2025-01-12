@@ -10,6 +10,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { Event } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
+import { useAffiliate, orderStage } from "./hooks/Affiliate";
 import dayjs from "dayjs";
 
 const SearchCombobox = ({
@@ -103,6 +104,7 @@ export default function Home() {
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  useAffiliate();
 
   return (
     <main>
@@ -202,6 +204,9 @@ export default function Home() {
                 href={`/order?eventId=${event.id}`}
                 className="cursor-pointer"
                 key={event.id}
+                onClick={() => {
+                  orderStage("EVENT_SELECTED", { "event": event.name });
+                }}
               >
                 <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
                   <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">

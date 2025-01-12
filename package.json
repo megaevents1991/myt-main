@@ -13,10 +13,11 @@
     "@mantine/core": "7.15.1",
     "@mantine/dates": "^7.15.1",
     "@mantine/hooks": "7.15.1",
-    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@supabase/supabase-js": "^2.47.12",
     "aircodes": "^1.3.16",
     "amadeus": "^11.0.0",
-    "class-variance-authority": "^0.7.0",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
     "embla-carousel-react": "^8.5.2",
@@ -27,10 +28,12 @@
     "react": "19.0.0-rc-66855b96-20241106",
     "react-device-detect": "^2.2.3",
     "react-dom": "19.0.0-rc-66855b96-20241106",
-    "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
+    "uuidv4": "^6.2.13"
   },
   "devDependencies": {
+    "@shadcn/ui": "^0.0.4",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.16",
     "@types/react": "^18",

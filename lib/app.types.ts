@@ -85,3 +85,11 @@ export type TimeRange = [
     minutes: number;
   }
 ];
+
+export type AffiliateTracking = {
+  id: string;
+  affiliate_id: string;
+  stage: 'VISIT' | 'EVENT_SELECTED' | 'TICKET_SELECTED' | 'FLIGHT_SELECTED' | 'HOTEL_SELECTED' | 'CONFIRMED';
+  data: object;
+  timestamp: string;
+};
