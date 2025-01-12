@@ -17,8 +17,12 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
     console.error("Failed to track affiliate event:", error);
+    if (error?.code === "23503") {
+      return NextResponse.json({ success: false });
+    }
     return NextResponse.json(
       { error: "Failed to track affiliate event" },
       { status: 500 }
