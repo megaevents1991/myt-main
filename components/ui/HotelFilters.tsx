@@ -1,22 +1,24 @@
 import { RangeSlider } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { StarsGroup } from "@/components/ui/StarsGroup";
+import { Search } from "lucide-react";
 
 const themeColor = "#05203C";
 
 export const HotelFilters = ({
   maxPrice,
   onPriceRangeChange,
-  onSearchChange,
+  onSearch,
   onRatingChange,
   selectedRating,
 }: {
   maxPrice: number;
   onPriceRangeChange: (range: [number, number]) => void;
-  onSearchChange: (search: string) => void;
+  onSearch: (search: string) => void;
   onRatingChange: (rating: boolean[]) => void;
   selectedRating: boolean[];
 }) => {
+  const [searchValue, setSearchValue] = useState("");
   const [value, setValue] = useState<[number, number]>([0, 2000]);
   const handleOnChangeEnd = (value: [number, number]) => {
     onPriceRangeChange(value);
@@ -56,7 +58,7 @@ export const HotelFilters = ({
         <RangeSlider
           thumbSize={20}
           min={0}
-          max={Math.ceil(maxPrice)}
+          max={Math.ceil(maxPrice) + 10}
           step={5}
           value={value}
           styles={{
@@ -73,7 +75,26 @@ export const HotelFilters = ({
           marks={marks}
         />
       </div>
-      <input onChange={(e) => onSearchChange(e.target.value)}></input>
+
+      <form className="flex w-full shadow-md mt-10" dir="rtl">
+        <input
+          onChange={(e) => setSearchValue(e.target.value)}
+          value={searchValue}
+          placeholder="חפש מלון..."
+          type="text"
+          className="w-2/3 rounded-r p-2 text-main border text-xs"
+        />
+        <button
+          className="w-1/3 bg-secondary text-white rounded-l flex items-center justify-center"
+          onClick={(e) => {
+            e.preventDefault();
+            onSearch(searchValue);
+            setSearchValue("");
+          }}
+        >
+          <Search />
+        </button>
+      </form>
     </div>
   );
 };

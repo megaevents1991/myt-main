@@ -158,6 +158,23 @@ export const HotelSelection = () => {
     setFilteredHotels(hotelsToSet);
   };
 
+  const handleHotelSearch = (search: string) => {
+    setHotel(undefined);
+    const hotelsToSet = applyFiltersAndSorting({
+      hotels,
+      priceRange,
+      rating,
+      hotelsInfo,
+      hotelName: search,
+    });
+
+    if (showFilters) {
+      setShowFilters(false);
+    }
+
+    setFilteredHotels(hotelsToSet);
+  };
+
   return (
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
@@ -165,7 +182,7 @@ export const HotelSelection = () => {
           selectedRating={rating}
           maxPrice={maxPrice}
           onPriceRangeChange={handlePriceChange}
-          onSearchChange={() => {}}
+          onSearch={handleHotelSearch}
           onRatingChange={handleRatingChange}
         />
       </FiltersModal>
@@ -254,7 +271,7 @@ export const HotelSelection = () => {
                 selectedRating={rating}
                 maxPrice={maxPrice}
                 onPriceRangeChange={handlePriceChange}
-                onSearchChange={() => {}}
+                onSearch={handleHotelSearch}
                 onRatingChange={handleRatingChange}
               />
             </div>

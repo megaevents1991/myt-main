@@ -8,12 +8,14 @@ export const applyFiltersAndSorting = ({
   rating,
   hotelsInfo,
   sortOption = "price_asc",
+  hotelName,
 }: {
   hotels: Hotel[];
   priceRange: [number, number];
   rating: boolean[];
   hotelsInfo: HotelsInfoClient;
   sortOption?: SortOptions;
+  hotelName?: string;
 }) => {
   // Apply filters
 
@@ -22,6 +24,12 @@ export const applyFiltersAndSorting = ({
 
     const hotelRating = hotelsInfo[hotel.id].metadata.rating;
 
+    const matchesName = hotelName
+      ? hotelsInfo[hotel.id].metadata.hotelName
+          .toUpperCase()
+          .includes(hotelName.toUpperCase())
+      : true;
+
     const matchesRating =
       rating.every((r) => r) ||
       rating.every((r) => !r) ||
@@ -29,7 +37,7 @@ export const applyFiltersAndSorting = ({
 
     const matchesPriceRange = price >= priceRange[0] && price <= priceRange[1];
 
-    return matchesPriceRange && matchesRating;
+    return matchesPriceRange && matchesRating && matchesName;
   });
 
   const sortedHotels = hotelSort(filteredHotels, sortOption, hotelsInfo);
