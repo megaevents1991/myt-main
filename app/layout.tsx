@@ -84,7 +84,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               //   },
               // }}
             >
-              <Container className="pt-4 h-[14vh] min-h-20" fluid bg={"#05203C"}>
+              <Container className="pt-4 min-h-20" fluid bg={"#05203C"}>
                 <div className="flex scale-25 justify-center md:justify-end">
                   <Link href="/">
                     <MYT className="scale-75 md:scale-100" />

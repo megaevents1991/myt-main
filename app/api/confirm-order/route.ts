@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { events, flights } from "@/lib/events-data";
 
-process.env.EMAIL_SERVER_USER = "studio.gta@gmail.com";
-process.env.EMAIL_SERVER_PASSWORD = "uxcjowkgihhfyibv";
-process.env.SALES_REP_EMAIL = "giladlesh@gmail.com";
-
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleString("en-US", {

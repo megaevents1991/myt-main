@@ -28,7 +28,7 @@ export const RoomCard = ({
           {room.room_name} ★
         </Badge> */}
         {/* <div>Meal: {room.meal}</div> */}
-        <div> {room.daily_prices[0]}&#8364; / ליליה</div>
+        <div> {room.daily_prices[0]}&#8364; / ללילה</div>
         {/* {room.room_name_info}
         {room.daily_prices[0]} / night
         {room.amenities_data.map((amenity) => (

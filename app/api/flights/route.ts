@@ -3,8 +3,6 @@ import { events } from "@/lib/events-data";
 import Amadeus from "amadeus";
 import { FlightSearchOptions, FlightSegment } from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
-process.env.AMADEUS_CLIENT_ID = "306M5ysI3BdNXNuruBjACYZTo8lOb3WC";
-process.env.AMADEUS_CLIENT_SECRET = "qnUSdtaUuMeWspSV";
 
 // Initialize Amadeus client
 const amadeus = new Amadeus({
