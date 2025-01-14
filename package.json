@@ -20,6 +20,7 @@
     "amadeus": "^11.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "contrast-color": "^1.0.1",
     "dayjs": "^1.11.13",
     "embla-carousel-react": "^8.5.2",
     "geolib": "^3.3.4",

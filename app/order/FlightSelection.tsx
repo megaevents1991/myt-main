@@ -4,7 +4,7 @@ import { TimeSlider } from "@/components/ui/timeSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
-import { Button, ScrollArea } from "@mantine/core";
+import { Button, ScrollArea, Skeleton } from "@mantine/core";
 import { Settings2Icon, Search, UsersRound } from "lucide-react";
 import {
   useContext,
@@ -400,38 +400,40 @@ export const FlightSelection = () => {
           </>
         }
       />
-      <LoaderWrapper isLoading={isLoading}>
+      <LoaderWrapper isLoading={false}>
         <div className="flex flex-row gap-8 flex-row-reverse items-start w-full">
           {matches && (
             <div
-              className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg"
+              className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg"
               ref={filterRef}
             >
-              <FlightFilters
-                priceComponent={
-                  <TimeSlider
-                    onChange={setSelectedFlightPrice}
-                    variant="price"
-                    onChangeEnd={handlePriceChange}
-                    value={selectedFlightPrice}
-                    maxValue={flightsMeta.maxPrice}
-                    minValue={flightsMeta.minPrice}
-                  />
-                }
-                flightDurationComponent={
-                  <TimeSlider
-                    onChange={setSelectedFlightDuration}
-                    onChangeEnd={handleChangeDurationEnd}
-                    value={selectedFlightDuration}
-                    maxValue={flightsMeta.maxDuration}
-                    minValue={flightsMeta.minDuration}
-                  />
-                }
-                handleTimeRangeChange={handleRangeChange}
-                airlines={airlines}
-                filters={filters}
-                handleFilterChange={handleFilterChange}
-              />
+              <Skeleton visible={isLoading} className="p-4">
+                <FlightFilters
+                  priceComponent={
+                    <TimeSlider
+                      onChange={setSelectedFlightPrice}
+                      variant="price"
+                      onChangeEnd={handlePriceChange}
+                      value={selectedFlightPrice}
+                      maxValue={flightsMeta.maxPrice}
+                      minValue={flightsMeta.minPrice}
+                    />
+                  }
+                  flightDurationComponent={
+                    <TimeSlider
+                      onChange={setSelectedFlightDuration}
+                      onChangeEnd={handleChangeDurationEnd}
+                      value={selectedFlightDuration}
+                      maxValue={flightsMeta.maxDuration}
+                      minValue={flightsMeta.minDuration}
+                    />
+                  }
+                  handleTimeRangeChange={handleRangeChange}
+                  airlines={airlines}
+                  filters={filters}
+                  handleFilterChange={handleFilterChange}
+                />
+              </Skeleton>
             </div>
           )}
           <ScrollArea.Autosize mah={scrollerHeight} className="w-full md:w-2/3">
@@ -439,6 +441,7 @@ export const FlightSelection = () => {
               {filteredFlights.map((flight) => {
                 return (
                   <FlightTicketCard
+                    isLoading={isLoading}
                     key={flight.id}
                     {...flight}
                     flightId={flight.id}
@@ -448,9 +451,11 @@ export const FlightSelection = () => {
                 );
               })}
               {filteredFlights.length === 0 && (
-                <div className="text-center w-full md:w-2/3 text-gray-500">
-                  No flights match your criteria. Please adjust your filters.
-                </div>
+                <LoaderWrapper isLoading={isLoading}>
+                  <div className="text-center w-full items-center md:w-2/3 text-gray-500 min-h-64 flex">
+                    No flights match your criteria. Please adjust your filters.
+                  </div>
+                </LoaderWrapper>
               )}
             </div>
           </ScrollArea.Autosize>

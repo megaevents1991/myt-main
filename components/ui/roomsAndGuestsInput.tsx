@@ -89,6 +89,7 @@ export default function RoomsAndGuestsInput({
         </div>
         <div
           style={{
+            width: "-webkit-fill-available",
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
             gap: "0.5rem",

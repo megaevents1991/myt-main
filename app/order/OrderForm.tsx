@@ -20,33 +20,37 @@ const buttonText: Record<number, string> = {
 
 export const OrderForm = ({ event }: { event: Event }) => {
   const { order, submitOrder } = useOrderState(event);
-  const { step, setStep, flight, hotel} = useContext(OrderContext);
+  const { step, setStep, flight, hotel } = useContext(OrderContext);
 
   const buttonDisabled =
     (!flight?.id && step === 2) || (!hotel?.id && step === 3);
 
-  const nextStep = () => setStep((prev) => {
-    if (prev === 1) {
-      orderStage("TICKET_SELECTED", {
-        data: { event : event.name, ticketsType : order.ticketType, numOfTicket : order.quantity },
+  const nextStep = () =>
+    setStep((prev) => {
+      if (prev === 1) {
+        orderStage("TICKET_SELECTED", {
+          data: {
+            event: event.name,
+            ticketsType: order.ticketType,
+            numOfTicket: order.quantity,
+          },
+        });
+        console.log(order);
+      } else if (prev === 2) {
+        orderStage("FLIGHT_SELECTED", {
+          data: { flight: flight?.id },
+        });
+      } else if (prev === 3) {
+        orderStage("HOTEL_SELECTED", {
+          data: { hotel: hotel?.id },
+        });
+      } else if (prev === 4) {
+        orderStage("CONFIRMED", {
+          data: { confirmed: "checkout" },
+        });
+      }
+      return prev + 1;
     });
-    console.log(order);
-    
-    } else if (prev === 2) {
-      orderStage("FLIGHT_SELECTED", {
-        data: { flight : flight?.id },
-      });
-    } else if (prev === 3) {
-      orderStage("HOTEL_SELECTED", {
-        data: { hotel : hotel?.id },
-      });
-    } else if (prev === 4) {
-      orderStage("CONFIRMED", {
-        data: { confirmed : "checkout" },
-      });
-    }
-    return prev + 1;
-  });
   // const prevStep = () => setStep((prev) => prev - 1);
 
   return (

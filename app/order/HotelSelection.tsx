@@ -2,12 +2,11 @@
 
 import { events } from "@/lib/events-data";
 import { Hotel, HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
-import { Button, Popover } from "@mantine/core";
+import { Button, Popover, Skeleton } from "@mantine/core";
 import { useState, useEffect, useContext } from "react";
 import { OrderContext } from "../app.context";
 import { DateRange } from "@/components/ui/dateInput";
 import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
-import { LoaderWrapper } from "@/components/ui/loader";
 import { HotelCard } from "@/components/ui/hotelCard";
 import { Search, Settings2Icon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
@@ -35,14 +34,17 @@ export const HotelSelection = () => {
     new Date(new Date(event.date).getTime() + 8.64e7),
   ]);
   const [isLoading, setIsLoading] = useState(true);
-  const [roomParams, setRoomParams] = useState<{
-    adults: number;
-    children: number[];
-  }>({
-    children: [],
-    adults: planeTickets.adults,
-  });
-
+  const [roomParams, setRoomParams] = useState<
+    {
+      adults: number;
+      children: number[];
+    }[]
+  >([
+    {
+      children: [],
+      adults: planeTickets.adults,
+    },
+  ]);
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
   const [hotelsInfo, setHotelsInfo] = useState<HotelsInfoClient>(
@@ -55,12 +57,9 @@ export const HotelSelection = () => {
     false,
     false,
   ]);
-
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
-
-  const matches = useMediaQuery("(min-width: 768px)");
-
   const [, setSortOption] = useState<SortOptions>("price_asc");
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
+  const matches = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     fetchHotels();
@@ -75,7 +74,7 @@ export const HotelSelection = () => {
         location: event.location,
         checkin: dateRange?.[0]?.toISOString().split("T")[0],
         checkout: dateRange?.[1]?.toISOString().split("T")[0],
-        guests: [{ adults: roomParams.adults, children: roomParams.children }],
+        guests: roomParams,
       }),
     });
     const data: HotelResponse = await res.json();
@@ -113,6 +112,7 @@ export const HotelSelection = () => {
     setHotels(data.data.hotels);
     setFilteredHotels(data.data.hotels);
     setIsLoading(false);
+    setSelectedHotelId("");
   };
 
   const handlePriceChange = (priceRange: [number, number]) => {
@@ -156,6 +156,18 @@ export const HotelSelection = () => {
     });
 
     setFilteredHotels(hotelsToSet);
+  };
+
+  const handleSetRooms = (room: {
+    adults: number;
+    children: number[];
+    i: number;
+  }) => {
+    setRoomParams((prev) => {
+      const next = [...prev];
+      next[room.i] = { adults: room.adults, children: room.children };
+      return next;
+    });
   };
 
   const handleHotelSearch = (search: string) => {
@@ -208,17 +220,51 @@ export const HotelSelection = () => {
               >
                 <Popover.Target>
                   <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
-                    {`${roomParams.children.length + roomParams.adults} אורחים`}
+                    {`${roomParams.reduce(
+                      (ppl, room) => ppl + room.children.length + room.adults,
+                      0
+                    )} אורחים`}
+                    {` | `}
+                    {`${roomParams.length} חדרים`}
                   </div>
                 </Popover.Target>
                 <Popover.Dropdown>
-                  <RoomsAndGuestsInput
-                    initialChildren={roomParams.children}
-                    initialAdults={roomParams.adults}
-                    onChange={({ adults, children }) => {
-                      setRoomParams({ children, adults });
-                    }}
-                  />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2 justify-end mt-2 mb-2 ">
+                      <button
+                        className="bg-secondary text-white px-2 rounded-md"
+                        onClick={() =>
+                          setRoomParams((prev) => [
+                            ...prev,
+                            { adults: 1, children: [] },
+                          ])
+                        }
+                      >
+                        הוסף חדר
+                      </button>
+                      <button
+                        className="bg-secondary text-white px-2 rounded-md"
+                        onClick={() =>
+                          setRoomParams((prev) => {
+                            if (prev.length === 1) return prev;
+                            return prev.slice(0, prev.length - 1);
+                          })
+                        }
+                      >
+                        מחק חדר
+                      </button>
+                    </div>
+                    {Array.from({ length: roomParams.length }, (_, i) => (
+                      <RoomsAndGuestsInput
+                        key={i}
+                        initialChildren={roomParams[i].children}
+                        initialAdults={roomParams[i].adults}
+                        onChange={({ adults, children }) =>
+                          handleSetRooms({ adults, children, i })
+                        }
+                      />
+                    ))}
+                  </div>
                 </Popover.Dropdown>
               </Popover>
             </div>
@@ -263,10 +309,10 @@ export const HotelSelection = () => {
           </button>
         }
       />
-      <LoaderWrapper isLoading={isLoading}>
-        <div className="flex flex-row gap-4 flex-row-reverse items-start w-full">
-          {matches && (
-            <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg p-4 rounded-lg">
+      <div className="flex flex-row gap-4 flex-row-reverse items-start w-full">
+        {matches && (
+          <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg">
+            <Skeleton visible={isLoading} className="p-4">
               <HotelFilters
                 selectedRating={rating}
                 maxPrice={maxPrice}
@@ -274,46 +320,47 @@ export const HotelSelection = () => {
                 onSearch={handleHotelSearch}
                 onRatingChange={handleRatingChange}
               />
-            </div>
-          )}
-          <div className="w-full">
-            <div className="grid grid-cols-1 gap-4 items-start">
-              {filteredHotels.map((hotel) => {
-                return (
-                  <HotelCard
-                    distanceFromCenter={getDistance(
-                      {
-                        latitude: event.location.latitude,
-                        longitude: event.location.longitude,
-                      },
-                      {
-                        latitude: hotelsInfo[hotel.id].metadata.latitude,
-                        longitude: hotelsInfo[hotel.id].metadata.longitude,
-                      },
-                      1
-                    )}
-                    isSelected={hotel.id === selectedHotelId}
-                    key={hotel.id}
-                    hotelRates={hotel.rates}
-                    hotelInfo={hotelsInfo[hotel.id]}
-                    handleSelect={() => {
-                      if (
-                        selectedOrderHotel &&
-                        selectedOrderHotel?.id !== hotel.id
-                      ) {
-                        setHotel(undefined);
-                      }
+            </Skeleton>
+          </div>
+        )}
+        <div className="w-full">
+          <div className="grid grid-cols-1 gap-4 items-start">
+            {filteredHotels.map((hotel) => {
+              return (
+                <HotelCard
+                  isLoading={isLoading}
+                  distanceFromCenter={getDistance(
+                    {
+                      latitude: event.location.latitude,
+                      longitude: event.location.longitude,
+                    },
+                    {
+                      latitude: hotelsInfo[hotel.id].metadata.latitude,
+                      longitude: hotelsInfo[hotel.id].metadata.longitude,
+                    },
+                    1
+                  )}
+                  isSelected={hotel.id === selectedHotelId}
+                  key={hotel.id}
+                  hotelRates={hotel.rates}
+                  hotelInfo={hotelsInfo[hotel.id]}
+                  handleSelect={() => {
+                    if (
+                      selectedOrderHotel &&
+                      selectedOrderHotel?.id !== hotel.id
+                    ) {
+                      setHotel(undefined);
+                    }
 
-                      setSelectedHotelId(hotel.id);
-                    }}
-                    handleSelectedRate={handleSelectedRate}
-                  />
-                );
-              })}
-            </div>
+                    setSelectedHotelId(hotel.id);
+                  }}
+                  handleSelectedRate={handleSelectedRate}
+                />
+              );
+            })}
           </div>
         </div>
-      </LoaderWrapper>
+      </div>
     </div>
   );
 };

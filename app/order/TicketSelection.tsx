@@ -31,7 +31,7 @@ export const TicketSelection = () => {
   };
 
   return (
-    <div>
+    <div className="py-6">
       <div className="flex flex-col items-center">
         <div
           dir="rtl"

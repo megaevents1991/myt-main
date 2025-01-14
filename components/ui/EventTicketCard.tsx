@@ -1,4 +1,5 @@
 import { CardWrapper } from "./cardWrapper";
+import cc from "contrast-color";
 
 export type TicketCardProps = {
   price: number;
@@ -29,7 +30,11 @@ export const EventTicketCard = ({
         <div>{categoryDescription}</div>
         <div
           className="rounded-lg p-1 text-white font-bold text-center text-xs"
-          style={{ background: colorOnTheMap, width: 80 }}
+          style={{
+            background: colorOnTheMap,
+            width: 80,
+            color: cc.contrastColor({ bgColor: colorOnTheMap }),
+          }}
         >
           צבע אזור
         </div>

@@ -2,7 +2,7 @@ import { Flight, FlightSegment } from "@/lib/app.types";
 import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
 import { ArrowLeft, Info, Luggage } from "lucide-react";
-import { Tooltip } from "@mantine/core";
+import { Skeleton, Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 import { useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
@@ -11,6 +11,7 @@ type FlightTicketCardProps = {
   isSelected: boolean;
   onClick: (flightId: string) => void;
   flightId: string;
+  isLoading: boolean;
 } & Flight;
 
 const stopsMap: { [key: number]: string } = {
@@ -28,23 +29,26 @@ export const FlightTicketCard = ({
   metadata,
   flightId,
   price,
+  isLoading,
 }: FlightTicketCardProps) => {
   return (
-    <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
-      <div className="flex flex-col items-center sm:flex-row w-full py-2">
-        <div className="w-full md:w-5/6">
-          <FlightCard {...outbound} metadata={metadata} />
-          <div className="border w-full my-2"></div>
-          <FlightCard {...inbound} metadata={metadata} />
+    <Skeleton visible={isLoading}>
+      <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
+        <div className="flex flex-col items-center sm:flex-row w-full py-2">
+          <div className="w-full md:w-5/6">
+            <FlightCard {...outbound} metadata={metadata} />
+            <div className="border w-full my-2"></div>
+            <FlightCard {...inbound} metadata={metadata} />
+          </div>
+          <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
+          <div className="font-bold md:w-1/6 text-lg lg:text-2xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
+            {price}
+            &#8364;
+            <div className="hidden sm:block"></div>
+          </div>
         </div>
-        <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
-        <div className="font-bold md:w-1/6 text-lg lg:text-2xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
-          {price}
-          &#8364;
-          <div className="hidden sm:block"></div>
-        </div>
-      </div>
-    </CardWrapper>
+      </CardWrapper>
+    </Skeleton>
   );
 };
 

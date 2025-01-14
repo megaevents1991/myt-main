@@ -4,14 +4,17 @@ import { LoadingOverlay, Box, Loader } from "@mantine/core";
 export const LoaderWrapper = ({
   children,
   isLoading,
+  height,
 }: {
   children: ReactNode;
   isLoading: boolean;
+  height?: string;
 }) => {
   return (
     <>
-      <Box pos="relative">
+      <Box pos="relative" style={{ height }}>
         <LoadingOverlay
+          overlayProps={{ radius: "sm", blur: 2 }}
           visible={isLoading}
           loaderProps={{ children: <Loader /> }}
         />
