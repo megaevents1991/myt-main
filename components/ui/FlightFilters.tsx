@@ -84,6 +84,7 @@ export const FlightFilters = ({
     numOfStops: string[];
     airline: string[];
     maxPrice: string;
+    withLuggageOnly: boolean;
   };
 }) => {
   const [departureTime, setDepartureTime] = React.useState<string[]>([]);
@@ -144,6 +145,21 @@ export const FlightFilters = ({
             <label htmlFor="multi-stop">אחת ויותר</label>
           </div>
         </Checkbox.Group>
+      </div>
+
+      {/* Luggage */}
+      <div dir="rtl">
+        <h3 className="text-lg font-semibold mb-4">כבודה</h3>
+        <div className="flex items-center space-x-2 space-x-reverse">
+          <Checkbox
+            checked={filters.withLuggageOnly}
+            id="luggage"
+            onChange={(e) =>
+              handleFilterChange("withLuggageOnly", e.target.checked)
+            }
+          />
+          <label htmlFor="luggage">עם כבודה</label>
+        </div>
       </div>
 
       {/* Departure Time Section */}

@@ -1,5 +1,4 @@
 import { DateRange } from "@/components/ui/dateInput";
-import { LoaderWrapper } from "@/components/ui/loader";
 import { TimeSlider } from "@/components/ui/timeSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
@@ -32,10 +31,12 @@ export const FlightSelection = () => {
     numOfStops: string[];
     airline: string[];
     maxPrice: string;
+    withLuggageOnly: boolean;
   }>({
     numOfStops: ["0", "1", "2"],
     maxPrice: "",
     airline: [],
+    withLuggageOnly: false,
   });
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +136,7 @@ export const FlightSelection = () => {
         arrivalRanges: [],
         maxPrice,
         numOfStops: filters.numOfStops,
+        withLuggageOnly: filters.withLuggageOnly,
       });
 
       setFilteredFlights(filteredFlights);
@@ -192,6 +194,7 @@ export const FlightSelection = () => {
         arrivalRanges,
         maxPrice: selectedFlightPrice,
         numOfStops: filters.numOfStops,
+        withLuggageOnly: filters.withLuggageOnly,
       });
 
       setFilteredFlights(filteredFlights);
@@ -206,6 +209,22 @@ export const FlightSelection = () => {
         arrivalRanges,
         maxPrice: selectedFlightPrice,
         numOfStops: value,
+        withLuggageOnly: filters.withLuggageOnly,
+      });
+
+      setFilteredFlights(filteredFlights);
+    }
+
+    if (key === "withLuggageOnly" && typeof value === "boolean") {
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: filters.airline,
+        sortOption,
+        flightDuration: selectedFlightDuration * 60,
+        departureRanges,
+        arrivalRanges,
+        maxPrice: selectedFlightPrice,
+        numOfStops: filters.numOfStops,
+        withLuggageOnly: value,
       });
 
       setFilteredFlights(filteredFlights);
@@ -224,6 +243,7 @@ export const FlightSelection = () => {
       arrivalRanges,
       maxPrice: selectedFlightPrice,
       numOfStops: filters.numOfStops,
+      withLuggageOnly: filters.withLuggageOnly,
     });
 
     setFilteredFlights(filteredFlights);
@@ -241,6 +261,7 @@ export const FlightSelection = () => {
       arrivalRanges,
       maxPrice: price,
       numOfStops: filters.numOfStops,
+      withLuggageOnly: filters.withLuggageOnly,
     });
 
     setFilteredFlights(filteredFlights);
@@ -268,6 +289,7 @@ export const FlightSelection = () => {
       arrivalRanges: name === "arrival" ? range : arrivalRanges,
       maxPrice: selectedFlightPrice,
       numOfStops: filters.numOfStops,
+      withLuggageOnly: filters.withLuggageOnly,
     });
 
     setFilteredFlights(filteredFlights);
@@ -400,67 +422,68 @@ export const FlightSelection = () => {
           </>
         }
       />
-      <LoaderWrapper isLoading={false}>
-        <div className="flex flex-row gap-8 flex-row-reverse items-start w-full">
-          {matches && (
-            <div
-              className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg"
-              ref={filterRef}
-            >
-              <Skeleton visible={isLoading} className="p-4">
-                <FlightFilters
-                  priceComponent={
-                    <TimeSlider
-                      onChange={setSelectedFlightPrice}
-                      variant="price"
-                      onChangeEnd={handlePriceChange}
-                      value={selectedFlightPrice}
-                      maxValue={flightsMeta.maxPrice}
-                      minValue={flightsMeta.minPrice}
-                    />
-                  }
-                  flightDurationComponent={
-                    <TimeSlider
-                      onChange={setSelectedFlightDuration}
-                      onChangeEnd={handleChangeDurationEnd}
-                      value={selectedFlightDuration}
-                      maxValue={flightsMeta.maxDuration}
-                      minValue={flightsMeta.minDuration}
-                    />
-                  }
-                  handleTimeRangeChange={handleRangeChange}
-                  airlines={airlines}
-                  filters={filters}
-                  handleFilterChange={handleFilterChange}
-                />
-              </Skeleton>
-            </div>
-          )}
-          <ScrollArea.Autosize mah={scrollerHeight} className="w-full md:w-2/3">
-            <div className="grid grid-cols-1 gap-4 items-start">
-              {filteredFlights.map((flight) => {
-                return (
-                  <FlightTicketCard
-                    isLoading={isLoading}
-                    key={flight.id}
-                    {...flight}
-                    flightId={flight.id}
-                    isSelected={orderFlight?.id === flight.id}
-                    onClick={handleFlightChange}
+      <div className="flex flex-row gap-8 flex-row-reverse items-start w-full">
+        {matches && (
+          <div
+            className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg"
+            ref={filterRef}
+          >
+            <Skeleton visible={isLoading} className="p-4">
+              <FlightFilters
+                priceComponent={
+                  <TimeSlider
+                    onChange={setSelectedFlightPrice}
+                    variant="price"
+                    onChangeEnd={handlePriceChange}
+                    value={selectedFlightPrice}
+                    maxValue={flightsMeta.maxPrice}
+                    minValue={flightsMeta.minPrice}
                   />
-                );
-              })}
-              {filteredFlights.length === 0 && (
-                <LoaderWrapper isLoading={isLoading}>
-                  <div className="text-center w-full items-center md:w-2/3 text-gray-500 min-h-64 flex">
-                    No flights match your criteria. Please adjust your filters.
-                  </div>
-                </LoaderWrapper>
-              )}
-            </div>
-          </ScrollArea.Autosize>
-        </div>
-      </LoaderWrapper>
+                }
+                flightDurationComponent={
+                  <TimeSlider
+                    onChange={setSelectedFlightDuration}
+                    onChangeEnd={handleChangeDurationEnd}
+                    value={selectedFlightDuration}
+                    maxValue={flightsMeta.maxDuration}
+                    minValue={flightsMeta.minDuration}
+                  />
+                }
+                handleTimeRangeChange={handleRangeChange}
+                airlines={airlines}
+                filters={filters}
+                handleFilterChange={handleFilterChange}
+              />
+            </Skeleton>
+          </div>
+        )}
+        <ScrollArea.Autosize mah={scrollerHeight} className="w-full md:w-2/3">
+          <div className="grid grid-cols-1 gap-4 items-start">
+            {filteredFlights.map((flight) => {
+              return (
+                <FlightTicketCard
+                  isLoading={isLoading}
+                  key={flight.id}
+                  {...flight}
+                  flightId={flight.id}
+                  isSelected={orderFlight?.id === flight.id}
+                  onClick={handleFlightChange}
+                />
+              );
+            })}
+            {filteredFlights.length === 0 && !isLoading ? (
+              <div className="text-center w-full items-center md:w-2/3 text-gray-500 min-h-64 flex">
+                No flights match your criteria. Please adjust your filters.
+              </div>
+            ) : (
+              filteredFlights.length === 0 &&
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="p-24" />
+              ))
+            )}
+          </div>
+        </ScrollArea.Autosize>
+      </div>
     </div>
   );
 };

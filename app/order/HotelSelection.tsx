@@ -349,6 +349,13 @@ export const HotelSelection = () => {
                 handleSelectedRate={handleSelectedRate}
               />
             ))}
+            {hotels.length === 0 &&
+              isLoading &&
+              Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="flex justify-center">
+                  <Skeleton className="p-28" />
+                </div>
+              ))}
           </div>
         </div>
       </div>
