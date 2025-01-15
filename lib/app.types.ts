@@ -127,3 +127,10 @@ export type HotelSearchCriteria =
       type: "region";
       value: string[];
     };
+
+export type EventTicket = {
+  category: string;
+  quantity: number;
+  price: number;
+  id: string;
+};

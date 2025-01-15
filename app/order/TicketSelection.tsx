@@ -14,6 +14,7 @@ import dayjs from "dayjs";
 export const TicketSelection = () => {
   const eventId = useSearchParams().get("eventId") as string;
   const event = events.find((e) => e.id === eventId);
+  const { setEventTicket } = useContext(OrderContext);
 
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     event?.id
@@ -22,8 +23,13 @@ export const TicketSelection = () => {
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
 
-  const handleTicketSelect = (id: string) => {
-    setSelectedTicket(id);
+  const handleTicketSelect = (ticket: {
+    id: string;
+    category: string;
+    price: number;
+  }) => {
+    setEventTicket({ ...ticket, quantity: numberOfEventTickets });
+    setSelectedTicket(ticket.id);
   };
 
   const handleQuantityChange = (value: number | string) => {
@@ -96,7 +102,13 @@ export const TicketSelection = () => {
               {event?.tickets.map((ticket, index) => (
                 <EventTicketCard
                   index={index}
-                  onClick={() => handleTicketSelect(ticket.id)}
+                  onClick={() =>
+                    handleTicketSelect({
+                      id: ticket.id,
+                      price: ticket.price,
+                      category: ticket.category,
+                    })
+                  }
                   key={ticket.id}
                   category={ticket.category}
                   categoryDescription={ticket.description}

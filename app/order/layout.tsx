@@ -2,7 +2,7 @@
 import { PillStepper } from "@/components/ui/pillStepper";
 import { ReactNode, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
-import { Event, Flight, OrderHotel } from "@/lib/app.types";
+import { Event, EventTicket, Flight, OrderHotel } from "@/lib/app.types";
 import { events } from "@/lib/events-data";
 import { useSearchParams } from "next/navigation";
 import "@mantine/core/styles.css";
@@ -16,6 +16,7 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(1);
   const [planeTickets, setPlaneTickets] = useState({ adults: 1, children: 0 });
   const [step, setStep] = useState(1);
+  const [eventTicket, setEventTicket] = useState({} as EventTicket);
   const eventId = useSearchParams().get("eventId") as string;
 
   useEffect(() => {
@@ -32,6 +33,8 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
       )}
       <OrderContext.Provider
         value={{
+          eventTicket,
+          setEventTicket,
           setStep,
           step,
           setEvent,

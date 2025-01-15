@@ -8,7 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, CalendarDays, MapPin, Plane, Hotel, CreditCard, PlusCircle, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Loader2,
+  CalendarDays,
+  MapPin,
+  Plane,
+  Hotel,
+  CreditCard,
+  PlusCircle,
+  MinusCircle,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { events } from "@/lib/events-data";
 import { Order } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
@@ -28,7 +39,8 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
   });
   const [isSummaryOpen, setIsSummaryOpen] = useState(true);
 
-  const { flight: selectedFlight, hotel: selectedHotel } = useContext(OrderContext);
+  const { flight: selectedFlight, hotel: selectedHotel } =
+    useContext(OrderContext);
   const router = useRouter();
 
   const event = events.find((e) => e.id === order.eventId);
@@ -65,25 +77,31 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
     selectedFlight.price +
     selectedHotel.price;
 
-  const [passengers, setPassengers] = useState([{ firstName: '', lastName: '' }])
+  const [passengers, setPassengers] = useState([
+    { firstName: "", lastName: "" },
+  ]);
 
   const addPassenger = () => {
-    setPassengers([...passengers, { firstName: '', lastName: '' }])
-  }
+    setPassengers([...passengers, { firstName: "", lastName: "" }]);
+  };
 
   const removePassenger = (index: number) => {
     if (passengers.length > 1) {
-      const newPassengers = [...passengers]
-      newPassengers.splice(index, 1)
-      setPassengers(newPassengers)
+      const newPassengers = [...passengers];
+      newPassengers.splice(index, 1);
+      setPassengers(newPassengers);
     }
-  }
+  };
 
-  const updatePassenger = (index: number, field: 'firstName' | 'lastName', value: string) => {
-    const newPassengers = [...passengers]
-    newPassengers[index][field] = value
-    setPassengers(newPassengers)
-  }
+  const updatePassenger = (
+    index: number,
+    field: "firstName" | "lastName",
+    value: string
+  ) => {
+    const newPassengers = [...passengers];
+    newPassengers[index][field] = value;
+    setPassengers(newPassengers);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -93,12 +111,16 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
           {/* Left Column - Booking Summary and CTA */}
           <div className="space-y-6 order-1 md:order-1">
             <Card className="bg-white shadow-lg overflow-hidden">
-              <div 
+              <div
                 className="bg-[#277e89] text-white py-4 px-6 text-right flex justify-between items-center cursor-pointer"
                 onClick={() => setIsSummaryOpen(!isSummaryOpen)}
               >
                 <button className="text-white">
-                  {isSummaryOpen ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                  {isSummaryOpen ? (
+                    <ChevronUp size={24} />
+                  ) : (
+                    <ChevronDown size={24} />
+                  )}
                 </button>
                 <h2 className="text-[22px] font-bold">סיכום הזמנה</h2>
               </div>
@@ -106,7 +128,9 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
                 <div className="p-6 space-y-6 text-right">
                   <div className="space-y-2">
                     <h3 className="font-medium text-[15px]">שם האירוע</h3>
-                    <p className="text-[#666] text-[15px]">באיירן מינכן - פ.ס.ז׳</p>
+                    <p className="text-[#666] text-[15px]">
+                      באיירן מינכן - פ.ס.ז׳
+                    </p>
                     <p className="text-[#666] text-[15px]">קטגוריה 2</p>
                   </div>
 
@@ -149,14 +173,20 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
             {/* Contact Form */}
             <Card className="bg-white shadow-lg overflow-hidden">
               <div className="px-8 pt-6 pb-8">
-                <h2 className="text-[22px] font-bold mb-4 text-right">איש קשר</h2>
-                <p className="text-right mb-8 text-gray-600 text-[15px]">נצייני יצור איתך קשר ביום העסקים הבא להשלמת ההזמנה</p>
+                <h2 className="text-[22px] font-bold mb-4 text-right">
+                  איש קשר
+                </h2>
+                <p className="text-right mb-8 text-gray-600 text-[15px]">
+                  נצייני יצור איתך קשר ביום העסקים הבא להשלמת ההזמנה
+                </p>
 
                 <div className="space-y-5">
                   {passengers.map((passenger, index) => (
                     <div key={index} className="space-y-4">
                       <div className="flex justify-between items-center">
-                        <h3 className="font-medium text-[15px]">נוסע {index + 1}</h3>
+                        <h3 className="font-medium text-[15px]">
+                          נוסע {index + 1}
+                        </h3>
                         {index > 0 && (
                           <Button
                             variant="ghost"
@@ -174,20 +204,32 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
                           placeholder="First name (passport)"
                           className="h-11 text-right"
                           value={passenger.firstName}
-                          onChange={(e) => updatePassenger(index, 'firstName', e.target.value)}
+                          onChange={(e) =>
+                            updatePassenger(index, "firstName", e.target.value)
+                          }
                         />
                         <Input
                           dir="rtl"
                           placeholder="Last name (passport)"
                           className="h-11 text-right"
                           value={passenger.lastName}
-                          onChange={(e) => updatePassenger(index, 'lastName', e.target.value)}
+                          onChange={(e) =>
+                            updatePassenger(index, "lastName", e.target.value)
+                          }
                         />
                       </div>
                       {index === 0 && (
                         <>
-                          <Input dir="rtl" placeholder="טלפון" className="h-11 text-right" />
-                          <Input dir="rtl" placeholder="דואר אלקטרוני" className="h-11 text-right" />
+                          <Input
+                            dir="rtl"
+                            placeholder="טלפון"
+                            className="h-11 text-right"
+                          />
+                          <Input
+                            dir="rtl"
+                            placeholder="דואר אלקטרוני"
+                            className="h-11 text-right"
+                          />
                         </>
                       )}
                     </div>
@@ -211,20 +253,50 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
                 <h3 className="font-bold mb-4 text-[#05203c]">trusted by:</h3>
                 <div className="space-y-3 text-[13px] text-[#444]">
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#277e89] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-4 h-4 text-[#277e89] flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     <span>Exclusive rates for flight and hotel bookings</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#277e89] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-4 h-4 text-[#277e89] flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     <span>100% Buyers Guarantee protection</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#277e89] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-4 h-4 text-[#277e89] flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     <span>On-time arrival guarantee</span>
                   </div>
@@ -235,5 +307,5 @@ export default function OrderReview({ order, onSubmit }: OrderReviewProps) {
         </div>
       </main>
     </div>
-  )
+  );
 }
