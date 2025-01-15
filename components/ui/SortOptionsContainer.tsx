@@ -12,7 +12,7 @@ export const SortOptionsContainer = ({
 
   return (
     <div className="flex w-full flex-col items-center ">
-      <div dir="rtl" className="mt-4 w-screen bg-gray-200">
+      <div dir="rtl" className="w-screen bg-gray-200">
         <div className="w-full">
           <div className="px-6 py-4 m-auto max-w-5xl">
             <div className="w-full flex text-center justify-between">

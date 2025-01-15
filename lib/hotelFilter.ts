@@ -1,6 +1,5 @@
+import { SortOptions } from "./app.types";
 import { Hotel, HotelsInfoClient } from "./hotel.type";
-
-export type SortOptions = "price_asc" | "rating";
 
 export const applyFiltersAndSorting = ({
   hotels,
@@ -9,6 +8,7 @@ export const applyFiltersAndSorting = ({
   hotelsInfo,
   sortOption = "price_asc",
   hotelName,
+  withMeal,
 }: {
   hotels: Hotel[];
   priceRange: [number, number];
@@ -16,6 +16,7 @@ export const applyFiltersAndSorting = ({
   hotelsInfo: HotelsInfoClient;
   sortOption?: SortOptions;
   hotelName?: string;
+  withMeal: boolean;
 }) => {
   // Apply filters
 
@@ -23,6 +24,10 @@ export const applyFiltersAndSorting = ({
     const price = +hotel.rates[0].payment_options.payment_types[0].show_amount;
 
     const hotelRating = hotelsInfo[hotel.id].metadata.rating;
+
+    const matchHasMeal =
+      !withMeal ||
+      hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast);
 
     const matchesName = hotelName
       ? hotelsInfo[hotel.id].metadata.hotelName
@@ -37,7 +42,7 @@ export const applyFiltersAndSorting = ({
 
     const matchesPriceRange = price >= priceRange[0] && price <= priceRange[1];
 
-    return matchesPriceRange && matchesRating && matchesName;
+    return matchesPriceRange && matchesRating && matchesName && matchHasMeal;
   });
 
   const sortedHotels = hotelSort(filteredHotels, sortOption, hotelsInfo);

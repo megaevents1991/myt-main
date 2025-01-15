@@ -1,6 +1,5 @@
 "use client";
 
-import { events } from "@/lib/events-data";
 import { Hotel, HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
 import { Button, Popover, Skeleton } from "@mantine/core";
 import { useState, useEffect, useContext } from "react";
@@ -11,14 +10,17 @@ import { HotelCard } from "@/components/ui/hotelCard";
 import { Search, Settings2Icon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
-import { applyFiltersAndSorting, SortOptions } from "@/lib/hotelFilter";
+import { applyFiltersAndSorting } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
-import { OrderHotel } from "@/lib/app.types";
+import {
+  Event,
+  HotelSearchCriteria,
+  OrderHotel,
+  SortOptions,
+} from "@/lib/app.types";
 import dayjs from "dayjs";
 import { getDistance } from "geolib";
-
-const event = events[0];
 
 export const HotelSelection = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -28,6 +30,7 @@ export const HotelSelection = () => {
     setHotel,
     planeTickets,
     hotel: selectedOrderHotel,
+    event = {} as Event,
   } = useContext(OrderContext);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date(event.date).getTime() - 2 * 8.64e7),
@@ -60,6 +63,7 @@ export const HotelSelection = () => {
   const [, setSortOption] = useState<SortOptions>("price_asc");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
   const matches = useMediaQuery("(min-width: 768px)");
+  const [withMeal, setWithMeal] = useState(false);
 
   useEffect(() => {
     fetchHotels();
@@ -115,27 +119,38 @@ export const HotelSelection = () => {
     setSelectedHotelId("");
   };
 
-  const handlePriceChange = (priceRange: [number, number]) => {
+  const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     setHotel(undefined);
-    setPriceRange(priceRange);
+
+    switch (type) {
+      case "rating":
+        setRating(value);
+        break;
+      case "priceRange":
+        setPriceRange(value);
+        break;
+      case "hotelName":
+        if (showFilters) {
+          setShowFilters(false);
+        }
+        break;
+      case "withMeal":
+        setWithMeal(value);
+        break;
+      case "sortOption":
+        setSortOption(value);
+        break;
+      case "region":
+        break;
+    }
+
     const hotelsToSet = applyFiltersAndSorting({
       hotels,
       priceRange,
       rating,
       hotelsInfo,
-    });
-
-    setFilteredHotels(hotelsToSet);
-  };
-
-  const handleRatingChange = (rating: boolean[]) => {
-    setHotel(undefined);
-    setRating(rating);
-    const hotelsToSet = applyFiltersAndSorting({
-      hotels,
-      priceRange,
-      rating,
-      hotelsInfo,
+      withMeal,
+      ...{ [type]: value },
     });
 
     setFilteredHotels(hotelsToSet);
@@ -143,19 +158,6 @@ export const HotelSelection = () => {
 
   const handleSelectedRate = (orderHotel: OrderHotel) => {
     setHotel(orderHotel);
-  };
-
-  const handleSortChange = (sortOption: SortOptions) => {
-    setSortOption(sortOption);
-    const hotelsToSet = applyFiltersAndSorting({
-      hotels,
-      priceRange,
-      rating,
-      hotelsInfo,
-      sortOption,
-    });
-
-    setFilteredHotels(hotelsToSet);
   };
 
   const handleSetRooms = (room: {
@@ -170,32 +172,14 @@ export const HotelSelection = () => {
     });
   };
 
-  const handleHotelSearch = (search: string) => {
-    setHotel(undefined);
-    const hotelsToSet = applyFiltersAndSorting({
-      hotels,
-      priceRange,
-      rating,
-      hotelsInfo,
-      hotelName: search,
-    });
-
-    if (showFilters) {
-      setShowFilters(false);
-    }
-
-    setFilteredHotels(hotelsToSet);
-  };
-
   return (
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
           selectedRating={rating}
           maxPrice={maxPrice}
-          onPriceRangeChange={handlePriceChange}
-          onSearch={handleHotelSearch}
-          onRatingChange={handleRatingChange}
+          onCriteriaChange={handleSearchCriteriaChange}
+          withMeal={withMeal}
         />
       </FiltersModal>
       <div className="flex flex-col w-full items-center">
@@ -291,13 +275,23 @@ export const HotelSelection = () => {
             <div>סדר לפי</div>
             <button
               className="font-bold"
-              onClick={() => handleSortChange("price_asc")}
+              onClick={() =>
+                handleSearchCriteriaChange({
+                  value: "price_asc",
+                  type: "sortOption",
+                })
+              }
             >
               מחיר
             </button>
             <button
               className="font-bold"
-              onClick={() => handleSortChange("rating")}
+              onClick={() =>
+                handleSearchCriteriaChange({
+                  value: "rating",
+                  type: "sortOption",
+                })
+              }
             >
               כוכבים
             </button>
@@ -311,53 +305,50 @@ export const HotelSelection = () => {
       />
       <div className="flex flex-row gap-4 flex-row-reverse items-start w-full">
         {matches && (
-          <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg">
+          <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg sticky top-0">
             <Skeleton visible={isLoading} className="p-4">
               <HotelFilters
                 selectedRating={rating}
                 maxPrice={maxPrice}
-                onPriceRangeChange={handlePriceChange}
-                onSearch={handleHotelSearch}
-                onRatingChange={handleRatingChange}
+                onCriteriaChange={handleSearchCriteriaChange}
+                withMeal={withMeal}
               />
             </Skeleton>
           </div>
         )}
         <div className="w-full">
           <div className="grid grid-cols-1 gap-4 items-start">
-            {filteredHotels.map((hotel) => {
-              return (
-                <HotelCard
-                  isLoading={isLoading}
-                  distanceFromCenter={getDistance(
-                    {
-                      latitude: event.location.latitude,
-                      longitude: event.location.longitude,
-                    },
-                    {
-                      latitude: hotelsInfo[hotel.id].metadata.latitude,
-                      longitude: hotelsInfo[hotel.id].metadata.longitude,
-                    },
-                    1
-                  )}
-                  isSelected={hotel.id === selectedHotelId}
-                  key={hotel.id}
-                  hotelRates={hotel.rates}
-                  hotelInfo={hotelsInfo[hotel.id]}
-                  handleSelect={() => {
-                    if (
-                      selectedOrderHotel &&
-                      selectedOrderHotel?.id !== hotel.id
-                    ) {
-                      setHotel(undefined);
-                    }
+            {filteredHotels.map((hotel) => (
+              <HotelCard
+                isLoading={isLoading}
+                distanceFromCenter={getDistance(
+                  {
+                    latitude: event.location.latitude,
+                    longitude: event.location.longitude,
+                  },
+                  {
+                    latitude: hotelsInfo[hotel.id].metadata.latitude,
+                    longitude: hotelsInfo[hotel.id].metadata.longitude,
+                  },
+                  1
+                )}
+                isSelected={hotel.id === selectedHotelId}
+                key={hotel.id}
+                hotelRates={hotel.rates}
+                hotelInfo={hotelsInfo[hotel.id]}
+                handleSelect={() => {
+                  if (
+                    selectedOrderHotel &&
+                    selectedOrderHotel?.id !== hotel.id
+                  ) {
+                    setHotel(undefined);
+                  }
 
-                    setSelectedHotelId(hotel.id);
-                  }}
-                  handleSelectedRate={handleSelectedRate}
-                />
-              );
-            })}
+                  setSelectedHotelId(hotel.id);
+                }}
+                handleSelectedRate={handleSelectedRate}
+              />
+            ))}
           </div>
         </div>
       </div>

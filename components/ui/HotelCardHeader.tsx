@@ -4,7 +4,7 @@ import { Stars } from "./stars";
 type HotelCardHeaderProps = {
   hotelName: string;
   distanceFromCenter: number;
-  meals: string;
+  meals: boolean;
   roomName: string;
   rating: number;
 };
@@ -32,7 +32,7 @@ export const HotelCardHeader = ({
       </div>
       <div className="flex flex-row justify-between items-center gap-2 text-sm sm:w-2/3">
         <div className="font-bold">{roomName}</div>
-        <div>{meals === "nomeals" ? "כולל ארוחות" : "ללא ארוחות"}</div>
+        <div>{meals ? "כולל ארוחות" : "ללא ארוחות"}</div>
       </div>
     </div>
   );

@@ -1,38 +1,34 @@
-import { RangeSlider } from "@mantine/core";
+import { Checkbox, RangeSlider } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { StarsGroup } from "@/components/ui/StarsGroup";
 import { Search } from "lucide-react";
+import { HotelSearchCriteria } from "@/lib/app.types";
 
 const themeColor = "#05203C";
 
 export const HotelFilters = ({
   maxPrice,
-  onPriceRangeChange,
-  onSearch,
-  onRatingChange,
+  onCriteriaChange,
   selectedRating,
+  withMeal,
 }: {
+  onCriteriaChange: (criteria: HotelSearchCriteria) => void;
   maxPrice: number;
-  onPriceRangeChange: (range: [number, number]) => void;
-  onSearch: (search: string) => void;
-  onRatingChange: (rating: boolean[]) => void;
   selectedRating: boolean[];
+  withMeal: boolean;
 }) => {
   const [searchValue, setSearchValue] = useState("");
   const [value, setValue] = useState<[number, number]>([0, 2000]);
-  const handleOnChangeEnd = (value: [number, number]) => {
-    onPriceRangeChange(value);
+  const handlePriceRangeChangeEnd = (value: [number, number]) => {
+    onCriteriaChange({ value, type: "priceRange" });
   };
-
-  const handleOnChange = (value: [number, number]) => {
+  const handlePriceRangeChange = (value: [number, number]) => {
     setValue(value);
   };
-
   const [stars, setStars] = useState<boolean[]>(selectedRating);
-
   const handleRatingChange = (value: boolean[]) => {
     setStars(value);
-    onRatingChange(value);
+    onCriteriaChange({ value, type: "rating" });
   };
 
   useEffect(() => {
@@ -70,12 +66,11 @@ export const HotelFilters = ({
             label: { backgroundColor: themeColor },
             thumb: { backgroundColor: themeColor, borderColor: themeColor },
           }}
-          onChange={handleOnChange}
-          onChangeEnd={handleOnChangeEnd}
+          onChange={handlePriceRangeChange}
+          onChangeEnd={handlePriceRangeChangeEnd}
           marks={marks}
         />
       </div>
-
       <form className="flex w-full shadow-md mt-10" dir="rtl">
         <input
           onChange={(e) => setSearchValue(e.target.value)}
@@ -88,13 +83,27 @@ export const HotelFilters = ({
           className="w-1/3 bg-secondary text-white rounded-l flex items-center justify-center"
           onClick={(e) => {
             e.preventDefault();
-            onSearch(searchValue);
+            onCriteriaChange({
+              value: searchValue,
+              type: "hotelName",
+            });
             setSearchValue("");
           }}
         >
           <Search />
         </button>
       </form>
+      <div dir="rtl" className="w-full">
+        <Checkbox
+          onChange={(value) =>
+            onCriteriaChange({ value: value.target.checked, type: "withMeal" })
+          }
+          checked={withMeal}
+          id={"meal"}
+          label={"כולל ארוחה"}
+          className="my-2"
+        />
+      </div>
     </div>
   );
 };

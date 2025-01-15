@@ -93,7 +93,7 @@ export const HotelCard = ({
                 <HotelCardHeader
                   distanceFromCenter={distanceFromCenter}
                   hotelName={hotelInfo.metadata.hotelName}
-                  meals={selectedRoom?.meal || ""}
+                  meals={!!selectedRoom?.meal_data.has_breakfast}
                   rating={hotelInfo.metadata.rating}
                   roomName={selectedRoom?.room_data_trans.main_name || ""}
                 />

@@ -84,10 +84,10 @@ const FlightCard = ({
             height={80}
           />
         </div>
-        <div className="text-sm">{metadata.name}</div>
+        <div className="text-[0.8rem]">{metadata.name}</div>
       </div>
-      <div className="md:w-[25%]">
-        <div className="text-lg font-bold flex flex-row items-center">
+      <div className="w-[25%] md:w-[30%]">
+        <div className="sm:text-sm md:text-lg font-bold flex flex-row items-center w-fit">
           <div>
             {String(new Date(departureTime).getHours()).padStart(2, "0")}:
             {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
@@ -105,9 +105,9 @@ const FlightCard = ({
           {arrivalAirport}
         </div>
       </div>
-      <div className="md:w-[25%] text-center display flex flex-col items-center md:items-start gap-2">
+      <div className="w-[25%] md:w-[20%] text-center display flex flex-col items-center md:items-start gap-2">
         <div
-          className="text-sm font-bold flex flex-col md:flex-row gap-2 text-right items-center"
+          className="text-[0.6rem] font-bold flex flex-col md:flex-row gap-2 text-right items-center"
           onTouchStart={() => setTooltipOpened((curr) => !curr)}
         >
           {stops.length - 1 ? (
@@ -116,14 +116,14 @@ const FlightCard = ({
               position="top"
               opened={isMobile ? tooltipOpened : undefined}
             >
-              <Info />
+              <Info size={"16px"} />
             </Tooltip>
           ) : null}
           {stopsMap[stops.length - 1]}
         </div>
         {checkBagsIncluded && (
-          <div className="text-sm font-bold flex flex-col md:flex-row gap-2 text-right items-center">
-            <Luggage /> כולל מזוודה
+          <div className="text-[0.6rem] font-bold flex flex-col md:flex-row gap-2 text-right items-center whitespace-nowrap">
+            <Luggage size={"16px"} /> כולל מזוודה
           </div>
         )}
       </div>

@@ -89,7 +89,41 @@ export type TimeRange = [
 export type AffiliateTracking = {
   id: string;
   affiliate_id: string;
-  stage: 'VISIT' | 'EVENT_SELECTED' | 'TICKET_SELECTED' | 'FLIGHT_SELECTED' | 'HOTEL_SELECTED' | 'CONFIRMED';
+  stage:
+    | "VISIT"
+    | "EVENT_SELECTED"
+    | "TICKET_SELECTED"
+    | "FLIGHT_SELECTED"
+    | "HOTEL_SELECTED"
+    | "CONFIRMED";
   data: object;
   timestamp: string;
 };
+
+export type SortOptions = "price_asc" | "rating";
+
+export type HotelSearchCriteria =
+  | {
+      type: "rating";
+      value: boolean[];
+    }
+  | {
+      type: "priceRange";
+      value: [number, number];
+    }
+  | {
+      type: "hotelName";
+      value: string;
+    }
+  | {
+      type: "withMeal";
+      value: boolean;
+    }
+  | {
+      type: "sortOption";
+      value: SortOptions;
+    }
+  | {
+      type: "region";
+      value: string[];
+    };

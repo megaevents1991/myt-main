@@ -59,6 +59,11 @@ export type Rate = {
   deposit: Deposit | null;
   no_show: NoShow | null;
   room_data_trans: RoomDataTrans;
+  meal_data: {
+    has_breakfast: boolean;
+    no_child_meal: boolean;
+    value: string;
+  };
 };
 
 type PaymentType = {
