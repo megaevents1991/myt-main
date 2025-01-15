@@ -304,15 +304,6 @@ export const FlightSelection = () => {
     ).values() // Extract the unique values
   );
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex justify-center items-center h-64">
-  //       <Loader2 className="w-8 h-8 animate-spin" />
-  //       <span className="ml-2">Loading flights...</span>
-  //     </div>
-  //   );
-  // }
-
   const handleFlightChange = (value: string) => {
     setFlight(flights.find((f) => f.id === value));
   };
@@ -462,6 +453,7 @@ export const FlightSelection = () => {
             {filteredFlights.map((flight) => {
               return (
                 <FlightTicketCard
+                  minPrice={flightsMeta.minPrice}
                   isLoading={isLoading}
                   key={flight.id}
                   {...flight}

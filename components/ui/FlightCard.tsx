@@ -12,6 +12,7 @@ type FlightTicketCardProps = {
   onClick: (flightId: string) => void;
   flightId: string;
   isLoading: boolean;
+  minPrice: number;
 } & Flight;
 
 const stopsMap: { [key: number]: string } = {
@@ -30,7 +31,10 @@ export const FlightTicketCard = ({
   flightId,
   price,
   isLoading,
+  minPrice,
 }: FlightTicketCardProps) => {
+  const priceToShow =
+    price - minPrice > 0 ? `${Math.ceil(price - minPrice)}€+` : "כולל במחיר";
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
@@ -42,8 +46,7 @@ export const FlightTicketCard = ({
           </div>
           <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
           <div className="font-bold md:w-1/6 text-lg lg:text-2xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
-            {price}
-            &#8364;
+            {priceToShow}
             <div className="hidden sm:block"></div>
           </div>
         </div>
