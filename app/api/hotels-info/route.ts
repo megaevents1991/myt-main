@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     event: Pick<Event, "location">;
   } = await request.json();
 
-  if (!hotels.length) {
+  if (!hotels?.length) {
     return NextResponse.json(
       {
         error:

@@ -12,7 +12,7 @@ export const applyFiltersAndSorting = (
     flightDuration: number;
     maxPrice: number;
     numOfStops: string[];
-    withLuggageOnly: boolean;
+    luggage: string[];
   }
 ): Flight[] => {
   const {
@@ -71,7 +71,12 @@ export const applyFiltersAndSorting = (
     const matchesMaxPrice = flight.price <= options.maxPrice;
 
     const matchesLuggage =
-      !options.withLuggageOnly || flight.outbound.checkBagsIncluded;
+      !options.luggage.length ||
+      options.luggage.length === 2 ||
+      (options.luggage.includes("withoutLuggage") &&
+        !flight.outbound.checkBagsIncluded) ||
+      (options.luggage.includes("withLuggage") &&
+        flight.outbound.checkBagsIncluded);
 
     return (
       matchesAirline &&

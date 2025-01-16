@@ -83,12 +83,12 @@ export const HotelSelection = () => {
         checkin: dateRange?.[0]?.toISOString().split("T")[0],
         checkout: dateRange?.[1]?.toISOString().split("T")[0],
         guests: roomParams,
-        radius: parameters?.radius || distanceRange[1],
+        radius: parameters?.radius || distanceRange[1] || 1000,
       }),
     });
     const data: HotelResponse = await res.json();
 
-    const hotels = data.data.hotels.map((hotel) => {
+    const hotels = data?.data?.hotels?.map((hotel) => {
       const allRooms = hotel.rates.map(
         (rate) =>
           rate.room_data_trans.main_name +

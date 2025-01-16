@@ -31,12 +31,12 @@ export const FlightSelection = () => {
     numOfStops: string[];
     airline: string[];
     maxPrice: string;
-    withLuggageOnly: boolean;
+    luggage: string[];
   }>({
     numOfStops: ["0", "1", "2"],
     maxPrice: "",
     airline: [],
-    withLuggageOnly: false,
+    luggage: ["withoutLuggage", "withLuggage"],
   });
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
@@ -136,7 +136,7 @@ export const FlightSelection = () => {
         arrivalRanges: [],
         maxPrice,
         numOfStops: filters.numOfStops,
-        withLuggageOnly: filters.withLuggageOnly,
+        luggage: filters.luggage,
       });
 
       setFilteredFlights(filteredFlights);
@@ -194,7 +194,7 @@ export const FlightSelection = () => {
         arrivalRanges,
         maxPrice: selectedFlightPrice,
         numOfStops: filters.numOfStops,
-        withLuggageOnly: filters.withLuggageOnly,
+        luggage: filters.luggage,
       });
 
       setFilteredFlights(filteredFlights);
@@ -209,13 +209,13 @@ export const FlightSelection = () => {
         arrivalRanges,
         maxPrice: selectedFlightPrice,
         numOfStops: value,
-        withLuggageOnly: filters.withLuggageOnly,
+        luggage: filters.luggage,
       });
 
       setFilteredFlights(filteredFlights);
     }
 
-    if (key === "withLuggageOnly" && typeof value === "boolean") {
+    if (key === "luggage" && Array.isArray(value)) {
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: filters.airline,
         sortOption,
@@ -224,7 +224,7 @@ export const FlightSelection = () => {
         arrivalRanges,
         maxPrice: selectedFlightPrice,
         numOfStops: filters.numOfStops,
-        withLuggageOnly: value,
+        luggage: value,
       });
 
       setFilteredFlights(filteredFlights);
@@ -243,7 +243,7 @@ export const FlightSelection = () => {
       arrivalRanges,
       maxPrice: selectedFlightPrice,
       numOfStops: filters.numOfStops,
-      withLuggageOnly: filters.withLuggageOnly,
+      luggage: filters.luggage,
     });
 
     setFilteredFlights(filteredFlights);
@@ -261,7 +261,7 @@ export const FlightSelection = () => {
       arrivalRanges,
       maxPrice: price,
       numOfStops: filters.numOfStops,
-      withLuggageOnly: filters.withLuggageOnly,
+      luggage: filters.luggage,
     });
 
     setFilteredFlights(filteredFlights);
@@ -289,7 +289,7 @@ export const FlightSelection = () => {
       arrivalRanges: name === "arrival" ? range : arrivalRanges,
       maxPrice: selectedFlightPrice,
       numOfStops: filters.numOfStops,
-      withLuggageOnly: filters.withLuggageOnly,
+      luggage: filters.luggage,
     });
 
     setFilteredFlights(filteredFlights);

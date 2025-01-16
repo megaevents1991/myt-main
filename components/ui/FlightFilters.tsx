@@ -84,19 +84,11 @@ export const FlightFilters = ({
     numOfStops: string[];
     airline: string[];
     maxPrice: string;
-    withLuggageOnly: boolean;
+    luggage: string[];
   };
 }) => {
   const [departureTime, setDepartureTime] = React.useState<string[]>([]);
   const [arrivalTime, setArrivalTime] = React.useState<string[]>([]);
-
-  const setAirline = (value: string[]) => {
-    handleFilterChange("airline", value);
-  };
-
-  const handleStopsChange = (value: string[]) => {
-    handleFilterChange("numOfStops", value);
-  };
 
   const handleTimeChange = ({
     range,
@@ -131,7 +123,10 @@ export const FlightFilters = ({
       {/* Stops Section */}
       <div dir="rtl">
         <h3 className="text-lg font-semibold mb-4">עצירות</h3>
-        <Checkbox.Group value={filters.numOfStops} onChange={handleStopsChange}>
+        <Checkbox.Group
+          value={filters.numOfStops}
+          onChange={(value) => handleFilterChange("numOfStops", value)}
+        >
           <div className="flex items-center space-x-2 space-x-reverse">
             <Checkbox value="0" id="direct" />
             <label htmlFor="direct">טיסה ישירה</label>
@@ -150,16 +145,19 @@ export const FlightFilters = ({
       {/* Luggage */}
       <div dir="rtl">
         <h3 className="text-lg font-semibold mb-4">כבודה</h3>
-        <div className="flex items-center space-x-2 space-x-reverse">
-          <Checkbox
-            checked={filters.withLuggageOnly}
-            id="luggage"
-            onChange={(e) =>
-              handleFilterChange("withLuggageOnly", e.target.checked)
-            }
-          />
-          <label htmlFor="luggage">עם כבודה</label>
-        </div>
+        <Checkbox.Group
+          value={filters.luggage}
+          onChange={(value) => handleFilterChange("luggage", value)}
+        >
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Checkbox value="withLuggage" id="one-stop" />
+            <label htmlFor="one-stop">עם כבודה</label>
+          </div>
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Checkbox value="withoutLuggage" id="multi-stop" />
+            <label htmlFor="multi-stop">ללא כבודה</label>
+          </div>
+        </Checkbox.Group>
       </div>
 
       {/* Departure Time Section */}
@@ -258,7 +256,10 @@ export const FlightFilters = ({
       {/* Airlines Section */}
       <div dir="rtl">
         <h3 className="text-lg font-semibold mb-4">חברת תעופה</h3>
-        <Checkbox.Group value={filters.airline} onChange={setAirline}>
+        <Checkbox.Group
+          value={filters.airline}
+          onChange={(value) => handleFilterChange("airline", value)}
+        >
           {airlines.map(({ label, value }) => (
             <Checkbox
               value={value}
