@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { events, flights } from "@/lib/events-data";
+import { events, flights } from "@/lib/events-data"; //should be changed to import from supabase
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);

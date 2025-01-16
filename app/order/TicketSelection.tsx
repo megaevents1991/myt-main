@@ -1,8 +1,7 @@
 "use client";
 
-import { events } from "@/lib/events-data";
 import { Spoiler, ScrollArea } from "@mantine/core";
-import { useSearchParams } from "next/navigation";
+// import { useSearchParams } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import OptionSelect from "@/components/ui/selector";
@@ -12,20 +11,21 @@ import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 import dayjs from "dayjs";
 
 export const TicketSelection = () => {
-  const eventId = useSearchParams().get("eventId") as string;
-  const event = events.find((e) => e.id === eventId);
-  const { setEventTicket } = useContext(OrderContext);
+  //const eventId = useSearchParams().get("eventId") as string;
+  //const event = events.find((e) => e.id === eventId);
+  const { setEventTicket, event } = useContext(OrderContext);
+
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
-    event?.tickets[0].id
+    event?.tickets_and_rates[0].id
   );
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
 
   useEffect(() => {
     setEventTicket({
-      id: event?.tickets[0].id || "",
-      category: event?.tickets[0].category || "",
-      price: event?.tickets[0].price || 0,
+      id: event?.tickets_and_rates[0].id || "",
+      category: event?.tickets_and_rates[0].category || "",
+      price: event?.tickets_and_rates[0].price || 0,
       quantity: 1,
     });
   }, [event]);
@@ -92,7 +92,7 @@ export const TicketSelection = () => {
             className="rounded-lg"
             width={600}
             height={800}
-            src={event?.mapUrl || ""}
+            src={event?.map_image_url || ""}
             alt="Event map"
           />
         </Spoiler>
@@ -100,13 +100,13 @@ export const TicketSelection = () => {
           className="rounded-lg hidden w-full sm:block w-auto h-auto max-w-[50%]"
           width={600}
           height={800}
-          src={event?.mapUrl || ""}
+          src={event?.map_image_url || ""}
           alt="Event map"
         />
         <div className="w-full sm:w-2/3">
           <ScrollArea h={"40vh"}>
             <div className="flex flex-col gap-2">
-              {event?.tickets.map((ticket, index) => (
+              {event?.tickets_and_rates.map((ticket, index) => (
                 <EventTicketCard
                   index={index}
                   onClick={() =>
@@ -122,7 +122,7 @@ export const TicketSelection = () => {
                   colorOnTheMap={ticket.colorOnTheMap || ""}
                   isSelected={selectedTicket === ticket.id}
                   price={ticket.price}
-                  basePrice={event?.tickets[0].price || 0}
+                  basePrice={event?.tickets_and_rates[0].price || 0}
                 />
               ))}
             </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { events } from "@/lib/events-data";
+import { getEvents } from "../eventsData";
 import Amadeus from "amadeus";
 import { Flight, FlightSearchOptions, FlightSegment } from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
@@ -31,6 +31,8 @@ export async function POST(request: Request) {
     );
   }
 
+  const events = await getEvents();
+
   const event = events.find((e) => e.id === eventId);
 
   if (!event) {
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
 
     // Get airports for the city
     const locations = await amadeus.referenceData.locations.get({
-      keyword: event.city,
+      keyword: event.city_iata,
       subType: "AIRPORT",
     });
 

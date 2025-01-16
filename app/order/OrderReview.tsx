@@ -169,7 +169,7 @@ export default function OrderReview() {
                   איש קשר
                 </h2>
                 <p className="text-right mb-8 text-gray-600 text-[15px]">
-                  נצייני יצור איתך קשר ביום העסקים הבא להשלמת ההזמנה
+                  נציגנו ייצורו עימך קשר ביום העסקים הבא להשלמת ההזמנה
                 </p>
 
                 <div className="space-y-5" dir="rtl">

@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Image from "next/image";
-import { events as staticEvents } from "@/lib/events-data";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
-import { Dispatch, RefObject, SetStateAction, useRef, useState } from "react";
+import { Dispatch, RefObject, SetStateAction, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
@@ -100,11 +100,26 @@ const SearchCombobox = ({
 
 export default function Home() {
   const matches = useMediaQuery("(min-width: 768px)");
-  const events = staticEvents;
+  const [events, setEvents] = useState<Event[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   useAffiliate();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/events');
+        const { events } = await response.json();
+        setEvents(Array.isArray(events) ? events : []);
+      } catch (error) {
+        console.error('Error fetching cards:', error);
+        // Better user error (via the client).
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <main>
@@ -211,7 +226,7 @@ export default function Home() {
                 <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
                   <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">
                     <Image
-                      src={event.imageUrl}
+                      src={event.card_image_url}
                       alt={event.name}
                       width={400}
                       height={300}
@@ -221,14 +236,14 @@ export default function Home() {
                   <div className="flex-col text-center w-1/2 sm:w-auto">
                     <div className="p-2 px-4 font-bold">{event.name}</div>
                     <div className="py-1 bg-secondary text-white">
-                      {dayjs(event.date).format("DD/MM/YY")} |{" "}
+                      {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
                       {event.location.name}
                     </div>
                     <div className="p-2 px-4 text-right" dir="rtl">
                       <div>בממוצע כ-</div>
                       <div className="flex items-baseline gap-1">
                         <div className="text-2xl font-bold">
-                          ${event.tickets[0].price}
+                          ${event.tickets_and_rates[0].price}
                         </div>
                         <div className="text-sm line-through">$1000</div>{" "}
                       </div>

@@ -10,11 +10,11 @@ export type Event = {
     longitude: number;
     name: string;
   };
-  mapUrl: string;
+  map_image_url: string;
   description: string;
-  imageUrl: string;
-  city: string;
-  tickets: EventTicket[];
+  card_image_url: string;
+  city_iata: string;
+  tickets_and_rates: EventTicket[];
 };
 
 export type Flight = {
@@ -43,6 +43,7 @@ export type OrderHotel = {
   rate: Rate;
   address: string;
   name: string;
+  quantity: number;
   id: string;
   price: string;
   guests: Guest[];
