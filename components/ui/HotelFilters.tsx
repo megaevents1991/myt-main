@@ -11,36 +11,69 @@ export const HotelFilters = ({
   onCriteriaChange,
   selectedRating,
   withMeal,
+  maxDistance,
 }: {
   onCriteriaChange: (criteria: HotelSearchCriteria) => void;
   maxPrice: number;
+  maxDistance: number;
   selectedRating: boolean[];
   withMeal: boolean;
 }) => {
   const [searchValue, setSearchValue] = useState("");
-  const [value, setValue] = useState<[number, number]>([0, 2000]);
+  const [value, setValue] = useState<[number, number]>([0, maxPrice]);
   const handlePriceRangeChangeEnd = (value: [number, number]) => {
     onCriteriaChange({ value, type: "priceRange" });
   };
+  const [distanceFromCenter, setDistanceFromCenter] = useState<
+    [number, number]
+  >([0, maxDistance]);
+
+  const [stars, setStars] = useState<boolean[]>(selectedRating);
+
+  const handleDistanceFromCenterChange = (value: [number, number]) => {
+    setDistanceFromCenter(value);
+  };
+
   const handlePriceRangeChange = (value: [number, number]) => {
     setValue(value);
   };
-  const [stars, setStars] = useState<boolean[]>(selectedRating);
   const handleRatingChange = (value: boolean[]) => {
     setStars(value);
     onCriteriaChange({ value, type: "rating" });
+  };
+
+  const handleDistanceFromCenterChangeEnd = (value: [number, number]) => {
+    onCriteriaChange({ value, type: "distanceFromCenter" });
   };
 
   useEffect(() => {
     setValue([0, maxPrice]);
   }, [maxPrice]);
 
+  useEffect(() => {
+    setDistanceFromCenter([0, maxDistance]);
+  }, [maxDistance]);
+
   const marks = [
     {
       value: 0,
       label: <>0 &#8364;</>,
     },
-    { value: maxPrice, label: <>{Math.ceil(maxPrice)} &#8364;</> },
+    {
+      value: maxPrice,
+      label: <>{Math.ceil(maxPrice)} &#8364;</>,
+    },
+  ];
+
+  const distanceMarks = [
+    {
+      value: 0,
+      label: <>0 מטר</>,
+    },
+    {
+      value: maxDistance + 1000,
+      label: <>{maxDistance + 1000} מטר</>,
+    },
   ];
 
   return (
@@ -69,6 +102,26 @@ export const HotelFilters = ({
           onChange={handlePriceRangeChange}
           onChangeEnd={handlePriceRangeChangeEnd}
           marks={marks}
+        />
+        <div className="p-12"></div>
+        <RangeSlider
+          thumbSize={20}
+          min={0}
+          max={maxDistance + 1000}
+          step={10}
+          value={distanceFromCenter}
+          styles={{
+            bar: { backgroundColor: themeColor },
+            mark: {
+              backgroundColor: "transparent",
+              borderColor: "transparent",
+            },
+            label: { backgroundColor: themeColor },
+            thumb: { backgroundColor: themeColor, borderColor: themeColor },
+          }}
+          onChange={handleDistanceFromCenterChange}
+          onChangeEnd={handleDistanceFromCenterChangeEnd}
+          marks={distanceMarks}
         />
       </div>
       <form className="flex w-full shadow-md mt-10" dir="rtl">

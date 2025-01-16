@@ -9,7 +9,9 @@ export const applyFiltersAndSorting = ({
   sortOption = "price_asc",
   hotelName,
   withMeal,
+  distanceFromCenter,
 }: {
+  distanceFromCenter: [number, number];
   hotels: Hotel[];
   priceRange: [number, number];
   rating: boolean[];
@@ -29,6 +31,11 @@ export const applyFiltersAndSorting = ({
       !withMeal ||
       hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast);
 
+    const matchDistanceRange =
+      distanceFromCenter[1] >=
+        hotelsInfo[hotel.id].metadata.distanceFromCenter &&
+      distanceFromCenter[0] <= hotelsInfo[hotel.id].metadata.distanceFromCenter;
+
     const matchesName = hotelName
       ? hotelsInfo[hotel.id].metadata.hotelName
           .toUpperCase()
@@ -42,7 +49,13 @@ export const applyFiltersAndSorting = ({
 
     const matchesPriceRange = price >= priceRange[0] && price <= priceRange[1];
 
-    return matchesPriceRange && matchesRating && matchesName && matchHasMeal;
+    return (
+      matchesPriceRange &&
+      matchesRating &&
+      matchesName &&
+      matchHasMeal &&
+      matchDistanceRange
+    );
   });
 
   const sortedHotels = hotelSort(filteredHotels, sortOption, hotelsInfo);

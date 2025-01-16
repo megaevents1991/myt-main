@@ -20,7 +20,6 @@ import {
   SortOptions,
 } from "@/lib/app.types";
 import dayjs from "dayjs";
-import { getDistance } from "geolib";
 
 export const HotelSelection = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -64,12 +63,17 @@ export const HotelSelection = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
   const matches = useMediaQuery("(min-width: 768px)");
   const [withMeal, setWithMeal] = useState(false);
+  const [maxDistance, setMaxDistance] = useState(0);
+  const [distanceRange, setDistanceRange] = useState<[number, number]>([
+    0,
+    maxDistance,
+  ]);
 
   useEffect(() => {
     fetchHotels();
   }, []);
 
-  const fetchHotels = async () => {
+  const fetchHotels = async (parameters?: { radius: number }) => {
     setIsLoading(true);
     setHotel(undefined);
     const res = await fetch(`/api/hotels`, {
@@ -79,6 +83,7 @@ export const HotelSelection = () => {
         checkin: dateRange?.[0]?.toISOString().split("T")[0],
         checkout: dateRange?.[1]?.toISOString().split("T")[0],
         guests: roomParams,
+        radius: parameters?.radius || distanceRange[1],
       }),
     });
     const data: HotelResponse = await res.json();
@@ -100,16 +105,27 @@ export const HotelSelection = () => {
       method: "POST",
       body: JSON.stringify({
         hotels,
+        event: {
+          location: event.location,
+        },
       }),
     });
 
-    const hotelsInfo = await hotelsInfoRes.json();
+    const hotelsInfo: HotelsInfoClient = await hotelsInfoRes.json();
+
+    const maxDistance = Math.max(
+      ...Object.values(hotelsInfo).map(
+        (hotel) => hotel.metadata.distanceFromCenter
+      )
+    );
 
     const maxPrice = Math.max(
       ...data.data.hotels.map(
         (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
       )
     );
+    setMaxDistance(maxDistance);
+    setDistanceRange([0, maxDistance]);
     setPriceRange([0, maxPrice]);
     setHotelsInfo(hotelsInfo);
     setMaxPrice(maxPrice);
@@ -140,6 +156,14 @@ export const HotelSelection = () => {
       case "sortOption":
         setSortOption(value);
         break;
+
+      case "distanceFromCenter": {
+        if (value[1] > maxDistance) {
+          fetchHotels({ radius: value[1] });
+          return;
+        }
+        setDistanceRange(value);
+      }
       case "region":
         break;
     }
@@ -150,6 +174,7 @@ export const HotelSelection = () => {
       rating,
       hotelsInfo,
       withMeal,
+      distanceFromCenter: distanceRange,
       ...{ [type]: value },
     });
 
@@ -176,6 +201,7 @@ export const HotelSelection = () => {
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
+          maxDistance={maxDistance}
           selectedRating={rating}
           maxPrice={maxPrice}
           onCriteriaChange={handleSearchCriteriaChange}
@@ -259,7 +285,7 @@ export const HotelSelection = () => {
                 eventDay={event?.date}
               />
               <Button
-                onClick={fetchHotels}
+                onClick={() => fetchHotels()}
                 size="md"
                 style={{ borderRadius: "var(--radius)" }}
               >
@@ -308,6 +334,7 @@ export const HotelSelection = () => {
           <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg sticky top-0">
             <Skeleton visible={isLoading} className="p-4">
               <HotelFilters
+                maxDistance={maxDistance}
                 selectedRating={rating}
                 maxPrice={maxPrice}
                 onCriteriaChange={handleSearchCriteriaChange}
@@ -321,16 +348,8 @@ export const HotelSelection = () => {
             {filteredHotels.map((hotel) => (
               <HotelCard
                 isLoading={isLoading}
-                distanceFromCenter={getDistance(
-                  {
-                    latitude: event.location.latitude,
-                    longitude: event.location.longitude,
-                  },
-                  {
-                    latitude: hotelsInfo[hotel.id].metadata.latitude,
-                    longitude: hotelsInfo[hotel.id].metadata.longitude,
-                  },
-                  1
+                distanceFromCenter={Math.ceil(
+                  hotelsInfo[hotel.id].metadata.distanceFromCenter
                 )}
                 isSelected={hotel.id === selectedHotelId}
                 key={hotel.id}

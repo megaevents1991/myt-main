@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { authHeader } from "../keys";
 import { HotelInfo } from "@/lib/hotelInfo.type";
 import { Room, HotelsInfoClient } from "@/lib/hotel.type";
+import { Event } from "@/lib/app.types";
+import { getDistance } from "geolib";
 
 const HOTEL_INFO_URL = "https://api.worldota.net/api/b2b/v3/hotel/info/";
 
-const getHotelInfo = async (hotelId: string, rooms: string[]) => {
+const getHotelInfo = async (
+  hotelId: string,
+  rooms: string[],
+  location: Event["location"]
+) => {
   try {
     const hotelInfoResponse = await fetch(HOTEL_INFO_URL, {
       method: "POST",
@@ -54,6 +60,17 @@ const getHotelInfo = async (hotelId: string, rooms: string[]) => {
         longitude: hotelInfoData.data.longitude,
         latitude: hotelInfoData.data.latitude,
         region: hotelInfoData.data,
+        distanceFromCenter: getDistance(
+          {
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+          {
+            latitude: hotelInfoData.data.latitude,
+            longitude: hotelInfoData.data.longitude,
+          },
+          1
+        ),
       },
       general: {
         name: "general",
@@ -73,8 +90,13 @@ const getHotelInfo = async (hotelId: string, rooms: string[]) => {
 };
 
 export async function POST(request: Request) {
-  const { hotels }: { hotels: { id: string; rooms: string[] }[] } =
-    await request.json();
+  const {
+    hotels,
+    event,
+  }: {
+    hotels: { id: string; rooms: string[] }[];
+    event: Pick<Event, "location">;
+  } = await request.json();
 
   if (!hotels.length) {
     return NextResponse.json(
@@ -88,7 +110,7 @@ export async function POST(request: Request) {
 
   try {
     const data = await Promise.all(
-      hotels.map(({ id, rooms }) => getHotelInfo(id, rooms))
+      hotels.map(({ id, rooms }) => getHotelInfo(id, rooms, event.location))
     );
 
     const HotelInfoByKey = data.reduce((acc, hotel) => {

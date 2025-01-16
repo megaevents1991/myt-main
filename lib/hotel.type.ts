@@ -142,6 +142,7 @@ export type HotelInfoClient = {
     id: string;
     longitude: number;
     latitude: number;
+    distanceFromCenter: number;
   };
 };
 

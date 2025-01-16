@@ -126,6 +126,10 @@ export type HotelSearchCriteria =
   | {
       type: "region";
       value: string[];
+    }
+  | {
+      type: "distanceFromCenter";
+      value: [number, number];
     };
 
 export type EventTicket = {

@@ -5,7 +5,13 @@ import { authHeader } from "../keys";
 const API_URL = "https://api.worldota.net/api/b2b/v3/search/serp/geo";
 
 export async function POST(request: Request) {
-  const { location, checkin, checkout, guests } = await request.json();
+  const {
+    location,
+    checkin,
+    checkout,
+    guests,
+    radius = 1000,
+  } = await request.json();
 
   if (!location || !checkin || !checkout || !guests?.length) {
     return NextResponse.json(
@@ -27,7 +33,7 @@ export async function POST(request: Request) {
     guests,
     longitude,
     latitude,
-    radius: 1000,
+    radius,
     currency: "EUR",
   };
 
