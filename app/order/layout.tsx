@@ -11,7 +11,7 @@ import "@mantine/carousel/styles.css";
 
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
-  const [event, setEvent] = useState<Event | undefined>({} as Event);
+  const [event, setEvent] = useState<Event | undefined>(undefined);
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(1);
   const [planeTickets, setPlaneTickets] = useState({ adults: 1, children: 0 });
@@ -23,8 +23,8 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
     const fetchData = async () => {
       try {
         const response = await fetch("/api/events");
-        const data: Event[] = await response.json();
-        setEvent(() => data.find((e) => e.id === eventId));
+        const { events }: { events: Event[] } = await response.json();
+        setEvent(() => events.find((e) => e.id == eventId));
       } catch (error) {
         console.error("Error fetching cards:", error);
         // Better user error (via the client).
