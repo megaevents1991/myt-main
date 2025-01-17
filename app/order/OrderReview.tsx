@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { OrderContext } from "../app.context";
 import { FlightMeta } from "@/components/ui/FlightCard";
-import { submitOrder } from "./submitOrder";
-import { Order } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
+import { OrderData } from "@/lib/app.types";
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,20 +21,6 @@ export default function OrderReview() {
     numberOfEventTickets,
   } = useContext(OrderContext);
   const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const result = await submitOrder({} as Order);
-      router.push(`/confirmation?bookingReference=${result.bookingReference}`);
-    } catch (error) {
-      console.error("Error submitting order:", error);
-      alert("Failed to submit order. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const [passengers, setPassengers] = useState(
     Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
@@ -56,11 +41,66 @@ export default function OrderReview() {
     );
   }
 
+  const submitOrder = async (orderData: OrderData) => {
+    const response = await fetch('/api/confirm-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to submit order');
+    }
+    return await response.json();
+  };
+  
   const totalPrice = Math.ceil(
     eventTicket.price * numberOfEventTickets +
       selectedFlight.price +
       +selectedHotel.price
   );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Collect data from your UI elements
+    const updatedFormData = {
+      main_contact_first_name: passengers[0].firstName,
+      main_contact_last_name: passengers[0].lastName,
+      main_contact_phone_number: passengers[0].phone,
+      main_contact_email: passengers[0].email,
+      more_pax_info: passengers.slice(1).map(passenger => ({
+        first_name: passenger.firstName,
+        last_name: passenger.lastName
+      })),
+      event_order_info: {
+        event_id: event?.id || 0,
+        date: event? new Date(event.date) : new Date(),
+        name: event?.name || '',
+        number_of_ticket: numberOfEventTickets,
+        category: eventTicket.category,
+        price_per_ticket: eventTicket.price,
+        total_tickets_price: eventTicket.price * numberOfEventTickets
+      },
+      flight_order_info: selectedFlight || {},
+      hotel_order_info: selectedHotel || {},
+      user_shown_price: totalPrice
+    };
+  
+    try {
+      const result = await submitOrder(updatedFormData);
+      router.push(`/confirmation?bookingReference=${result.bookingReference}`);
+      // Handle success (e.g., show success message, redirect)
+    } catch (error) {
+      // Handle error (e.g., show error message)
+      console.error('Order submission failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // const addPassenger = () => {
   //   setPassengers([...passengers, { firstName: "", lastName: "" }]);

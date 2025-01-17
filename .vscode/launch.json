@@ -2,6 +2,15 @@
     "version": "0.2.0",
     "configurations": [
       {
+        "name": "Attach by Process ID",
+        "processId": "${command:PickProcess}",
+        "request": "attach",
+        "skipFiles": [
+          "<node_internals>/**"
+        ],
+        "type": "node"
+      },
+      {
         "type": "node",
         "request": "launch",
         "name": "Debug Next.js Server",
@@ -13,6 +22,16 @@
         "port": 9229,
         "console": "integratedTerminal",
         "internalConsoleOptions": "neverOpen"
+      },
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug Next.js Server2",
+        "program": "${workspaceFolder}/node_modules/.bin/next", // Path to the Next.js executable
+        "args": ["dev"], // Run Next.js in development mode
+        "outFiles": ["${workspaceFolder}/**/*.js"],
+        "sourceMaps": true,
+        "preLaunchTask": "npm: dev" // Optional: Run 'npm run dev' before debugging
       },
       {
         "name": "Next.js: debug server-side",

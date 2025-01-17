@@ -137,3 +137,26 @@ type EventTicket = {
 export type OrderTicket = Omit<EventTicket, "description" | "colorOnTheMap"> & {
   quantity: number;
 };
+
+export interface OrderData {
+  main_contact_first_name: string;
+  main_contact_last_name: string;
+  main_contact_phone_number: string;
+  main_contact_email: string;
+  more_pax_info: {
+    first_name: string;
+    last_name: string;
+  }[];
+  event_order_info: {
+    event_id: number;
+    date: Date;
+    name: string;
+    number_of_ticket: number;
+    category: string;
+    price_per_ticket: number;
+    total_tickets_price: number;
+  };
+  flight_order_info: object; // You might need to define a specific interface here
+  hotel_order_info: object; // You might need to define a specific interface here
+  user_shown_price: number;
+}
