@@ -24,7 +24,7 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
       try {
         const response = await fetch("/api/events");
         const { events }: { events: Event[] } = await response.json();
-        setEvent(() => events.find((e) => e.id == eventId));
+        setEvent(() => events.find((e) => e.id === +eventId));
       } catch (error) {
         console.error("Error fetching cards:", error);
         // Better user error (via the client).

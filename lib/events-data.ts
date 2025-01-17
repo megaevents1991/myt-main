@@ -2,7 +2,7 @@ import { Event, Flight } from "./app.types";
 
 export const events: Event[] = [
   {
-    id: "1",
+    id: 1,
     name: "באיירן מינכן - דורטמונד",
     date: "2025-08-22",
     location: {
@@ -10,12 +10,12 @@ export const events: Event[] = [
       longitude: -73.968285,
       name: "מדריד, ספרד",
     },
-    city: "Madrid",
+    city_iata: "MAD",
     description:
       "A day-long music festival featuring top artists from around the world.",
-    imageUrl: "/events/1_main.png",
-    mapUrl: "/events/1_main.png",
-    tickets: [
+    map_image_url: "/events/1_main.png",
+    card_image_url: "/events/1_main.png",
+    tickets_and_rates: [
       {
         category: "קטגוריה 1",
         price: 100,
@@ -61,7 +61,7 @@ export const events: Event[] = [
     ],
   },
   {
-    id: "2",
+    id: 2,
     name: "Coldplay, London - קולדפליי בלונדון",
     date: "2025-08-22",
     location: {
@@ -70,9 +70,9 @@ export const events: Event[] = [
       name: "וומבלי- לונדון, אנגליה",
     },
     description: "The final match of the FIFA World Cup 2023.",
-    imageUrl: "/events/2_main.png",
-    mapUrl: "/events/2_main.png",
-    tickets: [
+    map_image_url: "/events/2_main.png",
+    card_image_url: "/events/2_main.png",
+    tickets_and_rates: [
       {
         colorOnTheMap: "red",
         category: "General Admission",
@@ -95,10 +95,10 @@ export const events: Event[] = [
         id: "3",
       },
     ],
-    city: "New York",
+    city_iata: "New York",
   },
   {
-    id: "3",
+    id: 3,
     name: "Tech Conference 2023",
     date: "2023-09-22",
     location: {
@@ -108,10 +108,9 @@ export const events: Event[] = [
     },
     description:
       "Annual conference showcasing the latest in technology and innovation.",
-    imageUrl: "/events/3_main.png",
-    mapUrl: "/events/3_main.png",
-
-    tickets: [
+    card_image_url: "/events/3_main.png",
+    map_image_url: "/events/3_main.png",
+    tickets_and_rates: [
       {
         colorOnTheMap: "red",
         category: "General Admission",
@@ -134,10 +133,10 @@ export const events: Event[] = [
         id: "3",
       },
     ],
-    city: "New York",
+    city_iata: "New York",
   },
   {
-    id: "4",
+    id: 4,
     name: "Tech Conference 2023",
     date: "2023-09-22",
     location: {
@@ -147,9 +146,9 @@ export const events: Event[] = [
     },
     description:
       "Annual conference showcasing the latest in technology and innovation.",
-    imageUrl: "/events/4_main.png",
-    mapUrl: "/events/4_main.png",
-    tickets: [
+    card_image_url: "/events/4_main.png",
+    map_image_url: "/events/4_main.png",
+    tickets_and_rates: [
       {
         category: "General Admission",
         price: 100,
@@ -172,7 +171,7 @@ export const events: Event[] = [
         colorOnTheMap: "blue",
       },
     ],
-    city: "New York",
+    city_iata: "New York",
   },
 ];
 export const flights: Flight[] = [

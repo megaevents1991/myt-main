@@ -43,7 +43,6 @@ export type OrderHotel = {
   rate: Rate;
   address: string;
   name: string;
-  quantity: number;
   id: string;
   price: string;
   guests: Guest[];

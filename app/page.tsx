@@ -3,7 +3,14 @@
 
 import Image from "next/image";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
-import { Dispatch, RefObject, SetStateAction, useEffect, useRef, useState } from "react";
+import {
+  Dispatch,
+  RefObject,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
@@ -40,7 +47,7 @@ const SearchCombobox = ({
 
   const options = filteredOptions.map((item) => (
     <Combobox.Option
-      value={item.id}
+      value={item.id.toString()}
       key={item.id}
       style={{ textAlign: "right" }}
     >
@@ -54,7 +61,7 @@ const SearchCombobox = ({
     <Combobox
       onOptionSubmit={(optionValue) => {
         setSearchValue(
-          events.find((item) => item.id === optionValue)?.name || ""
+          events.find((item) => item.id.toString() === optionValue)?.name || ""
         );
         router.push(`/order?eventId=${optionValue}`);
       }}
@@ -109,11 +116,11 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/events');
+        const response = await fetch("/api/events");
         const { events } = await response.json();
         setEvents(Array.isArray(events) ? events : []);
       } catch (error) {
-        console.error('Error fetching cards:', error);
+        console.error("Error fetching cards:", error);
         // Better user error (via the client).
       }
     };
@@ -220,7 +227,7 @@ export default function Home() {
                 className="cursor-pointer"
                 key={event.id}
                 onClick={() => {
-                  orderStage("EVENT_SELECTED", { "event": event.name });
+                  orderStage("EVENT_SELECTED", { event: event.name });
                 }}
               >
                 <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
