@@ -16,5 +16,5 @@ declare module "aircodes" {
    * @param iataCode - The IATA code of the airline.
    * @returns A Promise that resolves to the airline's information or null if not found.
    */
-  export function getAirlineByIata(iataCode: string): Airline | null;
+  export function getAirlineByIata(iataCode: string): Airline;
 }

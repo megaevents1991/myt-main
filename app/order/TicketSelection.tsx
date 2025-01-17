@@ -3,7 +3,7 @@
 import { events } from "@/lib/events-data";
 import { Spoiler, ScrollArea } from "@mantine/core";
 import { useSearchParams } from "next/navigation";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import OptionSelect from "@/components/ui/selector";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
@@ -15,13 +15,20 @@ export const TicketSelection = () => {
   const eventId = useSearchParams().get("eventId") as string;
   const event = events.find((e) => e.id === eventId);
   const { setEventTicket } = useContext(OrderContext);
-
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
-    event?.id
+    event?.tickets[0].id
   );
-
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
+
+  useEffect(() => {
+    setEventTicket({
+      id: event?.tickets[0].id || "",
+      category: event?.tickets[0].category || "",
+      price: event?.tickets[0].price || 0,
+      quantity: 1,
+    });
+  }, [event]);
 
   const handleTicketSelect = (ticket: {
     id: string;

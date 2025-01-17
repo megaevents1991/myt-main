@@ -84,6 +84,7 @@ export const HotelFilters = ({
         className="mt-5"
       />
       <div className="m-auto w-full mt-5">
+        <h3 className="text-lg text-end font-semibold mb-4">מחיר</h3>
         <RangeSlider
           thumbSize={20}
           min={0}
@@ -103,7 +104,8 @@ export const HotelFilters = ({
           onChangeEnd={handlePriceRangeChangeEnd}
           marks={marks}
         />
-        <div className="p-12"></div>
+        <div className="p-6"></div>
+        <h3 className="text-lg text-end font-semibold mb-4">מרחק</h3>
         <RangeSlider
           thumbSize={20}
           min={0}

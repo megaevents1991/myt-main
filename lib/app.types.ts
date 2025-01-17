@@ -1,5 +1,5 @@
 import { Airline } from "aircodes";
-import { Rate } from "./hotel.type";
+import { Guest, Rate } from "./hotel.type";
 
 export type Event = {
   id: string;
@@ -14,13 +14,7 @@ export type Event = {
   description: string;
   imageUrl: string;
   city: string;
-  tickets: {
-    category: string;
-    description: string;
-    price: number;
-    id: string;
-    colorOnTheMap?: string;
-  }[];
+  tickets: EventTicket[];
 };
 
 export type Flight = {
@@ -29,11 +23,10 @@ export type Flight = {
   price: number;
   duration: string;
   stops: number;
-  returnDepartureTime: string;
-  returnArrivalTime: string;
   metadata: Airline;
   outbound: FlightSegment;
   inbound: FlightSegment;
+  numOfTravelers: number;
 };
 
 export type FlightSegment = {
@@ -52,6 +45,7 @@ export type OrderHotel = {
   name: string;
   id: string;
   price: string;
+  guests: Guest[];
 };
 
 export type Order = {
@@ -132,9 +126,14 @@ export type HotelSearchCriteria =
       value: [number, number];
     };
 
-export type EventTicket = {
+type EventTicket = {
   category: string;
-  quantity: number;
   price: number;
   id: string;
+  description: string;
+  colorOnTheMap: string;
+};
+
+export type OrderTicket = Omit<EventTicket, "description" | "colorOnTheMap"> & {
+  quantity: number;
 };

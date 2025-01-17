@@ -74,13 +74,21 @@ export const events: Event[] = [
     mapUrl: "/events/2_main.png",
     tickets: [
       {
+        colorOnTheMap: "red",
         category: "General Admission",
         price: 100,
         description: "General Admission",
         id: "1",
       },
-      { category: "VIP", price: 200, description: "VIP", id: "2" },
       {
+        category: "VIP",
+        price: 200,
+        description: "VIP",
+        id: "2",
+        colorOnTheMap: "green",
+      },
+      {
+        colorOnTheMap: "blue",
         category: "Backstage Pass",
         price: 500,
         description: "Backstage Pass",
@@ -105,13 +113,21 @@ export const events: Event[] = [
 
     tickets: [
       {
+        colorOnTheMap: "red",
         category: "General Admission",
         price: 100,
         description: "General Admission",
         id: "1",
       },
-      { category: "VIP", price: 200, description: "VIP", id: "2" },
       {
+        category: "VIP",
+        price: 200,
+        description: "VIP",
+        id: "2",
+        colorOnTheMap: "green",
+      },
+      {
+        colorOnTheMap: "blue",
         category: "Backstage Pass",
         price: 500,
         description: "Backstage Pass",
@@ -139,13 +155,21 @@ export const events: Event[] = [
         price: 100,
         description: "General Admission",
         id: "1",
+        colorOnTheMap: "red",
       },
-      { category: "VIP", price: 200, description: "VIP", id: "2" },
+      {
+        category: "VIP",
+        price: 200,
+        description: "VIP",
+        id: "2",
+        colorOnTheMap: "green",
+      },
       {
         category: "Backstage Pass",
         price: 500,
         description: "Backstage Pass",
         id: "3",
+        colorOnTheMap: "blue",
       },
     ],
     city: "New York",
@@ -158,19 +182,15 @@ export const flights: Flight[] = [
     price: 450,
     duration: "1h 35m",
     stops: 0,
-    returnDepartureTime: "19:30",
     returnArrivalTime: "05:45",
     metadata: {} as Flight["metadata"],
   },
   {
     id: "2",
     airline: "Delta",
-    arrivalAirport: "LGA",
     price: 380,
     duration: "1h 50m",
     stops: 0,
-    returnDepartureTime: "18:00",
-    returnArrivalTime: "19:50",
     metadata: {} as Flight["metadata"],
   },
 ] as Flight[];

@@ -5,7 +5,6 @@ import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
-import { useOrderState } from "./useOrderState";
 import { Event } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
@@ -19,8 +18,8 @@ const buttonText: Record<number, string> = {
 } as const;
 
 export const OrderForm = ({ event }: { event: Event }) => {
-  const { order, submitOrder } = useOrderState(event);
-  const { step, setStep, flight, hotel } = useContext(OrderContext);
+  const { step, setStep, flight, hotel, eventTicket } =
+    useContext(OrderContext);
 
   const buttonDisabled =
     (!flight?.id && step === 2) || (!hotel?.id && step === 3);
@@ -31,11 +30,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
         orderStage("TICKET_SELECTED", {
           data: {
             event: event.name,
-            ticketsType: order.ticketType,
-            numOfTicket: order.quantity,
+            ticketsType: eventTicket.category,
+            numOfTicket: eventTicket.quantity,
           },
         });
-        console.log(order);
       } else if (prev === 2) {
         orderStage("FLIGHT_SELECTED", {
           data: { flight: flight?.id },
@@ -58,7 +56,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 1 && <TicketSelection />}
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
-      {step === 4 && <OrderReview order={order} onSubmit={submitOrder} />}
+      {step === 4 && <OrderReview />}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-10">
         <div className="mt-4 w-screen justify-center flex flex-col bg-gray-200">
           {/* {step > 1 && (

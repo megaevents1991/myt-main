@@ -24,7 +24,7 @@ export const HotelCard = ({
   handleSelect: () => void;
   isSelected: boolean;
   hotelInfo: HotelInfoClient;
-  handleSelectedRate: (orderHotel: OrderHotel) => void;
+  handleSelectedRate: (orderHotel: Omit<OrderHotel, "guests">) => void;
   distanceFromCenter: number;
   isLoading: boolean;
 }) => {

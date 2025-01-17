@@ -59,19 +59,13 @@ type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
   FlightSegment;
 
 const FlightCard = ({
-  arrivalAirport,
-  arrivalTime,
-  departureAirport,
-  departureTime,
   stops,
   metadata,
   checkBagsIncluded,
+  ...flightMeta
 }: FlightCardProps) => {
   const [tooltipOpened, setTooltipOpened] = useState(false);
   const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
-
-  const plusOne =
-    new Date(departureTime).getDay() !== new Date(arrivalTime).getDay();
 
   return (
     <div
@@ -90,23 +84,7 @@ const FlightCard = ({
         <div className="text-[0.8rem]">{metadata.name}</div>
       </div>
       <div className="w-[25%] md:w-[30%]">
-        <div className="sm:text-sm md:text-lg font-bold flex flex-row items-center w-fit">
-          <div>
-            {String(new Date(departureTime).getHours()).padStart(2, "0")}:
-            {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
-          </div>
-          <ArrowLeft size={12} />
-          <div className="flex flex-row items-center">
-            {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
-            {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
-            <sup className="mr-1 text-secondary">{plusOne ? "1+" : ""}</sup>
-          </div>
-        </div>
-        <div className="text-sm inline-flex items-center flex-row">
-          {departureAirport}
-          <ArrowLeft size={12} />
-          {arrivalAirport}
-        </div>
+        <FlightMeta {...flightMeta} />
       </div>
       <div className="w-[25%] md:w-[20%] text-center display flex flex-col items-center md:items-start gap-2">
         <div
@@ -131,5 +109,39 @@ const FlightCard = ({
         )}
       </div>
     </div>
+  );
+};
+
+export const FlightMeta = ({
+  arrivalAirport,
+  arrivalTime,
+  departureAirport,
+  departureTime,
+}: Pick<
+  FlightCardProps,
+  "arrivalAirport" | "arrivalTime" | "departureAirport" | "departureTime"
+>) => {
+  const plusOne =
+    new Date(departureTime).getDay() !== new Date(arrivalTime).getDay();
+  return (
+    <>
+      <div className="sm:text-sm md:text-lg font-bold flex flex-row items-center w-fit">
+        <div>
+          {String(new Date(departureTime).getHours()).padStart(2, "0")}:
+          {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
+        </div>
+        <ArrowLeft size={12} />
+        <div className="flex flex-row items-center">
+          {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
+          {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
+          <sup className="mr-1 text-secondary">{plusOne ? "1+" : ""}</sup>
+        </div>
+      </div>
+      <div className="text-sm inline-flex items-center flex-row">
+        {departureAirport}
+        <ArrowLeft size={12} />
+        {arrivalAirport}
+      </div>
+    </>
   );
 };

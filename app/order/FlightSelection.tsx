@@ -81,7 +81,6 @@ export const FlightSelection = () => {
   }, [matches, flights]);
 
   useEffect(() => {
-    // setDateRange(DEFAULT_DATE_RANGE);
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
     fetchFlights({ adults: numberOfEventTickets });
   }, []);

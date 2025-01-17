@@ -122,7 +122,7 @@ type RoomDataTrans = {
   misc_room_type: string | null;
 };
 
-type Guest = {
+export type Guest = {
   adults: number;
   children: number[];
 };

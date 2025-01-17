@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { events } from "@/lib/events-data";
 import Amadeus from "amadeus";
-import { FlightSearchOptions, FlightSegment } from "@/lib/app.types";
+import { Flight, FlightSearchOptions, FlightSegment } from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
 
 // Initialize Amadeus client
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     });
 
     // Transform Amadeus response to match our flight data structure
-    const flights = response.result.data.map(
+    const flights: Flight[] = response.result.data.map(
       ({
         id,
         validatingAirlineCodes,
@@ -142,18 +142,13 @@ export async function POST(request: Request) {
 
         return {
           id,
+          numOfTravelers: travelerPricings.length,
           price: parseFloat(price.total),
           duration: itineraries[0].duration,
           stops: itineraries[0].segments.length - 1,
           airline: validatingAirlineCodes[0],
           outbound,
           inbound,
-          // departureTime: toDeparture.departure.at,
-          // departureAirport: toDeparture.departure.iataCode,
-          // arrivalAirport: toArrival?.arrival.iataCode,
-          // arrivalTime: toArrival?.arrival.at || 0,
-          // returnDepartureTime: fromDeparture.departure.at,
-          // returnArrivalTime: fromArrival?.arrival.at || 0,
           metadata: {
             ...getAirlineByIata(validatingAirlineCodes[0]),
             name: response.result.dictionaries.carriers[

@@ -68,6 +68,9 @@ export const HotelSelection = () => {
     0,
     maxDistance,
   ]);
+  const [requestDebug, setRequestDebug] = useState(
+    {} as HotelResponse["debug"]["request"]
+  );
 
   useEffect(() => {
     fetchHotels();
@@ -124,6 +127,7 @@ export const HotelSelection = () => {
         (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
       )
     );
+    setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
     setPriceRange([0, maxPrice]);
@@ -181,8 +185,8 @@ export const HotelSelection = () => {
     setFilteredHotels(hotelsToSet);
   };
 
-  const handleSelectedRate = (orderHotel: OrderHotel) => {
-    setHotel(orderHotel);
+  const handleSelectedRate = (orderHotel: Omit<OrderHotel, "guests">) => {
+    setHotel({ ...orderHotel, guests: requestDebug.guests });
   };
 
   const handleSetRooms = (room: {
