@@ -3,7 +3,7 @@ import { getEvents } from "../eventsData";
 
 export async function GET() {
   try {
-    const events = await getEvents();
+    const { events } = await getEvents();
 
     if (!events.length) throw "failed to fetch events";
 

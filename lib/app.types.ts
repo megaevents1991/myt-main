@@ -2,7 +2,7 @@ import { Airline } from "aircodes";
 import { Guest, Rate } from "./hotel.type";
 
 export type Event = {
-  id: string;
+  id: number;
   name: string;
   date: string;
   location: {

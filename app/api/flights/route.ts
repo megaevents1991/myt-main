@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { getEvents } from "../eventsData";
 import Amadeus from "amadeus";
-import { Flight, FlightSearchOptions, FlightSegment } from "@/lib/app.types";
+import {
+  FlightSearchOptions,
+  FlightSegment,
+  Event,
+  Flight,
+} from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
 
 // Initialize Amadeus client
@@ -22,7 +27,7 @@ export async function POST(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const eventId = searchParams.get("eventId");
+  const eventId = parseInt(searchParams.get("eventId") || "", 10);
 
   if (!eventId) {
     return NextResponse.json(
@@ -31,7 +36,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const events = await getEvents();
+  const { events }: { events: Event[] } = await getEvents();
 
   const event = events.find((e) => e.id === eventId);
 
