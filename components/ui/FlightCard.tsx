@@ -34,7 +34,7 @@ export const FlightTicketCard = ({
   minPrice,
 }: FlightTicketCardProps) => {
   const priceToShow =
-    price - minPrice > 0 ? `${Math.ceil(price - minPrice)}€+` : "כולל במחיר";
+    price - minPrice > 0 ? `$${Math.ceil(price - minPrice)}+` : "כלול במחיר";
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
@@ -45,7 +45,7 @@ export const FlightTicketCard = ({
             <FlightCard {...inbound} metadata={metadata} />
           </div>
           <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
-          <div className="font-bold md:w-1/6 text-lg lg:text-2xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
+          <div className="font-bold md:w-1/6 text-lg lg:text-xl mt-2 w-full sm:w-1/3 text-right sm:text-center">
             {priceToShow}
             <div className="hidden sm:block"></div>
           </div>

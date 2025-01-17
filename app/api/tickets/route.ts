@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { events } from "@/lib/events-data";
+import { getEvents } from "../eventsData";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +11,8 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+
+  const events = await getEvents();
 
   const event = events.find((e) => e.id === eventId);
 

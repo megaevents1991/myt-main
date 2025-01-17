@@ -30,9 +30,6 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    console.log(tracking);
-    
-
     // Calculate stats from tracking data
     const stats: AffiliateStats = {
       visits: tracking.filter(t => t.stage === 'VISIT').length,

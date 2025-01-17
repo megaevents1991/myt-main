@@ -18,7 +18,7 @@ const buttonText: Record<number, string> = {
 } as const;
 
 export const OrderForm = ({ event }: { event: Event }) => {
-  const { step, setStep, flight, hotel, eventTicket } =
+  const { step, setStep, flight, hotel, eventTicket, numberOfEventTickets } =
     useContext(OrderContext);
 
   const buttonDisabled =
@@ -31,7 +31,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           data: {
             event: event.name,
             ticketsType: eventTicket.category,
-            numOfTicket: eventTicket.quantity,
+            numOfTicket: numberOfEventTickets,
           },
         });
       } else if (prev === 2) {
