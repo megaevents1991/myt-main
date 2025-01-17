@@ -151,11 +151,11 @@ export const FlightFilters = ({
         >
           <div className="flex items-center space-x-2 space-x-reverse">
             <Checkbox value="withLuggage" id="one-stop" />
-            <label htmlFor="one-stop">עם כבודה</label>
+            <label htmlFor="one-stop">כולל מזוודה</label>
           </div>
           <div className="flex items-center space-x-2 space-x-reverse">
             <Checkbox value="withoutLuggage" id="multi-stop" />
-            <label htmlFor="multi-stop">ללא כבודה</label>
+            <label htmlFor="multi-stop">תיק בלבד</label>
           </div>
         </Checkbox.Group>
       </div>
