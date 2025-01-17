@@ -19,6 +19,7 @@ export const HotelCard = ({
   handleSelectedRate,
   distanceFromCenter,
   isLoading,
+  minPrice,
 }: {
   hotelRates: Hotel["rates"];
   handleSelect: () => void;
@@ -27,6 +28,7 @@ export const HotelCard = ({
   handleSelectedRate: (orderHotel: Omit<OrderHotel, "guests">) => void;
   distanceFromCenter: number;
   isLoading: boolean;
+  minPrice: { minPrice: number; minDailyPrice: number };
 }) => {
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
@@ -82,6 +84,14 @@ export const HotelCard = ({
       price: room.payment_options.payment_types[0].show_amount,
     });
   };
+
+  const selectedPrice = +(selectedRoom || hotelRates[0]).payment_options
+    .payment_types[0].show_amount;
+
+  const priceToShowFull =
+    selectedPrice - minPrice.minPrice > 0
+      ? `€${Math.ceil(selectedPrice - minPrice.minPrice)}+`
+      : "כלול במחיר";
 
   return (
     <Skeleton visible={isLoading}>
@@ -145,12 +155,7 @@ export const HotelCard = ({
               </div>
             </div>
             <div className="flex md:w-1/5 md:justify-center md:text-center md:items-center md:border-r md:pr-2">
-              מחיר{" "}
-              {
-                (selectedRoom || hotelRates[0]).payment_options.payment_types[0]
-                  .show_amount
-              }
-              &#8364;
+              {priceToShowFull}
             </div>
           </div>
           <div className="w-full flex flex-col justify-between items-center rounded-lg md:items-right">
@@ -174,6 +179,7 @@ export const HotelCard = ({
                   <div className="flex flex-col gap-2">
                     {hotelRates.map((room) => (
                       <RoomCard
+                        minDailyPrice={minPrice.minDailyPrice}
                         key={room.match_hash}
                         room={room}
                         isSelected={

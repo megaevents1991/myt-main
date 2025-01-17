@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { PillStepper } from "@/components/ui/pillStepper";
+import { PillStepper } from "@/components/ui/Stepper";
 import { ReactNode, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import { Event, OrderTicket, Flight, OrderHotel } from "@/lib/app.types";
@@ -33,10 +33,17 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
     fetchData();
   }, []);
 
+  const handleStepperClick = (index: number) => {
+    if (index + 1 < step) {
+      setStep(index + 1);
+    }
+  };
+
   return (
     <div className="w-full">
       {step !== 4 && (
         <PillStepper
+          onStepperClick={handleStepperClick}
           currentStep={step - 1}
           steps={[{ label: "כרטיסים" }, { label: "טיסות" }, { label: "מלון" }]}
         />

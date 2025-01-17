@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
@@ -20,6 +20,10 @@ const buttonText: Record<number, string> = {
 export const OrderForm = ({ event }: { event: Event }) => {
   const { step, setStep, flight, hotel, eventTicket, numberOfEventTickets } =
     useContext(OrderContext);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   const buttonDisabled =
     (!flight?.id && step === 2) || (!hotel?.id && step === 3);
@@ -49,7 +53,6 @@ export const OrderForm = ({ event }: { event: Event }) => {
       }
       return prev + 1;
     });
-  // const prevStep = () => setStep((prev) => prev - 1);
 
   return (
     <div className="max-w-5xl mx-auto px-6 pt-6">
@@ -59,14 +62,6 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 4 && <OrderReview />}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-10">
         <div className="mt-4 w-screen justify-center flex flex-col bg-gray-200">
-          {/* {step > 1 && (
-          <button
-            onClick={prevStep}
-            className={`${"bg-main"}  text-white rounded-lg p-2 font-bold w-full`}
-          >
-            {buttonText[step]}
-          </button>
-        )} */}
           <div className="w-full">
             {step < 4 && (
               <div className="p-4 m-auto max-w-5xl">

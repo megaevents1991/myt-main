@@ -34,7 +34,7 @@ export const FlightTicketCard = ({
   minPrice,
 }: FlightTicketCardProps) => {
   const priceToShow =
-    price - minPrice > 0 ? `$${Math.ceil(price - minPrice)}+` : "כלול במחיר";
+    price - minPrice > 0 ? `€${Math.ceil(price - minPrice)}+` : "כלול במחיר";
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>

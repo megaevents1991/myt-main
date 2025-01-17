@@ -1,5 +1,5 @@
 import { DateRange } from "@/components/ui/dateInput";
-import { TimeSlider } from "@/components/ui/timeSlider";
+import { CustomSlider } from "@/components/ui/CustomSlider";
 import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
@@ -9,11 +9,11 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { OrderContext } from "../app.context";
-import { parseDuration } from "@/lib/parseDuration";
 import { FlightTicketCard } from "@/components/ui/FlightCard";
 import { SelectWithIcon } from "@/components/ui/inputWithIcon";
 import { FlightFilters } from "@/components/ui/FlightFilters";
@@ -21,10 +21,19 @@ import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import dayjs from "dayjs";
+import { prepareFlightsData } from "@/lib/prepareFlightsData";
 
 const MAX_FLIGHT_DURATION = 30;
 
 export const FlightSelection = () => {
+  const {
+    setFlight,
+    flight: orderFlight,
+    event = {} as Event,
+    numberOfEventTickets,
+    setPlaneTickets,
+    planeTickets,
+  } = useContext(OrderContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [filters, setFilters] = useState<{
@@ -41,14 +50,6 @@ export const FlightSelection = () => {
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const {
-    setFlight,
-    flight: orderFlight,
-    event = {} as Event,
-    numberOfEventTickets,
-    setPlaneTickets,
-    planeTickets,
-  } = useContext(OrderContext);
   const [selectedFlightDuration, setSelectedFlightDuration] =
     useState(MAX_FLIGHT_DURATION);
   const [flightsMeta, setFlightsMeta] = useState({
@@ -57,9 +58,7 @@ export const FlightSelection = () => {
     maxPrice: 0,
     minPrice: 0,
   });
-
   const [selectedFlightPrice, setSelectedFlightPrice] = useState(0);
-
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
@@ -68,8 +67,8 @@ export const FlightSelection = () => {
   ]);
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 768px)");
-
   const [scrollerHeight, setScrollerHeight] = useState(400);
+
   const filterRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -114,19 +113,9 @@ export const FlightSelection = () => {
       }
       const flights = await res.json();
 
-      const airlines: string[] = Array.from(
-        new Set(flights.map((flight: Flight) => flight.airline))
-      );
-      const durations = flights.map((flight: Flight) =>
-        parseDuration(flight.duration)
-      );
-      const prices = flights.map((flight: Flight) => flight.price);
+      const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
+        prepareFlightsData(flights);
 
-      const maxDuration = Math.max(...durations);
-      const minDuration = Math.min(...durations);
-
-      const maxPrice = Math.max(...prices);
-      const minPrice = Math.min(...prices);
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: airlines,
         sortOption,
@@ -155,6 +144,7 @@ export const FlightSelection = () => {
         directOnly,
       }));
       setFlights(flights);
+      setFlight(flights[0]);
     } catch (err) {
       console.error(err);
       setError(
@@ -184,50 +174,19 @@ export const FlightSelection = () => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setFlight(undefined);
 
-    if (key === "airline" && Array.isArray(value)) {
-      const filteredFlights = applyFiltersAndSorting(flights, {
-        airline: value,
-        sortOption,
-        flightDuration: selectedFlightDuration * 60,
-        departureRanges,
-        arrivalRanges,
-        maxPrice: selectedFlightPrice,
-        numOfStops: filters.numOfStops,
-        luggage: filters.luggage,
-      });
+    const filteredFlights = applyFiltersAndSorting(flights, {
+      airline: filters.airline,
+      sortOption,
+      flightDuration: selectedFlightDuration * 60,
+      departureRanges,
+      arrivalRanges,
+      maxPrice: selectedFlightPrice,
+      numOfStops: filters.numOfStops,
+      luggage: filters.luggage,
+      ...{ [key]: value },
+    });
 
-      setFilteredFlights(filteredFlights);
-    }
-
-    if (key === "numOfStops" && Array.isArray(value)) {
-      const filteredFlights = applyFiltersAndSorting(flights, {
-        airline: filters.airline,
-        sortOption,
-        flightDuration: selectedFlightDuration * 60,
-        departureRanges,
-        arrivalRanges,
-        maxPrice: selectedFlightPrice,
-        numOfStops: value,
-        luggage: filters.luggage,
-      });
-
-      setFilteredFlights(filteredFlights);
-    }
-
-    if (key === "luggage" && Array.isArray(value)) {
-      const filteredFlights = applyFiltersAndSorting(flights, {
-        airline: filters.airline,
-        sortOption,
-        flightDuration: selectedFlightDuration * 60,
-        departureRanges,
-        arrivalRanges,
-        maxPrice: selectedFlightPrice,
-        numOfStops: filters.numOfStops,
-        luggage: value,
-      });
-
-      setFilteredFlights(filteredFlights);
-    }
+    setFilteredFlights(filteredFlights);
   };
 
   const handleChangeDurationEnd = (duration: number) => {
@@ -294,13 +253,17 @@ export const FlightSelection = () => {
     setFilteredFlights(filteredFlights);
   };
 
-  const airlines = Array.from(
-    new Map(
-      flights.map((flight) => [
-        flight.airline, // Use airline as the key
-        { value: flight.airline, label: flight.metadata.name }, // Object as the value
-      ])
-    ).values() // Extract the unique values
+  const airlines = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          flights.map((flight) => [
+            flight.airline, // Use airline as the key
+            { value: flight.airline, label: flight.metadata.name }, // Object as the value
+          ])
+        ).values() // Extract the unique values
+      ),
+    [flights]
   );
 
   const handleFlightChange = (value: string) => {
@@ -324,7 +287,7 @@ export const FlightSelection = () => {
         <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
           <FlightFilters
             priceComponent={
-              <TimeSlider
+              <CustomSlider
                 onChange={setSelectedFlightPrice}
                 variant="price"
                 onChangeEnd={handlePriceChange}
@@ -334,7 +297,7 @@ export const FlightSelection = () => {
               />
             }
             flightDurationComponent={
-              <TimeSlider
+              <CustomSlider
                 onChangeEnd={handleChangeDurationEnd}
                 value={selectedFlightDuration}
                 onChange={setSelectedFlightDuration}
@@ -421,7 +384,7 @@ export const FlightSelection = () => {
             <Skeleton visible={isLoading} className="p-4">
               <FlightFilters
                 priceComponent={
-                  <TimeSlider
+                  <CustomSlider
                     onChange={setSelectedFlightPrice}
                     variant="price"
                     onChangeEnd={handlePriceChange}
@@ -431,7 +394,7 @@ export const FlightSelection = () => {
                   />
                 }
                 flightDurationComponent={
-                  <TimeSlider
+                  <CustomSlider
                     onChange={setSelectedFlightDuration}
                     onChangeEnd={handleChangeDurationEnd}
                     value={selectedFlightDuration}

@@ -12,15 +12,17 @@ export const HotelFilters = ({
   selectedRating,
   withMeal,
   maxDistance,
+  minPrice,
 }: {
   onCriteriaChange: (criteria: HotelSearchCriteria) => void;
   maxPrice: number;
   maxDistance: number;
   selectedRating: boolean[];
   withMeal: boolean;
+  minPrice: number;
 }) => {
   const [searchValue, setSearchValue] = useState("");
-  const [value, setValue] = useState<[number, number]>([0, maxPrice]);
+  const [value, setValue] = useState<[number, number]>([minPrice, maxPrice]);
   const handlePriceRangeChangeEnd = (value: [number, number]) => {
     onCriteriaChange({ value, type: "priceRange" });
   };
@@ -47,8 +49,8 @@ export const HotelFilters = ({
   };
 
   useEffect(() => {
-    setValue([0, maxPrice]);
-  }, [maxPrice]);
+    setValue([minPrice, maxPrice]);
+  }, [maxPrice, minPrice]);
 
   useEffect(() => {
     setDistanceFromCenter([0, maxDistance]);
@@ -56,12 +58,12 @@ export const HotelFilters = ({
 
   const marks = [
     {
-      value: 0,
-      label: <>0 &#8364;</>,
+      value: minPrice,
+      label: <>+0 &#8364;</>,
     },
     {
       value: maxPrice,
-      label: <>{Math.ceil(maxPrice)} &#8364;</>,
+      label: <>+{Math.ceil(maxPrice - minPrice)} &#8364;</>,
     },
   ];
 
@@ -87,9 +89,10 @@ export const HotelFilters = ({
         <h3 className="text-lg text-end font-semibold mb-4">מחיר</h3>
         <RangeSlider
           thumbSize={20}
-          min={0}
+          min={minPrice}
           max={Math.ceil(maxPrice) + 10}
           step={5}
+          label={(value) => value - minPrice}
           value={value}
           styles={{
             bar: { backgroundColor: themeColor },

@@ -22,15 +22,15 @@ import {
 import dayjs from "dayjs";
 
 export const HotelSelection = () => {
-  const [showFilters, setShowFilters] = useState(false);
-  const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [selectedHotelId, setSelectedHotelId] = useState("");
   const {
     setHotel,
     planeTickets,
     hotel: selectedOrderHotel,
     event = {} as Event,
   } = useContext(OrderContext);
+  const [showFilters, setShowFilters] = useState(false);
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [selectedHotelId, setSelectedHotelId] = useState("");
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date(event.date).getTime() - 2 * 8.64e7),
     new Date(new Date(event.date).getTime() + 8.64e7),
@@ -61,7 +61,6 @@ export const HotelSelection = () => {
   ]);
   const [, setSortOption] = useState<SortOptions>("price_asc");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
-  const matches = useMediaQuery("(min-width: 768px)");
   const [withMeal, setWithMeal] = useState(false);
   const [maxDistance, setMaxDistance] = useState(0);
   const [distanceRange, setDistanceRange] = useState<[number, number]>([
@@ -71,6 +70,12 @@ export const HotelSelection = () => {
   const [requestDebug, setRequestDebug] = useState(
     {} as HotelResponse["debug"]["request"]
   );
+  const [minPrice, setMinPrice] = useState({
+    minPrice: 0,
+    minDailyPrice: 0,
+  });
+
+  const matches = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     fetchHotels();
@@ -127,6 +132,19 @@ export const HotelSelection = () => {
         (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
       )
     );
+
+    let minPrice = Infinity;
+    let minDailyPrice = 0;
+
+    data.data.hotels.forEach((hotel) => {
+      const price =
+        +hotel.rates[0].payment_options.payment_types[0].show_amount;
+      if (price < minPrice) {
+        minPrice = price;
+        minDailyPrice = +hotel.rates[0].daily_prices[0];
+      }
+    });
+
     setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
@@ -136,7 +154,21 @@ export const HotelSelection = () => {
     setHotels(data.data.hotels);
     setFilteredHotels(data.data.hotels);
     setIsLoading(false);
-    setSelectedHotelId("");
+    setSelectedHotelId(data.data.hotels[0].id);
+    setMinPrice({
+      minPrice,
+      minDailyPrice,
+    });
+    setHotel({
+      address: hotelsInfo[data.data.hotels[0].id]?.metadata.address,
+      guests: data.debug.request.guests,
+      id: data.data.hotels[0].id || "",
+      name: hotelsInfo[data.data.hotels[0].id].metadata.hotelName,
+      price:
+        data.data.hotels[0].rates[0].payment_options.payment_types[0]
+          .show_amount,
+      rate: data.data.hotels[0].rates[0],
+    });
   };
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
@@ -205,6 +237,7 @@ export const HotelSelection = () => {
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
+          minPrice={minPrice.minPrice}
           maxDistance={maxDistance}
           selectedRating={rating}
           maxPrice={maxPrice}
@@ -338,6 +371,7 @@ export const HotelSelection = () => {
           <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg sticky top-0">
             <Skeleton visible={isLoading} className="p-4">
               <HotelFilters
+                minPrice={minPrice.minPrice}
                 maxDistance={maxDistance}
                 selectedRating={rating}
                 maxPrice={maxPrice}
@@ -351,6 +385,7 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map((hotel) => (
               <HotelCard
+                minPrice={minPrice}
                 isLoading={isLoading}
                 distanceFromCenter={Math.ceil(
                   hotelsInfo[hotel.id].metadata.distanceFromCenter

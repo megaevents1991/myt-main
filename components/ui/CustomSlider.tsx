@@ -10,7 +10,7 @@ const formatTime = (value: number) => {
     .padStart(2, "0")}`;
 };
 
-export const TimeSlider = ({
+export const CustomSlider = ({
   onChangeEnd,
   onChange,
   value,
@@ -44,9 +44,12 @@ export const TimeSlider = ({
       : [
           {
             value: 0,
-            label: <>{Math.ceil(minValue)} &#8364;</>,
+            label: <>+0 &#8364;</>,
           },
-          { value: maxValue, label: <>{Math.ceil(maxValue)} &#8364;</> },
+          {
+            value: maxValue,
+            label: <>+{Math.ceil(maxValue - minValue)} &#8364;</>,
+          },
         ];
 
   return (
@@ -65,7 +68,9 @@ export const TimeSlider = ({
         }}
         onChange={handleOnChange}
         onChangeEnd={handleOnChangeEnd}
-        label={variant === "time" ? formatTime(value) : value}
+        label={
+          variant === "time" ? formatTime(value) : Math.ceil(value - minValue)
+        }
         marks={marks}
       />
     </div>
