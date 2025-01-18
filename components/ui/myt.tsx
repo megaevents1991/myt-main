@@ -1,7 +1,7 @@
 export const MYT = ({ className }: { className: string }) => (
   <svg
     width="184"
-    height="54"
+    height="64"
     viewBox="0 0 263 77"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"

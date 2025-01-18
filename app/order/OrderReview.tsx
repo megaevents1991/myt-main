@@ -11,7 +11,6 @@ import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
 import { OrderData } from "@/lib/app.types";
 import validator from 'validator';
-import { debounce } from 'lodash';
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +23,15 @@ export default function OrderReview() {
     numberOfEventTickets,
   } = useContext(OrderContext);
   const router = useRouter();
+
+  const [touched, setTouched] = useState(
+    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+      firstName: false,
+      lastName: false,
+      phone: false,
+      email: false,
+    }))
+  );
 
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}[]>(
     Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({}))
@@ -47,6 +55,62 @@ export default function OrderReview() {
       </div>
     );
   }
+
+  const validate = {
+    firstName: (value: string) => {
+      if (!value.trim()) return "שם פרטי הוא שדה חובה";
+      if (value.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
+      return "";
+    },
+    lastName: (value: string) => {
+      if (!value.trim()) return "שם משפחה הוא שדה חובה";
+      if (value.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
+      return "";
+    },
+    email: (value: string) => {
+      if (!value) return "אימייל הוא שדה חובה";
+      if (!validator.isEmail(value)) return "נא להזין כתובת אימייל תקינה";
+      return "";
+    },
+    phone: (value: string) => {
+      const cleanPhone = value.replace(/-/g, '');
+      if (!value) return "טלפון נייד הוא שדה חובה";
+      if (!cleanPhone.startsWith("05") || !validator.isMobilePhone(cleanPhone, 'he-IL')) {
+        return "מספר טלפון נייד בלבד בבקשה";
+      }
+      return "";
+    }
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    let formatted = cleaned;
+    
+    if (cleaned.length >= 3) {
+      formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
+    }
+    if (cleaned.length >= 6) {
+      formatted = `${formatted.slice(0, 7)}-${formatted.slice(7)}`;
+    }
+    
+    return formatted.slice(0, 12); // Limit length
+  };
+
+  const handleBlur = (index: number, field: keyof typeof validate) => {
+    const newTouched = [...touched];
+    newTouched[index] = { ...newTouched[index], [field]: true };
+    setTouched(newTouched);
+
+    // Validate on blur
+    const value = passengers[index][field];
+    const error = validate[field](value);
+    
+    if (error) {
+      const newErrors = [...validationErrors];
+      newErrors[index] = { ...newErrors[index], [field]: error };
+      setValidationErrors(newErrors);
+    }
+  };
 
   const submitOrder = async (orderData: OrderData) => {
     const response = await fetch('/api/confirm-order', {
@@ -130,16 +194,6 @@ export default function OrderReview() {
     }
   };
 
-  const isValidEmail = (email: string) => {
-    return validator.isEmail(email);
-  };
-  
-  // Add phone validation helper
-  const isValidPhone = (phone: string) => {
-    const cleanPhone = phone.replace(/-/g, '');
-    return cleanPhone.startsWith("05") && validator.isMobilePhone(cleanPhone, 'he-IL');
-  };
-
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const updatePassenger = useCallback(
     (
@@ -147,66 +201,40 @@ export default function OrderReview() {
       field: "firstName" | "lastName" | "phone" | "email",
       value: string
     ) => {
+      // Format phone number if it's the phone field
+      const finalValue = field === 'phone' ? formatPhoneNumber(value) : value;
+      
+      // Update passenger data
       const newPassengers = [...passengers];
-      newPassengers[index][field] = value;
+      newPassengers[index][field] = finalValue;
       setPassengers(newPassengers);
 
-      const validateField = debounce(() => {
-        const newValidationErrors = [...validationErrors];
-        switch (field) {
-          case "firstName":
-          case "lastName":
-            if (value.length < 2) {
-              newValidationErrors[index] = {
-                ...newValidationErrors[index],
-                [field]: field === "firstName" 
-                  ? "שם חייב להכיל 2 תווים ויותר"
-                  : "שם חייב להכיל 2 תווים ויותר"
-              };
-            } else {
-              const { [field]: removed, ...rest } = newValidationErrors[index];
-              newValidationErrors[index] = rest;
-            }
-            break;
-
-          case "email":
-            if (!isValidEmail(value)) {
-              newValidationErrors[index] = {
-                ...newValidationErrors[index],
-                email: "נא להזין כתובת אימייל תקינה"
-              };
-            } else {
-              const { email, ...rest } = newValidationErrors[index];
-              newValidationErrors[index] = rest;
-            }
-            break;
-
-          case "phone":
-            if (!isValidPhone(value)) {
-              newValidationErrors[index] = {
-                ...newValidationErrors[index],
-                phone: "מספר טלפון נייד בלבד בבקשה"
-              };
-            } else {
-              const { phone, ...rest } = newValidationErrors[index];
-              newValidationErrors[index] = rest;
-            }
-            break;
+      // Only validate if field has been touched
+      if (touched[index][field]) {
+        const error = validate[field](finalValue);
+        const newErrors = [...validationErrors];
+        
+        if (error) {
+          newErrors[index] = { ...newErrors[index], [field]: error };
+        } else {
+          const { [field]: removed, ...rest } = newErrors[index];
+          newErrors[index] = rest;
         }
-        setValidationErrors(newValidationErrors);
-      }, 1500);
-
-      validateField();
+        
+        setValidationErrors(newErrors);
+      }
     },
-    [passengers, validationErrors]
+    [passengers, validationErrors, touched]
   );
 
-  const isFormValid = passengers.every(
-    (passengers, i) =>
-      passengers.firstName &&
-      passengers.lastName &&
-      (i !== 0 || (passengers.phone && passengers.email))
-  );
+  const isFormValid = passengers.every((passenger, i) => {
+    const hasErrors = Object.keys(validationErrors[i]).length > 0;
+    const isMainContact = i === 0;
+    const hasRequiredFields = passenger.firstName && passenger.lastName;
+    const hasContactInfo = !isMainContact || (passenger.phone && passenger.email);
+    
+    return !hasErrors && hasRequiredFields && hasContactInfo;
+  });
 
   return (
     <div className="min-h-screen bg-white">
@@ -276,10 +304,7 @@ export default function OrderReview() {
               שלח הזמנה
             </Button>
           </div>
-
-          {/* Right Column - Contact Form and Trust Badges */}
           <div className="space-y-6 order-2 md:order-2">
-            {/* Contact Form */}
             <Card className="bg-white shadow-lg overflow-hidden">
               <div className="px-8 pt-6 pb-8">
                 <h2 className="text-[22px] font-bold mb-4 text-right">
@@ -304,14 +329,16 @@ export default function OrderReview() {
                             placeholder="שם פרטי"
                             className={cn(
                               "h-11 text-right",
-                              validationErrors[index]?.firstName && "border-red-500 focus-visible:ring-red-500"
+                              touched[index]?.firstName && validationErrors[index]?.firstName && 
+                              "border-red-500 focus-visible:ring-red-500"
                             )}
                             value={passenger.firstName}
                             onChange={(e) =>
                               updatePassenger(index, "firstName", e.target.value)
                             }
+                            onBlur={() => handleBlur(index, "firstName")}
                           />
-                          {validationErrors[index]?.firstName && (
+                          {touched[index]?.firstName && validationErrors[index]?.firstName && (
                             <p className="text-sm text-red-500 text-right">
                               {validationErrors[index].firstName}
                             </p>
@@ -323,12 +350,16 @@ export default function OrderReview() {
                             placeholder="שם משפחה"
                             className={cn(
                               "h-11 text-right",
-                              validationErrors[index]?.lastName && "border-red-500 focus-visible:ring-red-500"
+                              touched[index]?.lastName && validationErrors[index]?.lastName && 
+                              "border-red-500 focus-visible:ring-red-500"
                             )}
                             value={passenger.lastName}
-                            onChange={(e) => updatePassenger(index, "lastName", e.target.value)}
+                            onChange={(e) => 
+                              updatePassenger(index, "lastName", e.target.value)
+                            }
+                            onBlur={() => handleBlur(index, "lastName")}
                           />
-                          {validationErrors[index]?.lastName && (
+                          {touched[index]?.lastName && validationErrors[index]?.lastName && (
                             <p className="text-sm text-red-500 text-right">
                               {validationErrors[index].lastName}
                             </p>
@@ -344,12 +375,16 @@ export default function OrderReview() {
                               type="email"
                               className={cn(
                                 "h-11 text-right",
-                                validationErrors[index]?.email && "border-red-500 focus-visible:ring-red-500"
+                                touched[index]?.email && validationErrors[index]?.email && 
+                                "border-red-500 focus-visible:ring-red-500"
                               )}
                               value={passenger.email}
-                              onChange={(e) => updatePassenger(index, "email", e.target.value)}
+                              onChange={(e) => 
+                                updatePassenger(index, "email", e.target.value)
+                              }
+                              onBlur={() => handleBlur(index, "email")}
                             />
-                            {validationErrors[index]?.email && (
+                            {touched[index]?.email && validationErrors[index]?.email && (
                               <p className="text-sm text-red-500 text-right">
                                 {validationErrors[index].email}
                               </p>
@@ -362,12 +397,16 @@ export default function OrderReview() {
                               placeholder="טלפון נייד"
                               className={cn(
                                 "h-11 text-right",
-                                validationErrors[index]?.phone && "border-red-500 focus-visible:ring-red-500"
+                                touched[index]?.phone && validationErrors[index]?.phone && 
+                                "border-red-500 focus-visible:ring-red-500"
                               )}
                               value={passenger.phone}
-                              onChange={(e) => updatePassenger(index, "phone", e.target.value)}
+                              onChange={(e) => 
+                                updatePassenger(index, "phone", e.target.value)
+                              }
+                              onBlur={() => handleBlur(index, "phone")}
                             />
-                            {validationErrors[index]?.phone && (
+                            {touched[index]?.phone && validationErrors[index]?.phone && (
                               <p className="text-sm text-red-500 text-right">
                                 {validationErrors[index].phone}
                               </p>
