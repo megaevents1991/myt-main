@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useContext, useState } from "react";
+import { useContext, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
 import { OrderData } from "@/lib/app.types";
 import validator from 'validator';
+import { debounce } from 'lodash';
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +87,7 @@ export default function OrderReview() {
         event_id: event?.id || 0,
         date: event? new Date(event.date) : new Date(),
         name: event?.name || '',
+        location_name: event?.location.name || '',
         number_of_ticket: numberOfEventTickets,
         category: eventTicket.category,
         price_per_ticket: eventTicket.price,
@@ -135,61 +137,69 @@ export default function OrderReview() {
   // Add phone validation helper
   const isValidPhone = (phone: string) => {
     const cleanPhone = phone.replace(/-/g, '');
-    return validator.isMobilePhone(cleanPhone, 'he-IL');
+    return cleanPhone.startsWith("05") && validator.isMobilePhone(cleanPhone, 'he-IL');
   };
 
-  const updatePassenger = (
-    index: number,
-    field: "firstName" | "lastName" | "phone" | "email",
-    value: string
-  ) => {
-    const newPassengers = [...passengers];
-    newPassengers[index][field] = value;
-    setPassengers(newPassengers);
-  
-    const newValidationErrors = [...validationErrors];
-    switch (field) {
-      case "firstName":
-      case "lastName":
-        if (value.length < 2) {
-          newValidationErrors[index] = {
-            ...newValidationErrors[index],
-            [field]: field === "firstName" 
-              ? "שם חייב להכיל 2 תווים ויותר"
-              : "שם חייב להכיל 2 תווים ויותר"
-          };
-        } else {
-          const { [field]: removed, ...rest } = newValidationErrors[index];
-          newValidationErrors[index] = rest;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const updatePassenger = useCallback(
+    (
+      index: number,
+      field: "firstName" | "lastName" | "phone" | "email",
+      value: string
+    ) => {
+      const newPassengers = [...passengers];
+      newPassengers[index][field] = value;
+      setPassengers(newPassengers);
+
+      const validateField = debounce(() => {
+        const newValidationErrors = [...validationErrors];
+        switch (field) {
+          case "firstName":
+          case "lastName":
+            if (value.length < 2) {
+              newValidationErrors[index] = {
+                ...newValidationErrors[index],
+                [field]: field === "firstName" 
+                  ? "שם חייב להכיל 2 תווים ויותר"
+                  : "שם חייב להכיל 2 תווים ויותר"
+              };
+            } else {
+              const { [field]: removed, ...rest } = newValidationErrors[index];
+              newValidationErrors[index] = rest;
+            }
+            break;
+
+          case "email":
+            if (!isValidEmail(value)) {
+              newValidationErrors[index] = {
+                ...newValidationErrors[index],
+                email: "נא להזין כתובת אימייל תקינה"
+              };
+            } else {
+              const { email, ...rest } = newValidationErrors[index];
+              newValidationErrors[index] = rest;
+            }
+            break;
+
+          case "phone":
+            if (!isValidPhone(value)) {
+              newValidationErrors[index] = {
+                ...newValidationErrors[index],
+                phone: "מספר טלפון נייד בלבד בבקשה"
+              };
+            } else {
+              const { phone, ...rest } = newValidationErrors[index];
+              newValidationErrors[index] = rest;
+            }
+            break;
         }
-        break;
-  
-      case "email":
-        if (!isValidEmail(value)) {
-          newValidationErrors[index] = {
-            ...newValidationErrors[index],
-            email: "נא להזין כתובת אימייל תקינה"
-          };
-        } else {
-          const { email, ...rest } = newValidationErrors[index];
-          newValidationErrors[index] = rest;
-        }
-        break;
-  
-      case "phone":
-        if (!isValidPhone(value)) {
-          newValidationErrors[index] = {
-            ...newValidationErrors[index],
-            phone: "מספר טלפון נייד בלבד בבקשה"
-          };
-        } else {
-          const { phone, ...rest } = newValidationErrors[index];
-          newValidationErrors[index] = rest;
-        }
-        break;
-    }
-    setValidationErrors(newValidationErrors);
-  };
+        setValidationErrors(newValidationErrors);
+      }, 1500);
+
+      validateField();
+    },
+    [passengers, validationErrors]
+  );
 
   const isFormValid = passengers.every(
     (passengers, i) =>

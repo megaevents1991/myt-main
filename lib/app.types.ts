@@ -151,6 +151,7 @@ export interface OrderData {
     event_id: number;
     date: Date;
     name: string;
+    location_name: string;
     number_of_ticket: number;
     category: string;
     price_per_ticket: number;
