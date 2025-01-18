@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useContext, useState } from "react";
@@ -9,6 +10,7 @@ import { OrderContext } from "../app.context";
 import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
 import { OrderData } from "@/lib/app.types";
+import validator from 'validator';
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,6 +23,10 @@ export default function OrderReview() {
     numberOfEventTickets,
   } = useContext(OrderContext);
   const router = useRouter();
+
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}[]>(
+    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({}))
+  );
 
   const [passengers, setPassengers] = useState(
     Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
@@ -92,27 +98,45 @@ export default function OrderReview() {
   
     try {
       const result = await submitOrder(updatedFormData);
-      router.push(`/confirmation?bookingReference=${result.bookingReference}`);
-      // Handle success (e.g., show success message, redirect)
+      
+      const confirmationUrl = new URL('/confirmation', window.location.origin);
+      const params = {
+        bookingReference: result.bookingReference,
+        eventName: event.name,
+        eventDate: event.date,
+        eventLocation: event.location.name,
+        ticketType: eventTicket.category,
+        quantity: numberOfEventTickets.toString(),
+        flight: `${selectedFlight.outbound} ${selectedFlight.outbound}`,
+        hotel: selectedHotel.name,
+        checkInDate: selectedHotel,
+        checkOutDate: selectedHotel
+      };
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+          confirmationUrl.searchParams.append(key, value);
+        }
+      });
+
+      router.push(confirmationUrl.toString());
     } catch (error) {
-      // Handle error (e.g., show error message)
+      // TO DO: Handle error (e.g., show error message)
       console.error('Order submission failed:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // const addPassenger = () => {
-  //   setPassengers([...passengers, { firstName: "", lastName: "" }]);
-  // };
-
-  // const removePassenger = (index: number) => {
-  //   if (passengers.length > 1) {
-  //     const newPassengers = [...passengers];
-  //     newPassengers.splice(index, 1);
-  //     setPassengers(newPassengers);
-  //   }
-  // };
+  const isValidEmail = (email: string) => {
+    return validator.isEmail(email);
+  };
+  
+  // Add phone validation helper
+  const isValidPhone = (phone: string) => {
+    const cleanPhone = phone.replace(/-/g, '');
+    return validator.isMobilePhone(cleanPhone, 'he-IL');
+  };
 
   const updatePassenger = (
     index: number,
@@ -122,6 +146,49 @@ export default function OrderReview() {
     const newPassengers = [...passengers];
     newPassengers[index][field] = value;
     setPassengers(newPassengers);
+  
+    const newValidationErrors = [...validationErrors];
+    switch (field) {
+      case "firstName":
+      case "lastName":
+        if (value.length < 2) {
+          newValidationErrors[index] = {
+            ...newValidationErrors[index],
+            [field]: field === "firstName" 
+              ? "שם חייב להכיל 2 תווים ויותר"
+              : "שם חייב להכיל 2 תווים ויותר"
+          };
+        } else {
+          const { [field]: removed, ...rest } = newValidationErrors[index];
+          newValidationErrors[index] = rest;
+        }
+        break;
+  
+      case "email":
+        if (!isValidEmail(value)) {
+          newValidationErrors[index] = {
+            ...newValidationErrors[index],
+            email: "נא להזין כתובת אימייל תקינה"
+          };
+        } else {
+          const { email, ...rest } = newValidationErrors[index];
+          newValidationErrors[index] = rest;
+        }
+        break;
+  
+      case "phone":
+        if (!isValidPhone(value)) {
+          newValidationErrors[index] = {
+            ...newValidationErrors[index],
+            phone: "מספר טלפון נייד בלבד בבקשה"
+          };
+        } else {
+          const { phone, ...rest } = newValidationErrors[index];
+          newValidationErrors[index] = rest;
+        }
+        break;
+    }
+    setValidationErrors(newValidationErrors);
   };
 
   const isFormValid = passengers.every(
@@ -219,67 +286,87 @@ export default function OrderReview() {
                         <h3 className="font-medium text-[15px]">
                           נוסע {index + 1}
                         </h3>
-                        {/* {index > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removePassenger(index)}
-                            className="h-8 w-8"
-                          >
-                            <MinusCircle className="h-5 w-5" />
-                          </Button>
-                        )} */}
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          dir="rtl"
-                          placeholder="שם פרטי"
-                          className="h-11 text-right"
-                          value={passenger.firstName}
-                          onChange={(e) =>
-                            updatePassenger(index, "firstName", e.target.value)
-                          }
-                        />
-                        <Input
-                          placeholder="שם משפחה"
-                          className="h-11 text-right"
-                          value={passenger.lastName}
-                          onChange={(e) =>
-                            updatePassenger(index, "lastName", e.target.value)
-                          }
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            dir="rtl"
+                            placeholder="שם פרטי"
+                            className={cn(
+                              "h-11 text-right",
+                              validationErrors[index]?.firstName && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                            value={passenger.firstName}
+                            onChange={(e) =>
+                              updatePassenger(index, "firstName", e.target.value)
+                            }
+                          />
+                          {validationErrors[index]?.firstName && (
+                            <p className="text-sm text-red-500 text-right">
+                              {validationErrors[index].firstName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <Input
+                            dir="rtl"
+                            placeholder="שם משפחה"
+                            className={cn(
+                              "h-11 text-right",
+                              validationErrors[index]?.lastName && "border-red-500 focus-visible:ring-red-500"
+                            )}
+                            value={passenger.lastName}
+                            onChange={(e) => updatePassenger(index, "lastName", e.target.value)}
+                          />
+                          {validationErrors[index]?.lastName && (
+                            <p className="text-sm text-red-500 text-right">
+                              {validationErrors[index].lastName}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       {index === 0 && (
                         <>
-                          <Input
-                            value={passenger.phone}
-                            onChange={(e) =>
-                              updatePassenger(index, "phone", e.target.value)
-                            }
-                            placeholder="טלפון"
-                            className="h-11 text-right"
-                          />
-                          <Input
-                            value={passenger.email}
-                            onChange={(e) =>
-                              updatePassenger(index, "email", e.target.value)
-                            }
-                            placeholder="דואר אלקטרוני"
-                            className="h-11 text-right"
-                          />
+                          <div className="space-y-1">
+                            <Input
+                              dir="rtl"
+                              placeholder="אימייל"
+                              type="email"
+                              className={cn(
+                                "h-11 text-right",
+                                validationErrors[index]?.email && "border-red-500 focus-visible:ring-red-500"
+                              )}
+                              value={passenger.email}
+                              onChange={(e) => updatePassenger(index, "email", e.target.value)}
+                            />
+                            {validationErrors[index]?.email && (
+                              <p className="text-sm text-red-500 text-right">
+                                {validationErrors[index].email}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <Input
+                              dir="rtl"
+                              placeholder="טלפון נייד"
+                              className={cn(
+                                "h-11 text-right",
+                                validationErrors[index]?.phone && "border-red-500 focus-visible:ring-red-500"
+                              )}
+                              value={passenger.phone}
+                              onChange={(e) => updatePassenger(index, "phone", e.target.value)}
+                            />
+                            {validationErrors[index]?.phone && (
+                              <p className="text-sm text-red-500 text-right">
+                                {validationErrors[index].phone}
+                              </p>
+                            )}
+                          </div>
                         </>
                       )}
                     </div>
                   ))}
-
-                  {/* <Button
-                    variant="outline"
-                    onClick={addPassenger}
-                    className="w-full h-11 flex items-center justify-center gap-2 mt-4"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                    הוסף נוסע
-                  </Button> */}
                 </div>
               </div>
             </Card>

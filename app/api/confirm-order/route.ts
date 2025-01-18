@@ -4,20 +4,12 @@ import { supabase } from "@/lib/supabase";
 import * as yup from 'yup';
 import { OrderData } from "@/lib/app.types";
 
-  // 0. Extract data
-  // 1. Data validation
-  //    Event Data, structure / missing info
-  // 2. Insert to DB
-  // 3. Send email to sales rep
-  // 4. Send email to user
-  // 5. Return response
-
 export async function POST(req: Request) {
   const orderDetails = await req.json();
 
   const validatedData = await validateOrderData(orderDetails);
 
-  const { error } = await supabase
+  const { data, error } = await supabase
       .from('reservations')
       .insert({
         main_contact_first_name: validatedData.main_contact_first_name,
@@ -29,7 +21,11 @@ export async function POST(req: Request) {
         flight_order_info: validatedData.flight_order_info,
         hotel_order_info: validatedData.hotel_order_info,
         user_shown_price: validatedData.user_shown_price
-      });
+      })
+      .select()
+      .single();
+
+  const id = data?.id;
   if (error) {
     return NextResponse.json({ error: "Failed to confirm order" }, { status: 500 });
   }
@@ -64,8 +60,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        bookingReference: "123456",
         message: "Order confirmed and email sent to sales rep",
+        bookingReference: `me_${new Date().getDate()}${id}`,
       },
       { status: 200 }
     );
@@ -104,8 +100,8 @@ const orderSchema = yup.object().shape({
       total_tickets_price: yup.number().required(),
     })
     .required(),
-  flight_order_info: yup.object().required(), // Adjust based on your flight_order_info schema
-  hotel_order_info: yup.object().required(), // Adjust based on your hotel_order_info schema
+  flight_order_info: yup.object().required(), // TO DO: Adjust based on your flight_order_info schema
+  hotel_order_info: yup.object().required(), // TO DO: Adjust based on your hotel_order_info schema
   user_shown_price: yup.number().required(),
 });
 
