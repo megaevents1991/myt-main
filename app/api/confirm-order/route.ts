@@ -67,13 +67,13 @@ export async function POST(req: Request) {
       bookingReference: bookingRef,
       eventName: validatedData.event_order_info.name,
       eventDate: new Date(validatedData.event_order_info.date).toLocaleDateString('he-IL'),
-      eventLocation: validatedData.event_order_info?.location || '',
+      eventLocation: '', //validatedData.event_order_info?.location || '',
       ticketType: validatedData.event_order_info.category,
       quantity: validatedData.event_order_info.number_of_ticket,
-      flight: validatedData.flight_order_info?.code || 'לא נבחר',
-      hotel: validatedData.hotel_order_info?.name || 'לא נבחר',
-      checkInDate: validatedData.hotel_order_info?.checkIn || '-',
-      checkOutDate: validatedData.hotel_order_info?.checkOut || '-'
+      flight: '', //validatedData.flight_order_info?.code || 'לא נבחר',
+      hotel: '', //validatedData.hotel_order_info?.name || 'לא נבחר',
+      checkInDate: '', //validatedData.hotel_order_info?.checkIn || '-',
+      checkOutDate: '', //validatedData.hotel_order_info?.checkOut || '-'
     };
 
     const emailHTML = userEmail(replacements);
