@@ -90,7 +90,7 @@ export const HotelCard = ({
 
   const priceToShowFull =
     selectedPrice - minPrice.minPrice > 0
-      ? `€${Math.ceil(selectedPrice - minPrice.minPrice)}+`
+      ? `$${Math.ceil(selectedPrice - minPrice.minPrice)}+`
       : "כלול במחיר";
 
   return (
