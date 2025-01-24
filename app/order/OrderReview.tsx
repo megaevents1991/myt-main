@@ -12,21 +12,24 @@ import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
 import { OrderData } from "@/lib/app.types";
 import validator from 'validator';
+import { orderStage } from "../hooks/Affiliate";
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [affDiscount, setAffDiscount] = useState<number>(0);
+  const [affId, setAffId] = useState<string>('');
 
   useEffect(() => {
     const affiliateData = localStorage.getItem("mytData");
     if (affiliateData) {
       const parsedAffiliateData = JSON.parse(affiliateData);
       if (parsedAffiliateData.affiliateId) {
-        fetch(`/api/affiliate/stats?affiliateId=${parsedAffiliateData.affiliateId}`)
+        fetch(`/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`)
           .then(res => res.json())
           .then(data => {
-            if (data?.stats?.commission) {
-              setAffDiscount(data.stats.commission);
+            if (data?.commission) {
+              setAffDiscount(data.commission);
+              setAffId(parsedAffiliateData.affiliateId);
             }
           })
           .catch(console.error);
@@ -148,8 +151,8 @@ export default function OrderReview() {
   
   const totalPrice = Math.ceil(
     ( eventTicket.price - affDiscount || 0) * numberOfEventTickets +
-      selectedFlight.price +
-      +selectedHotel.price
+      selectedFlight.price + // is it include the price for all passengers?
+      +selectedHotel.price // is it include the price for all passengers?
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,11 +181,17 @@ export default function OrderReview() {
       },
       flight_order_info: selectedFlight || {},
       hotel_order_info: selectedHotel || {},
-      user_shown_price: totalPrice
+      user_shown_price: totalPrice,
+      event_id: event?.id || 0,
+      aff_partner_id: affId,
     };
   
     try {
       const result = await submitOrder(updatedFormData);
+
+      orderStage("CONFIRMED", { // TO DO: temp workaround as order stage doesn't work (router.push?)
+        data: { confirmed: "checkout" },
+      });      
       
       const confirmationUrl = new URL('/confirmation', window.location.origin);
       const params = {
@@ -346,7 +355,7 @@ export default function OrderReview() {
                 </p>
 
                 <div className="space-y-5" dir="rtl">
-                  {passengers.map((passenger, index) => (
+                  {passengers.map((passenger, index) => ( // TO DO: לוודא שזה לפי מספר הטסים.
                     <div key={index} className="space-y-4">
                       <div className="flex justify-between items-center">
                         <h3 className="font-medium text-[15px]">
