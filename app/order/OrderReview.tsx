@@ -82,16 +82,22 @@ export default function OrderReview() {
     firstName: (value: string) => {
       if (!value.trim()) return "שם פרטי הוא שדה חובה";
       if (value.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
+      if (!/^[A-Za-z\s]+$/.test(value)) {
+        return "שם פרטי חייב להיות באנגלית בלבד";
+      }
       return "";
     },
     lastName: (value: string) => {
       if (!value.trim()) return "שם משפחה הוא שדה חובה";
       if (value.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
+      if (!/^[A-Za-z\s]+$/.test(value)) {
+        return "שם משפחה חייב להיות באנגלית בלבד";
+      }
       return "";
     },
     email: (value: string) => {
       if (!value) return "אימייל הוא שדה חובה";
-      if (!validator.isEmail(value)) return "נא להזין כתובת אימייל תקינה";
+      if (!validator.isEmail(value) || !/^[A-Za-z\s]+$/.test(value)) return "נא להזין כתובת אימייל תקינה";
       return "";
     },
     phone: (value: string) => {
@@ -319,7 +325,7 @@ export default function OrderReview() {
                       <span>הנחה</span>
                     </div>
                     <div className="flex justify-between items-center w-full text-[18px]">
-                      <span>${totalPrice + affDiscount}</span>
+                      <span className="line-through">${totalPrice + affDiscount}</span>
                       <span>מחיר לפני הנחה</span>
                     </div>
                   </div>
@@ -366,7 +372,10 @@ export default function OrderReview() {
                         <div className="space-y-1">
                           <Input
                             dir="rtl"
-                            placeholder="שם פרטי"
+                            name="first-name"
+                            autoComplete="given-name"
+                            type="text"
+                            placeholder="שם פרטי באנגלית"
                             className={cn(
                               "h-11 text-right",
                               touched[index]?.firstName && validationErrors[index]?.firstName && 
@@ -387,7 +396,10 @@ export default function OrderReview() {
                         <div className="space-y-1">
                           <Input
                             dir="rtl"
-                            placeholder="שם משפחה"
+                            placeholder="שם משפחה באנגלית"
+                            type="text"
+                            name="last-name"
+                            autoComplete="family-name"
                             className={cn(
                               "h-11 text-right",
                               touched[index]?.lastName && validationErrors[index]?.lastName && 
@@ -413,6 +425,8 @@ export default function OrderReview() {
                               dir="rtl"
                               placeholder="אימייל"
                               type="email"
+                              name="email"
+                              autoComplete="email"
                               className={cn(
                                 "h-11 text-right",
                                 touched[index]?.email && validationErrors[index]?.email && 
@@ -435,6 +449,9 @@ export default function OrderReview() {
                             <Input
                               dir="rtl"
                               placeholder="טלפון נייד"
+                              name="phone"
+                              type="tel"
+                              autoComplete="tel"
                               className={cn(
                                 "h-11 text-right",
                                 touched[index]?.phone && validationErrors[index]?.phone && 

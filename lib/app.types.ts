@@ -15,6 +15,10 @@ export type Event = {
   card_image_url: string;
   city_iata: string;
   tickets_and_rates: EventTicket[];
+  def_date_depart: string;
+  def_date_return: string;
+  def_avg_price: number;
+  usual_price: number;
 };
 
 export type Flight = {

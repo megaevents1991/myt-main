@@ -116,7 +116,7 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/events");
+        const response = await fetch("/api/events"); // TO DO: Why is it also in layout?
         const { events } = await response.json();
         setEvents(Array.isArray(events) ? events : []);
       } catch (error) {
@@ -250,9 +250,9 @@ export default function Home() {
                       <div>בממוצע כ-</div>
                       <div className="flex items-baseline gap-1">
                         <div className="text-2xl font-bold">
-                          ${event.tickets_and_rates[0].price}
+                          ${event.def_avg_price}
                         </div>
-                        <div className="text-sm line-through">$1000</div>{" "}
+                        <div className="text-sm line-through">${event.usual_price}</div>{" "}
                       </div>
                       <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
                     </div>

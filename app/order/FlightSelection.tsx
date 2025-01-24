@@ -62,8 +62,8 @@ export const FlightSelection = () => {
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(new Date(event.date).getTime() - 2 * 8.64e7),
-    new Date(new Date(event.date).getTime() + 8.64e7),
+    new Date(event.def_date_depart),
+    new Date(event.def_date_return),
   ]);
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 768px)");
