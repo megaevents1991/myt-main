@@ -20,7 +20,9 @@ export async function POST(req: Request) {
         event_order_info: validatedData.event_order_info,
         flight_order_info: validatedData.flight_order_info, // TO DO: Pass the right info (flight number, etc.)
         hotel_order_info: validatedData.hotel_order_info,
-        user_shown_price: validatedData.user_shown_price
+        user_shown_price: validatedData.user_shown_price,
+        event_id: validatedData.event_id,
+        aff_partner_id: validatedData.aff_partner_id,
       })
       .select()
       .single();
@@ -133,6 +135,8 @@ const orderSchema = yup.object().shape({
   flight_order_info: yup.object().required(), // TO DO: Adjust based on your flight_order_info schema
   hotel_order_info: yup.object().required(), // TO DO: Adjust based on your hotel_order_info schema
   user_shown_price: yup.number().required(),
+  event_id: yup.number().required(),
+  aff_partner_id: yup.string()
 });
 
 const validateOrderData = async (data: OrderData): Promise<OrderData> => {

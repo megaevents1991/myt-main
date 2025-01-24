@@ -25,6 +25,7 @@ export default function PartnerDashboard() {
     hotelsSelected: 0,
     confirmed: 0,
     totalRevenue: 0,
+    commission: 0,
   });
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function PartnerDashboard() {
           <p className="text-2xl">{stats?.confirmed}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="font-medium">Total Revenue</h3>
+          <h3 className="font-medium">Total Commission (by ${stats.commission})</h3>
           <p className="text-2xl">${stats?.totalRevenue}</p>
         </div>
       </div>

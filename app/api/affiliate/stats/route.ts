@@ -12,6 +12,7 @@ interface AffiliateStats {
   hotelsSelected: number;
   confirmed: number;
   totalRevenue: number;
+  commission: number;
 }
 
 export async function GET(request: Request) {
@@ -30,6 +31,16 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
+    const { data: partner, error: error2 } = await supabase
+      .from('partners')
+      .select('commission')
+      .eq('partner_id', affiliateId)
+      .limit(1);
+
+    if (error2) throw error2;
+
+    const commission = partner[0]?.commission || 0;
+
     // Calculate stats from tracking data
     const stats: AffiliateStats = {
       visits: tracking.filter(t => t.stage === 'VISIT').length,
@@ -38,9 +49,8 @@ export async function GET(request: Request) {
       flightsSelected: tracking.filter(t => t.stage === 'FLIGHT_SELECTED').length,
       hotelsSelected: tracking.filter(t => t.stage === 'HOTEL_SELECTED').length,
       confirmed: tracking.filter(t => t.stage === 'CONFIRMED').length,
-      totalRevenue: tracking
-        .filter(t => t.stage === 'CONFIRMED')
-        .reduce((sum, t) => sum + (Number(t.data?.amount) || 0), 0)
+      commission: commission,
+      totalRevenue: tracking.filter(t => t.stage === 'CONFIRMED').length * commission
     };
 
     const trackingData = tracking.map(entry => ({

@@ -160,4 +160,6 @@ export interface OrderData {
   flight_order_info: object; // You might need to define a specific interface here
   hotel_order_info: object; // You might need to define a specific interface here
   user_shown_price: number;
+  event_id: number;
+  aff_partner_id: string;
 }

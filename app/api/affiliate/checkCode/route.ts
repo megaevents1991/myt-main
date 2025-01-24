@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const affiliateId = searchParams.get('affiliateId');
+
+  if (!affiliateId) {
+    return NextResponse.json({ });
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('partners')
+      .select("partner_id, user_discount")
+      .eq('partner_id', affiliateId)
+      .single();
+    if (error) throw error;    
+    
+    if (data && data?.user_discount)
+      return NextResponse.json({
+        commission: data.user_discount,
+      });
+    else
+    return NextResponse.json({ });
+  } catch (e) {
+    console.log("Failed to login:", e);
+    return NextResponse.json({ success: false });
+  }
+}

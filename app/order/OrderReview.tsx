@@ -1,7 +1,8 @@
+/* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useContext, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,24 @@ import validator from 'validator';
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [affDiscount, setAffDiscount] = useState<number>(0);
+
+  useEffect(() => {
+    const affiliateData = localStorage.getItem("mytData");
+    if (affiliateData) {
+      const parsedAffiliateData = JSON.parse(affiliateData);
+      if (parsedAffiliateData.affiliateId) {
+        fetch(`/api/affiliate/stats?affiliateId=${parsedAffiliateData.affiliateId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.stats?.commission) {
+              setAffDiscount(data.stats.commission);
+            }
+          })
+          .catch(console.error);
+      }
+    }
+  }, []);
 
   const {
     flight: selectedFlight,
@@ -128,7 +147,7 @@ export default function OrderReview() {
   };
   
   const totalPrice = Math.ceil(
-    eventTicket.price * numberOfEventTickets +
+    ( eventTicket.price - affDiscount || 0) * numberOfEventTickets +
       selectedFlight.price +
       +selectedHotel.price
   );
@@ -284,9 +303,21 @@ export default function OrderReview() {
                 </div>
 
                 <div className="border-t border-gray-200 pt-4">
+                {affDiscount > 0 && (
+                  <div>
+                    <div className="flex justify-between items-center w-full text-[18px] text-green-600">
+                      <span>${affDiscount}</span>
+                      <span>הנחה</span>
+                    </div>
+                    <div className="flex justify-between items-center w-full text-[18px]">
+                      <span>${totalPrice + affDiscount}</span>
+                      <span>מחיר לפני הנחה</span>
+                    </div>
+                  </div>
+                  )}
                   <div className="flex justify-between items-center text-[22px] font-bold">
                     <span>${totalPrice}</span>
-                    <span>סה״כ</span>
+                    <span>סה"כ לאחר הנחה</span>
                   </div>
                 </div>
               </div>
