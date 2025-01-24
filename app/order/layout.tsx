@@ -13,8 +13,8 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>(undefined);
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
-  const [numberOfEventTickets, setNumberOfEventTickets] = useState(1);
-  const [planeTickets, setPlaneTickets] = useState({ adults: 1, children: 0 });
+  const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
+  const [planeTickets, setPlaneTickets] = useState({ adults: 2, children: 0 });
   const [step, setStep] = useState(1);
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
   const eventId = useSearchParams().get("eventId") as string;
