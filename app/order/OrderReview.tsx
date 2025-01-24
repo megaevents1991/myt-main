@@ -285,7 +285,7 @@ export default function OrderReview() {
 
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between items-center text-[22px] font-bold">
-                    <span>{totalPrice}$</span>
+                    <span>${totalPrice}</span>
                     <span>סה״כ</span>
                   </div>
                 </div>
