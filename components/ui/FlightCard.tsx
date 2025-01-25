@@ -101,7 +101,7 @@ const FlightCard = ({
 }: FlightCardProps) => {
   return (
     <div className="flex flex-row items-center justify-between w-full gap-1">
-      <div className="w-[30%] md:w-[30%]">
+      <div className="w-[20%] md:w-[30%]">
         <div className="mb-2">
           <Image
             src={metadata.logo || ""}
@@ -112,7 +112,7 @@ const FlightCard = ({
         </div>
         <div className="text-[0.6rem] hidden md:block">{flightNumber}</div>
       </div>
-      <div className="w-[60%] md:w-[50%]">
+      <div className="w-[70%] md:w-[50%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
       <div className="w-[10%] md:w-[20%] text-center display flex flex-col items-center md:items-start gap-2">
