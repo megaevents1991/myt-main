@@ -1,81 +1,42 @@
-import { cn } from "@/lib/utils";
+import { Stepper as MantineStepper } from "@mantine/core";
 
 type StepperProps = {
-  steps: { label: string }[];
   currentStep: number;
   onStepperClick: (step: number) => void;
 };
 
-type StepProps = {
-  label: string;
-  state: "completed" | "active" | "inactive";
-  isFirst: boolean;
-  isLast: boolean;
-  index: number;
-  onClick: () => void;
-};
-
-const Step = ({ label, state, isFirst, isLast, index, onClick }: StepProps) => {
+const StepperLabel = ({ label }: { label: string }) => {
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "flex-1 h-12 flex p-5 items-center justify-center text-xl font-medium",
-        state === "completed" && "bg-foreground text-secondary",
-        state === "active" &&
-          "bg-secondary text-primary-foreground shadow-2xl rounded-lg",
-        state === "inactive" && "bg-foreground text-secondary",
-        isFirst && "rounded-r-lg",
-        isLast && "rounded-l-lg",
-        "cursor-pointer"
-      )}
-    >
-      <span className="sr-only">
-        {state === "completed"
-          ? "Completed"
-          : state === "active"
-          ? "Current"
-          : "Upcoming"}
-      </span>
-      <span
-        className="w-5 h-5 mr-2 inline-flex items-center justify-center rounded-full text-3xl font-bold"
-        aria-hidden="true"
-      >
-        {index + 1}
-      </span>
-
+    <div className="text-secondary w-full flex font-bold justify-center text-lg">
       {label}
     </div>
   );
 };
 
-export const PillStepper = ({
-  steps,
-  currentStep,
-  onStepperClick,
-}: StepperProps) => {
+export const Stepper = ({ currentStep, onStepperClick }: StepperProps) => {
   return (
-    <div
-      className="flex w-full max-w-2xl mx-auto overflow-hidden justify-center mt-4 px-10"
-      dir="rtl"
-    >
-      {steps.map((step, index) => (
-        <Step
-          onClick={() => onStepperClick(index)}
-          index={index}
-          key={index}
-          label={step.label}
-          state={
-            index < currentStep
-              ? "completed"
-              : index === currentStep
-              ? "active"
-              : "inactive"
-          }
-          isFirst={index === 0}
-          isLast={index === steps.length - 1}
-        />
-      ))}
+    <div className="w-full max-w-2xl mx-auto my-6 px-10" dir="rtl">
+      <MantineStepper
+        onStepClick={onStepperClick}
+        size="sm"
+        active={currentStep - 1}
+        styles={{
+          step: {
+            position: "relative",
+          },
+          stepBody: {
+            display: "block",
+            position: "absolute",
+            bottom: "-80%",
+            margin: "unset",
+            width: "100%",
+          },
+        }}
+      >
+        <MantineStepper.Step label={<StepperLabel label="כרטיסים" />} />
+        <MantineStepper.Step label={<StepperLabel label="טיסות" />} />
+        <MantineStepper.Step label={<StepperLabel label="מלונות" />} />
+      </MantineStepper>
     </div>
   );
 };

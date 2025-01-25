@@ -43,7 +43,7 @@ export const TicketSelection = () => {
   };
 
   return (
-    <div className="py-6">
+    <div>
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
           <div className="flex flex-row justify-between w-full flex-col max-w-5xl mx-auto px-2 lg:px-6">

@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { PillStepper } from "@/components/ui/Stepper";
 import { ReactNode, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import { Event, OrderTicket, Flight, OrderHotel } from "@/lib/app.types";
@@ -8,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
+import { Stepper } from "@/components/ui/Stepper";
 
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
@@ -42,11 +41,7 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="w-full">
       {step !== 4 && (
-        <PillStepper
-          onStepperClick={handleStepperClick}
-          currentStep={step - 1}
-          steps={[{ label: "כרטיסים" }, { label: "טיסות" }, { label: "מלון" }]}
-        />
+        <Stepper currentStep={step} onStepperClick={handleStepperClick} />
       )}
       <OrderContext.Provider
         value={{
