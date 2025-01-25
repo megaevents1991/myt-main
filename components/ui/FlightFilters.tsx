@@ -247,11 +247,23 @@ export const FlightFilters = ({
       </div>
       <div className="mx-10"></div>
 
+      {/* TO DO: Amend margins between all components */}
+
       {/* Price Range Section */}
-      <div>{priceComponent}</div>
+      <div>
+        <h3 dir="rtl" className="text-lg font-semibold mb-4">מחיר יחסי</h3>
+        {priceComponent}
+      </div>
+
+      {/* TO DO: Amend margins between all components */}
 
       {/* Duration Section */}
-      <div>{flightDurationComponent}</div>
+      <div>
+        <h3 dir="rtl" className="text-lg font-semibold mb-4">משך זמן טיסה</h3>
+        {flightDurationComponent}
+      </div>
+
+      {/* TO DO: Amend margins between all components */}
 
       {/* Airlines Section */}
       <div dir="rtl">
