@@ -135,6 +135,8 @@ export async function POST(request: Request) {
           arrivalTime: toArrival?.arrival.at || "0",
           duration: itineraries[0].duration,
           checkBagsIncluded: fromCheckBagsIncluded,
+          flightNumber:
+            validatingAirlineCodes[0] + itineraries[0].segments[0].number,
         };
 
         const inbound: FlightSegment = {
@@ -145,6 +147,8 @@ export async function POST(request: Request) {
           stops: fromStops,
           duration: itineraries[1].duration,
           checkBagsIncluded: toCheckBagsIncluded,
+          flightNumber:
+            validatingAirlineCodes[0] + itineraries[1].segments[0].number,
         };
 
         return {

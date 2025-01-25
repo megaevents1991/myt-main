@@ -79,13 +79,13 @@ export const HotelFilters = ({
   ];
 
   return (
-    <div className="flex flex-col items-center p-5 gap-5">
+    <div className="flex flex-col items-center p-5 gap-5 border-2 border-gray-200 shadow-lg rounded-lg">
       <StarsGroup
         value={stars}
         onChange={handleRatingChange}
         className="mt-5"
       />
-      <div className="m-auto w-full mt-5">
+      <div className="m-auto w-full mt-5 px-2">
         <h3 className="text-lg text-end font-semibold mb-4">מחיר</h3>
         <RangeSlider
           thumbSize={20}

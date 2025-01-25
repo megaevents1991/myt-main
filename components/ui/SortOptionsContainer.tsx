@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@mantine/hooks";
 import { ReactNode } from "react";
 
@@ -6,18 +7,21 @@ export const SortOptionsContainer = ({
   settings,
 }: {
   sortOptions: ReactNode;
-  settings: ReactNode;
+  settings?: ReactNode;
 }) => {
   const matches = useMediaQuery("(min-width: 768px)");
 
   return (
-    <div className="flex w-full flex-col items-center ">
-      <div dir="rtl" className="w-screen bg-gray-200">
-        <div className="w-full">
-          <div className="px-6 py-4 m-auto max-w-5xl">
-            <div className="w-full flex text-center justify-between">
+    <div className="flex w-full flex-col items-center" dir="rtl">
+      <div className="w-full">
+        <div className={cn("m-auto max-w-5xl")}>
+          <div className="w-full flex text-center justify-between">
+            {!matches && <div className="flex items-center">{settings}</div>}
+            <div
+              className={cn("flex gap-2", matches && "justify-between w-full")}
+            >
+              <div className="flex items-center gap-2">מיון לפי</div>
               <div className="flex items-center gap-2">{sortOptions}</div>
-              {!matches && <div className="flex items-center">{settings}</div>}
             </div>
           </div>
         </div>

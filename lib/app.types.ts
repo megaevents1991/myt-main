@@ -41,6 +41,7 @@ export type FlightSegment = {
   stops: string[];
   duration: string;
   checkBagsIncluded: boolean;
+  flightNumber?: string;
 };
 
 export type OrderHotel = {

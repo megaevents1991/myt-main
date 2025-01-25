@@ -20,6 +20,7 @@ import {
   SortOptions,
 } from "@/lib/app.types";
 import dayjs from "dayjs";
+import { cn } from "@/lib/utils";
 
 export const HotelSelection = () => {
   const {
@@ -59,7 +60,7 @@ export const HotelSelection = () => {
     false,
     false,
   ]);
-  const [, setSortOption] = useState<SortOptions>("price_asc");
+  const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
   const [withMeal, setWithMeal] = useState(false);
   const [maxDistance, setMaxDistance] = useState(0);
@@ -332,44 +333,58 @@ export const HotelSelection = () => {
           </div>
         </div>
       </div>
-      <SortOptionsContainer
-        sortOptions={
-          <>
-            <div>סדר לפי</div>
-            <button
-              className="font-bold"
-              onClick={() =>
-                handleSearchCriteriaChange({
-                  value: "price_asc",
-                  type: "sortOption",
-                })
+      <div
+        className={cn(
+          "flex flex-row gap-4 flex-row-reverse items-start w-full",
+          !matches && "flex-col"
+        )}
+      >
+        <div
+          className={cn("w-1/3 space-y-4 sticky top-0", !matches && "w-full")}
+        >
+          <Skeleton visible={isLoading}>
+            <SortOptionsContainer
+              sortOptions={
+                <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
+                  <button
+                    className={cn(
+                      "font-bold px-6 py-1 rounded-r-md",
+                      sortOption === "price_asc" && "text-white bg-secondary"
+                    )}
+                    onClick={() =>
+                      handleSearchCriteriaChange({
+                        value: "price_asc",
+                        type: "sortOption",
+                      })
+                    }
+                  >
+                    מחיר
+                  </button>
+                  <button
+                    className={cn(
+                      "font-bold px-6 py-1 rounded-l-md",
+                      sortOption === "rating" && "text-white bg-secondary"
+                    )}
+                    onClick={() =>
+                      handleSearchCriteriaChange({
+                        value: "rating",
+                        type: "sortOption",
+                      })
+                    }
+                  >
+                    כוכבים
+                  </button>
+                </div>
               }
-            >
-              מחיר
-            </button>
-            <button
-              className="font-bold"
-              onClick={() =>
-                handleSearchCriteriaChange({
-                  value: "rating",
-                  type: "sortOption",
-                })
+              settings={
+                <button className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg">
+                  <Settings2Icon onClick={() => setShowFilters(true)} />
+                </button>
               }
-            >
-              כוכבים
-            </button>
-          </>
-        }
-        settings={
-          <button>
-            <Settings2Icon onClick={() => setShowFilters(true)} />
-          </button>
-        }
-      />
-      <div className="flex flex-row gap-4 flex-row-reverse items-start w-full">
-        {matches && (
-          <div className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg sticky top-0">
-            <Skeleton visible={isLoading} className="p-4">
+            />
+          </Skeleton>
+          {matches && (
+            <Skeleton visible={isLoading}>
               <HotelFilters
                 minPrice={minPrice.minPrice}
                 maxDistance={maxDistance}
@@ -379,8 +394,9 @@ export const HotelSelection = () => {
                 withMeal={withMeal}
               />
             </Skeleton>
-          </div>
-        )}
+          )}
+        </div>
+
         <div className="w-full">
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map((hotel) => (

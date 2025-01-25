@@ -47,7 +47,10 @@ export const DateRange = ({
       dropdownType={isMobile ? "modal" : "popover"}
       styles={{
         input: {
-          borderRadius: "var(--radius)",
+          borderBottomRightRadius: "var(--radius)",
+          borderTopRightRadius: "var(--radius)",
+          borderBottomLeftRadius: "0",
+          borderTopLeftRadius: "0",
         },
       }}
     />

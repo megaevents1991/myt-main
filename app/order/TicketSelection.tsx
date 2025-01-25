@@ -46,7 +46,7 @@ export const TicketSelection = () => {
     <div>
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
-          <div className="flex flex-row justify-between w-full flex-col max-w-5xl mx-auto px-2 lg:px-6">
+          <div className="flex justify-between w-full flex-col max-w-5xl mx-auto px-2 lg:px-6">
             <span className="text-2xl font-bold">{event?.name}</span>
             {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
             <div>{event?.description}</div>

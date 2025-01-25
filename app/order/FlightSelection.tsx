@@ -22,6 +22,7 @@ import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import dayjs from "dayjs";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
+import { cn } from "@/lib/utils";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -313,75 +314,83 @@ export const FlightSelection = () => {
         </FiltersModal>
       )}
       <div className="flex flex-col items-center">
-        <div
-          dir="rtl"
-          className="w-screen gap-2 flex flex-col justify-center p-4 bg-gray-200 items-center"
-        >
-          <div className="text-xs w-full flex-col text-center">
-            <div className="text-2xl font-bold pre ml-2">{event?.name}</div>
-            <div className="whitespace-nowrap">
-              <span>{dayjs(event?.date).format("DD/MM/YY")}</span> |{" "}
-              {event?.location.name}
+        <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
+          <div className="flex justify-between w-full max-w-5xl mx-auto gap-2 px-2 lg:px-6 flex-col md:flex-row md:gap-2">
+            <div className="flex flex-col gap-2">
+              <span className="text-2xl font-bold">{event?.name}</span>
+              {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+              <div>{event?.description}</div>
             </div>
-          </div>
-          <div className="flex w-full md:w-1/2 lg:w-1/3 flex-row gap-2 text-xs justify-center m§argin-auto">
-            <div className="w-1/5">
-              <SelectWithIcon
-                value={planeTickets.adults}
-                onChange={(value) =>
-                  setPlaneTickets({ adults: +(value || 0), children: 0 })
-                }
-                icon={<UsersRound />}
-              />
-            </div>
-            <div className="flex gap-2 flex-row w-4/5">
-              <DateRange
-                dateRange={dateRange}
-                setDateRange={setDateRange}
-                eventDay={event?.date}
-              />
-              <Button
-                onClick={handleFlightSearch}
-                size="md"
-                style={{ borderRadius: "var(--radius)" }}
-              >
-                <Search size={30} />
-              </Button>
+            <div className="flex w-full md:w-1/2 flex-row gap-2 text-xs justify-center items-center margin-auto">
+              <div className="w-1/5">
+                <SelectWithIcon
+                  value={planeTickets.adults}
+                  onChange={(value) =>
+                    setPlaneTickets({ adults: +(value || 0), children: 0 })
+                  }
+                  icon={<UsersRound />}
+                />
+              </div>
+              <div className="flex flex-row w-4/5">
+                <DateRange
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  eventDay={event?.date}
+                />
+                <button
+                  onClick={handleFlightSearch}
+                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[42px] flex items-center justify-center r"
+                >
+                  <Search size={30} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <SortOptionsContainer
-        settings={
-          <button>
-            <Settings2Icon onClick={() => setShowFilters(true)} />
-          </button>
-        }
-        sortOptions={
-          <>
-            <div>סדר לפי</div>
-            <button
-              className="font-bold"
-              onClick={() => handleSortChange("price_asc")}
-            >
-              מחיר
-            </button>
-            <button
-              className="font-bold"
-              onClick={() => handleSortChange("duration")}
-            >
-              משך טיסה{" "}
-            </button>
-          </>
-        }
-      />
-      <div className="flex flex-row gap-8 flex-row-reverse items-start w-full">
-        {matches && (
-          <div
-            className="w-1/3 space-y-8 border-r border-gray-200 shadow-lg rounded-lg"
-            ref={filterRef}
-          >
-            <Skeleton visible={isLoading} className="p-4">
+      <div
+        className={cn(
+          "flex gap-4 flex-row-reverse items-start w-full",
+          !matches && "flex-col"
+        )}
+      >
+        <div
+          className={cn("w-1/3 space-y-4", !matches && "w-full")}
+          ref={filterRef}
+        >
+          <Skeleton visible={isLoading}>
+            <SortOptionsContainer
+              settings={
+                <button className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg">
+                  <Settings2Icon onClick={() => setShowFilters(true)} />
+                </button>
+              }
+              sortOptions={
+                <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
+                  <button
+                    className={cn(
+                      "font-bold px-6 py-1 rounded-r-md",
+                      sortOption === "price_asc" && "text-white bg-secondary"
+                    )}
+                    onClick={() => handleSortChange("price_asc")}
+                  >
+                    מחיר
+                  </button>
+                  <button
+                    className={cn(
+                      "font-bold px-6 py-1 rounded-l-md",
+                      sortOption === "duration" && "text-white bg-secondary"
+                    )}
+                    onClick={() => handleSortChange("duration")}
+                  >
+                    משך טיסה
+                  </button>
+                </div>
+              }
+            />
+          </Skeleton>
+          {matches && (
+            <Skeleton visible={isLoading}>
               <FlightFilters
                 priceComponent={
                   <CustomSlider
@@ -408,8 +417,8 @@ export const FlightSelection = () => {
                 handleFilterChange={handleFilterChange}
               />
             </Skeleton>
-          </div>
-        )}
+          )}
+        </div>
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full md:w-2/3">
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredFlights.map((flight) => {
