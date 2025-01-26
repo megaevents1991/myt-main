@@ -38,7 +38,7 @@ export type FlightSegment = {
   arrivalTime: string;
   departureAirport: string;
   arrivalAirport: string;
-  stops: string[];
+  stops: { iataCode: string; duration: number | null }[];
   duration: string;
   checkBagsIncluded: boolean;
   flightNumber?: string;

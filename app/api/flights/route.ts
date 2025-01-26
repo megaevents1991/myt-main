@@ -99,13 +99,31 @@ export async function POST(request: Request) {
         const fromDeparture = itineraries[1].segments[0];
         const fromArrival = itineraries[1].segments.at(-1);
 
-        const toStops = itineraries[0].segments.map(
-          (segment) => segment.arrival.iataCode
-        );
+        const toStops = itineraries[0].segments.map((segment, i) => ({
+          iataCode: segment.arrival.iataCode,
+          duration: Math.ceil(
+            (new Date(
+              itineraries[0].segments?.[i + 1]?.departure?.at
+            ).getTime() -
+              new Date(segment.arrival.at).getTime()) /
+              1000 /
+              60 /
+              60
+          ),
+        }));
 
-        const fromStops = itineraries[1].segments.map(
-          (segment) => segment.arrival.iataCode
-        );
+        const fromStops = itineraries[1].segments.map((segment, i) => ({
+          iataCode: segment.arrival.iataCode,
+          duration: Math.ceil(
+            (new Date(
+              itineraries[1].segments?.[i + 1]?.departure?.at
+            ).getTime() -
+              new Date(segment.arrival.at).getTime()) /
+              1000 /
+              60 /
+              60
+          ),
+        }));
 
         const fromCheckBagsIncluded = itineraries[0].segments.every(
           (segment) => {

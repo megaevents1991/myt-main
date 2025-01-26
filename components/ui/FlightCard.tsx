@@ -2,7 +2,10 @@ import { Flight, FlightSegment } from "@/lib/app.types";
 import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
 import { Luggage, Plane } from "lucide-react";
-import { Skeleton } from "@mantine/core";
+import { Skeleton, Tooltip } from "@mantine/core";
+import { isMobile } from "react-device-detect";
+import { useState } from "react";
+import { useClickOutside } from "@mantine/hooks";
 
 type FlightTicketCardProps = {
   isSelected: boolean;
@@ -19,17 +22,35 @@ const stopsMap: { [key: number]: string } = {
   3: "עצירות 3",
 };
 
-const StopsString = (stops: string[]) => {
+const numberToHourString = (hours: number | null) => {
+  switch (hours) {
+    case 1:
+      return "שעה";
+    case 2:
+      return "שעתיים";
+    default:
+      return hours + " שעות";
+  }
+};
+
+const StopsString = (
+  stops: { iataCode: string; duration: number | null }[]
+) => {
   return (
     <span>
       <span
         style={{
           color: stops.length - 1 > 0 ? "#FF3B30" : "#277E89",
+          textDecoration:
+            stops.length - 1 > 0 && isMobile ? "underline" : "none",
         }}
       >
         {`${stopsMap[stops.length - 1]} `}
       </span>
-      {stops.slice(0, -1).join(", ")}
+      {stops
+        .map(({ iataCode }) => iataCode)
+        .slice(0, -1)
+        .join(", ")}
     </span>
   );
 };
@@ -100,8 +121,8 @@ const FlightCard = ({
   ...flightMeta
 }: FlightCardProps) => {
   return (
-    <div className="flex flex-row items-center justify-between w-full gap-1">
-      <div className="w-[20%] md:w-[30%]">
+    <div className="flex flex-row items-center justify-between w-full gap-2 md:gap-1">
+      <div className="w-[20%] md:w-[15%]">
         <div className="mb-2">
           <Image
             src={metadata.logo || ""}
@@ -112,7 +133,7 @@ const FlightCard = ({
         </div>
         <div className="text-[0.6rem] hidden md:block">{flightNumber}</div>
       </div>
-      <div className="w-[70%] md:w-[50%] flex justify-center">
+      <div className="w-[70%] md:w-[55%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
       <div className="w-[10%] md:w-[20%] text-center display flex flex-col items-center md:items-start gap-2">
@@ -143,10 +164,16 @@ export const FlightMeta = ({
   | "duration"
   | "stops"
 >) => {
+  const [tooltipOpened, setTooltipOpened] = useState(false);
+  const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
   const plusOne =
     new Date(departureTime).getDay() !== new Date(arrivalTime).getDay();
+
   return (
-    <div className="sm:text-sm md:text-lg font-bold flex flex-row items-center w-fit">
+    <div
+      className="sm:text-sm md:text-lg font-bold flex flex-row items-center w-full justify-around"
+      ref={ref}
+    >
       <div className="text-end">
         <div className="flex flex-row items-center">
           {String(new Date(departureTime).getHours()).padStart(2, "0")}:
@@ -154,13 +181,13 @@ export const FlightMeta = ({
         </div>
         {departureAirport}
       </div>
-      <div className="flex flex-col items-center relative">
+      <div className="flex flex-col items-center relative w-full">
         <div className="text-xs pb-1">{convertDuration(duration)}</div>
         <Plane
           size={14}
           fill="currentColor"
           style={{ transform: "rotate(-135deg) translate(-60%, -80%)" }}
-          className="absolute top-0 left-3"
+          className="absolute top-0 left-2"
         />
         {!!(stops.length - 1) && (
           <div
@@ -169,17 +196,40 @@ export const FlightMeta = ({
           />
         )}
         <div
-          className="text-[0.6rem] font-bold flex flex-row gap-2 text-right items-center whitespace-nowrap border-t-2 border-main mx-4 pt-1"
+          onTouchStart={() => setTooltipOpened((curr) => !curr)}
+          className="text-[0.6rem] font-bold flex flex-row gap-2 items-center justify-center whitespace-nowrap border-t-2 border-main mx-4 pt-1 w-[90%]"
           dir="rtl"
         >
-          {StopsString(stops)}
+          <Tooltip
+            label={
+              <span dir="rtl">
+                {stops
+                  .map((stop, i) => (
+                    <span key={i} dir="rtl" className="mr-1">
+                      {numberToHourString(stop.duration) +
+                        " ב-" +
+                        stop.iataCode}
+                    </span>
+                  ))
+                  .slice(0, -1)}
+              </span>
+            }
+            position="top"
+            opened={
+              !!(stops.length - 1) && (isMobile ? tooltipOpened : undefined)
+            }
+          >
+            {StopsString(stops)}
+          </Tooltip>
         </div>
       </div>
       <div>
-        <div className="flex flex-row items-center">
+        <div className="flex flex-row items-center relative">
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
-          <sup className="mr-1 text-secondary">{plusOne ? "1+" : ""}</sup>
+          <span className="text-xs mr-1 text-secondary absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
+            {plusOne ? "1+" : ""}
+          </span>
         </div>
         {arrivalAirport}
       </div>
