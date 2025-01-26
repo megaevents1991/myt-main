@@ -20,6 +20,11 @@ import { cn } from "@/lib/utils";
 import { useAffiliate, orderStage } from "./hooks/Affiliate";
 import dayjs from "dayjs";
 
+//import { useStatsigClient } from "@statsig/react-bindings";
+import { StatsigProvider, useClientAsyncInit } from '@statsig/react-bindings';
+import { runStatsigAutoCapture } from '@statsig/web-analytics';
+import { runStatsigSessionReplay } from '@statsig/session-replay';
+
 const SearchCombobox = ({
   searchValue,
   setSearchValue,
@@ -128,141 +133,156 @@ export default function Home() {
     fetchData();
   }, []);
 
+  const { client } = useClientAsyncInit(process.env.STATSIG_ENV_KEY || '', {
+    userID: 'a-user',
+  });
+
+  useEffect(() => {
+    // optional: remove these lines if you dont want to use one or the other
+    runStatsigAutoCapture(client);
+    runStatsigSessionReplay(client);
+  }, [client]);
+
   return (
     <main>
-      {!matches && (
-        <Modal
-          closeButtonProps={{
-            icon: <ArrowLeftIcon />,
-            style: { position: "absolute" },
-          }}
-          opened={showSearchModal}
-          fullScreen
-          onClose={() => setShowSearchModal(false)}
-        >
-          <SearchCombobox
-            events={events}
-            searchValue={searchValue}
-            setSearchValue={setSearchValue}
-          />
-        </Modal>
-      )}
-      <section className="w-full py-6 md:py-12 lg:py-18 xl:py-22 px-4 md:px-6 text-white bg-main relative">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
-            <span> כל האירועים השווים בחו״ל</span>
-            <span className="text-secondary whitespace-nowrap text-5xl">
-              {" "}
-              במקום אחד
-            </span>
-          </h1>
-          <p className="text-3xl sm:text-4xl md:text-5xl mb-4 mb-8">
-            !בחרו ותתחילו לתכנן
-          </p>
-        </div>
-        <div className="w-full max-w-sm lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
-          <form className="flex center shadow-md" dir="rtl">
-            {!matches ? (
-              <input
-                onFocus={(e) => {
-                  setShowSearchModal(true);
-                  e.target.blur();
-                }}
-                onChange={(e) => setSearchValue(e.target.value)}
-                value={searchValue}
-                placeholder="חפש אירוע..."
-                type="text"
-                className="w-2/3 rounded-r p-2 text-main border"
-              />
-            ) : (
-              <SearchCombobox
-                inline
-                events={events}
-                searchValue={searchValue}
-                setSearchValue={setSearchValue}
-                ref={ref}
-              />
-            )}
-            <button
-              className="w-1/3 bg-secondary text-white rounded-l"
-              onClick={(e) => {
-                e.preventDefault();
-                if (!matches) {
-                  setShowSearchModal(true);
-                } else {
-                  ref.current?.focus();
-                }
-              }}
-            >
-              בוא נתחיל לתכנן!
-            </button>
-          </form>
-        </div>
-      </section>
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
-        <div className="container mx-auto">
-          <div className="flex flex-row justify-end items-stretch">
-            <div>
-              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mb-8 mx-2">
-                אירועים חמים
-              </h2>
-            </div>
-            <div
-              className="bg-secondary mx-1"
-              style={{ height: 40, width: 23 }}
+      <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}>
+        {!matches && (
+          <Modal
+            closeButtonProps={{
+              icon: <ArrowLeftIcon />,
+              style: { position: "absolute" },
+            }}
+            opened={showSearchModal}
+            fullScreen
+            onClose={() => setShowSearchModal(false)}
+          >
+            <SearchCombobox
+              events={events}
+              searchValue={searchValue}
+              setSearchValue={setSearchValue}
             />
-            <div
-              className="bg-secondary  mx-1"
-              style={{ height: 40, width: 23 }}
-            />
-            <div
-              className="bg-secondary  mx-1"
-              style={{ height: 40, width: 46 }}
-            />
+          </Modal>
+        )}
+        <section className="w-full py-6 md:py-12 lg:py-18 xl:py-22 px-4 md:px-6 text-white bg-main relative">
+          <div className="container mx-auto max-w-3xl text-center">
+            <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
+              <span> כל האירועים השווים בחו״ל</span>
+              <span className="text-secondary whitespace-nowrap text-5xl">
+                {" "}
+                במקום אחד
+              </span>
+            </h1>
+            <p className="text-3xl sm:text-4xl md:text-5xl mb-4 mb-8">
+              !בחרו ותתחילו לתכנן
+            </p>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {events.map((event) => (
-              <Link
-                href={`/order?eventId=${event.id}`}
-                className="cursor-pointer"
-                key={event.id}
-                onClick={() => {
-                  orderStage("EVENT_SELECTED", { event: event.name });
+          <div className="w-full max-w-sm lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
+            <form className="flex center shadow-md" dir="rtl">
+              {!matches ? (
+                <input
+                  onFocus={(e) => {
+                    setShowSearchModal(true);
+                    e.target.blur();
+                  }}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  value={searchValue}
+                  placeholder="חפש אירוע..."
+                  type="text"
+                  className="w-2/3 rounded-r p-2 text-main border"
+                />
+              ) : (
+                <SearchCombobox
+                  inline
+                  events={events}
+                  searchValue={searchValue}
+                  setSearchValue={setSearchValue}
+                  ref={ref}
+                />
+              )}
+              <button
+                className="w-1/3 bg-secondary text-white rounded-l"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!matches) {
+                    setShowSearchModal(true);
+                  } else {
+                    ref.current?.focus();
+                  }
                 }}
               >
-                <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                  <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">
-                    <Image
-                      src={event.card_image_url}
-                      alt={event.name}
-                      width={400}
-                      height={300}
-                      className="object-cover w-full h-60 transition-transform group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="flex-col text-center w-1/2 sm:w-auto">
-                    <div className="p-2 px-4 font-bold">{event.name}</div>
-                    <div className="py-1 bg-secondary text-white">
-                      {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
-                      {event.location.name}
-                    </div>
-                    <div className="p-2 px-4 text-right" dir="rtl">
-                      <div>בממוצע כ-</div>
-                      <div className="flex items-baseline gap-1">
-                        <div className="text-2xl font-bold">
-                          ${event.def_avg_price}
-                        </div>
-                        <div className="text-sm line-through">${event.usual_price}</div>{" "}
-                      </div>
-                      <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                בוא נתחיל לתכנן!
+              </button>
+            </form>
           </div>
-        </div>
-      </section>
+        </section>
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
+          <div className="container mx-auto">
+            <div className="flex flex-row justify-end items-stretch">
+              <div>
+                <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mb-8 mx-2">
+                  אירועים חמים
+                </h2>
+              </div>
+              <div
+                className="bg-secondary mx-1"
+                style={{ height: 40, width: 23 }}
+              />
+              <div
+                className="bg-secondary  mx-1"
+                style={{ height: 40, width: 23 }}
+              />
+              <div
+                className="bg-secondary  mx-1"
+                style={{ height: 40, width: 46 }}
+              />
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {events.map((event) => (
+                <Link
+                  href={`/order?eventId=${event.id}`}
+                  className="cursor-pointer"
+                  key={event.id}
+                  onClick={() => {
+                    orderStage("EVENT_SELECTED", { event: event.name });
+                    client.logEvent("user_selected_event", event.id, {
+                      item_name: event.name,
+                    })
+                  }}
+                >
+                  <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+                    <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">
+                      <Image
+                        src={event.card_image_url}
+                        alt={event.name}
+                        width={400}
+                        height={300}
+                        className="object-cover w-full h-60 transition-transform group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="flex-col text-center w-1/2 sm:w-auto">
+                      <div className="p-2 px-4 font-bold">{event.name}</div>
+                      <div className="py-1 bg-secondary text-white">
+                        {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
+                        {event.location.name}
+                      </div>
+                      <div className="p-2 px-4 text-right" dir="rtl">
+                        <div>בממוצע כ-</div>
+                        <div className="flex items-baseline gap-1">
+                          <div className="text-2xl font-bold">
+                            ${event.def_avg_price}
+                          </div>
+                          <div className="text-sm line-through">${event.usual_price}</div>{" "}
+                        </div>
+                        <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      </StatsigProvider>
     </main>
   );
 }

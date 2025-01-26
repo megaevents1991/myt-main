@@ -321,11 +321,11 @@ export default function OrderReview() {
                 {affDiscount > 0 && (
                   <div>
                     <div className="flex justify-between items-center w-full text-[18px] text-green-600">
-                      <span>${affDiscount}</span>
+                      <span>${affDiscount * numberOfEventTickets}</span>
                       <span>הנחה</span>
                     </div>
                     <div className="flex justify-between items-center w-full text-[18px]">
-                      <span className="line-through">${totalPrice + affDiscount}</span>
+                      <span className="line-through">${totalPrice + affDiscount * numberOfEventTickets}</span>
                       <span>מחיר לפני הנחה</span>
                     </div>
                   </div>

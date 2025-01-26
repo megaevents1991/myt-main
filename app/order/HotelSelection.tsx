@@ -33,8 +33,8 @@ export const HotelSelection = () => {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState("");
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(new Date(event.date).getTime() - 2 * 8.64e7),
-    new Date(new Date(event.date).getTime() + 8.64e7),
+    new Date(event.def_date_depart),
+    new Date(event.def_date_return),
   ]);
   const [isLoading, setIsLoading] = useState(true);
   const [roomParams, setRoomParams] = useState<
