@@ -26,6 +26,7 @@ export const HotelSelection = () => {
   const {
     setHotel,
     planeTickets,
+    flight,
     hotel: selectedOrderHotel,
     event = {} as Event,
   } = useContext(OrderContext);
@@ -33,8 +34,8 @@ export const HotelSelection = () => {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState("");
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(event.def_date_depart),
-    new Date(event.def_date_return),
+    new Date(flight?.outbound?.arrivalTime ?? event.def_date_depart), 
+    new Date(flight?.inbound?.departureTime ?? event.def_date_return),
   ]);
   const [isLoading, setIsLoading] = useState(true);
   const [roomParams, setRoomParams] = useState<
@@ -42,12 +43,33 @@ export const HotelSelection = () => {
       adults: number;
       children: number[];
     }[]
-  >([
-    {
+  >(() => {
+    const totalAdults = planeTickets.adults;
+    if (totalAdults <= 3) {
+      return [{
+        children: [],
+        adults: totalAdults,
+      }];
+    }
+    
+    const fullRooms = Math.floor(totalAdults / 2);
+    const remainingAdults = totalAdults % 2;
+    
+    const rooms = Array(fullRooms).fill({
       children: [],
-      adults: planeTickets.adults,
-    },
-  ]);
+      adults: 2,
+    });
+
+    if (remainingAdults > 0) {
+      rooms.push({
+        children: [],
+        adults: remainingAdults,
+      });
+    }
+
+    return rooms;
+  });
+  
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
   const [hotelsInfo, setHotelsInfo] = useState<HotelsInfoClient>(

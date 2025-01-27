@@ -269,9 +269,9 @@ export default function Home() {
                         <div>בממוצע כ-</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-2xl font-bold">
-                            ${event.def_avg_price}
+                            ${event.def_avg_price.toLocaleString('en-US')}
                           </div>
-                          <div className="text-sm line-through">${event.usual_price}</div>{" "}
+                          <div className="text-sm line-through">${event.usual_price.toLocaleString('en-US')}</div>{" "}
                         </div>
                         <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
                       </div>

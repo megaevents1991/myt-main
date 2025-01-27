@@ -1,6 +1,6 @@
 "use client";
 
-import { Spoiler, ScrollArea } from "@mantine/core";
+import { Spoiler, ScrollArea, Text } from "@mantine/core";
 // import { useSearchParams } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
@@ -13,6 +13,10 @@ export const TicketSelection = () => {
   //const eventId = useSearchParams().get("eventId") as string;
   //const event = events.find((e) => e.id === eventId);
   const { setEventTicket, event } = useContext(OrderContext);
+  const [errorMessage, setErrorMessage] = useState('');
+
+
+  const MAX_TICKETS = 10;
 
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     event?.tickets_and_rates[0].id
@@ -39,6 +43,11 @@ export const TicketSelection = () => {
   };
 
   const handleQuantityChange = (value: number | string) => {
+    if (+value > MAX_TICKETS) {
+      setErrorMessage('ניתן לרכוש עד 10 כרטיס בשלב זה');
+      return;
+    }
+    setErrorMessage('');
     setNumberOfEventTickets(+value);
   };
 
@@ -86,6 +95,11 @@ export const TicketSelection = () => {
           />
           <div className="w-full md:w-2/3" dir="ltr">
             <ScrollArea h={"40vh"}>
+              {errorMessage && (
+                <Text c="red" ta="right" mb="xs">
+                  {errorMessage}
+                </Text>
+              )}
               <div className="flex flex-col gap-2">
                 {event?.tickets_and_rates.map((ticket, index) => (
                   <EventTicketCard
