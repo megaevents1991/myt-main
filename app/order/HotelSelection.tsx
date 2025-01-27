@@ -45,28 +45,28 @@ export const HotelSelection = () => {
     }[]
   >(() => {
     const totalAdults = planeTickets.adults;
-    if (totalAdults <= 3) {
-      return [{
-        children: [],
-        adults: totalAdults,
-      }];
+    const baseRoom = { children: [] };
+    const rooms: Array<{ children: never[]; adults: number }> = [];
+    
+    // Maximum possible rooms with 3 adults
+    const maxThreePersonRooms = Math.floor(totalAdults / 3);
+    const remainingAdults = totalAdults % 3;
+    
+    // Distribute 3-person rooms
+    for (let i = 0; i < maxThreePersonRooms; i++) {
+      rooms.push({ ...baseRoom, adults: 3 });
     }
     
-    const fullRooms = Math.floor(totalAdults / 2);
-    const remainingAdults = totalAdults % 2;
-    
-    const rooms = Array(fullRooms).fill({
-      children: [],
-      adults: 2,
-    });
-
-    if (remainingAdults > 0) {
-      rooms.push({
-        children: [],
-        adults: remainingAdults,
-      });
+    // Handle remaining adults
+    if (remainingAdults === 1 && rooms.length > 0) {
+      // Convert one 3-person room to two 2-person rooms
+      rooms.pop();
+      rooms.push({ ...baseRoom, adults: 2 });
+      rooms.push({ ...baseRoom, adults: 2 });
+    } else if (remainingAdults === 2) {
+      rooms.push({ ...baseRoom, adults: 2 });
     }
-
+  
     return rooms;
   });
   
