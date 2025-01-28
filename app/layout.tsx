@@ -52,9 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <div className="w-screen relative min-h-screen">
           <AuthProvider>
             <Suspense>
-              <MantineProvider
-                theme={theme}
-              >
+              <MantineProvider theme={theme}>
                 <Container className="pt-4 min-h-200" fluid bg={"#05203C"}>
                   <div className="flex scale-25 justify-center md:justify-end">
                     <Link href="/">
@@ -69,6 +67,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       © 2023 MYT Events. All rights reserved.
                     </p>
                     <nav className="flex gap-4 sm:gap-6">
+                      <Link
+                        className="text-xs hover:underline underline-offset-4"
+                        href="artists"
+                      >
+                        Our Artists
+                      </Link>
                       <Link
                         className="text-xs hover:underline underline-offset-4"
                         href="#"

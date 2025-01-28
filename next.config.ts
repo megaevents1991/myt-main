@@ -35,6 +35,12 @@ const nextConfig: import("next").NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.ctfassets.net",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };

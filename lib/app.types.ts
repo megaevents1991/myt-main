@@ -1,5 +1,6 @@
 import { Airline } from "aircodes";
 import { Guest, Rate } from "./hotel.type";
+import { EntryFieldTypes } from "contentful";
 
 export type Event = {
   id: number;
@@ -168,3 +169,35 @@ export interface OrderData {
   event_id: number;
   aff_partner_id: string;
 }
+
+export type ArtistFields = {
+  contentTypeId: "artistTemplate";
+  fields: {
+    bio: EntryFieldTypes.Object<{
+      content: {
+        content: {
+          value?: string;
+        }[];
+      }[];
+    }>;
+    heroBanner: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: {
+            image?: {
+              height?: number;
+              width?: number;
+            };
+          };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    name: string;
+    sys: EntryFieldTypes.Object<{
+      id: string;
+    }>;
+  };
+};
