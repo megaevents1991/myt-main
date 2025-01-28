@@ -9,7 +9,7 @@ export async function generateStaticParams() {
   });
 
   return items.map((item) => ({
-    slug: item.fields.slug,
+    slug: item.sys.id,
   }));
 }
 
