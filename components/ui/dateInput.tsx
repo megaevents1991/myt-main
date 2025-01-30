@@ -46,6 +46,9 @@ export const DateRange = ({
       onChange={setDateRange}
       dropdownType={isMobile ? "modal" : "popover"}
       styles={{
+        month: {
+          direction: "rtl",
+        },
         input: {
           borderBottomRightRadius: "var(--radius)",
           borderTopRightRadius: "var(--radius)",
