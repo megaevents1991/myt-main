@@ -180,6 +180,7 @@ export type ArtistFields = {
         }[];
       }[];
     }>;
+    previewText: string;
     heroBanner: EntryFieldTypes.Object<{
       fields?: {
         file?: {

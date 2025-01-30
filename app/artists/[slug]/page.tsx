@@ -2,6 +2,12 @@ import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields } from "@/lib/app.types";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
+import {
+  documentToReactComponents,
+  Options,
+} from "@contentful/rich-text-react-renderer";
+import { ReactNode } from "react";
 
 export async function generateStaticParams() {
   const { items } = await contentfulClient.getEntries({
@@ -26,9 +32,29 @@ export default async function ArtistPage({
   }
 
   const { name, bio, heroBanner } = artist.fields;
+  const bioDocument = bio as Document;
+
+  const Bold = ({ children }: { children: ReactNode }) => (
+    <span className="font-bold">{children}</span>
+  );
+
+  const Text = ({ children }: { children: ReactNode }) => (
+    <p className="align-center">{children}</p>
+  );
+
+  const options: Options = {
+    renderMark: {
+      [MARKS.BOLD]: (text: ReactNode): ReactNode => <Bold>{text}</Bold>,
+    },
+    renderNode: {
+      [BLOCKS.PARAGRAPH]: (_node: unknown, children: ReactNode): ReactNode => (
+        <Text>{children}</Text>
+      ),
+    },
+  };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div dir="rtl" className="container mx-auto py-8 px-4">
       {heroBanner?.fields?.file?.url && (
         <Image
           src={`https:${heroBanner.fields.file.url}`}
@@ -40,7 +66,7 @@ export default async function ArtistPage({
       )}
       <h1 className="text-4xl font-bold mb-4">{name}</h1>
       <div className="prose max-w-none">
-        {bio.content[0].content[0].value || ""}
+        {documentToReactComponents(bioDocument, options)}
       </div>
     </div>
   );

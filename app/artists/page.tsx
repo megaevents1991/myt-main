@@ -33,9 +33,7 @@ export default async function ArtistsPage() {
                   {String(artist.fields.name)}
                 </h2>
                 <p className="text-gray-600 line-clamp-2">
-                  {String(
-                    artist.fields?.bio?.content?.[0]?.content?.[0]?.value
-                  )}
+                  {String(artist.fields?.previewText)}
                 </p>
               </div>
             </div>

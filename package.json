@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@contentful/rich-text-react-renderer": "^16.0.1",
     "@mantine/carousel": "^7.15.3",
     "@mantine/core": "7.15.1",
     "@mantine/dates": "^7.15.1",
