@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Image from "next/image";
@@ -20,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { useAffiliate, orderStage } from "./hooks/Affiliate";
 import dayjs from "dayjs";
 
-//import { useStatsigClient } from "@statsig/react-bindings";
 import { StatsigProvider, useClientAsyncInit } from "@statsig/react-bindings";
 import { runStatsigAutoCapture } from "@statsig/web-analytics";
 import { runStatsigSessionReplay } from "@statsig/session-replay";
@@ -116,6 +114,7 @@ export default function Home() {
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+
   useAffiliate();
 
   useEffect(() => {
@@ -126,7 +125,7 @@ export default function Home() {
         setEvents(Array.isArray(events) ? events : []);
       } catch (error) {
         console.error("Error fetching cards:", error);
-        // Better user error (via the client).
+        // TO DO: Better user error (via the client).
       }
     };
 

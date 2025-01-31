@@ -4,6 +4,8 @@ import { Calendar } from "lucide-react";
 import { Indicator } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 
+// Alterntive in case needed: https://codesandbox.io/p/sandbox/material-ui-rtl-date-range-picker-ojf0d?file=%2Fsrc%2FApp.js%3A12%2C49
+
 export const DateRange = ({
   dateRange,
   setDateRange,
