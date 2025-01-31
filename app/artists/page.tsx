@@ -28,7 +28,7 @@ export default async function ArtistsPage() {
                   className="w-full h-48 object-cover"
                 />
               )}
-              <div className="p-4">
+              <div className="p-2 px-4 text-right" dir="rtl">
                 <h2 className="text-xl font-bold mb-2">
                   {String(artist.fields.name)}
                 </h2>

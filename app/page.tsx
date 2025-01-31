@@ -21,9 +21,9 @@ import { useAffiliate, orderStage } from "./hooks/Affiliate";
 import dayjs from "dayjs";
 
 //import { useStatsigClient } from "@statsig/react-bindings";
-import { StatsigProvider, useClientAsyncInit } from '@statsig/react-bindings';
-import { runStatsigAutoCapture } from '@statsig/web-analytics';
-import { runStatsigSessionReplay } from '@statsig/session-replay';
+import { StatsigProvider, useClientAsyncInit } from "@statsig/react-bindings";
+import { runStatsigAutoCapture } from "@statsig/web-analytics";
+import { runStatsigSessionReplay } from "@statsig/session-replay";
 
 const SearchCombobox = ({
   searchValue,
@@ -133,8 +133,8 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const { client } = useClientAsyncInit(process.env.STATSIG_ENV_KEY || '', {
-    userID: 'a-user',
+  const { client } = useClientAsyncInit(process.env.STATSIG_ENV_KEY || "", {
+    userID: "a-user",
   });
 
   useEffect(() => {
@@ -246,7 +246,7 @@ export default function Home() {
                     orderStage("EVENT_SELECTED", { event: event.name });
                     client.logEvent("user_selected_event", event.id, {
                       item_name: event.name,
-                    })
+                    });
                   }}
                 >
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
@@ -269,9 +269,11 @@ export default function Home() {
                         <div>בממוצע כ-</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-2xl font-bold">
-                            ${event.def_avg_price.toLocaleString('en-US')}
+                            ${event.def_avg_price.toLocaleString("en-US")}
                           </div>
-                          <div className="text-sm line-through">${event.usual_price.toLocaleString('en-US')}</div>{" "}
+                          <div className="text-sm line-through">
+                            ${event.usual_price.toLocaleString("en-US")}
+                          </div>{" "}
                         </div>
                         <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
                       </div>
