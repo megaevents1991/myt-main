@@ -59,6 +59,7 @@ export default async function ArtistPage({
         <Image
           src={`https:${heroBanner.fields.file.url}`}
           alt={name || ""}
+          priority={true}
           width={heroBanner.fields.file.details?.image?.width || 1024}
           height={heroBanner.fields.file.details?.image?.height || 384}
           className="w-full h-96 object-cover rounded-lg mb-8"
