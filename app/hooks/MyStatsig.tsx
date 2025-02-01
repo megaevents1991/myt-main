@@ -8,7 +8,7 @@ import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
 export default function MyStatsig({ children }: { children: React.ReactNode }) {
   return (
     <StatsigProvider
-      sdkKey={"client-ghmECReSr74HNud2nTeoSg9QO7jmSkmSoPFLLBUdjbn"}
+      sdkKey={process.env.NEXT_PUBLIC_STATSIG_ENV_KEY || ""}
       user={{ userID: "a-user" }}
       options={{
         plugins: [
