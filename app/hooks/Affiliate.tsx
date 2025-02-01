@@ -2,21 +2,26 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { v4 } from 'uuid';
+import { v4 } from "uuid";
 
-export type TrackingStage = 
-  | "VISIT" 
+export type TrackingStage =
+  | "VISIT"
   | "EVENT_SELECTED"
-  | "TICKET_SELECTED" 
-  | "FLIGHT_SELECTED" 
-  | "HOTEL_SELECTED" 
+  | "TICKET_SELECTED"
+  | "FLIGHT_SELECTED"
+  | "HOTEL_SELECTED"
   | "CONFIRMED";
 
-const visitor = async (stage: TrackingStage, data: object, userId: string, affiliateId: string) => {
+const visitor = async (
+  stage: TrackingStage,
+  data: object,
+  userId: string,
+  affiliateId: string
+) => {
   if (!affiliateId) return;
 
   try {
-    await fetch("/api/affiliate/track", {
+    await fetch("/api/affiliate/aff", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -25,18 +30,19 @@ const visitor = async (stage: TrackingStage, data: object, userId: string, affil
         affId: affiliateId,
         userId,
         stage,
-        data
+        data,
       }),
     });
-  } catch (error) {
-    console.error("Failed to track affiliate stage:", error);
+  } catch (e) {
+    console.error(e);
   }
 };
 
 export const orderStage = async (stage: TrackingStage, data: object) => {
   // Get affiliate data
-  const affParam = new URLSearchParams(window.location.search).get("aff") || null;
-  const storedData = localStorage.getItem('mytData');
+  const affParam =
+    new URLSearchParams(window.location.search).get("aff") || null;
+  const storedData = localStorage.getItem("mytData");
 
   // Early return if no affiliate context exists and no URL param
   if (!affParam && !storedData) {
@@ -60,7 +66,7 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
 
   // Save data if we have either userId or affiliateId
   if (flagSave) {
-    localStorage.setItem('mytData', JSON.stringify(affiliateData));
+    localStorage.setItem("mytData", JSON.stringify(affiliateData));
   }
 
   // Send event if we have both userId and affiliateId
@@ -73,8 +79,6 @@ export function useAffiliate() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-
     orderStage("VISIT", {});
-  
   }, [searchParams]);
 }
