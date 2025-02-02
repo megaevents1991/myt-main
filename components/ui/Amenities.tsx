@@ -23,19 +23,13 @@ export const Amenities = ({
     <>
       <button
         onClick={() => handleChange(true)}
-        className={cn(
-          showHotelData && "bg-main text-white",
-          "px-1 border rounded-md mr-1"
-        )}
+        className={cn(showHotelData && "underline", "px-1 mr-1 text-main")}
       >
         שירותי המלון
       </button>
       <button
         onClick={() => handleChange(false)}
-        className={cn(
-          !showHotelData && "bg-main text-white",
-          "px-1 border rounded-md mr-1"
-        )}
+        className={cn(!showHotelData && "underline", "px-1 mr-1 text-main")}
       >
         פרטי חדר
       </button>

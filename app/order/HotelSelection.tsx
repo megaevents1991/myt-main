@@ -34,7 +34,7 @@ export const HotelSelection = () => {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState("");
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(flight?.outbound?.arrivalTime ?? event.def_date_depart), 
+    new Date(flight?.outbound?.arrivalTime ?? event.def_date_depart),
     new Date(flight?.inbound?.departureTime ?? event.def_date_return),
   ]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,16 +47,16 @@ export const HotelSelection = () => {
     const totalAdults = planeTickets.adults;
     const baseRoom = { children: [] };
     const rooms: Array<{ children: never[]; adults: number }> = [];
-    
+
     // Maximum possible rooms with 3 adults
     const maxThreePersonRooms = Math.floor(totalAdults / 3);
     const remainingAdults = totalAdults % 3;
-    
+
     // Distribute 3-person rooms
     for (let i = 0; i < maxThreePersonRooms; i++) {
       rooms.push({ ...baseRoom, adults: 3 });
     }
-    
+
     // Handle remaining adults
     if (remainingAdults === 1 && rooms.length > 0) {
       // Convert one 3-person room to two 2-person rooms
@@ -66,10 +66,10 @@ export const HotelSelection = () => {
     } else if (remainingAdults === 2) {
       rooms.push({ ...baseRoom, adults: 2 });
     }
-  
+
     return rooms;
   });
-  
+
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
   const [hotelsInfo, setHotelsInfo] = useState<HotelsInfoClient>(
@@ -195,13 +195,13 @@ export const HotelSelection = () => {
   };
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
-    setHotel(undefined);
-
     switch (type) {
       case "rating":
+        setHotel(undefined);
         setRating(value);
         break;
       case "priceRange":
+        setHotel(undefined);
         setPriceRange(value);
         break;
       case "hotelName":
@@ -210,6 +210,7 @@ export const HotelSelection = () => {
         }
         break;
       case "withMeal":
+        setHotel(undefined);
         setWithMeal(value);
         break;
       case "sortOption":
@@ -217,6 +218,7 @@ export const HotelSelection = () => {
         break;
 
       case "distanceFromCenter": {
+        setHotel(undefined);
         if (value[1] > maxDistance) {
           fetchHotels({ radius: value[1] });
           return;
