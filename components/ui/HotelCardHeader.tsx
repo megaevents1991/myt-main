@@ -20,12 +20,12 @@ export const HotelCardHeader = ({
     <div className="flex flex-col gap-2 m">
       <div className="flex flex-col justify-between items-start gap-2">
         <div className="flex flex-row gap-2 items-center ">
-          <div className="font-bold text-sm lg:text-2xl">
+          <div className="font-bold text-lg lg:text-2xl">
             {formatHotelName(hotelName)}
           </div>
           <Stars rating={rating} />
         </div>
-        <div className="text-sm">
+        <div className="text-[16px]">
           {Math.round((distanceFromCenter / 1000) * 10) / 10} ק&quot;מ ממרכז
           העיר
         </div>

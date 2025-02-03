@@ -54,9 +54,11 @@ export const TicketSelection = () => {
     <div>
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
-          <div className="flex justify-between w-full flex-col max-w-7xl mx-auto px-2 lg:px-6">
-            <span className="text-2xl font-bold">{event?.name}</span>
-            {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+          <div className="flex justify-between w-full flex-col max-w-7xl mx-auto px-2 lg:px-6 gap-2">
+            <span className="text-3xl font-bold">{event?.name}</span>
+            <span className="whitespace-nowrap text-lg">
+              {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+            </span>
             <div>{event?.description}</div>
           </div>
         </div>
@@ -85,14 +87,16 @@ export const TicketSelection = () => {
               alt="Event map"
             />
           </Spoiler>
-          <Image
-            className="rounded-lg hidden w-full lg:block w-auto h-auto max-w-[50%]"
-            width={600}
-            height={600}
-            src={event?.map_image_url || ""}
-            alt="Event map"
-          />
-          <div className="w-full lg:w-2/3" dir="ltr">
+          <div className="lg:w-[40%] hidden lg:block">
+            <Image
+              className="rounded-lg w-auto h-auto w-full"
+              width={600}
+              height={600}
+              src={event?.map_image_url || ""}
+              alt="Event map"
+            />
+          </div>
+          <div className="w-full lg:w-[60%]" dir="ltr">
             <ScrollArea h={"48vh"}>
               {errorMessage && (
                 <Text c="red" ta="right" mb="xs">

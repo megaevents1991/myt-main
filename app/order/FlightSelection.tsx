@@ -317,8 +317,10 @@ export const FlightSelection = () => {
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <div className="flex flex-col gap-2">
-              <span className="text-2xl font-bold">{event?.name}</span>
-              {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+              <span className="text-3xl font-bold">{event?.name}</span>
+              <span className="whitespace-nowrap text-lg">
+                {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+              </span>
               <div>{event?.description}</div>
             </div>
             <div className="flex w-full lg:w-1/2 flex-row gap-2 text-xs justify-center items-center margin-auto">

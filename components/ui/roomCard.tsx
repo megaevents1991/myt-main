@@ -14,7 +14,7 @@ export const RoomCard = ({
 }) => {
   const priceToShowFull =
     +room.daily_prices[0] - minDailyPrice > 0
-      ? ` ללילה/ $${Math.ceil(+room.daily_prices[0] - minDailyPrice)}+`
+      ? ` ללילה/$${Math.ceil(+room.daily_prices[0] - minDailyPrice)}+`
       : "כלול במחיר";
   return (
     <div onClick={() => onRoomSelect(room)}>
@@ -24,10 +24,19 @@ export const RoomCard = ({
           isSelected && "text-secondary font-bold"
         )}
       >
-        <div className="font-extrabold">
+        <div
+          className="font-extrabold"
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            direction: "initial",
+            maxWidth: "75%",
+            whiteSpace: "nowrap",
+          }}
+        >
           {room.room_data_trans.main_name}
           {room.room_data_trans.bedding_type
-            ? ` - (${room.room_data_trans.bedding_type})`
+            ? ` (${room.room_data_trans.bedding_type})`
             : ""}
         </div>
         {/* <Badge color="pink" variant="light">

@@ -276,7 +276,7 @@ export const HotelSelection = () => {
           className="w-screen gap-2 flex flex-col lg:flex-row justify-center p-4 bg-gray-200 items-center"
         >
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <div className="text-xs w-full lg:w-1/3 flex-col text-right">
+            <div className="w-full lg:w-1/3 flex-col text-right">
               <div className="text-3xl font-bold pre mb-1">{event?.name}</div>
               <div className="whitespace-nowrap text-lg">
                 {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
