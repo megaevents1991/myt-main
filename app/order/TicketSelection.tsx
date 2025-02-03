@@ -13,8 +13,7 @@ export const TicketSelection = () => {
   //const eventId = useSearchParams().get("eventId") as string;
   //const event = events.find((e) => e.id === eventId);
   const { setEventTicket, event } = useContext(OrderContext);
-  const [errorMessage, setErrorMessage] = useState('');
-
+  const [errorMessage, setErrorMessage] = useState("");
 
   const MAX_TICKETS = 10;
 
@@ -44,10 +43,10 @@ export const TicketSelection = () => {
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
-      setErrorMessage('ניתן לרכוש עד 10 כרטיס בשלב זה');
+      setErrorMessage("ניתן לרכוש עד 10 כרטיס בשלב זה");
       return;
     }
-    setErrorMessage('');
+    setErrorMessage("");
     setNumberOfEventTickets(+value);
   };
 
@@ -55,7 +54,7 @@ export const TicketSelection = () => {
     <div>
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
-          <div className="flex justify-between w-full flex-col max-w-5xl mx-auto px-2 lg:px-6">
+          <div className="flex justify-between w-full flex-col max-w-7xl mx-auto px-2 lg:px-6">
             <span className="text-2xl font-bold">{event?.name}</span>
             {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
             <div>{event?.description}</div>
@@ -64,9 +63,9 @@ export const TicketSelection = () => {
       </div>
       <div className="flex flex-col" dir="rtl">
         <div className="mt-4">בחרו סוג כרטיס, ישיבה בקבוצות מובטחת:</div>
-        <div className="flex gap-4 flex-col md:flex-row-reverse mt-6">
+        <div className="flex gap-4 flex-col lg:flex-row-reverse mt-6">
           <Spoiler
-            className="w-full md:w-1/3 md:hidden flex justify-center"
+            className="w-full lg:w-1/3 lg:hidden flex justify-center"
             style={{ margin: 0 }}
             maxHeight={90}
             showLabel={<ChevronDownCircle fill="black" width={"100%"} />}
@@ -81,20 +80,20 @@ export const TicketSelection = () => {
             <Image
               className="rounded-lg"
               width={600}
-              height={800}
+              height={600}
               src={event?.map_image_url || ""}
               alt="Event map"
             />
           </Spoiler>
           <Image
-            className="rounded-lg hidden w-full md:block w-auto h-auto max-w-[50%]"
+            className="rounded-lg hidden w-full lg:block w-auto h-auto max-w-[50%]"
             width={600}
-            height={800}
+            height={600}
             src={event?.map_image_url || ""}
             alt="Event map"
           />
-          <div className="w-full md:w-2/3" dir="ltr">
-            <ScrollArea h={"40vh"}>
+          <div className="w-full lg:w-2/3" dir="ltr">
+            <ScrollArea h={"48vh"}>
               {errorMessage && (
                 <Text c="red" ta="right" mb="xs">
                   {errorMessage}

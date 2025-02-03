@@ -98,7 +98,7 @@ export const HotelSelection = () => {
     minDailyPrice: 0,
   });
 
-  const matches = useMediaQuery("(min-width: 768px)");
+  const matches = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
     fetchHotels();
@@ -273,86 +273,88 @@ export const HotelSelection = () => {
       <div className="flex flex-col w-full items-center">
         <div
           dir="rtl"
-          className="w-screen gap-2 flex flex-col justify-center p-4 bg-gray-200 items-center"
+          className="w-screen gap-2 flex flex-col lg:flex-row justify-center p-4 bg-gray-200 items-center"
         >
-          <div className="text-xs w-full flex-col text-center">
-            <div className="text-2xl font-bold pre">{event?.name}</div>
-            <div className="whitespace-nowrap">
-              {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+          <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
+            <div className="text-xs w-full lg:w-1/3 flex-col text-right">
+              <div className="text-3xl font-bold pre mb-1">{event?.name}</div>
+              <div className="whitespace-nowrap text-lg">
+                {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+              </div>
             </div>
-          </div>
-          <div className="flex w-full md:w-2/3 lg:w-1/2 flex-col gap-2 text-xs md:flex-row">
-            <div className="w-full md:w-1/2">
-              <Popover
-                width={300}
-                trapFocus
-                position="bottom"
-                shadow="md"
-                keepMounted={false}
-              >
-                <Popover.Target>
-                  <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
-                    {`${roomParams.reduce(
-                      (ppl, room) => ppl + room.children.length + room.adults,
-                      0
-                    )} אורחים`}
-                    {` | `}
-                    {`${roomParams.length} חדרים`}
-                  </div>
-                </Popover.Target>
-                <Popover.Dropdown>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2 justify-end mt-2 mb-2 ">
-                      <button
-                        className="bg-secondary text-white px-2 rounded-md"
-                        onClick={() =>
-                          setRoomParams((prev) => [
-                            ...prev,
-                            { adults: 1, children: [] },
-                          ])
-                        }
-                      >
-                        הוסף חדר
-                      </button>
-                      <button
-                        className="bg-secondary text-white px-2 rounded-md"
-                        onClick={() =>
-                          setRoomParams((prev) => {
-                            if (prev.length === 1) return prev;
-                            return prev.slice(0, prev.length - 1);
-                          })
-                        }
-                      >
-                        מחק חדר
-                      </button>
+            <div className="flex w-full lg:w-2/3 flex-col gap-2 text-xs lg:flex-row">
+              <div className="w-full lg:w-1/2">
+                <Popover
+                  width={300}
+                  trapFocus
+                  position="bottom"
+                  shadow="md"
+                  keepMounted={false}
+                >
+                  <Popover.Target>
+                    <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
+                      {`${roomParams.reduce(
+                        (ppl, room) => ppl + room.children.length + room.adults,
+                        0
+                      )} אורחים`}
+                      {` | `}
+                      {`${roomParams.length} חדרים`}
                     </div>
-                    {Array.from({ length: roomParams.length }, (_, i) => (
-                      <RoomsAndGuestsInput
-                        key={i}
-                        initialChildren={roomParams[i].children}
-                        initialAdults={roomParams[i].adults}
-                        onChange={({ adults, children }) =>
-                          handleSetRooms({ adults, children, i })
-                        }
-                      />
-                    ))}
-                  </div>
-                </Popover.Dropdown>
-              </Popover>
-            </div>
-            <div className="flex gap-2 flex-row md:w-1/2">
-              <DateRange
-                dateRange={dateRange}
-                setDateRange={setDateRange}
-                eventDay={event?.date}
-              />
-              <Button
-                onClick={() => fetchHotels()}
-                size="md"
-                style={{ borderRadius: "var(--radius)" }}
-              >
-                <Search size={30} />
-              </Button>
+                  </Popover.Target>
+                  <Popover.Dropdown>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2 justify-end mt-2 mb-2 ">
+                        <button
+                          className="bg-secondary text-white px-2 rounded-md"
+                          onClick={() =>
+                            setRoomParams((prev) => [
+                              ...prev,
+                              { adults: 1, children: [] },
+                            ])
+                          }
+                        >
+                          הוסף חדר
+                        </button>
+                        <button
+                          className="bg-secondary text-white px-2 rounded-md"
+                          onClick={() =>
+                            setRoomParams((prev) => {
+                              if (prev.length === 1) return prev;
+                              return prev.slice(0, prev.length - 1);
+                            })
+                          }
+                        >
+                          מחק חדר
+                        </button>
+                      </div>
+                      {Array.from({ length: roomParams.length }, (_, i) => (
+                        <RoomsAndGuestsInput
+                          key={i}
+                          initialChildren={roomParams[i].children}
+                          initialAdults={roomParams[i].adults}
+                          onChange={({ adults, children }) =>
+                            handleSetRooms({ adults, children, i })
+                          }
+                        />
+                      ))}
+                    </div>
+                  </Popover.Dropdown>
+                </Popover>
+              </div>
+              <div className="flex gap-2 flex-row lg:w-1/2">
+                <DateRange
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  eventDay={event?.date}
+                />
+                <Button
+                  onClick={() => fetchHotels()}
+                  size="md"
+                  style={{ borderRadius: "var(--radius)" }}
+                >
+                  <Search size={30} />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -420,7 +422,6 @@ export const HotelSelection = () => {
             </Skeleton>
           )}
         </div>
-
         <div className="w-full">
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map((hotel) => (

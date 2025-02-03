@@ -84,21 +84,25 @@ export const FlightTicketCard = ({
   minPrice,
 }: FlightTicketCardProps) => {
   const priceToShow =
-    price - minPrice > 0 ? `$${Math.ceil(price - minPrice)}+` : "כלול במחיר";
+    price - minPrice > 0 ? (
+      `$${Math.ceil(price - minPrice)}+`
+    ) : (
+      <span className="text-[20px]">כלול במחיר</span>
+    );
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
-        <div className="flex flex-col items-center sm:flex-row w-full py-2">
-          <div className="w-full md:w-5/6">
+        <div className="flex flex-col items-center lg:flex-row w-full py-2">
+          <div className="w-full lg:w-5/6">
             <FlightCard {...outbound} metadata={metadata} />
             <div className="border w-full my-2"></div>
             <FlightCard {...inbound} metadata={metadata} />
           </div>
-          <div className="border-l hidden sm:block border h-32 mx-4"></div>{" "}
-          <div className="font-bold md:w-1/6 text-lg lg:text-xl mt-2 w-full sm:w-1/3 text-center  border-t-2 pt-2 sm:border-none">
-            {priceToShow}
+          <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
+          <div className="font-bold lg:w-1/6 mt-2 w-full text-center border-t-2 pt-2 lg:border-none">
+            <span className="text-lg lg:text-2xl">{priceToShow}</span>
             {price - minPrice > 0 ? (
-              <span className="whitespace-nowrap text-sm inline pr-2 sm:block sm:pr-0">
+              <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
                 תוספת לכל נוסע
               </span>
             ) : (
@@ -121,8 +125,8 @@ const FlightCard = ({
   ...flightMeta
 }: FlightCardProps) => {
   return (
-    <div className="flex flex-row items-center justify-between w-full gap-2 md:gap-1">
-      <div className="w-[20%] md:w-[15%]">
+    <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
+      <div className="w-[20%] lg:w-[15%]">
         <div className="mb-2">
           <Image
             src={metadata.logo || ""}
@@ -131,16 +135,16 @@ const FlightCard = ({
             height={80}
           />
         </div>
-        <div className="text-[0.6rem] hidden md:block">{flightNumber}</div>
+        <div className="text-xs hidden lg:block">{flightNumber}</div>
       </div>
-      <div className="w-[70%] md:w-[55%] flex justify-center">
+      <div className="w-[70%] lg:w-[55%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
-      <div className="w-[10%] md:w-[20%] text-center display flex flex-col items-center md:items-start gap-2">
+      <div className="w-[10%] lg:w-[20%] text-center display flex flex-col items-center lg:items-start gap-2">
         {checkBagsIncluded && (
-          <div className="text-[0.6rem] font-bold flex flex-col md:flex-row gap-2 text-right items-center whitespace-nowrap">
+          <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
             <Luggage size={"16px"} />
-            <span className="hidden md:block">כולל מזוודה</span>
+            <span className="hidden lg:block">כולל מזוודה</span>
           </div>
         )}
       </div>
@@ -170,16 +174,13 @@ export const FlightMeta = ({
     new Date(departureTime).getDay() !== new Date(arrivalTime).getDay();
 
   return (
-    <div
-      className="sm:text-sm md:text-lg font-bold flex flex-row items-center w-full justify-around"
-      ref={ref}
-    >
+    <div className="flex flex-row items-center w-full justify-around" ref={ref}>
       <div className="text-end">
-        <div className="flex flex-row items-center">
+        <div className="flex flex-row items-center text-md font-bold lg:text-2xl">
           {String(new Date(departureTime).getHours()).padStart(2, "0")}:
           {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
         </div>
-        {departureAirport}
+        <div className="text-sm lg:text-lg">{departureAirport}</div>
       </div>
       <div className="flex flex-col items-center relative w-full">
         <div className="text-xs pb-1">{convertDuration(duration)}</div>
@@ -197,7 +198,7 @@ export const FlightMeta = ({
         )}
         <div
           onTouchStart={() => setTooltipOpened((curr) => !curr)}
-          className="text-[0.6rem] font-bold flex flex-row gap-2 items-center justify-center whitespace-nowrap border-t-2 border-main mx-4 pt-1 w-[90%]"
+          className="text-xs font-bold flex flex-row gap-2 items-center justify-center whitespace-nowrap border-t-2 border-main mx-4 pt-1 w-[90%]"
           dir="rtl"
         >
           <Tooltip
@@ -224,14 +225,14 @@ export const FlightMeta = ({
         </div>
       </div>
       <div>
-        <div className="flex flex-row items-center relative">
+        <div className="flex flex-row items-center relative text-md font-bold lg:text-2xl">
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
           <span className="text-xs mr-1 text-secondary absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
             {plusOne ? "1+" : ""}
           </span>
         </div>
-        {arrivalAirport}
+        <div className="text-sm lg:text-lg">{arrivalAirport}</div>
       </div>
     </div>
   );

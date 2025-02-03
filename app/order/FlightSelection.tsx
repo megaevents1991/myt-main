@@ -67,7 +67,7 @@ export const FlightSelection = () => {
     new Date(event.def_date_return),
   ]);
   const [showFilters, setShowFilters] = useState(false);
-  const matches = useMediaQuery("(min-width: 768px)");
+  const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(400);
 
   const filterRef = useRef<HTMLDivElement>(null);
@@ -315,13 +315,13 @@ export const FlightSelection = () => {
       )}
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
-          <div className="flex justify-between w-full max-w-5xl mx-auto gap-2 px-2 lg:px-6 flex-col md:flex-row md:gap-2">
+          <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <div className="flex flex-col gap-2">
               <span className="text-2xl font-bold">{event?.name}</span>
               {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
               <div>{event?.description}</div>
             </div>
-            <div className="flex w-full md:w-1/2 flex-row gap-2 text-xs justify-center items-center margin-auto">
+            <div className="flex w-full lg:w-1/2 flex-row gap-2 text-xs justify-center items-center margin-auto">
               <div className="w-1/5">
                 <SelectWithIcon
                   value={planeTickets.adults}
@@ -355,7 +355,7 @@ export const FlightSelection = () => {
         )}
       >
         <div
-          className={cn("w-1/3 space-y-4", !matches && "w-full")}
+          className={cn("w-1/4 space-y-4", !matches && "w-full")}
           ref={filterRef}
         >
           <Skeleton visible={isLoading}>
@@ -419,7 +419,7 @@ export const FlightSelection = () => {
             </Skeleton>
           )}
         </div>
-        <ScrollArea.Autosize mah={scrollerHeight} className="w-full md:w-2/3">
+        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-2/3">
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredFlights.map((flight) => {
               return (
@@ -435,7 +435,7 @@ export const FlightSelection = () => {
               );
             })}
             {filteredFlights.length === 0 && !isLoading ? (
-              <div className="text-center w-full items-center md:w-2/3 text-gray-500 min-h-64 flex">
+              <div className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex">
                 No flights match your criteria. Please adjust your filters.
               </div>
             ) : (
