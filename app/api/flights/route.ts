@@ -50,17 +50,8 @@ export async function POST(request: Request) {
       departureDate: departureDateFromUi,
       originLocationCode = "TLV",
       adults,
-      destinationLocationCode,
       nonStop,
     }: FlightSearchOptions = await request.json();
-
-    // Get airports for the city
-    const locations = await amadeus.referenceData.locations.get({
-      keyword: event.city_iata,
-      subType: "AIRPORT",
-    });
-
-    const iataCodes = locations.data.map(({ iataCode }) => iataCode);
 
     const departureDate = new Date(
       departureDateFromUi || new Date(event.date).getTime() - 2 * 8.64e7
@@ -76,7 +67,7 @@ export async function POST(request: Request) {
 
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode,
-      destinationLocationCode: destinationLocationCode || iataCodes[0],
+      destinationLocationCode: event.location.city_iata,
       departureDate,
       returnDate,
       adults: adults || 1,
@@ -172,7 +163,7 @@ export async function POST(request: Request) {
         return {
           id,
           numOfTravelers: travelerPricings.length,
-          price: parseFloat(price.total),
+          price: parseFloat(price.grandTotal),
           duration: itineraries[0].duration,
           stops: itineraries[0].segments.length - 1,
           airline: validatingAirlineCodes[0],

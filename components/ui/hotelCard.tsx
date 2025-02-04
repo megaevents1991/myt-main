@@ -28,7 +28,7 @@ export const HotelCard = ({
   handleSelectedRate: (orderHotel: Omit<OrderHotel, "guests">) => void;
   distanceFromCenter: number;
   isLoading: boolean;
-  minPrice: { minPrice: number; minDailyPrice: number };
+  minPrice: number;
 }) => {
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
@@ -90,8 +90,8 @@ export const HotelCard = ({
     .payment_types[0].show_amount;
 
   const priceToShowFull =
-    selectedPrice - minPrice.minPrice > 0 ? (
-      `$${Math.ceil(selectedPrice - minPrice.minPrice)}+`
+    selectedPrice - minPrice > 0 ? (
+      `$${Math.ceil(selectedPrice - minPrice)}+`
     ) : (
       <span className="text-[16px]">כלול במחיר החבילה</span>
     );
@@ -178,7 +178,7 @@ export const HotelCard = ({
                             <div className="flex flex-col gap-2">
                               {hotelRates.map((room) => (
                                 <RoomCard
-                                  minDailyPrice={minPrice.minDailyPrice}
+                                  minDailyPrice={minPrice}
                                   key={room.match_hash}
                                   room={room}
                                   isSelected={
