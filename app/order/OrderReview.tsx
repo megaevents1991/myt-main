@@ -11,22 +11,24 @@ import { OrderContext } from "../app.context";
 import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
 import { OrderData } from "@/lib/app.types";
-import validator from 'validator';
+import validator from "validator";
 import { orderStage } from "../hooks/Affiliate";
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [affDiscount, setAffDiscount] = useState<number>(0);
-  const [affId, setAffId] = useState<string>('');
+  const [affId, setAffId] = useState<string>("");
 
   useEffect(() => {
     const affiliateData = localStorage.getItem("mytData");
     if (affiliateData) {
       const parsedAffiliateData = JSON.parse(affiliateData);
       if (parsedAffiliateData.affiliateId) {
-        fetch(`/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`)
-          .then(res => res.json())
-          .then(data => {
+        fetch(
+          `/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`
+        )
+          .then((res) => res.json())
+          .then((data) => {
             if (data?.commission) {
               setAffDiscount(data.commission);
               setAffId(parsedAffiliateData.affiliateId);
@@ -55,9 +57,9 @@ export default function OrderReview() {
     }))
   );
 
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}[]>(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({}))
-  );
+  const [validationErrors, setValidationErrors] = useState<
+    { [key: string]: string }[]
+  >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
 
   const [passengers, setPassengers] = useState(
     Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
@@ -97,30 +99,34 @@ export default function OrderReview() {
     },
     email: (value: string) => {
       if (!value) return "אימייל הוא שדה חובה";
-      if (!validator.isEmail(value) || !/^[A-Za-z\s]+$/.test(value)) return "נא להזין כתובת אימייל תקינה";
+      if (!validator.isEmail(value) || !/^[A-Za-z\s]+$/.test(value))
+        return "נא להזין כתובת אימייל תקינה";
       return "";
     },
     phone: (value: string) => {
-      const cleanPhone = value.replace(/-/g, '');
+      const cleanPhone = value.replace(/-/g, "");
       if (!value) return "טלפון נייד הוא שדה חובה";
-      if (!cleanPhone.startsWith("05") || !validator.isMobilePhone(cleanPhone, 'he-IL')) {
+      if (
+        !cleanPhone.startsWith("05") ||
+        !validator.isMobilePhone(cleanPhone, "he-IL")
+      ) {
         return "מספר טלפון נייד בלבד בבקשה";
       }
       return "";
-    }
+    },
   };
 
   const formatPhoneNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
+    const cleaned = value.replace(/\D/g, "");
     let formatted = cleaned;
-    
+
     if (cleaned.length >= 3) {
       formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
     }
     if (cleaned.length >= 6) {
       formatted = `${formatted.slice(0, 7)}-${formatted.slice(7)}`;
     }
-    
+
     return formatted.slice(0, 12); // Limit length
   };
 
@@ -132,7 +138,7 @@ export default function OrderReview() {
     // Validate on blur
     const value = passengers[index][field];
     const error = validate[field](value);
-    
+
     if (error) {
       const newErrors = [...validationErrors];
       newErrors[index] = { ...newErrors[index], [field]: error };
@@ -141,22 +147,22 @@ export default function OrderReview() {
   };
 
   const submitOrder = async (orderData: OrderData) => {
-    const response = await fetch('/api/confirm-order', {
-      method: 'POST',
+    const response = await fetch("/api/confirm-order", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(orderData),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to submit order');
+      throw new Error("Failed to submit order");
     }
     return await response.json();
   };
-  
+
   const totalPrice = Math.ceil(
-    ( eventTicket.price - affDiscount || 0) * numberOfEventTickets +
+    (eventTicket.price - affDiscount || 0) * numberOfEventTickets +
       selectedFlight.price + // is it include the price for all passengers?
       +selectedHotel.price // is it include the price for all passengers?
   );
@@ -164,26 +170,26 @@ export default function OrderReview() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     // Collect data from your UI elements
     const updatedFormData = {
       main_contact_first_name: passengers[0].firstName,
       main_contact_last_name: passengers[0].lastName,
       main_contact_phone_number: passengers[0].phone,
       main_contact_email: passengers[0].email,
-      more_pax_info: passengers.slice(1).map(passenger => ({
+      more_pax_info: passengers.slice(1).map((passenger) => ({
         first_name: passenger.firstName,
-        last_name: passenger.lastName
+        last_name: passenger.lastName,
       })),
       event_order_info: {
         event_id: event?.id || 0,
-        date: event? new Date(event.date) : new Date(),
-        name: event?.name || '',
-        location_name: event?.location.name || '',
+        date: event ? new Date(event.date) : new Date(),
+        name: event?.name || "",
+        location_name: event?.location.name || "",
         number_of_ticket: numberOfEventTickets,
         category: eventTicket.category,
         price_per_ticket: eventTicket.price,
-        total_tickets_price: eventTicket.price * numberOfEventTickets
+        total_tickets_price: eventTicket.price * numberOfEventTickets,
       },
       flight_order_info: selectedFlight || {},
       hotel_order_info: selectedHotel || {},
@@ -191,15 +197,16 @@ export default function OrderReview() {
       event_id: event?.id || 0,
       aff_partner_id: affId,
     };
-  
+
     try {
       const result = await submitOrder(updatedFormData);
 
-      orderStage("CONFIRMED", { // TO DO: temp workaround as order stage doesn't work (router.push?)
+      orderStage("CONFIRMED", {
+        // TO DO: temp workaround as order stage doesn't work (router.push?)
         data: { confirmed: "checkout" },
-      });      
-      
-      const confirmationUrl = new URL('/confirmation', window.location.origin);
+      });
+
+      const confirmationUrl = new URL("/confirmation", window.location.origin);
       const params = {
         bookingReference: result.bookingReference,
         eventName: event.name,
@@ -210,7 +217,7 @@ export default function OrderReview() {
         flight: `${selectedFlight.outbound} ${selectedFlight.outbound}`,
         hotel: selectedHotel.name,
         checkInDate: selectedHotel,
-        checkOutDate: selectedHotel
+        checkOutDate: selectedHotel,
       };
 
       Object.entries(params).forEach(([key, value]) => {
@@ -222,7 +229,7 @@ export default function OrderReview() {
       router.push(confirmationUrl.toString());
     } catch (error) {
       // TO DO: Handle error (e.g., show error message)
-      console.error('Order submission failed:', error);
+      console.error("Order submission failed:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -236,8 +243,8 @@ export default function OrderReview() {
       value: string
     ) => {
       // Format phone number if it's the phone field
-      const finalValue = field === 'phone' ? formatPhoneNumber(value) : value;
-      
+      const finalValue = field === "phone" ? formatPhoneNumber(value) : value;
+
       // Update passenger data
       const newPassengers = [...passengers];
       newPassengers[index][field] = finalValue;
@@ -247,14 +254,14 @@ export default function OrderReview() {
       if (touched[index][field]) {
         const error = validate[field](finalValue);
         const newErrors = [...validationErrors];
-        
+
         if (error) {
           newErrors[index] = { ...newErrors[index], [field]: error };
         } else {
           const { [field]: removed, ...rest } = newErrors[index];
           newErrors[index] = rest;
         }
-        
+
         setValidationErrors(newErrors);
       }
     },
@@ -265,8 +272,9 @@ export default function OrderReview() {
     const hasErrors = Object.keys(validationErrors[i]).length > 0;
     const isMainContact = i === 0;
     const hasRequiredFields = passenger.firstName && passenger.lastName;
-    const hasContactInfo = !isMainContact || (passenger.phone && passenger.email);
-    
+    const hasContactInfo =
+      !isMainContact || (passenger.phone && passenger.email);
+
     return !hasErrors && hasRequiredFields && hasContactInfo;
   });
 
@@ -318,17 +326,19 @@ export default function OrderReview() {
                 </div>
 
                 <div className="border-t border-gray-200 pt-4">
-                {affDiscount > 0 && (
-                  <div>
-                    <div className="flex justify-between items-center w-full text-[18px] text-green-600">
-                      <span>${affDiscount * numberOfEventTickets}</span>
-                      <span>הנחה</span>
+                  {affDiscount > 0 && (
+                    <div>
+                      <div className="flex justify-between items-center w-full text-[18px]">
+                        <span className="line-through">
+                          ${totalPrice + affDiscount * numberOfEventTickets}
+                        </span>
+                        <span>מחיר</span>
+                      </div>
+                      <div className="flex justify-between items-center w-full text-[18px] text-green-600">
+                        <span>${affDiscount * numberOfEventTickets}</span>
+                        <span>הנחה</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center w-full text-[18px]">
-                      <span className="line-through">${totalPrice + affDiscount * numberOfEventTickets}</span>
-                      <span>מחיר לפני הנחה</span>
-                    </div>
-                  </div>
                   )}
                   <div className="flex justify-between items-center text-[22px] font-bold">
                     <span>${totalPrice}</span>
@@ -361,118 +371,147 @@ export default function OrderReview() {
                 </p>
 
                 <div className="space-y-5" dir="rtl">
-                  {passengers.map((passenger, index) => ( // TO DO: לוודא שזה לפי מספר הטסים.
-                    <div key={index} className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-medium text-[15px]">
-                          נוסע {index + 1}
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <Input
-                            dir="rtl"
-                            name="first-name"
-                            autoComplete="given-name"
-                            type="text"
-                            placeholder="שם פרטי באנגלית"
-                            className={cn(
-                              "h-11 text-right",
-                              touched[index]?.firstName && validationErrors[index]?.firstName && 
-                              "border-red-500 focus-visible:ring-red-500"
-                            )}
-                            value={passenger.firstName}
-                            onChange={(e) =>
-                              updatePassenger(index, "firstName", e.target.value)
-                            }
-                            onBlur={() => handleBlur(index, "firstName")}
-                          />
-                          {touched[index]?.firstName && validationErrors[index]?.firstName && (
-                            <p className="text-sm text-red-500 text-right">
-                              {validationErrors[index].firstName}
-                            </p>
-                          )}
+                  {passengers.map(
+                    (
+                      passenger,
+                      index // TO DO: לוודא שזה לפי מספר הטסים.
+                    ) => (
+                      <div key={index} className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="font-medium text-[15px]">
+                            נוסע {index + 1}
+                          </h3>
                         </div>
-                        <div className="space-y-1">
-                          <Input
-                            dir="rtl"
-                            placeholder="שם משפחה באנגלית"
-                            type="text"
-                            name="last-name"
-                            autoComplete="family-name"
-                            className={cn(
-                              "h-11 text-right",
-                              touched[index]?.lastName && validationErrors[index]?.lastName && 
-                              "border-red-500 focus-visible:ring-red-500"
-                            )}
-                            value={passenger.lastName}
-                            onChange={(e) => 
-                              updatePassenger(index, "lastName", e.target.value)
-                            }
-                            onBlur={() => handleBlur(index, "lastName")}
-                          />
-                          {touched[index]?.lastName && validationErrors[index]?.lastName && (
-                            <p className="text-sm text-red-500 text-right">
-                              {validationErrors[index].lastName}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {index === 0 && (
-                        <>
+                        <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
                             <Input
                               dir="rtl"
-                              placeholder="אימייל"
-                              type="email"
-                              name="email"
-                              autoComplete="email"
+                              name="first-name"
+                              autoComplete="given-name"
+                              type="text"
+                              placeholder="שם פרטי באנגלית"
                               className={cn(
                                 "h-11 text-right",
-                                touched[index]?.email && validationErrors[index]?.email && 
-                                "border-red-500 focus-visible:ring-red-500"
+                                touched[index]?.firstName &&
+                                  validationErrors[index]?.firstName &&
+                                  "border-red-500 focus-visible:ring-red-500"
                               )}
-                              value={passenger.email}
-                              onChange={(e) => 
-                                updatePassenger(index, "email", e.target.value)
+                              value={passenger.firstName}
+                              onChange={(e) =>
+                                updatePassenger(
+                                  index,
+                                  "firstName",
+                                  e.target.value
+                                )
                               }
-                              onBlur={() => handleBlur(index, "email")}
+                              onBlur={() => handleBlur(index, "firstName")}
                             />
-                            {touched[index]?.email && validationErrors[index]?.email && (
-                              <p className="text-sm text-red-500 text-right">
-                                {validationErrors[index].email}
-                              </p>
-                            )}
+                            {touched[index]?.firstName &&
+                              validationErrors[index]?.firstName && (
+                                <p className="text-sm text-red-500 text-right">
+                                  {validationErrors[index].firstName}
+                                </p>
+                              )}
                           </div>
+                          <div className="space-y-1">
+                            <Input
+                              dir="rtl"
+                              placeholder="שם משפחה באנגלית"
+                              type="text"
+                              name="last-name"
+                              autoComplete="family-name"
+                              className={cn(
+                                "h-11 text-right",
+                                touched[index]?.lastName &&
+                                  validationErrors[index]?.lastName &&
+                                  "border-red-500 focus-visible:ring-red-500"
+                              )}
+                              value={passenger.lastName}
+                              onChange={(e) =>
+                                updatePassenger(
+                                  index,
+                                  "lastName",
+                                  e.target.value
+                                )
+                              }
+                              onBlur={() => handleBlur(index, "lastName")}
+                            />
+                            {touched[index]?.lastName &&
+                              validationErrors[index]?.lastName && (
+                                <p className="text-sm text-red-500 text-right">
+                                  {validationErrors[index].lastName}
+                                </p>
+                              )}
+                          </div>
+                        </div>
+                        {index === 0 && (
+                          <>
+                            <div className="space-y-1">
+                              <Input
+                                dir="rtl"
+                                placeholder="אימייל"
+                                type="email"
+                                name="email"
+                                autoComplete="email"
+                                className={cn(
+                                  "h-11 text-right",
+                                  touched[index]?.email &&
+                                    validationErrors[index]?.email &&
+                                    "border-red-500 focus-visible:ring-red-500"
+                                )}
+                                value={passenger.email}
+                                onChange={(e) =>
+                                  updatePassenger(
+                                    index,
+                                    "email",
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={() => handleBlur(index, "email")}
+                              />
+                              {touched[index]?.email &&
+                                validationErrors[index]?.email && (
+                                  <p className="text-sm text-red-500 text-right">
+                                    {validationErrors[index].email}
+                                  </p>
+                                )}
+                            </div>
 
-                          <div className="space-y-1">
-                            <Input
-                              dir="rtl"
-                              placeholder="טלפון נייד"
-                              name="phone"
-                              type="tel"
-                              autoComplete="tel"
-                              className={cn(
-                                "h-11 text-right",
-                                touched[index]?.phone && validationErrors[index]?.phone && 
-                                "border-red-500 focus-visible:ring-red-500"
-                              )}
-                              value={passenger.phone}
-                              onChange={(e) => 
-                                updatePassenger(index, "phone", e.target.value)
-                              }
-                              onBlur={() => handleBlur(index, "phone")}
-                            />
-                            {touched[index]?.phone && validationErrors[index]?.phone && (
-                              <p className="text-sm text-red-500 text-right">
-                                {validationErrors[index].phone}
-                              </p>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
+                            <div className="space-y-1">
+                              <Input
+                                dir="rtl"
+                                placeholder="טלפון נייד"
+                                name="phone"
+                                type="tel"
+                                autoComplete="tel"
+                                className={cn(
+                                  "h-11 text-right",
+                                  touched[index]?.phone &&
+                                    validationErrors[index]?.phone &&
+                                    "border-red-500 focus-visible:ring-red-500"
+                                )}
+                                value={passenger.phone}
+                                onChange={(e) =>
+                                  updatePassenger(
+                                    index,
+                                    "phone",
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={() => handleBlur(index, "phone")}
+                              />
+                              {touched[index]?.phone &&
+                                validationErrors[index]?.phone && (
+                                  <p className="text-sm text-red-500 text-right">
+                                    {validationErrors[index].phone}
+                                  </p>
+                                )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
             </Card>
