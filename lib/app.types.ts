@@ -20,6 +20,8 @@ export type Event = {
   def_date_return: string;
   def_avg_price: number;
   usual_price: number;
+  base_flight_price: number;
+  base_hotel_price: number;
 };
 
 export type Flight = {
@@ -172,6 +174,39 @@ export interface OrderData {
 
 export type ArtistFields = {
   contentTypeId: "artistTemplate";
+  fields: {
+    bio: EntryFieldTypes.Object<{
+      content: {
+        content: {
+          value?: string;
+        }[];
+      }[];
+    }>;
+    previewText: string;
+    heroBanner: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: {
+            image?: {
+              height?: number;
+              width?: number;
+            };
+          };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    name: string;
+    sys: EntryFieldTypes.Object<{
+      id: string;
+    }>;
+  };
+};
+
+export type FootballFields = {
+  contentTypeId: "footballTeamTemplate";
   fields: {
     bio: EntryFieldTypes.Object<{
       content: {

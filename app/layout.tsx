@@ -63,31 +63,45 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     </div>
                   </Container>
                   {children}
-                  <footer className="py-6 w-full px-4 md:px-6 border-t">
+                  <footer
+                    className="py-6 w-full px-4 md:px-6 border-t"
+                    dir="rtl"
+                  >
+                    <p className="container mx-auto" margin-bottom="20">
+                      לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
+                      מהווה הסכמה לשימוש זה.למידע נוסף ניתן לעיין במדיניות
+                      הפרטיות של האתר.
+                    </p>
                     <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
-                        © 2023 MYT Events. All rights reserved.
-                      </p>
                       <nav className="flex gap-4 sm:gap-6">
                         <Link
                           className="text-xs hover:underline underline-offset-4"
                           href="artists"
                         >
-                          Our Artists
+                          האומנים שלנו
+                        </Link>
+                        <Link
+                          className="text-xs hover:underline underline-offset-4"
+                          href="football"
+                        >
+                          הקבוצות שלנו
                         </Link>
                         <Link
                           className="text-xs hover:underline underline-offset-4"
                           href="#"
                         >
-                          Terms of Service
+                          תנאי שימוש
                         </Link>
                         <Link
                           className="text-xs hover:underline underline-offset-4"
                           href="#"
                         >
-                          Privacy
+                          פרטיות
                         </Link>
                       </nav>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
+                        © 2025 Megaevents. כל הזכויות שמורות.
+                      </p>
                     </div>
                   </footer>
                 </MantineProvider>
