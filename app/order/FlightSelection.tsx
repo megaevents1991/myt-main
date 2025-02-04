@@ -317,7 +317,7 @@ export const FlightSelection = () => {
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
-            <div className="flex w-full lg:w-[50%] flex-row gap-2 text-xs justify-center items-center margin-auto ">
+            <div className="flex w-full lg:w-[50%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
               <div className="w-fit">
                 <SelectWithIcon
                   value={planeTickets.adults}
@@ -367,7 +367,7 @@ export const FlightSelection = () => {
                   <button
                     className={cn(
                       "font-bold px-6 py-1 rounded-r-md",
-                      sortOption === "price_asc" && "text-white bg-secondary"
+                      sortOption === "price_asc" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("price_asc")}
                   >
@@ -376,7 +376,7 @@ export const FlightSelection = () => {
                   <button
                     className={cn(
                       "font-bold px-6 py-1 rounded-l-md",
-                      sortOption === "duration" && "text-white bg-secondary"
+                      sortOption === "duration" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("duration")}
                   >
@@ -421,7 +421,7 @@ export const FlightSelection = () => {
             {filteredFlights.map((flight) => {
               return (
                 <FlightTicketCard
-                  minPrice={flightsMeta.minPrice}
+                  minPrice={event.base_flight_price}
                   isLoading={isLoading}
                   key={flight.id}
                   {...flight}

@@ -277,7 +277,7 @@ export const HotelSelection = () => {
         >
           <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
-            <div className="flex w-full lg:w-[50%] justify-center flex-col gap-2 text-xs lg:flex-row">
+            <div className="flex w-full lg:w-[50%] justify-start lg:justify-center flex-row gap-2 text-xs">
               <div className="w-fit">
                 <Popover
                   width={300}
@@ -371,7 +371,7 @@ export const HotelSelection = () => {
                   <button
                     className={cn(
                       "font-bold px-6 py-1 rounded-r-md",
-                      sortOption === "price_asc" && "text-white bg-secondary"
+                      sortOption === "price_asc" && "text-white bg-main"
                     )}
                     onClick={() =>
                       handleSearchCriteriaChange({
@@ -385,7 +385,7 @@ export const HotelSelection = () => {
                   <button
                     className={cn(
                       "font-bold px-6 py-1 rounded-l-md",
-                      sortOption === "rating" && "text-white bg-secondary"
+                      sortOption === "rating" && "text-white bg-main"
                     )}
                     onClick={() =>
                       handleSearchCriteriaChange({

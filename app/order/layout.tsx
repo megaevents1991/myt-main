@@ -18,6 +18,10 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
   const eventId = useSearchParams().get("eventId") as string;
 
+  const testSetFlight = (flight?: Flight) => {
+    setFlight(flight);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -50,7 +54,7 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
           setStep,
           step,
           setEvent,
-          setFlight,
+          setFlight: testSetFlight,
           setHotel,
           event,
           flight,
