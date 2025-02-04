@@ -1,25 +1,40 @@
+import { cn } from "@/lib/utils";
 import { Stepper as MantineStepper } from "@mantine/core";
+
+const steps = ["כרטיסים", "טיסות", "מלונות"];
 
 type StepperProps = {
   currentStep: number;
   onStepperClick: (step: number) => void;
 };
 
-const StepperLabel = ({ label }: { label: string }) => {
+const StepperLabel = ({
+  label,
+  completed,
+}: {
+  label: string;
+  completed: boolean;
+}) => {
   return (
-    <div className="text-secondary w-full flex font-bold justify-center text-lg">
+    <div
+      className={cn(
+        "w-full flex font-bold justify-center text-lg",
+        completed ? "text-secondary" : "text-main"
+      )}
+    >
       {label}
     </div>
   );
 };
 
 export const Stepper = ({ currentStep, onStepperClick }: StepperProps) => {
+  const active = currentStep - 1;
   return (
     <div className="w-full max-w-2xl mx-auto my-6 px-10" dir="rtl">
       <MantineStepper
         onStepClick={onStepperClick}
         size="sm"
-        active={currentStep - 1}
+        active={active}
         styles={{
           step: {
             position: "relative",
@@ -33,9 +48,12 @@ export const Stepper = ({ currentStep, onStepperClick }: StepperProps) => {
           },
         }}
       >
-        <MantineStepper.Step label={<StepperLabel label="כרטיסים" />} />
-        <MantineStepper.Step label={<StepperLabel label="טיסות" />} />
-        <MantineStepper.Step label={<StepperLabel label="מלונות" />} />
+        {steps.map((step, index) => (
+          <MantineStepper.Step
+            key={index}
+            label={<StepperLabel completed={index < active} label={step} />}
+          />
+        ))}
       </MantineStepper>
     </div>
   );

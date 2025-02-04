@@ -12,7 +12,7 @@ export const FiltersModal = ({
   show: boolean;
   onClose: () => void;
 }) => {
-  const matches = useMediaQuery("(min-width: 768px)");
+  const matches = useMediaQuery("(min-width: 1024px)");
 
   return (
     !matches && (

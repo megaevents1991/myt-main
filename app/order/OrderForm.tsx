@@ -55,7 +55,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     });
 
   return (
-    <div className="max-w-5xl mx-auto px-6 pt-6">
+    <div className="max-w-7xl mx-auto px-6 pt-6">
       {step === 1 && <TicketSelection />}
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
@@ -64,7 +64,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         <div className="mt-4 w-screen justify-center flex flex-col bg-gray-200">
           <div className="w-full">
             {step < 4 && (
-              <div className="p-4 m-auto max-w-5xl">
+              <div className="p-4 m-auto max-w-7xl">
                 <button
                   disabled={buttonDisabled}
                   onClick={nextStep}

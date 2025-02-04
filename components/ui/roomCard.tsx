@@ -14,20 +14,20 @@ export const RoomCard = ({
 }) => {
   const priceToShowFull =
     +room.daily_prices[0] - minDailyPrice > 0
-      ? ` ללילה/ $${Math.ceil(+room.daily_prices[0] - minDailyPrice)}+`
+      ? ` ללילה/$${Math.ceil(+room.daily_prices[0] - minDailyPrice)}+`
       : "כלול במחיר";
   return (
     <div onClick={() => onRoomSelect(room)}>
       <div
         className={cn(
-          "p-2 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 hover:border-main text-sm flex flex-row justify-between items-center",
+          "py-2 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 hover:border-main text-sm flex flex-row justify-between items-center",
           isSelected && "text-secondary font-bold"
         )}
       >
-        <div>
+        <div className="font-extrabold">
           {room.room_data_trans.main_name}
           {room.room_data_trans.bedding_type
-            ? ` - ${room.room_data_trans.bedding_type}`
+            ? ` (${room.room_data_trans.bedding_type})`
             : ""}
         </div>
         {/* <Badge color="pink" variant="light">
