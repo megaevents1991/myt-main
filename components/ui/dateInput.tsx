@@ -34,6 +34,23 @@ export const DateRange = ({
       valueFormat="DD/MM/YY"
       renderDay={(date) => {
         const day = date.toDateString();
+
+        if (day !== new Date(eventDay).toDateString()) {
+          return <div>{date.getDate()}</div>;
+        }
+
+        return (
+          <div
+            style={{
+              padding: 5,
+              borderRadius: "50%",
+              outline: "2px solid red",
+            }}
+          >
+            {date.getDate()}
+          </div>
+        );
+
         return (
           <Indicator
             size={6}
