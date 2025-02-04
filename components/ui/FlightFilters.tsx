@@ -119,7 +119,7 @@ export const FlightFilters = ({
   };
 
   return (
-    <div className="w-full max-w-md p-4 space-y-8 border-2 border-gray-200 shadow-lg rounded-lg">
+    <div className="w-full p-4 space-y-8 border-2 border-gray-200 shadow-lg rounded-lg">
       {/* Stops Section */}
       <div dir="rtl">
         <h3 className="text-lg font-semibold mb-4">עצירות</h3>
@@ -251,7 +251,9 @@ export const FlightFilters = ({
 
       {/* Price Range Section */}
       <div>
-        <h3 dir="rtl" className="text-lg font-semibold mb-4">מחיר יחסי</h3>
+        <h3 dir="rtl" className="text-lg font-semibold mb-4">
+          מחיר יחסי
+        </h3>
         {priceComponent}
       </div>
 
@@ -259,7 +261,9 @@ export const FlightFilters = ({
 
       {/* Duration Section */}
       <div>
-        <h3 dir="rtl" className="text-lg font-semibold mb-4">משך זמן טיסה</h3>
+        <h3 dir="rtl" className="text-lg font-semibold mb-4">
+          משך זמן טיסה
+        </h3>
         {flightDurationComponent}
       </div>
 

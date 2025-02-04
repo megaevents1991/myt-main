@@ -57,6 +57,7 @@ export const HotelCard = ({
 
   useEffect(() => {
     if (!isSelected) {
+      setSelectedRoomInfo(null);
       setSelectedRoom(null);
       if (opened) {
         setOpened(false);

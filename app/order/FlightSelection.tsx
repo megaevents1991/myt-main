@@ -352,7 +352,7 @@ export const FlightSelection = () => {
       </div>
       <div
         className={cn(
-          "flex gap-4 flex-row-reverse items-start w-full",
+          "flex gap-4 flex-row-reverse justify-center items-start  w-full",
           !matches && "flex-col"
         )}
       >

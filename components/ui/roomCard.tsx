@@ -24,16 +24,7 @@ export const RoomCard = ({
           isSelected && "text-secondary font-bold"
         )}
       >
-        <div
-          className="font-extrabold"
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            direction: "initial",
-            maxWidth: "75%",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <div className="font-extrabold">
           {room.room_data_trans.main_name}
           {room.room_data_trans.bedding_type
             ? ` (${room.room_data_trans.bedding_type})`
