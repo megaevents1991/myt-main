@@ -36,8 +36,8 @@ export const EventTicketCard = ({
       hasBorderColor={colorOnTheMap}
       className={cn("p-2 pr-8")}
     >
-      <div className="flex items-center justify-between w-full md:flex-row flex-col">
-        <div className="flex items-center justify-between w-full ">
+      <div className="flex items-center justify-between w-full lg:flex-row flex-col">
+        <div className="flex items-center justify-between w-full">
           <div
             className={cn(
               "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md"
@@ -46,20 +46,20 @@ export const EventTicketCard = ({
               backgroundColor: colorOnTheMap,
             }}
           ></div>
-          <div className="w-[50%] flex items-center gap-4">
+          <div className="w-1/3 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
               checked={isSelected}
               color="#05203C"
               style={{ pointerEvents: "none" }}
             />
-            <div>
+            <div className="text-lg">
               <div>{category}</div>
               <div>{categoryDescription}</div>
             </div>
           </div>
           <div
-            className="w-1/3 hidden md:block"
+            className="w-1/3 hidden lg:block"
             style={{ visibility: isSelected ? "visible" : "hidden" }}
           >
             <CounterInput
@@ -67,22 +67,22 @@ export const EventTicketCard = ({
               onChange={onChangeNumberOfTickets}
             />
           </div>
-          <div className="w-1/3 text-center md:text-left">
+          <div className="w-1/3 text-center font-bold ">
             {index === 0 ? (
-              "כלול במחיר"
+              <span className="text-[20px]">כלול במחיר</span>
             ) : (
               <>
-                <div className="font-bold text-2xl">
+                <div className="text-2xl">
                   ${Math.abs(priceToDisplay)}
                   {priceToDisplay < 0 ? "-" : "+"}
                 </div>
-                <div className="text-xs">{"תוספת לכל כרטיס"}</div>
+                <div className="text-[16px]">{"תוספת לכל כרטיס"}</div>
               </>
             )}
           </div>
         </div>
         {isSelected && (
-          <div className="w-full block md:hidden border-t-2 pt-2 border-white mt-2">
+          <div className="w-full block lg:hidden border-t-2 pt-2 border-white mt-2">
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}
@@ -103,7 +103,6 @@ type CounterInputProps = {
 const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
   <div className="flex items-center flex-col items-center text-center gap-2">
     <span className="text-sm">אנחנו רוצים</span>
-
     <div className="flex items-center gap-2 justify-between">
       <button
         onClick={() => onChange(value - 1)}

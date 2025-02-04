@@ -7,7 +7,7 @@ import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
-import dayjs from "dayjs";
+import { EventDataHeader } from "@/components/ui/EventDataHeader";
 
 export const TicketSelection = () => {
   //const eventId = useSearchParams().get("eventId") as string;
@@ -52,14 +52,10 @@ export const TicketSelection = () => {
 
   return (
     <div>
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center ">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
-          <div className="flex justify-between w-full flex-col max-w-7xl mx-auto px-2 lg:px-6 gap-2">
-            <span className="text-3xl font-bold">{event?.name}</span>
-            <span className="whitespace-nowrap text-lg">
-              {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
-            </span>
-            <div>{event?.description}</div>
+          <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
+            <EventDataHeader event={event} />
           </div>
         </div>
       </div>
@@ -67,7 +63,7 @@ export const TicketSelection = () => {
         <div className="mt-4">בחרו סוג כרטיס, ישיבה בקבוצות מובטחת:</div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-6">
           <Spoiler
-            className="w-full lg:w-1/3 lg:hidden flex justify-center"
+            className="w-full lg:hidden flex justify-center"
             style={{ margin: 0 }}
             maxHeight={90}
             showLabel={<ChevronDownCircle fill="black" width={"100%"} />}
@@ -87,7 +83,7 @@ export const TicketSelection = () => {
               alt="Event map"
             />
           </Spoiler>
-          <div className="lg:w-[40%] hidden lg:block">
+          <div className="lg:w-[45%] hidden lg:block">
             <Image
               className="rounded-lg w-auto h-auto w-full"
               width={600}
@@ -96,8 +92,8 @@ export const TicketSelection = () => {
               alt="Event map"
             />
           </div>
-          <div className="w-full lg:w-[60%]" dir="ltr">
-            <ScrollArea h={"48vh"}>
+          <div className="w-full lg:w-[55%]" dir="ltr">
+            <ScrollArea h={"60vh"}>
               {errorMessage && (
                 <Text c="red" ta="right" mb="xs">
                   {errorMessage}

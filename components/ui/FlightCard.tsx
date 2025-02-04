@@ -140,7 +140,7 @@ const FlightCard = ({
       <div className="w-[70%] lg:w-[55%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
-      <div className="w-[10%] lg:w-[20%] text-center display flex flex-col items-center lg:items-start gap-2">
+      <div className="w-[10%] lg:w-[20%] text-center display flex flex-col items-center gap-2">
         {checkBagsIncluded && (
           <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
             <Luggage size={"16px"} />

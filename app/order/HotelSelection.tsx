@@ -19,8 +19,8 @@ import {
   OrderHotel,
   SortOptions,
 } from "@/lib/app.types";
-import dayjs from "dayjs";
 import { cn } from "@/lib/utils";
+import { EventDataHeader } from "@/components/ui/EventDataHeader";
 
 export const HotelSelection = () => {
   const {
@@ -275,15 +275,10 @@ export const HotelSelection = () => {
           dir="rtl"
           className="w-screen gap-2 flex flex-col lg:flex-row justify-center p-4 bg-gray-200 items-center"
         >
-          <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <div className="w-full lg:w-1/3 flex-col text-right">
-              <div className="text-3xl font-bold pre mb-1">{event?.name}</div>
-              <div className="whitespace-nowrap text-lg">
-                {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
-              </div>
-            </div>
-            <div className="flex w-full lg:w-2/3 flex-col gap-2 text-xs lg:flex-row">
-              <div className="w-full lg:w-1/2">
+          <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
+            <EventDataHeader event={event} />
+            <div className="flex w-full lg:w-[50%] justify-center flex-col gap-2 text-xs lg:flex-row">
+              <div className="w-fit">
                 <Popover
                   width={300}
                   trapFocus
@@ -341,7 +336,7 @@ export const HotelSelection = () => {
                   </Popover.Dropdown>
                 </Popover>
               </div>
-              <div className="flex gap-2 flex-row lg:w-1/2">
+              <div className="flex gap-2 flex-row w-min">
                 <DateRange
                   dateRange={dateRange}
                   setDateRange={setDateRange}
@@ -356,6 +351,7 @@ export const HotelSelection = () => {
                 </Button>
               </div>
             </div>
+            <div className="w-[25%]"></div>
           </div>
         </div>
       </div>

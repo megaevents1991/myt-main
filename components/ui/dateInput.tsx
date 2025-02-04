@@ -52,6 +52,7 @@ export const DateRange = ({
           direction: "rtl",
         },
         input: {
+          whiteSpace: "nowrap",
           borderBottomRightRadius: "var(--radius)",
           borderTopRightRadius: "var(--radius)",
           borderBottomLeftRadius: "0",

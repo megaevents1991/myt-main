@@ -20,9 +20,9 @@ import { FlightFilters } from "@/components/ui/FlightFilters";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
-import dayjs from "dayjs";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
 import { cn } from "@/lib/utils";
+import { EventDataHeader } from "@/components/ui/EventDataHeader";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -316,15 +316,9 @@ export const FlightSelection = () => {
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <div className="flex flex-col gap-2">
-              <span className="text-3xl font-bold">{event?.name}</span>
-              <span className="whitespace-nowrap text-lg">
-                {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
-              </span>
-              <div>{event?.description}</div>
-            </div>
-            <div className="flex w-full lg:w-1/2 flex-row gap-2 text-xs justify-center items-center margin-auto">
-              <div className="w-1/5">
+            <EventDataHeader event={event} />
+            <div className="flex w-full lg:w-[50%] flex-row gap-2 text-xs justify-center items-center margin-auto ">
+              <div className="w-fit">
                 <SelectWithIcon
                   value={planeTickets.adults}
                   onChange={(value) =>
@@ -333,7 +327,7 @@ export const FlightSelection = () => {
                   icon={<UsersRound />}
                 />
               </div>
-              <div className="flex flex-row w-4/5">
+              <div className="flex flex-row w-min gap-2">
                 <DateRange
                   dateRange={dateRange}
                   setDateRange={setDateRange}
@@ -347,12 +341,13 @@ export const FlightSelection = () => {
                 </button>
               </div>
             </div>
+            <div className="w-[25%]"></div>
           </div>
         </div>
       </div>
       <div
         className={cn(
-          "flex gap-4 flex-row-reverse justify-center items-start  w-full",
+          "flex gap-4 flex-row-reverse justify-between items-start  w-full",
           !matches && "flex-col"
         )}
       >
@@ -421,7 +416,7 @@ export const FlightSelection = () => {
             </Skeleton>
           )}
         </div>
-        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-2/3">
+        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredFlights.map((flight) => {
               return (
