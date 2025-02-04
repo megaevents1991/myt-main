@@ -270,7 +270,7 @@ export default function Home() {
                           ${event.usual_price.toLocaleString("en-US")}
                         </div>{" "}
                       </div>
-                      <div>לנוסע כולל טיסה, מלון וכרטיס למופע</div>
+                      <div>לנוסע כולל טיסה, מלון וכרטיס לאירוע</div>
                     </div>
                   </div>
                 </div>

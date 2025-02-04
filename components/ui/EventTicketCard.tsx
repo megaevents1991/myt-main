@@ -53,9 +53,9 @@ export const EventTicketCard = ({
               color="#05203C"
               style={{ pointerEvents: "none" }}
             />
-            <div className="text-lg">
-              <div>{category}</div>
-              <div>{categoryDescription}</div>
+            <div>
+              <div className="text-xl">{category}</div>
+              <div className="text-lg">{categoryDescription}</div>
             </div>
           </div>
           <div
@@ -102,7 +102,7 @@ type CounterInputProps = {
 
 const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
   <div className="flex items-center flex-col items-center text-center gap-2">
-    <span className="text-sm">אנחנו רוצים</span>
+    <span className="text-me">אנחנו רוצים</span>
     <div className="flex items-center gap-2 justify-between">
       <button
         onClick={() => onChange(value - 1)}
@@ -111,7 +111,7 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
       >
         <Minus className="h-4 w-4" />
       </button>
-      <div className="w-8 text-center">{value}</div>
+      <div className="w-8 text-xl font-bold text-center">{value}</div>
       <button
         onClick={() => onChange(value + 1)}
         className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
@@ -119,6 +119,6 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
         <Plus className="h-4 w-4" />
       </button>
     </div>
-    <span className="text-sm">כרטיסים לאירוע</span>
+    <span className="text-me">כרטיסים לאירוע</span>
   </div>
 );

@@ -10,11 +10,11 @@ export type Event = {
     latitude: number;
     longitude: number;
     name: string;
+    city_iata: string;
   };
   map_image_url: string;
   description: string;
   card_image_url: string;
-  city_iata: string;
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;
