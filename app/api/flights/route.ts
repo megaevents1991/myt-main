@@ -9,6 +9,8 @@ import {
 } from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
 
+export const maxDuration = 30;
+
 // Initialize Amadeus client
 const amadeus = new Amadeus({
   clientId: process.env.AMADEUS_CLIENT_ID as string,
