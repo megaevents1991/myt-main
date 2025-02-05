@@ -46,7 +46,7 @@ export const EventTicketCard = ({
               backgroundColor: colorOnTheMap,
             }}
           ></div>
-          <div className="w-1/3 flex items-center gap-4">
+          <div className="w-2/3 lg:w-1/3 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
               checked={isSelected}
@@ -67,7 +67,7 @@ export const EventTicketCard = ({
               onChange={onChangeNumberOfTickets}
             />
           </div>
-          <div className="w-1/3 text-center font-bold ">
+          <div className="w-1/3 lg:w-1/3 text-center font-bold ">
             {index === 0 ? (
               <span className="text-[20px]">כלול במחיר</span>
             ) : (

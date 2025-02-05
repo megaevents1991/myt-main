@@ -18,7 +18,6 @@ export type Event = {
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;
-  def_avg_price: number;
   usual_price: number;
   base_flight_price: number;
   base_hotel_price: number;

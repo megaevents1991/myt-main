@@ -375,7 +375,7 @@ export const FlightSelection = () => {
                   </button>
                   <button
                     className={cn(
-                      "font-bold px-6 py-1 rounded-l-md",
+                      "font-bold px-6 py-1 rounded-l-md whitespace-nowrap",
                       sortOption === "duration" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("duration")}
@@ -425,6 +425,7 @@ export const FlightSelection = () => {
                   isLoading={isLoading}
                   key={flight.id}
                   {...flight}
+                  price={Math.ceil(flight.price / planeTickets.adults)}
                   flightId={flight.id}
                   isSelected={orderFlight?.id === flight.id}
                   onClick={handleFlightChange}

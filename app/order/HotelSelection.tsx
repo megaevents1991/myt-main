@@ -21,6 +21,7 @@ import {
 } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
+import dayjs from "dayjs";
 
 export const HotelSelection = () => {
   const {
@@ -98,6 +99,8 @@ export const HotelSelection = () => {
     minDailyPrice: 0,
   });
 
+  const [basePriceNightPerson, setBasePriceNightPerson] = useState(0);
+
   const matches = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
@@ -168,6 +171,19 @@ export const HotelSelection = () => {
       }
     });
 
+    const daysDiff = Math.abs(
+      dayjs(event.def_date_depart).diff(event.def_date_return, "day")
+    );
+
+    const totalPersons = roomParams.reduce(
+      (ppl, room) => ppl + room.children.length + room.adults,
+      0
+    );
+
+    const basePriceNightPerson =
+      event.base_hotel_price / totalPersons / daysDiff;
+
+    setBasePriceNightPerson(basePriceNightPerson);
     setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
@@ -288,12 +304,20 @@ export const HotelSelection = () => {
                 >
                   <Popover.Target>
                     <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
-                      {`${roomParams.reduce(
-                        (ppl, room) => ppl + room.children.length + room.adults,
-                        0
-                      )} אורחים`}
-                      {` | `}
-                      {`${roomParams.length} חדרים`}
+                      <span className="whitespace-nowrap">
+                        {" "}
+                        {`${roomParams.reduce(
+                          (ppl, room) =>
+                            ppl + room.children.length + room.adults,
+                          0
+                        )} אורחים`}
+                      </span>
+                      {matches && (
+                        <span>
+                          {` | `}
+                          {`${roomParams.length} חדרים`}
+                        </span>
+                      )}
                     </div>
                   </Popover.Target>
                   <Popover.Dropdown>
@@ -422,7 +446,7 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map((hotel) => (
               <HotelCard
-                minPrice={minPrice}
+                minPrice={basePriceNightPerson}
                 isLoading={isLoading}
                 distanceFromCenter={Math.ceil(
                   hotelsInfo[hotel.id].metadata.distanceFromCenter
