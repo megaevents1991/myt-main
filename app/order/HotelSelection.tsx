@@ -10,7 +10,7 @@ import { HotelCard } from "@/components/ui/hotelCard";
 import { Search, Settings2Icon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
-import { applyFiltersAndSorting } from "@/lib/hotelFilter";
+import { applyFiltersAndSorting, hotelSort } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import {
@@ -22,6 +22,21 @@ import {
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import dayjs from "dayjs";
+
+const getTotalPersons = (
+  roomParams: { adults: number; children: number[] }[]
+) => {
+  return roomParams.reduce(
+    (ppl, room) => ppl + room.children.length + room.adults,
+    0
+  );
+};
+
+const getDaysDiff = (event: Event) => {
+  return Math.abs(
+    dayjs(event.def_date_depart).diff(event.def_date_return, "day")
+  );
+};
 
 export const HotelSelection = () => {
   const {
@@ -153,10 +168,16 @@ export const HotelSelection = () => {
       )
     );
 
-    const maxPrice = Math.max(
-      ...data.data.hotels.map(
-        (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
-      )
+    const priceNormalization =
+      getTotalPersons(data.debug.request.guests) * getDaysDiff(event);
+
+    const maxPrice = Math.ceil(
+      Math.max(
+        ...data.data.hotels.map(
+          (hotel) =>
+            +hotel.rates[0].payment_options.payment_types[0].show_amount
+        )
+      ) / priceNormalization
     );
 
     let minPrice = Infinity;
@@ -164,61 +185,68 @@ export const HotelSelection = () => {
 
     data.data.hotels.forEach((hotel) => {
       const price =
-        +hotel.rates[0].payment_options.payment_types[0].show_amount;
+        +hotel.rates[0].payment_options.payment_types[0].show_amount /
+        priceNormalization;
       if (price < minPrice) {
-        minPrice = price;
+        minPrice = price / priceNormalization;
         minDailyPrice = +hotel.rates[0].daily_prices[0];
       }
     });
 
-    const daysDiff = Math.abs(
-      dayjs(event.def_date_depart).diff(event.def_date_return, "day")
+    const basePriceNightPerson = Math.floor(
+      event.base_hotel_price / priceNormalization
     );
 
-    const totalPersons = roomParams.reduce(
-      (ppl, room) => ppl + room.children.length + room.adults,
-      0
-    );
-
-    const basePriceNightPerson =
-      event.base_hotel_price / totalPersons / daysDiff;
+    const hotelsToSet = hotelSort(data.data.hotels, sortOption, hotelsInfo);
 
     setBasePriceNightPerson(basePriceNightPerson);
     setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
-    setPriceRange([0, maxPrice]);
+    setPriceRange([0, maxPrice * priceNormalization]);
     setHotelsInfo(hotelsInfo);
     setMaxPrice(maxPrice);
-    setHotels(data.data.hotels);
-    setFilteredHotels(data.data.hotels);
+    setHotels(hotelsToSet);
+    setFilteredHotels(hotelsToSet);
     setIsLoading(false);
-    setSelectedHotelId(data.data.hotels[0].id);
+    setSelectedHotelId(hotelsToSet[0].id);
     setMinPrice({
-      minPrice,
+      minPrice: Math.floor(minPrice),
       minDailyPrice,
     });
+
     setHotel({
-      address: hotelsInfo[data.data.hotels[0].id]?.metadata.address,
+      address: hotelsInfo[hotelsToSet[0].id]?.metadata.address,
       guests: data.debug.request.guests,
-      id: data.data.hotels[0].id || "",
-      name: hotelsInfo[data.data.hotels[0].id].metadata.hotelName,
+      id: hotelsToSet[0].id || "",
+      name: hotelsInfo[hotelsToSet[0].id].metadata.hotelName,
       price:
-        data.data.hotels[0].rates[0].payment_options.payment_types[0]
-          .show_amount,
-      rate: data.data.hotels[0].rates[0],
+        hotelsToSet[0].rates[0].payment_options.payment_types[0].show_amount,
+      rate: hotelsToSet[0].rates[0],
     });
   };
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
+    let filterValue = value;
+
     switch (type) {
       case "rating":
         setHotel(undefined);
         setRating(value);
         break;
       case "priceRange":
+        const persons = getTotalPersons(requestDebug.guests);
+        const days = getDaysDiff(event);
         setHotel(undefined);
-        setPriceRange(value);
+        filterValue = value.map((price) => price * persons * days) as [
+          number,
+          number
+        ];
+        filterValue[0] =
+          value[0] === basePriceNightPerson
+            ? minPrice.minPrice
+            : filterValue[0];
+        setPriceRange(filterValue);
         break;
       case "hotelName":
         if (showFilters) {
@@ -252,7 +280,7 @@ export const HotelSelection = () => {
       hotelsInfo,
       withMeal,
       distanceFromCenter: distanceRange,
-      ...{ [type]: value },
+      ...{ [type]: filterValue },
     });
 
     setFilteredHotels(hotelsToSet);
@@ -274,11 +302,18 @@ export const HotelSelection = () => {
     });
   };
 
+  const handleRoomRemove = (i: number) => {
+    setRoomParams((prev) => {
+      if (prev.length === 1) return prev;
+      return [...prev.slice(0, i), ...prev.slice(i + 1)];
+    });
+  };
+
   return (
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
-          minPrice={minPrice.minPrice}
+          minPrice={basePriceNightPerson}
           maxDistance={maxDistance}
           selectedRating={rating}
           maxPrice={maxPrice}
@@ -306,11 +341,7 @@ export const HotelSelection = () => {
                     <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
                       <span className="whitespace-nowrap">
                         {" "}
-                        {`${roomParams.reduce(
-                          (ppl, room) =>
-                            ppl + room.children.length + room.adults,
-                          0
-                        )} אורחים`}
+                        {`${getTotalPersons(roomParams)} אורחים`}
                       </span>
                       {matches && (
                         <span>
@@ -322,40 +353,37 @@ export const HotelSelection = () => {
                   </Popover.Target>
                   <Popover.Dropdown>
                     <div className="flex flex-col gap-2">
-                      <div className="flex gap-2 justify-end mt-2 mb-2 ">
-                        <button
-                          className="bg-secondary text-white px-2 rounded-md"
-                          onClick={() =>
-                            setRoomParams((prev) => [
-                              ...prev,
-                              { adults: 1, children: [] },
-                            ])
-                          }
-                        >
-                          הוסף חדר
-                        </button>
-                        <button
-                          className="bg-secondary text-white px-2 rounded-md"
-                          onClick={() =>
-                            setRoomParams((prev) => {
-                              if (prev.length === 1) return prev;
-                              return prev.slice(0, prev.length - 1);
-                            })
-                          }
-                        >
-                          מחק חדר
-                        </button>
-                      </div>
+                      <div className="flex gap-2 justify-end mt-2 mb-2 "></div>
                       {Array.from({ length: roomParams.length }, (_, i) => (
-                        <RoomsAndGuestsInput
-                          key={i}
-                          initialChildren={roomParams[i].children}
-                          initialAdults={roomParams[i].adults}
-                          onChange={({ adults, children }) =>
-                            handleSetRooms({ adults, children, i })
-                          }
-                        />
+                        <div key={`${i}_${roomParams[i].adults}`}>
+                          {i > 0 && (
+                            <button
+                              className="text-[red] px-2 w-full text-right"
+                              onClick={() => handleRoomRemove(i)}
+                            >
+                              מחק חדר
+                            </button>
+                          )}
+                          <RoomsAndGuestsInput
+                            initialChildren={roomParams[i].children}
+                            initialAdults={roomParams[i].adults}
+                            onChange={({ adults, children }) =>
+                              handleSetRooms({ adults, children, i })
+                            }
+                          />
+                        </div>
                       ))}
+                      <button
+                        className="text-secondary px-2 text-left"
+                        onClick={() =>
+                          setRoomParams((prev) => [
+                            ...prev,
+                            { adults: 1, children: [] },
+                          ])
+                        }
+                      >
+                        +הוסף חדר
+                      </button>
                     </div>
                   </Popover.Dropdown>
                 </Popover>
@@ -432,7 +460,7 @@ export const HotelSelection = () => {
           {matches && (
             <Skeleton visible={isLoading}>
               <HotelFilters
-                minPrice={minPrice.minPrice}
+                minPrice={basePriceNightPerson}
                 maxDistance={maxDistance}
                 selectedRating={rating}
                 maxPrice={maxPrice}
@@ -446,6 +474,8 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map((hotel) => (
               <HotelCard
+                days={getDaysDiff(event)}
+                persons={getTotalPersons(requestDebug?.guests || [])}
                 minPrice={basePriceNightPerson}
                 isLoading={isLoading}
                 distanceFromCenter={Math.ceil(

@@ -90,7 +90,7 @@ export const HotelFilters = ({
         <RangeSlider
           thumbSize={20}
           min={minPrice}
-          max={Math.ceil(maxPrice) + 10}
+          max={maxPrice + 2}
           step={5}
           label={(value) => value - minPrice}
           value={value}

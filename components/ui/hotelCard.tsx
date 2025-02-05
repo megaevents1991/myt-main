@@ -1,6 +1,6 @@
 import { Hotel, HotelInfoClient, Rate, Room } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, Hotel as HotelSVG } from "lucide-react";
 import { Collapse, ScrollArea, Skeleton } from "@mantine/core";
 import { Carousel, Embla } from "@mantine/carousel";
 
@@ -20,6 +20,8 @@ export const HotelCard = ({
   distanceFromCenter,
   isLoading,
   minPrice,
+  days,
+  persons,
 }: {
   hotelRates: Hotel["rates"];
   handleSelect: () => void;
@@ -29,6 +31,8 @@ export const HotelCard = ({
   distanceFromCenter: number;
   isLoading: boolean;
   minPrice: number;
+  days: number;
+  persons: number;
 }) => {
   const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
@@ -86,8 +90,10 @@ export const HotelCard = ({
     });
   };
 
-  const selectedPrice = +(selectedRoom || hotelRates[0]).payment_options
-    .payment_types[0].show_amount;
+  const selectedPrice =
+    +(selectedRoom || hotelRates[0]).payment_options.payment_types[0]
+      .show_amount /
+    (persons * days);
 
   const priceToShowFull =
     selectedPrice - minPrice > 0 ? (
@@ -95,6 +101,11 @@ export const HotelCard = ({
     ) : (
       <span className="text-[16px]">כלול במחיר החבילה</span>
     );
+
+  const hotelImages = [
+    ...(selectedRoomInfo?.images || ""),
+    ...(hotelInfo?.general.images || ""),
+  ];
 
   return (
     <Skeleton visible={isLoading}>
@@ -105,41 +116,42 @@ export const HotelCard = ({
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col-reverse lg:flex-row gap-2">
                   <div className="w-full lg:w-[280px]">
-                    <Carousel
-                      getEmblaApi={setEmbla}
-                      slidesToScroll={1}
-                      align="start"
-                      slideSize={"100%"}
-                      initialSlide={0}
-                      withIndicators
-                      dir="ltr"
-                      styles={{
-                        indicators: {
-                          maxWidth: "90%",
-                          justifySelf: "center",
-                        },
-                      }}
-                    >
-                      {[
-                        ...(selectedRoomInfo?.images || ""),
-                        ...(hotelInfo?.general.images || ""),
-                      ].map((image, i) => {
-                        return image ? (
+                    {!!hotelImages.length && (
+                      <Carousel
+                        getEmblaApi={setEmbla}
+                        slidesToScroll={1}
+                        align="start"
+                        slideSize={"100%"}
+                        initialSlide={0}
+                        withIndicators
+                        dir="ltr"
+                        styles={{
+                          indicators: {
+                            maxWidth: "90%",
+                            justifySelf: "center",
+                          },
+                        }}
+                      >
+                        {hotelImages.map((image, i) => (
                           <Carousel.Slide key={i} style={{ height: "210px" }}>
-                            <Image
-                              fill={true}
-                              loading="lazy"
-                              style={{
-                                objectFit: "cover",
-                              }}
-                              className="border rounded-lg"
-                              src={image.replace("{size}", "x500")}
-                              alt="image"
-                            />
+                            {image ? (
+                              <Image
+                                fill={true}
+                                loading="lazy"
+                                style={{
+                                  objectFit: "cover",
+                                }}
+                                className="border rounded-lg"
+                                src={image.replace("{size}", "x500")}
+                                alt="image"
+                              />
+                            ) : (
+                              <HotelSVG className="m-auto" size={100} />
+                            )}
                           </Carousel.Slide>
-                        ) : null;
-                      })}
-                    </Carousel>
+                        ))}
+                      </Carousel>
+                    )}
                   </div>
                   <div className="w-full lg:w-2/3">
                     <HotelCardHeader
@@ -178,6 +190,7 @@ export const HotelCard = ({
                             <div className="flex flex-col gap-2">
                               {hotelRates.map((room) => (
                                 <RoomCard
+                                  persons={persons}
                                   minDailyPrice={minPrice}
                                   key={room.match_hash}
                                   room={room}
