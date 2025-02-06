@@ -51,7 +51,6 @@ export const Amenities = ({
                 style={{ fill: "#05203C" }}
                 alt="amenity icon"
                 src={`/icons/${icon?.icon}`}
-                // src={icon?.icon || ""}
                 width={16}
                 height={16}
               />

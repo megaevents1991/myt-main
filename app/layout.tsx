@@ -67,7 +67,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     className="py-6 w-full px-4 md:px-6 border-t"
                     dir="rtl"
                   >
-                    <p className="container mx-auto" margin-bottom="20">
+                    <p className="container mx-auto mb-4 text-gray-500 dark:text-gray-400">
                       לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
                       מהווה הסכמה לשימוש זה.למידע נוסף ניתן לעיין במדיניות
                       הפרטיות של האתר.
@@ -75,31 +75,31 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
                       <nav className="flex gap-4 sm:gap-6">
                         <Link
-                          className="text-xs hover:underline underline-offset-4"
+                          className="text-sm hover:underline underline-offset-4"
                           href="artists"
                         >
                           האומנים שלנו
                         </Link>
                         <Link
-                          className="text-xs hover:underline underline-offset-4"
+                          className="text-sm hover:underline underline-offset-4"
                           href="football"
                         >
                           הקבוצות שלנו
                         </Link>
                         <Link
-                          className="text-xs hover:underline underline-offset-4"
+                          className="text-sm hover:underline underline-offset-4"
                           href="#"
                         >
                           תנאי שימוש
                         </Link>
                         <Link
-                          className="text-xs hover:underline underline-offset-4"
+                          className="text-sm hover:underline underline-offset-4"
                           href="#"
                         >
                           פרטיות
                         </Link>
                       </nav>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
                         © 2025 Megaevents. כל הזכויות שמורות.
                       </p>
                     </div>

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { StarsGroup } from "@/components/ui/StarsGroup";
 import { Search } from "lucide-react";
 import { HotelSearchCriteria } from "@/lib/app.types";
-import { on } from "events";
 
 const themeColor = "#05203C";
 
@@ -74,11 +73,11 @@ export const HotelFilters = ({
   const distanceMarks = [
     {
       value: 0,
-      label: <>0 ק"מ</>,
+      label: <>0 ק&quot;מ</>,
     },
     {
       value: maxDistance + 1000,
-      label: <>{Math.round((maxDistance / 1000) * 10) / 10 + 1} ק"מ</>,
+      label: <>{Math.round((maxDistance / 1000) * 10) / 10 + 1} ק&quot;מ</>,
     },
   ];
 

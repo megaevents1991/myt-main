@@ -342,7 +342,11 @@ export default function OrderReview() {
                   )}
                   <div className="flex justify-between items-center text-[22px] font-bold">
                     <span>${totalPrice}</span>
-                    <span>סה"כ לאחר הנחה</span>
+                    {affDiscount > 0 ? (
+                      <span>סה"כ לאחר הנחה</span>
+                    ) : (
+                      <span>סה"כ</span>
+                    )}
                   </div>
                 </div>
               </div>

@@ -229,7 +229,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                     />
                   </div>
                   <div className="flex-col text-center w-1/2 sm:w-auto">
-                    <div className="p-2 px-4 font-bold">{event.name}</div>
+                    <div className="p-2 px-4 text-xl font-bold">
+                      {event.name}
+                    </div>
                     <div className="py-1 bg-secondary text-white">
                       {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
                       {event.location.name}
