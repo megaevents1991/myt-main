@@ -17,8 +17,10 @@ export const RoomCard = ({
   const roomPrice = +room.daily_prices[0] / persons;
 
   const priceToShowFull =
-    roomPrice - minDailyPrice > 0
-      ? ` ללילה/$${Math.ceil(+roomPrice - minDailyPrice)}+`
+    roomPrice - minDailyPrice !== 0
+      ? ` ללילה/$${Math.abs(Math.ceil(+roomPrice - minDailyPrice))}${
+          +roomPrice - minDailyPrice > 0 ? "+" : "-"
+        }`
       : "כלול במחיר";
   return (
     <div onClick={() => onRoomSelect(room)}>

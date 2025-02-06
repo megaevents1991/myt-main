@@ -21,22 +21,7 @@ import {
 } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
-import dayjs from "dayjs";
-
-const getTotalPersons = (
-  roomParams: { adults: number; children: number[] }[]
-) => {
-  return roomParams.reduce(
-    (ppl, room) => ppl + room.children.length + room.adults,
-    0
-  );
-};
-
-const getDaysDiff = (event: Event) => {
-  return Math.abs(
-    dayjs(event.def_date_depart).diff(event.def_date_return, "day")
-  );
-};
+import { getDaysDiff, getTotalPersons } from "@/lib/price.utils";
 
 export const HotelSelection = () => {
   const {
@@ -100,7 +85,10 @@ export const HotelSelection = () => {
   ]);
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
-  const [withMeal, setWithMeal] = useState(false);
+  const [meal, setMeal] = useState<["withMeal", "withoutMeal"]>([
+    "withMeal",
+    "withoutMeal",
+  ]);
   const [maxDistance, setMaxDistance] = useState(0);
   const [distanceRange, setDistanceRange] = useState<[number, number]>([
     0,
@@ -113,8 +101,8 @@ export const HotelSelection = () => {
     minPrice: 0,
     minDailyPrice: 0,
   });
-
   const [basePriceNightPerson, setBasePriceNightPerson] = useState(0);
+  const [freeCancellation, setFreeCancellation] = useState(false);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -164,7 +152,7 @@ export const HotelSelection = () => {
 
     const maxDistance = Math.max(
       ...Object.values(hotelsInfo).map(
-        (hotel) => hotel.metadata.distanceFromCenter
+        (hotel) => hotel.metadata?.distanceFromCenter
       )
     );
 
@@ -175,7 +163,8 @@ export const HotelSelection = () => {
       Math.max(
         ...data.data.hotels.map(
           (hotel) =>
-            +hotel.rates[0].payment_options.payment_types[0].show_amount
+            +hotel.rates[hotel.rates.length - 1].payment_options
+              .payment_types[0].show_amount
         )
       ) / priceNormalization
     );
@@ -188,7 +177,7 @@ export const HotelSelection = () => {
         +hotel.rates[0].payment_options.payment_types[0].show_amount /
         priceNormalization;
       if (price < minPrice) {
-        minPrice = price / priceNormalization;
+        minPrice = price;
         minDailyPrice = +hotel.rates[0].daily_prices[0];
       }
     });
@@ -230,6 +219,11 @@ export const HotelSelection = () => {
     let filterValue = value;
 
     switch (type) {
+      case "freeCancellation": {
+        setHotel(undefined);
+        setFreeCancellation(value);
+        break;
+      }
       case "rating":
         setHotel(undefined);
         setRating(value);
@@ -242,10 +236,6 @@ export const HotelSelection = () => {
           number,
           number
         ];
-        filterValue[0] =
-          value[0] === basePriceNightPerson
-            ? minPrice.minPrice
-            : filterValue[0];
         setPriceRange(filterValue);
         break;
       case "hotelName":
@@ -253,17 +243,16 @@ export const HotelSelection = () => {
           setShowFilters(false);
         }
         break;
-      case "withMeal":
+      case "meal":
         setHotel(undefined);
-        setWithMeal(value);
+        setMeal(value);
         break;
       case "sortOption":
         setSortOption(value);
         break;
-
       case "distanceFromCenter": {
         setHotel(undefined);
-        if (value[1] > maxDistance) {
+        if (value[1] > maxDistance + 100) {
           fetchHotels({ radius: value[1] });
           return;
         }
@@ -278,7 +267,8 @@ export const HotelSelection = () => {
       priceRange,
       rating,
       hotelsInfo,
-      withMeal,
+      meal,
+      freeCancellation,
       distanceFromCenter: distanceRange,
       ...{ [type]: filterValue },
     });
@@ -313,12 +303,14 @@ export const HotelSelection = () => {
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
-          minPrice={basePriceNightPerson}
+          basePrice={basePriceNightPerson}
+          minPrice={Math.min(minPrice.minPrice, basePriceNightPerson)}
           maxDistance={maxDistance}
           selectedRating={rating}
           maxPrice={maxPrice}
+          freeCancellation={freeCancellation}
           onCriteriaChange={handleSearchCriteriaChange}
-          withMeal={withMeal}
+          meal={meal}
         />
       </FiltersModal>
       <div className="flex flex-col w-full items-center">
@@ -460,12 +452,14 @@ export const HotelSelection = () => {
           {matches && (
             <Skeleton visible={isLoading}>
               <HotelFilters
-                minPrice={basePriceNightPerson}
+                freeCancellation={freeCancellation}
+                basePrice={basePriceNightPerson}
+                minPrice={Math.min(minPrice.minPrice, basePriceNightPerson)}
                 maxDistance={maxDistance}
                 selectedRating={rating}
                 maxPrice={maxPrice}
                 onCriteriaChange={handleSearchCriteriaChange}
-                withMeal={withMeal}
+                meal={meal}
               />
             </Skeleton>
           )}

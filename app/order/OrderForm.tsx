@@ -9,6 +9,7 @@ import { Event } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/price.utils";
 
 const buttonText: Record<number, string> = {
   1: "המשך לבחירת טיסה",
@@ -18,8 +19,15 @@ const buttonText: Record<number, string> = {
 } as const;
 
 export const OrderForm = ({ event }: { event: Event }) => {
-  const { step, setStep, flight, hotel, eventTicket, numberOfEventTickets } =
-    useContext(OrderContext);
+  const {
+    step,
+    setStep,
+    flight,
+    hotel,
+    eventTicket,
+    numberOfEventTickets,
+    planeTickets,
+  } = useContext(OrderContext);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -61,20 +69,41 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview />}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-10">
-        <div className="mt-4 w-screen justify-center flex flex-col bg-gray-200">
+        <div className="mt-4 w-screen bg-gray-200">
           <div className="w-full">
             {step < 4 && (
-              <div className="p-4 m-auto max-w-7xl">
+              <div className="flex flex-row-reverse lg:flex-row p-4 m-auto max-w-7xl justify-between items-center gap-2">
                 <button
                   disabled={buttonDisabled}
                   onClick={nextStep}
                   className={cn(
-                    "bg-main text-white rounded-lg p-2 font-bold w-full sm:w-1/4",
+                    "bg-main text-white rounded-lg p-2 font-bold w-auto lg:w-1/4",
                     buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                   )}
                 >
                   {buttonText[step]}
                 </button>
+                <div className="text-secondary text-md">
+                  {step > 1 && (
+                    <div>
+                      {formatPrice(
+                        eventTicket.price - event?.tickets_and_rates[0].price
+                      )}{" "}
+                      <span className="font-bold">{eventTicket.category}</span>
+                    </div>
+                  )}
+                  {step > 2 && (
+                    <div className="text-right">
+                      {formatPrice(
+                        Math.ceil(
+                          (flight?.price || 0) / planeTickets.adults -
+                            event.base_flight_price
+                        )
+                      )}{" "}
+                      <span className="font-bold">{flight?.metadata.name}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

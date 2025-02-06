@@ -117,8 +117,8 @@ export type HotelSearchCriteria =
       value: string;
     }
   | {
-      type: "withMeal";
-      value: boolean;
+      type: "meal";
+      value: ["withMeal", "withoutMeal"];
     }
   | {
       type: "sortOption";
@@ -131,6 +131,10 @@ export type HotelSearchCriteria =
   | {
       type: "distanceFromCenter";
       value: [number, number];
+    }
+  | {
+      type: "freeCancellation";
+      value: boolean;
     };
 
 type EventTicket = {

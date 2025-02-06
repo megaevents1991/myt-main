@@ -8,8 +8,9 @@ export const applyFiltersAndSorting = ({
   hotelsInfo,
   sortOption = "price_asc",
   hotelName,
-  withMeal,
+  meal,
   distanceFromCenter,
+  freeCancellation,
 }: {
   distanceFromCenter: [number, number];
   hotels: Hotel[];
@@ -18,45 +19,90 @@ export const applyFiltersAndSorting = ({
   hotelsInfo: HotelsInfoClient;
   sortOption?: SortOptions;
   hotelName?: string;
-  withMeal: boolean;
+  meal: ["withMeal", "withoutMeal"];
+  freeCancellation: boolean;
 }) => {
   // Apply filters
 
-  const filteredHotels = hotels.filter((hotel) => {
-    const price = +hotel.rates[0].payment_options.payment_types[0].show_amount;
+  const filteredHotels = hotels
+    .filter((hotel) => {
+      const price =
+        +hotel.rates[0].payment_options.payment_types[0].show_amount;
 
-    const hotelRating = hotelsInfo[hotel.id].metadata.rating;
+      const hotelRating = hotelsInfo[hotel.id].metadata.rating;
 
-    const matchHasMeal =
-      !withMeal ||
-      hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast);
+      const matchHasMeal =
+        !meal.length ||
+        meal.length === 2 ||
+        (meal.includes("withoutMeal") &&
+          !hotel.rates.some(
+            (hotelRate) => hotelRate.meal_data.has_breakfast
+          )) ||
+        (meal.includes("withMeal") &&
+          hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast));
 
-    const matchDistanceRange =
-      distanceFromCenter[1] >=
-        hotelsInfo[hotel.id].metadata.distanceFromCenter &&
-      distanceFromCenter[0] <= hotelsInfo[hotel.id].metadata.distanceFromCenter;
+      const matchDistanceRange =
+        distanceFromCenter[1] >=
+          hotelsInfo[hotel.id].metadata.distanceFromCenter &&
+        distanceFromCenter[0] <=
+          hotelsInfo[hotel.id].metadata.distanceFromCenter;
 
-    const matchesName = hotelName
-      ? hotelsInfo[hotel.id].metadata.hotelName
-          .toUpperCase()
-          .includes(hotelName.toUpperCase())
-      : true;
+      const matchFreeCancellation =
+        !freeCancellation ||
+        hotel.rates.some(
+          (rate) =>
+            !!rate.payment_options.payment_types.some(
+              (paymentType) =>
+                paymentType.cancellation_penalties.free_cancellation_before
+            )
+        );
 
-    const matchesRating =
-      rating.every((r) => r) ||
-      rating.every((r) => !r) ||
-      rating[hotelRating - 1];
+      const matchesName = hotelName
+        ? hotelsInfo[hotel.id].metadata.hotelName
+            .toUpperCase()
+            .includes(hotelName.toUpperCase())
+        : true;
 
-    const matchesPriceRange = price >= priceRange[0] && price <= priceRange[1];
+      const matchesRating =
+        rating.every((r) => r) ||
+        rating.every((r) => !r) ||
+        rating[hotelRating - 1];
 
-    return (
-      matchesPriceRange &&
-      matchesRating &&
-      matchesName &&
-      matchHasMeal &&
-      matchDistanceRange
-    );
-  });
+      const matchesPriceRange =
+        price >= priceRange[0] && price <= priceRange[1];
+
+      return (
+        matchesPriceRange &&
+        matchesRating &&
+        matchesName &&
+        matchHasMeal &&
+        matchDistanceRange &&
+        matchFreeCancellation
+      );
+    })
+    .map((hotel) => {
+      const filteredRates = hotel.rates.filter((rate) => {
+        const price = +rate.payment_options.payment_types[0].show_amount;
+        const matchHasMeal =
+          !meal.length ||
+          meal.length === 2 ||
+          (meal.includes("withoutMeal") && !rate.meal_data.has_breakfast) ||
+          (meal.includes("withMeal") && rate.meal_data.has_breakfast);
+
+        const matchFreeCancellation =
+          !freeCancellation ||
+          rate.payment_options.payment_types.every(
+            (paymentType) =>
+              !!paymentType.cancellation_penalties.free_cancellation_before
+          );
+        const matchesPriceRange =
+          price >= priceRange[0] && price <= priceRange[1];
+
+        return matchHasMeal && matchesPriceRange && matchFreeCancellation;
+      });
+
+      return { ...hotel, rates: filteredRates };
+    });
 
   const sortedHotels = hotelSort(filteredHotels, sortOption, hotelsInfo);
 

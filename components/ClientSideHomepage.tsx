@@ -131,7 +131,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           />
         </Modal>
       )}
-      <section className="w-full py-6 md:py-12 lg:py-18 xl:py-22 px-4 md:px-6 text-white bg-main relative">
+      <section className="w-full py-6 lg:py-10 px-4 md:px-6 text-white bg-main relative">
         <div className="container mx-auto max-w-3xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
             <span> כל האירועים השווים בחו״ל</span>
@@ -183,7 +183,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           </form>
         </div>
       </section>
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
+      <section className="w-full py-12 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
         <div className="container mx-auto">
           <div className="flex flex-row justify-end items-stretch">
             <div>

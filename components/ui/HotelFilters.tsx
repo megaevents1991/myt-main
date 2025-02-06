@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { StarsGroup } from "@/components/ui/StarsGroup";
 import { Search } from "lucide-react";
 import { HotelSearchCriteria } from "@/lib/app.types";
+import { on } from "events";
 
 const themeColor = "#05203C";
 
@@ -10,16 +11,20 @@ export const HotelFilters = ({
   maxPrice,
   onCriteriaChange,
   selectedRating,
-  withMeal,
+  meal,
   maxDistance,
   minPrice,
+  basePrice,
+  freeCancellation,
 }: {
   onCriteriaChange: (criteria: HotelSearchCriteria) => void;
   maxPrice: number;
   maxDistance: number;
   selectedRating: boolean[];
-  withMeal: boolean;
+  meal: ["withMeal", "withoutMeal"];
   minPrice: number;
+  basePrice: number;
+  freeCancellation: boolean;
 }) => {
   const [searchValue, setSearchValue] = useState("");
   const [value, setValue] = useState<[number, number]>([minPrice, maxPrice]);
@@ -29,7 +34,6 @@ export const HotelFilters = ({
   const [distanceFromCenter, setDistanceFromCenter] = useState<
     [number, number]
   >([0, maxDistance]);
-
   const [stars, setStars] = useState<boolean[]>(selectedRating);
 
   const handleDistanceFromCenterChange = (value: [number, number]) => {
@@ -59,22 +63,22 @@ export const HotelFilters = ({
   const marks = [
     {
       value: minPrice,
-      label: <>+0 &#8364;</>,
+      label: <>{minPrice - basePrice} &#8364;</>,
     },
     {
       value: maxPrice,
-      label: <>+{Math.ceil(maxPrice - minPrice)} &#8364;</>,
+      label: <>+{Math.ceil(maxPrice - basePrice)} &#8364;</>,
     },
   ];
 
   const distanceMarks = [
     {
       value: 0,
-      label: <>0 מטר</>,
+      label: <>0 ק"מ</>,
     },
     {
       value: maxDistance + 1000,
-      label: <>{maxDistance + 1000} מטר</>,
+      label: <>{Math.round((maxDistance / 1000) * 10) / 10 + 1} ק"מ</>,
     },
   ];
 
@@ -92,7 +96,7 @@ export const HotelFilters = ({
           min={minPrice}
           max={maxPrice + 2}
           step={5}
-          label={(value) => value - minPrice}
+          label={(value) => value - basePrice}
           value={value}
           styles={{
             bar: { backgroundColor: themeColor },
@@ -113,7 +117,8 @@ export const HotelFilters = ({
           thumbSize={20}
           min={0}
           max={maxDistance + 1000}
-          step={10}
+          step={100}
+          label={(value) => Math.round((value / 1000) * 10) / 10}
           value={distanceFromCenter}
           styles={{
             bar: { backgroundColor: themeColor },
@@ -152,15 +157,39 @@ export const HotelFilters = ({
         </button>
       </form>
       <div dir="rtl" className="w-full">
-        <Checkbox
+        <Checkbox.Group
+          value={meal}
           onChange={(value) =>
-            onCriteriaChange({ value: value.target.checked, type: "withMeal" })
+            onCriteriaChange({
+              value: value as ["withMeal", "withoutMeal"],
+              type: "meal",
+            })
           }
-          checked={withMeal}
-          id={"meal"}
-          label={"כולל ארוחה"}
-          className="my-2"
-        />
+        >
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Checkbox value="withMeal" id="with-meal" />
+            <label htmlFor="withMeal">כולל ארוחה</label>
+          </div>
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Checkbox value="withoutMeal" id="without-meal" />
+            <label htmlFor="withoutMeal">ללא ארוחה</label>
+          </div>
+        </Checkbox.Group>
+        <div dir="rtl" className="w-full">
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Checkbox
+              onChange={(value) =>
+                onCriteriaChange({
+                  value: value.target.checked,
+                  type: "freeCancellation",
+                })
+              }
+              checked={freeCancellation}
+              id={"free-cancellation"}
+            />
+            <label htmlFor="free-cancellation">ביטול חינם</label>
+          </div>
+        </div>
       </div>
     </div>
   );

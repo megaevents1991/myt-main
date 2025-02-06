@@ -6,6 +6,7 @@ import { Skeleton, Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 import { useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
+import { formatPrice } from "@/lib/price.utils";
 
 type FlightTicketCardProps = {
   isSelected: boolean;
@@ -84,11 +85,12 @@ export const FlightTicketCard = ({
   minPrice,
 }: FlightTicketCardProps) => {
   const priceToShow =
-    price - minPrice > 0 ? (
-      `$${Math.ceil(price - minPrice)}+`
-    ) : (
+    formatPrice(price - minPrice) === 0 ? (
       <span className="text-[20px]">כלול במחיר</span>
+    ) : (
+      formatPrice(price - minPrice)
     );
+
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
@@ -101,7 +103,7 @@ export const FlightTicketCard = ({
           <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
           <div className="font-bold lg:w-1/6 mt-2 w-full text-center border-t-2 pt-2 lg:border-none">
             <span className="text-lg lg:text-2xl">{priceToShow}</span>
-            {price - minPrice > 0 ? (
+            {formatPrice(price - minPrice) !== 0 ? (
               <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
                 תוספת לכל נוסע
               </span>

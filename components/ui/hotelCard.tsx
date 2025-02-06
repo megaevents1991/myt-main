@@ -10,6 +10,7 @@ import Image from "next/image";
 import { OrderHotel } from "@/lib/app.types";
 import { HotelCardHeader } from "./HotelCardHeader";
 import { Amenities } from "./Amenities";
+import { formatPrice } from "@/lib/price.utils";
 
 export const HotelCard = ({
   hotelRates,
@@ -96,8 +97,8 @@ export const HotelCard = ({
     (persons * days);
 
   const priceToShowFull =
-    selectedPrice - minPrice > 0 ? (
-      `$${Math.ceil(selectedPrice - minPrice)}+`
+    formatPrice(selectedPrice - minPrice) !== 0 ? (
+      formatPrice(selectedPrice - minPrice)
     ) : (
       <span className="text-[16px]">כלול במחיר החבילה</span>
     );
