@@ -9,8 +9,6 @@ export async function POST(req: Request) {
 
   const validatedData = await validateOrderData(orderDetails);
 
-  // comment
-
   const { data, error } = await supabase
       .from('reservations')
       .insert({
