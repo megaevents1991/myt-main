@@ -165,22 +165,22 @@ export const HotelCard = ({
                     <div className="w-full text-center lg:hidden p-1 mb-2 border-main border rounded-lg bg-gray-200">
                       {priceToShowFull}
                     </div>
-                    <div className="w-full flex flex-col justify-between items-center lg:items-right mb-2">
+                    <div className="w-full flex flex-col justify-between lg:items-right mb-2">
                       <div
-                        className="w-full flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
+                        className="w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
                         onClick={() => setOpened((prev) => !prev)}
                       >
-                        {opened ? (
-                          <ChevronUp className="m-auto" color="black" />
-                        ) : (
-                          <div className="flex w-full items-center justify-center lg:justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              {hotelRates.length}
-                              <span>סוגי חדרים נוספים</span>
-                            </div>
-                            <ChevronDown color="black" />
+                        <div className="flex w-full items-center justify-center lg:justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            {hotelRates.length}
+                            <span>סוגי חדרים נוספים</span>
                           </div>
-                        )}
+                          {opened ? (
+                            <ChevronUp className="m-auto" color="black" />
+                          ) : (
+                            <ChevronDown color="black" />
+                          )}
+                        </div>
                       </div>
                       <Collapse
                         in={opened}

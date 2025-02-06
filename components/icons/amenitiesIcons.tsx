@@ -314,4 +314,4 @@ export const icons = [
     displayTag: "wi-fi",
     icon: "noun-air-conditioner-1604106.svg",
   },
-];
+] as const;

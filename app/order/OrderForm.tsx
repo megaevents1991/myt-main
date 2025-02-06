@@ -10,6 +10,7 @@ import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/price.utils";
+import Image from "next/image";
 
 const buttonText: Record<number, string> = {
   1: "המשך לבחירת טיסה",
@@ -77,23 +78,30 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   disabled={buttonDisabled}
                   onClick={nextStep}
                   className={cn(
-                    "bg-main text-white rounded-lg p-2 font-bold w-auto lg:w-1/4",
+                    "bg-main text-white rounded-lg p-2 font-bold w-auto w-1/2 lg:w-1/4",
                     buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                   )}
                 >
                   {buttonText[step]}
                 </button>
-                <div className="text-secondary text-md">
+                <div className="flex text-secondary text-md flex-col lg:flex-row-reverse lg:gap-2 items-end lg:items-start">
                   {step > 1 && (
                     <div>
                       {formatPrice(
                         eventTicket.price - event?.tickets_and_rates[0].price
                       )}{" "}
-                      <span className="font-bold">{eventTicket.category}</span>
+                      <span className="font-bold">{eventTicket.category}</span>{" "}
+                      <Image
+                        className="inline-block"
+                        alt="ticket icon"
+                        src={`/ticket.svg`}
+                        width={16}
+                        height={16}
+                      />
                     </div>
                   )}
                   {step > 2 && (
-                    <div className="text-right">
+                    <div className="flex text-right lg:border lg:border-r-secondary lg:pr-2 gap-2">
                       {formatPrice(
                         Math.ceil(
                           (flight?.price || 0) / planeTickets.adults -
@@ -101,6 +109,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         )
                       )}{" "}
                       <span className="font-bold">{flight?.metadata.name}</span>
+                      <Image
+                        alt="plane icon "
+                        className="inline-block"
+                        src={`/plane.svg`}
+                        width={16}
+                        height={16}
+                      />
                     </div>
                   )}
                 </div>

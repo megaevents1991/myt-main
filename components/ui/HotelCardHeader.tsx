@@ -1,5 +1,6 @@
 import { formatHotelName } from "@/lib/formatHotelName";
 import { Stars } from "./stars";
+import { Ham } from "lucide-react";
 
 type HotelCardHeaderProps = {
   hotelName: string;
@@ -33,7 +34,7 @@ export const HotelCardHeader = ({
       {roomName && (
         <div className="w-full flex flex-col lg:flex-row justify-between items-left gap-2 text-sm lg:w-2/3 mb-2">
           <div className="font-bold">{roomName}</div>
-          <div>{meals ? "כולל ארוחות" : "ללא ארוחות"}</div>
+          {meals && <div>{<Ham />}</div>}
         </div>
       )}
     </div>
