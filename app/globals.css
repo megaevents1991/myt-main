@@ -69,9 +69,14 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  body::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .selected-flight {
   border-color: hsl(var(--primary));
   background-color: hsl(var(--primary) / 0.1);
 }
+
