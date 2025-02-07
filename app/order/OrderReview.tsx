@@ -160,9 +160,12 @@ export default function OrderReview() {
   };
 
   const totalPrice = Math.ceil(
-    (eventTicket.price - affDiscount || 0) * numberOfEventTickets +
-      selectedFlight.price + // is it include the price for all passengers?
-      +selectedHotel.price // is it include the price for all passengers?
+    // should be passed to server / DB level
+    (eventTicket.price + Number(process.env.NEXT_PUBLIC_MARKUP) - affDiscount ||
+      0) *
+      numberOfEventTickets +
+      selectedFlight.price +
+      +selectedHotel.price
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -256,7 +259,7 @@ export default function OrderReview() {
         if (error) {
           newErrors[index] = { ...newErrors[index], [field]: error };
         } else {
-          const { [field]: removed, ...rest } = newErrors[index];
+          const { ...rest } = newErrors[index];
           newErrors[index] = rest;
         }
 
@@ -351,9 +354,9 @@ export default function OrderReview() {
                   <div className="flex justify-between items-center text-[22px] font-bold">
                     <span>${totalPrice}</span>
                     {affDiscount > 0 ? (
-                      <span>סה"כ לאחר הנחה</span>
+                      <span>סה&quot;כ לאחר הנחה</span>
                     ) : (
-                      <span>סה"כ</span>
+                      <span>סה&quot;כ</span>
                     )}
                   </div>
                 </div>
