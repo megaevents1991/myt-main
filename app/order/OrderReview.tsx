@@ -1,5 +1,3 @@
-/* eslint-disable react/no-unescaped-entities */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useContext, useEffect, useState, useCallback } from "react";
@@ -292,19 +290,20 @@ export default function OrderReview() {
                 </h2>
               </div>
               <div className="p-6 space-y-6 text-right">
-                <div className="space-y-2">
-                  <h3 className="font-medium text-[15px]">שם האירוע</h3>
-                  <p className="text-[#666] text-[15px]">{event.name}</p>
-                  <p className="text-[#666] text-[15px]">
-                    {eventTicket.category}
+                <div className="space-y-1">
+                  <h3 className="font-bold text-lg">שם האירוע</h3>
+                  <p className="text-[#666] text-[16px]">{event.name}</p>
+                  <p className="flex text-[#666] text-[16px] gap-1" dir="rtl">
+                    <div>{eventTicket.category} </div>
+                    <div>X</div>
+                    <div>{numberOfEventTickets} כרטיסים</div>
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="font-medium text-[15px]">
-                    {selectedHotel.name}
-                  </h3>
-                  <div className="text-[#666] text-[15px]" dir="rtl">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-lg">שם האירוע</h3>
+                  <div className="text-[#666] text-[16px] space-y-1" dir="rtl">
+                    <p>{selectedHotel.name}</p>
                     <p>{selectedHotel.rate.room_data_trans.main_name}</p>
                     <p>
                       {`${selectedHotel.guests.reduce(
@@ -318,7 +317,12 @@ export default function OrderReview() {
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="font-medium text-[15px]">טיסות</h3>
+                  <h3 className="font-bold text-lg">איך מגיעים</h3>
+                  <div className="flex items-center gap-1" dir="rtl">
+                    <div>{selectedFlight.numOfTravelers}</div>
+                    <div>נוסעים בטיסת</div>
+                    <div>{selectedFlight.outbound.flightNumber}</div>
+                  </div>
                   <div dir="rtl" className="text-[#666] text-[15px]">
                     <FlightMeta {...selectedFlight.outbound} />
                     <FlightMeta {...selectedFlight.inbound} />

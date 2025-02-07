@@ -87,9 +87,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
                 <div className="flex text-secondary text-md flex-col lg:flex-row-reverse lg:gap-2 items-end lg:items-start">
                   {step > 1 && (
                     <div>
-                      {formatPrice(
+                      {!!formatPrice(
                         eventTicket.price - event?.tickets_and_rates[0].price
-                      )}{" "}
+                      ) &&
+                        formatPrice(
+                          eventTicket.price - event?.tickets_and_rates[0].price
+                        )}{" "}
                       <span className="font-bold">{eventTicket.category}</span>{" "}
                       <Image
                         className="inline-block"
