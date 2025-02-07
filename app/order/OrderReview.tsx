@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { OrderData } from "@/lib/app.types";
 import validator from "validator";
 import { orderStage } from "../hooks/Affiliate";
+import dayjs from "dayjs";
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -288,7 +289,7 @@ export default function OrderReview() {
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content */}
-      <main className="max-w-[1200px] mx-auto px-6 py-8">
+      <main className="max-w-[1200px] mx-auto lg:px-6 py-8">
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Left Column - Booking Summary and CTA */}
           <div className="space-y-6 order-1 md:order-1">
@@ -300,7 +301,7 @@ export default function OrderReview() {
               </div>
               <div className="p-6 space-y-6 text-right">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-lg">שם האירוע</h3>
+                  <h3 className="font-bold text-lg">איך נהנים</h3>
                   <p className="text-[#666] text-[16px]">{event.name}</p>
                   <div className="flex text-[#666] text-[16px] gap-1" dir="rtl">
                     <div>{eventTicket.category} </div>
@@ -310,7 +311,7 @@ export default function OrderReview() {
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="font-bold text-lg">שם האירוע</h3>
+                  <h3 className="font-bold text-lg">איפה ישנים</h3>
                   <div className="text-[#666] text-[16px] space-y-1" dir="rtl">
                     <p>{selectedHotel.name}</p>
                     <p>{selectedHotel.rate.room_data_trans.main_name}</p>
@@ -334,6 +335,21 @@ export default function OrderReview() {
                     <div>{selectedFlight.numOfTravelers}</div>
                     <div>נוסעים בטיסת</div>
                     <div>{selectedFlight.outbound.flightNumber}</div>
+                  </div>
+                  <div className="flex text-[#666] text-[16px]" dir="rtl">
+                    <div>מתאריך ה-</div>
+                    <div>
+                      {dayjs(selectedFlight.outbound.departureTime).format(
+                        "DD/MM/YYYY"
+                      )}
+                    </div>
+                    <div className="w-1"></div>
+                    <div>וחזרה ב-</div>
+                    <div>
+                      {dayjs(selectedFlight.inbound.departureTime).format(
+                        "DD/MM/YYYY"
+                      )}
+                    </div>
                   </div>
                   <div className="h-1"></div>
                   <div className="text-[#666] text-[15px]">
