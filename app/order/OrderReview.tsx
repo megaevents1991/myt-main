@@ -18,7 +18,13 @@ export default function OrderReview() {
   const [affId, setAffId] = useState<string>("");
 
   useEffect(() => {
-    const affiliateData = localStorage.getItem("mytData");
+    let affiliateData;
+    try {
+      affiliateData = localStorage.getItem("mytData");
+    } catch (error) {
+      console.error("localStorage access error:", error);
+      // add statisg event
+    }
     if (affiliateData) {
       const parsedAffiliateData = JSON.parse(affiliateData);
       if (parsedAffiliateData.affiliateId) {

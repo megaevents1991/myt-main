@@ -42,7 +42,13 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
   // Get affiliate data
   const affParam =
     new URLSearchParams(window.location.search).get("aff") || null;
-  const storedData = localStorage.getItem("mytData");
+  let storedData;
+  try {
+    storedData = localStorage.getItem("mytData");
+  } catch (error) {
+    console.error("localStorage access error:", error);
+    // add statisg event
+  }
 
   // Early return if no affiliate context exists and no URL param
   if (!affParam && !storedData) {
@@ -66,7 +72,12 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
 
   // Save data if we have either userId or affiliateId
   if (flagSave) {
-    localStorage.setItem("mytData", JSON.stringify(affiliateData));
+    try {
+      localStorage.setItem("mytData", JSON.stringify(affiliateData));
+    } catch (error) {
+      console.error("localStorage access error:", error);
+      // add statisg event
+    }
   }
 
   // Send event if we have both userId and affiliateId
