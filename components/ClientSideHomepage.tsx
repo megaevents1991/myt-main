@@ -120,7 +120,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
 
   useAffiliate();
 
-  if (errorDebug) {
+  if (errorDebug.error) {
     return (
       <div className="container mx-auto">
         <h1>אופס! קרתה תקלה</h1>
