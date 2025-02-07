@@ -26,8 +26,12 @@ export const applyFiltersAndSorting = ({
 
   const filteredHotels = hotels
     .filter((hotel) => {
-      const price =
+      const priceLow =
         +hotel.rates[0].payment_options.payment_types[0].show_amount;
+
+      const priceHigh =
+        +hotel.rates[hotel.rates.length - 1].payment_options.payment_types[0]
+          .show_amount;
 
       const hotelRating = hotelsInfo[hotel.id].metadata.rating;
 
@@ -69,7 +73,7 @@ export const applyFiltersAndSorting = ({
         rating[hotelRating - 1];
 
       const matchesPriceRange =
-        price >= priceRange[0] && price <= priceRange[1];
+        priceHigh >= priceRange[0] && priceLow <= priceRange[1];
 
       return (
         matchesPriceRange &&

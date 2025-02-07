@@ -13,6 +13,7 @@ import { Amenities } from "./Amenities";
 import { formatPrice } from "@/lib/price.utils";
 
 export const HotelCard = ({
+  days,
   hotelRates,
   handleSelect,
   isSelected,
@@ -21,9 +22,9 @@ export const HotelCard = ({
   distanceFromCenter,
   isLoading,
   minPrice,
-  days,
   persons,
 }: {
+  days: number;
   hotelRates: Hotel["rates"];
   handleSelect: () => void;
   isSelected: boolean;
@@ -32,7 +33,6 @@ export const HotelCard = ({
   distanceFromCenter: number;
   isLoading: boolean;
   minPrice: number;
-  days: number;
   persons: number;
 }) => {
   const [opened, setOpened] = useState(false);
@@ -93,12 +93,16 @@ export const HotelCard = ({
 
   const selectedPrice =
     +(selectedRoom || hotelRates[0]).payment_options.payment_types[0]
-      .show_amount /
-    (persons * days);
+      .show_amount / persons;
 
   const priceToShowFull =
     formatPrice(selectedPrice - minPrice) !== 0 ? (
-      formatPrice(selectedPrice - minPrice)
+      <div>
+        <div>{formatPrice(selectedPrice - minPrice)}</div>
+        <div className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+          תוספת לכל אורח
+        </div>
+      </div>
     ) : (
       <span className="text-[16px]">כלול במחיר החבילה</span>
     );
@@ -191,6 +195,7 @@ export const HotelCard = ({
                             <div className="flex flex-col gap-2">
                               {hotelRates.map((room) => (
                                 <RoomCard
+                                  days={days}
                                   persons={persons}
                                   minDailyPrice={minPrice}
                                   key={room.match_hash}

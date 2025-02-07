@@ -156,8 +156,7 @@ export const HotelSelection = () => {
       )
     );
 
-    const priceNormalization =
-      getTotalPersons(data.debug.request.guests) * getDaysDiff(event);
+    const priceNormalization = getTotalPersons(data.debug.request.guests);
 
     const maxPrice = Math.ceil(
       Math.max(
@@ -230,12 +229,8 @@ export const HotelSelection = () => {
         break;
       case "priceRange":
         const persons = getTotalPersons(requestDebug.guests);
-        const days = getDaysDiff(event);
         setHotel(undefined);
-        filterValue = value.map((price) => price * persons * days) as [
-          number,
-          number
-        ];
+        filterValue = value.map((price) => price * persons) as [number, number];
         setPriceRange(filterValue);
         break;
       case "hotelName":

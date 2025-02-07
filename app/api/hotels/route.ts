@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     longitude,
     latitude,
     radius,
-    currency: "EUR",
+    currency: "USD",
   };
 
   try {
