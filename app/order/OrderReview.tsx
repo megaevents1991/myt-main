@@ -293,11 +293,11 @@ export default function OrderReview() {
                 <div className="space-y-1">
                   <h3 className="font-bold text-lg">שם האירוע</h3>
                   <p className="text-[#666] text-[16px]">{event.name}</p>
-                  <p className="flex text-[#666] text-[16px] gap-1" dir="rtl">
+                  <div className="flex text-[#666] text-[16px] gap-1" dir="rtl">
                     <div>{eventTicket.category} </div>
                     <div>X</div>
                     <div>{numberOfEventTickets} כרטיסים</div>
-                  </p>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -316,14 +316,18 @@ export default function OrderReview() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <h3 className="font-bold text-lg">איך מגיעים</h3>
-                  <div className="flex items-center gap-1" dir="rtl">
+                  <div
+                    className="text-[#666] text-[16px] flex items-center gap-1"
+                    dir="rtl"
+                  >
                     <div>{selectedFlight.numOfTravelers}</div>
                     <div>נוסעים בטיסת</div>
                     <div>{selectedFlight.outbound.flightNumber}</div>
                   </div>
-                  <div dir="rtl" className="text-[#666] text-[15px]">
+                  <div className="h-1"></div>
+                  <div className="text-[#666] text-[15px]">
                     <FlightMeta {...selectedFlight.outbound} />
                     <FlightMeta {...selectedFlight.inbound} />
                   </div>
