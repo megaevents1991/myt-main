@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
 import { useMediaQuery } from "@mantine/hooks";
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStatsigClient } from "@statsig/react-bindings";
 import { Event } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
@@ -109,8 +109,27 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const { client } = useStatsigClient();
+  const [errorDebug, setErrorDebug] = useState(Object);
+
+  useEffect(() => {
+    window.onerror = function (message, source, lineno, colno, error) {
+      setErrorDebug({ message, error });
+      console.error("Global error caught:", message, error);
+    };
+  }, []);
 
   useAffiliate();
+
+  if (errorDebug) {
+    return (
+      <div className="container mx-auto">
+        <h1>אופס! קרתה תקלה</h1>
+        <p>אנא נסו שוב מאוחר יותר</p>
+        <p>{errorDebug.message}</p>
+        <p>{errorDebug.error}</p>
+      </div>
+    );
+  }
 
   return (
     <>
