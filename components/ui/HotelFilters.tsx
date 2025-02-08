@@ -62,11 +62,11 @@ export const HotelFilters = ({
   const marks = [
     {
       value: minPrice,
-      label: <>{minPrice - basePrice} &#36;</>,
+      label: <>&#36;{minPrice - basePrice}</>,
     },
     {
       value: maxPrice,
-      label: <>+{Math.ceil(maxPrice - basePrice)} &#36;</>,
+      label: <>+&#36;{Math.ceil(maxPrice - basePrice)}</>,
     },
   ];
 
@@ -83,12 +83,13 @@ export const HotelFilters = ({
 
   return (
     <div className="flex flex-col items-center p-5 gap-5 border-2 border-gray-200 shadow-lg rounded-lg">
-      <StarsGroup
-        value={stars}
-        onChange={handleRatingChange}
-        className="mt-5"
-      />
-      <div className="m-auto w-full mt-5 px-2">
+      <div className="m-auto w-full mt-2 px-2">
+        <h3 className="text-lg text-end font-semibold mb-4">דירוג כוכבים</h3>
+        <StarsGroup
+          value={stars}
+          onChange={handleRatingChange}
+          className="mb-8"
+        />
         <h3 className="text-lg text-end font-semibold mb-4">מחיר</h3>
         <RangeSlider
           thumbSize={20}
@@ -133,7 +134,7 @@ export const HotelFilters = ({
           marks={distanceMarks}
         />
       </div>
-      <form className="flex w-full shadow-md mt-10" dir="rtl">
+      <form className="flex w-full shadow-md mt-8" dir="rtl">
         <input
           onChange={(e) => setSearchValue(e.target.value)}
           value={searchValue}
@@ -155,38 +156,45 @@ export const HotelFilters = ({
           <Search />
         </button>
       </form>
-      <div dir="rtl" className="w-full">
-        <Checkbox.Group
-          value={meal}
-          onChange={(value) =>
-            onCriteriaChange({
-              value: value as ["withMeal", "withoutMeal"],
-              type: "meal",
-            })
-          }
-        >
-          <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="withMeal" id="with-meal" />
-            <label htmlFor="withMeal">כולל ארוחה</label>
-          </div>
-          <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="withoutMeal" id="without-meal" />
-            <label htmlFor="withoutMeal">ללא ארוחה</label>
-          </div>
-        </Checkbox.Group>
+      <div className="m-auto w-full mt-4 px-2">
         <div dir="rtl" className="w-full">
-          <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox
-              onChange={(value) =>
-                onCriteriaChange({
-                  value: value.target.checked,
-                  type: "freeCancellation",
-                })
-              }
-              checked={freeCancellation}
-              id={"free-cancellation"}
-            />
-            <label htmlFor="free-cancellation">ביטול חינם</label>
+          <h3 className="text-lg text-start font-semibold mb-2">ארוחות</h3>
+          <Checkbox.Group
+            value={meal}
+            onChange={(value) =>
+              onCriteriaChange({
+                value: value as ["withMeal", "withoutMeal"],
+                type: "meal",
+              })
+            }
+          >
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <Checkbox value="withMeal" id="with-meal" />
+              <label htmlFor="withMeal">כולל ארוחה</label>
+            </div>
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <Checkbox value="withoutMeal" id="without-meal" />
+              <label htmlFor="withoutMeal">ללא ארוחה</label>
+            </div>
+          </Checkbox.Group>
+          <div className="p-4"></div>
+          <h3 className="text-lg text-start font-semibold mb-2">
+            ביטול מלון חינם
+          </h3>
+          <div dir="rtl" className="w-full">
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <Checkbox
+                onChange={(value) =>
+                  onCriteriaChange({
+                    value: value.target.checked,
+                    type: "freeCancellation",
+                  })
+                }
+                checked={freeCancellation}
+                id={"free-cancellation"}
+              />
+              <label htmlFor="free-cancellation">ביטול חינם</label>
+            </div>
           </div>
         </div>
       </div>

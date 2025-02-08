@@ -37,18 +37,18 @@ export const CustomSlider = ({
       ? [
           {
             value: 0,
-            label: <>{minValue} שעות</>,
+            label: <>שעות {minValue}</>,
           },
-          { value: 1439, label: <>{maxValue} שעות</> },
+          { value: 1439, label: <>שעות {maxValue}</> },
         ]
       : [
           {
             value: 0,
-            label: <>+0 &#36;</>,
+            label: <>&#36;0</>,
           },
           {
             value: maxValue,
-            label: <>+{Math.ceil(maxValue - minValue)} &#36;</>,
+            label: <>+&#36;{Math.ceil(maxValue - minValue)}</>,
           },
         ];
 

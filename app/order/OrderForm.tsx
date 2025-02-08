@@ -111,7 +111,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
                             event.base_flight_price
                         )
                       )}{" "}
-                      <span className="font-bold">{flight?.metadata.name}</span>
+                      <span className="font-bold">
+                        {flight?.metadata.name &&
+                        flight.metadata.name.length > 17
+                          ? `${flight.metadata.name.slice(0, 10)}.`
+                          : flight?.metadata.name}
+                      </span>
                       <Image
                         alt="plane icon "
                         className="inline-block"

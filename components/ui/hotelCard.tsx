@@ -11,6 +11,7 @@ import { OrderHotel } from "@/lib/app.types";
 import { HotelCardHeader } from "./HotelCardHeader";
 import { Amenities } from "./Amenities";
 import { formatPrice } from "@/lib/price.utils";
+// import { isMobile } from "react-device-detect";
 
 export const HotelCard = ({
   days,
@@ -96,7 +97,7 @@ export const HotelCard = ({
       .show_amount / persons;
 
   const priceToShowFull =
-    formatPrice(selectedPrice - minPrice) !== 0 ? (
+    formatPrice(selectedPrice - minPrice) !== 0 ? ( // TO DO: fix this
       <div>
         <div>{formatPrice(selectedPrice - minPrice)}</div>
         <div className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
