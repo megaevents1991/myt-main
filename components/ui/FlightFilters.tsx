@@ -166,7 +166,7 @@ export const FlightFilters = ({
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
             label="בוקר"
-            icon={<Sun size={38} />}
+            icon={<Sun size={38} strokeWidth={1} />}
             time="00:00-12:00"
             selected={departureTime.includes("morning")}
             onClick={() => {
@@ -178,7 +178,7 @@ export const FlightFilters = ({
           />
           <TimeBlock
             label="צהריים"
-            icon={<Sunset size={38} />}
+            icon={<Sunset size={38} strokeWidth={1} />}
             time="12:00-18:00"
             selected={departureTime.includes("afternoon")}
             onClick={() => {
@@ -190,7 +190,7 @@ export const FlightFilters = ({
           />
           <TimeBlock
             label="ערב"
-            icon={<Moon size={38} />}
+            icon={<Moon size={38} strokeWidth={1} />}
             time="18:00-00:00"
             selected={departureTime.includes("evening")}
             onClick={() => {
@@ -209,7 +209,7 @@ export const FlightFilters = ({
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
             label="בוקר"
-            icon={<Sun size={38} />}
+            icon={<Sun size={38} strokeWidth={1} />}
             time="00:00-12:00"
             selected={arrivalTime.includes("morning")}
             onClick={() => {
@@ -222,7 +222,7 @@ export const FlightFilters = ({
           <TimeBlock
             label="צהריים"
             time="12:00-18:00"
-            icon={<Sunset size={38} />}
+            icon={<Sunset size={38} strokeWidth={1} />}
             selected={arrivalTime.includes("afternoon")}
             onClick={() => {
               handleTimeChange({
@@ -233,7 +233,7 @@ export const FlightFilters = ({
           />
           <TimeBlock
             label="ערב"
-            icon={<Moon size={38} />}
+            icon={<Moon size={38} strokeWidth={1} />}
             time="18:00-00:00"
             selected={arrivalTime.includes("evening")}
             onClick={() => {

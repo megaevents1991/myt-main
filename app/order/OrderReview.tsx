@@ -352,7 +352,7 @@ export default function OrderReview() {
                     </div>
                   </div>
                   <div className="h-1"></div>
-                  <div className="text-[#666] text-[15px]">
+                  <div className="text-[#666] text-[15px]" dir="ltr">
                     <FlightMeta {...selectedFlight.outbound} />
                     <FlightMeta {...selectedFlight.inbound} />
                   </div>

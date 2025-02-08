@@ -44,11 +44,11 @@ export const CustomSlider = ({
       : [
           {
             value: 0,
-            label: <>+0 &#8364;</>,
+            label: <>+0 &#36;</>,
           },
           {
             value: maxValue,
-            label: <>+{Math.ceil(maxValue - minValue)} &#8364;</>,
+            label: <>+{Math.ceil(maxValue - minValue)} &#36;</>,
           },
         ];
 

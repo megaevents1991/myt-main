@@ -128,25 +128,25 @@ const FlightCard = ({
 }: FlightCardProps) => {
   return (
     <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
-      <div className="w-[20%] lg:w-[15%]">
+      <div className="w-[20%] lg:w-[20%] flex flex-col items-center">
         <div className="mb-2">
           <Image
             src={metadata.logo || ""}
             alt={`${metadata.name} logo`}
-            width={80}
-            height={80}
+            width={100}
+            height={100}
           />
         </div>
-        <div className="text-xs hidden lg:block">{flightNumber}</div>
+        <div className="text-sm hidden lg:block">{flightNumber}</div>
       </div>
-      <div className="w-[70%] lg:w-[55%] flex justify-center">
+      <div className="w-[70%] lg:w-[50%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
       <div className="w-[10%] lg:w-[20%] text-center display flex flex-col items-center gap-2">
         {checkBagsIncluded && (
           <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
-            <Luggage size={"16px"} />
-            <span className="hidden lg:block">כולל מזוודה</span>
+            <Luggage size={isMobile ? "18px" : "24px"} />
+            <span className="hidden text-[16px] lg:block">כולל מזוודה</span>
           </div>
         )}
       </div>
