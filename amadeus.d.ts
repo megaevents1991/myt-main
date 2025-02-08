@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare module "amadeus" {
   export default class Amadeus {
-    constructor(options: { clientId: string; clientSecret: string });
+    constructor(options: { clientId: string; clientSecret: string; hostname?: string });
 
     static location: {
       AIRPORT: string;
