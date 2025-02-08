@@ -5,25 +5,25 @@ export const RoomCard = ({
   room,
   isSelected,
   onRoomSelect,
-  minDailyPrice,
+  minPrice,
   persons,
-  days,
 }: {
   persons: number;
-  minDailyPrice: number;
+  minPrice: number;
   room: Rate;
   isSelected: boolean;
-  days: number;
   onRoomSelect: (room: Rate) => void;
 }) => {
-  const roomPrice = (+room.daily_prices[0] / persons) * days;
+  const selectedPrice =
+    +room.payment_options.payment_types[0].show_amount / persons;
 
   const priceToShowFull =
-    roomPrice - minDailyPrice !== 0
-      ? ` לאורח/$${Math.abs(Math.ceil(+roomPrice - minDailyPrice))}${
-          +roomPrice - minDailyPrice > 0 ? "+" : "-"
+    selectedPrice - minPrice !== 0
+      ? ` לאורח/$${Math.abs(Math.ceil(+selectedPrice - minPrice))}${
+          +selectedPrice - minPrice > 0 ? "+" : "-"
         }`
       : "כלול במחיר";
+
   return (
     <div onClick={() => onRoomSelect(room)}>
       <div
@@ -42,7 +42,7 @@ export const RoomCard = ({
           {room.room_name} ★
         </Badge> */}
         {/* <div>Meal: {room.meal}</div> */}
-        <div> {priceToShowFull}</div>
+        <div>{priceToShowFull}</div>
         {/* {room.room_name_info}
         {room.daily_prices[0]} / night
         {room.amenities_data.map((amenity) => (

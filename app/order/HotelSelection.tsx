@@ -21,7 +21,7 @@ import {
 } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
-import { getDaysDiff, getTotalPersons } from "@/lib/price.utils";
+import { getTotalPersons } from "@/lib/price.utils";
 
 export const HotelSelection = () => {
   const {
@@ -463,7 +463,6 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map((hotel) => (
               <HotelCard
-                days={getDaysDiff(event)}
                 persons={getTotalPersons(requestDebug?.guests || [])}
                 minPrice={basePriceNightPerson}
                 isLoading={isLoading}

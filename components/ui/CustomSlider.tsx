@@ -1,3 +1,4 @@
+import { formatPrice } from "@/lib/price.utils";
 import { Slider } from "@mantine/core";
 
 const themeColor = "#05203C";
@@ -17,6 +18,8 @@ export const CustomSlider = ({
   maxValue = 3000,
   minValue = 0,
   variant = "time",
+  basePrice = 0,
+  numOfPassengers = 1,
 }: {
   onChange: (value: number) => void;
   onChangeEnd: (value: number) => void;
@@ -24,6 +27,8 @@ export const CustomSlider = ({
   maxValue: number;
   minValue: number;
   variant?: "price" | "time";
+  basePrice?: number;
+  numOfPassengers?: number;
 }) => {
   const handleOnChange = (value: number) => {
     onChange(value);
@@ -31,6 +36,8 @@ export const CustomSlider = ({
   const handleOnChangeEnd = (value: number) => {
     onChangeEnd(value);
   };
+
+  const priceMinValue = Math.min(minValue / numOfPassengers, basePrice);
 
   const marks =
     variant === "time"
@@ -43,12 +50,12 @@ export const CustomSlider = ({
         ]
       : [
           {
-            value: 0,
-            label: <>&#36;0</>,
+            value: priceMinValue,
+            label: <>{formatPrice(minValue / numOfPassengers - basePrice)}</>,
           },
           {
             value: maxValue,
-            label: <>+&#36;{Math.ceil(maxValue - minValue)}</>,
+            label: <>{formatPrice(maxValue / numOfPassengers - basePrice)}</>,
           },
         ];
 
@@ -57,8 +64,12 @@ export const CustomSlider = ({
       <Slider
         thumbSize={20}
         min={variant === "time" ? minValue : Math.ceil(minValue)}
-        max={variant === "time" ? maxValue : Math.ceil(maxValue)}
-        step={variant === "time" ? 0.5 : Math.floor((maxValue - minValue) / 10)}
+        max={variant === "time" ? maxValue : Math.ceil(maxValue + 10)}
+        step={
+          variant === "time"
+            ? 0.5
+            : Math.floor((maxValue / numOfPassengers - priceMinValue) / 10)
+        }
         value={value}
         styles={{
           bar: { backgroundColor: themeColor },
@@ -69,7 +80,9 @@ export const CustomSlider = ({
         onChange={handleOnChange}
         onChangeEnd={handleOnChangeEnd}
         label={
-          variant === "time" ? formatTime(value) : Math.ceil(value - minValue)
+          variant === "time"
+            ? formatTime(value)
+            : Math.ceil(value / numOfPassengers - priceMinValue)
         }
         marks={marks}
       />

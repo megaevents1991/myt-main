@@ -58,6 +58,7 @@ export const FlightSelection = () => {
     minDuration: MAX_FLIGHT_DURATION,
     maxPrice: 0,
     minPrice: 0,
+    numOfPassengers: numberOfEventTickets,
   });
   const [selectedFlightPrice, setSelectedFlightPrice] = useState(0);
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
@@ -100,10 +101,11 @@ export const FlightSelection = () => {
     setFlight(undefined);
 
     try {
+      const adults = options.adults || planeTickets.adults;
       const res = await fetch(`/api/flights?eventId=${event?.id}`, {
         body: JSON.stringify({
           ...options,
-          adults: options.adults || planeTickets.adults,
+          adults,
           departureDate: dateRange[0]?.getTime(),
           returnDate: dateRange[1]?.getTime(),
         }),
@@ -137,6 +139,7 @@ export const FlightSelection = () => {
         minDuration: Math.ceil(minDuration / 60),
         maxPrice,
         minPrice,
+        numOfPassengers: adults,
       });
 
       setFilters((prev) => ({
@@ -295,6 +298,8 @@ export const FlightSelection = () => {
                 value={selectedFlightPrice}
                 maxValue={flightsMeta.maxPrice}
                 minValue={flightsMeta.minPrice}
+                basePrice={event.base_flight_price}
+                numOfPassengers={flightsMeta.numOfPassengers}
               />
             }
             flightDurationComponent={
@@ -397,6 +402,8 @@ export const FlightSelection = () => {
                     value={selectedFlightPrice}
                     maxValue={flightsMeta.maxPrice}
                     minValue={flightsMeta.minPrice}
+                    basePrice={event.base_flight_price}
+                    numOfPassengers={flightsMeta.numOfPassengers}
                   />
                 }
                 flightDurationComponent={
@@ -425,7 +432,7 @@ export const FlightSelection = () => {
                   isLoading={isLoading}
                   key={flight.id}
                   {...flight}
-                  price={Math.ceil(flight.price / planeTickets.adults)}
+                  price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
                   flightId={flight.id}
                   isSelected={orderFlight?.id === flight.id}
                   onClick={handleFlightChange}

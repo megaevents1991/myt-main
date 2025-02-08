@@ -14,7 +14,6 @@ import { formatPrice } from "@/lib/price.utils";
 // import { isMobile } from "react-device-detect";
 
 export const HotelCard = ({
-  days,
   hotelRates,
   handleSelect,
   isSelected,
@@ -25,7 +24,6 @@ export const HotelCard = ({
   minPrice,
   persons,
 }: {
-  days: number;
   hotelRates: Hotel["rates"];
   handleSelect: () => void;
   isSelected: boolean;
@@ -196,9 +194,8 @@ export const HotelCard = ({
                             <div className="flex flex-col gap-2">
                               {hotelRates.map((room) => (
                                 <RoomCard
-                                  days={days}
                                   persons={persons}
-                                  minDailyPrice={minPrice}
+                                  minPrice={minPrice}
                                   key={room.match_hash}
                                   room={room}
                                   isSelected={
