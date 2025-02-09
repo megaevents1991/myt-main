@@ -292,27 +292,34 @@ export default function OrderReview() {
       <main className="max-w-[1200px] mx-auto lg:px-6 py-8">
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Left Column - Booking Summary and CTA */}
-          <div className="space-y-6 order-1 md:order-1">
+          <div className="space-y-4 order-1 md:order-1">
             <Card className="bg-white shadow-lg overflow-hidden">
               <div className="bg-[#277e89] text-white py-4 px-6 ">
                 <h2 className="text-[22px] font-bold text-right">
                   סיכום הזמנה
                 </h2>
               </div>
-              <div className="p-6 space-y-6 text-right">
-                <div className="space-y-1">
-                  <h3 className="font-bold text-lg">איך נהנים</h3>
-                  <p className="text-[#666] text-[16px]">{event.name}</p>
-                  <div className="flex text-[#666] text-[16px] gap-1" dir="rtl">
+              <div className="p-6 space-y-3 text-right">
+                <div className="text-center">
+                  <h2 className="text-[20px] font-bold">{event.name}</h2>
+                  <p className="text-[18px]">
+                    {event.location.name +
+                      " | " +
+                      dayjs(event.date).format("DD/MM/YYYY")}
+                  </p>
+                </div>
+                <div className="">
+                  <h3 className="font-bold text-lg">כרטיסים לאירוע</h3>
+                  <div className="flex text-[16px] gap-1" dir="rtl">
                     <div>{eventTicket.category} </div>
                     <div>X</div>
-                    <div>{numberOfEventTickets} כרטיסים</div>
+                    <div>{numberOfEventTickets}</div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="">
                   <h3 className="font-bold text-lg">איפה ישנים</h3>
-                  <div className="text-[#666] text-[16px] space-y-1" dir="rtl">
+                  <div className="text-[16px] space-y-1" dir="rtl">
                     <p>{selectedHotel.name}</p>
                     <p>{selectedHotel.rate.room_data_trans.main_name}</p>
                     <p>
@@ -320,23 +327,34 @@ export default function OrderReview() {
                         (ppl, room) => ppl + room.children.length + room.adults,
                         0
                       )} אורחים`}
-                      {` | `}
-                      {`${selectedHotel.guests.length} חדרים`}
+                      {selectedHotel.guests.length > 1 &&
+                        ` | ${selectedHotel.guests.length} חדרים`}
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-1">
+                <div className="">
                   <h3 className="font-bold text-lg">איך מגיעים</h3>
                   <div
-                    className="text-[#666] text-[16px] flex items-center gap-1"
+                    className="text-[16px] flex items-center gap-1"
                     dir="rtl"
                   >
                     <div>{selectedFlight.numOfTravelers}</div>
-                    <div>נוסעים בטיסת</div>
-                    <div>{selectedFlight.outbound.flightNumber}</div>
+                    <div>נוסעים טסים עם</div>
+                    <div>
+                      {selectedFlight?.metadata.name &&
+                      selectedFlight.metadata.name.length > 17
+                        ? `${selectedFlight.metadata.name.slice(0, 10)}.`
+                        : selectedFlight?.metadata.name}
+                    </div>
+                    <div>, בטיסות</div>
+                    <div>
+                      {selectedFlight.outbound.flightNumber +
+                        " ו- " +
+                        selectedFlight.inbound.flightNumber}
+                    </div>
                   </div>
-                  <div className="flex text-[#666] text-[16px]" dir="rtl">
+                  <div className="flex text-[16px]" dir="rtl">
                     <div>מתאריך ה-</div>
                     <div>
                       {dayjs(selectedFlight.outbound.departureTime).format(
@@ -352,7 +370,7 @@ export default function OrderReview() {
                     </div>
                   </div>
                   <div className="h-1"></div>
-                  <div className="text-[#666] text-[15px]" dir="ltr">
+                  <div className="text-[12px] mt-2">
                     <FlightMeta {...selectedFlight.outbound} />
                     <FlightMeta {...selectedFlight.inbound} />
                   </div>
@@ -401,9 +419,9 @@ export default function OrderReview() {
             <Card className="bg-white shadow-lg overflow-hidden">
               <div className="px-8 pt-6 pb-8">
                 <h2 className="text-[22px] font-bold mb-4 text-right">
-                  איש קשר
+                  פרטי הנוסעים
                 </h2>
-                <p className="text-right mb-8 text-gray-600 text-[15px]">
+                <p className="text-right mb-8 text-[16px]">
                   נציגנו ייצורו עימך קשר ביום העסקים הבא להשלמת ההזמנה
                 </p>
 
