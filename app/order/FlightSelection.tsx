@@ -10,7 +10,7 @@ import {
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea, Skeleton } from "@mantine/core";
-import { Settings2Icon, Search, UsersRound } from "lucide-react";
+import { Settings2Icon, Search } from "lucide-react";
 import {
   useContext,
   useEffect,
@@ -285,16 +285,24 @@ export const FlightSelection = () => {
         <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
-            <div className="flex w-full lg:w-[50%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
+            <div className="flex w-full lg:w-[60%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
+              {matches && (
+                <span className="text-center text-lg">כמה טסים?</span>
+              )}
               <div className="w-fit">
                 <SelectWithIcon
                   value={planeTickets.adults}
                   onChange={(value) =>
                     setPlaneTickets({ adults: +(value || 0), children: 0 })
                   }
-                  icon={<UsersRound />}
+                  icon={null}
                 />
               </div>
+              {matches && (
+                <span className="mr-6 text-center text-lg">
+                  ובאיזה תאריכים?
+                </span>
+              )}
               <div className="flex flex-row w-min gap-2">
                 <DateRange
                   dateRange={dateRange}
@@ -309,7 +317,7 @@ export const FlightSelection = () => {
                 </button>
               </div>
             </div>
-            <div className="w-[25%]"></div>
+            <div className="w-[15%]"></div>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import React, { ReactNode } from "react";
+import Image from "next/image";
 
 type SelectWithIconProps = {
-  icon: ReactNode;
+  icon?: ReactNode | null;
   value: number;
   onChange: (value: string) => void;
 };
@@ -13,8 +14,15 @@ export const SelectWithIcon = ({
 }: SelectWithIconProps) => {
   return (
     <div className="relative">
-      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-        {icon}
+      <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+        {icon || ( // TO DO: dynamic icon based on props support SVG = image.
+          <Image
+            src="/icons/traveler.svg"
+            alt="Traveler icon"
+            width={24}
+            height={24}
+          />
+        )}
       </span>
       <select
         value={value}

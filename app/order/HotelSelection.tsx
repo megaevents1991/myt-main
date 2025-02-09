@@ -300,7 +300,11 @@ export const HotelSelection = () => {
         >
           <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
-            <div className="flex w-full lg:w-[50%] justify-start lg:justify-center flex-row gap-2 text-xs">
+            <div className="flex w-full lg:w-[60%] justify-start lg:justify-center flex-row gap-2 text-xs items-center margin-auto">
+              {matches && (
+                <span className="text-center text-lg">כמה תהיו?</span>
+              )}
+
               <div className="w-fit">
                 <Popover
                   width={300}
@@ -315,7 +319,7 @@ export const HotelSelection = () => {
                         {" "}
                         {`${getTotalPersons(roomParams)} אורחים`}
                       </span>
-                      {matches && (
+                      {matches && roomParams.length > 1 && (
                         <span>
                           {` | `}
                           {`${roomParams.length} חדרים`}
@@ -360,6 +364,12 @@ export const HotelSelection = () => {
                   </Popover.Dropdown>
                 </Popover>
               </div>
+              {matches && (
+                <span className="mr-6 text-center text-lg">
+                  ובאיזה תאריכים?
+                </span>
+              )}
+
               <div className="flex gap-2 flex-row w-min">
                 <DateRange
                   dateRange={dateRange}
@@ -375,7 +385,7 @@ export const HotelSelection = () => {
                 </Button>
               </div>
             </div>
-            <div className="w-[25%]"></div>
+            <div className="w-[15%]"></div>
           </div>
         </div>
       </div>
