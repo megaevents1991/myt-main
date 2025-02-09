@@ -201,7 +201,10 @@ export const HotelCard = ({
                                   isSelected={
                                     selectedRoom?.match_hash === room.match_hash
                                   }
-                                  onRoomSelect={handleRoomSelect}
+                                  onRoomSelect={(room) => {
+                                    handleRoomSelect(room);
+                                    setOpened((prev) => !prev);
+                                  }}
                                 />
                               ))}
                             </div>

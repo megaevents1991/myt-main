@@ -55,7 +55,9 @@ export const EventTicketCard = ({
             />
             <div>
               <div className="text-xl">{category}</div>
-              <div className="text-lg">{categoryDescription}</div>
+              {categoryDescription?.length > 0 && (
+                <div className="text-lg">{categoryDescription}</div>
+              )}
             </div>
           </div>
           <div

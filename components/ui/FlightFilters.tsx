@@ -252,7 +252,7 @@ export const FlightFilters = ({
       {/* Price Range Section */}
       <div>
         <h3 dir="rtl" className="text-lg font-semibold mb-4">
-          אני מוכן להוסיף עד
+          אני מוכן להוסיף
         </h3>
         {priceComponent}
       </div>
