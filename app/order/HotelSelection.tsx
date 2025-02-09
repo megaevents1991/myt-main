@@ -132,7 +132,7 @@ export const HotelSelection = () => {
       );
 
       const rooms = [...new Set(allRooms)];
-      return { id: hotel.id, rooms };
+      return { id: hotel.id, hid: hotel.hid, rooms };
     });
 
     const hotelsInfoRes = await fetch(`/api/hotels-info`, {

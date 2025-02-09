@@ -142,3 +142,54 @@ export type HotelInfo = {
   error: string;
   status: string;
 };
+
+
+export type HotelInfoDB = {
+  address: string;
+  name: string;
+  amenity_groups: Array<{
+    amenities: Array<string>;
+    group_name: string;
+    non_free_amenities: Array<string>;
+  }>;
+  hid: number;
+  _id: string;
+  images_ext: Array<{
+    category_slug: string;
+    url: string;
+  }>;
+  latitude: number;
+  longitude: number;
+  room_groups: Array<{
+    images: Array<string>;
+    images_ext: Array<{
+      category_slug: string;
+      url: string;
+    }>;
+    name: string;
+    name_struct: {
+      bathroom: string;
+      bedding_type: string;
+      main_name: string;
+    };
+    rg_ext: {
+      balcony: number;
+      bathroom: number;
+      bedding: number;
+      bedrooms: number;
+      capacity: number;
+      class: number;
+      club: number;
+      family: number;
+      floor: number;
+      quality: number;
+      sex: number;
+      view: number;
+    };
+    room_amenities: Array<string>;
+    room_group_id: number;
+  }>;
+  star_rating: number;
+  city: string;
+  created_at: string;
+};

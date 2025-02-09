@@ -38,6 +38,7 @@ export type HotelResponse = {
 };
 
 export type Hotel = {
+  hid: number;
   id: string;
   rates: Rate[];
 };
