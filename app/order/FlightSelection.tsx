@@ -1,6 +1,12 @@
 import { DateRange } from "@/components/ui/dateInput";
 import { CustomSlider } from "@/components/ui/CustomSlider";
-import { Event, Flight, FlightSearchOptions, TimeRange } from "@/lib/app.types";
+import {
+  Event,
+  Flight,
+  FlightSearchCriteria,
+  FlightSearchOptions,
+  TimeRange,
+} from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea, Skeleton } from "@mantine/core";
@@ -12,6 +18,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
 } from "react";
 import { OrderContext } from "../app.context";
 import { FlightTicketCard } from "@/components/ui/FlightCard";
@@ -70,6 +77,7 @@ export const FlightSelection = () => {
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(400);
+  const [, startTransition] = useTransition();
 
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -171,92 +179,6 @@ export const FlightSelection = () => {
     setFilteredFlights(sortedData);
   };
 
-  const handleFilterChange = async (
-    key: string,
-    value: string | boolean | string[]
-  ) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    setFlight(undefined);
-
-    const filteredFlights = applyFiltersAndSorting(flights, {
-      airline: filters.airline,
-      sortOption,
-      flightDuration: selectedFlightDuration * 60,
-      departureRanges,
-      arrivalRanges,
-      maxPrice: selectedFlightPrice,
-      numOfStops: filters.numOfStops,
-      luggage: filters.luggage,
-      ...{ [key]: value },
-    });
-
-    setFilteredFlights(filteredFlights);
-  };
-
-  const handleChangeDurationEnd = (duration: number) => {
-    setFlight(undefined);
-    setSelectedFlightDuration(duration);
-
-    const filteredFlights = applyFiltersAndSorting(flights, {
-      airline: filters.airline,
-      sortOption,
-      flightDuration: duration,
-      departureRanges,
-      arrivalRanges,
-      maxPrice: selectedFlightPrice,
-      numOfStops: filters.numOfStops,
-      luggage: filters.luggage,
-    });
-
-    setFilteredFlights(filteredFlights);
-  };
-
-  const handlePriceChange = (price: number) => {
-    setFlight(undefined);
-    setSelectedFlightPrice(price);
-
-    const filteredFlights = applyFiltersAndSorting(flights, {
-      airline: filters.airline,
-      sortOption,
-      flightDuration: selectedFlightDuration,
-      departureRanges,
-      arrivalRanges,
-      maxPrice: price,
-      numOfStops: filters.numOfStops,
-      luggage: filters.luggage,
-    });
-
-    setFilteredFlights(filteredFlights);
-  };
-
-  const handleRangeChange = ({
-    range,
-    name,
-  }: {
-    range: TimeRange[] | [];
-    name: "departure" | "arrival";
-  }) => {
-    setFlight(undefined);
-    if (name === "departure") {
-      setDepartureRanges(range);
-    } else {
-      setArrivalRanges(range);
-    }
-
-    const filteredFlights = applyFiltersAndSorting(flights, {
-      airline: filters.airline,
-      sortOption,
-      flightDuration: selectedFlightDuration,
-      departureRanges: name === "departure" ? range : departureRanges,
-      arrivalRanges: name === "arrival" ? range : arrivalRanges,
-      maxPrice: selectedFlightPrice,
-      numOfStops: filters.numOfStops,
-      luggage: filters.luggage,
-    });
-
-    setFilteredFlights(filteredFlights);
-  };
-
   const airlines = useMemo(
     () =>
       Array.from(
@@ -272,6 +194,48 @@ export const FlightSelection = () => {
 
   const handleFlightChange = (value: string) => {
     setFlight(flights.find((f) => f.id === value));
+  };
+
+  const handleFlightSearchCriteriaChange = ({
+    value,
+    type,
+  }: FlightSearchCriteria) => {
+    setFlight(undefined);
+    switch (type) {
+      case "arrivalRanges":
+        setArrivalRanges(value);
+        break;
+      case "departureRanges":
+        setDepartureRanges(value);
+        break;
+      case "maxPrice":
+        setSelectedFlightPrice(value);
+        break;
+      case "flightDuration":
+        setSelectedFlightDuration(value);
+        break;
+      case "airline":
+      case "numOfStops":
+      case "luggage":
+        setFilters((prev) => ({ ...prev, [type]: value }));
+        break;
+    }
+
+    startTransition(() => {
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: filters.airline,
+        sortOption,
+        flightDuration: selectedFlightDuration,
+        departureRanges,
+        arrivalRanges,
+        maxPrice: selectedFlightPrice,
+        numOfStops: filters.numOfStops,
+        luggage: filters.luggage,
+        ...{ [type]: value },
+      });
+
+      setFilteredFlights(filteredFlights);
+    });
   };
 
   if (error) {
@@ -290,11 +254,12 @@ export const FlightSelection = () => {
       {!matches && (
         <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
           <FlightFilters
+            handleFlightSearchCriteriaChange={handleFlightSearchCriteriaChange}
             priceComponent={
               <CustomSlider
                 onChange={setSelectedFlightPrice}
-                variant="price"
-                onChangeEnd={handlePriceChange}
+                variant="maxPrice"
+                onChangeEnd={handleFlightSearchCriteriaChange}
                 value={selectedFlightPrice}
                 maxValue={flightsMeta.maxPrice}
                 minValue={flightsMeta.minPrice}
@@ -304,17 +269,15 @@ export const FlightSelection = () => {
             }
             flightDurationComponent={
               <CustomSlider
-                onChangeEnd={handleChangeDurationEnd}
+                onChangeEnd={handleFlightSearchCriteriaChange}
                 value={selectedFlightDuration}
                 onChange={setSelectedFlightDuration}
                 maxValue={flightsMeta.maxDuration}
                 minValue={flightsMeta.minDuration}
               />
             }
-            handleTimeRangeChange={handleRangeChange}
             airlines={airlines}
             filters={filters}
-            handleFilterChange={handleFilterChange}
           />
         </FiltersModal>
       )}
@@ -394,11 +357,14 @@ export const FlightSelection = () => {
           {matches && (
             <Skeleton visible={isLoading}>
               <FlightFilters
+                handleFlightSearchCriteriaChange={
+                  handleFlightSearchCriteriaChange
+                }
                 priceComponent={
                   <CustomSlider
                     onChange={setSelectedFlightPrice}
-                    variant="price"
-                    onChangeEnd={handlePriceChange}
+                    variant="maxPrice"
+                    onChangeEnd={handleFlightSearchCriteriaChange}
                     value={selectedFlightPrice}
                     maxValue={flightsMeta.maxPrice}
                     minValue={flightsMeta.minPrice}
@@ -409,16 +375,14 @@ export const FlightSelection = () => {
                 flightDurationComponent={
                   <CustomSlider
                     onChange={setSelectedFlightDuration}
-                    onChangeEnd={handleChangeDurationEnd}
+                    onChangeEnd={handleFlightSearchCriteriaChange}
                     value={selectedFlightDuration}
                     maxValue={flightsMeta.maxDuration}
                     minValue={flightsMeta.minDuration}
                   />
                 }
-                handleTimeRangeChange={handleRangeChange}
                 airlines={airlines}
                 filters={filters}
-                handleFilterChange={handleFilterChange}
               />
             </Skeleton>
           )}

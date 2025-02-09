@@ -5,7 +5,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@mantine/core";
 import { Sunset, Sun, Moon } from "lucide-react";
-import { TimeRange } from "@/lib/app.types";
+import { FlightSearchCriteria, TimeRange } from "@/lib/app.types";
 
 interface TimeBlockProps {
   label: string;
@@ -63,23 +63,15 @@ const TimeBlock = ({
 
 export const FlightFilters = ({
   airlines,
-  handleFilterChange,
   filters,
-  handleTimeRangeChange,
   flightDurationComponent,
   priceComponent,
+  handleFlightSearchCriteriaChange,
 }: {
   priceComponent: React.ReactNode;
   flightDurationComponent: React.ReactNode;
   airlines: { label: string; value: string }[];
-  handleTimeRangeChange: ({
-    range,
-    name,
-  }: {
-    range: TimeRange[] | [];
-    name: "arrival" | "departure";
-  }) => void;
-  handleFilterChange: (key: string, value: string | boolean | string[]) => void;
+  handleFlightSearchCriteriaChange: (criteria: FlightSearchCriteria) => void;
   filters: {
     numOfStops: string[];
     airline: string[];
@@ -95,25 +87,25 @@ export const FlightFilters = ({
     state,
   }: {
     range: "morning" | "afternoon" | "evening";
-    state: "departure" | "arrival";
+    state: "departureRanges" | "arrivalRanges";
   }) => {
-    if (state === "departure") {
+    if (state === "departureRanges") {
       const newRange = departureTime.includes(range)
         ? departureTime.filter((item) => item !== range)
         : [...departureTime, range];
       setDepartureTime(newRange);
-      handleTimeRangeChange({
-        range: newRange.map((item) => timeRangeMap[item]),
-        name: state,
+      handleFlightSearchCriteriaChange({
+        value: newRange.map((item) => timeRangeMap[item]),
+        type: "departureRanges",
       });
     } else {
       const newRange = arrivalTime.includes(range)
         ? arrivalTime.filter((item) => item !== range)
         : [...arrivalTime, range];
       setArrivalTime(newRange);
-      handleTimeRangeChange({
-        range: newRange.map((item) => timeRangeMap[item]),
-        name: state,
+      handleFlightSearchCriteriaChange({
+        value: newRange.map((item) => timeRangeMap[item]),
+        type: "arrivalRanges",
       });
     }
   };
@@ -125,7 +117,9 @@ export const FlightFilters = ({
         <h3 className="text-lg font-semibold mb-4">עצירות</h3>
         <Checkbox.Group
           value={filters.numOfStops}
-          onChange={(value) => handleFilterChange("numOfStops", value)}
+          onChange={(value) =>
+            handleFlightSearchCriteriaChange({ type: "numOfStops", value })
+          }
         >
           <div className="flex items-center space-x-2 space-x-reverse">
             <Checkbox value="0" id="direct" />
@@ -147,7 +141,9 @@ export const FlightFilters = ({
         <h3 className="text-lg font-semibold mb-4">כבודה</h3>
         <Checkbox.Group
           value={filters.luggage}
-          onChange={(value) => handleFilterChange("luggage", value)}
+          onChange={(value) =>
+            handleFlightSearchCriteriaChange({ type: "luggage", value })
+          }
         >
           <div className="flex items-center space-x-2 space-x-reverse">
             <Checkbox value="withLuggage" id="one-stop" />
@@ -172,7 +168,7 @@ export const FlightFilters = ({
             onClick={() => {
               handleTimeChange({
                 range: "morning",
-                state: "departure",
+                state: "departureRanges",
               });
             }}
           />
@@ -184,7 +180,7 @@ export const FlightFilters = ({
             onClick={() => {
               handleTimeChange({
                 range: "afternoon",
-                state: "departure",
+                state: "departureRanges",
               });
             }}
           />
@@ -196,7 +192,7 @@ export const FlightFilters = ({
             onClick={() => {
               handleTimeChange({
                 range: "evening",
-                state: "departure",
+                state: "departureRanges",
               });
             }}
           />
@@ -215,7 +211,7 @@ export const FlightFilters = ({
             onClick={() => {
               handleTimeChange({
                 range: "morning",
-                state: "arrival",
+                state: "arrivalRanges",
               });
             }}
           />
@@ -227,7 +223,7 @@ export const FlightFilters = ({
             onClick={() => {
               handleTimeChange({
                 range: "afternoon",
-                state: "arrival",
+                state: "arrivalRanges",
               });
             }}
           />
@@ -239,7 +235,7 @@ export const FlightFilters = ({
             onClick={() => {
               handleTimeChange({
                 range: "evening",
-                state: "arrival",
+                state: "arrivalRanges",
               });
             }}
           />
@@ -274,7 +270,9 @@ export const FlightFilters = ({
         <h3 className="text-lg font-semibold mb-4">חברת תעופה</h3>
         <Checkbox.Group
           value={filters.airline}
-          onChange={(value) => handleFilterChange("airline", value)}
+          onChange={(value) =>
+            handleFlightSearchCriteriaChange({ type: "airline", value })
+          }
         >
           {airlines.map(({ label, value }) => (
             <Checkbox

@@ -4,7 +4,7 @@ import { ChevronUp, ChevronDown, Hotel as HotelSVG } from "lucide-react";
 import { Collapse, ScrollArea, Skeleton } from "@mantine/core";
 import { Carousel, Embla } from "@mantine/carousel";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RoomCard } from "./roomCard";
 import Image from "next/image";
 import { OrderHotel } from "@/lib/app.types";
@@ -19,7 +19,6 @@ export const HotelCard = ({
   isSelected,
   hotelInfo,
   handleSelectedRate,
-  distanceFromCenter,
   isLoading,
   minPrice,
   persons,
@@ -29,7 +28,6 @@ export const HotelCard = ({
   isSelected: boolean;
   hotelInfo: HotelInfoClient;
   handleSelectedRate: (orderHotel: Omit<OrderHotel, "guests">) => void;
-  distanceFromCenter: number;
   isLoading: boolean;
   minPrice: number;
   persons: number;
@@ -94,10 +92,11 @@ export const HotelCard = ({
     +(selectedRoom || hotelRates[0]).payment_options.payment_types[0]
       .show_amount / persons;
 
-  const priceToShowFull =
-    formatPrice(selectedPrice - minPrice) !== 0 ? ( // TO DO: fix this
+  const priceToShowFull = useMemo(() => {
+    const styledPrice = formatPrice(selectedPrice - minPrice);
+    return !!styledPrice ? ( // TO DO: fix this
       <div>
-        <div>{formatPrice(selectedPrice - minPrice)}</div>
+        <div>{styledPrice}</div>
         <div className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
           תוספת לכל אורח
         </div>
@@ -105,6 +104,7 @@ export const HotelCard = ({
     ) : (
       <span className="text-[16px]">כלול במחיר החבילה</span>
     );
+  }, [selectedPrice, minPrice]);
 
   const hotelImages = [
     ...(selectedRoomInfo?.images || ""),
@@ -159,7 +159,9 @@ export const HotelCard = ({
                   </div>
                   <div className="w-full lg:w-2/3">
                     <HotelCardHeader
-                      distanceFromCenter={distanceFromCenter}
+                      distanceFromCenter={Math.ceil(
+                        hotelInfo.metadata.distanceFromCenter
+                      )}
                       hotelName={hotelInfo.metadata.hotelName}
                       meals={!!selectedRoom?.meal_data.has_breakfast}
                       rating={hotelInfo.metadata.rating}
@@ -222,7 +224,7 @@ export const HotelCard = ({
                 </div>
               </div>
             </div>
-            <div className="hidden text-2xl font-bold lg:flex lg:w-1/5 lg:justify-center lg:text-center lg:items-center lg:border-r lg:pr-2">
+            <div className="hidden lg:flex text-2xl font-bold w-1/5 justify-center text-center items-center border-r pr-2">
               {priceToShowFull}
             </div>
             <div className="block lg:hidden">

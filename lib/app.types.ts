@@ -137,6 +137,32 @@ export type HotelSearchCriteria =
       value: boolean;
     };
 
+export type FlightSearchCriteria =
+  | {
+      type: "departureRanges" | "arrivalRanges";
+      value: TimeRange[];
+    }
+  | {
+      type: "maxPrice";
+      value: number;
+    }
+  | {
+      type: "flightDuration";
+      value: number;
+    }
+  | {
+      type: "airline";
+      value: string[];
+    }
+  | {
+      type: "numOfStops";
+      value: string[];
+    }
+  | {
+      type: "luggage";
+      value: string[];
+    };
+
 type EventTicket = {
   category: string;
   price: number;

@@ -97,11 +97,8 @@ export const HotelSelection = () => {
   const [requestDebug, setRequestDebug] = useState(
     {} as HotelResponse["debug"]["request"]
   );
-  const [minPrice, setMinPrice] = useState({
-    minPrice: 0,
-    minDailyPrice: 0,
-  });
-  const [basePriceNightPerson, setBasePriceNightPerson] = useState(0);
+  const [minPrice, setMinPrice] = useState(0);
+  const [basePricePerPerson, setBasePricePerPerson] = useState(0);
   const [freeCancellation, setFreeCancellation] = useState(false);
 
   const matches = useMediaQuery("(min-width: 1024px)");
@@ -156,52 +153,40 @@ export const HotelSelection = () => {
       )
     );
 
-    const priceNormalization = getTotalPersons(data.debug.request.guests);
+    const totalPersons = getTotalPersons(data.debug.request.guests);
 
-    const maxPrice = Math.ceil(
-      Math.max(
-        ...data.data.hotels.map(
-          (hotel) =>
-            +hotel.rates[hotel.rates.length - 1].payment_options
-              .payment_types[0].show_amount
-        )
-      ) / priceNormalization
+    const maxPrice = Math.max(
+      ...data.data.hotels.map(
+        (hotel) =>
+          +hotel.rates[hotel.rates.length - 1].payment_options.payment_types[0]
+            .show_amount
+      )
     );
 
-    let minPrice = Infinity;
-    let minDailyPrice = 0;
+    const minPrice = Math.min(
+      ...data.data.hotels.map(
+        (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
+      )
+    );
 
-    data.data.hotels.forEach((hotel) => {
-      const price =
-        +hotel.rates[0].payment_options.payment_types[0].show_amount /
-        priceNormalization;
-      if (price < minPrice) {
-        minPrice = price;
-        minDailyPrice = +hotel.rates[0].daily_prices[0];
-      }
-    });
-
-    const basePriceNightPerson = Math.floor(
-      event.base_hotel_price / priceNormalization
+    const basePricePerPerson = Math.floor(
+      event.base_hotel_price / totalPersons
     );
 
     const hotelsToSet = hotelSort(data.data.hotels, sortOption, hotelsInfo);
 
-    setBasePriceNightPerson(basePriceNightPerson);
+    setBasePricePerPerson(basePricePerPerson);
     setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
-    setPriceRange([0, maxPrice * priceNormalization]);
+    setPriceRange([0, Math.ceil(maxPrice)]);
     setHotelsInfo(hotelsInfo);
-    setMaxPrice(maxPrice);
+    setMaxPrice(maxPrice / totalPersons);
     setHotels(hotelsToSet);
     setFilteredHotels(hotelsToSet);
     setIsLoading(false);
     setSelectedHotelId(hotelsToSet[0].id);
-    setMinPrice({
-      minPrice: Math.floor(minPrice),
-      minDailyPrice,
-    });
+    setMinPrice(Math.floor(minPrice / totalPersons));
 
     setHotel({
       address: hotelsInfo[hotelsToSet[0].id]?.metadata.address,
@@ -298,8 +283,8 @@ export const HotelSelection = () => {
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
-          basePrice={basePriceNightPerson}
-          minPrice={Math.min(minPrice.minPrice, basePriceNightPerson)}
+          basePrice={basePricePerPerson}
+          minPrice={Math.min(minPrice, basePricePerPerson)}
           maxDistance={maxDistance}
           selectedRating={rating}
           maxPrice={maxPrice}
@@ -401,7 +386,10 @@ export const HotelSelection = () => {
         )}
       >
         <div
-          className={cn("w-1/3 space-y-4 sticky top-0", !matches && "w-full")}
+          className={cn(
+            "w-1/3 space-y-4 ",
+            !matches ? "w-full" : "sticky top-0"
+          )}
         >
           <Skeleton visible={isLoading}>
             <SortOptionsContainer
@@ -448,8 +436,8 @@ export const HotelSelection = () => {
             <Skeleton visible={isLoading}>
               <HotelFilters
                 freeCancellation={freeCancellation}
-                basePrice={basePriceNightPerson}
-                minPrice={Math.min(minPrice.minPrice, basePriceNightPerson)}
+                basePrice={basePricePerPerson}
+                minPrice={Math.min(minPrice, basePricePerPerson)}
                 maxDistance={maxDistance}
                 selectedRating={rating}
                 maxPrice={maxPrice}
@@ -464,11 +452,8 @@ export const HotelSelection = () => {
             {filteredHotels.map((hotel) => (
               <HotelCard
                 persons={getTotalPersons(requestDebug?.guests || [])}
-                minPrice={basePriceNightPerson}
+                minPrice={basePricePerPerson}
                 isLoading={isLoading}
-                distanceFromCenter={Math.ceil(
-                  hotelsInfo[hotel.id].metadata.distanceFromCenter
-                )}
                 isSelected={hotel.id === selectedHotelId}
                 key={hotel.id}
                 hotelRates={hotel.rates}

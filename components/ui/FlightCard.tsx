@@ -84,12 +84,7 @@ export const FlightTicketCard = ({
   isLoading,
   minPrice,
 }: FlightTicketCardProps) => {
-  const priceToShow =
-    formatPrice(price - minPrice) === 0 ? (
-      <span className="text-[20px]">כלול במחיר</span>
-    ) : (
-      formatPrice(price - minPrice)
-    );
+  const priceToShow = formatPrice(price - minPrice);
 
   return (
     <Skeleton visible={isLoading}>
@@ -102,13 +97,15 @@ export const FlightTicketCard = ({
           </div>
           <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
           <div className="font-bold lg:w-1/6 mt-2 w-full text-center border-t-2 pt-2 lg:border-none">
-            <span className="text-lg lg:text-2xl">{priceToShow}</span>
-            {formatPrice(price - minPrice) !== 0 ? (
-              <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-                תוספת לכל נוסע
-              </span>
+            {!!priceToShow ? (
+              <>
+                <span className="text-lg lg:text-2xl">{priceToShow}</span>
+                <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+                  תוספת לכל נוסע
+                </span>
+              </>
             ) : (
-              ""
+              <span className="text-[20px]">כלול במחיר</span>
             )}
           </div>
         </div>

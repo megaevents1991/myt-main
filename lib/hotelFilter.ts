@@ -24,6 +24,9 @@ export const applyFiltersAndSorting = ({
 }) => {
   // Apply filters
 
+  const inRange = (value: number, [min, max]: [number, number]) =>
+    value >= min && value <= max;
+
   const filteredHotels = hotels
     .filter((hotel) => {
       const priceLow =
@@ -45,11 +48,10 @@ export const applyFiltersAndSorting = ({
         (meal.includes("withMeal") &&
           hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast));
 
-      const matchDistanceRange =
-        distanceFromCenter[1] >=
-          hotelsInfo[hotel.id].metadata.distanceFromCenter &&
-        distanceFromCenter[0] <=
-          hotelsInfo[hotel.id].metadata.distanceFromCenter;
+      const matchDistanceRange = inRange(
+        hotelsInfo[hotel.id].metadata.distanceFromCenter,
+        distanceFromCenter
+      );
 
       const matchFreeCancellation =
         !freeCancellation ||
@@ -73,7 +75,7 @@ export const applyFiltersAndSorting = ({
         rating[hotelRating - 1];
 
       const matchesPriceRange =
-        priceHigh >= priceRange[0] && priceLow <= priceRange[1];
+        inRange(priceLow, priceRange) || inRange(priceHigh, priceRange);
 
       return (
         matchesPriceRange &&
@@ -99,8 +101,7 @@ export const applyFiltersAndSorting = ({
             (paymentType) =>
               !!paymentType.cancellation_penalties.free_cancellation_before
           );
-        const matchesPriceRange =
-          price >= priceRange[0] && price <= priceRange[1];
+        const matchesPriceRange = inRange(price, priceRange);
 
         return matchHasMeal && matchesPriceRange && matchFreeCancellation;
       });

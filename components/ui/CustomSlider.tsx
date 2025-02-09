@@ -1,3 +1,4 @@
+import { FlightSearchCriteria } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
 import { Slider } from "@mantine/core";
 
@@ -17,16 +18,16 @@ export const CustomSlider = ({
   value,
   maxValue = 3000,
   minValue = 0,
-  variant = "time",
+  variant = "flightDuration",
   basePrice = 0,
   numOfPassengers = 1,
 }: {
   onChange: (value: number) => void;
-  onChangeEnd: (value: number) => void;
+  onChangeEnd: (criteria: FlightSearchCriteria) => void;
   value: number;
   maxValue: number;
   minValue: number;
-  variant?: "price" | "time";
+  variant?: "maxPrice" | "flightDuration";
   basePrice?: number;
   numOfPassengers?: number;
 }) => {
@@ -34,13 +35,13 @@ export const CustomSlider = ({
     onChange(value);
   };
   const handleOnChangeEnd = (value: number) => {
-    onChangeEnd(value);
+    onChangeEnd({ value, type: variant });
   };
 
   const priceMinValue = Math.min(minValue / numOfPassengers, basePrice);
 
   const marks =
-    variant === "time"
+    variant === "flightDuration"
       ? [
           {
             value: 0,
@@ -63,10 +64,10 @@ export const CustomSlider = ({
     <div style={{ margin: "auto", maxWidth: "90%" }}>
       <Slider
         thumbSize={20}
-        min={variant === "time" ? minValue : Math.ceil(minValue)}
-        max={variant === "time" ? maxValue : Math.ceil(maxValue + 10)}
+        min={variant === "flightDuration" ? minValue : Math.ceil(minValue)}
+        max={variant === "flightDuration" ? maxValue : Math.ceil(maxValue + 10)}
         step={
-          variant === "time"
+          variant === "flightDuration"
             ? 0.5
             : Math.floor((maxValue / numOfPassengers - priceMinValue) / 10)
         }
@@ -80,7 +81,7 @@ export const CustomSlider = ({
         onChange={handleOnChange}
         onChangeEnd={handleOnChangeEnd}
         label={
-          variant === "time"
+          variant === "flightDuration"
             ? formatTime(value)
             : Math.ceil(value / numOfPassengers - priceMinValue)
         }
