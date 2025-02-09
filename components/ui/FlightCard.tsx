@@ -7,6 +7,7 @@ import { isMobile } from "react-device-detect";
 import { useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
 import { formatPrice } from "@/lib/price.utils";
+import { airports } from "@nwpr/airport-codes";
 
 type FlightTicketCardProps = {
   isSelected: boolean;
@@ -206,9 +207,16 @@ export const FlightMeta = ({
                 {stops
                   .map((stop, i) => (
                     <span key={i} dir="rtl" className="mr-1">
-                      {numberToHourString(stop.duration) +
+                      {"המתנה של " +
+                        numberToHourString(stop.duration) +
                         " ב-" +
-                        stop.iataCode}
+                        //airports.find(
+                        //  (airport) => airport.iata === stop.iataCode
+                        //)?.name +
+                        //", " +
+                        airports.find(
+                          (airport) => airport.iata === stop.iataCode
+                        )?.city}
                     </span>
                   ))
                   .slice(0, -1)}
@@ -227,9 +235,11 @@ export const FlightMeta = ({
         <div className="flex flex-row items-center relative text-md font-bold lg:text-2xl">
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
-          <span className="text-xs mr-1 text-secondary absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
-            {plusOne ? "1+" : ""}
-          </span>
+          <Tooltip label="נחיתה ביום למחרת" position="top">
+            <span className="text-xs mr-1 text-secondary absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
+              {plusOne ? "1+" : ""}
+            </span>
+          </Tooltip>
         </div>
         <div className="text-sm lg:text-lg">{arrivalAirport}</div>
       </div>
