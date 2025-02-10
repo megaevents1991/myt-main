@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
-import { HotelInfoDB } from "@/lib/hotelInfo.type";
-import { Room, HotelsInfoClient } from "@/lib/hotel.type";
+import { HotelInfo, HotelInfoDB } from "@/lib/hotelInfo.type";
+import { Room, HotelsInfoClient, HotelInfoClient } from "@/lib/hotel.type";
 import { Event } from "@/lib/app.types";
 import { getDistance } from "geolib";
 import { supabase } from "@/lib/supabase";
-
 
 interface AmenityGroup {
   group_name: string;
@@ -17,29 +16,30 @@ interface RoomGroup {
   room_amenities: string[];
 }
 
-export async function getHotelsStaticDataFromDB(hids: number[]) {
+const getHotelsStaticDataFromDB = async (
+  hids: number[]
+): Promise<HotelInfoDB[] | null> => {
   try {
     const { data: hotels, error } = await supabase
-      .from('hotels')
-      .select('*')
-      .in('hid', hids);
+      .from("hotels")
+      .select("*")
+      .in("hid", hids);
 
     if (error) throw error;
 
     return hotels;
   } catch (error) {
-    console.error("DB hotels static data retrival error:", error);
+    console.error("DB hotels static data retrieval error:", error);
     return null;
   }
-}
+};
 
 export async function POST(request: Request) {
   const {
     hotels,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     event,
   }: {
-    hotels: { hid: number, id: string; rooms: string[] }[];
+    hotels: { hid: number; id: string; rooms: string[] }[];
     event: Pick<Event, "location">;
   } = await request.json();
 
@@ -54,11 +54,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const hotelIds = hotels.map(hotel => hotel.hid);
-    const hotelsData = await getHotelsStaticDataFromDB(hotelIds) as HotelInfoDB[];
+    const hotelIds = hotels.map((hotel) => hotel.hid);
+    const hotelsData = await getHotelsStaticDataFromDB(hotelIds);
 
-
-    const transformedData = hotelsData.reduce((acc: Record<string, any>, hotel) => {
+    const transformedData = hotelsData?.reduce((acc, hotel) => {
       // Calculate distance from event center to hotel
       const distanceInMeters = getDistance(
         {
@@ -75,23 +74,30 @@ export async function POST(request: Request) {
         (amenityGroup: AmenityGroup) => amenityGroup.group_name === "General"
       );
 
-      
-
       // Transform rooms data
-      const rooms = hotel.room_groups?.reduce((roomsAcc: Record<string, any>, room: any) => {
+      const rooms = hotel.room_groups?.reduce((roomsAcc, room) => {
         if (room.name) {
           roomsAcc[room.name] = {
             name: room.name,
             images: room.images || [],
-            amenities: room.room_amenities || []
+            amenities: room.room_amenities || [],
           };
         }
         return roomsAcc;
-      }, {});
+      }, {} as HotelInfoClient["rooms"]);
 
       // Create hotel entry
       acc[hotel._id] = {
-        rooms: rooms || {},
+        rooms,
+        general: {
+          name: "general",
+          amenities: hotelAmenity?.amenities || [],
+          images: hotel.images_ext
+            .filter((image) =>
+              ["hotel_front", "lobby"].includes(image.category_slug)
+            )
+            .map((image) => image.url),
+        },
         metadata: {
           hotelName: hotel.name,
           address: hotel.address,
@@ -99,32 +105,22 @@ export async function POST(request: Request) {
           id: hotel._id,
           longitude: hotel.longitude,
           latitude: hotel.latitude,
-          amenity_groups: hotel.amenity_groups,
+          // amenity_groups: hotel.amenity_groups,
           hid: hotel.hid,
-          images_ext: hotel.images_ext,
-          room_groups: hotel.room_groups,
+          // images_ext: hotel.images_ext,
+          // room_groups: hotel.room_groups,
           distanceFromCenter: distanceInMeters,
-          general: {
-            name: "general",
-            amenities: hotelAmenity?.amenities || [],
-            images: hotelData.images_ext
-              .filter((image: string) =>
-                ["hotel_front", "lobby"].includes(image.category_slug)
-              )
-              .map((image: string) => image.url),
-          },
-        }
+        },
       };
 
       return acc;
-    }, {});
+    }, {} as HotelsInfoClient);
 
     return NextResponse.json(transformedData);
-
   } catch (error) {
     console.log("API error:", error);
   }
-}; /*
+} /*
     
 
     if (!hotelsData) {

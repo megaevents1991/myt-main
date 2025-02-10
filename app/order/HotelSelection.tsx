@@ -449,28 +449,31 @@ export const HotelSelection = () => {
         </div>
         <div className="w-full">
           <div className="grid grid-cols-1 gap-4 items-start">
-            {filteredHotels.map((hotel) => (
-              <HotelCard
-                persons={getTotalPersons(requestDebug?.guests || [])}
-                minPrice={basePricePerPerson}
-                isLoading={isLoading}
-                isSelected={hotel.id === selectedHotelId}
-                key={hotel.id}
-                hotelRates={hotel.rates}
-                hotelInfo={hotelsInfo[hotel.id]}
-                handleSelect={() => {
-                  if (
-                    selectedOrderHotel &&
-                    selectedOrderHotel?.id !== hotel.id
-                  ) {
-                    setHotel(undefined);
-                  }
+            {filteredHotels.map(
+              (hotel) =>
+                hotelsInfo[hotel.id] && (
+                  <HotelCard
+                    persons={getTotalPersons(requestDebug?.guests || [])}
+                    minPrice={basePricePerPerson}
+                    isLoading={isLoading}
+                    isSelected={hotel.id === selectedHotelId}
+                    key={hotel.id}
+                    hotelRates={hotel.rates}
+                    hotelInfo={hotelsInfo[hotel.id]}
+                    handleSelect={() => {
+                      if (
+                        selectedOrderHotel &&
+                        selectedOrderHotel?.id !== hotel.id
+                      ) {
+                        setHotel(undefined);
+                      }
 
-                  setSelectedHotelId(hotel.id);
-                }}
-                handleSelectedRate={handleSelectedRate}
-              />
-            ))}
+                      setSelectedHotelId(hotel.id);
+                    }}
+                    handleSelectedRate={handleSelectedRate}
+                  />
+                )
+            )}
             {hotels.length === 0 &&
               isLoading &&
               Array.from({ length: 4 }, (_, i) => (

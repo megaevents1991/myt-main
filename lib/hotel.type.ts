@@ -137,6 +137,7 @@ export type HotelInfoClient = {
   rooms: Record<string, Room>;
   general: Room;
   metadata: {
+    hid: number;
     hotelName: string;
     address: string;
     rating: number;
