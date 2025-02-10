@@ -263,7 +263,11 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                           {(
                             event.base_flight_price +
                             event.base_hotel_price +
-                            event.tickets_and_rates[0].price +
+                            Math.min(
+                              ...event.tickets_and_rates.map(
+                                (ticket) => ticket.price
+                              )
+                            ) +
                             Number(process.env.NEXT_PUBLIC_MARKUP || "150")
                           ).toLocaleString("en-US")}
                         </div>

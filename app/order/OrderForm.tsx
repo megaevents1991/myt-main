@@ -88,12 +88,22 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   {step > 1 && (
                     <div>
                       {!!formatPrice(
-                        eventTicket.price - event?.tickets_and_rates[0].price
+                        eventTicket.price -
+                          Math.min(
+                            ...event?.tickets_and_rates.map(
+                              (ticket) => ticket.price
+                            )
+                          )
                       ) &&
                         formatPrice(
-                          eventTicket.price - event?.tickets_and_rates[0].price
+                          eventTicket.price -
+                            Math.min(
+                              ...event?.tickets_and_rates.map(
+                                (ticket) => ticket.price
+                              )
+                            )
                         )}{" "}
-                      <span className="font-bold">{eventTicket.category}</span>{" "}
+                      <span className="font-bold">{eventTicket.category} </span>{" "}
                       <Image
                         className="inline-block"
                         alt="ticket icon"

@@ -14,21 +14,28 @@ export const TicketSelection = () => {
   //const event = events.find((e) => e.id === eventId);
   const { setEventTicket, event } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
+  const [cheapestTicket, setCheapestTicket] = useState(Object);
+  const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
+    undefined
+  );
 
   const MAX_TICKETS = 10;
 
-  const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
-    event?.tickets_and_rates[0].id
-  );
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
 
   useEffect(() => {
+    const cheapt = event?.tickets_and_rates.reduce(
+      (min, ticket) => (ticket.price < min.price ? ticket : min),
+      event.tickets_and_rates[0]
+    );
+    setCheapestTicket(cheapt);
+    setSelectedTicket(cheapt?.id);
     setEventTicket({
-      id: event?.tickets_and_rates[0].id || "",
-      category: event?.tickets_and_rates[0].category || "",
-      price: event?.tickets_and_rates[0].price || 0,
-      quantity: 1,
+      id: cheapt?.id || "",
+      category: cheapt?.category || "",
+      price: cheapt?.price || 0,
+      quantity: 2,
     });
   }, [event]);
 
@@ -100,27 +107,29 @@ export const TicketSelection = () => {
                 </Text>
               )}
               <div className="flex flex-col gap-2">
-                {event?.tickets_and_rates.map((ticket, index) => (
-                  <EventTicketCard
-                    index={index}
-                    onClick={() =>
-                      handleTicketSelect({
-                        id: ticket.id,
-                        price: ticket.price,
-                        category: ticket.category,
-                      })
-                    }
-                    numberOfTickets={numberOfEventTickets}
-                    onChangeNumberOfTickets={handleQuantityChange}
-                    key={ticket.id}
-                    category={ticket.category}
-                    categoryDescription={ticket.description}
-                    colorOnTheMap={ticket.colorOnTheMap || ""}
-                    isSelected={selectedTicket === ticket.id}
-                    price={ticket.price}
-                    basePrice={event?.tickets_and_rates[0].price || 0}
-                  />
-                ))}
+                {[...(event?.tickets_and_rates || [])]
+                  .sort((a, b) => a.price - b.price)
+                  .map((ticket, index) => (
+                    <EventTicketCard
+                      index={index}
+                      onClick={() =>
+                        handleTicketSelect({
+                          id: ticket.id,
+                          price: ticket.price,
+                          category: ticket.category,
+                        })
+                      }
+                      numberOfTickets={numberOfEventTickets}
+                      onChangeNumberOfTickets={handleQuantityChange}
+                      key={ticket.id}
+                      category={ticket.category}
+                      categoryDescription={ticket.description}
+                      colorOnTheMap={ticket.colorOnTheMap || ""}
+                      isSelected={selectedTicket === ticket.id}
+                      price={ticket.price}
+                      basePrice={cheapestTicket.price}
+                    />
+                  ))}
               </div>
             </ScrollArea>
           </div>
