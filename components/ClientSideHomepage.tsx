@@ -224,63 +224,68 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             />
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {initialEvents.map((event) => (
-              <Link
-                href={`/order?eventId=${event.id}`}
-                className="cursor-pointer"
-                key={event.id}
-                onClick={() => {
-                  orderStage("EVENT_SELECTED", { event: event.name });
-                  client.logEvent("user_selected_event", event.id, {
-                    item_name: event.name,
-                  });
-                }}
-              >
-                <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                  <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">
-                    <Image
-                      src={event.card_image_url}
-                      alt={event.name}
-                      priority={true}
-                      width={400}
-                      height={300}
-                      className="object-cover w-full h-60 transition-transform group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="flex-col text-center w-1/2 sm:w-auto">
-                    <div className="p-2 px-4 text-xl font-bold">
-                      {event.name}
+            {initialEvents
+              .sort(
+                (a, b) =>
+                  new Date(a.date).getTime() - new Date(b.date).getTime()
+              )
+              .map((event) => (
+                <Link
+                  href={`/order?eventId=${event.id}`}
+                  className="cursor-pointer"
+                  key={event.id}
+                  onClick={() => {
+                    orderStage("EVENT_SELECTED", { event: event.name });
+                    client.logEvent("user_selected_event", event.id, {
+                      item_name: event.name,
+                    });
+                  }}
+                >
+                  <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+                    <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">
+                      <Image
+                        src={event.card_image_url}
+                        alt={event.name}
+                        priority={true}
+                        width={400}
+                        height={300}
+                        className="object-cover w-full h-60 transition-transform group-hover:scale-105"
+                      />
                     </div>
-                    <div className="py-1 bg-secondary text-white">
-                      {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
-                      {event.location.name}
-                    </div>
-                    <div className="p-2 px-4 text-right" dir="rtl">
-                      <div>בממוצע כ-</div>
-                      <div className="flex items-baseline gap-1">
-                        <div className="text-2xl font-bold">
-                          $
-                          {(
-                            event.base_flight_price +
-                            event.base_hotel_price +
-                            Math.min(
-                              ...event.tickets_and_rates.map(
-                                (ticket) => ticket.price
-                              )
-                            ) +
-                            Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-                          ).toLocaleString("en-US")}
-                        </div>
-                        <div className="text-sm line-through">
-                          ${event.usual_price.toLocaleString("en-US")}
-                        </div>{" "}
+                    <div className="flex-col text-center w-1/2 sm:w-auto">
+                      <div className="p-2 px-4 text-xl font-bold">
+                        {event.name}
                       </div>
-                      <div>לנוסע כולל טיסה, מלון וכרטיס לאירוע</div>
+                      <div className="py-1 bg-secondary text-white">
+                        {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
+                        {event.location.name}
+                      </div>
+                      <div className="p-2 px-4 text-right" dir="rtl">
+                        <div>בממוצע כ-</div>
+                        <div className="flex items-baseline gap-1">
+                          <div className="text-2xl font-bold">
+                            $
+                            {(
+                              event.base_flight_price +
+                              event.base_hotel_price +
+                              Math.min(
+                                ...event.tickets_and_rates.map(
+                                  (ticket) => ticket.price
+                                )
+                              ) +
+                              Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                            ).toLocaleString("en-US")}
+                          </div>
+                          <div className="text-sm line-through">
+                            ${event.usual_price.toLocaleString("en-US")}
+                          </div>{" "}
+                        </div>
+                        <div>לנוסע כולל טיסה, מלון וכרטיס לאירוע</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
           </div>
         </div>
       </section>

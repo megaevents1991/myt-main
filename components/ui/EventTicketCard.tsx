@@ -46,7 +46,7 @@ export const EventTicketCard = ({
               backgroundColor: colorOnTheMap,
             }}
           ></div>
-          <div className="w-2/3 lg:w-1/3 flex items-center gap-4">
+          <div className="w-2/3 lg:w-5/9 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
               checked={isSelected}
@@ -54,9 +54,17 @@ export const EventTicketCard = ({
               style={{ pointerEvents: "none" }}
             />
             <div>
-              <div className="text-xl">{category}</div>
+              <div className="text-xl font-bold">{category}</div>
               {categoryDescription?.length > 0 && (
-                <div className="text-lg">{categoryDescription}</div>
+                <div
+                  className={`text-md ${
+                    categoryDescription.includes("כרטיסים אחרונים")
+                      ? "font-bold text-red-600"
+                      : ""
+                  }`}
+                >
+                  {categoryDescription}
+                </div>
               )}
             </div>
           </div>
@@ -69,7 +77,7 @@ export const EventTicketCard = ({
               onChange={onChangeNumberOfTickets}
             />
           </div>
-          <div className="w-1/3 lg:w-1/3 text-center font-bold ">
+          <div className="w-1/3 lg:w-2/9 text-center font-bold ">
             {index === 0 ? (
               <span className="text-[20px]">כלול במחיר</span>
             ) : (
@@ -80,7 +88,9 @@ export const EventTicketCard = ({
                   <div className="text-2xl">
                     ${Math.abs(priceToDisplay)}
                     {priceToDisplay < 0 ? "-" : "+"}
-                    <div className="text-[16px]">{"תוספת לכל כרטיס"}</div>
+                    <div className="text-[16px] leading-[22px]">
+                      {"תוספת לכל כרטיס"}
+                    </div>
                   </div>
                 )}
                 <div></div>
