@@ -167,11 +167,11 @@ export default function OrderReview() {
     return await response.json();
   };
 
+  const maup = Number(process.env.NEXT_PUBLIC_MARKUP) || 0;
+
   const totalPrice = Math.ceil(
     // should be passed to server / DB level
-    (eventTicket.price + Number(process.env.NEXT_PUBLIC_MARKUP) - affDiscount ||
-      0) *
-      numberOfEventTickets +
+    (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
       selectedFlight.price +
       +selectedHotel.price
   );
