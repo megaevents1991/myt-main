@@ -274,12 +274,12 @@ export const FlightFilters = ({
             handleFlightSearchCriteriaChange({ type: "airline", value })
           }
         >
-          {airlines.map(({ label, value }) => (
+          {airlines.map(({ label, value }, i) => (
             <Checkbox
               value={value}
               id={label}
               label={label}
-              key={label}
+              key={i}
               className="my-2"
             />
           ))}

@@ -38,6 +38,7 @@ export type HotelResponse = {
 };
 
 export type Hotel = {
+  hid: number;
   id: string;
   rates: Rate[];
 };
@@ -136,6 +137,7 @@ export type HotelInfoClient = {
   rooms: Record<string, Room>;
   general: Room;
   metadata: {
+    hid: number;
     hotelName: string;
     address: string;
     rating: number;

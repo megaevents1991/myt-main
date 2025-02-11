@@ -36,7 +36,7 @@ export const applyFiltersAndSorting = ({
         +hotel.rates[hotel.rates.length - 1].payment_options.payment_types[0]
           .show_amount;
 
-      const hotelRating = hotelsInfo[hotel.id].metadata.rating;
+      const hotelRating = hotelsInfo[hotel.id]?.metadata.rating;
 
       const matchHasMeal =
         !meal.length ||
@@ -49,7 +49,7 @@ export const applyFiltersAndSorting = ({
           hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast));
 
       const matchDistanceRange = inRange(
-        hotelsInfo[hotel.id].metadata.distanceFromCenter,
+        hotelsInfo[hotel.id]?.metadata.distanceFromCenter,
         distanceFromCenter
       );
 
@@ -64,7 +64,7 @@ export const applyFiltersAndSorting = ({
         );
 
       const matchesName = hotelName
-        ? hotelsInfo[hotel.id].metadata.hotelName
+        ? hotelsInfo[hotel.id]?.metadata.hotelName
             .toUpperCase()
             .includes(hotelName.toUpperCase())
         : true;
@@ -107,7 +107,8 @@ export const applyFiltersAndSorting = ({
       });
 
       return { ...hotel, rates: filteredRates };
-    });
+    })
+    .filter((hotel) => hotel.rates.length > 0);
 
   const sortedHotels = hotelSort(filteredHotels, sortOption, hotelsInfo);
 
