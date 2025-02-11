@@ -5,6 +5,8 @@ import { Room, HotelsInfoClient, HotelInfoClient } from "@/lib/hotel.type";
 import { Event } from "@/lib/app.types";
 import { getDistance } from "geolib";
 import { supabase } from "@/lib/supabase";
+import { authHeader } from "../keys";
+import { difference } from "lodash";
 
 interface AmenityGroup {
   group_name: string;
@@ -15,6 +17,32 @@ interface RoomGroup {
   images: string[];
   room_amenities: string[];
 }
+
+const HOTEL_INFO_URL = "https://api.worldota.net/api/b2b/v3/hotel/info/";
+
+const getHotelInfo = async (hid: number): Promise<HotelInfo | null> => {
+  try {
+    const hotelInfoResponse = await fetch(HOTEL_INFO_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+      },
+      body: JSON.stringify({ hid, language: "en" }),
+    });
+
+    if (!hotelInfoResponse.ok) {
+      console.error(await hotelInfoResponse.text());
+      return null;
+    }
+
+    const hotelInfoData: HotelInfo = await hotelInfoResponse.json();
+
+    return hotelInfoData;
+  } catch (error) {
+    console.error("API error:", error);
+    return null;
+  }
+};
 
 const getHotelsStaticDataFromDB = async (
   hids: number[]
@@ -56,65 +84,84 @@ export async function POST(request: Request) {
   try {
     const hotelIds = hotels.map((hotel) => hotel.hid);
     const hotelsData = await getHotelsStaticDataFromDB(hotelIds);
+    let missingHotels: (HotelInfo["data"] & { _id: string })[] = [];
 
-    const transformedData = hotelsData?.reduce((acc, hotel) => {
-      // Calculate distance from event center to hotel
-      const distanceInMeters = getDistance(
-        {
-          latitude: event.location.latitude,
-          longitude: event.location.longitude,
-        },
-        {
-          latitude: hotel.latitude,
-          longitude: hotel.longitude,
-        }
+    if (hotelsData?.length !== hotelIds.length) {
+      const missingHotelsIds = difference(
+        hotelIds,
+        hotelsData?.map(({ hid }) => hid) || []
       );
 
-      const hotelAmenity = hotel.amenity_groups.find(
-        (amenityGroup: AmenityGroup) => amenityGroup.group_name === "General"
-      );
+      console.log("Missing hotels:", missingHotelsIds);
 
-      // Transform rooms data
-      const rooms = hotel.room_groups?.reduce((roomsAcc, room) => {
-        if (room.name) {
-          roomsAcc[room.name] = {
-            name: room.name,
-            images: room.images || [],
-            amenities: room.room_amenities || [],
-          };
-        }
-        return roomsAcc;
-      }, {} as HotelInfoClient["rooms"]);
+      missingHotels = (await Promise.all(missingHotelsIds.map(getHotelInfo)))
+        .filter((hotel) => !!hotel)
+        .map(({ data }) => ({ ...data, _id: data.id }));
 
-      // Create hotel entry
-      acc[hotel._id] = {
-        rooms,
-        general: {
-          name: "general",
-          amenities: hotelAmenity?.amenities || [],
-          images: hotel.images_ext
-            .filter((image) =>
-              ["hotel_front", "lobby"].includes(image.category_slug)
-            )
-            .map((image) => image.url),
-        },
-        metadata: {
-          hotelName: hotel.name,
-          address: hotel.address,
-          rating: hotel.star_rating,
-          id: hotel._id,
-          longitude: hotel.longitude,
-          latitude: hotel.latitude,
-          // amenity_groups: hotel.amenity_groups,
-          hid: hotel.hid,
-          // images_ext: hotel.images_ext,
-          // room_groups: hotel.room_groups,
-          distanceFromCenter: distanceInMeters,
-        },
-      };
+      console.log("Missing hotels received from API:", missingHotels.length);
+    }
 
-      return acc;
-    }, {} as HotelsInfoClient);
+    const transformedData = [...(hotelsData || []), ...missingHotels]?.reduce(
+      (acc, hotel) => {
+        // Calculate distance from event center to hotel
+        const distanceInMeters = getDistance(
+          {
+            latitude: event.location.latitude,
+            longitude: event.location.longitude,
+          },
+          {
+            latitude: hotel.latitude,
+            longitude: hotel.longitude,
+          }
+        );
+
+        const hotelAmenity = hotel.amenity_groups.find(
+          (amenityGroup: AmenityGroup) => amenityGroup.group_name === "General"
+        );
+
+        // Transform rooms data
+        const rooms = hotel.room_groups?.reduce((roomsAcc, room) => {
+          if (room.name) {
+            roomsAcc[room.name] = {
+              name: room.name,
+              images: room.images || [],
+              amenities: room.room_amenities || [],
+            };
+          }
+          return roomsAcc;
+        }, {} as HotelInfoClient["rooms"]);
+
+        // Create hotel entry
+        acc[hotel._id] = {
+          rooms,
+          general: {
+            name: "general",
+            amenities: hotelAmenity?.amenities || [],
+            images: hotel.images_ext
+              .filter((image) =>
+                ["hotel_front", "lobby"].includes(image.category_slug)
+              )
+              .map((image) => image.url),
+          },
+          metadata: {
+            hotelName: hotel.name,
+            address: hotel.address,
+            rating: hotel.star_rating,
+            id: hotel._id,
+            longitude: hotel.longitude,
+            latitude: hotel.latitude,
+            // amenity_groups: hotel.amenity_groups,
+            hid: hotel.hid,
+            // images_ext: hotel.images_ext,
+            // room_groups: hotel.room_groups,
+            distanceFromCenter: distanceInMeters,
+          },
+        };
+
+        return acc;
+      },
+      {} as HotelsInfoClient
+    );
 
     return NextResponse.json(transformedData);
   } catch (error) {
