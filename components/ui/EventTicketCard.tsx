@@ -88,9 +88,15 @@ export const EventTicketCard = ({
                   <div className="text-2xl">
                     ${Math.abs(priceToDisplay)}
                     {priceToDisplay < 0 ? "-" : "+"}
-                    <div className="text-[16px] leading-[22px]">
-                      {"תוספת לכל כרטיס"}
-                    </div>
+                    {priceToDisplay < 0 ? (
+                      <span className="text-[16px] leading-[22px]">
+                        {"(פחות לכל כרטיס)"}
+                      </span>
+                    ) : (
+                      <span className="text-[16px] leading-[22px]">
+                        {"תוספת לכל כרטיס"}
+                      </span>
+                    )}
                   </div>
                 )}
                 <div></div>

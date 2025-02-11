@@ -101,9 +101,15 @@ export const FlightTicketCard = ({
             {!!priceToShow ? (
               <>
                 <span className="text-lg lg:text-2xl">{priceToShow}</span>
-                <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-                  תוספת לכל נוסע
-                </span>
+                {price - minPrice < 0 ? (
+                  <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+                    {"(פחות לכל נוסע)"}
+                  </span>
+                ) : (
+                  <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+                    {"תוספת לכל נוסע"}
+                  </span>
+                )}
               </>
             ) : (
               <span className="text-[20px]">כלול במחיר</span>

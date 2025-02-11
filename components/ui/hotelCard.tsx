@@ -97,9 +97,15 @@ export const HotelCard = ({
     return !!styledPrice ? ( // TO DO: fix this
       <div>
         <div>{styledPrice}</div>
-        <div className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-          תוספת לכל אורח
-        </div>
+        {selectedPrice - minPrice < 0 ? (
+          <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+            {"(פחות לכל אורח)"}
+          </span>
+        ) : (
+          <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+            {"תוספת לכל אורח"}
+          </span>
+        )}
       </div>
     ) : (
       <span className="text-[16px]">כלול במחיר החבילה</span>

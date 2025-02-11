@@ -51,7 +51,7 @@ export const Stepper = ({ currentStep, onStepperClick }: StepperProps) => {
         {steps.map((step, index) => (
           <MantineStepper.Step
             key={index}
-            label={<StepperLabel completed={index < active} label={step} />}
+            label={<StepperLabel completed={index <= active} label={step} />}
           />
         ))}
       </MantineStepper>
