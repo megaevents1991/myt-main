@@ -16,13 +16,13 @@ export const getDaysDiff = (event: Event) => {
   );
 };
 
-export const formatPrice = (price: number) => {
+export const formatPrice = (price: number, factor = 1) => {
   const ceilPrice = Math.ceil(price);
   if (price > 0) {
-    return <span dir="ltr">+${ceilPrice}</span>;
+    return <span dir="ltr">+${ceilPrice * factor}</span>;
   }
   if (price < 0) {
-    return <span dir="ltr">-${Math.abs(ceilPrice)}</span>;
+    return <span dir="ltr">-${Math.abs(ceilPrice * factor)}</span>;
   }
   return 0;
 };

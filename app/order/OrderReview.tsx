@@ -12,6 +12,7 @@ import { OrderData } from "@/lib/app.types";
 import validator from "validator";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
+import { formatPrice, getTotalPersons } from "@/lib/price.utils";
 
 export default function OrderReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -286,6 +287,17 @@ export default function OrderReview() {
     return !hasErrors && hasRequiredFields && hasContactInfo;
   });
 
+  const eventTicketPriceAddition =
+    eventTicket.price -
+    event?.tickets_and_rates.reduce(
+      (min, ticket) => (ticket.price < min.price ? ticket : min),
+      event.tickets_and_rates[0]
+    ).price;
+  const flightPriceAddition =
+    selectedFlight.price / selectedFlight.numOfTravelers -
+    event.base_flight_price;
+  const hotelPriceAddition = +selectedHotel.price - event.base_hotel_price;
+
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content */}
@@ -308,69 +320,131 @@ export default function OrderReview() {
                       dayjs(event.date).format("DD/MM/YYYY")}
                   </p>
                 </div>
-                <div className="">
+                <div>
                   <h3 className="font-bold text-lg">כרטיסים לאירוע</h3>
-                  <div className="flex text-[16px] gap-1" dir="rtl">
-                    <div>{eventTicket.category} </div>
-                    <div>X</div>
-                    <div>{numberOfEventTickets}</div>
+                  <div className="flex justify-between items-center w-full">
+                    <div
+                      className="flex w-full text-[16px] justify-between gap-1"
+                      dir="rtl"
+                    >
+                      <div className="flex gap-[2px]">
+                        <div>{eventTicket.category}</div>
+                        <div>
+                          {formatPrice(eventTicketPriceAddition) ? (
+                            <>({formatPrice(eventTicketPriceAddition)})</>
+                          ) : (
+                            ""
+                          )}
+                        </div>
+                        <div>X</div>
+                        <div>{numberOfEventTickets}</div>
+                      </div>
+                      <div>
+                        {formatPrice(eventTicketPriceAddition)
+                          ? formatPrice(
+                              eventTicketPriceAddition,
+                              numberOfEventTickets
+                            )
+                          : "כלול במחיר"}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="">
                   <h3 className="font-bold text-lg">איפה ישנים</h3>
-                  <div className="text-[16px] space-y-1" dir="rtl">
-                    <p>{selectedHotel.name}</p>
-                    <p>{selectedHotel.rate.room_data_trans.main_name}</p>
-                    <p>
-                      {`${selectedHotel.guests.reduce(
-                        (ppl, room) => ppl + room.children.length + room.adults,
-                        0
-                      )} אורחים`}
-                      {selectedHotel.guests.length > 1 &&
-                        ` | ${selectedHotel.guests.length} חדרים`}
-                    </p>
+                  <div
+                    className="flex w-full text-[16px] justify-between gap-1"
+                    dir="rtl"
+                  >
+                    <div>
+                      <p>{selectedHotel.name}</p>
+                      <p>{selectedHotel.rate.room_data_trans.main_name}</p>
+                      <div className="flex items-center gap-1">
+                        <div>
+                          {`${selectedHotel.guests.reduce(
+                            (ppl, room) =>
+                              ppl + room.children.length + room.adults,
+                            0
+                          )} אורחים`}
+                        </div>
+                        <div>
+                          {selectedHotel.guests.length > 1 &&
+                            ` | ${selectedHotel.guests.length} חדרים`}{" "}
+                          {formatPrice(hotelPriceAddition) ? (
+                            <>({formatPrice(hotelPriceAddition)})</>
+                          ) : (
+                            ""
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      {formatPrice(hotelPriceAddition)
+                        ? formatPrice(
+                            hotelPriceAddition,
+                            getTotalPersons(selectedHotel.guests)
+                          )
+                        : "כלול במחיר"}
+                    </div>
                   </div>
                 </div>
 
                 <div className="">
                   <h3 className="font-bold text-lg">איך מגיעים</h3>
-                  <div
-                    className="text-[16px] flex items-center gap-1"
-                    dir="rtl"
-                  >
-                    <div>{selectedFlight.numOfTravelers}</div>
-                    <div>נוסעים טסים עם</div>
+                  <div className="flex justify-between w-full" dir="rtl">
                     <div>
-                      {selectedFlight?.metadata.name &&
-                      selectedFlight.metadata.name.length > 17
-                        ? `${selectedFlight.metadata.name.slice(0, 10)}.`
-                        : selectedFlight?.metadata.name}
-                    </div>
-                    <div>, בטיסות</div>
+                      <div
+                        className="text-[16px] flex items-center gap-1"
+                        dir="rtl"
+                      >
+                        <div>{selectedFlight.numOfTravelers}</div>
+                        <div>נוסעים טסים עם</div>
+                        <div>
+                          {selectedFlight?.metadata.name &&
+                          selectedFlight.metadata.name.length > 17
+                            ? `${selectedFlight.metadata.name.slice(0, 10)}.`
+                            : selectedFlight?.metadata.name}
+                        </div>
+                        {formatPrice(flightPriceAddition) ? (
+                          <>({formatPrice(flightPriceAddition)})</>
+                        ) : (
+                          ""
+                        )}
+                        {/* <div>, בטיסות</div>
                     <div>
                       {selectedFlight.outbound.flightNumber +
                         " ו- " +
                         selectedFlight.inbound.flightNumber}
+                    </div> */}
+                      </div>
+                      <div className="flex text-[16px]" dir="rtl">
+                        <div>מ-</div>
+                        <div>
+                          {dayjs(selectedFlight.outbound.departureTime).format(
+                            "DD/MM/YYYY"
+                          )}
+                        </div>
+                        <div className="w-1"></div>
+                        <div>עד-</div>
+                        <div>
+                          {dayjs(selectedFlight.inbound.departureTime).format(
+                            "DD/MM/YYYY"
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex text-[16px]" dir="rtl">
-                    <div>מתאריך ה-</div>
                     <div>
-                      {dayjs(selectedFlight.outbound.departureTime).format(
-                        "DD/MM/YYYY"
-                      )}
-                    </div>
-                    <div className="w-1"></div>
-                    <div>וחזרה ב-</div>
-                    <div>
-                      {dayjs(selectedFlight.inbound.departureTime).format(
-                        "DD/MM/YYYY"
-                      )}
+                      {formatPrice(flightPriceAddition)
+                        ? formatPrice(
+                            flightPriceAddition,
+                            selectedFlight.numOfTravelers
+                          )
+                        : "כלול במחיר"}
                     </div>
                   </div>
                   <div className="h-1"></div>
-                  <div className="text-[12px] mt-2">
+                  <div className="text-[12px] mt-2" dir="rtl">
                     <FlightMeta {...selectedFlight.outbound} />
                     <FlightMeta {...selectedFlight.inbound} />
                   </div>

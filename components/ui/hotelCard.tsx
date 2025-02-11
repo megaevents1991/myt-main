@@ -96,7 +96,7 @@ export const HotelCard = ({
     const styledPrice = formatPrice(selectedPrice - minPrice);
     return !!styledPrice ? ( // TO DO: fix this
       <div>
-        <div>{styledPrice}</div>
+        <span>{styledPrice}</span>
         {selectedPrice - minPrice < 0 ? (
           <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
             {"(פחות לכל אורח)"}
@@ -178,7 +178,7 @@ export const HotelCard = ({
                     </div>
                     <div className="w-full flex flex-col justify-between lg:items-right mb-2">
                       <div
-                        className="w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
+                        className="w-full lg:w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
                         onClick={() => setOpened((prev) => !prev)}
                       >
                         <div className="flex w-full items-center justify-center lg:justify-between gap-2">
@@ -187,7 +187,7 @@ export const HotelCard = ({
                             <span>סוגי חדרים נוספים</span>
                           </div>
                           {opened ? (
-                            <ChevronUp className="m-auto" color="black" />
+                            <ChevronUp color="black" />
                           ) : (
                             <ChevronDown color="black" />
                           )}
