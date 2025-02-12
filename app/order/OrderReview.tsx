@@ -408,11 +408,14 @@ export default function OrderReview() {
                             ? `${selectedFlight.metadata.name.slice(0, 8)}.`
                             : selectedFlight?.metadata.name}
                         </div>
-                        {formatPrice(flightPriceAddition) ? (
-                          <>({formatPrice(flightPriceAddition)})</>
-                        ) : (
-                          ""
-                        )}
+                        <div>
+                          {formatPrice(flightPriceAddition) ? (
+                            <>({formatPrice(flightPriceAddition)})</>
+                          ) : (
+                            ""
+                          )}
+                        </div>
+
                         {/* <div>, בטיסות</div>
                     <div>
                       {selectedFlight.outbound.flightNumber +
