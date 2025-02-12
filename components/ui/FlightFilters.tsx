@@ -111,10 +111,10 @@ export const FlightFilters = ({
   };
 
   return (
-    <div className="w-full p-4 space-y-8 border-2 border-gray-200 shadow-lg rounded-lg">
+    <div className="w-full p-4 space-y-4 border-2 border-gray-200 shadow-lg rounded-lg">
       {/* Stops Section */}
       <div dir="rtl">
-        <h3 className="text-lg font-semibold mb-4">עצירות</h3>
+        <h3 className="text-lg font-semibold mb-2">עצירות</h3>
         <Checkbox.Group
           value={filters.numOfStops}
           onChange={(value) =>
@@ -129,16 +129,12 @@ export const FlightFilters = ({
             <Checkbox value="1" id="one-stop" />
             <label htmlFor="one-stop">עצירה אחת</label>
           </div>
-          <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="2" id="multi-stop" />
-            <label htmlFor="multi-stop">אחת ויותר</label>
-          </div>
         </Checkbox.Group>
       </div>
 
       {/* Luggage */}
       <div dir="rtl">
-        <h3 className="text-lg font-semibold mb-4">כבודה</h3>
+        <h3 className="text-lg font-semibold mb-2">כבודה</h3>
         <Checkbox.Group
           value={filters.luggage}
           onChange={(value) =>
@@ -156,9 +152,22 @@ export const FlightFilters = ({
         </Checkbox.Group>
       </div>
 
+      <div>
+        <h3 dir="rtl" className="text-lg font-semibold mb-4">
+          ננסה לחסוך?
+        </h3>
+        {priceComponent}
+      </div>
+      <div>
+        <h3 dir="rtl" className="text-lg mt-8 font-semibold mb-4">
+          משך זמן טיסה
+        </h3>
+        {flightDurationComponent}
+      </div>
+
       {/* Departure Time Section */}
       <div dir="rtl">
-        <h3 className="text-lg font-semibold mb-4">זמן המראה</h3>
+        <h3 className="text-lg font-semibold mt-8 mb-2">זמן המראה</h3>
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
             label="בוקר"
@@ -201,7 +210,7 @@ export const FlightFilters = ({
 
       {/* Arrival Time Section */}
       <div dir="rtl">
-        <h3 className="text-lg font-semibold mb-4">זמן הגעה</h3>
+        <h3 className="text-lg font-semibold mb-2">זמן הגעה</h3>
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
             label="בוקר"
@@ -241,33 +250,9 @@ export const FlightFilters = ({
           />
         </div>
       </div>
-      <div className="mx-10"></div>
-
-      {/* TO DO: Amend margins between all components */}
-
-      {/* Price Range Section */}
-      <div>
-        <h3 dir="rtl" className="text-lg font-semibold mb-4">
-          אני מוכן להוסיף
-        </h3>
-        {priceComponent}
-      </div>
-
-      {/* TO DO: Amend margins between all components */}
-
-      {/* Duration Section */}
-      <div>
-        <h3 dir="rtl" className="text-lg font-semibold mb-4">
-          משך זמן טיסה
-        </h3>
-        {flightDurationComponent}
-      </div>
-
-      {/* TO DO: Amend margins between all components */}
-
       {/* Airlines Section */}
       <div dir="rtl">
-        <h3 className="text-lg font-semibold mb-4">חברת תעופה</h3>
+        <h3 className="text-lg font-semibold mt-4 mb-2">חברת תעופה</h3>
         <Checkbox.Group
           value={filters.airline}
           onChange={(value) =>
