@@ -88,34 +88,36 @@ export default function OrderReview() {
 
   const validate = {
     firstName: (value: string) => {
-      if (!value.trim()) return "שם פרטי הוא שדה חובה";
-      if (value.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
-      if (!/^[A-Za-z\s]+$/.test(value)) {
+      const trimmedValue = value.trim();
+      if (!trimmedValue) return "שם פרטי הוא שדה חובה";
+      if (trimmedValue.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
+      if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
         return "שם פרטי חייב להיות באנגלית בלבד";
       }
       return "";
     },
     lastName: (value: string) => {
-      if (!value.trim()) return "שם משפחה הוא שדה חובה";
-      if (value.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
-      if (!/^[A-Za-z\s]+$/.test(value)) {
+      const trimmedValue = value.trim();
+      if (!trimmedValue) return "שם משפחה הוא שדה חובה";
+      if (trimmedValue.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
+      if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
         return "שם משפחה חייב להיות באנגלית בלבד";
       }
       return "";
     },
     email: (value: string) => {
-      if (!value) return "אימייל הוא שדה חובה";
-      if (!validator.isEmail(value)) return "נא להזין כתובת אימייל תקינה";
+      const trimmedValue = value.trim();
+      if (!trimmedValue) return "אימייל הוא שדה חובה";
+      if (!validator.isEmail(trimmedValue))
+        return "נא להזין כתובת אימייל תקינה";
       return "";
     },
     phone: (value: string) => {
-      const cleanPhone = value.replace(/-/g, "");
-      if (!value) return "טלפון נייד הוא שדה חובה";
-      if (
-        !cleanPhone.startsWith("05") ||
-        !validator.isMobilePhone(cleanPhone, "he-IL")
-      ) {
-        return "מספר נייד שמתחיל ב-05.. בבקשה";
+      const cleanPhone = value.replace(/[- ]/g, "");
+      if (!cleanPhone) return "טלפון נייד הוא שדה חובה";
+      if (!cleanPhone.startsWith("05")) return "מספר נייד חייב להתחיל ב-05";
+      if (!validator.isMobilePhone(cleanPhone, "he-IL")) {
+        return "נא להזין מספר טלפון תקין";
       }
       return "";
     },
@@ -257,22 +259,21 @@ export default function OrderReview() {
       newPassengers[index][field] = finalValue;
       setPassengers(newPassengers);
 
-      // Only validate if field has been touched
-      if (touched[index][field]) {
-        const error = validate[field](finalValue);
-        const newErrors = [...validationErrors];
+      const error = validate[field](finalValue);
+      const newErrors = [...validationErrors];
 
-        if (error) {
-          newErrors[index] = { ...newErrors[index], [field]: error };
-        } else {
-          const { ...rest } = newErrors[index];
-          newErrors[index] = rest;
-        }
-
-        setValidationErrors(newErrors);
+      if (error) {
+        newErrors[index] = { ...newErrors[index], [field]: error };
+      } else {
+        // Remove the error for this field
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [field]: _, ...rest } = newErrors[index];
+        newErrors[index] = rest;
       }
+      setValidationErrors(newErrors);
     },
-    [passengers, validationErrors, touched]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [passengers, validationErrors]
   );
 
   const isFormValid = passengers.every((passenger, i) => {
