@@ -28,7 +28,7 @@ export const RoomCard = ({
     <div onClick={() => onRoomSelect(room)}>
       <div
         className={cn(
-          "py-2 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 text-sm flex flex-row justify-between items-center",
+          "py-1 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 text-sm flex flex-row justify-between items-center",
           isSelected && "text-secondary font-bold"
         )}
       >

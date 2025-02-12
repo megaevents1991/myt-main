@@ -173,53 +173,66 @@ export const HotelCard = ({
                       rating={hotelInfo.metadata.rating}
                       roomName={selectedRoom?.room_data_trans.main_name || ""}
                     />
-                    <div className="w-full text-center lg:hidden p-1 mb-2 border-main border rounded-lg bg-gray-200">
+                    <div className="w-full text-center lg:hidden p-1 mb-2 mt-2 border-main border rounded-lg bg-gray-200">
                       {priceToShowFull}
                     </div>
-                    <div className="w-full flex flex-col justify-between lg:items-right mb-2">
-                      <div
-                        className="w-full lg:w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
-                        onClick={() => setOpened((prev) => !prev)}
-                      >
-                        <div className="flex w-full items-center justify-center lg:justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            {hotelRates.length}
-                            <span>סוגי חדרים נוספים</span>
+                    {hotelRates.length > 1 && (
+                      <div className="w-full flex flex-col justify-between lg:items-right mt-2 mb-2">
+                        <div
+                          className="w-full lg:w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
+                          onClick={() => setOpened((prev) => !prev)}
+                        >
+                          <div className="flex w-full items-center justify-center lg:justify-between gap-2">
+                            {isSelected ? (
+                              <div className="flex items-center gap-2">
+                                {hotelRates.length - 1}
+                                <span>סוגי חדרים נוספים</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                {hotelRates.length}
+                                <span>סוגי חדרים</span>
+                              </div>
+                            )}
+                            {opened ? (
+                              <ChevronUp color="black" />
+                            ) : (
+                              <ChevronDown color="black" />
+                            )}
                           </div>
-                          {opened ? (
-                            <ChevronUp color="black" />
-                          ) : (
-                            <ChevronDown color="black" />
-                          )}
                         </div>
+                        <Collapse
+                          in={opened}
+                          className="mt-2 w-full rounded-lg bg-gray-200 px-2"
+                        >
+                          {isSelected && (
+                            <ScrollArea
+                              className="w-full h-32"
+                              scrollbarSize={0}
+                            >
+                              <div className="flex flex-col">
+                                {hotelRates.map((room) => (
+                                  <RoomCard
+                                    persons={persons}
+                                    minPrice={minPrice}
+                                    key={room.match_hash}
+                                    room={room}
+                                    isSelected={
+                                      selectedRoom?.match_hash ===
+                                      room.match_hash
+                                    }
+                                    onRoomSelect={(room) => {
+                                      handleRoomSelect(room);
+                                      setOpened((prev) => !prev);
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          )}
+                        </Collapse>
                       </div>
-                      <Collapse
-                        in={opened}
-                        className="mt-2 w-full rounded-lg bg-gray-200 px-2"
-                      >
-                        {isSelected && (
-                          <ScrollArea className="w-full h-32" scrollbarSize={0}>
-                            <div className="flex flex-col gap-2">
-                              {hotelRates.map((room) => (
-                                <RoomCard
-                                  persons={persons}
-                                  minPrice={minPrice}
-                                  key={room.match_hash}
-                                  room={room}
-                                  isSelected={
-                                    selectedRoom?.match_hash === room.match_hash
-                                  }
-                                  onRoomSelect={(room) => {
-                                    handleRoomSelect(room);
-                                    setOpened((prev) => !prev);
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        )}
-                      </Collapse>
-                    </div>
+                    )}
                     <div className="hidden lg:block">
                       <Amenities
                         roomAmenities={selectedRoomInfo?.amenities || []}

@@ -46,7 +46,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const shortTicket =
     (eventTicket.category?.length || 1) > 10
-      ? eventTicket.category.slice(0, 8)
+      ? `${eventTicket.category.slice(0, 8)}.`
       : eventTicket.category;
   const ticketCategory = isMobile ? shortTicket : eventTicket.category;
 
