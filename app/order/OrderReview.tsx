@@ -170,7 +170,6 @@ export default function OrderReview() {
   const maup = Number(process.env.NEXT_PUBLIC_MARKUP) || 0;
 
   const totalPrice = Math.ceil(
-    // should be passed to server / DB level
     (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
       selectedFlight.price +
       +selectedHotel.price
@@ -296,7 +295,10 @@ export default function OrderReview() {
   const flightPriceAddition =
     selectedFlight.price / selectedFlight.numOfTravelers -
     event.base_flight_price;
-  const hotelPriceAddition = +selectedHotel.price - event.base_hotel_price;
+
+  const totalGuests = getTotalPersons(selectedHotel.guests);
+  const hotelPriceAddition =
+    +selectedHotel.price / totalGuests - event.base_hotel_price;
 
   return (
     <div className="min-h-screen bg-white">
@@ -399,11 +401,11 @@ export default function OrderReview() {
                         dir="rtl"
                       >
                         <div>{selectedFlight.numOfTravelers}</div>
-                        <div>נוסעים טסים עם</div>
+                        <div>נוסעים עם</div>
                         <div>
                           {selectedFlight?.metadata.name &&
-                          selectedFlight.metadata.name.length > 17
-                            ? `${selectedFlight.metadata.name.slice(0, 10)}.`
+                          selectedFlight.metadata.name.length > 12
+                            ? `${selectedFlight.metadata.name.slice(0, 8)}.`
                             : selectedFlight?.metadata.name}
                         </div>
                         {formatPrice(flightPriceAddition) ? (

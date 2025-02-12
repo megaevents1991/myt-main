@@ -11,6 +11,7 @@ import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/price.utils";
 import Image from "next/image";
+import { isMobile } from "react-device-detect";
 
 const buttonText: Record<number, string> = {
   1: "המשך לבחירת טיסה",
@@ -36,6 +37,18 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const buttonDisabled =
     (!flight?.id && step === 2) || (!hotel?.id && step === 3);
+
+  const shortAirline =
+    (flight?.metadata?.name?.length || 1) > 10
+      ? `${flight?.metadata?.name?.slice(0, 8)}.`
+      : flight?.metadata?.name;
+  const airline = isMobile ? shortAirline : flight?.metadata?.name;
+
+  const shortTicket =
+    (eventTicket.category?.length || 1) > 10
+      ? eventTicket.category.slice(0, 8)
+      : eventTicket.category;
+  const ticketCategory = isMobile ? shortTicket : eventTicket.category;
 
   const nextStep = () =>
     setStep((prev) => {
@@ -103,7 +116,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                               )
                             )
                         )}{" "}
-                      <span className="font-bold">{eventTicket.category} </span>{" "}
+                      <span className="font-bold">{ticketCategory}</span>{" "}
                       <Image
                         className="inline-block"
                         alt="ticket icon"
@@ -121,12 +134,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                             event.base_flight_price
                         )
                       )}{" "}
-                      <span className="font-bold">
-                        {flight?.metadata.name &&
-                        flight.metadata.name.length > 17
-                          ? `${flight.metadata.name.slice(0, 10)}.`
-                          : flight?.metadata.name}
-                      </span>
+                      <span className="font-bold">{airline}</span>
                       <Image
                         alt="plane icon "
                         className="inline-block"

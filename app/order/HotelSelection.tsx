@@ -169,9 +169,7 @@ export const HotelSelection = () => {
       )
     );
 
-    const basePricePerPerson = Math.floor(
-      event.base_hotel_price / totalPersons
-    );
+    const basePricePerPerson = event.base_hotel_price;
 
     const hotelsToSet = hotelSort(data.data.hotels, sortOption, hotelsInfo);
 
