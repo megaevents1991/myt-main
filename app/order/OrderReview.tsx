@@ -105,8 +105,7 @@ export default function OrderReview() {
     },
     email: (value: string) => {
       if (!value) return "אימייל הוא שדה חובה";
-      if (!validator.isEmail(value) || !/^[A-Za-z\s]+$/.test(value))
-        return "נא להזין כתובת אימייל תקינה";
+      if (!validator.isEmail(value)) return "נא להזין כתובת אימייל תקינה";
       return "";
     },
     phone: (value: string) => {
@@ -116,7 +115,7 @@ export default function OrderReview() {
         !cleanPhone.startsWith("05") ||
         !validator.isMobilePhone(cleanPhone, "he-IL")
       ) {
-        return "מספר טלפון נייד בלבד בבקשה";
+        return "מספר נייד שמתחיל ב-05.. בבקשה";
       }
       return "";
     },
@@ -303,7 +302,7 @@ export default function OrderReview() {
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content */}
-      <main className="max-w-[1200px] mx-auto lg:px-6 py-8">
+      <main className="max-w-[1200px] mx-auto lg:px-6 py-4">
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Left Column - Booking Summary and CTA */}
           <div className="space-y-4 order-1 md:order-1">
