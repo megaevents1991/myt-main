@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,78 @@ export default function OrderReview() {
     }))
   );
 
+  const validate = useMemo(
+    () => ({
+      firstName: (value: string) => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue) return "שם פרטי הוא שדה חובה";
+        if (trimmedValue.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
+        if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
+          return "שם פרטי חייב להיות באנגלית בלבד";
+        }
+        return "";
+      },
+      lastName: (value: string) => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue) return "שם משפחה הוא שדה חובה";
+        if (trimmedValue.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
+        if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
+          return "שם משפחה חייב להיות באנגלית בלבד";
+        }
+        return "";
+      },
+      email: (value: string) => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue) return "אימייל הוא שדה חובה";
+        if (!validator.isEmail(trimmedValue))
+          return "נא להזין כתובת אימייל תקינה";
+        return "";
+      },
+      phone: (value: string) => {
+        const cleanPhone = value.replace(/[- ]/g, "");
+        if (!cleanPhone) return "טלפון נייד הוא שדה חובה";
+        if (!cleanPhone.startsWith("05")) return "מספר נייד חייב להתחיל ב-05";
+        if (!validator.isMobilePhone(cleanPhone, "he-IL")) {
+          return "נא להזין מספר טלפון תקין";
+        }
+        return "";
+      },
+    }),
+    []
+  );
+
+  useEffect(() => {
+    passengers.forEach((passenger, index) => {
+      ["firstName", "lastName", "phone", "email"].forEach((field) => {
+        const value = passenger[field as keyof typeof passenger];
+        let error = "";
+
+        if (field === "phone" || field === "email") {
+          if (index === 0) {
+            error = validate[field as keyof typeof validate](value);
+          }
+        } else {
+          error = validate[field as keyof typeof validate](value);
+        }
+
+        if (error) {
+          const newErrors = [...validationErrors];
+          newErrors[index] = { ...newErrors[index], [field]: error };
+          setValidationErrors(newErrors);
+        }
+      });
+    });
+
+    // Mark fields as touched if they have values (indicating autofill)
+    const newTouched = passengers.map((passenger) => ({
+      firstName: !!passenger.firstName,
+      lastName: !!passenger.lastName,
+      phone: !!passenger.phone,
+      email: !!passenger.email,
+    }));
+    setTouched(newTouched);
+  }, [passengers, validate]);
+
   if (!event || !selectedFlight || !selectedHotel) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
@@ -85,43 +157,6 @@ export default function OrderReview() {
       </div>
     );
   }
-
-  const validate = {
-    firstName: (value: string) => {
-      const trimmedValue = value.trim();
-      if (!trimmedValue) return "שם פרטי הוא שדה חובה";
-      if (trimmedValue.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
-      if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
-        return "שם פרטי חייב להיות באנגלית בלבד";
-      }
-      return "";
-    },
-    lastName: (value: string) => {
-      const trimmedValue = value.trim();
-      if (!trimmedValue) return "שם משפחה הוא שדה חובה";
-      if (trimmedValue.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
-      if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
-        return "שם משפחה חייב להיות באנגלית בלבד";
-      }
-      return "";
-    },
-    email: (value: string) => {
-      const trimmedValue = value.trim();
-      if (!trimmedValue) return "אימייל הוא שדה חובה";
-      if (!validator.isEmail(trimmedValue))
-        return "נא להזין כתובת אימייל תקינה";
-      return "";
-    },
-    phone: (value: string) => {
-      const cleanPhone = value.replace(/[- ]/g, "");
-      if (!cleanPhone) return "טלפון נייד הוא שדה חובה";
-      if (!cleanPhone.startsWith("05")) return "מספר נייד חייב להתחיל ב-05";
-      if (!validator.isMobilePhone(cleanPhone, "he-IL")) {
-        return "נא להזין מספר טלפון תקין";
-      }
-      return "";
-    },
-  };
 
   const formatPhoneNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
@@ -223,10 +258,14 @@ export default function OrderReview() {
         eventLocation: event.location.name,
         ticketType: eventTicket.category,
         quantity: numberOfEventTickets.toString(),
-        flight: `${selectedFlight.outbound} ${selectedFlight.outbound}`,
+        airline: selectedFlight.metadata.name,
+        flights: `Outbound: ${selectedFlight.outbound.flightNumber}, Return: ${selectedFlight.inbound.flightNumber}`,
+        dates: `Outbound: ${dayjs(selectedFlight.outbound.departureTime).format(
+          "DD/MM/YYYY HH:MM"
+        )}, Return: ${dayjs(selectedFlight.inbound.departureTime).format(
+          "DD/MM/YYYY HH:MM"
+        )}`,
         hotel: selectedHotel.name,
-        checkInDate: selectedHotel,
-        checkOutDate: selectedHotel,
       };
 
       Object.entries(params).forEach(([key, value]) => {
@@ -405,7 +444,7 @@ export default function OrderReview() {
                         <div>
                           {selectedFlight?.metadata.name &&
                           selectedFlight.metadata.name.length > 12
-                            ? `${selectedFlight.metadata.name.slice(0, 8)}.`
+                            ? `${selectedFlight.metadata.name.slice(0, 10)}.`
                             : selectedFlight?.metadata.name}
                         </div>
                         <div>
@@ -484,12 +523,29 @@ export default function OrderReview() {
 
             {/* CTA Button */}
             <Button
-              disabled={!isFormValid || isSubmitting}
-              onClick={handleSubmit}
-              className={cn(
-                "w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] hidden md:block",
-                !isFormValid && "cursor-not-allowed"
-              )}
+              onClick={(e) => {
+                // Force validation on all fields for each passenger
+                passengers.forEach((_, index) => {
+                  ["firstName", "lastName", "phone", "email"].forEach(
+                    (field) => {
+                      if (
+                        index === 0 ||
+                        field === "firstName" ||
+                        field === "lastName"
+                      ) {
+                        handleBlur(index, field as keyof typeof validate);
+                      }
+                    }
+                  );
+                });
+
+                // Check if form is valid after validation
+                if (isFormValid && !isSubmitting) {
+                  handleSubmit(e);
+                }
+              }}
+              className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] hidden md:block"
+              disabled={isSubmitting}
             >
               שלח הזמנה
             </Button>

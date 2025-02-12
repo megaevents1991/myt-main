@@ -3,11 +3,12 @@ import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
 import * as yup from 'yup';
 import { OrderData } from "@/lib/app.types";
+import dayjs from "dayjs";
 
 export async function POST(req: Request) {
   const orderDetails = await req.json();
 
-  const validatedData = await validateOrderData(orderDetails);
+  const validatedData: OrderData = await validateOrderData(orderDetails);
 
   const { data, error } = await supabase
       .from('reservations')
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
         main_contact_email: validatedData.main_contact_email,
         more_pax_info: validatedData.more_pax_info,
         event_order_info: validatedData.event_order_info,
-        flight_order_info: validatedData.flight_order_info, // TO DO: Pass the right info (flight number, etc.)
+        flight_order_info: validatedData.flight_order_info,
         hotel_order_info: validatedData.hotel_order_info,
         user_shown_price: validatedData.user_shown_price,
         event_id: validatedData.event_id,
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: "Failed to confirm order" }, { status: 500 });
   }
-  console.log("(1/4) New Reservation was saved to DB");
+  console.log("(1/3) New Reservation was saved to DB");
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -41,16 +42,17 @@ export async function POST(req: Request) {
     },
   });
 
-  const emailContent = `
+  const repEmailContent = `
     New Order Details:
     Name: ${validatedData.main_contact_first_name} ${validatedData.main_contact_last_name}
     Contact Details: ${validatedData.main_contact_phone_number}, ${validatedData.main_contact_email}
+    More Pax: ${JSON.stringify(validatedData.more_pax_info)}
     Event: ${validatedData.event_order_info.name}
     Date: ${validatedData.event_order_info.date}
     Ticket Type: ${validatedData.event_order_info.category}
     Quantity: ${validatedData.event_order_info.number_of_ticket}
-    Flight: flight.code
-    Hotel: hotel.name
+    Flight: ${JSON.stringify(validatedData.flight_order_info)}
+    Hotel: ${JSON.stringify(validatedData.hotel_order_info)}
     Total Price: ${validatedData.user_shown_price}
   `;
 
@@ -59,9 +61,9 @@ export async function POST(req: Request) {
       from: process.env.EMAIL_SERVER_USER,
       to: process.env.SALES_REP_EMAIL,
       subject: `New Order Confirmation - ${validatedData.event_order_info.name}`,
-      text: emailContent,
+      text: repEmailContent,
     });
-    console.log("(2/4) New Reservation email to sales rep sent");
+    console.log("(2/3) New Reservation email to sales rep sent");
 
     const bookingRef = `me_${new Date().getDate()}${id}`;
 
@@ -69,26 +71,28 @@ export async function POST(req: Request) {
       bookingReference: bookingRef,
       eventName: validatedData.event_order_info.name,
       eventDate: new Date(validatedData.event_order_info.date).toLocaleDateString('he-IL'),
-      eventLocation: '', //validatedData.event_order_info?.location || '',
+      eventLocation: validatedData.event_order_info?.location_name || '',
       ticketType: validatedData.event_order_info.category,
       quantity: validatedData.event_order_info.number_of_ticket,
-      flight: '', //validatedData.flight_order_info?.code || 'לא נבחר',
-      hotel: '', //validatedData.hotel_order_info?.name || 'לא נבחר',
-      checkInDate: '', //validatedData.hotel_order_info?.checkIn || '-',
-      checkOutDate: '', //validatedData.hotel_order_info?.checkOut || '-'
+      airline: validatedData.flight_order_info?.metadata?.name,
+      departFlight: validatedData.flight_order_info?.outbound.flightNumber,
+      departFlightDate: dayjs(validatedData.flight_order_info?.outbound.departureTime).format("DD/MM/YYYY HH:MM"),
+      returnFlight : validatedData.flight_order_info?.inbound.flightNumber,
+      returnFlightDate: dayjs(validatedData.flight_order_info?.inbound.departureTime).format("DD/MM/YYYY HH:MM"),
+      hotel: validatedData.hotel_order_info?.name,
+      price: validatedData.user_shown_price
     };
 
-    const emailHTML = userEmail(replacements);
+    const userEmailContent = userEmail(replacements);
 
     await transporter.sendMail({
       from: process.env.EMAIL_SERVER_USER,
       to: validatedData.main_contact_email,
       subject: `אישור הזמנה - ${validatedData.event_order_info.name}`,
-      html: emailHTML,
+      html: userEmailContent,
     });
   
-    console.log("(3/4) New Reservation email to customer sent");
-    console.log("(4/4) New Reservation process completed");
+    console.log("(3/3) New Reservation email to customer sent and process is completed");
 
     return NextResponse.json(
       {
@@ -118,8 +122,7 @@ const orderSchema = yup.object().shape({
         first_name: yup.string().required().min(1),
         last_name: yup.string().required().min(1),
       })
-    )
-    .required(),
+    ),
   event_order_info: yup
     .object()
     .shape({
@@ -241,7 +244,7 @@ const userEmail = (replacements: Record<string, string | number | undefined>) =>
                         
                         <!-- Main Content -->
                         <tr>
-                            <td style="padding: 40px 20px; text-align: right;">
+                            <td style="padding: 20px 20px; text-align: right;">
                                 <!-- Success Icon -->
                                 <div style="text-align: center; margin-bottom: 30px;">
                                     <svg width="48" height="48" viewBox="0 0 24 24" style="fill: none; stroke: #22c55e; stroke-width: 2;">
@@ -287,7 +290,13 @@ const userEmail = (replacements: Record<string, string | number | undefined>) =>
                                         </tr>
                                         <tr>
                                             <td style="padding: 8px 0; color: #666666;">
-                                                <strong style="color: #05203c;">טיסה:</strong> ${replacements.flight}
+                                                <strong style="color: #05203c;">חברת תעופה:</strong> ${replacements.airline}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px 0; color: #666666;">
+                                                <strong style="color: #05203c;">טיסת הלוך:</strong> ${replacements.departFlight}, ${replacements.departFlightDate}
+                                                <strong style="color: #05203c;">טיסת חזור:</strong> ${replacements.returnFlight}, ${replacements.returnFlightDate}
                                             </td>
                                         </tr>
                                         <tr>
@@ -297,12 +306,7 @@ const userEmail = (replacements: Record<string, string | number | undefined>) =>
                                         </tr>
                                         <tr>
                                             <td style="padding: 8px 0; color: #666666;">
-                                                <strong style="color: #05203c;">צ'ק-אין:</strong> ${replacements.checkInDate}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 8px 0; color: #666666;">
-                                                <strong style="color: #05203c;">צ'ק-אאוט:</strong> ${replacements.checkOutDate}
+                                                <strong style="color: #05203c;">מחיר:</strong> $${replacements.price}
                                             </td>
                                         </tr>
                                     </table>

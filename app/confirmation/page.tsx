@@ -59,10 +59,10 @@ function ConfirmationContent() {
   let eventLocation = searchParams.get("eventLocation");
   let ticketType = searchParams.get("ticketType");
   let quantity = searchParams.get("quantity");
-  let flight = searchParams.get("flight");
+  let airline = searchParams.get("airline");
+  let flights = searchParams.get("flights");
+  let dates = searchParams.get("dates");
   let hotel = searchParams.get("hotel");
-  let checkInDate = searchParams.get("checkInDate");
-  let checkOutDate = searchParams.get("checkOutDate");
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
@@ -87,35 +87,39 @@ function ConfirmationContent() {
               <strong>Event:</strong> {eventName}
             </p>
             <p>
-              <strong>Date:</strong> {formatDate(eventDate)}
+              <strong>Date:</strong>{" "}
+              {eventDate
+                ? new Date(eventDate).toLocaleDateString("he-IL")
+                : "N/A"}
             </p>
             <p>
               <strong>Location:</strong> {eventLocation}
             </p>
             <p>
-              <strong>Tickets:</strong> {ticketType} (x{quantity})
+              <strong>Tickets:</strong> (x{quantity}) {ticketType}
             </p>
             <p>
-              <strong>Flight:</strong> {flight}
+              <strong>Airline:</strong> {airline}
+            </p>
+            <p>
+              <strong>Flight Numbers-</strong> {flights}
+            </p>
+            <p>
+              <strong>Flight Schedule-</strong> {dates}
             </p>
             <p>
               <strong>Hotel:</strong> {hotel}
             </p>
-            <p>
-              <strong>Check-in:</strong> {formatDate(checkInDate)}
-            </p>
-            <p>
-              <strong>Check-out:</strong> {formatDate(checkOutDate)}
-            </p>
           </div>
         </div>
 
-        <p className="text-green-600">
-          Your booking is confirmed. Our team will contact you shortly with
-          further details.
-        </p>
+        <div className="text-green-600 mb-6" dir="rtl">
+          תודה שבחרת מגה איבנטס! ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר
+          תוך יום עסקים לקבלת תשלום ואישור הרכישה.
+        </div>
+        <div>{""}</div>
 
-        <Link href="/">
+        <Link href="/" className="mt-6">
           <Button className="w-full">Return to Home</Button>
         </Link>
       </div>

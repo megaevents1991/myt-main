@@ -194,8 +194,8 @@ export interface OrderData {
     price_per_ticket: number;
     total_tickets_price: number;
   };
-  flight_order_info: object; // You might need to define a specific interface here
-  hotel_order_info: object; // You might need to define a specific interface here
+  flight_order_info: Flight; // You might need to define a specific interface here
+  hotel_order_info: OrderHotel; // You might need to define a specific interface here
   user_shown_price: number;
   event_id: number;
   aff_partner_id: string;
