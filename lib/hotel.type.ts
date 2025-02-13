@@ -67,6 +67,13 @@ export type Rate = {
   };
 };
 
+type Taxes = {
+  name: string;
+  included_by_supplier: boolean;
+  amount: string;
+  currency_code: string;
+}[];
+
 type PaymentType = {
   amount: string;
   show_amount: string;
@@ -76,7 +83,7 @@ type PaymentType = {
   is_need_credit_card_data: boolean;
   is_need_cvc: boolean;
   type: string;
-  tax_data: Record<string, unknown>;
+  tax_data: { taxes: Taxes };
   cancellation_penalties: CancellationPenalties;
 };
 

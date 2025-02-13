@@ -1,4 +1,4 @@
-import { HotelResponse, HotelSearchRequest } from "@/lib/hotel.type";
+import { Hotel, HotelResponse, HotelSearchRequest } from "@/lib/hotel.type";
 import { NextResponse } from "next/server";
 import { authHeader } from "../keys";
 
@@ -47,7 +47,52 @@ export async function POST(request: Request) {
 
     const data: HotelResponse = await response.json();
 
-    return NextResponse.json(data);
+    const fixedHotels: Hotel[] = data.data.hotels.map((hotel) => {
+      const fixedRates = hotel.rates.map((rate) => {
+        const fixedPaymentTypes = rate.payment_options.payment_types.map(
+          (paymentType) => {
+            const vat = paymentType.tax_data["taxes"].find(
+              (tax) => tax.name === "vat"
+            );
+            const tax =
+              !vat?.included_by_supplier && vat?.amount ? +vat.amount : 0;
+
+            if (tax) {
+              console.log({
+                taxFound: tax,
+                oldPrice: +paymentType.show_amount,
+                newPrice: +paymentType.show_amount + tax,
+              });
+            }
+
+            return {
+              ...paymentType,
+              show_amount: (+paymentType.show_amount + tax).toString(),
+            };
+          }
+        );
+
+        return {
+          ...rate,
+          payment_options: {
+            ...rate.payment_options,
+            payment_types: fixedPaymentTypes,
+          },
+        };
+      });
+
+      return {
+        ...hotel,
+        rates: fixedRates,
+      };
+    });
+    return NextResponse.json<HotelResponse>({
+      ...data,
+      data: {
+        hotels: fixedHotels,
+        total_hotels: data.data.total_hotels,
+      },
+    });
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json(
