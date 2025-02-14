@@ -67,7 +67,10 @@ export const TicketSelection = () => {
         </div>
       </div>
       <div className="flex flex-col" dir="rtl">
-        <div className="mt-4">בחרו סוג כרטיס, ישיבה בקבוצות מובטחת:</div>
+        <div className="mt-4 text-lg">
+          בחרו סוג כרטיס,
+          <span className="font-bold">ישיבה בקבוצות מובטחת!</span>
+        </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-6">
           <Spoiler
             className="w-full lg:hidden flex justify-center"

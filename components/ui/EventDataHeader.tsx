@@ -1,5 +1,6 @@
 import { Event } from "@/lib/app.types";
 import dayjs from "dayjs";
+import { isMobile } from "react-device-detect";
 
 export const EventDataHeader = ({ event }: { event?: Event }) => {
   return (
@@ -8,7 +9,7 @@ export const EventDataHeader = ({ event }: { event?: Event }) => {
       <span className="whitespace-nowrap text-lg">
         {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
       </span>
-      <span className="text-lg">{event?.description}</span>
+      {!isMobile && <span className="text-lg">{event?.description}</span>}
     </div>
   );
 };
