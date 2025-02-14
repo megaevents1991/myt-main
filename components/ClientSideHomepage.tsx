@@ -13,6 +13,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { Dispatch, RefObject, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { MYT } from "./ui/myt";
 
 interface Props {
   initialEvents: Event[];
@@ -24,15 +25,18 @@ const SearchCombobox = ({
   events,
   ref,
   inline,
+  onOpenFeedbackModal,
+  mobile,
 }: {
   setSearchValue: Dispatch<SetStateAction<string>>;
   events: Event[];
   searchValue: string;
   ref?: RefObject<HTMLInputElement>;
   inline?: boolean;
+  onOpenFeedbackModal: () => void;
+  mobile?: boolean;
 }) => {
   const router = useRouter();
-
   const combobox = useCombobox();
 
   const filteredOptions = events.filter(({ name, location }) => {
@@ -55,13 +59,20 @@ const SearchCombobox = ({
     </Combobox.Option>
   ));
 
+  const naming = mobile ? "mobile" : undefined;
+
   return (
     <Combobox
       onOptionSubmit={(optionValue) => {
-        setSearchValue(
-          events.find((item) => item.id.toString() === optionValue)?.name || ""
-        );
-        router.push(`/order?eventId=${optionValue}`);
+        if (optionValue === "feedback") {
+          onOpenFeedbackModal();
+        } else {
+          setSearchValue(
+            events.find((item) => item.id.toString() === optionValue)?.name ||
+              ""
+          );
+          router.push(`/order?eventId=${optionValue}`);
+        }
       }}
       store={combobox}
     >
@@ -74,6 +85,7 @@ const SearchCombobox = ({
             "p-2 text-main border"
           )}
           dir="rtl"
+          name={naming}
           placeholder="חפש אירוע..."
           value={searchValue}
           onChange={(event) => {
@@ -92,11 +104,10 @@ const SearchCombobox = ({
       </Combobox.Target>
       <Combobox.Dropdown>
         <Combobox.Options>
-          {options.length === 0 ? (
-            <Combobox.Empty>לא מצאנו משהו כזה</Combobox.Empty>
-          ) : (
-            options
-          )}
+          {options}
+          <Combobox.Option value="feedback" style={{ textAlign: "right" }}>
+            לא מצאתם מה שחיפשתם? ספרו לנו
+          </Combobox.Option>
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
@@ -107,9 +118,11 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const matches = useMediaQuery("(min-width: 768px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const { client } = useStatsigClient();
   const [errorDebug, setErrorDebug] = useState(Object);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   useEffect(() => {
     window.onerror = function (message, source, lineno, colno, error) {
@@ -118,7 +131,57 @@ export function ClientSideHomepage({ initialEvents }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    let focusTimeout: NodeJS.Timeout;
+
+    if (showSearchModal) {
+      focusTimeout = setTimeout(() => {
+        const input = document.querySelector(
+          'input[name="mobile"]'
+        ) as HTMLInputElement;
+        if (input) {
+          input.focus();
+        }
+      }, 100);
+    }
+
+    return () => {
+      if (focusTimeout) {
+        clearTimeout(focusTimeout);
+      }
+    };
+  }, [showSearchModal]);
+
   useAffiliate();
+
+  const handleMoreEventsSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const event = formData.get("event");
+
+    try {
+      const response = await fetch("/api/more-events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ event }),
+      });
+
+      if (response.ok) {
+      } else {
+        console.error("Failed to submit event");
+      }
+      setShowFeedbackModal(false);
+      setShowSuccessMessage(false);
+    } catch (error) {
+      setShowFeedbackModal(false);
+      setShowSuccessMessage(false);
+      console.error("Error submitting event:", error);
+    }
+  };
 
   if (errorDebug.error) {
     return (
@@ -147,9 +210,53 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             events={initialEvents}
             searchValue={searchValue}
             setSearchValue={setSearchValue}
+            onOpenFeedbackModal={() => setShowFeedbackModal(true)}
+            mobile={true}
           />
         </Modal>
       )}
+      <Modal
+        opened={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        title="ספרו לנו לאן תרצו לטוס"
+        dir="rtl"
+      >
+        {showSuccessMessage ? (
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">תודה על שיתוף הפעולה!</h2>
+            <p>האירוע נשלח בהצלחה.</p>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              handleMoreEventsSubmit(e);
+              setShowSuccessMessage(true);
+            }}
+          >
+            <div className="mb-4">
+              <label
+                className="block text-gray-700 text-sm font-bold mb-2"
+                htmlFor="event"
+              >
+                מה שם האומן/משחק והאם יש העדפה למקום?
+              </label>
+              <input
+                id="event"
+                name="event"
+                type="text"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="ביונסה בפריז"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-secondary hover:bg-secondary-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              שלח
+            </button>
+          </form>
+        )}
+      </Modal>
       <section className="w-full py-6 lg:py-10 px-4 md:px-6 text-white bg-main relative">
         <div className="container mx-auto max-w-3xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
@@ -184,6 +291,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 searchValue={searchValue}
                 setSearchValue={setSearchValue}
                 ref={ref}
+                onOpenFeedbackModal={() => setShowFeedbackModal(true)}
               />
             )}
             <button
@@ -286,6 +394,20 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   </div>
                 </Link>
               ))}
+            <div
+              className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
+              onClick={() => setShowFeedbackModal(true)}
+            >
+              <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
+                <MYT className="" />
+              </div>
+              <div
+                className="p-4 text-center text-main text-xl font-bold h-20"
+                dir="rtl"
+              >
+                לא מצאתם מה שחיפשתם? ספרו לנו!
+              </div>
+            </div>
           </div>
         </div>
       </section>
