@@ -118,6 +118,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const matches = useMediaQuery("(min-width: 768px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [feedbackInSearchModal, setfeedbackInSearchModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const { client } = useStatsigClient();
@@ -142,7 +143,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
         if (input) {
           input.focus();
         }
-      }, 100);
+      }, 200);
     }
 
     return () => {
@@ -176,9 +177,15 @@ export function ClientSideHomepage({ initialEvents }: Props) {
       }
       setShowFeedbackModal(false);
       setShowSuccessMessage(false);
+      if (feedbackInSearchModal) {
+        setShowSearchModal(false);
+      }
     } catch (error) {
       setShowFeedbackModal(false);
       setShowSuccessMessage(false);
+      if (feedbackInSearchModal) {
+        setShowSearchModal(false);
+      }
       console.error("Error submitting event:", error);
     }
   };
@@ -210,7 +217,10 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             events={initialEvents}
             searchValue={searchValue}
             setSearchValue={setSearchValue}
-            onOpenFeedbackModal={() => setShowFeedbackModal(true)}
+            onOpenFeedbackModal={() => {
+              setfeedbackInSearchModal(true);
+              setShowFeedbackModal(true);
+            }}
             mobile={true}
           />
         </Modal>
