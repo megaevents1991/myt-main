@@ -111,28 +111,6 @@ export const HotelFilters = ({
           onChangeEnd={handlePriceRangeChangeEnd}
           marks={marks}
         />
-        <div className="p-6"></div>
-        <h3 className="text-lg text-end font-semibold mb-4">מרחק</h3>
-        <RangeSlider
-          thumbSize={20}
-          min={0}
-          max={maxDistance + 1000}
-          step={100}
-          label={(value) => Math.round((value / 1000) * 10) / 10}
-          value={distanceFromCenter}
-          styles={{
-            bar: { backgroundColor: themeColor },
-            mark: {
-              backgroundColor: "transparent",
-              borderColor: "transparent",
-            },
-            label: { backgroundColor: themeColor },
-            thumb: { backgroundColor: themeColor, borderColor: themeColor },
-          }}
-          onChange={handleDistanceFromCenterChange}
-          onChangeEnd={handleDistanceFromCenterChangeEnd}
-          marks={distanceMarks}
-        />
       </div>
       <form className="flex w-full shadow-md mt-8" dir="rtl">
         <input
@@ -177,8 +155,32 @@ export const HotelFilters = ({
               <label htmlFor="withoutMeal">ללא ארוחה</label>
             </div>
           </Checkbox.Group>
+        </div>
+        <div className="w-full">
           <div className="p-4"></div>
-          <h3 className="text-lg text-start font-semibold mb-2">
+          <h3 className="text-lg text-end font-semibold mb-4">מרחק</h3>
+          <RangeSlider
+            thumbSize={20}
+            min={0}
+            max={maxDistance + 1000}
+            step={100}
+            label={(value) => Math.round((value / 1000) * 10) / 10}
+            value={distanceFromCenter}
+            styles={{
+              bar: { backgroundColor: themeColor },
+              mark: {
+                backgroundColor: "transparent",
+                borderColor: "transparent",
+              },
+              label: { backgroundColor: themeColor },
+              thumb: { backgroundColor: themeColor, borderColor: themeColor },
+            }}
+            onChange={handleDistanceFromCenterChange}
+            onChangeEnd={handleDistanceFromCenterChangeEnd}
+            marks={distanceMarks}
+          />
+          <div className="p-6"></div>
+          <h3 className="text-lg text-end font-semibold mb-2">
             ביטול מלון חינם
           </h3>
           <div dir="rtl" className="w-full">
