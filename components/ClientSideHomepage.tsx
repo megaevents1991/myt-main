@@ -178,12 +178,14 @@ export function ClientSideHomepage({ initialEvents }: Props) {
       setShowFeedbackModal(false);
       setShowSuccessMessage(false);
       if (feedbackInSearchModal) {
+        setSearchValue("");
         setShowSearchModal(false);
       }
     } catch (error) {
       setShowFeedbackModal(false);
       setShowSuccessMessage(false);
       if (feedbackInSearchModal) {
+        setSearchValue("");
         setShowSearchModal(false);
       }
       console.error("Error submitting event:", error);
