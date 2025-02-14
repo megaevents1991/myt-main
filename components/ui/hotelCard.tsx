@@ -99,7 +99,7 @@ export const HotelCard = ({
         <span>{styledPrice}</span>
         {selectedPrice - minPrice < 0 ? (
           <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-            {"(פחות לכל אורח)"}
+            {"חסכון לכל אורח!"}
           </span>
         ) : (
           <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">

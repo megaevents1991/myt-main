@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   const { location, checkin, checkout, guests, radius } = await request.json();
 
   if (!location || !checkin || !checkout || !guests?.length) {
+    console.log("Invalid request body:", { location, checkin, checkout, guests });
     return NextResponse.json(
       {
         error:

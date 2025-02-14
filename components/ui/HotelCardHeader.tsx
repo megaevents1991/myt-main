@@ -1,6 +1,10 @@
 import { formatHotelName } from "@/lib/formatHotelName";
 import { Stars } from "./stars";
-import { Ham } from "lucide-react";
+import { Utensils } from "lucide-react";
+import { Tooltip } from "@mantine/core";
+import { useClickOutside } from "@mantine/hooks";
+import { isMobile } from "react-device-detect";
+import { useState } from "react";
 
 type HotelCardHeaderProps = {
   hotelName: string;
@@ -17,8 +21,10 @@ export const HotelCardHeader = ({
   roomName,
   meals,
 }: HotelCardHeaderProps) => {
+  const [tooltipOpened, setTooltipOpened] = useState(false);
+  const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
   return (
-    <div className="flex flex-col gap-2 m">
+    <div className="flex flex-col gap-2 m" ref={ref}>
       <div className="flex flex-col justify-between items-start">
         <div className="flex flex-row gap-2 items-center ">
           <div className="font-bold text-lg lg:text-2xl">
@@ -32,8 +38,28 @@ export const HotelCardHeader = ({
       </div>
       {roomName && (
         <div className="w-full flex flex-col lg:flex-row justify-between items-left text-sm lg:w-2/3">
-          <div className="font-bold">{roomName}</div>
-          {meals && <div>{<Ham />}</div>}
+          <div
+            onTouchStart={() => setTooltipOpened((curr) => !curr)}
+            className="text-xs font-bold flex"
+            dir="rtl"
+          >
+            <span className="font-bold text-[14px] ml-2">{roomName}</span>
+            <Tooltip
+              label="כולל ארוחת בוקר"
+              position="top"
+              opened={true && (isMobile ? tooltipOpened : undefined)}
+            >
+              {meals ? (
+                <div className="w-4 h-4">
+                  <span> {<Utensils size={18} />}</span>
+                </div>
+              ) : (
+                <div className="w-4 h-4">
+                  <span />
+                </div>
+              )}
+            </Tooltip>
+          </div>
         </div>
       )}
     </div>

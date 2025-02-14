@@ -72,6 +72,7 @@ export async function POST(request: Request) {
   } = await request.json();
 
   if (!hotels?.length) {
+    console.log(`Invalid request body "(!hotels?.length) check":`, JSON.stringify(hotels), event);
     return NextResponse.json(
       {
         error:

@@ -103,7 +103,7 @@ export const FlightTicketCard = ({
                 <span className="text-lg lg:text-2xl">{priceToShow}</span>
                 {price - minPrice < 0 ? (
                   <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-                    {"(פחות לכל נוסע)"}
+                    {"חסכון לכל נוסע!"}
                   </span>
                 ) : (
                   <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">

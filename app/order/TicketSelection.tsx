@@ -19,7 +19,7 @@ export const TicketSelection = () => {
     undefined
   );
 
-  const MAX_TICKETS = 10;
+  const MAX_TICKETS = 9;
 
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
@@ -50,7 +50,7 @@ export const TicketSelection = () => {
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
-      setErrorMessage("ניתן לרכוש עד 10 כרטיס בשלב זה");
+      setErrorMessage("ניתן לרכוש עד 9 כרטיס בשלב זה");
       return;
     }
     setErrorMessage("");
@@ -68,8 +68,8 @@ export const TicketSelection = () => {
       </div>
       <div className="flex flex-col" dir="rtl">
         <div className="mt-4 text-lg">
-          בחרו סוג כרטיס,
-          <span className="font-bold">ישיבה בקבוצות מובטחת!</span>
+          אנו נבחר עבורכם את המושבים הטובים ביותר,
+          <span className="font-bold"> ישיבה בקבוצה מובטחת!</span>
         </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-6">
           <Spoiler

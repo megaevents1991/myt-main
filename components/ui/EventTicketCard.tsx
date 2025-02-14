@@ -90,7 +90,7 @@ export const EventTicketCard = ({
                     {priceToDisplay < 0 ? "-" : "+"}
                     {priceToDisplay < 0 ? (
                       <div className="text-[16px] leading-[22px]">
-                        {"(פחות לכל כרטיס)"}
+                        {"חסכון לכל כרטיס!"}
                       </div>
                     ) : (
                       <div className="text-[16px] leading-[22px]">
