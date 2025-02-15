@@ -70,7 +70,6 @@ export const applyFiltersAndSorting = (
     const matchesMaxPrice = flight.price <= options.maxPrice;
 
     const matchesLuggage =
-      !options.luggage.length ||
       options.luggage.length === 2 ||
       (options.luggage.includes("withoutLuggage") &&
         !flight.outbound.checkBagsIncluded) ||

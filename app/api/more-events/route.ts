@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   });
 
   const repEmailContent = `
-    Event Request Received: ${moreEvents.event}
+    Event Request Received: ${JSON.stringify(moreEvents)}
   `;
 
   try {

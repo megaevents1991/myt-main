@@ -243,6 +243,19 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 placeholder="ביונסה בפריז"
               />
+              <label
+                className="block text-gray-700 text-sm font-bold mt-6 mb-2"
+                htmlFor="event"
+              >
+                שנהיה בקשר כשיש כרטיסים (לא חייבים אם לא רוצים)?
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="text"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="טלפון או אימייל"
+              />
             </div>
             <button
               type="submit"
