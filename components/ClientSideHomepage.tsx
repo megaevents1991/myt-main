@@ -88,6 +88,10 @@ const SearchCombobox = ({
           name={naming}
           placeholder="חפש אירוע..."
           value={searchValue}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
           onChange={(event) => {
             setSearchValue(event.currentTarget.value);
             if (event.currentTarget.value.length > 1) {
@@ -136,14 +140,32 @@ export function ClientSideHomepage({ initialEvents }: Props) {
     let focusTimeout: NodeJS.Timeout;
 
     if (showSearchModal) {
+      // Multiple timeouts to handle different device behaviors
       focusTimeout = setTimeout(() => {
         const input = document.querySelector(
           'input[name="mobile"]'
         ) as HTMLInputElement;
+
         if (input) {
-          input.focus();
+          // For iOS
+          input.readOnly = true; // Prevent keyboard on initial render
+          input.blur(); // Force blur first
+
+          // Small delay to ensure blur is processed
+          setTimeout(() => {
+            input.readOnly = false; // Allow keyboard input
+            input.focus(); // Focus the input
+
+            // For Android
+            input.click();
+
+            // For iOS specific behavior
+            if (navigator?.userAgent?.match(/iPhone|iPad|iPod/i)) {
+              input.setSelectionRange(0, 0);
+            }
+          }, 50);
         }
-      }, 200);
+      }, 300); // Increased initial delay for modal animation
     }
 
     return () => {
