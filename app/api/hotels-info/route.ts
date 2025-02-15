@@ -62,6 +62,36 @@ const getHotelsStaticDataFromDB = async (
   }
 };
 
+const saveNewHotelsStaticDataToDB = async (data : (HotelInfo["data"] & { _id: string })[]) => {
+  try {
+    const hotels = processHotelsData(data);
+    const { error } = await supabase.from('hotels').upsert(hotels);
+    if (error) throw error;
+
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Add delay
+    return;
+  } catch (error) {
+    console.error("DB hotels static data retrieval error:", error);
+    return;
+  }
+};
+
+const processHotelsData = (hotels : (HotelInfo["data"] & { _id: string })[]) => {
+  return hotels.map((hotel) => ({
+    _id: hotel.id,
+    hid: hotel.hid,
+    name: hotel.name,
+    address: hotel.address,
+    latitude: hotel.latitude,
+    longitude: hotel.longitude,
+    star_rating: hotel.star_rating,
+    room_groups: JSON.parse(JSON.stringify(hotel.room_groups || [])),
+    images_ext: JSON.parse(JSON.stringify(hotel.images_ext || [])),
+    amenity_groups: JSON.parse(JSON.stringify(hotel.amenity_groups || [])),
+    city: "Missing",
+  }));
+};
+
 export async function POST(request: Request) {
   const {
     hotels,
@@ -101,6 +131,8 @@ export async function POST(request: Request) {
 
       console.log("Missing hotels received from API:", missingHotels.length);
     }
+
+    saveNewHotelsStaticDataToDB(missingHotels);
 
     const transformedData = [...(hotelsData || []), ...missingHotels]?.reduce(
       (acc, hotel) => {
@@ -168,76 +200,4 @@ export async function POST(request: Request) {
   } catch (error) {
     console.log("API error:", error);
   }
-} /*
-    
-
-    if (!hotelsData) {
-      throw new Error("Failed to fetch hotels data from database");
-    }
-
-    const HotelInfoByKey = hotelsData.reduce((acc: HotelsInfoClient, hotelData) => {
-      const hotelConfig = hotels.find(h => h.id === hotelData.hid);
-      if (!hotelConfig) return acc;
-
-      const allRooms = hotelData.room_groups.map((roomGroup: any) => ({
-        name: roomGroup.name,
-        images: roomGroup.images,
-        amenities: roomGroup.room_amenities,
-      }));
-
-      const hotelAmenity = hotelData.amenity_groups.find(
-        (amenityGroup: AmenityGroup) => amenityGroup.group_name === "General"
-      );
-
-      const filteredRooms = allRooms.reduce((roomAcc: Record<string, Room>, currRoom: RoomGroup) => {
-        if (hotelConfig.rooms.includes(currRoom.name)) {
-          roomAcc[currRoom.name] = currRoom;
-        }
-        return roomAcc;
-      }, {});
-
-      acc[hotelData.hid] = {
-        rooms: filteredRooms,
-        metadata: {
-          hotelName: hotelData.name,
-          address: hotelData.address,
-          rating: hotelData.star_rating,
-          id: hotelData.hid,
-          longitude: hotelData.longitude,
-          latitude: hotelData.latitude,
-          distanceFromCenter: getDistance(
-            {
-              latitude: event.location.latitude,
-              longitude: event.location.longitude,
-            },
-            {
-              latitude: hotelData.latitude,
-              longitude: hotelData.longitude,
-            },
-            1
-          ),
-        },
-        general: {
-          name: "general",
-          amenities: hotelAmenity?.amenities || [],
-          images: hotelData.images_ext
-            .filter((image: string) =>
-              ["hotel_front", "lobby"].includes(image.category_slug)
-            )
-            .map((image: string) => image.url),
-        },
-      };
-      return acc;
-    }, {});
-
-    return NextResponse.json(HotelInfoByKey);
-  } catch (error) {
-    console.error("API error:", error);
-    return NextResponse.json(
-      { error: "An error occurred while fetching hotel info" },
-      { status: 500 }
-    );
-  }
 }
-
-*/
