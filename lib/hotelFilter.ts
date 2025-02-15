@@ -42,8 +42,8 @@ export const applyFiltersAndSorting = ({
         !meal.length ||
         meal.length === 2 ||
         (meal.includes("withoutMeal") &&
-          !hotel.rates.some(
-            (hotelRate) => hotelRate.meal_data.has_breakfast
+          hotel.rates.some(
+            (hotelRate) => !hotelRate.meal_data.has_breakfast
           )) ||
         (meal.includes("withMeal") &&
           hotel.rates.some((hotelRate) => hotelRate.meal_data.has_breakfast));

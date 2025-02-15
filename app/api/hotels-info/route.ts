@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
       console.log("Missing hotels:", missingHotelsIds);
 
-      missingHotels = (await Promise.all(missingHotelsIds.map(getHotelInfo)))
+      missingHotels = (await Promise.all(missingHotelsIds.slice(0,9).map(getHotelInfo)))
         .filter((hotel) => !!hotel)
         .map(({ data }) => ({ ...data, _id: data.id }));
 

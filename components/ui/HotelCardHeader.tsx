@@ -44,21 +44,19 @@ export const HotelCardHeader = ({
             dir="rtl"
           >
             <span className="font-bold text-[14px] ml-2">{roomName}</span>
-            <Tooltip
-              label="כולל ארוחת בוקר"
-              position="top"
-              opened={true && (isMobile ? tooltipOpened : undefined)}
-            >
-              {meals ? (
+            {meals ? (
+              <Tooltip
+                label="כולל ארוחת בוקר"
+                position="top"
+                opened={true && (isMobile ? tooltipOpened : undefined)}
+              >
                 <div className="w-4 h-4">
                   <span> {<Utensils size={18} />}</span>
                 </div>
-              ) : (
-                <div className="w-4 h-4">
-                  <span />
-                </div>
-              )}
-            </Tooltip>
+              </Tooltip>
+            ) : (
+              <div />
+            )}
           </div>
         </div>
       )}
