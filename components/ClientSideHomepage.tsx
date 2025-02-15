@@ -26,7 +26,6 @@ const SearchCombobox = ({
   ref,
   inline,
   onOpenFeedbackModal,
-  mobile,
 }: {
   setSearchValue: Dispatch<SetStateAction<string>>;
   events: Event[];
@@ -83,7 +82,6 @@ const SearchCombobox = ({
             "p-2 text-main border"
           )}
           dir="rtl"
-          data-autofocus={mobile ? true : undefined}
           placeholder="חפש אירוע..."
           value={searchValue}
           onChange={(event) => {
@@ -119,9 +117,17 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const [feedbackInSearchModal, setfeedbackInSearchModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  const mobileComboboxRef = useRef<HTMLInputElement>(null);
   const { client } = useStatsigClient();
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  const handleSearchModalOpen = () => {
+    setShowSearchModal(true);
+    setTimeout(() => {
+      mobileComboboxRef.current?.focus();
+    }, 100);
+  };
 
   useEffect(() => {
     window.onerror = function (message, source, lineno, colno, error) {
@@ -193,6 +199,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           onClose={() => setShowSearchModal(false)}
         >
           <SearchCombobox
+            ref={mobileComboboxRef}
             events={initialEvents}
             searchValue={searchValue}
             setSearchValue={setSearchValue}
@@ -233,7 +240,6 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 id="event"
                 name="event"
                 type="text"
-                data-autofocus
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 placeholder="ביונסה בפריז"
               />
@@ -265,14 +271,14 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             {!matches ? (
               <input
                 onFocus={(e) => {
-                  setShowSearchModal(true);
+                  handleSearchModalOpen();
                   e.target.blur();
                 }}
                 onChange={(e) => setSearchValue(e.target.value)}
                 value={searchValue}
                 placeholder="חפש אירוע..."
                 type="text"
-                className="w-2/3 rounded-r p-2 text-main border"
+                className="w-2/3 rounded-r rounded-l-none p-2 text-main border"
               />
             ) : (
               <SearchCombobox
@@ -289,7 +295,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               onClick={(e) => {
                 e.preventDefault();
                 if (!matches) {
-                  setShowSearchModal(true);
+                  handleSearchModalOpen();
                 } else {
                   ref.current?.focus();
                 }
@@ -340,7 +346,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   }}
                 >
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                    <div className="relative group overflow-hidden rounded-t-lg w-1/2 sm:w-auto">
+                    <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-1/2 sm:w-auto">
                       <Image
                         src={event.card_image_url}
                         alt={event.name}
