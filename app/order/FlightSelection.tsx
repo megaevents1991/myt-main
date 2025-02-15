@@ -12,6 +12,7 @@ import { flightSort, SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea, Skeleton } from "@mantine/core";
 import { Settings2Icon, Search } from "lucide-react";
 import {
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -174,9 +175,10 @@ export const FlightSelection = () => {
   const handleSortChange = (selectedSortOption: SortOptions) => {
     setSortOption(selectedSortOption);
 
-    const sortedData = flightSort(filteredFlights, selectedSortOption);
-
-    setFilteredFlights(sortedData);
+    startTransition(() => {
+      const sortedData = flightSort(filteredFlights, selectedSortOption);
+      setFilteredFlights(sortedData);
+    });
   };
 
   const airlines = useMemo(
@@ -192,15 +194,17 @@ export const FlightSelection = () => {
     [flights]
   );
 
-  const handleFlightChange = (value: string) => {
-    setFlight(flights.find((f) => f.id === value));
-  };
+  const handleFlightChange = useCallback(
+    (value: string) => {
+      setFlight(flights.find((f) => f.id === value));
+    },
+    [flights, setFlight]
+  );
 
   const handleFlightSearchCriteriaChange = ({
     value,
     type,
   }: FlightSearchCriteria) => {
-    setFlight(undefined);
     switch (type) {
       case "arrivalRanges":
         setArrivalRanges(value);
@@ -222,6 +226,8 @@ export const FlightSelection = () => {
     }
 
     startTransition(() => {
+      setFlight(undefined);
+
       const filteredFlights = applyFiltersAndSorting(flights, {
         airline: filters.airline,
         sortOption,
@@ -233,13 +239,38 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
         ...{ [type]: value },
       });
-
       if (filteredFlights.length !== 0) {
         setFlight(filteredFlights[0]);
       }
       setFilteredFlights(filteredFlights);
     });
   };
+
+  const flightTicketCards = useMemo(
+    () =>
+      filteredFlights.map((flight) => {
+        return (
+          <FlightTicketCard
+            minPrice={event.base_flight_price}
+            isLoading={isLoading}
+            key={flight.id}
+            {...flight}
+            price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
+            flightId={flight.id}
+            isSelected={orderFlight?.id === flight.id}
+            onClick={handleFlightChange}
+          />
+        );
+      }),
+    [
+      filteredFlights,
+      event.base_flight_price,
+      isLoading,
+      flightsMeta.numOfPassengers,
+      orderFlight?.id,
+      handleFlightChange,
+    ]
+  );
 
   if (error) {
     return (
@@ -400,20 +431,7 @@ export const FlightSelection = () => {
         </div>
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 gap-4 items-start">
-            {filteredFlights.map((flight) => {
-              return (
-                <FlightTicketCard
-                  minPrice={event.base_flight_price}
-                  isLoading={isLoading}
-                  key={flight.id}
-                  {...flight}
-                  price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
-                  flightId={flight.id}
-                  isSelected={orderFlight?.id === flight.id}
-                  onClick={handleFlightChange}
-                />
-              );
-            })}
+            {flightTicketCards}
             {filteredFlights.length === 0 && !isLoading ? (
               <div className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex">
                 No flights match your criteria. Please adjust your filters.
