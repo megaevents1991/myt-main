@@ -85,8 +85,7 @@ export const HotelSelection = () => {
   ]);
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
-  const [meal, setMeal] = useState<["withMeal", "withoutMeal"]>([
-    "withMeal",
+  const [meal, setMeal] = useState<("withMeal" | "withoutMeal")[]>([
     "withoutMeal",
   ]);
   const [maxDistance, setMaxDistance] = useState(0);
@@ -99,7 +98,9 @@ export const HotelSelection = () => {
   );
   const [minPrice, setMinPrice] = useState(0);
   const [basePricePerPerson, setBasePricePerPerson] = useState(0);
-  const [freeCancellation, setFreeCancellation] = useState(false);
+  const [freeCancellation, setFreeCancellation] = useState<
+    ("withFreeCancellation" | "withoutFreeCancellation")[]
+  >(["withoutFreeCancellation"]);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -200,19 +201,21 @@ export const HotelSelection = () => {
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
 
+    if (type !== "sortOption" && type !== "hotelName") {
+      setHotel(undefined);
+      setSelectedHotelId("");
+    }
+
     switch (type) {
       case "freeCancellation": {
-        setHotel(undefined);
         setFreeCancellation(value);
         break;
       }
       case "rating":
-        setHotel(undefined);
         setRating(value);
         break;
       case "priceRange":
         const persons = getTotalPersons(requestDebug.guests);
-        setHotel(undefined);
         filterValue = value.map((price) => price * persons) as [number, number];
         setPriceRange(filterValue);
         break;
@@ -222,14 +225,12 @@ export const HotelSelection = () => {
         }
         break;
       case "meal":
-        setHotel(undefined);
         setMeal(value);
         break;
       case "sortOption":
         setSortOption(value);
         break;
       case "distanceFromCenter": {
-        setHotel(undefined);
         if (value[1] > maxDistance + 100) {
           fetchHotels({ radius: value[1] });
           return;
@@ -250,6 +251,10 @@ export const HotelSelection = () => {
       distanceFromCenter: distanceRange,
       ...{ [type]: filterValue },
     });
+
+    if (type !== "sortOption" && type !== "hotelName" && hotelsToSet?.[0]?.id) {
+      setSelectedHotelId(hotelsToSet[0].id);
+    }
 
     setFilteredHotels(hotelsToSet);
   };

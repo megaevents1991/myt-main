@@ -20,10 +20,10 @@ export const HotelFilters = ({
   maxPrice: number;
   maxDistance: number;
   selectedRating: boolean[];
-  meal: ["withMeal", "withoutMeal"];
+  meal: ("withMeal" | "withoutMeal")[];
   minPrice: number;
   basePrice: number;
-  freeCancellation: boolean;
+  freeCancellation: ("withFreeCancellation" | "withoutFreeCancellation")[];
 }) => {
   const [searchValue, setSearchValue] = useState("");
   const [value, setValue] = useState<[number, number]>([minPrice, maxPrice]);
@@ -180,23 +180,38 @@ export const HotelFilters = ({
             marks={distanceMarks}
           />
           <div className="p-6"></div>
-          <h3 className="text-lg text-end font-semibold mb-2">
-            ביטול מלון חינם
-          </h3>
+
           <div dir="rtl" className="w-full">
-            <div className="flex items-center space-x-2 space-x-reverse">
-              <Checkbox
-                onChange={(value) =>
-                  onCriteriaChange({
-                    value: value.target.checked,
-                    type: "freeCancellation",
-                  })
-                }
-                checked={freeCancellation}
-                id={"free-cancellation"}
-              />
-              <label htmlFor="free-cancellation">ביטול חינם</label>
-            </div>
+            <h3 className="text-lg text-start font-semibold mb-2">
+              ביטול מלון חינם
+            </h3>
+            <Checkbox.Group
+              value={freeCancellation}
+              onChange={(value) =>
+                onCriteriaChange({
+                  value: value as (
+                    | "withFreeCancellation"
+                    | "withoutFreeCancellation"
+                  )[],
+                  type: "freeCancellation",
+                })
+              }
+            >
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Checkbox
+                  value="withFreeCancellation"
+                  id="with-free-cancellation"
+                />
+                <label htmlFor="withFreeCancellation">ביטול חינם</label>
+              </div>
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Checkbox
+                  value="withoutFreeCancellation"
+                  id="without-free-cancellation"
+                />
+                <label htmlFor="withoutFreeCancellation">ללא ביטול חינם</label>
+              </div>
+            </Checkbox.Group>
           </div>
         </div>
       </div>

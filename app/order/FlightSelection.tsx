@@ -234,6 +234,9 @@ export const FlightSelection = () => {
         ...{ [type]: value },
       });
 
+      if (filteredFlights.length !== 0) {
+        setFlight(filteredFlights[0]);
+      }
       setFilteredFlights(filteredFlights);
     });
   };

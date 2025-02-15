@@ -134,7 +134,7 @@ export type HotelSearchCriteria =
     }
   | {
       type: "freeCancellation";
-      value: boolean;
+      value: ("withFreeCancellation" | "withoutFreeCancellation")[];
     };
 
 export type FlightSearchCriteria =

@@ -15,7 +15,7 @@ export const maxDuration = 30;
 const amadeus = new Amadeus({
   clientId: process.env.AMADEUS_CLIENT_ID as string,
   clientSecret: process.env.AMADEUS_CLIENT_SECRET as string,
-  hostname: 'production'
+  hostname: "production",
 });
 
 export async function POST(request: Request) {

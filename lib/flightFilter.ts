@@ -63,8 +63,7 @@ export const applyFiltersAndSorting = (
       ? true
       : airline.includes(flight.airline);
     const matchesStops =
-      !options.numOfStops.length ||
-      options.numOfStops.includes(flight.stops.toString());
+      flight.stops < 2 && options.numOfStops.includes(flight.stops.toString());
     const matchesFlightDuration =
       parseDuration(flight.duration) / 60 <= flightDuration;
 

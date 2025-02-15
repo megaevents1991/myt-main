@@ -4,11 +4,33 @@ import { authHeader } from "../keys";
 
 const API_URL = "https://api.worldota.net/api/b2b/v3/search/serp/geo";
 
+const fetchHotels = async (hotelSearchRequest: HotelSearchRequest) => {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${authHeader}`,
+    },
+    body: JSON.stringify(hotelSearchRequest),
+  });
+
+  if (!response.ok) {
+    console.log(await response.text());
+    throw new Error("API request failed");
+  }
+
+  return response;
+};
+
 export async function POST(request: Request) {
   const { location, checkin, checkout, guests, radius } = await request.json();
 
   if (!location || !checkin || !checkout || !guests?.length) {
-    console.log("Invalid request body:", { location, checkin, checkout, guests });
+    console.log("Invalid request body:", {
+      location,
+      checkin,
+      checkout,
+      guests,
+    });
     return NextResponse.json(
       {
         error:
@@ -33,20 +55,16 @@ export async function POST(request: Request) {
   };
 
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-      },
-      body: JSON.stringify(hotelSearchRequest),
-    });
-
-    if (!response.ok) {
-      console.log(await response.text());
-      throw new Error("API request failed");
-    }
-
-    const data: HotelResponse = await response.json();
+    const data: HotelResponse = await fetchHotels(hotelSearchRequest)
+      .then((res) => res.json())
+      .then(async (data: HotelResponse) => {
+        if (!data.data.total_hotels) {
+          console.log("No hotels found, retrying in 1 second");
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return (await fetchHotels(hotelSearchRequest)).json();
+        }
+        return data;
+      });
 
     const fixedHotels: Hotel[] = data.data.hotels.map((hotel) => {
       const fixedRates = hotel.rates.map((rate) => {
