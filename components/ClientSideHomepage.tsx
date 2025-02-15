@@ -26,7 +26,6 @@ const SearchCombobox = ({
   ref,
   inline,
   onOpenFeedbackModal,
-  mobile,
 }: {
   setSearchValue: Dispatch<SetStateAction<string>>;
   events: Event[];
@@ -34,7 +33,6 @@ const SearchCombobox = ({
   ref?: RefObject<HTMLInputElement>;
   inline?: boolean;
   onOpenFeedbackModal: () => void;
-  mobile?: boolean;
 }) => {
   const router = useRouter();
   const combobox = useCombobox();
@@ -58,8 +56,6 @@ const SearchCombobox = ({
       {item.date} | {item.location.name}
     </Combobox.Option>
   ));
-
-  const naming = mobile ? "mobile" : undefined;
 
   return (
     <Combobox
@@ -85,13 +81,9 @@ const SearchCombobox = ({
             "p-2 text-main border"
           )}
           dir="rtl"
-          name={naming}
+          data-autofocus
           placeholder="חפש אירוע..."
           value={searchValue}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck="false"
           onChange={(event) => {
             setSearchValue(event.currentTarget.value);
             if (event.currentTarget.value.length > 1) {
@@ -135,45 +127,6 @@ export function ClientSideHomepage({ initialEvents }: Props) {
       console.error("Global error caught:", message, error);
     };
   }, []);
-
-  useEffect(() => {
-    let focusTimeout: NodeJS.Timeout;
-
-    if (showSearchModal) {
-      // Multiple timeouts to handle different device behaviors
-      focusTimeout = setTimeout(() => {
-        const input = document.querySelector(
-          'input[name="mobile"]'
-        ) as HTMLInputElement;
-
-        if (input) {
-          // For iOS
-          input.readOnly = true; // Prevent keyboard on initial render
-          input.blur(); // Force blur first
-
-          // Small delay to ensure blur is processed
-          setTimeout(() => {
-            input.readOnly = false; // Allow keyboard input
-            input.focus(); // Focus the input
-
-            // For Android
-            input.click();
-
-            // For iOS specific behavior
-            if (navigator?.userAgent?.match(/iPhone|iPad|iPod/i)) {
-              input.setSelectionRange(0, 0);
-            }
-          }, 50);
-        }
-      }, 300); // Increased initial delay for modal animation
-    }
-
-    return () => {
-      if (focusTimeout) {
-        clearTimeout(focusTimeout);
-      }
-    };
-  }, [showSearchModal]);
 
   useAffiliate();
 
@@ -245,7 +198,6 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               setfeedbackInSearchModal(true);
               setShowFeedbackModal(true);
             }}
-            mobile={true}
           />
         </Modal>
       )}
@@ -278,6 +230,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 id="event"
                 name="event"
                 type="text"
+                data-autofocus
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 placeholder="ביונסה בפריז"
               />
