@@ -26,6 +26,7 @@ const SearchCombobox = ({
   ref,
   inline,
   onOpenFeedbackModal,
+  mobile,
 }: {
   setSearchValue: Dispatch<SetStateAction<string>>;
   events: Event[];
@@ -33,6 +34,7 @@ const SearchCombobox = ({
   ref?: RefObject<HTMLInputElement>;
   inline?: boolean;
   onOpenFeedbackModal: () => void;
+  mobile?: boolean;
 }) => {
   const router = useRouter();
   const combobox = useCombobox();
@@ -81,7 +83,7 @@ const SearchCombobox = ({
             "p-2 text-main border"
           )}
           dir="rtl"
-          data-autofocus
+          data-autofocus={mobile ? true : undefined}
           placeholder="חפש אירוע..."
           value={searchValue}
           onChange={(event) => {
@@ -198,6 +200,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               setfeedbackInSearchModal(true);
               setShowFeedbackModal(true);
             }}
+            mobile={true}
           />
         </Modal>
       )}
