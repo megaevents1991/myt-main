@@ -331,6 +331,7 @@ export default function OrderReview() {
       (min, ticket) => (ticket.price < min.price ? ticket : min),
       event.tickets_and_rates[0]
     ).price;
+
   const flightPriceAddition =
     selectedFlight.price / selectedFlight.numOfTravelers -
     event.base_flight_price;
@@ -338,6 +339,17 @@ export default function OrderReview() {
   const totalGuests = getTotalPersons(selectedHotel.guests);
   const hotelPriceAddition =
     +selectedHotel.price / totalGuests - event.base_hotel_price;
+
+  const minTicketPrice = Math.min(
+    ...event.tickets_and_rates.map((ticket) => ticket.price)
+  );
+
+  const basePrice = Math.ceil(
+    event.base_flight_price +
+      event.base_hotel_price +
+      minTicketPrice +
+      Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+  );
 
   return (
     <div className="min-h-screen bg-white">
@@ -348,37 +360,47 @@ export default function OrderReview() {
           <div className="space-y-4 order-1 md:order-1">
             <Card className="bg-white shadow-lg overflow-hidden">
               <div className="bg-[#277e89] text-white py-4 px-6 ">
-                <h2 className="text-[22px] font-bold text-right">
-                  סיכום הזמנה
-                </h2>
+                <h2 className="text-2xl font-bold text-right">סיכום הזמנה</h2>
               </div>
               <div className="p-6 space-y-3 text-right">
                 <div className="text-center">
-                  <h2 className="text-[20px] font-bold">{event.name}</h2>
-                  <p className="text-[18px]">
+                  <h2 className="text-2xl font-bold">{event.name}</h2>
+                  <p className="text-lg">
                     {event.location.name +
                       " | " +
                       dayjs(event.date).format("DD/MM/YYYY")}
                   </p>
+                  <div className="font-lg" dir="rtl">
+                    מחיר מומלץ לאדם: ${basePrice.toLocaleString("en-US")}
+                  </div>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">כרטיסים לאירוע</h3>
+                  <h3 className="font-bold text-lg">
+                    איך נהנים{" "}
+                    <span>
+                      {"("}
+                      {numberOfEventTickets}
+                      {" כרטיסים)"}
+                    </span>
+                  </h3>
                   <div className="flex justify-between items-center w-full">
                     <div
                       className="flex w-full text-[16px] justify-between gap-1"
                       dir="rtl"
                     >
                       <div className="flex gap-[2px]">
-                        <div>{eventTicket.category}</div>
+                        <div className="font-bold ml-1">
+                          {eventTicket.category}
+                        </div>
                         <div>
                           {formatPrice(eventTicketPriceAddition) ? (
-                            <>({formatPrice(eventTicketPriceAddition)})</>
+                            <>
+                              ({formatPrice(eventTicketPriceAddition)})/לכרטיס
+                            </>
                           ) : (
                             ""
                           )}
                         </div>
-                        <div>X</div>
-                        <div>{numberOfEventTickets}</div>
                       </div>
                       <div>
                         {formatPrice(eventTicketPriceAddition)
@@ -393,13 +415,23 @@ export default function OrderReview() {
                 </div>
 
                 <div className="">
-                  <h3 className="font-bold text-lg">איפה ישנים</h3>
+                  <h3 className="font-bold text-lg">
+                    איפה ישנים{" "}
+                    <span>
+                      {"("}
+                      {selectedHotel.guests.reduce(
+                        (ppl, room) => ppl + room.children.length + room.adults,
+                        0
+                      )}
+                      {" אורחים)"}
+                    </span>
+                  </h3>
                   <div
                     className="flex w-full text-[16px] justify-between gap-1"
                     dir="rtl"
                   >
                     <div>
-                      <p>{selectedHotel.name}</p>
+                      <p className="font-bold">{selectedHotel.name}</p>
                       <p>{selectedHotel.rate.room_data_trans.main_name}</p>
                       <div className="flex items-center gap-1">
                         <div>
@@ -413,7 +445,7 @@ export default function OrderReview() {
                           {selectedHotel.guests.length > 1 &&
                             ` | ${selectedHotel.guests.length} חדרים`}{" "}
                           {formatPrice(hotelPriceAddition) ? (
-                            <>({formatPrice(hotelPriceAddition)})</>
+                            <>({formatPrice(hotelPriceAddition)})/לאורח</>
                           ) : (
                             ""
                           )}
@@ -432,16 +464,21 @@ export default function OrderReview() {
                 </div>
 
                 <div className="">
-                  <h3 className="font-bold text-lg">איך מגיעים</h3>
+                  <h3 className="font-bold text-lg">
+                    איך מגיעים{" "}
+                    <span>
+                      {"("}
+                      {selectedFlight.numOfTravelers}
+                      {" נוסעים)"}
+                    </span>
+                  </h3>
                   <div className="flex justify-between w-full" dir="rtl">
                     <div>
                       <div
                         className="text-[16px] flex items-center gap-1"
                         dir="rtl"
                       >
-                        <div>{selectedFlight.numOfTravelers}</div>
-                        <div>נוסעים עם</div>
-                        <div>
+                        <div className="font-bold">
                           {selectedFlight?.metadata.name &&
                           selectedFlight.metadata.name.length > 12
                             ? `${selectedFlight.metadata.name.slice(0, 10)}.`
@@ -449,18 +486,11 @@ export default function OrderReview() {
                         </div>
                         <div>
                           {formatPrice(flightPriceAddition) ? (
-                            <>({formatPrice(flightPriceAddition)})</>
+                            <>({formatPrice(flightPriceAddition)})/לנוסע</>
                           ) : (
                             ""
                           )}
                         </div>
-
-                        {/* <div>, בטיסות</div>
-                    <div>
-                      {selectedFlight.outbound.flightNumber +
-                        " ו- " +
-                        selectedFlight.inbound.flightNumber}
-                    </div> */}
                       </div>
                       <div className="flex text-[16px]" dir="rtl">
                         <div>מ-</div>

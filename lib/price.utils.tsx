@@ -26,14 +26,16 @@ export const formatPrice = (price: number, factor = 1, formatted = false) => {
       return <span dir="ltr">+${ceilPrice.toLocaleString("en-US")}</span>;
     }
     if (price < 0) {
-      return <span dir="ltr">-${ceilPrice.toLocaleString("en-US")}</span>;
+      return (
+        <span dir="ltr">-${Math.abs(ceilPrice).toLocaleString("en-US")}</span>
+      );
     }
   } else {
     if (price > 0) {
       return <span dir="ltr">+${ceilPrice}</span>;
     }
     if (price < 0) {
-      return <span dir="ltr">-${Math.abs(ceilPrice * factor)}</span>;
+      return <span dir="ltr">-${Math.abs(ceilPrice)}</span>;
     }
   }
   return 0;

@@ -14,6 +14,7 @@ import { Dispatch, RefObject, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
+import { isMobile } from "react-device-detect";
 
 interface Props {
   initialEvents: Event[];
@@ -266,18 +267,24 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           </form>
         )}
       </Modal>
-      <section className="w-full py-6 lg:py-10 px-4 md:px-6 text-white bg-main relative">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
+      <section className="w-full py-3 lg:py-6 px-4 md:px-6 text-white bg-main relative">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
             <span> כל האירועים השווים בחו״ל</span>
             <span className="text-secondary whitespace-nowrap text-5xl">
               {" "}
               במקום אחד
             </span>
           </h1>
-          <p className="text-3xl sm:text-4xl md:text-5xl mb-4 mb-8">
-            תכננו לפי התקציב ובנוחות
-          </p>
+          {isMobile ? (
+            <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
+              .תכננו. התאימו. תחסכו
+            </p>
+          ) : (
+            <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
+              תכננו התאימו ותחסכו בגמישות מלאה
+            </p>
+          )}
         </div>
         <div className="w-full max-w-sm lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
           <form className="flex center shadow-md" dir="rtl">
@@ -378,7 +385,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                         {event.location.name}
                       </div>
                       <div className="p-2 px-4 text-right" dir="rtl">
-                        <div>בממוצע כ-</div>
+                        <div>מחיר מומלץ (נסו להוזיל)</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-2xl font-bold">
                             $
@@ -397,7 +404,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                             ${event.usual_price.toLocaleString("en-US")}
                           </div>{" "}
                         </div>
-                        <div>לנוסע כולל טיסה, מלון וכרטיס לאירוע</div>
+                        <div>לנוסע, עם טיסה, מלון וכרטיס לאירוע</div>
                       </div>
                     </div>
                   </div>
