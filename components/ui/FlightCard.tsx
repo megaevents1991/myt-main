@@ -87,6 +87,9 @@ export const FlightTicketCard = ({
 }: FlightTicketCardProps) => {
   const priceToShow = formatPrice(price - minPrice);
 
+  const priceOutsidePackBoundries =
+    Math.abs(price - minPrice) > 4 ? true : false;
+
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
@@ -98,21 +101,21 @@ export const FlightTicketCard = ({
           </div>
           <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
           <div className="font-bold lg:w-1/6 mt-2 w-full text-center border-t-2 pt-2 lg:border-none">
-            {!!priceToShow ? (
+            {priceOutsidePackBoundries ? (
               <>
                 <span className="text-lg lg:text-2xl">{priceToShow}</span>
                 {price - minPrice < 0 ? (
-                  <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-                    {"חסכון לכל נוסע!"}
+                  <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
+                    {"חסכון לכל נוסע"}
                   </span>
                 ) : (
-                  <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+                  <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
                     {"תוספת לכל נוסע"}
                   </span>
                 )}
               </>
             ) : (
-              <span className="text-[20px]">כלול במחיר</span>
+              <span className="text-xl">כלול במחיר</span>
             )}
           </div>
         </div>
@@ -216,10 +219,6 @@ export const FlightMeta = ({
                       {"המתנה של " +
                         numberToHourString(stop.duration) +
                         " ב-" +
-                        //airports.find(
-                        //  (airport) => airport.iata === stop.iataCode
-                        //)?.name +
-                        //", " +
                         airports.find(
                           (airport) => airport.iata === stop.iataCode
                         )?.city}

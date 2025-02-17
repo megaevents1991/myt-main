@@ -74,21 +74,24 @@ export const HotelCard = ({
 
   const priceToShowFull = useMemo(() => {
     const styledPrice = formatPrice(selectedPrice - minPrice);
-    return !!styledPrice ? ( // TO DO: fix this
+
+    const priceOutsidePackBoundries =
+      Math.abs(selectedPrice - minPrice) > 4 ? true : false;
+    return priceOutsidePackBoundries ? (
       <div>
-        <span>{styledPrice}</span>
+        <span className="text-lg lg:text-2xl">{styledPrice}</span>
         {selectedPrice - minPrice < 0 ? (
-          <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
-            {"חסכון לכל אורח!"}
+          <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
+            {"חסכון לכל אורח"}
           </span>
         ) : (
-          <span className="whitespace-nowrap text-[16px] inline pr-2 lg:block lg:pr-0">
+          <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
             {"תוספת לכל אורח"}
           </span>
         )}
       </div>
     ) : (
-      <span className="text-[16px]">כלול במחיר החבילה</span>
+      <span className="text-xl">כלול במחיר</span>
     );
   }, [selectedPrice, minPrice]);
 

@@ -209,7 +209,7 @@ export default function OrderReview() {
     (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
       selectedFlight.price +
       +selectedHotel.price
-  );
+  ); // TO DO: Add flight and hotel prices within boundries.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

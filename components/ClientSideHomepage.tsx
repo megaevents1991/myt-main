@@ -366,7 +366,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   }}
                 >
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                    <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-1/2 sm:w-auto">
+                    <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
                       <Image
                         src={event.card_image_url}
                         alt={event.name}
@@ -376,18 +376,27 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                         className="object-cover w-full h-60 transition-transform group-hover:scale-105"
                       />
                     </div>
-                    <div className="flex-col text-center w-1/2 sm:w-auto">
-                      <div className="p-2 px-4 text-xl font-bold">
+                    <div className="flex flex-col text-center w-[52%] sm:w-auto">
+                      <div className="p-3 text-2xl font-bold leading-[0.975]">
                         {event.name}
                       </div>
-                      <div className="py-1 bg-secondary text-white">
-                        {dayjs(event.date).format("DD/MM/YYYY")} |{" "}
-                        {event.location.name}
+                      <div
+                        className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center"
+                        dir="rtl"
+                      >
+                        <span>{dayjs(event.date).format("DD/MM/YYYY")}</span>
+                        <span className="sm:inline hidden mx-2">|</span>
+                        <span className="whitespace-nowrap">
+                          {event.location.name}
+                        </span>
                       </div>
-                      <div className="p-2 px-4 text-right" dir="rtl">
+                      <div
+                        className="p-2 text-right flex flex-col flex-grow"
+                        dir="rtl"
+                      >
                         <div>מחיר מומלץ (נסו להוזיל)</div>
                         <div className="flex items-baseline gap-1">
-                          <div className="text-2xl font-bold">
+                          <div className="text-2xl font-extrabold">
                             $
                             {(
                               event.base_flight_price +
@@ -400,11 +409,14 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                               Number(process.env.NEXT_PUBLIC_MARKUP || "150")
                             ).toLocaleString("en-US")}
                           </div>
-                          <div className="text-sm line-through">
+                          <div className="text-sm line-through mr-1">
                             ${event.usual_price.toLocaleString("en-US")}
-                          </div>{" "}
+                          </div>
                         </div>
-                        <div>לנוסע, עם טיסה, מלון וכרטיס לאירוע</div>
+                        <div className="flex-grow min-h-[6px]"></div>
+                        <div className="text-[14px] leading-[0.95]">
+                          לנוסע, עבור טיסה, מלון (הרכב זוגי) וכרטיס לאירוע
+                        </div>
                       </div>
                     </div>
                   </div>
