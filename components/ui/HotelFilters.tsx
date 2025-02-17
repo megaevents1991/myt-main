@@ -136,7 +136,7 @@ export const HotelFilters = ({
       </form>
       <div className="m-auto w-full mt-4 px-2">
         <div dir="rtl" className="w-full">
-          <h3 className="text-lg text-start font-semibold mb-2">ארוחות</h3>
+          <h3 className="text-lg text-start font-semibold mb-2">ארוחות בוקר</h3>
           <Checkbox.Group
             value={meal}
             onChange={(value) =>
@@ -149,10 +149,6 @@ export const HotelFilters = ({
             <div className="flex items-center space-x-2 space-x-reverse">
               <Checkbox value="withMeal" id="with-meal" />
               <label htmlFor="withMeal">כולל ארוחת בוקר</label>
-            </div>
-            <div className="flex items-center space-x-2 space-x-reverse">
-              <Checkbox value="withoutMeal" id="without-meal" />
-              <label htmlFor="withoutMeal">ללא ארוחות</label>
             </div>
           </Checkbox.Group>
         </div>

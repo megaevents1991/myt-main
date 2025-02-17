@@ -1,11 +1,10 @@
 import { Hotel, HotelInfoClient, Rate, Room } from "@/lib/hotel.type";
 import { CardWrapper } from "./cardWrapper";
-import { ChevronUp, ChevronDown, Hotel as HotelSVG } from "lucide-react";
-import { Collapse, ScrollArea, Skeleton } from "@mantine/core";
+import { Hotel as HotelSVG } from "lucide-react";
+import { Skeleton } from "@mantine/core";
 import { Carousel, Embla } from "@mantine/carousel";
 
-import { useEffect, useMemo, useState } from "react";
-import { RoomCard } from "./roomCard";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { OrderHotel } from "@/lib/app.types";
 import { HotelCardHeader } from "./HotelCardHeader";
@@ -32,61 +31,42 @@ export const HotelCard = ({
   minPrice: number;
   persons: number;
 }) => {
-  const [opened, setOpened] = useState(false);
+  // const [opened, setOpened] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
   const [selectedRoomInfo, setSelectedRoomInfo] = useState<Room | null>(null);
   const [embla, setEmbla] = useState<Embla | null>(null);
 
-  useEffect(() => {
-    if (hotelRates.length) {
-      const firstRoom = hotelRates[0];
-      const roomName =
-        firstRoom.room_data_trans.main_name +
-        " " +
-        firstRoom.room_data_trans.bedding_type;
-      setSelectedRoom(hotelRates[0]);
+  const handleRoomSelect = useCallback(
+    (room: Rate, isSelected = false) => {
+      const roomName = `${room.room_data_trans.main_name}${
+        room.room_data_trans.bedding_type
+          ? " " + room.room_data_trans.bedding_type
+          : ""
+      }`;
+
+      setSelectedRoom(room);
       setSelectedRoomInfo(hotelInfo?.rooms[roomName]);
-    }
-  }, []);
+
+      if (isSelected) {
+        handleSelectedRate({
+          rate: room,
+          address: hotelInfo.metadata.address,
+          name: hotelInfo.metadata.hotelName,
+          id: hotelInfo.metadata.id,
+          price: room.payment_options.payment_types[0].show_amount,
+        });
+      }
+    },
+    [hotelInfo, handleSelectedRate]
+  );
 
   useEffect(() => {
     embla?.scrollTo(0);
   }, [selectedRoom]);
 
   useEffect(() => {
-    setSelectedRoom(null);
-  }, [hotelRates]);
-
-  useEffect(() => {
-    if (!isSelected) {
-      setSelectedRoomInfo(null);
-      setSelectedRoom(null);
-      if (opened) {
-        setOpened(false);
-      }
-    }
-
-    if (isSelected && !selectedRoom) {
-      handleRoomSelect(hotelRates[0]);
-    }
-  }, [isSelected]);
-
-  const handleRoomSelect = (room: Rate) => {
-    const roomName = `${room.room_data_trans.main_name}${
-      room.room_data_trans.bedding_type
-        ? " " + room.room_data_trans.bedding_type
-        : ""
-    }`;
-    setSelectedRoom(room);
-    setSelectedRoomInfo(hotelInfo?.rooms[roomName]);
-    handleSelectedRate({
-      rate: room,
-      address: hotelInfo.metadata.address,
-      name: hotelInfo.metadata.hotelName,
-      id: hotelInfo.metadata.id,
-      price: room.payment_options.payment_types[0].show_amount,
-    });
-  };
+    handleRoomSelect(hotelRates[0], isSelected);
+  }, [isSelected, hotelRates]);
 
   const selectedPrice =
     +(selectedRoom || hotelRates[0]).payment_options.payment_types[0]
@@ -176,7 +156,7 @@ export const HotelCard = ({
                     <div className="w-full text-center lg:hidden p-1 mb-2 mt-2 border-main border rounded-lg bg-gray-200">
                       {priceToShowFull}
                     </div>
-                    {hotelRates.length > 1 && (
+                    {/* {hotelRates.length > 1 && (
                       <div className="w-full flex flex-col justify-between lg:items-right mt-2 mb-2">
                         <div
                           className="w-full lg:w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
@@ -232,7 +212,7 @@ export const HotelCard = ({
                           )}
                         </Collapse>
                       </div>
-                    )}
+                    )} */}
                     <div className="hidden lg:block">
                       <Amenities
                         roomAmenities={selectedRoomInfo?.amenities || []}

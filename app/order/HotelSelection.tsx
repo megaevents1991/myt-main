@@ -29,7 +29,6 @@ export const HotelSelection = () => {
     setHotel,
     planeTickets,
     flight,
-    hotel: selectedOrderHotel,
     event = {} as Event,
   } = useContext(OrderContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -78,11 +77,11 @@ export const HotelSelection = () => {
     {} as HotelsInfoClient
   );
   const [rating, setRating] = useState<boolean[]>([
-    false,
-    false,
-    false,
-    false,
-    false,
+    true,
+    true,
+    true,
+    true,
+    true,
   ]);
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
@@ -101,7 +100,7 @@ export const HotelSelection = () => {
   const [basePricePerPerson, setBasePricePerPerson] = useState(0);
   const [freeCancellation, setFreeCancellation] = useState<
     ("withFreeCancellation" | "withoutFreeCancellation")[]
-  >(["withoutFreeCancellation"]);
+  >(["withFreeCancellation"]);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -214,11 +213,6 @@ export const HotelSelection = () => {
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
 
-    if (type !== "sortOption" && type !== "hotelName") {
-      setHotel(undefined);
-      setSelectedHotelId("");
-    }
-
     switch (type) {
       case "freeCancellation": {
         setFreeCancellation(value);
@@ -264,6 +258,11 @@ export const HotelSelection = () => {
       distanceFromCenter: distanceRange,
       ...{ [type]: filterValue },
     });
+
+    if (hotelsToSet.length === 0) {
+      setSelectedHotelId("");
+      setHotel(undefined);
+    }
 
     if (type !== "sortOption" && type !== "hotelName" && hotelsToSet?.[0]?.id) {
       setSelectedHotelId(hotelsToSet[0].id);
@@ -486,16 +485,7 @@ export const HotelSelection = () => {
                     key={hotel.id}
                     hotelRates={hotel.rates}
                     hotelInfo={hotelsInfo[hotel.id]}
-                    handleSelect={() => {
-                      if (
-                        selectedOrderHotel &&
-                        selectedOrderHotel?.id !== hotel.id
-                      ) {
-                        setHotel(undefined);
-                      }
-
-                      setSelectedHotelId(hotel.id);
-                    }}
+                    handleSelect={() => setSelectedHotelId(hotel.id)}
                     handleSelectedRate={handleSelectedRate}
                   />
                 )

@@ -38,17 +38,11 @@ export const applyFiltersAndSorting = ({
 
       const hotelRating = hotelsInfo[hotel.id]?.metadata.rating;
 
-      const matchHasMeal =
-        !!meal.length &&
-        (meal.length === 2 ||
-          (meal.includes("withoutMeal") &&
-            hotel.rates.some(
-              (hotelRate) => !hotelRate.meal_data.has_breakfast
-            )) ||
-          (meal.includes("withMeal") &&
-            hotel.rates.some(
-              (hotelRate) => hotelRate.meal_data.has_breakfast
-            )));
+      const matchHasMeal = hotel.rates.some((hotelRate) =>
+        meal.includes("withMeal")
+          ? hotelRate.meal_data.has_breakfast
+          : !hotelRate.meal_data.has_breakfast
+      );
 
       const matchDistanceRange = inRange(
         hotelsInfo[hotel.id]?.metadata.distanceFromCenter,
@@ -96,11 +90,10 @@ export const applyFiltersAndSorting = ({
     .map((hotel) => {
       const filteredRates = hotel.rates.filter((rate) => {
         const price = +rate.payment_options.payment_types[0].show_amount;
-        const matchHasMeal =
-          !!meal.length &&
-          (meal.length === 2 ||
-            (meal.includes("withoutMeal") && !rate.meal_data.has_breakfast) ||
-            (meal.includes("withMeal") && rate.meal_data.has_breakfast));
+
+        const matchHasMeal = meal.includes("withMeal")
+          ? rate.meal_data.has_breakfast
+          : !rate.meal_data.has_breakfast;
 
         const isFreeCancellation = freeCancellation.includes(
           "withFreeCancellation"

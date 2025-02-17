@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-import { useState } from "react";
 import { icons } from "../icons/amenitiesIcons";
 import Image from "next/image";
 
@@ -12,18 +10,17 @@ type AmenitiesProps = {
 export const Amenities = ({
   roomAmenities,
   hotelAmenities,
-  onChange,
 }: AmenitiesProps) => {
-  const [showHotelData, setShowHotelData] = useState(true);
+  // const [showHotelData, setShowHotelData] = useState(true);
 
-  const handleChange = (isHotel: boolean) => {
-    setShowHotelData(isHotel);
-    onChange?.(isHotel);
-  };
+  // const handleChange = (isHotel: boolean) => {
+  //   setShowHotelData(isHotel);
+  //   onChange?.(isHotel);
+  // };
 
   return (
     <>
-      <button
+      {/* <button
         onClick={() => handleChange(true)}
         className={cn(showHotelData && "underline", "ml-2 text-main")}
       >
@@ -34,9 +31,9 @@ export const Amenities = ({
         className={cn(!showHotelData && "underline", "ml-2 text-main")}
       >
         פרטי חדר
-      </button>
+      </button> */}
       <br />
-      {(!showHotelData ? roomAmenities : hotelAmenities).map((amenity) => {
+      {[...roomAmenities, ...hotelAmenities].map((amenity) => {
         const icon = icons.find((icon) => icon.originalTag === amenity);
 
         return icon ? (
