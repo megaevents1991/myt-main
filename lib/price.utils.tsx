@@ -16,13 +16,25 @@ export const getDaysDiff = (event: Event) => {
   );
 };
 
-export const formatPrice = (price: number, factor = 1) => {
-  const ceilPrice = Math.ceil(price);
-  if (price > 0) {
-    return <span dir="ltr">+${ceilPrice * factor}</span>;
+export const formatPrice = (price: number, factor = 1, formatted = false) => {
+  let ceilPrice = Math.ceil(price);
+  if (factor !== 1) {
+    ceilPrice = Math.abs(ceilPrice * factor);
   }
-  if (price < 0) {
-    return <span dir="ltr">-${Math.abs(ceilPrice * factor)}</span>;
+  if (formatted) {
+    if (price > 0) {
+      return <span dir="ltr">+${ceilPrice.toLocaleString("en-US")}</span>;
+    }
+    if (price < 0) {
+      return <span dir="ltr">-${ceilPrice.toLocaleString("en-US")}</span>;
+    }
+  } else {
+    if (price > 0) {
+      return <span dir="ltr">+${ceilPrice}</span>;
+    }
+    if (price < 0) {
+      return <span dir="ltr">-${Math.abs(ceilPrice * factor)}</span>;
+    }
   }
   return 0;
 };

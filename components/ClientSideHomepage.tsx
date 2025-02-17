@@ -247,7 +247,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 className="block text-gray-700 text-sm font-bold mt-6 mb-2"
                 htmlFor="event"
               >
-                שנהיה בקשר כשיש כרטיסים (לא חייבים אם לא רוצים)?
+                שנהיה בקשר כשיש כרטיסים?
               </label>
               <input
                 id="email"
@@ -276,7 +276,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             </span>
           </h1>
           <p className="text-3xl sm:text-4xl md:text-5xl mb-4 mb-8">
-            !בחרו ותתחילו לתכנן
+            תכננו לפי התקציב ובנוחות
           </p>
         </div>
         <div className="w-full max-w-sm lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
@@ -414,7 +414,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 className="p-4 text-center text-main text-xl font-bold h-20"
                 dir="rtl"
               >
-                לא מצאתם מה שחיפשתם? ספרו לנו!
+                לא מצאתם מה שחיפשתם? ספרו לנו
               </div>
             </div>
           </div>

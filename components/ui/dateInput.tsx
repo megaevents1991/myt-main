@@ -79,6 +79,8 @@ export const DateRange = ({
           borderTopRightRadius: "var(--radius)",
           borderBottomLeftRadius: "0",
           borderTopLeftRadius: "0",
+          //fontSize: "20px",
+          //fontWeight: "300",
         },
       }}
     />

@@ -30,6 +30,7 @@ import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
+import { isMobile } from "react-device-detect";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -92,6 +93,18 @@ export const FlightSelection = () => {
   useEffect(() => {
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
     fetchFlights({ adults: numberOfEventTickets });
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const timer = setTimeout(() => {
+      window.scrollTo({
+        top: 90,
+        behavior: "smooth", // Adds a smooth scrolling effect
+      });
+    }, 1000); // 1 second delay
+
+    return () => clearTimeout(timer); // Cleanup timeout if component unmounts
   }, []);
 
   const fetchFlights = async (options: Partial<FlightSearchOptions> = {}) => {
@@ -285,12 +298,12 @@ export const FlightSelection = () => {
         </FiltersModal>
       )}
       <div className="flex flex-col items-center">
-        <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
+        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
             <div className="flex w-full lg:w-[60%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
               {matches && (
-                <span className="text-center text-lg">כמה טסים?</span>
+                <span className="text-center text-xl">כמה טסים?</span>
               )}
               <div className="w-fit">
                 <SelectWithIcon
@@ -302,7 +315,7 @@ export const FlightSelection = () => {
                 />
               </div>
               {matches && (
-                <span className="mr-6 text-center text-lg">
+                <span className="mr-6 text-center text-xl">
                   ובאיזה תאריכים?
                 </span>
               )}

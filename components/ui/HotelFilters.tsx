@@ -14,8 +14,8 @@ export const HotelFilters = ({
   maxDistance,
   minPrice,
   basePrice,
-  freeCancellation,
-}: {
+}: //freeCancellation,
+{
   onCriteriaChange: (criteria: HotelSearchCriteria) => void;
   maxPrice: number;
   maxDistance: number;
@@ -148,11 +148,11 @@ export const HotelFilters = ({
           >
             <div className="flex items-center space-x-2 space-x-reverse">
               <Checkbox value="withMeal" id="with-meal" />
-              <label htmlFor="withMeal">כולל ארוחה</label>
+              <label htmlFor="withMeal">כולל ארוחת בוקר</label>
             </div>
             <div className="flex items-center space-x-2 space-x-reverse">
               <Checkbox value="withoutMeal" id="without-meal" />
-              <label htmlFor="withoutMeal">ללא ארוחה</label>
+              <label htmlFor="withoutMeal">ללא ארוחות</label>
             </div>
           </Checkbox.Group>
         </div>
@@ -180,6 +180,13 @@ export const HotelFilters = ({
             marks={distanceMarks}
           />
           <div className="p-6"></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/*
 
           <div dir="rtl" className="w-full">
             <h3 className="text-lg text-start font-semibold mb-2">
@@ -213,8 +220,4 @@ export const HotelFilters = ({
               </div>
             </Checkbox.Group>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+*/

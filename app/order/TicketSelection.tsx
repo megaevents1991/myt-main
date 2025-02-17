@@ -8,6 +8,7 @@ import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
+import { isMobile } from "react-device-detect";
 
 export const TicketSelection = () => {
   //const eventId = useSearchParams().get("eventId") as string;
@@ -39,6 +40,18 @@ export const TicketSelection = () => {
     });
   }, [event]);
 
+  useEffect(() => {
+    if (!isMobile) return;
+    const timer = setTimeout(() => {
+      window.scrollTo({
+        top: 90,
+        behavior: "smooth", // Adds a smooth scrolling effect
+      });
+    }, 1000); // 1 second delay
+
+    return () => clearTimeout(timer); // Cleanup timeout if component unmounts
+  }, []);
+
   const handleTicketSelect = (ticket: {
     id: string;
     category: string;
@@ -60,7 +73,7 @@ export const TicketSelection = () => {
   return (
     <div>
       <div className="flex flex-col items-center ">
-        <div dir="rtl" className="w-screen p-4 bg-gray-200 ">
+        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
           </div>
@@ -69,7 +82,7 @@ export const TicketSelection = () => {
       <div className="flex flex-col" dir="rtl">
         <div className="mt-4 text-lg">
           אנו נבחר עבורכם את המושבים הטובים ביותר,
-          <span className="font-bold"> ישיבה בקבוצה מובטחת!</span>
+          <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
         </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-6">
           <Spoiler

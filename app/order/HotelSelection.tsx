@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { getTotalPersons } from "@/lib/price.utils";
+import { isMobile } from "react-device-detect";
 
 export const HotelSelection = () => {
   const {
@@ -106,6 +107,18 @@ export const HotelSelection = () => {
 
   useEffect(() => {
     fetchHotels();
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const timer = setTimeout(() => {
+      window.scrollTo({
+        top: 90,
+        behavior: "smooth", // Adds a smooth scrolling effect
+      });
+    }, 1000); // 1 second delay
+
+    return () => clearTimeout(timer); // Cleanup timeout if component unmounts
   }, []);
 
   const fetchHotels = async (parameters?: { radius: number }) => {
@@ -299,13 +312,13 @@ export const HotelSelection = () => {
       <div className="flex flex-col w-full items-center">
         <div
           dir="rtl"
-          className="w-screen gap-2 flex flex-col lg:flex-row justify-center p-4 bg-gray-200 items-center"
+          className="w-screen gap-2 flex flex-col lg:flex-row justify-center px-4 py-2 lg:p-4 bg-gray-200 items-center"
         >
           <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
             <div className="flex w-full lg:w-[60%] justify-start lg:justify-center flex-row gap-2 text-xs items-center margin-auto">
               {matches && (
-                <span className="text-center text-lg">כמה תהיו?</span>
+                <span className="text-center text-xl">כמה תהיו?</span>
               )}
 
               <div className="w-fit">
@@ -368,7 +381,7 @@ export const HotelSelection = () => {
                 </Popover>
               </div>
               {matches && (
-                <span className="mr-6 text-center text-lg">
+                <span className="mr-6 text-center text-xl">
                   ובאיזה תאריכים?
                 </span>
               )}
