@@ -9,7 +9,11 @@ export const EventDataHeader = ({ event }: { event?: Event }) => {
       <span className="whitespace-nowrap text-xl">
         {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
       </span>
-      {!isMobile && <span className="text-lg">{event?.description}</span>}
+      {!isMobile && (
+        <span className="text-lg mt-1" style={{ lineHeight: "1.1" }}>
+          {event?.description}
+        </span>
+      )}
     </div>
   );
 };

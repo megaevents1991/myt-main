@@ -38,12 +38,18 @@ export const OrderForm = ({ event }: { event: Event }) => {
     if (!name) {
       return "";
     }
+
     const words = name.split(/\s+/); // Split by spaces
     let shortName = "";
     let charCount = 0;
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
+
+      // If it's the first word and longer than 6 chars, return it directly
+      if (i === 0 && word.length > 6) {
+        return word;
+      }
 
       if (charCount + word.length > 6) {
         if (word.length >= 10) {

@@ -351,6 +351,40 @@ export default function OrderReview() {
       Number(process.env.NEXT_PUBLIC_MARKUP || "150")
   );
 
+  function shortenAirlineName(name: string | undefined) {
+    if (!name) {
+      return "";
+    }
+
+    const words = name.split(/\s+/); // Split by spaces
+    let shortName = "";
+    let charCount = 0;
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+
+      // If it's the first word and longer than 6 chars, return it directly
+      if (i === 0 && word.length > 6) {
+        return word;
+      }
+
+      if (charCount + word.length > 6) {
+        if (word.length >= 10) {
+          return shortName.trim(); // Stop if the word is very long (10+ chars)
+        } else {
+          return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
+        }
+      }
+
+      shortName += (shortName ? " " : "") + word;
+      charCount += word.length;
+    }
+
+    return shortName.trim();
+  }
+
+  const airlineName = shortenAirlineName(selectedFlight?.metadata.name);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content */}
@@ -478,12 +512,7 @@ export default function OrderReview() {
                         className="text-[16px] flex items-center gap-1"
                         dir="rtl"
                       >
-                        <div className="font-bold">
-                          {selectedFlight?.metadata.name &&
-                          selectedFlight.metadata.name.length > 12
-                            ? `${selectedFlight.metadata.name.slice(0, 10)}.`
-                            : selectedFlight?.metadata.name}
-                        </div>
+                        <div className="font-bold">{airlineName}</div>
                         <div>
                           {formatPrice(flightPriceAddition) ? (
                             <>({formatPrice(flightPriceAddition)})/לנוסע</>
