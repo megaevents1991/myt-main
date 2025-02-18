@@ -124,7 +124,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         <div className="mt-4 w-screen bg-gray-200">
           <div className="w-full">
             {step < 4 && (
-              <div className="flex flex-col lg:flex-row p-4 m-auto max-w-7xl justify-between items-center gap-2">
+              <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
                 <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center">
                   {/* Button Section */}
                   <button
@@ -132,7 +132,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                     onClick={nextStep}
                     className={cn(
                       "bg-main text-white tracking-wide rounded-lg p-2 font-bold",
-                      "w-[30%] ml-4 lg:ml-0",
+                      "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
                       buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                     )}
                   >
@@ -140,7 +140,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   </button>
 
                   {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
+                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
                     {step > 2 && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">
@@ -192,7 +192,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                           ${basePrice}
                         </span>
                         <div className="flex items-center justify-end lg:ml-2">
-                          <span className="text-right font-bold tracking-wide">
+                          <span className="text-right font-bold">
                             {event.name}
                           </span>
                         </div>

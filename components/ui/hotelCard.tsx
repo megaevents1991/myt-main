@@ -118,6 +118,7 @@ export const HotelCard = ({
                         initialSlide={0}
                         withIndicators
                         dir="ltr"
+                        loop
                         styles={{
                           indicators: {
                             maxWidth: "90%",
