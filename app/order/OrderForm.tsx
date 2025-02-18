@@ -126,7 +126,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                     onClick={nextStep}
                     className={cn(
                       "bg-main text-white tracking-wide rounded-lg p-2 font-bold",
-                      "w-[40%] ml-4 lg:ml-0",
+                      "w-[30%] ml-4 lg:ml-0",
                       buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                     )}
                   >
@@ -134,7 +134,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   </button>
 
                   {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[60%] lg:flex-row lg:justify-end text-secondary text-md">
+                  <div className="flex flex-col-reverse w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
                     {step > 2 && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">
