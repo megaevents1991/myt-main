@@ -278,11 +278,11 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           </h1>
           {isMobile ? (
             <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              .תכננו. התאימו. תחסכו
+              .תכננו. התאימו. חיסכו
             </p>
           ) : (
             <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              תכננו התאימו ותחסכו בגמישות מלאה
+              תכננו התאימו וחיסכו בגמישות מלאה
             </p>
           )}
         </div>
@@ -377,7 +377,10 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       />
                     </div>
                     <div className="flex flex-col text-center w-[52%] sm:w-auto">
-                      <div className="p-3 text-2xl font-bold leading-[0.975]">
+                      <div
+                        className="p-2 text-2xl font-bold"
+                        style={{ lineHeight: "1.1" }}
+                      >
                         {event.name}
                       </div>
                       <div
@@ -413,9 +416,12 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                             ${event.usual_price.toLocaleString("en-US")}
                           </div>
                         </div>
-                        <div className="flex-grow min-h-[6px]"></div>
-                        <div className="text-[14px] leading-[0.95]">
-                          לנוסע, עבור טיסה, מלון (הרכב זוגי) וכרטיס לאירוע
+                        <div className="flex-grow min-h-[4px]"></div>
+                        <div
+                          className="text-[14px]"
+                          style={{ lineHeight: "1.1" }}
+                        >
+                          לנוסע, עבור טיסה, מלון (בהרכב זוגי) וכרטיס לאירוע
                         </div>
                       </div>
                     </div>
