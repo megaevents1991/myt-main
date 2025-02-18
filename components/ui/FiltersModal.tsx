@@ -1,6 +1,6 @@
 import { Modal } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { ArrowLeftIcon } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { ReactNode } from "react";
 
 export const FiltersModal = ({
@@ -23,7 +23,7 @@ export const FiltersModal = ({
         onClose={() => onClose()}
         closeButtonProps={{
           style: { position: "absolute" },
-          icon: <ArrowLeftIcon />,
+          icon: <ChevronDown />,
         }}
       >
         <div className="bg-gray-100 p-4 rounded-lg space-y-4">{children}</div>

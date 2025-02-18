@@ -84,7 +84,7 @@ export const TicketSelection = () => {
           אנו נבחר עבורכם את המושבים הטובים ביותר,
           <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
         </div>
-        <div className="flex gap-4 flex-col lg:flex-row-reverse mt-6">
+        <div className="flex gap-4 flex-col lg:flex-row-reverse mt-4">
           <Spoiler
             className="w-full lg:hidden flex justify-center"
             style={{ margin: 0 }}
