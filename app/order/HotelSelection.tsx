@@ -64,6 +64,8 @@ export const HotelSelection = () => {
       rooms.pop();
       rooms.push({ ...baseRoom, adults: 2 });
       rooms.push({ ...baseRoom, adults: 2 });
+    } else if (remainingAdults === 1 && rooms.length === 0) {
+      rooms.push({ ...baseRoom, adults: 1 });
     } else if (remainingAdults === 2) {
       rooms.push({ ...baseRoom, adults: 2 });
     }
