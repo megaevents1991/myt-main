@@ -1,7 +1,7 @@
 "use client";
 
 import { Hotel, HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
-import { Button, Popover, Skeleton } from "@mantine/core";
+import { Popover, Skeleton } from "@mantine/core";
 import { useState, useEffect, useContext } from "react";
 import { OrderContext } from "../app.context";
 import { DateRange } from "@/components/ui/dateInput";
