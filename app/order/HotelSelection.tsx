@@ -385,7 +385,7 @@ export const HotelSelection = () => {
                 </span>
               )}
 
-              <div className="flex gap-2 flex-row w-min items-center">
+              <div className="flex flex-row w-min items-center">
                 <DateRange
                   dateRange={dateRange}
                   setDateRange={setDateRange}

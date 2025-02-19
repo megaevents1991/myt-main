@@ -350,7 +350,7 @@ export const FlightSelection = () => {
                   ובאיזה תאריכים?
                 </span>
               )}
-              <div className="flex flex-row w-min gap-2 items-center">
+              <div className="flex flex-row w-min items-center">
                 <DateRange
                   dateRange={dateRange}
                   setDateRange={setDateRange}

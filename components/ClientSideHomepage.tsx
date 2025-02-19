@@ -282,7 +282,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             </p>
           ) : (
             <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              תכננו התאימו וחיסכו בגמישות מלאה
+              תכננו התאימו חיסכו והכול בגמישות ובנוחות
             </p>
           )}
         </div>
