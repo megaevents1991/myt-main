@@ -350,7 +350,7 @@ export const FlightSelection = () => {
                   ובאיזה תאריכים?
                 </span>
               )}
-              <div className="flex flex-row w-min gap-2">
+              <div className="flex flex-row w-min gap-2 items-center">
                 <DateRange
                   dateRange={dateRange}
                   setDateRange={setDateRange}
@@ -358,9 +358,9 @@ export const FlightSelection = () => {
                 />
                 <button
                   onClick={handleFlightSearch}
-                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[42px] flex items-center justify-center r"
+                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                 >
-                  <Search size={30} />
+                  <Search size={24} />
                 </button>
               </div>
             </div>

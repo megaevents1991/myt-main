@@ -203,13 +203,65 @@ export default function OrderReview() {
     return await response.json();
   };
 
-  const maup = Number(process.env.NEXT_PUBLIC_MARKUP) || 0;
+  const boundries = Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4");
 
+  /**
+   * Check if the price is outside the pack boundries
+   * @param totalPrice - Total price for all passengers
+   * @param basePrice - Base price per single passenger
+   * @param paxs - Number of passengers
+   * @returns boolean
+   */
+  const priceOutsidePackBoundries = (
+    totalPrice: number,
+    basePrice: number,
+    paxs: number
+  ) => {
+    const price = totalPrice / paxs;
+    return Math.abs(price - basePrice) > boundries ? true : false;
+  };
+
+  /* Calculate total guests */
+  const totalGuests = getTotalPersons(selectedHotel.guests);
+
+  /* Fetch lowest avaiable ticket price */
+  const minTicketPrice = Math.min(
+    ...event.tickets_and_rates.map((ticket) => ticket.price)
+  );
+
+  /* Fetch Pack recommended price */
+  const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
+  const packRecommendedPrice = Math.ceil(
+    event.base_flight_price + event.base_hotel_price + minTicketPrice + maup
+  );
+
+  /* Main variables to calculate price additions */
+  const eventTicketPriceAddition = eventTicket.price - minTicketPrice;
+
+  const flightPriceAddition = priceOutsidePackBoundries(
+    selectedFlight.price,
+    event.base_flight_price,
+    selectedFlight.numOfTravelers
+  )
+    ? selectedFlight.price / selectedFlight.numOfTravelers -
+      event.base_flight_price
+    : 0;
+
+  const hotelPriceAddition = priceOutsidePackBoundries(
+    +selectedHotel.price,
+    event.base_hotel_price,
+    totalGuests
+  )
+    ? +selectedHotel.price / totalGuests - event.base_hotel_price
+    : 0;
+
+  /* Calculation of final price */
   const totalPrice = Math.ceil(
     (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
-      selectedFlight.price +
-      +selectedHotel.price
-  ); // TO DO: Add flight and hotel prices within boundries.
+      (flightPriceAddition + event.base_flight_price) *
+        selectedFlight.numOfTravelers +
+      (hotelPriceAddition + event.base_hotel_price) * totalGuests
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,32 +377,6 @@ export default function OrderReview() {
     return !hasErrors && hasRequiredFields && hasContactInfo;
   });
 
-  const eventTicketPriceAddition =
-    eventTicket.price -
-    event?.tickets_and_rates.reduce(
-      (min, ticket) => (ticket.price < min.price ? ticket : min),
-      event.tickets_and_rates[0]
-    ).price;
-
-  const flightPriceAddition =
-    selectedFlight.price / selectedFlight.numOfTravelers -
-    event.base_flight_price;
-
-  const totalGuests = getTotalPersons(selectedHotel.guests);
-  const hotelPriceAddition =
-    +selectedHotel.price / totalGuests - event.base_hotel_price;
-
-  const minTicketPrice = Math.min(
-    ...event.tickets_and_rates.map((ticket) => ticket.price)
-  );
-
-  const basePrice = Math.ceil(
-    event.base_flight_price +
-      event.base_hotel_price +
-      minTicketPrice +
-      Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-  );
-
   function shortenAirlineName(name: string | undefined) {
     if (!name) {
       return "";
@@ -405,7 +431,8 @@ export default function OrderReview() {
                       dayjs(event.date).format("DD/MM/YYYY")}
                   </p>
                   <div className="font-lg" dir="rtl">
-                    מחיר מומלץ לאדם: ${basePrice.toLocaleString("en-US")}
+                    מחיר מומלץ לאדם: $
+                    {packRecommendedPrice.toLocaleString("en-US")}
                   </div>
                 </div>
                 <div>
@@ -427,7 +454,7 @@ export default function OrderReview() {
                           {eventTicket.category}
                         </div>
                         <div>
-                          {formatPrice(eventTicketPriceAddition) ? (
+                          {eventTicketPriceAddition ? (
                             <>
                               ({formatPrice(eventTicketPriceAddition)})/לכרטיס
                             </>
@@ -437,7 +464,7 @@ export default function OrderReview() {
                         </div>
                       </div>
                       <div>
-                        {formatPrice(eventTicketPriceAddition)
+                        {eventTicketPriceAddition
                           ? formatPrice(
                               eventTicketPriceAddition,
                               numberOfEventTickets
@@ -460,10 +487,7 @@ export default function OrderReview() {
                       {" אורחים)"}
                     </span>
                   </h3>
-                  <div
-                    className="flex w-full text-[16px] justify-between gap-1"
-                    dir="rtl"
-                  >
+                  <div className="flex w-full justify-between" dir="rtl">
                     <div>
                       <p className="font-bold">{selectedHotel.name}</p>
                       <p>{selectedHotel.rate.room_data_trans.main_name}</p>
@@ -478,7 +502,7 @@ export default function OrderReview() {
                         <div>
                           {selectedHotel.guests.length > 1 &&
                             ` | ${selectedHotel.guests.length} חדרים`}{" "}
-                          {formatPrice(hotelPriceAddition) ? (
+                          {hotelPriceAddition ? (
                             <>({formatPrice(hotelPriceAddition)})/לאורח</>
                           ) : (
                             ""
@@ -487,11 +511,8 @@ export default function OrderReview() {
                       </div>
                     </div>
                     <div>
-                      {formatPrice(hotelPriceAddition)
-                        ? formatPrice(
-                            hotelPriceAddition,
-                            getTotalPersons(selectedHotel.guests)
-                          )
+                      {hotelPriceAddition
+                        ? formatPrice(hotelPriceAddition, totalGuests)
                         : "כלול במחיר"}
                     </div>
                   </div>
@@ -508,10 +529,7 @@ export default function OrderReview() {
                   </h3>
                   <div className="flex justify-between w-full" dir="rtl">
                     <div>
-                      <div
-                        className="text-[16px] flex items-center gap-1"
-                        dir="rtl"
-                      >
+                      <div className="text-[16px] flex items-center" dir="rtl">
                         <div className="font-bold">{airlineName}</div>
                         <div>
                           {formatPrice(flightPriceAddition) ? (
@@ -547,7 +565,7 @@ export default function OrderReview() {
                     </div>
                   </div>
                   <div className="h-1"></div>
-                  <div className="text-[12px] mt-2" dir="rtl">
+                  <div className="text-[12px] mt-2 px-2" dir="rtl">
                     <FlightMeta {...selectedFlight.outbound} />
                     <FlightMeta {...selectedFlight.inbound} />
                   </div>
@@ -558,7 +576,11 @@ export default function OrderReview() {
                     <div>
                       <div className="flex justify-between items-center w-full text-[18px]">
                         <span className="line-through">
-                          ${totalPrice + affDiscount * numberOfEventTickets}
+                          $
+                          {(
+                            totalPrice +
+                            affDiscount * numberOfEventTickets
+                          ).toLocaleString("en-US")}
                         </span>
                         <span>מחיר</span>
                       </div>
@@ -569,7 +591,7 @@ export default function OrderReview() {
                     </div>
                   )}
                   <div className="flex justify-between items-center text-[22px] font-bold">
-                    <span>${totalPrice}</span>
+                    <span>${totalPrice.toLocaleString("en-US")}</span>
                     {affDiscount > 0 ? (
                       <span>סה&quot;כ לאחר הנחה</span>
                     ) : (
@@ -612,7 +634,7 @@ export default function OrderReview() {
           <div className="space-y-6 order-2 md:order-2">
             <Card className="bg-white shadow-lg overflow-hidden">
               <div className="px-8 pt-6 pb-8">
-                <h2 className="text-[22px] font-bold mb-4 text-right">
+                <h2 className="text-2xl font-bold mb-4 text-right">
                   פרטי הנוסעים
                 </h2>
                 <p className="text-right mb-8 text-[16px]">

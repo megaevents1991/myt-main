@@ -385,19 +385,18 @@ export const HotelSelection = () => {
                 </span>
               )}
 
-              <div className="flex gap-2 flex-row w-min">
+              <div className="flex gap-2 flex-row w-min items-center">
                 <DateRange
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
                 />
-                <Button
+                <button
                   onClick={() => fetchHotels()}
-                  size="md"
-                  style={{ borderRadius: "var(--radius)" }}
+                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                 >
-                  <Search size={30} />
-                </Button>
+                  <Search size={24} />
+                </button>
               </div>
             </div>
             <div className="w-[15%]"></div>

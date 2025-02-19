@@ -389,7 +389,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       >
                         <span>{dayjs(event.date).format("DD/MM/YYYY")}</span>
                         <span className="sm:inline hidden mx-2">|</span>
-                        <span className="whitespace-nowrap">
+                        <span className="w-full sm:w-auto whitespace-nowrap">
                           {event.location.name}
                         </span>
                       </div>
