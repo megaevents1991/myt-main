@@ -62,10 +62,12 @@ const getHotelsStaticDataFromDB = async (
   }
 };
 
-const saveNewHotelsStaticDataToDB = async (data : (HotelInfo["data"] & { _id: string })[]) => {
+const saveNewHotelsStaticDataToDB = async (
+  data: (HotelInfo["data"] & { _id: string })[]
+) => {
   try {
     const hotels = processHotelsData(data);
-    const { error } = await supabase.from('hotels').upsert(hotels);
+    const { error } = await supabase.from("hotels").upsert(hotels);
     if (error) throw error;
 
     await new Promise((resolve) => setTimeout(resolve, 500)); // Add delay
@@ -76,7 +78,7 @@ const saveNewHotelsStaticDataToDB = async (data : (HotelInfo["data"] & { _id: st
   }
 };
 
-const processHotelsData = (hotels : (HotelInfo["data"] & { _id: string })[]) => {
+const processHotelsData = (hotels: (HotelInfo["data"] & { _id: string })[]) => {
   return hotels.map((hotel) => ({
     _id: hotel.id,
     hid: hotel.hid,
@@ -85,6 +87,7 @@ const processHotelsData = (hotels : (HotelInfo["data"] & { _id: string })[]) => 
     latitude: hotel.latitude,
     longitude: hotel.longitude,
     star_rating: hotel.star_rating,
+    kind: hotel.kind,
     room_groups: JSON.parse(JSON.stringify(hotel.room_groups || [])),
     images_ext: JSON.parse(JSON.stringify(hotel.images_ext || [])),
     amenity_groups: JSON.parse(JSON.stringify(hotel.amenity_groups || [])),
@@ -102,7 +105,11 @@ export async function POST(request: Request) {
   } = await request.json();
 
   if (!hotels?.length) {
-    console.log(`Invalid request body "(!hotels?.length) check":`, JSON.stringify(hotels), event);
+    console.log(
+      `Invalid request body "(!hotels?.length) check":`,
+      JSON.stringify(hotels),
+      event
+    );
     return NextResponse.json(
       {
         error:
@@ -125,7 +132,9 @@ export async function POST(request: Request) {
 
       console.log("Missing hotels:", missingHotelsIds);
 
-      missingHotels = (await Promise.all(missingHotelsIds.slice(0,9).map(getHotelInfo)))
+      missingHotels = (
+        await Promise.all(missingHotelsIds.slice(0, 9).map(getHotelInfo))
+      )
         .filter((hotel) => !!hotel)
         .map(({ data }) => ({ ...data, _id: data.id }));
 
@@ -136,6 +145,16 @@ export async function POST(request: Request) {
 
     const transformedData = [...(hotelsData || []), ...missingHotels]?.reduce(
       (acc, hotel) => {
+        const hotelImages = hotel.images_ext
+          .filter((image) =>
+            ["hotel_front", "lobby"].includes(image.category_slug)
+          )
+          .map((image) => image.url);
+
+        if (!hotelImages.length) {
+          return acc;
+        }
+
         // Calculate distance from event center to hotel
         const distanceInMeters = getDistance(
           {
@@ -154,10 +173,10 @@ export async function POST(request: Request) {
 
         // Transform rooms data
         const rooms = hotel.room_groups?.reduce((roomsAcc, room) => {
-          if (room.name) {
+          if (room.name && !!room.images.length) {
             roomsAcc[room.name] = {
               name: room.name,
-              images: room.images || [],
+              images: room.images,
               amenities: room.room_amenities || [],
             };
           }
@@ -170,11 +189,7 @@ export async function POST(request: Request) {
           general: {
             name: "general",
             amenities: hotelAmenity?.amenities || [],
-            images: hotel.images_ext
-              .filter((image) =>
-                ["hotel_front", "lobby"].includes(image.category_slug)
-              )
-              .map((image) => image.url),
+            images: hotelImages,
           },
           metadata: {
             hotelName: hotel.name,
@@ -183,10 +198,8 @@ export async function POST(request: Request) {
             id: hotel._id,
             longitude: hotel.longitude,
             latitude: hotel.latitude,
-            // amenity_groups: hotel.amenity_groups,
+            kind: hotel.kind,
             hid: hotel.hid,
-            // images_ext: hotel.images_ext,
-            // room_groups: hotel.room_groups,
             distanceFromCenter: distanceInMeters,
           },
         };

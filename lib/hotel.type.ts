@@ -148,6 +148,7 @@ export type HotelInfoClient = {
     hotelName: string;
     address: string;
     rating: number;
+    kind: string;
     id: string;
     longitude: number;
     latitude: number;

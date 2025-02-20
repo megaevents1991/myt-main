@@ -79,14 +79,17 @@ export async function POST(request: Request) {
     });
 
     // Transform Amadeus response to match our flight data structure
-    const flights: Flight[] = response.result.data.map(
-      ({
-        id,
-        validatingAirlineCodes,
-        price,
-        itineraries,
-        travelerPricings,
-      }) => {
+    const flights: Flight[] = response.result.data.reduce(
+      (
+        acc,
+        { id, validatingAirlineCodes, price, itineraries, travelerPricings }
+      ) => {
+        const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
+
+        if (!airlineByIata.logo) {
+          return acc;
+        }
+
         const toDeparture = itineraries[0].segments[0];
         const toArrival = itineraries[0].segments.at(-1);
 
@@ -163,7 +166,7 @@ export async function POST(request: Request) {
             validatingAirlineCodes[0] + itineraries[1].segments[0].number,
         };
 
-        return {
+        acc.push({
           id,
           numOfTravelers: travelerPricings.length,
           price: parseFloat(price.grandTotal),
@@ -173,13 +176,16 @@ export async function POST(request: Request) {
           outbound,
           inbound,
           metadata: {
-            ...getAirlineByIata(validatingAirlineCodes[0]),
+            ...airlineByIata,
             name: response.result.dictionaries.carriers[
               validatingAirlineCodes[0]
             ],
           },
-        };
-      }
+        });
+
+        return acc;
+      },
+      [] as Flight[]
     );
 
     return NextResponse.json(flights);

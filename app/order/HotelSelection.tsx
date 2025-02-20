@@ -10,7 +10,7 @@ import { HotelCard } from "@/components/ui/hotelCard";
 import { Search, Settings2Icon } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
-import { applyFiltersAndSorting, hotelSort } from "@/lib/hotelFilter";
+import { applyFiltersAndSorting } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import {
@@ -79,7 +79,7 @@ export const HotelSelection = () => {
     {} as HotelsInfoClient
   );
   const [rating, setRating] = useState<boolean[]>([
-    true,
+    false,
     true,
     true,
     true,
@@ -186,7 +186,15 @@ export const HotelSelection = () => {
 
     const basePricePerPerson = event.base_hotel_price;
 
-    const hotelsToSet = hotelSort(data.data.hotels, sortOption, hotelsInfo);
+    const hotelsToSet = applyFiltersAndSorting({
+      hotels: data.data.hotels,
+      priceRange: [0, maxPrice],
+      rating,
+      hotelsInfo,
+      meal,
+      freeCancellation,
+      distanceFromCenter: [0, maxDistance],
+    });
 
     setBasePricePerPerson(basePricePerPerson);
     setRequestDebug(data.debug.request);
@@ -195,7 +203,7 @@ export const HotelSelection = () => {
     setPriceRange([0, Math.ceil(maxPrice)]);
     setHotelsInfo(hotelsInfo);
     setMaxPrice(maxPrice / totalPersons);
-    setHotels(hotelsToSet);
+    setHotels(data.data.hotels);
     setFilteredHotels(hotelsToSet);
     setIsLoading(false);
     setSelectedHotelId(hotelsToSet[0].id);

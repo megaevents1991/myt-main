@@ -159,6 +159,7 @@ export type HotelInfoDB = {
     url: string;
   }>;
   latitude: number;
+  kind: string;
   longitude: number;
   room_groups: Array<{
     images: Array<string>;
