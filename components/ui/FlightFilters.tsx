@@ -113,7 +113,7 @@ export const FlightFilters = ({
   return (
     <div className="w-full p-4 space-y-4 border-2 border-gray-200 shadow-lg rounded-lg">
       {/* Stops Section */}
-      <div dir="rtl">
+      <div dir="rtl" className="px-2">
         <h3 className="text-lg font-semibold mb-2">עצירות</h3>
         <Checkbox.Group
           value={filters.numOfStops}
@@ -131,9 +131,8 @@ export const FlightFilters = ({
           </div>
         </Checkbox.Group>
       </div>
-
       {/* Luggage */}
-      <div dir="rtl">
+      <div dir="rtl" className="px-2">
         <h3 className="text-lg font-semibold mb-2">כבודה</h3>
         <Checkbox.Group
           value={filters.luggage}
@@ -151,22 +150,20 @@ export const FlightFilters = ({
           </div>
         </Checkbox.Group>
       </div>
-
-      <div>
+      <div className="px-2">
         <h3 dir="rtl" className="text-lg font-semibold mb-4">
           ננסה לחסוך?
         </h3>
         {priceComponent}
       </div>
-      <div>
+      <div className="px-2">
         <h3 dir="rtl" className="text-lg mt-8 font-semibold mb-4">
           משך זמן טיסה
         </h3>
         {flightDurationComponent}
       </div>
-
       {/* Departure Time Section */}
-      <div dir="rtl">
+      <div dir="rtl" className="px-2">
         <h3 className="text-lg font-semibold mt-8 mb-2">זמן המראה</h3>
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
@@ -207,9 +204,8 @@ export const FlightFilters = ({
           />
         </div>
       </div>
-
       {/* Arrival Time Section */}
-      <div dir="rtl">
+      <div dir="rtl" className="px-2">
         <h3 className="text-lg font-semibold mb-2">זמן הגעה</h3>
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
@@ -251,8 +247,8 @@ export const FlightFilters = ({
         </div>
       </div>
       {/* Airlines Section */}
-      <div dir="rtl">
-        <h3 className="text-lg font-semibold mt-4 mb-2">חברת תעופה</h3>
+      <div dir="rtl" className="px-2">
+        <h3 className="text-lg font-semibold mt-4 mb-2">חברות תעופה</h3>
         <Checkbox.Group
           value={filters.airline}
           onChange={(value) =>

@@ -27,7 +27,7 @@ export const HotelCardHeader = ({
     <div className="flex flex-col gap-2 m" ref={ref}>
       <div className="flex flex-col justify-between items-start">
         <div className="flex flex-row gap-2 items-center w-full">
-          <div className="font-bold text-lg lg:text-2xl" dir="ltr">
+          <div className="font-bold text-lg lg:text-2xl">
             {formatHotelName(hotelName)}
           </div>
           <Stars rating={rating} />

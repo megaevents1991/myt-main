@@ -106,59 +106,8 @@ export const HotelFilters = ({
   ];
 
   return (
-    <div className="flex flex-col items-center p-5 gap-5 border-2 border-gray-200 shadow-lg rounded-lg">
-      <div className="m-auto w-full mt-2 px-2">
-        <h3 className="text-lg text-end font-semibold mb-4">דירוג כוכבים</h3>
-        <StarsGroup
-          value={stars}
-          onChange={handleRatingChange}
-          className="mb-8"
-        />
-        <h3 className="text-lg text-end font-semibold mb-4">מחיר</h3>
-        <RangeSlider
-          thumbSize={20}
-          min={minPrice}
-          max={maxPrice + 2}
-          step={5}
-          label={(value) => value - basePrice}
-          value={value}
-          styles={{
-            bar: { backgroundColor: themeColor },
-            mark: {
-              backgroundColor: "transparent",
-              borderColor: "transparent",
-            },
-            label: { backgroundColor: themeColor },
-            thumb: { backgroundColor: themeColor, borderColor: themeColor },
-          }}
-          onChange={handlePriceRangeChange}
-          onChangeEnd={handlePriceRangeChangeEnd}
-          marks={marks}
-        />
-      </div>
-      <form className="flex w-full shadow-md mt-8" dir="rtl">
-        <input
-          onChange={(e) => setSearchValue(e.target.value)}
-          value={searchValue}
-          placeholder="חפש מלון..."
-          type="text"
-          className="w-2/3 rounded-r p-2 text-main border text-xs"
-        />
-        <button
-          className="w-1/3 bg-secondary text-white rounded-l flex items-center justify-center"
-          onClick={(e) => {
-            e.preventDefault();
-            onCriteriaChange({
-              value: searchValue,
-              type: "hotelName",
-            });
-            setSearchValue("");
-          }}
-        >
-          <Search />
-        </button>
-      </form>
-      <div className="m-auto w-full mt-4 px-2">
+    <div className="flex flex-col items-center p-4 border-2 border-gray-200 shadow-lg rounded-lg">
+      <div className="m-auto w-full px-2">
         <div dir="rtl" className="w-full">
           <h3 className="text-lg text-start font-semibold mb-2">ארוחות בוקר</h3>
           <Checkbox.Group
@@ -176,6 +125,8 @@ export const HotelFilters = ({
             </div>
           </Checkbox.Group>
         </div>
+      </div>
+      <div className="m-auto w-full mt-4 px-2">
         <div dir="rtl" className="w-full">
           <h3 className="text-lg text-start font-semibold mb-2">סוג אירוח</h3>
           <Checkbox.Group
@@ -215,31 +166,83 @@ export const HotelFilters = ({
             ))}
           </Checkbox.Group>
         </div>
-        <div className="w-full">
-          <div className="p-4"></div>
-          <h3 className="text-lg text-end font-semibold mb-4">מרחק</h3>
-          <RangeSlider
-            thumbSize={20}
-            min={0}
-            max={maxDistance + 1000}
-            step={100}
-            label={(value) => Math.round((value / 1000) * 10) / 10}
-            value={distanceFromCenter}
-            styles={{
-              bar: { backgroundColor: themeColor },
-              mark: {
-                backgroundColor: "transparent",
-                borderColor: "transparent",
-              },
-              label: { backgroundColor: themeColor },
-              thumb: { backgroundColor: themeColor, borderColor: themeColor },
-            }}
-            onChange={handleDistanceFromCenterChange}
-            onChangeEnd={handleDistanceFromCenterChangeEnd}
-            marks={distanceMarks}
+      </div>
+      <div className="m-auto w-full mt-2 px-2">
+        <h3 className="text-lg text-end font-semibold mb-2">דירוג כוכבים</h3>
+        <StarsGroup
+          value={stars}
+          onChange={handleRatingChange}
+          className="mb-6"
+        />
+        <h3 className="text-lg text-end font-semibold mb-2">מחיר</h3>
+        <RangeSlider
+          thumbSize={20}
+          min={minPrice}
+          max={maxPrice + 2}
+          step={5}
+          label={(value) => value - basePrice}
+          value={value}
+          styles={{
+            bar: { backgroundColor: themeColor },
+            mark: {
+              backgroundColor: "transparent",
+              borderColor: "transparent",
+            },
+            label: { backgroundColor: themeColor },
+            thumb: { backgroundColor: themeColor, borderColor: themeColor },
+          }}
+          onChange={handlePriceRangeChange}
+          onChangeEnd={handlePriceRangeChangeEnd}
+          marks={marks}
+        />
+      </div>
+      <div className="m-auto w-full mt-2 px-2">
+        <form className="flex w-full shadow-md mt-8" dir="rtl">
+          <input
+            onChange={(e) => setSearchValue(e.target.value)}
+            value={searchValue}
+            placeholder="חפש מלון..."
+            type="text"
+            className="w-2/3 rounded-r p-2 text-main border text-xs"
           />
-          <div className="p-6"></div>
-        </div>
+          <button
+            className="w-1/3 bg-secondary text-white rounded-l flex items-center justify-center"
+            onClick={(e) => {
+              e.preventDefault();
+              onCriteriaChange({
+                value: searchValue,
+                type: "hotelName",
+              });
+              setSearchValue("");
+            }}
+          >
+            <Search />
+          </button>
+        </form>
+      </div>
+      <div className="m-auto w-full mt-4 px-2">
+        <h3 className="text-lg text-end font-semibold mb-2">מרחק</h3>
+        <RangeSlider
+          thumbSize={20}
+          min={0}
+          max={maxDistance + 1000}
+          step={100}
+          label={(value) => Math.round((value / 1000) * 10) / 10}
+          value={distanceFromCenter}
+          styles={{
+            bar: { backgroundColor: themeColor },
+            mark: {
+              backgroundColor: "transparent",
+              borderColor: "transparent",
+            },
+            label: { backgroundColor: themeColor },
+            thumb: { backgroundColor: themeColor, borderColor: themeColor },
+          }}
+          onChange={handleDistanceFromCenterChange}
+          onChangeEnd={handleDistanceFromCenterChangeEnd}
+          marks={distanceMarks}
+        />
+        <div className="p-6"></div>
       </div>
     </div>
   );

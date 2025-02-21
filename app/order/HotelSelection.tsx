@@ -85,7 +85,7 @@ export const HotelSelection = () => {
     {} as HotelsInfoClient
   );
   const [rating, setRating] = useState<boolean[]>([
-    false,
+    true,
     true,
     true,
     true,

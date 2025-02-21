@@ -450,8 +450,11 @@ export default function OrderReview() {
                       dir="rtl"
                     >
                       <div className="flex gap-[2px]">
-                        <div className="font-bold ml-1">
-                          {eventTicket.category}
+                        <div className="ml-1">
+                          קטגוריה:{" "}
+                          <span className="font-bold">
+                            {eventTicket.category}
+                          </span>
                         </div>
                         <div>
                           {eventTicketPriceAddition ? (
