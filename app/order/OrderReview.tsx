@@ -489,8 +489,12 @@ export default function OrderReview() {
                   </h3>
                   <div className="flex w-full justify-between" dir="rtl">
                     <div>
-                      <p className="font-bold">{selectedHotel.name}</p>
-                      <p>{selectedHotel.rate.room_data_trans.main_name}</p>
+                      <p className="font-bold" dir="ltr">
+                        {selectedHotel.name}
+                      </p>
+                      <p dir="ltr">
+                        {selectedHotel.rate.room_data_trans.main_name}
+                      </p>
                       <div className="flex items-center gap-1">
                         <div>
                           {`${selectedHotel.guests.reduce(
@@ -516,6 +520,20 @@ export default function OrderReview() {
                         : "כלול במחיר"}
                     </div>
                   </div>
+                  <div className="flex text-[16px]" dir="rtl">
+                    <div>מ-</div>
+                    <div>
+                      {dayjs(selectedHotel.checkin).format(
+                        // pass check-in and check-out dates to selectedhotel (need to chaned hotel order type)
+                        "DD/MM/YYYY"
+                      )}
+                    </div>
+                    <div className="w-1"></div>
+                    <div>עד-</div>
+                    <div>
+                      {dayjs(selectedHotel.checkout).format("DD/MM/YYYY")}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="">
@@ -530,7 +548,9 @@ export default function OrderReview() {
                   <div className="flex justify-between w-full" dir="rtl">
                     <div>
                       <div className="text-[16px] flex items-center" dir="rtl">
-                        <div className="font-bold">{airlineName}</div>
+                        <div className="font-bold ml-1" dir="ltr">
+                          {airlineName}
+                        </div>
                         <div>
                           {formatPrice(flightPriceAddition) ? (
                             <>({formatPrice(flightPriceAddition)})/לנוסע</>

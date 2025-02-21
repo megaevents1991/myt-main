@@ -53,6 +53,8 @@ export type OrderHotel = {
   id: string;
   price: string;
   guests: Guest[];
+  checkin: string;
+  checkout: string;
 };
 
 export type Order = {
@@ -120,6 +122,10 @@ export type HotelSearchCriteria =
       type: "meal";
       value: ["withMeal", "withoutMeal"];
     }
+  | {
+      type: "kind";
+      value: ["Resort", "Sanatorium", "Guesthouse", "Mini-hotel", "Castle", "Hotel", "Boutique_and_Design", "Apartment", "Cottages_and_Houses", "Farm", "Villas_and_Bungalows", "Camping", "Hostel", "BNB", "Glamping", "Apart-hotel"];
+    } 
   | {
       type: "sortOption";
       value: SortOptions;

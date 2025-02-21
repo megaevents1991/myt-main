@@ -3,17 +3,39 @@ import { useEffect, useState } from "react";
 import { StarsGroup } from "@/components/ui/StarsGroup";
 import { Search } from "lucide-react";
 import { HotelSearchCriteria } from "@/lib/app.types";
+import { HotelKind } from "@/lib/hotel.type";
 
 const themeColor = "#05203C";
+
+const hotelKindOptionsNaming = {
+  Resort: "Resort",
+  Sanatorium: "Sanatorium",
+  Guesthouse: "Guesthouse",
+  "Mini-hotel": "Mini-hotel",
+  Castle: "Castle",
+  Hotel: "Hotel",
+  Boutique_and_Design: "Boutique",
+  Apartment: "Apartment",
+  Cottages_and_Houses: "Houses",
+  Farm: "Farm",
+  Villas_and_Bungalows: "Villas",
+  Camping: "Camping",
+  Hostel: "Hostel",
+  BNB: "B&B",
+  Glamping: "Glamping",
+  "Apart-hotel": "Apart-hotel",
+};
 
 export const HotelFilters = ({
   maxPrice,
   onCriteriaChange,
   selectedRating,
   meal,
+  kind,
   maxDistance,
   minPrice,
   basePrice,
+  hotelKindOptions,
 }: //freeCancellation,
 {
   onCriteriaChange: (criteria: HotelSearchCriteria) => void;
@@ -21,8 +43,10 @@ export const HotelFilters = ({
   maxDistance: number;
   selectedRating: boolean[];
   meal: ("withMeal" | "withoutMeal")[];
+  kind: HotelKind[];
   minPrice: number;
   basePrice: number;
+  hotelKindOptions: HotelKind[];
   freeCancellation: ("withFreeCancellation" | "withoutFreeCancellation")[];
 }) => {
   const [searchValue, setSearchValue] = useState("");
@@ -150,6 +174,45 @@ export const HotelFilters = ({
               <Checkbox value="withMeal" id="with-meal" />
               <label htmlFor="withMeal">כולל ארוחת בוקר</label>
             </div>
+          </Checkbox.Group>
+        </div>
+        <div dir="rtl" className="w-full">
+          <h3 className="text-lg text-start font-semibold mb-2">סוג אירוח</h3>
+          <Checkbox.Group
+            value={kind}
+            onChange={(value) =>
+              onCriteriaChange({
+                value: value as [
+                  "Resort",
+                  "Sanatorium",
+                  "Guesthouse",
+                  "Mini-hotel",
+                  "Castle",
+                  "Hotel",
+                  "Boutique_and_Design",
+                  "Apartment",
+                  "Cottages_and_Houses",
+                  "Farm",
+                  "Villas_and_Bungalows",
+                  "Camping",
+                  "Hostel",
+                  "BNB",
+                  "Glamping",
+                  "Apart-hotel"
+                ],
+                type: "kind",
+              })
+            }
+          >
+            {hotelKindOptions.map((value, i) => (
+              <Checkbox
+                value={value}
+                id={value}
+                label={hotelKindOptionsNaming[value]}
+                key={i}
+                className="my-2"
+              />
+            ))}
           </Checkbox.Group>
         </div>
         <div className="w-full">

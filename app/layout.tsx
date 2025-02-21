@@ -88,15 +88,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                         </Link>
                         <Link
                           className="text-sm hover:underline underline-offset-4"
-                          href="#"
+                          href="terms"
                         >
                           תנאי שימוש
                         </Link>
                         <Link
                           className="text-sm hover:underline underline-offset-4"
-                          href="#"
+                          href="cancellation"
                         >
-                          פרטיות
+                          ביטול הזמנה
                         </Link>
                       </nav>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">

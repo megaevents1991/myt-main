@@ -1,3 +1,5 @@
+import { HotelKind } from "./hotel.type";
+
 export type HotelInfo = {
   data: {
     address: string;
@@ -44,7 +46,7 @@ export type HotelInfo = {
       phone: string;
       type: string;
     };
-    kind: string;
+    kind: HotelKind;
     latitude: number;
     longitude: number;
     metapolicy_extra_info: string;
@@ -143,7 +145,6 @@ export type HotelInfo = {
   status: string;
 };
 
-
 export type HotelInfoDB = {
   address: string;
   name: string;
@@ -159,7 +160,7 @@ export type HotelInfoDB = {
     url: string;
   }>;
   latitude: number;
-  kind: string;
+  kind: HotelKind;
   longitude: number;
   room_groups: Array<{
     images: Array<string>;

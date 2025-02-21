@@ -248,7 +248,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 className="block text-gray-700 text-sm font-bold mt-6 mb-2"
                 htmlFor="event"
               >
-                שנהיה בקשר כשיש כרטיסים?
+                שנחזור אליכם עם הצעה?
               </label>
               <input
                 id="email"

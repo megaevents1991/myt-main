@@ -1,8 +1,14 @@
 "use client";
 
-import { Hotel, HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
+import {
+  Hotel,
+  HotelResponse,
+  HotelsInfoClient,
+  HotelInfoClient,
+  HotelKind,
+} from "@/lib/hotel.type";
 import { Popover, Skeleton } from "@mantine/core";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo, useTransition } from "react";
 import { OrderContext } from "../app.context";
 import { DateRange } from "@/components/ui/dateInput";
 import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
@@ -90,6 +96,26 @@ export const HotelSelection = () => {
   const [meal, setMeal] = useState<("withMeal" | "withoutMeal")[]>([
     "withoutMeal",
   ]);
+  const [kind, setKind] = useState<
+    (
+      | "Resort"
+      | "Sanatorium"
+      | "Guesthouse"
+      | "Mini-hotel"
+      | "Castle"
+      | "Hotel"
+      | "Boutique_and_Design"
+      | "Apartment"
+      | "Cottages_and_Houses"
+      | "Farm"
+      | "Villas_and_Bungalows"
+      | "Camping"
+      | "Hostel"
+      | "BNB"
+      | "Glamping"
+      | "Apart-hotel"
+    )[]
+  >(["Hotel"]);
   const [maxDistance, setMaxDistance] = useState(0);
   const [distanceRange, setDistanceRange] = useState<[number, number]>([
     0,
@@ -103,6 +129,12 @@ export const HotelSelection = () => {
   const [freeCancellation, setFreeCancellation] = useState<
     ("withFreeCancellation" | "withoutFreeCancellation")[]
   >(["withFreeCancellation"]);
+
+  const [debug, setDebug] = useState<HotelResponse["debug"]>(
+    {} as HotelResponse["debug"]
+  );
+
+  const [, startTransition] = useTransition();
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -192,6 +224,7 @@ export const HotelSelection = () => {
       rating,
       hotelsInfo,
       meal,
+      kind,
       freeCancellation,
       distanceFromCenter: [0, maxDistance],
     });
@@ -208,7 +241,6 @@ export const HotelSelection = () => {
     setIsLoading(false);
     setSelectedHotelId(hotelsToSet[0].id);
     setMinPrice(Math.floor(minPrice / totalPersons));
-
     setHotel({
       address: hotelsInfo[hotelsToSet[0].id]?.metadata.address,
       guests: data.debug.request.guests,
@@ -217,8 +249,32 @@ export const HotelSelection = () => {
       price:
         hotelsToSet[0].rates[0].payment_options.payment_types[0].show_amount,
       rate: hotelsToSet[0].rates[0],
+      checkin: data.debug.request.checkin,
+      checkout: data.debug.request.checkout,
     });
+    setDebug(data.debug);
   };
+
+  const hotelKinds: HotelKind[] = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          Object.values(hotelsInfo)
+            .map((hotel: HotelInfoClient) => hotel.metadata?.kind)
+            .filter(
+              (kind) =>
+                ![
+                  "Glamping",
+                  "Farm",
+                  "Castle",
+                  "Sanatorium",
+                  "Guesthouse",
+                ].includes(kind)
+            )
+        )
+      ),
+    [hotelsInfo]
+  );
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
@@ -244,6 +300,9 @@ export const HotelSelection = () => {
       case "meal":
         setMeal(value);
         break;
+      case "kind":
+        setKind(value);
+        break;
       case "sortOption":
         setSortOption(value);
         break;
@@ -258,31 +317,45 @@ export const HotelSelection = () => {
         break;
     }
 
-    const hotelsToSet = applyFiltersAndSorting({
-      hotels,
-      priceRange,
-      rating,
-      hotelsInfo,
-      meal,
-      freeCancellation,
-      distanceFromCenter: distanceRange,
-      ...{ [type]: filterValue },
+    startTransition(() => {
+      const hotelsToSet = applyFiltersAndSorting({
+        hotels,
+        priceRange,
+        rating,
+        hotelsInfo,
+        meal,
+        kind,
+        freeCancellation,
+        distanceFromCenter: distanceRange,
+        ...{ [type]: filterValue },
+      });
+
+      if (hotelsToSet.length === 0) {
+        setSelectedHotelId("");
+        setHotel(undefined);
+      }
+
+      if (
+        type !== "sortOption" &&
+        type !== "hotelName" &&
+        hotelsToSet?.[0]?.id
+      ) {
+        setSelectedHotelId(hotelsToSet[0].id);
+      }
+
+      setFilteredHotels(hotelsToSet);
     });
-
-    if (hotelsToSet.length === 0) {
-      setSelectedHotelId("");
-      setHotel(undefined);
-    }
-
-    if (type !== "sortOption" && type !== "hotelName" && hotelsToSet?.[0]?.id) {
-      setSelectedHotelId(hotelsToSet[0].id);
-    }
-
-    setFilteredHotels(hotelsToSet);
   };
 
-  const handleSelectedRate = (orderHotel: Omit<OrderHotel, "guests">) => {
-    setHotel({ ...orderHotel, guests: requestDebug.guests });
+  const handleSelectedRate = (
+    orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">
+  ) => {
+    setHotel({
+      ...orderHotel,
+      guests: requestDebug.guests,
+      checkin: debug.request.checkin,
+      checkout: debug.request.checkout,
+    });
   };
 
   const handleSetRooms = (room: {
@@ -316,6 +389,8 @@ export const HotelSelection = () => {
           freeCancellation={freeCancellation}
           onCriteriaChange={handleSearchCriteriaChange}
           meal={meal}
+          kind={kind}
+          hotelKindOptions={hotelKinds}
         />
       </FiltersModal>
       <div className="flex flex-col w-full items-center">
@@ -477,6 +552,8 @@ export const HotelSelection = () => {
                 maxPrice={maxPrice}
                 onCriteriaChange={handleSearchCriteriaChange}
                 meal={meal}
+                kind={kind}
+                hotelKindOptions={hotelKinds}
               />
             </Skeleton>
           )}

@@ -1,5 +1,5 @@
 import { SortOptions } from "./app.types";
-import { Hotel, HotelsInfoClient } from "./hotel.type";
+import { Hotel, HotelsInfoClient, HotelKind } from "./hotel.type";
 
 export const applyFiltersAndSorting = ({
   hotels,
@@ -9,6 +9,7 @@ export const applyFiltersAndSorting = ({
   sortOption = "price_asc",
   hotelName,
   meal,
+  kind,
   distanceFromCenter,
   freeCancellation,
 }: {
@@ -20,6 +21,7 @@ export const applyFiltersAndSorting = ({
   sortOption?: SortOptions;
   hotelName?: string;
   meal: ("withMeal" | "withoutMeal")[];
+  kind: HotelKind[];
   freeCancellation: ("withFreeCancellation" | "withoutFreeCancellation")[];
 }) => {
   // Apply filters
@@ -43,6 +45,8 @@ export const applyFiltersAndSorting = ({
           ? hotelRate.meal_data.has_breakfast
           : !hotelRate.meal_data.has_breakfast
       );
+
+      const matchKind = kind.includes(hotelsInfo[hotel.id]?.metadata.kind);
 
       const matchDistanceRange = inRange(
         hotelsInfo[hotel.id]?.metadata.distanceFromCenter,
@@ -83,6 +87,7 @@ export const applyFiltersAndSorting = ({
         matchesRating &&
         matchesName &&
         matchHasMeal &&
+        matchKind &&
         matchDistanceRange &&
         matchFreeCancellation
       );
