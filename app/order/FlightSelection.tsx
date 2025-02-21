@@ -136,7 +136,7 @@ export const FlightSelection = () => {
       if (!res.ok) {
         throw new Error("Failed to fetch flights");
       }
-      const flights = await res.json();
+      const flights: Flight[] = await res.json();
 
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);

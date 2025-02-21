@@ -17,7 +17,7 @@ export default function OrderPage() {
           locale: "he",
           firstDayOfWeek: 0,
           weekendDays: [6],
-          timezone: "UTC",
+          timezone: "Israel",
         }}
       >
         {event && <OrderForm event={event as Event} />}
