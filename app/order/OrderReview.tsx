@@ -820,7 +820,7 @@ export default function OrderReview() {
             >
               שלח הזמנה
             </Button>
-            {/* Trust Badges */}
+            {/* Trust Badges 
             <Card className="bg-white shadow-lg overflow-hidden order-4 md:order-3">
               <div className="p-6">
                 <h3 className="font-bold mb-4 text-[#05203c]">trusted by:</h3>
@@ -875,7 +875,7 @@ export default function OrderReview() {
                   </div>
                 </div>
               </div>
-            </Card>
+            </Card>*/}
           </div>
         </div>
       </main>
