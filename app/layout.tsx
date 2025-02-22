@@ -76,25 +76,25 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                       <nav className="flex gap-4 sm:gap-6">
                         <Link
                           className="text-sm hover:underline underline-offset-4"
-                          href="artists"
+                          href="/artists"
                         >
                           האומנים שלנו
                         </Link>
                         <Link
                           className="text-sm hover:underline underline-offset-4"
-                          href="football"
+                          href="/football"
                         >
                           הקבוצות שלנו
                         </Link>
                         <Link
                           className="text-sm hover:underline underline-offset-4"
-                          href="terms"
+                          href="/terms"
                         >
                           תנאי שימוש
                         </Link>
                         <Link
                           className="text-sm hover:underline underline-offset-4"
-                          href="cancellation"
+                          href="/cancellation"
                         >
                           ביטול הזמנה
                         </Link>
