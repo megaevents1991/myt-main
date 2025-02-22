@@ -130,10 +130,6 @@ export const HotelSelection = () => {
     ("withFreeCancellation" | "withoutFreeCancellation")[]
   >(["withFreeCancellation"]);
 
-  const [debug, setDebug] = useState<HotelResponse["debug"]>(
-    {} as HotelResponse["debug"]
-  );
-
   const [, startTransition] = useTransition();
 
   const matches = useMediaQuery("(min-width: 1024px)");
@@ -237,7 +233,7 @@ export const HotelSelection = () => {
     setHotelsInfo(hotelsInfo);
     setMaxPrice(maxPrice / totalPersons);
     setHotels(data.data.hotels);
-    setFilteredHotels(hotelsToSet);
+    setFilteredHotels(hotelsToSet.slice(0, 50));
     setIsLoading(false);
     setSelectedHotelId(hotelsToSet[0].id);
     setMinPrice(Math.floor(minPrice / totalPersons));
@@ -252,7 +248,6 @@ export const HotelSelection = () => {
       checkin: data.debug.request.checkin,
       checkout: data.debug.request.checkout,
     });
-    setDebug(data.debug);
   };
 
   const hotelKinds: HotelKind[] = useMemo(
@@ -343,7 +338,7 @@ export const HotelSelection = () => {
         setSelectedHotelId(hotelsToSet[0].id);
       }
 
-      setFilteredHotels(hotelsToSet);
+      setFilteredHotels(hotelsToSet.slice(0, 50));
     });
   };
 
@@ -353,8 +348,8 @@ export const HotelSelection = () => {
     setHotel({
       ...orderHotel,
       guests: requestDebug.guests,
-      checkin: debug.request.checkin,
-      checkout: debug.request.checkout,
+      checkin: requestDebug.checkin,
+      checkout: requestDebug.checkout,
     });
   };
 

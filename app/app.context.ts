@@ -8,7 +8,7 @@ type AppContext = {
   eventTicket: OrderTicket;
   setEventTicket: (eventTicket: OrderTicket) => void;
   setHotel: (hotel?: OrderHotel) => void;
-  setFlight: (flight?: Flight) => void;
+  setFlight: Dispatch<SetStateAction<Flight | undefined>>;
   setEvent: (event: Event) => void;
   numberOfEventTickets: number;
   setNumberOfEventTickets: (numberOfEventTickets: number) => void;

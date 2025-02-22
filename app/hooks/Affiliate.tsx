@@ -47,7 +47,7 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
     storedData = localStorage.getItem("mytData");
   } catch (error) {
     console.error("localStorage access error:", error);
-    // add statisg event
+    // add statsig event
   }
 
   // Early return if no affiliate context exists and no URL param
@@ -76,7 +76,7 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
       localStorage.setItem("mytData", JSON.stringify(affiliateData));
     } catch (error) {
       console.error("localStorage access error:", error);
-      // add statisg event
+      // add statsig event
     }
   }
 

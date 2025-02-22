@@ -124,7 +124,7 @@ export const FlightSelection = () => {
 
     try {
       const adults = options.adults || planeTickets.adults;
-      const res = await fetch(`/api/flights?eventId=${event?.id}`, {
+      const res = await fetch(`/api/flights/search?eventId=${event?.id}`, {
         body: JSON.stringify({
           ...options,
           adults,
@@ -152,7 +152,7 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
       });
 
-      setFilteredFlights(filteredFlights);
+      setFilteredFlights(filteredFlights.slice(0, 50));
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setSelectedFlightPrice(Math.ceil(maxPrice));
 
@@ -190,7 +190,7 @@ export const FlightSelection = () => {
 
     startTransition(() => {
       const sortedData = flightSort(filteredFlights, selectedSortOption);
-      setFilteredFlights(sortedData);
+      setFilteredFlights(sortedData.slice(0, 50));
     });
   };
 
@@ -255,7 +255,7 @@ export const FlightSelection = () => {
       if (filteredFlights.length !== 0) {
         setFlight(filteredFlights[0]);
       }
-      setFilteredFlights(filteredFlights);
+      setFilteredFlights(filteredFlights.slice(0, 50));
     });
   };
 

@@ -25,7 +25,7 @@ export default function OrderReview() {
       affiliateData = localStorage.getItem("mytData");
     } catch (error) {
       console.error("localStorage access error:", error);
-      // add statisg event
+      // add statsig event
     }
     if (affiliateData) {
       const parsedAffiliateData = JSON.parse(affiliateData);

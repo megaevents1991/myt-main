@@ -5,7 +5,7 @@ import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
-import { Event } from "@/lib/app.types";
+import { Event, Flight } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   const {
     step,
     setStep,
+    setFlight,
     flight,
     hotel,
     eventTicket,
@@ -97,6 +98,21 @@ export const OrderForm = ({ event }: { event: Event }) => {
           },
         });
       } else if (prev === 2) {
+        fetch(`/api/flights/pricing`, {
+          method: "POST",
+          body: JSON.stringify({
+            flightOffer: flight?.offer,
+          }),
+        }).then((res) => {
+          if (res.ok) {
+            res.json().then((data) => {
+              setFlight((prev = {} as Flight) => ({
+                ...prev,
+                penalties: data,
+              }));
+            });
+          }
+        });
         orderStage("FLIGHT_SELECTED", {
           data: { flight: flight?.id },
         });

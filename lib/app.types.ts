@@ -33,6 +33,8 @@ export type Flight = {
   outbound: FlightSegment;
   inbound: FlightSegment;
   numOfTravelers: number;
+  offer: FlightOffer;
+  penalties?: string;
 };
 
 export type FlightSegment = {
@@ -124,8 +126,25 @@ export type HotelSearchCriteria =
     }
   | {
       type: "kind";
-      value: ["Resort", "Sanatorium", "Guesthouse", "Mini-hotel", "Castle", "Hotel", "Boutique_and_Design", "Apartment", "Cottages_and_Houses", "Farm", "Villas_and_Bungalows", "Camping", "Hostel", "BNB", "Glamping", "Apart-hotel"];
-    } 
+      value: [
+        "Resort",
+        "Sanatorium",
+        "Guesthouse",
+        "Mini-hotel",
+        "Castle",
+        "Hotel",
+        "Boutique_and_Design",
+        "Apartment",
+        "Cottages_and_Houses",
+        "Farm",
+        "Villas_and_Bungalows",
+        "Camping",
+        "Hostel",
+        "BNB",
+        "Glamping",
+        "Apart-hotel"
+      ];
+    }
   | {
       type: "sortOption";
       value: SortOptions;

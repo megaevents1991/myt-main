@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare module "amadeus" {
   export default class Amadeus {
-    constructor(options: { clientId: string; clientSecret: string; hostname?: string });
+    constructor(options: {
+      clientId: string;
+      clientSecret: string;
+      hostname?: string;
+    });
 
     static location: {
       AIRPORT: string;
@@ -40,105 +44,118 @@ declare module "amadeus" {
           max?: number; // Optional, maximum number of results to return
         }): Promise<AmadeusResponse>;
       };
+      flightOffers: {
+        pricing: {
+          post(params: {
+            data: {
+              type: "flight-offers-pricing";
+              flightOffers: FlightOffer[];
+            };
+            include: string;
+          }): Promise<any>;
+        };
+      };
     };
   }
 }
 
-type AmadeusResponse = {
-  result: {
-    data: {
-      type: string;
+type FlightOffer = {
+  type: string;
+  id: string;
+  source: string;
+  instantTicketingRequired: boolean;
+  nonHomogeneous: boolean;
+  oneWay: boolean;
+  isUpsellOffer: boolean;
+  lastTicketingDate: string;
+  lastTicketingDateTime: string;
+  numberOfBookableSeats: number;
+  itineraries: Array<{
+    duration: string;
+    segments: {
+      departure: {
+        iataCode: string;
+        terminal?: string;
+        at: string;
+      };
+      arrival: {
+        iataCode: string;
+        at: string;
+        terminal?: string;
+      };
+      carrierCode: string;
+      number: string;
+      aircraft: {
+        code: string;
+      };
+      operating: {
+        carrierCode: string;
+      };
+      duration: string;
       id: string;
-      source: string;
-      instantTicketingRequired: boolean;
-      nonHomogeneous: boolean;
-      oneWay: boolean;
-      isUpsellOffer: boolean;
-      lastTicketingDate: string;
-      lastTicketingDateTime: string;
-      numberOfBookableSeats: number;
-      itineraries: Array<{
+      numberOfStops: number;
+      blacklistedInEU: boolean;
+      stops?: Array<{
+        iataCode: string;
         duration: string;
-        segments: {
-          departure: {
-            iataCode: string;
-            terminal?: string;
-            at: string;
-          };
-          arrival: {
-            iataCode: string;
-            at: string;
-            terminal?: string;
-          };
-          carrierCode: string;
-          number: string;
-          aircraft: {
-            code: string;
-          };
-          operating: {
-            carrierCode: string;
-          };
-          duration: string;
-          id: string;
-          numberOfStops: number;
-          blacklistedInEU: boolean;
-          stops?: Array<{
-            iataCode: string;
-            duration: string;
-            arrivalAt: string;
-            departureAt: string;
-          }>;
-        }[];
-      }>;
-      price: {
-        currency: string;
-        total: string;
-        base: string;
-        fees: Array<{
-          amount: string;
-          type: string;
-        }>;
-        grandTotal: string;
-        additionalServices?: Array<{
-          amount: string;
-          type: string;
-        }>;
-      };
-      pricingOptions: {
-        fareType: Array<string>;
-        includedCheckedBagsOnly: boolean;
-      };
-      validatingAirlineCodes: Array<string>;
-      travelerPricings: Array<{
-        travelerId: string;
-        fareOption: string;
-        travelerType: string;
-        price: {
-          currency: string;
-          total: string;
-          base: string;
-        };
-        fareDetailsBySegment: Array<{
-          segmentId: string;
-          cabin: string;
-          fareBasis: string;
-          brandedFare?: string;
-          brandedFareLabel?: string;
-          class: string;
-          includedCheckedBags: {
-            quantity: number;
-          };
-          amenities?: Array<{
-            description: string;
-            isChargeable: boolean;
-            amenityType: string;
-            amenityProvider: {
-              name: string;
-            };
-          }>;
-        }>;
+        arrivalAt: string;
+        departureAt: string;
       }>;
     }[];
+  }>;
+  price: {
+    currency: string;
+    total: string;
+    base: string;
+    fees: Array<{
+      amount: string;
+      type: string;
+    }>;
+    grandTotal: string;
+    additionalServices?: Array<{
+      amount: string;
+      type: string;
+    }>;
+  };
+  pricingOptions: {
+    fareType: Array<string>;
+    includedCheckedBagsOnly: boolean;
+  };
+  validatingAirlineCodes: Array<string>;
+  travelerPricings: Array<{
+    travelerId: string;
+    fareOption: string;
+    travelerType: string;
+    price: {
+      currency: string;
+      total: string;
+      base: string;
+    };
+    fareDetailsBySegment: Array<{
+      segmentId: string;
+      cabin: string;
+      fareBasis: string;
+      brandedFare?: string;
+      brandedFareLabel?: string;
+      class: string;
+      includedCheckedBags: {
+        quantity: number;
+      };
+      amenities?: Array<{
+        description: string;
+        isChargeable: boolean;
+        amenityType: string;
+        amenityProvider: {
+          name: string;
+        };
+      }>;
+    }>;
+  }>;
+};
+
+type AmadeusResponse = {
+  result: {
+    data: FlightOffer[];
     dictionaries: {
       carriers: Record<string, string>;
     };
