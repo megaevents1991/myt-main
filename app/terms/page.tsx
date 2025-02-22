@@ -1,4 +1,7 @@
-const TermsOfUse = () => {
+export const dynamic = "force-static"; // This is optional, but good for fully static pages
+export const revalidate = 3600; // Optional: revalidate every hour
+
+export default function TermsOfUse() {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 text-center">תנאי שימוש באתר</h1>
@@ -295,6 +298,4 @@ const TermsOfUse = () => {
       </section>
     </div>
   );
-};
-
-export default TermsOfUse;
+}

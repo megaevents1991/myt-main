@@ -1,4 +1,7 @@
-const CancelPage = () => {
+export const dynamic = "force-static"; // This is optional, but good for fully static pages
+export const revalidate = 3600; // Optional: revalidate every hour
+
+export default function CancelPage() {
   return (
     <div className="container mx-auto p-6" dir="rtl">
       <h1 className="text-3xl font-bold mb-6 text-center">תנאים ומידע כללי</h1>
@@ -123,5 +126,4 @@ const CancelPage = () => {
       </p>
     </div>
   );
-};
-export default CancelPage;
+}

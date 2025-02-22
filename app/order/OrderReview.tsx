@@ -437,7 +437,7 @@ export default function OrderReview() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">
-                    איך נהנים{" "}
+                    כרטיסים{" "}
                     <span>
                       {"("}
                       {numberOfEventTickets}
@@ -480,7 +480,7 @@ export default function OrderReview() {
 
                 <div className="">
                   <h3 className="font-bold text-lg">
-                    איפה ישנים{" "}
+                    לינה{" "}
                     <span>
                       {"("}
                       {selectedHotel.guests.reduce(
@@ -541,7 +541,7 @@ export default function OrderReview() {
 
                 <div className="">
                   <h3 className="font-bold text-lg">
-                    איך מגיעים{" "}
+                    טיסה{" "}
                     <span>
                       {"("}
                       {selectedFlight.numOfTravelers}
