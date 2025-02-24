@@ -59,6 +59,7 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
+  penalties?: object;
 };
 
 export type Order = {

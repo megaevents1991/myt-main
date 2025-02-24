@@ -108,7 +108,7 @@ export const HotelCard = ({
         <div className="w-full flex flex-col items-right gap-2">
           <div className="flex flex-col lg:flex-row lg:content-between gap-2">
             <div className="flex flex-col lg:w-4/5 items-right gap-2">
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <div className="flex flex-col-reverse lg:flex-row gap-2">
                   <div className="w-full lg:w-[280px]">
                     {!!hotelImages.length && (
@@ -220,6 +220,7 @@ export const HotelCard = ({
                       </div>
                     )} */}
                     <div className="hidden lg:block">
+                      <br />
                       <Amenities
                         roomAmenities={selectedRoomInfo?.amenities || []}
                         hotelAmenities={hotelInfo.general.amenities}

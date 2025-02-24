@@ -33,7 +33,7 @@ export const HotelCardHeader = ({
           <Stars rating={rating} />
         </div>
         <div className="text-[16px]">
-          {distanceFromCenter} מ&#39; ממרכז העיר
+          {Math.floor(distanceFromCenter / 100) / 10} ק&quot;מ ממרכז העיר
         </div>
       </div>
       {roomName && (
@@ -41,9 +41,10 @@ export const HotelCardHeader = ({
           <div
             onTouchStart={() => setTooltipOpened((curr) => !curr)}
             className="text-xs font-bold flex"
-            dir="ltr"
           >
-            <span className="font-bold text-[16px] ml-2">{roomName}</span>
+            <span className="font-bold text-[16px] ml-2" dir="ltr">
+              {roomName}
+            </span>
             {meals ? (
               <Tooltip
                 label="כולל ארוחת בוקר"

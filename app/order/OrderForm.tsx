@@ -98,6 +98,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
           },
         });
       } else if (prev === 2) {
+        orderStage("FLIGHT_SELECTED", {
+          data: { flight: flight?.id },
+        });
+      } else if (prev === 3) {
         fetch(`/api/flights/pricing`, {
           method: "POST",
           body: JSON.stringify({
@@ -114,10 +118,6 @@ export const OrderForm = ({ event }: { event: Event }) => {
             });
           }
         });
-        orderStage("FLIGHT_SELECTED", {
-          data: { flight: flight?.id },
-        });
-      } else if (prev === 3) {
         orderStage("HOTEL_SELECTED", {
           data: { hotel: hotel?.id },
         });

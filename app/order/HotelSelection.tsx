@@ -160,7 +160,7 @@ export const HotelSelection = () => {
         checkin: dateRange?.[0]?.toISOString().split("T")[0],
         checkout: dateRange?.[1]?.toISOString().split("T")[0],
         guests: roomParams,
-        radius: parameters?.radius || distanceRange[1] || 1000,
+        radius: parameters?.radius || distanceRange[1] || 4000,
       }),
     });
     const data: HotelResponse = await res.json();

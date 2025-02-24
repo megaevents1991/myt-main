@@ -32,7 +32,6 @@ export const Amenities = ({
       >
         פרטי חדר
       </button> */}
-      <br />
       {[...roomAmenities, ...hotelAmenities].map((amenity) => {
         const icon = icons.find((icon) => icon.originalTag === amenity);
 

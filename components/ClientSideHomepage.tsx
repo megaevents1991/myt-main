@@ -14,7 +14,14 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
 import { isMobile } from "react-device-detect";
+import Fuse from "fuse.js";
 
+const fuseOptions = {
+  keys: ["name", "location.name", "name_english"], // Fields to search in
+  threshold: 0.3, // Lower = stricter match, Higher = more flexible
+  findAllMatches: true, // Finds multiple matches
+  ignoreLocation: true, // Ignore where the match is found in the string
+};
 interface Props {
   initialEvents: Event[];
 }
@@ -38,14 +45,12 @@ const SearchCombobox = ({
   const router = useRouter();
   const combobox = useCombobox();
 
-  const filteredOptions = events.filter(({ name, location, name_english }) => {
-    const value = searchValue.toLowerCase().trim();
-    return (
-      name.toLowerCase().includes(value) ||
-      location.name.toLowerCase().includes(value) ||
-      name_english.toLowerCase().includes(value)
-    );
-  });
+  const fuse = new Fuse(events, fuseOptions);
+
+  const value = searchValue.toLowerCase().trim();
+  const filteredOptions = value
+    ? fuse.search(value).map((result) => result.item)
+    : events;
 
   const options = filteredOptions.map((item) => (
     <Combobox.Option
@@ -53,9 +58,11 @@ const SearchCombobox = ({
       key={item.id}
       style={{ textAlign: "right" }}
     >
-      <span className="font-bold">{item.name}</span>
+      <span className="font-bold text-lg">{item.name}</span>
       <br />
-      {item.date} | {item.location.name}
+      <span className="text-lg">
+        {item.date} | {item.location.name}
+      </span>
     </Combobox.Option>
   ));
 
@@ -102,7 +109,10 @@ const SearchCombobox = ({
       <Combobox.Dropdown>
         <Combobox.Options>
           {options}
-          <Combobox.Option value="feedback" style={{ textAlign: "right" }}>
+          <Combobox.Option
+            value="feedback"
+            style={{ textAlign: "right", fontSize: "16px" }}
+          >
             לא מצאתם מה שחיפשתם? ספרו לנו
           </Combobox.Option>
         </Combobox.Options>
