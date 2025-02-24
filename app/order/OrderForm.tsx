@@ -108,7 +108,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
             res.json().then((data) => {
               setFlight((prev = {} as Flight) => ({
                 ...prev,
-                penalties: data,
+                penalties: data?.penalties,
+                bags: data?.bags,
               }));
             });
           }

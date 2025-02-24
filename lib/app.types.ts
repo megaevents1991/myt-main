@@ -5,6 +5,7 @@ import { EntryFieldTypes } from "contentful";
 export type Event = {
   id: number;
   name: string;
+  name_english: string;
   date: string;
   location: {
     latitude: number;
@@ -34,7 +35,8 @@ export type Flight = {
   inbound: FlightSegment;
   numOfTravelers: number;
   offer: FlightOffer;
-  penalties?: string;
+  penalties?: object;
+  bags?: object;
 };
 
 export type FlightSegment = {

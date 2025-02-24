@@ -50,9 +50,8 @@ declare module "amadeus" {
             data: {
               type: "flight-offers-pricing";
               flightOffers: FlightOffer[];
-            };
-            include: string;
-          }): Promise<any>;
+            }
+          }, {include}): Promise<any>;
         };
       };
     };

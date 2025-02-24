@@ -3,6 +3,18 @@ import { amadeus } from "../amadeusClient";
 
 export const maxDuration = 30;
 
+type BaggageItem = {
+  quantity: number;
+  name: string;
+  price: {
+      amount: string;
+      currencyCode: string;
+  };
+  bookableByItinerary: boolean;
+  segmentIds: string[];
+  travelerIds: string[];
+};
+
 export async function POST(request: Request) {
   const { flightOffer }: { flightOffer: FlightOffer } = await request.json();
 
@@ -20,13 +32,23 @@ export async function POST(request: Request) {
       data: {
         type: "flight-offers-pricing",
         flightOffers: [flightOffer],
-      },
-      include: "detailed-fare-rules",
-    });
+      }
+    }, {include: ["bags", "detailed-fare-rules"]});
 
     // proccessing the response and returning it to the client.
-    
-    return NextResponse.json(response);
+
+    const data = JSON.parse(response.body);
+
+    const penalties = data.included["detailed-fare-rules"]["1"]?.fareNotes?.descriptions?.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (desc: any) => desc.descriptionType === "PENALTIES"
+    )?.text;
+
+    const bagCostString = (Object.values(data?.included["bags"] ?? {}) as BaggageItem[]).find((item) => item.quantity === 1 && item.name === "CHECKED_BAG")?.price?.amount;
+    let bags = parseInt(bagCostString || "0");
+    if (bags) {bags = bags+5} // TODO: convert euro to USD
+
+    return NextResponse.json({bags, penalties});
   } catch (error) {
     console.error("Error fetching flights:", error);
     return NextResponse.json(

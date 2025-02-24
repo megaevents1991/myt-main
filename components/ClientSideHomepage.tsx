@@ -6,7 +6,6 @@ import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
 import { useMediaQuery } from "@mantine/hooks";
 import { useState, useEffect, useRef } from "react";
-import { useStatsigClient } from "@statsig/react-bindings";
 import { Event } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { ArrowLeftIcon } from "lucide-react";
@@ -39,11 +38,12 @@ const SearchCombobox = ({
   const router = useRouter();
   const combobox = useCombobox();
 
-  const filteredOptions = events.filter(({ name, location }) => {
+  const filteredOptions = events.filter(({ name, location, name_english }) => {
     const value = searchValue.toLowerCase().trim();
     return (
       name.toLowerCase().includes(value) ||
-      location.name.toLowerCase().includes(value)
+      location.name.toLowerCase().includes(value) ||
+      name_english.toLowerCase().includes(value)
     );
   });
 
@@ -119,7 +119,6 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const mobileComboboxRef = useRef<HTMLInputElement>(null);
-  const { client } = useStatsigClient();
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -278,11 +277,11 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           </h1>
           {isMobile ? (
             <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              .תכננו. התאימו. חיסכו
+              הרכיבו את החבילה שלכם{" "}
             </p>
           ) : (
             <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              תכננו התאימו חיסכו והכול בגמישות ובנוחות
+              הרכיבו את החבילה המשתלמת ביותר{" "}
             </p>
           )}
         </div>
@@ -331,7 +330,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           <div className="flex flex-row justify-end items-stretch">
             <div>
               <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mb-8 mx-2">
-                אירועים חמים
+                המבוקשים ביותר
               </h2>
             </div>
             <div
@@ -360,9 +359,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   key={event.id}
                   onClick={() => {
                     orderStage("EVENT_SELECTED", { event: event.name });
-                    client.logEvent("user_selected_event", event.id, {
-                      item_name: event.name,
-                    });
+                    //statsig.logEvent("user_selected_event", event.id, {
+                    //  item_name: event.name,
+                    //});
                   }}
                 >
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
@@ -397,7 +396,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                         className="p-2 text-right flex flex-col flex-grow"
                         dir="rtl"
                       >
-                        <div>מחיר מומלץ (נסו להוזיל)</div>
+                        <div>מחיר ממוצע לחבילה</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-2xl font-extrabold">
                             $
@@ -412,16 +411,18 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                               Number(process.env.NEXT_PUBLIC_MARKUP || "150")
                             ).toLocaleString("en-US")}
                           </div>
+                          {/*
                           <div className="text-sm line-through mr-1">
                             ${event.usual_price.toLocaleString("en-US")}
                           </div>
+                          */}
                         </div>
                         <div className="flex-grow min-h-[4px]"></div>
                         <div
                           className="text-[14px]"
                           style={{ lineHeight: "1.1" }}
                         >
-                          לנוסע, עבור טיסה, מלון (בהרכב זוגי) וכרטיס לאירוע
+                          לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
                         </div>
                       </div>
                     </div>

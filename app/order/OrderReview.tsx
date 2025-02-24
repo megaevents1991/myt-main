@@ -431,7 +431,7 @@ export default function OrderReview() {
                       dayjs(event.date).format("DD/MM/YYYY")}
                   </p>
                   <div className="font-lg" dir="rtl">
-                    מחיר מומלץ לאדם: $
+                    מחיר ממוצע לאדם: $
                     {packRecommendedPrice.toLocaleString("en-US")}
                   </div>
                 </div>
@@ -607,7 +607,7 @@ export default function OrderReview() {
                         </span>
                         <span>מחיר</span>
                       </div>
-                      <div className="flex justify-between items-center w-full text-[18px] text-green-600">
+                      <div className="flex font-bold justify-between items-center w-full text-[18px] text-green-600">
                         <span>${affDiscount * numberOfEventTickets}</span>
                         <span>הנחה</span>
                       </div>

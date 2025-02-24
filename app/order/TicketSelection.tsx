@@ -81,7 +81,7 @@ export const TicketSelection = () => {
       </div>
       <div className="flex flex-col" dir="rtl">
         <div className="mt-4 text-lg">
-          אנו נבחר עבורכם את המושבים הטובים ביותר,
+          בחרו כמות כרטיסים וקטגוריה מועדפת,
           <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
         </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-4">

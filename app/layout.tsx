@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import { MYT } from "@/components/ui/myt";
 import { AuthProvider } from "./hooks/AuthContext";
-import MyStatsig from "./hooks/MyStatsig";
+import MixpanelProvider from "./hooks/Mixpanel";
 
 const inter = IBM_Plex_Sans_Hebrew({
   weight: "300",
@@ -71,65 +71,61 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{ display: "none", visibility: "hidden" }}
           ></iframe>
         </noscript>
-        <MyStatsig>
-          <div className="w-screen relative min-h-screen">
-            <AuthProvider>
-              <Suspense>
-                <MantineProvider theme={theme}>
-                  <Container className="pt-4 min-h-200" fluid bg={"#05203C"}>
-                    <div className="flex scale-25 justify-center md:justify-end">
-                      <Link href="/">
-                        <MYT className="scale-75 md:scale-100" />
+        <div className="w-screen relative min-h-screen">
+          <MixpanelProvider />
+          <AuthProvider>
+            <Suspense>
+              <MantineProvider theme={theme}>
+                <Container className="pt-4 min-h-200" fluid bg={"#05203C"}>
+                  <div className="flex scale-25 justify-center md:justify-end">
+                    <Link href="/">
+                      <MYT className="scale-75 md:scale-100" />
+                    </Link>
+                  </div>
+                </Container>
+                {children}
+                <footer className="py-6 w-full px-4 md:px-6 border-t" dir="rtl">
+                  <p className="container mx-auto mb-4 text-gray-500 dark:text-gray-400">
+                    לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
+                    מהווה הסכמה לשימוש זה.למידע נוסף ניתן לעיין במדיניות הפרטיות
+                    של האתר.
+                  </p>
+                  <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
+                    <nav className="flex gap-4 sm:gap-6">
+                      <Link
+                        className="text-sm hover:underline underline-offset-4"
+                        href="/artists"
+                      >
+                        האומנים שלנו
                       </Link>
-                    </div>
-                  </Container>
-                  {children}
-                  <footer
-                    className="py-6 w-full px-4 md:px-6 border-t"
-                    dir="rtl"
-                  >
-                    <p className="container mx-auto mb-4 text-gray-500 dark:text-gray-400">
-                      לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
-                      מהווה הסכמה לשימוש זה.למידע נוסף ניתן לעיין במדיניות
-                      הפרטיות של האתר.
+                      <Link
+                        className="text-sm hover:underline underline-offset-4"
+                        href="/football"
+                      >
+                        הקבוצות שלנו
+                      </Link>
+                      <Link
+                        className="text-sm hover:underline underline-offset-4"
+                        href="/terms"
+                      >
+                        תנאי שימוש
+                      </Link>
+                      <Link
+                        className="text-sm hover:underline underline-offset-4"
+                        href="/cancellation"
+                      >
+                        ביטול הזמנה
+                      </Link>
+                    </nav>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
+                      © 2025 Megaevents. כל הזכויות שמורות.
                     </p>
-                    <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
-                      <nav className="flex gap-4 sm:gap-6">
-                        <Link
-                          className="text-sm hover:underline underline-offset-4"
-                          href="/artists"
-                        >
-                          האומנים שלנו
-                        </Link>
-                        <Link
-                          className="text-sm hover:underline underline-offset-4"
-                          href="/football"
-                        >
-                          הקבוצות שלנו
-                        </Link>
-                        <Link
-                          className="text-sm hover:underline underline-offset-4"
-                          href="/terms"
-                        >
-                          תנאי שימוש
-                        </Link>
-                        <Link
-                          className="text-sm hover:underline underline-offset-4"
-                          href="/cancellation"
-                        >
-                          ביטול הזמנה
-                        </Link>
-                      </nav>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
-                        © 2025 Megaevents. כל הזכויות שמורות.
-                      </p>
-                    </div>
-                  </footer>
-                </MantineProvider>
-              </Suspense>
-            </AuthProvider>
-          </div>
-        </MyStatsig>
+                  </div>
+                </footer>
+              </MantineProvider>
+            </Suspense>
+          </AuthProvider>
+        </div>
       </body>
     </html>
   );
