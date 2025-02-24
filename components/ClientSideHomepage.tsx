@@ -358,6 +358,108 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {initialEvents
+              .filter((event) => event.is_prioritized === true)
+              .map((event) => (
+                <Link
+                  href={`/order?eventId=${event.id}`}
+                  className="cursor-pointer"
+                  key={event.id}
+                  onClick={() => {
+                    orderStage("EVENT_SELECTED", { event: event.name });
+                    //statsig.logEvent("user_selected_event", event.id, {
+                    //  item_name: event.name,
+                    //});
+                  }}
+                >
+                  <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+                    <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
+                      <Image
+                        src={event.card_image_url}
+                        alt={event.name}
+                        priority={true}
+                        width={400}
+                        height={300}
+                        className="object-cover w-full h-60 transition-transform group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="flex flex-col text-center w-[52%] sm:w-auto">
+                      <div
+                        className="p-2 text-2xl font-bold"
+                        style={{ lineHeight: "1.1" }}
+                      >
+                        {event.name}
+                      </div>
+                      <div
+                        className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center"
+                        dir="rtl"
+                      >
+                        <span>{dayjs(event.date).format("DD/MM/YYYY")}</span>
+                        <span className="sm:inline hidden mx-2">|</span>
+                        <span className="w-full sm:w-auto whitespace-nowrap">
+                          {event.location.name}
+                        </span>
+                      </div>
+                      <div
+                        className="p-2 text-right flex flex-col flex-grow"
+                        dir="rtl"
+                      >
+                        <div>מחיר ממוצע לחבילה</div>
+                        <div className="flex items-baseline gap-1">
+                          <div className="text-2xl font-extrabold">
+                            $
+                            {(
+                              event.base_flight_price +
+                              event.base_hotel_price +
+                              Math.min(
+                                ...event.tickets_and_rates.map(
+                                  (ticket) => ticket.price
+                                )
+                              ) +
+                              Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                            ).toLocaleString("en-US")}
+                          </div>
+                          {/*
+                          <div className="text-sm line-through mr-1">
+                            ${event.usual_price.toLocaleString("en-US")}
+                          </div>
+                          */}
+                        </div>
+                        <div className="flex-grow min-h-[4px]"></div>
+                        <div
+                          className="text-[14px]"
+                          style={{ lineHeight: "1.1" }}
+                        >
+                          לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+              .slice(0, 4)}
+          </div>
+          <div className="flex flex-row justify-end mt-12 items-stretch">
+            <div>
+              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mb-8 mx-2">
+                האירועים שלנו
+              </h2>
+            </div>
+            <div
+              className="bg-secondary mx-1"
+              style={{ height: 40, width: 23 }}
+            />
+            <div
+              className="bg-secondary  mx-1"
+              style={{ height: 40, width: 23 }}
+            />
+            <div
+              className="bg-secondary  mx-1"
+              style={{ height: 40, width: 46 }}
+            />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {initialEvents
+              .filter((event) => event.is_prioritized !== true)
               .sort(
                 (a, b) =>
                   new Date(a.date).getTime() - new Date(b.date).getTime()

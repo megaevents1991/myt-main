@@ -22,6 +22,7 @@ export type Event = {
   usual_price: number;
   base_flight_price: number;
   base_hotel_price: number;
+  is_prioritized: boolean;
 };
 
 export type Flight = {
