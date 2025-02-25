@@ -291,7 +291,7 @@ export default function OrderReview() {
       hotel_order_info: selectedHotel || {},
       user_shown_price: totalPrice,
       event_id: event?.id || 0,
-      aff_partner_id: affId,
+      aff_partner_tracking_code: affId,
     };
 
     try {

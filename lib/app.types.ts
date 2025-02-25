@@ -227,7 +227,7 @@ export interface OrderData {
   hotel_order_info: OrderHotel; // You might need to define a specific interface here
   user_shown_price: number;
   event_id: number;
-  aff_partner_id: string;
+  aff_partner_tracking_code: string;
 }
 
 export type ArtistFields = {

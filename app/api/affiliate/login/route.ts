@@ -9,13 +9,13 @@ export async function POST(request: Request) {
       .from('partners')
       .select("*")
       .eq('email', user)
-      .eq('code', pass)
+      .eq('password', pass)
       .single();
     if (error) throw error;    
     if (data && data?.email === user)
       return NextResponse.json({
         success: true,
-        affiliateId: data.partner_id,
+        affiliateId: data.partner_tracking_code,
       });
     return NextResponse.json({ success: false });
   } catch (e) {

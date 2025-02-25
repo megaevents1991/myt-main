@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         hotel_order_info: validatedData.hotel_order_info,
         user_shown_price: validatedData.user_shown_price,
         event_id: validatedData.event_id,
-        aff_partner_id: validatedData.aff_partner_id,
+        aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
       })
       .select()
       .single();
@@ -139,7 +139,7 @@ const orderSchema = yup.object().shape({
   hotel_order_info: yup.object().required(), // TO DO: Adjust based on your hotel_order_info schema
   user_shown_price: yup.number().required(),
   event_id: yup.number().required(),
-  aff_partner_id: yup.string()
+  aff_partner_tracking_code: yup.string()
 });
 
 const validateOrderData = async (data: OrderData): Promise<OrderData> => {

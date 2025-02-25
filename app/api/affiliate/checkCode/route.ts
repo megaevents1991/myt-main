@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await supabase
       .from('partners')
-      .select("partner_id, user_discount")
-      .eq('partner_id', affiliateId)
+      .select("partner_tracking_code, user_discount")
+      .eq('partner_tracking_code', affiliateId)
       .single();
     if (error) throw error;    
     

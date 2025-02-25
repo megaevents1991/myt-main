@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const { data: partner, error: error2 } = await supabase
       .from('partners')
       .select('commission')
-      .eq('partner_id', affiliateId)
+      .eq('partner_tracking_code', affiliateId)
       .limit(1);
 
     if (error2) throw error2;
