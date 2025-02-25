@@ -52,7 +52,7 @@ export const FlightSelection = () => {
     maxPrice: string;
     luggage: string[];
   }>({
-    numOfStops: ["0", "1", "2"],
+    numOfStops: ["0", "1"],
     maxPrice: "",
     airline: [],
     luggage: ["withoutLuggage", "withLuggage"],

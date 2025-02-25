@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { Checkbox } from "@mantine/core";
+import { Checkbox, Button } from "@mantine/core";
 import { Sunset, Sun, Moon } from "lucide-react";
 import { FlightSearchCriteria, TimeRange } from "@/lib/app.types";
 
@@ -81,6 +81,15 @@ export const FlightFilters = ({
 }) => {
   const [departureTime, setDepartureTime] = React.useState<string[]>([]);
   const [arrivalTime, setArrivalTime] = React.useState<string[]>([]);
+  const [selectedValues, setSelectedValues] = React.useState(
+    filters.airline || []
+  );
+
+  React.useEffect(() => {
+    if (filters.airline) {
+      setSelectedValues(filters.airline);
+    }
+  }, [filters.airline]);
 
   const handleTimeChange = ({
     range,
@@ -109,6 +118,15 @@ export const FlightFilters = ({
       });
     }
   };
+
+  const handleChangeAirlines = (value: string[]) => {
+    setSelectedValues(value);
+    handleFlightSearchCriteriaChange({ type: "airline", value });
+  };
+
+  const selectAll = () =>
+    handleChangeAirlines(airlines.map((air) => air.value));
+  const clearAll = () => handleChangeAirlines([]);
 
   return (
     <div className="w-full p-4 space-y-4 border-2 border-gray-200 shadow-lg rounded-lg">
@@ -249,12 +267,15 @@ export const FlightFilters = ({
       {/* Airlines Section */}
       <div dir="rtl" className="px-2">
         <h3 className="text-lg font-semibold mt-4 mb-2">חברות תעופה</h3>
-        <Checkbox.Group
-          value={filters.airline}
-          onChange={(value) =>
-            handleFlightSearchCriteriaChange({ type: "airline", value })
-          }
-        >
+        <Checkbox.Group value={selectedValues} onChange={handleChangeAirlines}>
+          <div className="flex space-x-2 space-x-reverse mt-2">
+            <Button size="xs" variant="outline" onClick={selectAll}>
+              בחר הכל
+            </Button>
+            <Button size="xs" variant="outline" onClick={clearAll}>
+              נקה הכל
+            </Button>
+          </div>
           {airlines.map(({ label, value }, i) => (
             <Checkbox
               value={value}

@@ -59,9 +59,7 @@ export const applyFiltersAndSorting = (
         return arrivalTime >= start && arrivalTime <= end;
       });
 
-    const matchesAirline = !airline.length
-      ? true
-      : airline.includes(flight.airline);
+    const matchesAirline = airline.includes(flight.airline);
     const matchesStops =
       flight.stops < 2 && options.numOfStops.includes(flight.stops.toString());
     const matchesFlightDuration =
