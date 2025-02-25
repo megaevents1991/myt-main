@@ -153,12 +153,23 @@ export const HotelSelection = () => {
   const fetchHotels = async (parameters?: { radius: number }) => {
     setIsLoading(true);
     setHotel(undefined);
+    const cin = dateRange?.[0]
+      ? new Date(dateRange[0].setHours(dateRange[0].getHours() + 4))
+          .toISOString()
+          .split("T")[0]
+      : undefined;
+    const cout = dateRange?.[1]
+      ? new Date(dateRange[1].setHours(dateRange[1].getHours() + 4))
+          .toISOString()
+          .split("T")[0]
+      : undefined;
+
     const res = await fetch(`/api/hotels`, {
       method: "POST",
       body: JSON.stringify({
         location: event.location,
-        checkin: dateRange?.[0]?.toISOString().split("T")[0],
-        checkout: dateRange?.[1]?.toISOString().split("T")[0],
+        checkin: cin,
+        checkout: cout,
         guests: roomParams,
         radius: parameters?.radius || distanceRange[1] || 4000,
       }),
