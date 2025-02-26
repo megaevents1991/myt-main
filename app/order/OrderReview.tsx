@@ -14,10 +14,128 @@ import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
 import { formatPrice, getTotalPersons } from "@/lib/price.utils";
 
+type Fields = "firstName" | "lastName" | "phone" | "email";
+
+const shortenAirlineName = (name: string | undefined) => {
+  if (!name) {
+    return "";
+  }
+
+  const words = name.split(/\s+/); // Split by spaces
+  let shortName = "";
+  let charCount = 0;
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+
+    // If it's the first word and longer than 6 chars, return it directly
+    if (i === 0 && word.length > 6) {
+      return word;
+    }
+
+    if (charCount + word.length > 6) {
+      if (word.length >= 10) {
+        return shortName.trim(); // Stop if the word is very long (10+ chars)
+      } else {
+        return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
+      }
+    }
+
+    shortName += (shortName ? " " : "") + word;
+    charCount += word.length;
+  }
+
+  return shortName.trim();
+};
+
+const validate: Record<Fields, (value: string) => string> = {
+  firstName: (value: string) => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return "שם פרטי הוא שדה חובה";
+    if (trimmedValue.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
+    if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
+      return "שם פרטי חייב להיות באנגלית בלבד";
+    }
+    return "";
+  },
+  lastName: (value: string) => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return "שם משפחה הוא שדה חובה";
+    if (trimmedValue.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
+    if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
+      return "שם משפחה חייב להיות באנגלית בלבד";
+    }
+    return "";
+  },
+  email: (value: string) => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return "אימייל הוא שדה חובה";
+    if (!validator.isEmail(trimmedValue)) return "נא להזין כתובת אימייל תקינה";
+    return "";
+  },
+  phone: (value: string) => {
+    const cleanPhone = value.replace(/[- ]/g, "");
+    if (!cleanPhone) return "טלפון נייד הוא שדה חובה";
+    if (!cleanPhone.startsWith("05")) return "מספר נייד חייב להתחיל ב-05";
+    if (!validator.isMobilePhone(cleanPhone, "he-IL")) {
+      return "נא להזין מספר טלפון תקין";
+    }
+    return "";
+  },
+};
+
+/**
+ * Check if the price is outside the pack boundries
+ * @param totalPrice - Total price for all passengers
+ * @param basePrice - Base price per single passenger
+ * @param paxs - Number of passengers
+ * @returns boolean
+ */
+const priceOutsidePackBoundries = (
+  totalPrice: number,
+  basePrice: number,
+  paxs: number
+) => {
+  const price = totalPrice / paxs;
+  return Math.abs(price - basePrice) >
+    Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4")
+    ? true
+    : false;
+};
+
+const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
+
 export default function OrderReview() {
+  const {
+    flight: selectedFlight,
+    hotel: selectedHotel,
+    eventTicket,
+    event,
+    numberOfEventTickets,
+  } = useContext(OrderContext);
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [affDiscount, setAffDiscount] = useState<number>(0);
   const [affId, setAffId] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<
+    { [key: string]: string }[]
+  >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
+  const [passengers, setPassengers] = useState(
+    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+      firstName: "",
+      lastName: "",
+      phone: "",
+      email: "",
+    }))
+  );
+  const [touched, setTouched] = useState(
+    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+      firstName: false,
+      lastName: false,
+      phone: false,
+      email: false,
+    }))
+  );
 
   useEffect(() => {
     let affiliateData;
@@ -45,99 +163,34 @@ export default function OrderReview() {
     }
   }, []);
 
-  const {
-    flight: selectedFlight,
-    hotel: selectedHotel,
-    eventTicket,
-    event,
-    numberOfEventTickets,
-  } = useContext(OrderContext);
-  const router = useRouter();
-
-  const [touched, setTouched] = useState(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
-      firstName: false,
-      lastName: false,
-      phone: false,
-      email: false,
-    }))
-  );
-
-  const [validationErrors, setValidationErrors] = useState<
-    { [key: string]: string }[]
-  >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
-
-  const [passengers, setPassengers] = useState(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
-      firstName: "",
-      lastName: "",
-      phone: "",
-      email: "",
-    }))
-  );
-
-  const validate = useMemo(
-    () => ({
-      firstName: (value: string) => {
-        const trimmedValue = value.trim();
-        if (!trimmedValue) return "שם פרטי הוא שדה חובה";
-        if (trimmedValue.length < 2) return "שם פרטי חייב להכיל 2 תווים ויותר";
-        if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
-          return "שם פרטי חייב להיות באנגלית בלבד";
-        }
-        return "";
-      },
-      lastName: (value: string) => {
-        const trimmedValue = value.trim();
-        if (!trimmedValue) return "שם משפחה הוא שדה חובה";
-        if (trimmedValue.length < 2) return "שם משפחה חייב להכיל 2 תווים ויותר";
-        if (!/^[A-Za-z\s]+$/.test(trimmedValue)) {
-          return "שם משפחה חייב להיות באנגלית בלבד";
-        }
-        return "";
-      },
-      email: (value: string) => {
-        const trimmedValue = value.trim();
-        if (!trimmedValue) return "אימייל הוא שדה חובה";
-        if (!validator.isEmail(trimmedValue))
-          return "נא להזין כתובת אימייל תקינה";
-        return "";
-      },
-      phone: (value: string) => {
-        const cleanPhone = value.replace(/[- ]/g, "");
-        if (!cleanPhone) return "טלפון נייד הוא שדה חובה";
-        if (!cleanPhone.startsWith("05")) return "מספר נייד חייב להתחיל ב-05";
-        if (!validator.isMobilePhone(cleanPhone, "he-IL")) {
-          return "נא להזין מספר טלפון תקין";
-        }
-        return "";
-      },
-    }),
-    []
-  );
-
-  useEffect(() => {
+  const setErrors = () => {
+    const allErrors = [...validationErrors];
     passengers.forEach((passenger, index) => {
-      ["firstName", "lastName", "phone", "email"].forEach((field) => {
-        const value = passenger[field as keyof typeof passenger];
-        let error = "";
+      (["firstName", "lastName", "phone", "email"] as Fields[]).forEach(
+        (field) => {
+          let error = "";
+          const value = passenger[field];
 
-        if (field === "phone" || field === "email") {
-          if (index === 0) {
-            error = validate[field as keyof typeof validate](value);
+          if (field === "phone" || field === "email") {
+            if (index === 0) {
+              error = validate[field](value);
+            }
+          } else {
+            error = validate[field](value);
           }
-        } else {
-          error = validate[field as keyof typeof validate](value);
-        }
 
-        if (error) {
-          const newErrors = [...validationErrors];
-          newErrors[index] = { ...newErrors[index], [field]: error };
-          setValidationErrors(newErrors);
+          if (error) {
+            allErrors[index] = { ...allErrors[index], [field]: error };
+          }
         }
-      });
+      );
     });
 
+    setValidationErrors(allErrors);
+  };
+
+  useEffect(() => {
+    setErrors();
     // Mark fields as touched if they have values (indicating autofill)
     const newTouched = passengers.map((passenger) => ({
       firstName: !!passenger.firstName,
@@ -146,7 +199,39 @@ export default function OrderReview() {
       email: !!passenger.email,
     }));
     setTouched(newTouched);
-  }, [passengers, validate]);
+  }, [passengers]);
+
+  const updatePassenger = useCallback(
+    (index: number, field: Fields, value: string) => {
+      // Format phone number if it's the phone field
+      const finalValue = field === "phone" ? formatPhoneNumber(value) : value;
+
+      // Update passenger data
+      const newPassengers = [...passengers];
+      newPassengers[index][field] = finalValue;
+      setPassengers(newPassengers);
+
+      const error = validate[field](finalValue);
+      const newErrors = [...validationErrors];
+
+      if (error) {
+        newErrors[index] = { ...newErrors[index], [field]: error };
+      } else {
+        // Remove the error for this field
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [field]: _, ...rest } = newErrors[index];
+        newErrors[index] = rest;
+      }
+      setValidationErrors(newErrors);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [passengers, validationErrors]
+  );
+
+  const airlineName = useMemo(
+    () => shortenAirlineName(selectedFlight?.metadata.name),
+    [selectedFlight?.metadata.name]
+  );
 
   if (!event || !selectedFlight || !selectedHotel) {
     return (
@@ -172,7 +257,7 @@ export default function OrderReview() {
     return formatted.slice(0, 12); // Limit length
   };
 
-  const handleBlur = (index: number, field: keyof typeof validate) => {
+  const handleBlur = (index: number, field: Fields) => {
     const newTouched = [...touched];
     newTouched[index] = { ...newTouched[index], [field]: true };
     setTouched(newTouched);
@@ -203,24 +288,6 @@ export default function OrderReview() {
     return await response.json();
   };
 
-  const boundries = Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4");
-
-  /**
-   * Check if the price is outside the pack boundries
-   * @param totalPrice - Total price for all passengers
-   * @param basePrice - Base price per single passenger
-   * @param paxs - Number of passengers
-   * @returns boolean
-   */
-  const priceOutsidePackBoundries = (
-    totalPrice: number,
-    basePrice: number,
-    paxs: number
-  ) => {
-    const price = totalPrice / paxs;
-    return Math.abs(price - basePrice) > boundries ? true : false;
-  };
-
   /* Calculate total guests */
   const totalGuests = getTotalPersons(selectedHotel.guests);
 
@@ -230,7 +297,6 @@ export default function OrderReview() {
   );
 
   /* Fetch Pack recommended price */
-  const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
   const packRecommendedPrice = Math.ceil(
     event.base_flight_price + event.base_hotel_price + minTicketPrice + maup
   );
@@ -335,38 +401,6 @@ export default function OrderReview() {
     }
   };
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const updatePassenger = useCallback(
-    (
-      index: number,
-      field: "firstName" | "lastName" | "phone" | "email",
-      value: string
-    ) => {
-      // Format phone number if it's the phone field
-      const finalValue = field === "phone" ? formatPhoneNumber(value) : value;
-
-      // Update passenger data
-      const newPassengers = [...passengers];
-      newPassengers[index][field] = finalValue;
-      setPassengers(newPassengers);
-
-      const error = validate[field](finalValue);
-      const newErrors = [...validationErrors];
-
-      if (error) {
-        newErrors[index] = { ...newErrors[index], [field]: error };
-      } else {
-        // Remove the error for this field
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [field]: _, ...rest } = newErrors[index];
-        newErrors[index] = rest;
-      }
-      setValidationErrors(newErrors);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [passengers, validationErrors]
-  );
-
   const isFormValid = passengers.every((passenger, i) => {
     const hasErrors = Object.keys(validationErrors[i]).length > 0;
     const isMainContact = i === 0;
@@ -376,40 +410,6 @@ export default function OrderReview() {
 
     return !hasErrors && hasRequiredFields && hasContactInfo;
   });
-
-  function shortenAirlineName(name: string | undefined) {
-    if (!name) {
-      return "";
-    }
-
-    const words = name.split(/\s+/); // Split by spaces
-    let shortName = "";
-    let charCount = 0;
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-
-      // If it's the first word and longer than 6 chars, return it directly
-      if (i === 0 && word.length > 6) {
-        return word;
-      }
-
-      if (charCount + word.length > 6) {
-        if (word.length >= 10) {
-          return shortName.trim(); // Stop if the word is very long (10+ chars)
-        } else {
-          return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
-        }
-      }
-
-      shortName += (shortName ? " " : "") + word;
-      charCount += word.length;
-    }
-
-    return shortName.trim();
-  }
-
-  const airlineName = shortenAirlineName(selectedFlight?.metadata.name);
 
   return (
     <div className="min-h-screen bg-white">
@@ -628,20 +628,14 @@ export default function OrderReview() {
             {/* CTA Button */}
             <Button
               onClick={(e) => {
-                // Force validation on all fields for each passenger
-                passengers.forEach((_, index) => {
-                  ["firstName", "lastName", "phone", "email"].forEach(
-                    (field) => {
-                      if (
-                        index === 0 ||
-                        field === "firstName" ||
-                        field === "lastName"
-                      ) {
-                        handleBlur(index, field as keyof typeof validate);
-                      }
-                    }
-                  );
-                });
+                setErrors();
+                const touched = passengers.map(() => ({
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                  email: true,
+                }));
+                setTouched(touched);
 
                 // Check if form is valid after validation
                 if (isFormValid && !isSubmitting) {

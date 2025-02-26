@@ -128,8 +128,8 @@ export const FlightSelection = () => {
         body: JSON.stringify({
           ...options,
           adults,
-          departureDate: dateRange[0]?.setHours(dateRange[0].getHours() + 4),
-          returnDate: dateRange[1]?.setHours(dateRange[1].getHours() + 4),
+          departureDate: dateRange[0]?.toDateString(),
+          returnDate: dateRange[1]?.toDateString(),
         }),
         method: "POST",
       });

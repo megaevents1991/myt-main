@@ -8,6 +8,7 @@ import {
 import { getAirlineByIata } from "aircodes";
 import { amadeus } from "../amadeusClient";
 import { getEvents } from "../../eventsData";
+import dayjs from "dayjs";
 
 export const maxDuration = 30;
 
@@ -49,17 +50,9 @@ export async function POST(request: Request) {
       nonStop,
     }: FlightSearchOptions = await request.json();
 
-    const departureDate = new Date(
-      departureDateFromUi || new Date(event.date).getTime() - 2 * 8.64e7
-    )
-      .toISOString()
-      .split("T")[0];
+    const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
 
-    const returnDate = new Date(
-      returnDateFromUi || new Date(event.date).getTime() + 8.64e7
-    )
-      .toISOString()
-      .split("T")[0];
+    const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode,
