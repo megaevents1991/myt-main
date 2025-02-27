@@ -22,9 +22,35 @@ const inter = IBM_Plex_Sans_Hebrew({
 });
 
 export const metadata: Metadata = {
-  title: "MYT Event Booking",
+  title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
+  keywords: ["אירועים בחו״ל", "כרטיסים להופעות", "חבילות ספורט", "מגה תיירות"],
   description:
-    "Book tickets, flights, and hotels for the hottest sports and music events.",
+    "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל הו אתם בונים לעצמכם את החביל המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים ביותר בעולם",
+  openGraph: {
+    title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
+    description:
+      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל הו אתם בונים לעצמכם את החביל המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים ביותר בעולם",
+    url: "https://mega-events.co.il",
+    siteName: "Megaevents Event Booking",
+    images: [
+      {
+        url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+        width: 306,
+        height: 200,
+        alt: "Mega events Event Booking website Preview",
+      },
+    ],
+    locale: "he_IL",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+  },
 };
 
 const myColor: MantineColorsTuple = [
