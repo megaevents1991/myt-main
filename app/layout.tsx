@@ -23,25 +23,41 @@ const inter = IBM_Plex_Sans_Hebrew({
 
 export const metadata: Metadata = {
   title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
-  keywords: ["אירועים בחו״ל", "כרטיסים להופעות", "חבילות ספורט", "מגה תיירות"],
   description:
-    "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל הו אתם בונים לעצמכם את החביל המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים ביותר בעולם",
+    "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם.",
+  keywords: ["אירועים בחו״ל", "כרטיסים להופעות", "חבילות ספורט", "מגה איבנטס"], // Helps SEO
+  applicationName: "Mega Events",
+  generator: "Next.js",
+  metadataBase: new URL("https://mega-events.co.il"), // Base URL for relative links
+  alternates: {
+    canonical: "https://mega-events.co.il",
+  },
   openGraph: {
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
-      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל הו אתם בונים לעצמכם את החביל המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים ביותר בעולם",
+      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם.",
     url: "https://mega-events.co.il",
-    siteName: "Megaevents Event Booking",
+    siteName: "Mega Events",
+    type: "website",
+    locale: "he_IL",
     images: [
       {
         url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
         width: 306,
         height: 200,
-        alt: "Mega events Event Booking website Preview",
+        alt: "Mega Events - אתר להזמנת חבילות לאירועים בחו״ל",
       },
     ],
-    locale: "he_IL",
-    type: "website",
+  },
+  twitter: {
+    card: "summary", //TODO: summary_large_image with 1200x630px image
+    title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
+    description:
+      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם.",
+    images: [
+      "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+    ], // Same as Open Graph image
+    //creator: "@your_twitter_handle", // Optional, if you have a Twitter account
   },
   robots: {
     index: true,
@@ -50,6 +66,13 @@ export const metadata: Metadata = {
   viewport: {
     width: "device-width",
     initialScale: 1,
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  other: {
+    "google-site-verification": "YOUR_GOOGLE_VERIFICATION_CODE", // Optional for Google Search Console
   },
 };
 
