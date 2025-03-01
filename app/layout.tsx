@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Hebrew } from "next/font/google";
 import "@mantine/core/styles.css";
 import { Suspense, ReactNode } from "react";
@@ -20,6 +20,11 @@ const inter = IBM_Plex_Sans_Hebrew({
   style: "normal",
   subsets: ["hebrew"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
@@ -62,10 +67,6 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
   },
   icons: {
     icon: "/favicon.ico",
