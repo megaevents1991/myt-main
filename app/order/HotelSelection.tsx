@@ -162,7 +162,7 @@ export const HotelSelection = () => {
         checkin: dayjs(dateRange?.[0]?.toDateString()).format("YYYY-MM-DD"),
         checkout: dayjs(dateRange?.[1]?.toDateString()).format("YYYY-MM-DD"),
         guests: roomParams,
-        radius: parameters?.radius || distanceRange[1] || 4000,
+        radius: parameters?.radius || distanceRange[1] || 2000,
       }),
     });
     const data: HotelResponse = await res.json();

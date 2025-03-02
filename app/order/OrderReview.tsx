@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,11 +10,20 @@ import { Card } from "@/components/ui/card";
 import { OrderContext } from "../app.context";
 import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
-import { OrderData } from "@/lib/app.types";
+import type { OrderData } from "@/lib/app.types";
 import validator from "validator";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
 import { formatPrice, getTotalPersons } from "@/lib/price.utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -136,6 +147,8 @@ export default function OrderReview() {
       email: false,
     }))
   );
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsCheckboxTouched, setTermsCheckboxTouched] = useState(false);
 
   useEffect(() => {
     let affiliateData;
@@ -331,6 +344,12 @@ export default function OrderReview() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTermsCheckboxTouched(true);
+
+    if (!termsAccepted) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     // Collect data from your UI elements
@@ -401,16 +420,46 @@ export default function OrderReview() {
     }
   };
 
-  const isFormValid = passengers.every((passenger, i) => {
-    const hasErrors = Object.keys(validationErrors[i]).length > 0;
-    const isMainContact = i === 0;
-    const hasRequiredFields = passenger.firstName && passenger.lastName;
-    const hasContactInfo =
-      !isMainContact || (passenger.phone && passenger.email);
+  const penText = () => {
+    if (!selectedFlight.penalties) return "";
 
-    return !hasErrors && hasRequiredFields && hasContactInfo;
-  });
+    return (
+      selectedFlight.penalties
+        .replace(/PE\.PENALTIES\s*\n/, "")
+        .replace(
+          /CANCELLATIONS\s*\n/,
+          '<h3 class="font-bold mt-4 mb-2">Cancellation Policy</h3>'
+        )
+        .replace(
+          /CHANGES\s*\n/,
+          '<h3 class="font-bold mt-4 mb-2">Change Policy</h3>'
+        )
+        .replace(/NOTE -/g, "<strong>Note:</strong>")
+        .replace(/--+/g, '<hr class="my-2">')
+        // Convert newlines to paragraphs
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => `<p class="mb-2">${line}</p>`)
+        .join("")
+    );
+  };
 
+  const isFormValid =
+    passengers.every((passenger, i) => {
+      const hasErrors = Object.keys(validationErrors[i]).length > 0;
+      const isMainContact = i === 0;
+      const hasRequiredFields = passenger.firstName && passenger.lastName;
+      const hasContactInfo =
+        !isMainContact || (passenger.phone && passenger.email);
+
+      return !hasErrors && hasRequiredFields && hasContactInfo;
+    }) && termsAccepted;
+
+  const TermsError = () => (
+    <p className="text-sm text-red-500 text-right mt-1">
+      יש לאשר את פרטי ההזמנה ותנאי השימוש
+    </p>
+  );
   return (
     <div className="min-h-screen bg-white">
       {/* Main Content */}
@@ -625,6 +674,105 @@ export default function OrderReview() {
               </div>
             </Card>
 
+            <div
+              className="hidden md:flex flex-col mr-2 mt-4 mb-2 text-right"
+              dir="rtl"
+            >
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked: boolean) => {
+                      setTermsAccepted(checked === true);
+                      setTermsCheckboxTouched(true);
+                    }}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <Label htmlFor="terms" className="text-sm mr-2">
+                    אני מאשר/ת שקראתי את
+                  </Label>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="text-sm mr-1 text-blue-600 hover:underline">
+                        התנאים וההגבלות
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent
+                      className="max-w-md max-h-[80vh] overflow-y-auto"
+                      dir="rtl"
+                    >
+                      <DialogHeader>
+                        <DialogTitle className="text-right text-xl font-bold">
+                          תנאים כלליים ודמי ביטול
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="text-right">
+                        <p className="">
+                          <a
+                            href="/terms"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            תנאי שימוש באתר
+                          </a>
+                        </p>
+                        <p className="mt-1">
+                          <a
+                            href="/cancellation"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            כללי ביטול הזמנה
+                          </a>
+                        </p>
+                        <h3 className="font-bold mt-4 mb-2">כרטיסים לאירוע</h3>
+                        <p>כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.</p>
+
+                        <h3 className="font-bold mt-4 mb-2">טיסות</h3>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <a className="text-blue-600 hover:underline cursor-pointer">
+                              תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                            </a>
+                          </DialogTrigger>
+                          <DialogContent
+                            className="max-w-md max-h-[80vh] overflow-y-auto"
+                            dir="rtl"
+                          >
+                            <DialogHeader>
+                              <DialogTitle className="text-center text-xl font-bold">
+                                Penalties
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div
+                              dir="ltr"
+                              className="text-left"
+                              dangerouslySetInnerHTML={{ __html: penText() }}
+                            />
+                          </DialogContent>
+                        </Dialog>
+                        <p>
+                          עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה בנוסף
+                          לדמי הביטול של המוביל האווירי.
+                        </p>
+
+                        <h3 className="font-bold mt-4 mb-2">מלון</h3>
+                        <p>
+                          ביטול או שינוי חינם עד לתאריך ה- 25 במרץ, 2025, לאחר
+                          מכן דמי ביטול מלאים.
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+              {termsCheckboxTouched && !termsAccepted && <TermsError />}
+            </div>
+
             {/* CTA Button */}
             <Button
               onClick={(e) => {
@@ -803,14 +951,122 @@ export default function OrderReview() {
                 </div>
               </div>
             </Card>
+            <div
+              className="flex md:hidden flex-col mr-2 mt-4 mb-2 text-right"
+              dir="rtl"
+            >
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Checkbox
+                    id="terms-mobile"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked: boolean) => {
+                      setTermsAccepted(checked === true);
+                      setTermsCheckboxTouched(true);
+                    }}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <Label htmlFor="terms-mobile" className="text-sm mr-2">
+                    אני מאשר/ת שקראתי את
+                  </Label>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="text-sm mr-1 text-blue-600 hover:underline">
+                        התנאים וההגבלות
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent
+                      className="max-w-md max-h-[80vh] overflow-y-auto"
+                      dir="rtl"
+                    >
+                      <DialogHeader>
+                        <DialogTitle className="text-right text-xl font-bold">
+                          תנאים כלליים ודמי ביטול
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="text-right">
+                        <p>
+                          <a
+                            href="/terms"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            תנאי שימוש באתר
+                          </a>
+                        </p>
+                        <p>
+                          <a
+                            href="/cancellation"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            כללי ביטול הזמנה
+                          </a>
+                        </p>
+                        <h3 className="font-bold mt-4">כרטיסים לאירוע</h3>
+                        <p>כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.</p>
+
+                        <h3 className="font-bold mt-4">טיסות</h3>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <a className="text-blue-600 hover:underline cursor-pointer">
+                              תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                            </a>
+                          </DialogTrigger>
+                          <DialogContent
+                            className="max-w-md max-h-[80vh] overflow-y-auto"
+                            dir="rtl"
+                          >
+                            <DialogHeader>
+                              <DialogTitle className="text-center text-xl font-bold">
+                                Penalties
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div
+                              dir="ltr"
+                              className="text-left"
+                              dangerouslySetInnerHTML={{ __html: penText() }}
+                            />
+                          </DialogContent>
+                        </Dialog>
+                        <p>
+                          עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה בנוסף
+                          לדמי הביטול של המוביל האווירי.
+                        </p>
+
+                        <h3 className="font-bold mt-4">מלון</h3>
+                        <p>
+                          ביטול או שינוי חינם עד לתאריך ה- 25 במרץ, 2025, לאחר
+                          מכן דמי ביטול מלאים.
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+              {termsCheckboxTouched && !termsAccepted && <TermsError />}
+            </div>
             {/* CTA Button */}
             <Button
-              disabled={!isFormValid || isSubmitting}
-              onClick={handleSubmit}
-              className={cn(
-                "w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden",
-                !isFormValid && "cursor-not-allowed"
-              )}
+              onClick={(e) => {
+                setErrors();
+                const touched = passengers.map(() => ({
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                  email: true,
+                }));
+                setTouched(touched);
+
+                // Check if form is valid after validation
+                if (isFormValid && !isSubmitting) {
+                  handleSubmit(e);
+                }
+              }}
+              className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden"
             >
               שלח הזמנה
             </Button>

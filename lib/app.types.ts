@@ -36,7 +36,7 @@ export type Flight = {
   inbound: FlightSegment;
   numOfTravelers: number;
   offer: FlightOffer;
-  penalties?: object;
+  penalties?: string;
   bags?: object;
 };
 
