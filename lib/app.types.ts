@@ -60,7 +60,6 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
-  penalties?: object;
 };
 
 export type Order = {
@@ -257,6 +256,7 @@ export type ArtistFields = {
       };
     }>;
     name: string;
+    nameDBenglish: string;
     sys: EntryFieldTypes.Object<{
       id: string;
     }>;
@@ -290,6 +290,7 @@ export type FootballFields = {
       };
     }>;
     name: string;
+    nameDBenglish: string;
     sys: EntryFieldTypes.Object<{
       id: string;
     }>;

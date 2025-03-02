@@ -762,8 +762,12 @@ export default function OrderReview() {
 
                         <h3 className="font-bold mt-4 mb-2">מלון</h3>
                         <p>
-                          ביטול או שינוי חינם עד לתאריך ה- 25 במרץ, 2025, לאחר
-                          מכן דמי ביטול מלאים.
+                          ביטול או שינוי חינם עד לתאריך ה-{" "}
+                          {dayjs(
+                            selectedHotel.rate.payment_options.payment_types[0]
+                              .cancellation_penalties.free_cancellation_before
+                          ).format("DD/MM/YYYY")}
+                          , לאחר מכן דמי ביטול מלאים.
                         </p>
                       </div>
                     </DialogContent>
@@ -1008,7 +1012,6 @@ export default function OrderReview() {
                         </p>
                         <h3 className="font-bold mt-4">כרטיסים לאירוע</h3>
                         <p>כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.</p>
-
                         <h3 className="font-bold mt-4">טיסות</h3>
                         <Dialog>
                           <DialogTrigger asChild>
@@ -1036,11 +1039,14 @@ export default function OrderReview() {
                           עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה בנוסף
                           לדמי הביטול של המוביל האווירי.
                         </p>
-
                         <h3 className="font-bold mt-4">מלון</h3>
                         <p>
-                          ביטול או שינוי חינם עד לתאריך ה- 25 במרץ, 2025, לאחר
-                          מכן דמי ביטול מלאים.
+                          ביטול או שינוי חינם עד לתאריך ה-{" "}
+                          {dayjs(
+                            selectedHotel.rate.payment_options.payment_types[0]
+                              .cancellation_penalties.free_cancellation_before
+                          ).format("DD/MM/YYYY")}
+                          , לאחר מכן דמי ביטול מלאים.
                         </p>
                       </div>
                     </DialogContent>
@@ -1060,7 +1066,6 @@ export default function OrderReview() {
                   email: true,
                 }));
                 setTouched(touched);
-
                 // Check if form is valid after validation
                 if (isFormValid && !isSubmitting) {
                   handleSubmit(e);

@@ -10,9 +10,9 @@ export async function GET() {
     return NextResponse.json({ events });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error("Failed to track affiliate event:", error);
+    console.error("failed to fetch events:", error);
     return NextResponse.json(
-      { error: "Failed to track affiliate event" },
+      { error: "failed to fetch events" },
       { status: 500 }
     );
   }
