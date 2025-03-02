@@ -766,7 +766,9 @@ export default function OrderReview() {
                           {dayjs(
                             selectedHotel.rate.payment_options.payment_types[0]
                               .cancellation_penalties.free_cancellation_before
-                          ).format("DD/MM/YYYY")}
+                          )
+                            .subtract(7, "day")
+                            .format("DD/MM/YYYY")}
                           , לאחר מכן דמי ביטול מלאים.
                         </p>
                       </div>
@@ -1045,7 +1047,9 @@ export default function OrderReview() {
                           {dayjs(
                             selectedHotel.rate.payment_options.payment_types[0]
                               .cancellation_penalties.free_cancellation_before
-                          ).format("DD/MM/YYYY")}
+                          )
+                            .subtract(7, "day")
+                            .format("DD/MM/YYYY")}
                           , לאחר מכן דמי ביטול מלאים.
                         </p>
                       </div>
