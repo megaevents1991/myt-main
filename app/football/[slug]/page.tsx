@@ -12,6 +12,8 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { getEventsByName } from "@/app/api/eventsData";
 
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const { items } = await contentfulClient.getEntries({
     content_type: "footballTeamTemplate",
@@ -119,9 +121,17 @@ export default async function FootballPage({
                     <div className="p-2 text-right flex flex-col flex-grow">
                       <div>מחיר ממוצע לחבילה</div>
                       <div className="text-2xl font-extrabold">
-                        {`$${Number(event.usual_price || 0).toLocaleString(
-                          "en-US"
-                        )}`}
+                        $
+                        {(
+                          event.base_flight_price +
+                          event.base_hotel_price +
+                          Math.min(
+                            ...event.tickets_and_rates.map(
+                              (ticket) => ticket.price
+                            )
+                          ) +
+                          Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                        ).toLocaleString("en-US")}
                       </div>
                       <div className="flex-grow min-h-[4px]"></div>
                       <div

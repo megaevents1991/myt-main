@@ -11,6 +11,7 @@ export const initMixpanel = () => {
     track_pageview: true,
     autotrack: true,
     track_links_timeout: 3000,
+    record_mask_text_selector: "",
     record_sessions_percent: 100,
   });
 };

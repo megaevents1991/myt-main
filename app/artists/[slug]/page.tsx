@@ -12,6 +12,8 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { getEventsByName } from "@/app/api/eventsData";
 
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const { items } = await contentfulClient.getEntries({
     content_type: "artistTemplate",
@@ -103,14 +105,12 @@ export default async function ArtistPage({
                       className="p-2 text-2xl font-bold"
                       style={{ lineHeight: "1.1" }}
                     >
-                      {event.location.name}
+                      {event.date
+                        ? dayjs(event.date).format("DD/MM/YYYY")
+                        : "תאריך יפורסם בקרוב"}
                     </div>
                     <div className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center">
-                      <span>
-                        {event.date
-                          ? dayjs(event.date).format("DD/MM/YYYY")
-                          : "תאריך יפורסם בקרוב"}
-                      </span>
+                      <span>{event.location.name}</span>
                       <span className="sm:inline hidden mx-2">|</span>
                       <span className="w-full sm:w-auto whitespace-nowrap">
                         {event.name}
@@ -119,9 +119,17 @@ export default async function ArtistPage({
                     <div className="p-2 text-right flex flex-col flex-grow">
                       <div>מחיר ממוצע לחבילה</div>
                       <div className="text-2xl font-extrabold">
-                        {`$${Number(event.usual_price || 0).toLocaleString(
-                          "en-US"
-                        )}`}
+                        $
+                        {(
+                          event.base_flight_price +
+                          event.base_hotel_price +
+                          Math.min(
+                            ...event.tickets_and_rates.map(
+                              (ticket) => ticket.price
+                            )
+                          ) +
+                          Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                        ).toLocaleString("en-US")}
                       </div>
                       <div className="flex-grow min-h-[4px]"></div>
                       <div

@@ -3,6 +3,8 @@ import { FootballFields } from "@/lib/app.types";
 import Link from "next/link";
 import Image from "next/image";
 
+export const revalidate = 3600;
+
 export default async function FootballsPage() {
   const { items } = await contentfulClient.getEntries<FootballFields>({
     content_type: "footballTeamTemplate",

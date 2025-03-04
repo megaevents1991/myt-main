@@ -43,6 +43,100 @@ const nextConfig: import("next").NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+      source: '/',
+      has: [
+        {
+        type: 'query',
+        key: 'aff',
+        value: '(?<affValue>.*)',
+        },
+      ],
+      missing: [
+        {
+        type: 'query',
+        key: 'utm_source',
+        },
+      ],
+      permanent: false,
+      destination: '/?aff=:affValue&utm_source=:affValue',
+      },
+      {
+      source: '/artists',
+      has: [
+        {
+        type: 'query',
+        key: 'aff',
+        value: '(?<affValue>.*)',
+        },
+      ],
+      missing: [
+        {
+        type: 'query',
+        key: 'utm_source',
+        },
+      ],
+      permanent: false,
+      destination: '/artists?aff=:affValue&utm_source=:affValue',
+      },
+      {
+      source: '/artists/:path*',
+      has: [
+        {
+        type: 'query',
+        key: 'aff',
+        value: '(?<affValue>.*)',
+        },
+      ],
+      missing: [
+        {
+        type: 'query',
+        key: 'utm_source',
+        },
+      ],
+      permanent: false,
+      destination: '/artists/:path*?aff=:affValue&utm_source=:affValue',
+      },
+      {
+        source: '/football',
+        has: [
+          {
+          type: 'query',
+          key: 'aff',
+          value: '(?<affValue>.*)',
+          },
+        ],
+        missing: [
+          {
+          type: 'query',
+          key: 'utm_source',
+          },
+        ],
+        permanent: false,
+        destination: '/football?aff=:affValue&utm_source=:affValue',
+        },
+      {
+      source: '/football/:path*',
+      has: [
+        {
+        type: 'query',
+        key: 'aff',
+        value: '(?<affValue>.*)',
+        },
+      ],
+      missing: [
+        {
+        type: 'query',
+        key: 'utm_source',
+        },
+      ],
+      permanent: false,
+      destination: '/football/:path*?aff=:affValue&utm_source=:affValue',
+      },
+    ];
+  }
 };
 
 module.exports = nextConfig;

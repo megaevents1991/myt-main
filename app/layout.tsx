@@ -102,7 +102,7 @@ const GTM_URL = `https://www.googletagmanager.com/ns.html?id=${GTM_TAG}`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="he">
+    <html lang="he" className="bg-white text-black" suppressHydrationWarning>
       {GTM_TAG && (
         <head>
           <Script id="gtm-head" strategy="afterInteractive">
@@ -116,7 +116,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </Script>
         </head>
       )}
-      <body className={inter.className}>
+      <body className={`${inter.className} text-black`}>
         {GTM_TAG && (
           <noscript>
             <iframe
