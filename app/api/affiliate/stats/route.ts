@@ -40,14 +40,14 @@ export async function GET(request: Request) {
 
     // Calculate stats from tracking data
     const stats: AffiliateStats = {
-      visits: tracking.filter(t => t.stage === 'VISIT').length,
-      eventsSelected: tracking.filter(t => t.stage === 'EVENT_SELECTED').length,
-      ticketsSelected: tracking.filter(t => t.stage === 'TICKET_SELECTED').length,
-      flightsSelected: tracking.filter(t => t.stage === 'FLIGHT_SELECTED').length,
-      hotelsSelected: tracking.filter(t => t.stage === 'HOTEL_SELECTED').length,
-      confirmed: tracking.filter(t => t.stage === 'CONFIRMED').length,
+      visits: new Set(tracking.map(t => t.user_id)).size,
+      eventsSelected: new Set(tracking.filter(t => t.stage === 'EVENT_SELECTED').map(t => t.user_id)).size,
+      ticketsSelected: new Set(tracking.filter(t => t.stage === 'TICKET_SELECTED').map(t => t.user_id)).size,
+      flightsSelected: new Set(tracking.filter(t => t.stage === 'FLIGHT_SELECTED').map(t => t.user_id)).size,
+      hotelsSelected: new Set(tracking.filter(t => t.stage === 'HOTEL_SELECTED').map(t => t.user_id)).size,
+      confirmed: new Set(tracking.filter(t => t.stage === 'CONFIRMED').map(t => t.user_id)).size,
       commission: commission,
-      totalRevenue: tracking.filter(t => t.stage === 'CONFIRMED').length * commission
+      totalRevenue: new Set(tracking.filter(t => t.stage === 'CONFIRMED').map(t => t.user_id)).size * commission
     };
 
     const trackingData = tracking.map(entry => ({
