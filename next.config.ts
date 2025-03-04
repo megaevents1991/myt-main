@@ -61,7 +61,7 @@ const nextConfig: import("next").NextConfig = {
         },
       ],
       permanent: false,
-      destination: '/?aff=:affValue&utm_source=:affValue',
+      destination: '/?aff=:affValue&utm_source=:affValue&r=1',
       },
       {
       source: '/artists',
@@ -79,7 +79,7 @@ const nextConfig: import("next").NextConfig = {
         },
       ],
       permanent: false,
-      destination: '/artists?aff=:affValue&utm_source=:affValue',
+      destination: '/artists?aff=:affValue&utm_source=:affValue&r=1',
       },
       {
       source: '/artists/:path*',
@@ -97,7 +97,7 @@ const nextConfig: import("next").NextConfig = {
         },
       ],
       permanent: false,
-      destination: '/artists/:path*?aff=:affValue&utm_source=:affValue',
+      destination: '/artists/:path*?aff=:affValue&utm_source=:affValue&r=1',
       },
       {
         source: '/football',
@@ -115,7 +115,7 @@ const nextConfig: import("next").NextConfig = {
           },
         ],
         permanent: false,
-        destination: '/football?aff=:affValue&utm_source=:affValue',
+        destination: '/football?aff=:affValue&utm_source=:affValue&r=1',
         },
       {
       source: '/football/:path*',
@@ -133,7 +133,7 @@ const nextConfig: import("next").NextConfig = {
         },
       ],
       permanent: false,
-      destination: '/football/:path*?aff=:affValue&utm_source=:affValue',
+      destination: '/football/:path*?aff=:affValue&utm_source=:affValue&r=1',
       },
     ];
   }
