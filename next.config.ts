@@ -55,7 +55,7 @@ const nextConfig: import("next").NextConfig = {
           }
         ],
         permanent: true,
-        destination: 'https://mega-events.co.il/:path*',
+        destination: 'https://mega-events.co.il/:path*?:query',
       },
       {
         source: '/:path*',
@@ -70,10 +70,14 @@ const nextConfig: import("next").NextConfig = {
           {
             type: 'query',
             key: 'utm_source',
+          },
+          {
+            type: 'query',
+            key: 'r',
           }
         ],
         permanent: false,
-        destination: '/:path*?aff=:affValue&utm_source=:affValue&r=1',
+        destination: '/:path*?aff=:affValue&utm_source=:affValue&r=done',
       }
     ];
   }
