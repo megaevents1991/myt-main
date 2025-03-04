@@ -57,15 +57,11 @@ const nextConfig: import("next").NextConfig = {
         missing: [
           {
             type: 'query',
-            key: 'utm_source',
-          },
-          {
-            type: 'query',
-            key: 'r',
+            key: 'processed ',
           }
         ],
         permanent: false,
-        destination: '/:path*?aff=:affValue&utm_source=:affValue&r=1',
+        destination: '/:path*?aff=:affValue&utm_source=:affValue&r=processed',
       }
     ];
   }
