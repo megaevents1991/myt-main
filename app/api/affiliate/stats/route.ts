@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       totalRevenue: new Set(tracking.filter(t => t.stage === 'CONFIRMED').map(t => t.user_id)).size * commission
     };
 
-    const trackingData = tracking.map(entry => ({
+    const trackingData = tracking.slice(0, 1000).map(entry => ({
       id: entry.id,
       user_id: entry.user_id,
       stage: entry.stage,

@@ -12,7 +12,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-
 export default function PartnerDashboard() {
   const { isAuthenticated, affiliateId } = useAuth();
   const router = useRouter();
@@ -39,7 +38,9 @@ export default function PartnerDashboard() {
   const fetchTrackingData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/affiliate/stats?affiliateId=${affiliateId}`);
+      const res = await fetch(
+        `/api/affiliate/stats?affiliateId=${affiliateId}`
+      );
       const data = await res.json();
       setTracking(data.trackingData);
       setStats(data.stats);
@@ -54,10 +55,14 @@ export default function PartnerDashboard() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Hello {affiliateId}!, Welcome to your Partner Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        Hello {affiliateId}!, Welcome to your Partner Dashboard
+      </h1>
       <div className="mb-4">
         <h2 className="text-xl font-semibold">Overview Stats</h2>
-        <p className="text-gray-600">Quick summary of your partnership performance</p>
+        <p className="text-gray-600">
+          Quick summary of your partnership performance
+        </p>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -70,14 +75,19 @@ export default function PartnerDashboard() {
           <p className="text-2xl">{stats?.confirmed}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="font-medium">Total Commission (by ${stats.commission})</h3>
+          <h3 className="font-medium">
+            Total Commission (by ${stats.commission})
+          </h3>
           <p className="text-2xl">${stats?.totalRevenue}</p>
         </div>
       </div>
 
       <div className="mb-6">
         <h2 className="text-xl font-semibold">Detailed Activity Log</h2>
-        <p className="text-gray-600">Complete timeline of all clients interactions through your affiliate code</p>
+        <p className="text-gray-600">
+          Complete timeline of last 1000 client interactions through your
+          affiliate code
+        </p>
       </div>
 
       <Table>
@@ -90,26 +100,41 @@ export default function PartnerDashboard() {
           </TableRow>
         </TableHeader>
         <TableBody>
-            {tracking.map((track: {
-            id: string | number;
-            timestamp: string;
-            stage: string;
-            data: string;
-            user_id: string;
+          {tracking.map(
+            (track: {
+              id: string | number;
+              timestamp: string;
+              stage: string;
+              data: string;
+              user_id: string;
             }) => (
-            <TableRow key={track.id}>
-              <TableCell>
-                {new Date(track.timestamp).toLocaleString()}
-              </TableCell>
-                <TableCell>{track.stage.replace(/_/g, ' ')}</TableCell>
-              <TableCell>{track.user_id}</TableCell>
-              <TableCell>
-                <pre className="text-sm">
-                  {JSON.stringify(track.data, null, 2)}
-                </pre>
-              </TableCell>
-            </TableRow>
-          ))}
+              <TableRow
+                key={track.id}
+                className={track.stage === "CONFIRMED" ? "bg-green-100" : ""}
+              >
+                <TableCell>
+                  {new Date(track.timestamp).toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={
+                      track.stage === "CONFIRMED"
+                        ? "font-semibold text-green-700"
+                        : ""
+                    }
+                  >
+                    {track.stage.replace(/_/g, " ")}
+                  </span>
+                </TableCell>
+                <TableCell>{track.user_id}</TableCell>
+                <TableCell>
+                  <pre className="text-sm">
+                    {JSON.stringify(track.data, null, 2)}
+                  </pre>
+                </TableCell>
+              </TableRow>
+            )
+          )}
         </TableBody>
       </Table>
     </div>
