@@ -46,6 +46,18 @@ const nextConfig: import("next").NextConfig = {
   async redirects() {
     return [
       {
+        source: '/:path*',
+        has: [
+          {
+            type: 'header',
+            key: 'host',
+            value: 'www.mega-events.co.il',
+          }
+        ],
+        permanent: true,
+        destination: 'https://mega-events.co.il/:path*',
+      },
+      {
       source: '/',
       has: [
         {
