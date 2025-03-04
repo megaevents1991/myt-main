@@ -58,95 +58,23 @@ const nextConfig: import("next").NextConfig = {
         destination: 'https://mega-events.co.il/:path*',
       },
       {
-      source: '/',
-      has: [
-        {
-        type: 'query',
-        key: 'aff',
-        value: '(?<affValue>.*)',
-        },
-      ],
-      missing: [
-        {
-        type: 'query',
-        key: 'utm_source',
-        },
-      ],
-      permanent: false,
-      destination: '/?aff=:affValue&utm_source=:affValue&r=1',
-      },
-      {
-      source: '/artists',
-      has: [
-        {
-        type: 'query',
-        key: 'aff',
-        value: '(?<affValue>.*)',
-        },
-      ],
-      missing: [
-        {
-        type: 'query',
-        key: 'utm_source',
-        },
-      ],
-      permanent: false,
-      destination: '/artists?aff=:affValue&utm_source=:affValue&r=1',
-      },
-      {
-      source: '/artists/:path*',
-      has: [
-        {
-        type: 'query',
-        key: 'aff',
-        value: '(?<affValue>.*)',
-        },
-      ],
-      missing: [
-        {
-        type: 'query',
-        key: 'utm_source',
-        },
-      ],
-      permanent: false,
-      destination: '/artists/:path*?aff=:affValue&utm_source=:affValue&r=1',
-      },
-      {
-        source: '/football',
+        source: '/:path*',
         has: [
           {
-          type: 'query',
-          key: 'aff',
-          value: '(?<affValue>.*)',
-          },
+            type: 'query',
+            key: 'aff',
+            value: '(?<affValue>.*)',
+          }
         ],
         missing: [
           {
-          type: 'query',
-          key: 'utm_source',
-          },
+            type: 'query',
+            key: 'utm_source',
+          }
         ],
         permanent: false,
-        destination: '/football?aff=:affValue&utm_source=:affValue&r=1',
-        },
-      {
-      source: '/football/:path*',
-      has: [
-        {
-        type: 'query',
-        key: 'aff',
-        value: '(?<affValue>.*)',
-        },
-      ],
-      missing: [
-        {
-        type: 'query',
-        key: 'utm_source',
-        },
-      ],
-      permanent: false,
-      destination: '/football/:path*?aff=:affValue&utm_source=:affValue&r=1',
-      },
+        destination: '/:path*?aff=:affValue&utm_source=:affValue&r=1',
+      }
     ];
   }
 };
