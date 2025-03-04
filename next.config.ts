@@ -57,7 +57,7 @@ const nextConfig: import("next").NextConfig = {
         missing: [
           {
             type: 'query',
-            key: 'processed ',
+            key: 'processed',
           }
         ],
         permanent: false,
