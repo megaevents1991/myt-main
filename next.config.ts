@@ -49,36 +49,23 @@ const nextConfig: import("next").NextConfig = {
         source: '/:path*',
         has: [
           {
-            type: 'header',
-            key: 'host',
-            value: 'www.mega-events.co.il',
-          }
-        ],
-        permanent: true,
-        destination: 'https://mega-events.co.il/:path*?:query',
-      },
-      {
-        source: '/:path*',
-        has: [
-          {
             type: 'query',
             key: 'aff',
             value: '(?<affValue>.*)',
-          },
-          {
-            type: 'header',
-            key: 'host',
-            value: 'mega-events.co.il',
           }
         ],
         missing: [
           {
             type: 'query',
             key: 'utm_source',
+          },
+          {
+            type: 'query',
+            key: 'r',
           }
         ],
         permanent: false,
-        destination: '/:path*?aff=:affValue&utm_source=:affValue',
+        destination: '/:path*?aff=:affValue&utm_source=:affValue&r=1',
       }
     ];
   }
