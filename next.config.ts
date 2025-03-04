@@ -70,10 +70,14 @@ const nextConfig: import("next").NextConfig = {
           {
             type: 'query',
             key: 'utm_source',
+          },
+          {
+            type: 'query',
+            key: 'r',
           }
         ],
         permanent: false,
-        destination: '/:path*?:query&utm_source=:affValue',
+        destination: '/:path*?:query&aff=:affValue&utm_source=:affValue&r=done',
       }
     ];
   }
