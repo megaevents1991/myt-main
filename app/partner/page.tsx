@@ -85,8 +85,8 @@ export default function PartnerDashboard() {
       <div className="mb-6">
         <h2 className="text-xl font-semibold">Detailed Activity Log</h2>
         <p className="text-gray-600">
-          Complete timeline of last 1000 client interactions through your
-          affiliate code
+          A timeline of the last 1000 client interactions through your affiliate
+          code
         </p>
       </div>
 
