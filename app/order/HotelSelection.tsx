@@ -30,6 +30,7 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { getTotalPersons } from "@/lib/price.utils";
 import { isMobile } from "react-device-detect";
 import dayjs from "dayjs";
+import { logger } from "@/lib/logger";
 
 export const HotelSelection = () => {
   const {
@@ -169,6 +170,16 @@ export const HotelSelection = () => {
     }, 1000); // 1 second delay
 
     return () => clearTimeout(timer); // Cleanup timeout if component unmounts
+  }, []);
+
+  useEffect(() => {
+    if (!flight?.outbound?.arrivalTime || !flight?.inbound?.departureTime) {
+      logger.error({
+        description: "Missing flight dates",
+        outbound: flight?.outbound?.arrivalTime,
+        inbound: flight?.inbound?.departureTime,
+      });
+    }
   }, []);
 
   const fetchHotels = async (parameters?: { radius: number }) => {

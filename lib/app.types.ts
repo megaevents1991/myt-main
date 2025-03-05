@@ -296,3 +296,8 @@ export type FootballFields = {
     }>;
   };
 };
+
+export type Log = {
+  type?: "error" | "warn" | "log";
+  data: Record<string, unknown> | string;
+};
