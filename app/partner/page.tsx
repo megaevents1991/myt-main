@@ -71,7 +71,7 @@ export default function PartnerDashboard() {
           <p className="text-2xl">{stats?.visits}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="font-medium">Confirmed Bookings</h3>
+          <h3 className="font-medium">Confirmed Bookings (num of tickets)</h3>
           <p className="text-2xl">{stats?.confirmed}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">

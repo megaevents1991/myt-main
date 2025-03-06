@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       .filter(t => t.stage === 'CONFIRMED')
       .forEach(t => {
       const userId = t.user_id;
-      const numOfTickets = t.data?.numOfTicket || 0;
+      const numOfTickets = t.data?.data?.numOfTicket || 0;
       
       if (!confirmedUsersMap.has(userId) || numOfTickets > confirmedUsersMap.get(userId)) {
         confirmedUsersMap.set(userId, numOfTickets);
