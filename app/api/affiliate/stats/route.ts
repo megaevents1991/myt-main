@@ -38,15 +38,32 @@ export async function GET(request: Request) {
     const commission = partner[0]?.commission || 0;
 
     // Calculate stats from tracking data
+    // Get the highest numOfTickets for each confirmed user
+    // TODO: In the future, once we have instant charge, we should remove this and just count the number of confirmed tickets
+    const confirmedUsersMap = new Map();
+    tracking
+      .filter(t => t.stage === 'CONFIRMED')
+      .forEach(t => {
+      const userId = t.user_id;
+      const numOfTickets = t.data?.numOfTicket || 0;
+      
+      if (!confirmedUsersMap.has(userId) || numOfTickets > confirmedUsersMap.get(userId)) {
+        confirmedUsersMap.set(userId, numOfTickets);
+      }
+      });
+    
+    // Calculate total confirmed tickets
+    const totalConfirmedTickets = Array.from(confirmedUsersMap.values()).reduce((sum, count) => sum + count, 0);
+    
     const stats: AffiliateStats = {
       visits: new Set(tracking.map(t => t.user_id)).size,
       eventsSelected: new Set(tracking.filter(t => t.stage === 'EVENT_SELECTED').map(t => t.user_id)).size,
       ticketsSelected: new Set(tracking.filter(t => t.stage === 'TICKET_SELECTED').map(t => t.user_id)).size,
       flightsSelected: new Set(tracking.filter(t => t.stage === 'FLIGHT_SELECTED').map(t => t.user_id)).size,
       hotelsSelected: new Set(tracking.filter(t => t.stage === 'HOTEL_SELECTED').map(t => t.user_id)).size,
-      confirmed: new Set(tracking.filter(t => t.stage === 'CONFIRMED').map(t => t.user_id)).size,
+      confirmed: totalConfirmedTickets,
       commission: commission,
-      totalRevenue: new Set(tracking.filter(t => t.stage === 'CONFIRMED').map(t => t.user_id)).size * commission
+      totalRevenue: totalConfirmedTickets * commission
     };
 
     const trackingData = tracking.slice(0, 1000).map(entry => ({

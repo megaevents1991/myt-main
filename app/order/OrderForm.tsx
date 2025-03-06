@@ -123,7 +123,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
         });
       } else if (prev === 4) {
         orderStage("CONFIRMED", {
-          data: { confirmed: "checkout" },
+          data: {
+            confirmed: "checkout",
+            eventName: event.name,
+            numOfTicket: numberOfEventTickets,
+          },
         });
       }
       return prev + 1;
