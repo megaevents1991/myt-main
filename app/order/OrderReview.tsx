@@ -347,6 +347,7 @@ export default function OrderReview() {
     setTermsCheckboxTouched(true);
 
     if (!termsAccepted) {
+      setIsSubmitting(false);
       return;
     }
 
@@ -776,12 +777,13 @@ export default function OrderReview() {
                   </Dialog>
                 </div>
               </div>
-              {termsCheckboxTouched && !termsAccepted && <TermsError />}
+              {termsCheckboxTouched && !termsAccepted && <TermsError />}{" "}
             </div>
 
             {/* CTA Button */}
             <Button
               onClick={(e) => {
+                setTermsCheckboxTouched(true);
                 setErrors();
                 const touched = passengers.map(() => ({
                   firstName: true,
@@ -1057,11 +1059,12 @@ export default function OrderReview() {
                   </Dialog>
                 </div>
               </div>
-              {termsCheckboxTouched && !termsAccepted && <TermsError />}
+              {termsCheckboxTouched && !termsAccepted && <TermsError />}{" "}
             </div>
             {/* CTA Button */}
             <Button
               onClick={(e) => {
+                setTermsCheckboxTouched(true);
                 setErrors();
                 const touched = passengers.map(() => ({
                   firstName: true,
