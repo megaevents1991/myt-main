@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       id: entry.id,
       user_id: entry.user_id,
       stage: entry.stage,
-      data: entry.data,
+      data: entry.data.data,
       timestamp: entry.created_at
     }))
 

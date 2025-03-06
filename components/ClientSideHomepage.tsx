@@ -373,7 +373,13 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 className="cursor-pointer"
                 key={event.id}
                 onClick={() => {
-                  orderStage("EVENT_SELECTED", { event: event.name });
+                  orderStage("EVENT_SELECTED", {
+                    data: {
+                      event: event.name,
+                      eventDate: event.date,
+                      eventLocation: event.location.name,
+                    },
+                  });
                   //statsig.logEvent("user_selected_event", event.id, {
                   //  item_name: event.name,
                   //});
