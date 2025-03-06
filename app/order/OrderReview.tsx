@@ -801,7 +801,7 @@ export default function OrderReview() {
               className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] hidden md:block"
               disabled={isSubmitting}
             >
-              שלח הזמנה
+              שלח בקשה לנציג{" "}
             </Button>
           </div>
           <div className="space-y-6 order-2 md:order-2">
@@ -1080,7 +1080,7 @@ export default function OrderReview() {
               }}
               className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden"
             >
-              שלח הזמנה
+              שלח בקשה לנציג{" "}
             </Button>
             {/* Trust Badges 
             <Card className="bg-white shadow-lg overflow-hidden order-4 md:order-3">
