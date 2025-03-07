@@ -154,6 +154,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const event = formData.get("event");
+    const email = formData.get("email");
 
     try {
       const response = await fetch("/api/more-events", {
@@ -161,7 +162,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ event }),
+        body: JSON.stringify({ event, email }),
       });
 
       if (response.ok) {
@@ -245,8 +246,12 @@ export function ClientSideHomepage({ initialEvents }: Props) {
         ) : (
           <form
             onSubmit={(e) => {
-              handleMoreEventsSubmit(e);
-              setShowSuccessMessage(true);
+              e.preventDefault();
+              const form = e.currentTarget;
+              if (form.checkValidity()) {
+                handleMoreEventsSubmit(e);
+                setShowSuccessMessage(true);
+              }
             }}
           >
             <div className="mb-4">
@@ -254,25 +259,27 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 className="block text-gray-700 text-sm font-bold mb-2"
                 htmlFor="event"
               >
-                מה שם האומן/משחק והאם יש העדפה למקום?
+                מה שם האומן/משחק והאם יש העדפה למקום? *
               </label>
               <input
                 id="event"
                 name="event"
                 type="text"
+                required
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 placeholder="ביונסה בפריז"
               />
               <label
                 className="block text-gray-700 text-sm font-bold mt-6 mb-2"
-                htmlFor="event"
+                htmlFor="email"
               >
-                שנחזור אליכם עם הצעה?
+                שנחזור אליכם עם הצעה? *
               </label>
               <input
                 id="email"
                 name="email"
                 type="text"
+                required
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 placeholder="טלפון או אימייל"
               />
