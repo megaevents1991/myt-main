@@ -123,6 +123,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         });
       } else if (prev === 4) {
         orderStage("CONFIRMED", {
+          // TO DO: NOT WORKING at the MOMENT - Check with Yakov
           data: {
             confirmed: "checkout",
             eventName: event.name,

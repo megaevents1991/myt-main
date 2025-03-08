@@ -385,7 +385,11 @@ export default function OrderReview() {
 
       orderStage("CONFIRMED", {
         // TO DO: temp workaround as order stage doesn't work (router.push?)
-        data: { confirmed: "checkout" },
+        data: {
+          confirmed: "checkout",
+          eventName: event.name,
+          numOfTicket: numberOfEventTickets,
+        },
       });
 
       const confirmationUrl = new URL("/confirmation", window.location.origin);
