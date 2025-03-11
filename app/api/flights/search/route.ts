@@ -11,6 +11,7 @@ import { getEvents } from "../../eventsData";
 import dayjs from "dayjs";
 
 export const maxDuration = 30;
+const currencyCode = "USD";
 
 export async function POST(request: Request) {
   if (!amadeus) {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       adults: adults || 1,
       max: 200,
       nonStop,
+      currencyCode,
     });
 
     // Transform Amadeus response to match our flight data structure
