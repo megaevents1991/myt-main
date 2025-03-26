@@ -11,6 +11,8 @@ import { ReactNode } from "react";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { getEventsByName } from "@/app/api/eventsData";
+import ClientTracker from "../../../components/ClientTracker";
+import EventButton from "../../../components/EventButton";
 
 export const revalidate = 3600;
 
@@ -62,6 +64,7 @@ export default async function FootballPage({
 
   return (
     <div dir="rtl" className="container mx-auto py-8 px-4">
+      <ClientTracker />
       {heroBanner?.fields?.file?.url && (
         <Image
           src={`https:${heroBanner.fields.file.url}`}
@@ -89,60 +92,62 @@ export default async function FootballPage({
                 href={`/order?eventId=${event.id}`}
                 className="cursor-pointer"
               >
-                <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                  <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
-                    <Image
-                      src={event.card_image_url}
-                      alt={name}
-                      priority={true}
-                      width={400}
-                      height={300}
-                      className="object-cover w-full h-60 transition-transform group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="flex flex-col text-center w-[52%] sm:w-auto">
-                    <div
-                      className="p-2 text-2xl font-bold"
-                      style={{ lineHeight: "1.1" }}
-                    >
-                      {event.name}
+                <EventButton event={event}>
+                  <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+                    <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
+                      <Image
+                        src={event.card_image_url}
+                        alt={name}
+                        priority={true}
+                        width={400}
+                        height={300}
+                        className="object-cover w-full h-60 transition-transform group-hover:scale-105"
+                      />
                     </div>
-                    <div className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center">
-                      <span>
-                        {event.date
-                          ? dayjs(event.date).format("DD/MM/YYYY")
-                          : "תאריך יפורסם בקרוב"}
-                      </span>
-                      <span className="sm:inline hidden mx-2">|</span>
-                      <span className="w-full sm:w-auto whitespace-nowrap">
-                        {event.location.name}
-                      </span>
-                    </div>
-                    <div className="p-2 text-right flex flex-col flex-grow">
-                      <div>מחיר ממוצע לחבילה</div>
-                      <div className="text-2xl font-extrabold">
-                        $
-                        {(
-                          event.base_flight_price +
-                          event.base_hotel_price +
-                          Math.min(
-                            ...event.tickets_and_rates.map(
-                              (ticket) => ticket.price
-                            )
-                          ) +
-                          Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-                        ).toLocaleString("en-US")}
-                      </div>
-                      <div className="flex-grow min-h-[4px]"></div>
+                    <div className="flex flex-col text-center w-[52%] sm:w-auto">
                       <div
-                        className="text-[14px]"
+                        className="p-2 text-2xl font-bold"
                         style={{ lineHeight: "1.1" }}
                       >
-                        לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                        {event.name}
+                      </div>
+                      <div className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center">
+                        <span>
+                          {event.date
+                            ? dayjs(event.date).format("DD/MM/YYYY")
+                            : "תאריך יפורסם בקרוב"}
+                        </span>
+                        <span className="sm:inline hidden mx-2">|</span>
+                        <span className="w-full sm:w-auto whitespace-nowrap">
+                          {event.location.name}
+                        </span>
+                      </div>
+                      <div className="p-2 text-right flex flex-col flex-grow">
+                        <div>מחיר ממוצע לחבילה</div>
+                        <div className="text-2xl font-extrabold">
+                          $
+                          {(
+                            event.base_flight_price +
+                            event.base_hotel_price +
+                            Math.min(
+                              ...event.tickets_and_rates.map(
+                                (ticket) => ticket.price
+                              )
+                            ) +
+                            Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                          ).toLocaleString("en-US")}
+                        </div>
+                        <div className="flex-grow min-h-[4px]"></div>
+                        <div
+                          className="text-[14px]"
+                          style={{ lineHeight: "1.1" }}
+                        >
+                          לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </EventButton>
               </Link>
             ))}
           </div>

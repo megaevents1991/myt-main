@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { v4 } from "uuid";
 
 export type TrackingStage =
@@ -88,8 +88,9 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
 
 export function useAffiliate() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   useEffect(() => {
-    orderStage("VISIT", {});
+    orderStage("VISIT", { path: pathname });
   }, [searchParams]);
 }
