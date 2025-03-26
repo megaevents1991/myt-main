@@ -5,7 +5,7 @@ export async function POST(req: Request) {
   const moreEvents = await req.json();  
 
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    service: "Zoho",
     auth: {
       user: process.env.EMAIL_SERVER_USER,
       pass: process.env.EMAIL_SERVER_PASSWORD,

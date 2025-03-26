@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   console.log("(1/3) New Reservation was saved to DB");
 
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    service: "Zoho",
     auth: {
       user: process.env.EMAIL_SERVER_USER,
       pass: process.env.EMAIL_SERVER_PASSWORD,
