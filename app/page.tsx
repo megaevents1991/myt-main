@@ -6,9 +6,11 @@ async function getEvents() {
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/events`,
     {
-      next: {
-        revalidate: 3600, // Revalidate every hour
-      },
+      cache: process.env.NODE_ENV === "development" ? "no-store" : "default",
+      next:
+        process.env.NODE_ENV === "development"
+          ? undefined
+          : { revalidate: 3600, tags: ["events"] },
     }
   );
   const { events } = await response.json();

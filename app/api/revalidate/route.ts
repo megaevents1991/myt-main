@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
  
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   }
 
   revalidatePath(path as string);
+  revalidateTag('events');
 
   return new Response('Revalidation successful', { status: 200 });
 }
