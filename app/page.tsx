@@ -7,7 +7,7 @@ async function getEvents() {
     `${process.env.NEXT_PUBLIC_API_URL}/api/events`,
     {
       next: {
-        revalidate: 3600, // Revalidate every hour
+        revalidate: 3660, // Revalidate every hour
       },
     }
   );
