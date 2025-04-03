@@ -106,10 +106,8 @@ export default function CancelPage() {
       <ul>
         <li>באמצעות טופס זה: לחצו כאן</li>
         {/*TODO: Add link to cancel form*/}
-        <li>ווטסאפ &quot;מגה איבנטס&quot; – 054-2272554</li>
-        {/*TODO: another number?*/}
-        <li>בדואר אלקטרוני לכתובת: invoicesmyt@gmail.com</li>
-        {/*TODO: change email address*/}
+        <li>ווטסאפ &quot;מגה איבנטס&quot; – 054-200-2272</li>
+        <li>בדואר אלקטרוני לכתובת: support@mega-events.co.il</li>
       </ul>
       <p>
         כל הפניות שיתקבלו באמצעים המפורטים מעלה יטופלו בימים א&apos;-ה&apos; בין

@@ -316,8 +316,8 @@ const userEmail = (replacements: Record<string, string | number | undefined>) =>
                                 <div style="text-align: center; color: #666666; font-size: 14px;">
                                     <p style="margin: 0 0 10px 0;">לשאלות ובירורים:</p>
                                     <p style="margin: 0;">
-                                        טלפון: <a href="tel:+972-3-5444-333" style="color: #277e89; text-decoration: none;">03-5444-333</a><br>
-                                        אימייל: <a href="mailto:info@megevents.co.il" style="color: #277e89; text-decoration: none;">info@megevents.co.il</a>
+                                        טלפון: <a href="tel:+972-54-200-2722" style="color: #277e89; text-decoration: none;">054-200-2722</a><br>
+                                        אימייל: <a href="mailto:support@mega-events.co.il" style="color: #277e89; text-decoration: none;">support@mega-events.co.il</a>
                                     </p>
                                 </div>
                             </td>
