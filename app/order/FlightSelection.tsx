@@ -174,7 +174,7 @@ export const FlightSelection = () => {
     } catch (err) {
       console.error(err);
       setError(
-        "An error occurred while fetching flights. Please try again later."
+        "היי חברים, סליחה, יש לנו תקלה, ואנחנו על זה, נסו אותנו יותר מאוחר בבקשה."
       );
     } finally {
       setIsLoading(false);
