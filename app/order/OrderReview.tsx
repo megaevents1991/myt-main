@@ -514,8 +514,8 @@ export default function OrderReview() {
                 <div className="flex flex-col items-start font-bold" dir="rtl">
                   <span className="text-[22px] ">סה&quot;כ</span>
                   {affDiscount > 0 && (
-                    <span className="text-[14px] text-green-600">
-                      כולל הנחת ${affDiscount} לכרטיס
+                    <span className="text-[14px]" style={{ color: "green" }}>
+                      כולל הנחת ${affDiscount * numberOfEventTickets}
                     </span>
                   )}
                 </div>
