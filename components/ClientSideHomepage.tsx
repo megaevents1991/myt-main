@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
 import { isMobile } from "react-device-detect";
 import Fuse from "fuse.js";
+import { ContactUs } from "@/components/ui/ContactUs";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -560,6 +561,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   </div>
                 </Link>
               ))}
+            <div className="fixed bottom-20 left-2 z-50 flex sm:hidden w-full">
+              <ContactUs />
+            </div>
             <div
               className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
               onClick={() => setShowFeedbackModal(true)}

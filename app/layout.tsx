@@ -14,6 +14,7 @@ import Link from "next/link";
 import { MYT } from "@/components/ui/myt";
 import { AuthProvider } from "./hooks/AuthContext";
 import MixpanelProvider from "./hooks/Mixpanel";
+import { ContactUs } from "@/components/ui/ContactUs";
 
 const inter = IBM_Plex_Sans_Hebrew({
   weight: "300",
@@ -154,8 +155,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <AuthProvider>
             <Suspense>
               <MantineProvider theme={theme}>
-                <Container className="pt-4 min-h-200" fluid bg={"#05203C"}>
-                  <div className="flex scale-25 justify-center md:justify-end">
+                <Container className="py-2 min-h-200" fluid bg={"#05203C"}>
+                  <div className="flex scale-25 justify-center sm:justify-between">
+                    <div className="hidden sm:flex">
+                      <ContactUs />
+                    </div>
                     <Link href="/">
                       <MYT className="scale-75 md:scale-100" />
                     </Link>

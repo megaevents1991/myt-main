@@ -16,7 +16,17 @@ export const getDaysDiff = (event: Event) => {
   );
 };
 
-export const formatPrice = (price: number, factor = 1, formatted = false) => {
+export const formatPrice = (
+  price: number,
+  options?: {
+    factor?: number;
+    formatted?: boolean;
+    applyColor?: boolean;
+    bold?: boolean;
+  }
+) => {
+  const { factor = 1, formatted = false, applyColor = false } = options || {};
+
   let ceilPrice = Math.ceil(price);
   if (factor !== 1) {
     ceilPrice = Math.abs(ceilPrice * factor);
@@ -35,7 +45,17 @@ export const formatPrice = (price: number, factor = 1, formatted = false) => {
       return <span dir="ltr">+${ceilPrice}</span>;
     }
     if (price < 0) {
-      return <span dir="ltr">-${Math.abs(ceilPrice)}</span>;
+      return (
+        <span
+          dir="ltr"
+          style={{
+            ...(applyColor && { color: "green" }),
+            ...(options?.bold && { fontWeight: "bold" }),
+          }}
+        >
+          -${Math.abs(ceilPrice)}
+        </span>
+      );
     }
   }
   return 0;

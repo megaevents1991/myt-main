@@ -11,6 +11,7 @@ import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/price.utils";
 import Image from "next/image";
+import { ContactUs } from "@/components/ui/ContactUs";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -143,6 +144,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
       {/* Sticky Footer */}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-0">
+        <div className="bottom-20 left-4 z-50 flex sm:hidden w-full">
+          <ContactUs />
+        </div>
         <div className="mt-4 w-screen bg-gray-200">
           <div className="w-full">
             {step < 4 && (
