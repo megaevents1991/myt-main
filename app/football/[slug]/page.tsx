@@ -123,7 +123,9 @@ export default async function FootballPage({
                         </span>
                       </div>
                       <div className="p-2 text-right flex flex-col flex-grow">
-                        <div>מחיר ממוצע לחבילה</div>
+                        <div className="text-sm sm:text-base">
+                          מחיר חבילה ממוצע לאדם
+                        </div>
                         <div className="text-2xl font-extrabold">
                           $
                           {(

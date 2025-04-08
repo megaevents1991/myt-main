@@ -425,7 +425,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       className="p-2 text-right flex flex-col flex-grow"
                       dir="rtl"
                     >
-                      <div>מחיר ממוצע לחבילה</div>
+                      <div className="text-sm sm:text-base">
+                        מחיר חבילה ממוצע לאדם
+                      </div>
                       <div className="flex items-baseline gap-1">
                         <div className="text-2xl font-extrabold">
                           $
@@ -528,7 +530,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                         className="p-2 text-right flex flex-col flex-grow"
                         dir="rtl"
                       >
-                        <div>מחיר ממוצע לחבילה</div>
+                        <div>מחיר חבילה ממוצע לאדם</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-2xl font-extrabold">
                             $
