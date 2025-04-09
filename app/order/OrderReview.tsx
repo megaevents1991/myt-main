@@ -1103,62 +1103,93 @@ export default function OrderReview() {
             >
               שלח בקשה לנציג{" "}
             </Button>
-            {/* Trust Badges 
-            <Card className="bg-white shadow-lg overflow-hidden order-4 md:order-3">
+            <Card
+              className="bg-white shadow-lg overflow-hidden order-4 md:order-3"
+              dir="rtl"
+            >
               <div className="p-6">
-                <h3 className="font-bold mb-4 text-[#05203c]">trusted by:</h3>
                 <div className="space-y-3 text-[13px] text-[#444]">
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-[#277e89] flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span>Exclusive rates for flight and hotel bookings</span>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
+                    <div className="flex items-start">
+                      <svg
+                        className="w-4 h-4 text-[#277e89] flex-shrink-0 mt-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-[#05203c] inline-block">
+                        100% אחריות מבית מגה תיירות
+                      </h3>
+                      <div className="mr-1">
+                        החוויה שלכם חשובה לנו - התקשרנו עם ספקים רשמיים ואמינים
+                        כדי שנוכל להתחייב שהכרטיסים שלכם 100% בטוחים, בהתחייבות.
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-[#277e89] flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span>100% Buyers Guarantee protection</span>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
+                    <div className="flex items-start">
+                      <svg
+                        className="w-4 h-4 text-[#277e89] flex-shrink-0 mt-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-[#05203c] inline-block">
+                        מקצועיות ומוניטין
+                      </h3>
+                      <div className="mr-1">
+                        אנחנו בתחום אירועי הספורט והמוזיקה כבר עשור. דאגנו לוודא
+                        עם האיצטדיונים כל מה שצריך כדי שלכם תהיה חוויה מיטבית
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-[#277e89] flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span>On-time arrival guarantee</span>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
+                    <div className="flex items-start">
+                      <svg
+                        className="w-4 h-4 text-[#277e89] flex-shrink-0 mt-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-[#05203c] inline-block">
+                        ליווי אישי ומענה אנושי
+                      </h3>
+                      <div className="mr-1">
+                        אנחנו נהיה זמינים עבורכם בווטסאפ טרם האירוע לכל מקרה או
+                        שאלה.
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </Card>*/}
+            </Card>
           </div>
         </div>
       </main>
