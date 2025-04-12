@@ -86,11 +86,11 @@ export const HotelFilters = ({
   const marks = [
     {
       value: minPrice,
-      label: <>&#36;{minPrice - basePrice}</>,
+      label: <>&#8364;{minPrice - basePrice}</>,
     },
     {
       value: maxPrice,
-      label: <>+&#36;{Math.ceil(maxPrice - basePrice)}</>,
+      label: <>+&#8364;{Math.ceil(maxPrice - basePrice)}</>,
     },
   ];
 
