@@ -492,19 +492,19 @@ export default function OrderReview() {
                 <div>
                   <div className="flex justify-between items-baseline w-full text-[18px] gap-2 font-bold">
                     <span className="text-xl">
-                      ${finalPurchasePrice.toLocaleString("en-US")}
+                      €{finalPurchasePrice.toLocaleString("en-US")}
                     </span>
                     {isNumberOfPersonsEqual &&
                       recommendedPriceAllPax > finalPurchasePrice && (
                         <span className="line-through text-[red]">
-                          ${recommendedPriceAllPax.toLocaleString("en-US")}
+                          €{recommendedPriceAllPax.toLocaleString("en-US")}
                         </span>
                       )}
                   </div>
                   <div className="flex justify-left items-center w-full text-gray-500 gap-1">
                     <span>לאדם</span>
                     <span>
-                      $
+                      €
                       {Math.ceil(
                         finalPurchasePrice / numberOfPersons
                       ).toLocaleString("en-US")}
@@ -515,7 +515,7 @@ export default function OrderReview() {
                   <span className="text-[22px] ">סה&quot;כ</span>
                   {affDiscount > 0 && (
                     <span className="text-[14px]" style={{ color: "green" }}>
-                      כולל הנחת ${affDiscount * numberOfEventTickets}
+                      כולל הנחה של €{affDiscount * numberOfEventTickets}
                     </span>
                   )}
                 </div>
@@ -529,7 +529,7 @@ export default function OrderReview() {
                       dayjs(event.date).format("DD/MM/YYYY")}
                   </p>
                   <div className="font-lg" dir="rtl">
-                    מחיר חבילה התחלתי לאדם: $
+                    מחיר חבילה התחלתי לאדם: €
                     {packRecommendedPrice.toLocaleString("en-US")}
                   </div>
                 </div>
@@ -782,7 +782,7 @@ export default function OrderReview() {
                           </DialogContent>
                         </Dialog>
                         <p>
-                          עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה בנוסף
+                          עלות הטיפול בביטול הטיסה הינה €50 לכל כרטיס טיסה בנוסף
                           לדמי הביטול של המוביל האווירי.
                         </p>
 
@@ -1061,7 +1061,7 @@ export default function OrderReview() {
                           </DialogContent>
                         </Dialog>
                         <p>
-                          עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה בנוסף
+                          עלות הטיפול בביטול הטיסה הינה €50 לכל כרטיס טיסה בנוסף
                           לדמי הביטול של המוביל האווירי.
                         </p>
                         <h3 className="font-bold mt-4">מלון</h3>

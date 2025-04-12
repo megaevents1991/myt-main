@@ -11,7 +11,7 @@ import { getEvents } from "../../eventsData";
 import dayjs from "dayjs";
 
 export const maxDuration = 30;
-const currencyCode = "USD";
+const currencyCode = "EUR";
 
 export async function POST(request: Request) {
   if (!amadeus) {
