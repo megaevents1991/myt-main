@@ -120,9 +120,9 @@ export default function PartnerDashboard() {
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="font-medium">
-            Total Commission (by ${stats.commission})
+            Total Commission (by €{stats.commission})
           </h3>
-          <p className="text-2xl">${stats?.totalRevenue}</p>
+          <p className="text-2xl">€{stats?.totalRevenue}</p>
         </div>
       </div>
 

@@ -19,7 +19,7 @@ export const RoomCard = ({
 
   const priceToShowFull =
     selectedPrice - minPrice !== 0
-      ? ` לאורח/$${Math.abs(Math.ceil(+selectedPrice - minPrice))}${
+      ? ` לאורח/€${Math.abs(Math.ceil(+selectedPrice - minPrice))}${
           +selectedPrice - minPrice > 0 ? "+" : "-"
         }`
       : "כלול במחיר";

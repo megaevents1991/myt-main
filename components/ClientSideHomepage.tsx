@@ -438,7 +438,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       </div>
                       <div className="flex items-baseline gap-1">
                         <div className="text-2xl font-extrabold">
-                          $
+                          €
                           {(
                             event.base_flight_price +
                             event.base_hotel_price +
@@ -541,7 +541,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                         <div>מחיר חבילה ממוצע לאדם</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-2xl font-extrabold">
-                            $
+                            €
                             {(
                               event.base_flight_price +
                               event.base_hotel_price +

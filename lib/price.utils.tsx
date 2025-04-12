@@ -33,16 +33,16 @@ export const formatPrice = (
   }
   if (formatted) {
     if (price > 0) {
-      return <span dir="ltr">+${ceilPrice.toLocaleString("en-US")}</span>;
+      return <span dir="ltr">+€{ceilPrice.toLocaleString("en-US")}</span>;
     }
     if (price < 0) {
       return (
-        <span dir="ltr">-${Math.abs(ceilPrice).toLocaleString("en-US")}</span>
+        <span dir="ltr">-€{Math.abs(ceilPrice).toLocaleString("en-US")}</span>
       );
     }
   } else {
     if (price > 0) {
-      return <span dir="ltr">+${ceilPrice}</span>;
+      return <span dir="ltr">+€{ceilPrice}</span>;
     }
     if (price < 0) {
       return (
@@ -53,7 +53,7 @@ export const formatPrice = (
             ...(options?.bold && { fontWeight: "bold" }),
           }}
         >
-          -${Math.abs(ceilPrice)}
+          -€{Math.abs(ceilPrice)}
         </span>
       );
     }

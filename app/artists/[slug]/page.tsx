@@ -125,7 +125,7 @@ export default async function ArtistPage({
                           מחיר חבילה ממוצע לאדם
                         </div>
                         <div className="text-2xl font-extrabold">
-                          $
+                          €
                           {(
                             event.base_flight_price +
                             event.base_hotel_price +

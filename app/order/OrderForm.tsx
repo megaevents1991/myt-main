@@ -215,7 +215,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                     {step > -1 && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto">
                         <span className="text-left lg:ml-2 font-bold tracking-wide">
-                          ${basePrice}
+                          €{basePrice}
                         </span>
                         <div className="flex items-center justify-end lg:ml-2">
                           <span className="text-right font-bold">

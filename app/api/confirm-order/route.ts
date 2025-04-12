@@ -306,7 +306,7 @@ const userEmail = (replacements: Record<string, string | number | undefined>) =>
                                         </tr>
                                         <tr>
                                             <td style="padding: 8px 0; color: #666666;">
-                                                <strong style="color: #05203c;">מחיר:</strong> $${replacements.price}
+                                                <strong style="color: #05203c;">מחיר:</strong> €${replacements.price}
                                             </td>
                                         </tr>
                                     </table>

@@ -86,7 +86,7 @@ export const EventTicketCard = ({
                   <span className="text-[20px]">כלול במחיר</span>
                 ) : (
                   <div className="text-2xl">
-                    ${Math.abs(priceToDisplay)}
+                    €{Math.abs(priceToDisplay)}
                     {priceToDisplay < 0 ? "-" : "+"}
                     {priceToDisplay < 0 ? (
                       <div className="text-[16px] leading-[22px]">
