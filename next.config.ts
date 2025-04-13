@@ -4,6 +4,7 @@ const nextConfig: import("next").NextConfig = {
     optimizePackageImports: ["@mantine/core", "@mantine/hooks"],
   },
   images: {
+    minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: "https",

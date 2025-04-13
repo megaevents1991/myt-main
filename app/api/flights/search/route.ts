@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       departureDate,
       returnDate,
       adults: adults || 1,
-      max: 200,
+      max: 250,
       nonStop,
       currencyCode,
     });
