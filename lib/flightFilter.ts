@@ -72,7 +72,7 @@ export const applyFiltersAndSorting = (
     if (options.luggage.length === 2) {
       //Return all options except those with backpack only
       matchesLuggage =
-        flight.outbound.checkBagsIncluded || flight.outbound.checkBagsIncluded;
+        flight.outbound.checkBagsIncluded || flight.outbound.cabinBagsIncluded;
     } else if (options.luggage.length === 0) {
       //Return only backpack options
       matchesLuggage =
