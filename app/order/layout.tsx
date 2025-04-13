@@ -1,7 +1,7 @@
 "use client";
 import { ReactNode, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
-import { Event, OrderTicket, Flight, OrderHotel } from "@/lib/app.types";
+import { Event, OrderTicket, Flight, OrderHotel, FlightSearchCriteria, HotelSearchCriteria } from "@/lib/app.types";
 import { useSearchParams } from "next/navigation";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
@@ -17,6 +17,10 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [step, setStep] = useState(1);
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
   const eventId = useSearchParams().get("eventId") as string;
+  const [selectedPlaneTicketsFilters, setSelectedPlaneTicketsFilters] =
+    useState<Partial<Record<FlightSearchCriteria["type"], FlightSearchCriteria["value"]>>>({});
+  const [selectedHotelFilters, setSelectedHotelFilters] =
+    useState<Partial<Record<HotelSearchCriteria["type"], HotelSearchCriteria["value"]>>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,6 +58,10 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
           setHotel,
           event,
           flight,
+          selectedPlaneTicketsFilters,
+          setSelectedPlaneTicketsFilters,
+          selectedHotelFilters,
+          setSelectedHotelFilters,
           hotel,
           numberOfEventTickets,
           setNumberOfEventTickets,

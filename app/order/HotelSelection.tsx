@@ -38,6 +38,7 @@ export const HotelSelection = () => {
     planeTickets,
     flight,
     event = {} as Event,
+    setSelectedHotelFilters,
   } = useContext(OrderContext);
   const [showFilters, setShowFilters] = useState(false);
   const [hotels, setHotels] = useState<Hotel[]>([]);
@@ -158,6 +159,10 @@ export const HotelSelection = () => {
 
   useEffect(() => {
     fetchHotels();
+  }, []);
+
+  useEffect(() => {
+    setSelectedHotelFilters({});
   }, []);
 
   useEffect(() => {
@@ -306,6 +311,11 @@ export const HotelSelection = () => {
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
+
+    setSelectedHotelFilters((prev) => ({
+      ...prev,
+      [type]: value,
+    }));
 
     switch (type) {
       case "freeCancellation": {

@@ -10,12 +10,13 @@ import { Event } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { ArrowLeftIcon } from "lucide-react";
 import { Dispatch, RefObject, SetStateAction } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
 import { isMobile } from "react-device-detect";
 import Fuse from "fuse.js";
 import { ContactUs } from "@/components/ui/ContactUs";
+import { trackEvent } from "@/lib/mixpanel";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -132,6 +133,16 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const mobileComboboxRef = useRef<HTMLInputElement>(null);
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const currentPath = usePathname()
+  const [lastUrl, setLastUrl] = useState<string | null>(currentPath);
+
+  useEffect(() => {
+    if (lastUrl === currentPath) return;
+    setLastUrl(currentPath);
+    trackEvent("pageView", {
+      prevUrl: lastUrl,
+    })
+  }, [lastUrl, currentPath]);
 
   const handleSearchModalOpen = () => {
     setShowSearchModal(true);
@@ -388,6 +399,13 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       eventLocation: event.location.name,
                     },
                   });
+                  trackEvent("eventSelected", {
+                    eventId: event.id,
+                    eventName: event.name,
+                    eventDate: event.date,
+                    eventLocation: event.location.name,
+                    eventPrice: event.usual_price,
+                  });
                   //statsig.logEvent("user_selected_event", event.id, {
                   //  item_name: event.name,
                   //});
@@ -493,6 +511,13 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   key={event.id}
                   onClick={() => {
                     orderStage("EVENT_SELECTED", { event: event.name });
+                    trackEvent("eventSelected", {
+                      eventId: event.id,
+                      eventName: event.name,
+                      eventDate: event.date,
+                      eventLocation: event.location.name,
+                      eventPrice: event.usual_price,
+                    });
                     //statsig.logEvent("user_selected_event", event.id, {
                     //  item_name: event.name,
                     //});
