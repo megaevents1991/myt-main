@@ -8,8 +8,6 @@ export async function getEvents(): Promise<{ events: Event[] }> {
     .is("is_deleted", null)
     .order("date", { ascending: true });
 
-  console.log({ events, error });
-
   if (error) return Promise.resolve({ events: [] as Event[] });
   return { events };
 }
