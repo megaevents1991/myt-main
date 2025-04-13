@@ -48,6 +48,13 @@ export async function POST(request: Request) {
       (desc: Record<string, unknown>) => desc.descriptionType === "PENALTIES"
     )?.text;
 
+    if (!data.included?.["detailed-fare-rules"]?.["1"]) {
+      console.warn("No detailed fare rules found in the response.", {
+        itineraries: flightOffer.itineraries,
+        data: data.included?.["detailed-fare-rules"],
+      });
+    }
+
     const bagCostString = (
       Object.values(data?.included["bags"] ?? {}) as BaggageItem[]
     ).find((item) => item.quantity === 1 && item.name === "CHECKED_BAG")?.price
