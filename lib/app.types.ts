@@ -49,6 +49,7 @@ export type FlightSegment = {
   stops: { iataCode: string; duration: number | null }[];
   duration: string;
   checkBagsIncluded: boolean;
+  cabinBagsIncluded: boolean;
   flightNumber?: string;
 };
 

@@ -109,10 +109,16 @@ export async function POST(request: Request) {
         ),
       }));
 
-      const fromCheckBagsIncluded = itineraries[0].segments.every((segment) => {
+      const fromCheckBagsIncluded = itineraries[0].segments.every((segment) =>
+        travelerPricings[0].fareDetailsBySegment.some(
+          (fare) =>
+            fare.segmentId === segment.id && fare.includedCheckedBags?.quantity
+        )
+      );
+      const fromCabinBagsIncluded = itineraries[0].segments.every((segment) => {
         return travelerPricings[0].fareDetailsBySegment.some((fare) => {
           return (
-            fare.segmentId === segment.id && fare.includedCheckedBags?.quantity
+            fare.segmentId === segment.id && fare.includedCabinBags?.quantity
           );
         });
       });
@@ -125,6 +131,14 @@ export async function POST(request: Request) {
         });
       });
 
+      const toCabinBagsIncluded = itineraries[1].segments.every((segment) => {
+        return travelerPricings[0].fareDetailsBySegment.some((fare) => {
+          return (
+            fare.segmentId === segment.id && fare.includedCabinBags?.quantity
+          );
+        });
+      });
+
       const outbound: FlightSegment = {
         stops: toStops,
         departureTime: toDeparture.departure.at,
@@ -133,6 +147,7 @@ export async function POST(request: Request) {
         arrivalTime: toArrival?.arrival.at || "0",
         duration: itineraries[0].duration,
         checkBagsIncluded: fromCheckBagsIncluded,
+        cabinBagsIncluded: fromCabinBagsIncluded,
         flightNumber:
           validatingAirlineCodes[0] + itineraries[0].segments[0].number,
       };
@@ -145,6 +160,7 @@ export async function POST(request: Request) {
         stops: fromStops,
         duration: itineraries[1].duration,
         checkBagsIncluded: toCheckBagsIncluded,
+        cabinBagsIncluded: toCabinBagsIncluded,
         flightNumber:
           validatingAirlineCodes[0] + itineraries[1].segments[0].number,
       };

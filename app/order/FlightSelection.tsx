@@ -55,7 +55,7 @@ export const FlightSelection = () => {
     numOfStops: ["0", "1"],
     maxPrice: "",
     airline: [],
-    luggage: ["withoutLuggage", "withLuggage"],
+    luggage: ["withCheckedBags", "withCabinBags"],
   });
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);

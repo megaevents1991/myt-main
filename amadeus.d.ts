@@ -46,12 +46,15 @@ declare module "amadeus" {
       };
       flightOffers: {
         pricing: {
-          post(params: {
-            data: {
-              type: "flight-offers-pricing";
-              flightOffers: FlightOffer[];
-            }
-          }, {include}): Promise<any>;
+          post(
+            params: {
+              data: {
+                type: "flight-offers-pricing";
+                flightOffers: FlightOffer[];
+              };
+            },
+            { include }
+          ): Promise<any>;
         };
       };
     };
@@ -138,6 +141,9 @@ type FlightOffer = {
       brandedFareLabel?: string;
       class: string;
       includedCheckedBags: {
+        quantity: number;
+      };
+      includedCabinBags: {
         quantity: number;
       };
       amenities?: Array<{

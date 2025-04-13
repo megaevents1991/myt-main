@@ -1,7 +1,7 @@
 import { Flight, FlightSegment } from "@/lib/app.types";
 import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
-import { Luggage, Plane } from "lucide-react";
+import { Plane } from "lucide-react";
 import { Skeleton, Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 import { useState } from "react";
@@ -130,6 +130,7 @@ type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
 const FlightCard = ({
   metadata,
   checkBagsIncluded,
+  cabinBagsIncluded,
   flightNumber,
   ...flightMeta
 }: FlightCardProps) => {
@@ -149,11 +150,27 @@ const FlightCard = ({
       <div className="w-[70%] lg:w-[50%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
-      <div className="w-[10%] lg:w-[20%] text-center display flex flex-col items-center gap-2">
+      <div className="w-[10%] lg:w-[20%] text-center display flex flex-col lg:items-start gap-2">
         {checkBagsIncluded && (
           <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
-            <Luggage size={isMobile ? "18px" : "24px"} />
+            <Image
+              alt="checked-bags-icon"
+              src="/icons/noun-luggage-3709467.svg"
+              width={isMobile ? 28 : 32}
+              height={isMobile ? 28 : 32}
+            />
             <span className="hidden text-[16px] lg:block">כולל מזוודה</span>
+          </div>
+        )}
+        {cabinBagsIncluded && (
+          <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
+            <Image
+              alt="cabin-bags-icon"
+              src="/icons/noun-trolley-bag-7146792.svg"
+              width={isMobile ? 28 : 32}
+              height={isMobile ? 28 : 32}
+            />
+            <span className="hidden text-[16px] lg:block">כולל טרולי</span>
           </div>
         )}
       </div>
