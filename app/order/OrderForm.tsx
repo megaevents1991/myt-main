@@ -9,10 +9,11 @@ import { Event, Flight } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
-import { formatPrice, getTotalPersons } from "@/lib/price.utils";
+import { formatPrice } from "@/lib/price.utils";
 import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
+import { useFetchAffiliate, useOrderVars } from "./hooks";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -33,6 +34,21 @@ export const OrderForm = ({ event }: { event: Event }) => {
     planeTickets,
     selectedPlaneTicketsFilters,
   } = useContext(OrderContext);
+
+
+  const { affDiscount, affId } = useFetchAffiliate();
+    const {
+      numberOfPersons,
+      finalPurchasePriceCalc,
+      recommendedPriceAllPax,
+      eventTicketPriceAddition,
+      flightPriceAddition,
+      numOfNights,
+      isCorrespondingToFlight,
+      airlineName,
+      hotelPriceAddition,
+      totalGuests,
+    } = useOrderVars();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -107,7 +123,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           ticketName: ticket.category,
           ticketDescription: ticket.description,
           numOfTickets: numberOfEventTickets,
-          ticketAdditionalPrice: ticketRelativePrice,
+          ticketAdditionalPrice: eventTicketPriceAddition,
         });
       } else if (prev === 2) {
         orderStage("FLIGHT_SELECTED", {
@@ -115,14 +131,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
         });
         if (flight) {
           trackEvent("flightSelected", {
-            selectedAirline: flight.airline,
-            numOfPeople: planeTickets.adults + planeTickets.children,
+            selectedAirline: airlineName,
+            numOfPeople: numberOfPersons,
             outboundDate: flight.outbound.departureTime,
             inboundDate: flight.inbound.departureTime,
             isDefaultDate: event.def_date_depart === flight.outbound.departureTime && event.def_date_return === flight.inbound.departureTime,
             flightStops: flight.outbound.stops.length,
             selectedFilters: selectedPlaneTicketsFilters,
-            flightAddionalPrice: flight.price - event.base_flight_price,
+            flightAddionalPrice: flightPriceAddition,
             includedCheckedBags: flight.bags,
           });
         }
@@ -152,12 +168,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
             hotelName: hotel.name,
             checkInDate: hotel.checkin,
             checkOutDate: hotel.checkout,
-            numOfNights: Math.ceil((new Date(hotel.checkout).getTime() - new Date(hotel.checkin).getTime()) / (1000 * 3600 * 24)),
+            numOfNights,
             numOfRooms: hotel.guests.length,
-            numOfPeople: getTotalPersons(hotel.guests),
-            isCorrespondingToFlight: new Date(hotel.checkin).getDate() === new Date(flight!.outbound.arrivalTime).getDate() && new Date(hotel.checkout).getDate() === new Date(flight!.inbound.departureTime).getDate(),
-            hotelInformation: {}, // @TODO: Add hotel information
-            hotelAddionalPrice: Number(hotel.price.replace(/[^\d\.]/, "")) - event.base_hotel_price,
+            numOfPeople: totalGuests,
+            isCorrespondingToFlight,
+            hotelInformation: hotel.hotelInformation,
+            hotelAddionalPrice: hotelPriceAddition,
           });
         }
       } else if (prev === 4) {
@@ -170,9 +186,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
           },
         });
         trackEvent("eventCheckout", {
-          usrFinalPrice: basePrice,
-          fullPacagePrice: basePrice,
-          // @TODO: add data
+          usrFinalPrice: finalPurchasePriceCalc(affDiscount),
+          fullPacagePrice: recommendedPriceAllPax,
+          paymentMethod: "", // @TODO: Add payment method
+          affiliateDiscount: affDiscount * numberOfEventTickets,
+          affiliateId: affId,
         });
       }
       return prev + 1;

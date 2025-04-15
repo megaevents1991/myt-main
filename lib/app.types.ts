@@ -61,6 +61,7 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
+  hotelInformation: {hotelName:string, roomName:string, stars:number, amenities: string[],  distance:number}
 };
 
 export type Order = {

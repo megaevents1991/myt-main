@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import type { OrderData } from "@/lib/app.types";
 import validator from "validator";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
-import { formatPrice, getTotalPersons } from "@/lib/price.utils";
+import { formatPrice } from "@/lib/price.utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -24,40 +24,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useFetchAffiliate, useOrderVars } from "./hooks";
 
 type Fields = "firstName" | "lastName" | "phone" | "email";
-
-const shortenAirlineName = (name: string | undefined) => {
-  if (!name) {
-    return "";
-  }
-
-  const words = name.split(/\s+/); // Split by spaces
-  let shortName = "";
-  let charCount = 0;
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-
-    // If it's the first word and longer than 6 chars, return it directly
-    if (i === 0 && word.length > 6) {
-      return word;
-    }
-
-    if (charCount + word.length > 6) {
-      if (word.length >= 10) {
-        return shortName.trim(); // Stop if the word is very long (10+ chars)
-      } else {
-        return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
-      }
-    }
-
-    shortName += (shortName ? " " : "") + word;
-    charCount += word.length;
-  }
-
-  return shortName.trim();
-};
 
 const validate: Record<Fields, (value: string) => string> = {
   firstName: (value: string) => {
@@ -95,27 +64,6 @@ const validate: Record<Fields, (value: string) => string> = {
   },
 };
 
-/**
- * Check if the price is outside the pack boundries
- * @param totalPrice - Total price for all passengers
- * @param basePrice - Base price per single passenger
- * @param paxs - Number of passengers
- * @returns boolean
- */
-const priceOutsidePackBoundries = (
-  totalPrice: number,
-  basePrice: number,
-  paxs: number
-) => {
-  const price = totalPrice / paxs;
-  return Math.abs(price - basePrice) >
-    Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4")
-    ? true
-    : false;
-};
-
-const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
-
 export default function OrderReview() {
   const {
     flight: selectedFlight,
@@ -126,8 +74,7 @@ export default function OrderReview() {
   } = useContext(OrderContext);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [affDiscount, setAffDiscount] = useState<number>(0);
-  const [affId, setAffId] = useState<string>("");
+  const { affId, affDiscount } = useFetchAffiliate();
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
   >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
@@ -149,32 +96,20 @@ export default function OrderReview() {
   );
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsCheckboxTouched, setTermsCheckboxTouched] = useState(false);
+  const {
+    numberOfPersons,
+    finalPurchasePriceCalc,
+    recommendedPriceAllPax,
+    packRecommendedPrice,
+    isNumberOfPersonsEqual,
+    eventTicketPriceAddition,
+    flightPriceAddition,
+    airlineName,
+    hotelPriceAddition,
+    totalGuests,
+  } = useOrderVars();
 
-  useEffect(() => {
-    let affiliateData;
-    try {
-      affiliateData = localStorage.getItem("mytData");
-    } catch (error) {
-      console.error("localStorage access error:", error);
-      // add statsig event
-    }
-    if (affiliateData) {
-      const parsedAffiliateData = JSON.parse(affiliateData);
-      if (parsedAffiliateData.affiliateId) {
-        fetch(
-          `/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.commission) {
-              setAffDiscount(data.commission);
-              setAffId(parsedAffiliateData.affiliateId);
-            }
-          })
-          .catch(console.error);
-      }
-    }
-  }, []);
+  const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
 
   const setErrors = () => {
     const allErrors = [...validationErrors];
@@ -241,10 +176,6 @@ export default function OrderReview() {
     [passengers, validationErrors]
   );
 
-  const airlineName = useMemo(
-    () => shortenAirlineName(selectedFlight?.metadata.name),
-    [selectedFlight?.metadata.name]
-  );
 
   if (!event || !selectedFlight || !selectedHotel) {
     return (
@@ -301,58 +232,6 @@ export default function OrderReview() {
     return await response.json();
   };
 
-  /* Calculate total guests */
-  const totalGuests = getTotalPersons(selectedHotel.guests);
-
-  /* Fetch lowest avaiable ticket price */
-  const minTicketPrice = Math.min(
-    ...event.tickets_and_rates.map((ticket) => ticket.price)
-  );
-
-  /* Fetch Pack recommended price */
-  const packRecommendedPrice = Math.ceil(
-    event.base_flight_price + event.base_hotel_price + minTicketPrice + maup
-  );
-
-  /* Main variables to calculate price additions */
-  const eventTicketPriceAddition = eventTicket.price - minTicketPrice;
-
-  const flightPriceAddition = priceOutsidePackBoundries(
-    selectedFlight.price,
-    event.base_flight_price,
-    selectedFlight.numOfTravelers
-  )
-    ? selectedFlight.price / selectedFlight.numOfTravelers -
-      event.base_flight_price
-    : 0;
-
-  const hotelPriceAddition = priceOutsidePackBoundries(
-    +selectedHotel.price,
-    event.base_hotel_price,
-    totalGuests
-  )
-    ? +selectedHotel.price / totalGuests - event.base_hotel_price
-    : 0;
-
-  /* Calculation of final price for the customer after discounts and such */
-  const finalPurchasePrice = Math.ceil(
-    (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
-      (flightPriceAddition + event.base_flight_price) *
-        selectedFlight.numOfTravelers +
-      (hotelPriceAddition + event.base_hotel_price) * totalGuests
-  );
-
-  const isNumberOfPersonsEqual =
-    totalGuests === numberOfEventTickets &&
-    totalGuests === selectedFlight.numOfTravelers;
-
-  const numberOfPersons =
-    selectedFlight.numOfTravelers > numberOfEventTickets
-      ? selectedFlight.numOfTravelers
-      : numberOfEventTickets;
-
-  const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTermsCheckboxTouched(true);
@@ -388,7 +267,7 @@ export default function OrderReview() {
       hotel_order_info: selectedHotel || {},
       user_shown_price: finalPurchasePrice,
       event_id: event?.id || 0,
-      aff_partner_tracking_code: affId,
+      aff_partner_tracking_code: affId || "",
     };
 
     try {
