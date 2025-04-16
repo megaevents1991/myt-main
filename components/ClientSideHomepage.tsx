@@ -107,7 +107,15 @@ const SearchCombobox = ({
           onBlur={() => combobox.closeDropdown()}
         />
       </Combobox.Target>
-      <Combobox.Dropdown>
+      <Combobox.Dropdown
+        styles={{
+          dropdown: {
+            maxHeight: "30vh",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+          },
+        }}
+      >
         <Combobox.Options>
           {options}
           <Combobox.Option
