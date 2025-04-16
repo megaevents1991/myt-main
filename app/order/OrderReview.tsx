@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
+import { trackEvent } from "@/lib/mixpanel";
 
 type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -176,7 +177,6 @@ export default function OrderReview() {
     [passengers, validationErrors]
   );
 
-
   if (!event || !selectedFlight || !selectedHotel) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
@@ -280,6 +280,14 @@ export default function OrderReview() {
           eventName: event.name,
           numOfTicket: numberOfEventTickets,
         },
+      });
+
+      trackEvent("eventCheckout", {
+        userFinalPrice: finalPurchasePrice,
+        fullPacagePrice: recommendedPriceAllPax,
+        paymentMethod: "", // @TODO: Add payment method
+        affiliateDiscount: affDiscount * numberOfEventTickets,
+        affiliateId: affId,
       });
 
       const confirmationUrl = new URL("/confirmation", window.location.origin);

@@ -35,20 +35,19 @@ export const OrderForm = ({ event }: { event: Event }) => {
     selectedPlaneTicketsFilters,
   } = useContext(OrderContext);
 
-
   const { affDiscount, affId } = useFetchAffiliate();
-    const {
-      numberOfPersons,
-      finalPurchasePriceCalc,
-      recommendedPriceAllPax,
-      eventTicketPriceAddition,
-      flightPriceAddition,
-      numOfNights,
-      isCorrespondingToFlight,
-      airlineName,
-      hotelPriceAddition,
-      totalGuests,
-    } = useOrderVars();
+  const {
+    numberOfPersons,
+    finalPurchasePriceCalc,
+    recommendedPriceAllPax,
+    eventTicketPriceAddition,
+    flightPriceAddition,
+    numOfNights,
+    isCorrespondingToFlight,
+    airlineName,
+    hotelPriceAddition,
+    totalGuests,
+  } = useOrderVars();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -135,7 +134,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
             numOfPeople: numberOfPersons,
             outboundDate: flight.outbound.departureTime,
             inboundDate: flight.inbound.departureTime,
-            isDefaultDate: event.def_date_depart === flight.outbound.departureTime && event.def_date_return === flight.inbound.departureTime,
+            isDefaultDates:
+              event.def_date_depart === flight.outbound.departureTime &&
+              event.def_date_return === flight.inbound.departureTime,
             flightStops: flight.outbound.stops.length,
             selectedFilters: selectedPlaneTicketsFilters,
             flightAddionalPrice: flightPriceAddition,

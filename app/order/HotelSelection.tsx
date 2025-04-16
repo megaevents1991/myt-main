@@ -263,14 +263,13 @@ export const HotelSelection = () => {
       distanceFromCenter: [0, maxDistance],
     });
 
-    
     const hotelInformation = {
-      hotelName: hotelsInfo[0].metadata.hotelName,
-      roomName: hotelsInfo[0].rooms[0].name,
-      stars: hotelsInfo[0].metadata.rating,
-      amenities: hotelsInfo[0].general.amenities,
-      distance: hotelsInfo[0].metadata.distanceFromCenter,
-    }
+      hotelName: hotelsInfo[0]?.metadata?.hotelName,
+      roomName: hotelsInfo[0]?.rooms[0]?.name,
+      stars: hotelsInfo[0]?.metadata?.rating,
+      amenities: hotelsInfo[0]?.general?.amenities,
+      distance: hotelsInfo[0]?.metadata?.distanceFromCenter,
+    };
 
     setBasePricePerPerson(basePricePerPerson);
     setRequestDebug(data.debug.request);
@@ -399,12 +398,12 @@ export const HotelSelection = () => {
     orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">
   ) => {
     const hotelInformation = {
-      hotelName: hotelsInfo[orderHotel.id].metadata.hotelName,
-      roomName: hotelsInfo[orderHotel.id].rooms[0].name,
-      stars: hotelsInfo[orderHotel.id].metadata.rating,
-      amenities: hotelsInfo[orderHotel.id].general.amenities,
-      distance: hotelsInfo[orderHotel.id].metadata.distanceFromCenter,
-    }
+      hotelName: hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
+      roomName: hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
+      stars: hotelsInfo[orderHotel?.id]?.metadata?.rating,
+      amenities: hotelsInfo[orderHotel?.id]?.general?.amenities,
+      distance: hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
+    };
     setHotel({
       ...orderHotel,
       hotelInformation,
