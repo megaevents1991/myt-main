@@ -115,7 +115,7 @@ const SearchCombobox = ({
             value="feedback"
             style={{ textAlign: "right", fontSize: "16px" }}
           >
-            לא מצאתם מה שחיפשתם? ספרו לנו
+            לא מצאתם מה ניסוי? ספרו לנו
           </Combobox.Option>
         </Combobox.Options>
       </Combobox.Dropdown>
