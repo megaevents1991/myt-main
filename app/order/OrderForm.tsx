@@ -137,7 +137,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
             isDefaultDates:
               event.def_date_depart === flight.outbound.departureTime &&
               event.def_date_return === flight.inbound.departureTime,
-            flightStops: flight.outbound.stops.length,
+            flightStops: flight.outbound.stops.length - 1,
             selectedFilters: selectedPlaneTicketsFilters,
             flightAddionalPrice: flightPriceAddition,
             includedCheckedBags: flight.bags,
