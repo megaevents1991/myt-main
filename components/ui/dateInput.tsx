@@ -1,7 +1,7 @@
 import React from "react";
 import { DatePickerInput } from "@mantine/dates";
 import { Calendar } from "lucide-react";
-import { Indicator } from "@mantine/core";
+// import { Indicator } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 import { useMediaQuery } from "@mantine/hooks";
 
@@ -11,16 +11,21 @@ export const DateRange = ({
   dateRange,
   setDateRange,
   eventDay,
+  onPopoverClose,
+  disabled,
 }: {
   dateRange: [Date | null, Date | null];
   setDateRange: (value: [Date | null, Date | null]) => void;
   eventDay: string;
+  onPopoverClose: () => void;
+  disabled: boolean;
 }) => {
   const matches = useMediaQuery("(min-width: 1024px)");
 
   const inputRef = React.useRef<HTMLButtonElement>(null);
   return (
     <DatePickerInput
+      disabled={disabled}
       ref={inputRef}
       className="w-full"
       size="md"
@@ -34,6 +39,10 @@ export const DateRange = ({
           />
         ) : undefined
       }
+      popoverProps={{
+        onClose: onPopoverClose,
+        keepMounted: true,
+      }}
       placeholder="Pick dates range"
       value={dateRange}
       valueFormat="DD/MM/YY"
@@ -56,16 +65,16 @@ export const DateRange = ({
           </div>
         );
 
-        return (
-          <Indicator
-            size={6}
-            color="red"
-            offset={-2}
-            disabled={day !== new Date(eventDay).toDateString()}
-          >
-            <div>{date.getDate()}</div>
-          </Indicator>
-        );
+        // return (
+        //   <Indicator
+        //     size={6}
+        //     color="red"
+        //     offset={-2}
+        //     disabled={day !== new Date(eventDay).toDateString()}
+        //   >
+        //     <div>{date.getDate()}</div>
+        //   </Indicator>
+        // );
       }}
       onChange={setDateRange}
       dropdownType={isMobile ? "modal" : "popover"}

@@ -21,6 +21,7 @@ import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import {
   Event,
+  Flight,
   HotelSearchCriteria,
   OrderHotel,
   SortOptions,
@@ -32,6 +33,31 @@ import { isMobile } from "react-device-detect";
 import dayjs from "dayjs";
 import { logger } from "@/lib/logger";
 
+const getDefaultDateRange = (event: Event, flight?: Flight): [Date, Date] => {
+  const arrivalTime = flight?.outbound?.arrivalTime
+    ? new Date(flight.outbound.arrivalTime)
+    : null;
+
+  let checkInDate = new Date(event.def_date_depart);
+
+  if (arrivalTime) {
+    const hours = arrivalTime.getHours();
+    if (hours < 8) {
+      // If arrival is before 8 AM, set check-in to previous day
+      checkInDate = new Date(arrivalTime);
+      checkInDate.setDate(checkInDate.getDate() - 1);
+    } else {
+      // If arrival is 8 AM or later, use the same day
+      checkInDate = new Date(arrivalTime);
+    }
+  }
+
+  return [
+    checkInDate,
+    new Date(flight?.inbound?.departureTime ?? event.def_date_return),
+  ];
+};
+
 export const HotelSelection = () => {
   const {
     setHotel,
@@ -42,30 +68,9 @@ export const HotelSelection = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState("");
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(() => {
-    const arrivalTime = flight?.outbound?.arrivalTime
-      ? new Date(flight.outbound.arrivalTime)
-      : null;
-
-    let checkInDate = new Date(event.def_date_depart);
-
-    if (arrivalTime) {
-      const hours = arrivalTime.getHours();
-      if (hours < 8) {
-        // If arrival is before 8 AM, set check-in to previous day
-        checkInDate = new Date(arrivalTime);
-        checkInDate.setDate(checkInDate.getDate() - 1);
-      } else {
-        // If arrival is 8 AM or later, use the same day
-        checkInDate = new Date(arrivalTime);
-      }
-    }
-
-    return [
-      checkInDate,
-      new Date(flight?.inbound?.departureTime ?? event.def_date_return),
-    ];
-  });
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
+    getDefaultDateRange(event, flight)
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [roomParams, setRoomParams] = useState<
     {
@@ -405,6 +410,16 @@ export const HotelSelection = () => {
     });
   };
 
+  const handleDatePopoverClose = () => {
+    if (!dateRange[0] || !dateRange[1]) {
+      const defaultDates = getDefaultDateRange(event, flight);
+      setDateRange(defaultDates);
+      return;
+    }
+
+    fetchHotels();
+  };
+
   return (
     <div className="space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
@@ -500,11 +515,14 @@ export const HotelSelection = () => {
 
               <div className="flex flex-row w-min items-center">
                 <DateRange
+                  disabled={isLoading}
+                  onPopoverClose={handleDatePopoverClose}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
                 />
                 <button
+                  disabled={isLoading}
                   onClick={() => fetchHotels()}
                   className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                 >
