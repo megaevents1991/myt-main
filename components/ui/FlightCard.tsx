@@ -1,7 +1,7 @@
 import { Flight, FlightSegment } from "@/lib/app.types";
 import { CardWrapper } from "./cardWrapper";
 import Image from "next/image";
-import { Luggage, Plane } from "lucide-react";
+import { Plane } from "lucide-react";
 import { Skeleton, Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
 import { useState } from "react";
@@ -130,9 +130,13 @@ type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
 const FlightCard = ({
   metadata,
   checkBagsIncluded,
+  cabinBagsIncluded,
   flightNumber,
   ...flightMeta
 }: FlightCardProps) => {
+  const [tooltipCabinOpened, setTooltipCabinOpened] = useState(false);
+  const [tooltipCheckedOpened, setTooltipCheckedOpened] = useState(false);
+
   return (
     <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
       <div className="w-[20%] lg:w-[20%] flex flex-col items-center">
@@ -149,11 +153,58 @@ const FlightCard = ({
       <div className="w-[70%] lg:w-[50%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
-      <div className="w-[10%] lg:w-[20%] text-center display flex flex-col items-center gap-2">
+      <div className="w-[10%] lg:w-[20%] pr-2 text-center display flex flex-col lg:items-start gap-2">
         {checkBagsIncluded && (
           <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
-            <Luggage size={isMobile ? "18px" : "24px"} />
-            <span className="hidden text-[16px] lg:block">כולל מזוודה</span>
+            <div
+              onTouchStart={() => setTooltipCheckedOpened((curr) => !curr)}
+              className="text-xs font-bold flex"
+            >
+              <Tooltip
+                label="כולל מזוודה"
+                position="top"
+                opened={true && (isMobile ? tooltipCheckedOpened : undefined)}
+              >
+                <div className="flex items-center">
+                  <Image
+                    alt="checked-bags-icon"
+                    src="/icons/noun-luggage-3710164.svg"
+                    width={isMobile ? 28 : 32}
+                    height={isMobile ? 28 : 32}
+                  />
+                  <span className="hidden text-[15px] mr-1 lg:block">
+                    כולל מזוודה
+                  </span>
+                </div>
+              </Tooltip>
+            </div>
+          </div>
+        )}
+        {cabinBagsIncluded && (
+          <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
+            <div
+              onTouchStart={() => setTooltipCabinOpened((curr) => !curr)}
+              className="text-xs font-bold flex"
+            >
+              <Tooltip
+                label="כולל טרולי"
+                position="top"
+                opened={true && (isMobile ? tooltipCabinOpened : undefined)}
+              >
+                <div className="flex items-center">
+                  <Image
+                    alt="cabin-bags-icon"
+                    src="/icons/noun-luggage-3710176.svg"
+                    width={isMobile ? 20 : 24}
+                    height={isMobile ? 20 : 24}
+                    className="lg:mr-1 lg:ml-1"
+                  />
+                  <span className="hidden text-[15px] mr-1 lg:block">
+                    כולל טרולי
+                  </span>
+                </div>
+              </Tooltip>
+            </div>
           </div>
         )}
       </div>

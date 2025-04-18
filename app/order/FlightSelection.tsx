@@ -56,7 +56,7 @@ export const FlightSelection = () => {
     numOfStops: ["0", "1"],
     maxPrice: "",
     airline: [],
-    luggage: ["withoutLuggage", "withLuggage"],
+    luggage: ["withCheckedBags", "withCabinBags"],
   });
   const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
@@ -305,6 +305,19 @@ export const FlightSelection = () => {
     );
   }
 
+  const handleDatePopoverClose = () => {
+    if (!dateRange[0] || !dateRange[1]) {
+      const defaultDates: [Date, Date] = [
+        new Date(event.def_date_depart),
+        new Date(event.def_date_return),
+      ];
+      setDateRange(defaultDates);
+      return;
+    }
+
+    fetchFlights();
+  };
+
   return (
     <div className="space-y-6">
       {!matches && (
@@ -361,12 +374,15 @@ export const FlightSelection = () => {
               )}
               <div className="flex flex-row w-min items-center">
                 <DateRange
+                  disabled={isLoading}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
+                  onPopoverClose={handleDatePopoverClose}
                 />
                 <button
                   onClick={handleFlightSearch}
+                  disabled={isLoading}
                   className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                 >
                   <Search size={24} />

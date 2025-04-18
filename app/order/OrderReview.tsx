@@ -722,6 +722,9 @@ export default function OrderReview() {
                 <h2 className="text-2xl font-bold mb-4 text-right">
                   פרטי הנוסעים
                 </h2>
+                <h3 className="text-lg mb-4 text-right">
+                  בבקשה הזינו את השמות באנגלית כפי שמופיעים בדרכון
+                </h3>
                 <div className="space-y-5" dir="rtl">
                   {passengers.map(
                     (

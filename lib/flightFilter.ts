@@ -67,12 +67,23 @@ export const applyFiltersAndSorting = (
 
     const matchesMaxPrice = flight.price <= options.maxPrice;
 
-    const matchesLuggage =
-      options.luggage.length === 2 ||
-      (options.luggage.includes("withoutLuggage") &&
-        !flight.outbound.checkBagsIncluded) ||
-      (options.luggage.includes("withLuggage") &&
-        flight.outbound.checkBagsIncluded);
+    let matchesLuggage = false;
+
+    if (options.luggage.length === 2) {
+      //Return all options except those with backpack only
+      matchesLuggage =
+        flight.outbound.checkBagsIncluded || flight.outbound.cabinBagsIncluded;
+    } else if (options.luggage.length === 0) {
+      //Return only backpack options
+      matchesLuggage =
+        !flight.outbound.checkBagsIncluded &&
+        !flight.outbound.cabinBagsIncluded;
+    } else if (options.luggage.includes("withCheckedBags")) {
+      matchesLuggage = flight.outbound.checkBagsIncluded;
+    } else if (options.luggage.includes("withCabinBags")) {
+      matchesLuggage =
+        flight.outbound.cabinBagsIncluded && !flight.outbound.checkBagsIncluded;
+    }
 
     return (
       matchesAirline &&

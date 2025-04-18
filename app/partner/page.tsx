@@ -17,12 +17,24 @@ export default function PartnerDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [tracking, setTracking] = useState([]);
-  const [stats, setStats] = useState({
+  const [stats, setStatsAT] = useState({
     visits: 0,
     ticketsSelected: 0,
     flightsSelected: 0,
     hotelsSelected: 0,
     confirmed: 0,
+    paid: 0,
+    totalRevenue: 0,
+    commission: 0,
+  });
+
+  const [statsTM, setStatsTM] = useState({
+    visits: 0,
+    ticketsSelected: 0,
+    flightsSelected: 0,
+    hotelsSelected: 0,
+    confirmed: 0,
+    paid: 0,
     totalRevenue: 0,
     commission: 0,
   });
@@ -43,7 +55,8 @@ export default function PartnerDashboard() {
       );
       const data = await res.json();
       setTracking(data.trackingData);
-      setStats(data.stats);
+      setStatsTM(data.stats?.thisMonth);
+      setStatsAT(data.stats?.allTime);
     } catch (error) {
       console.error("Failed to fetch tracking data:", error);
     } finally {
@@ -58,21 +71,52 @@ export default function PartnerDashboard() {
       <h1 className="text-2xl font-bold mb-6">
         Hello {affiliateId}!, Welcome to your Partner Dashboard
       </h1>
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold">Overview Stats</h2>
+
+      <div>
+        <h2 className="text-xl font-semibold col-span-4">
+          {new Date().toLocaleString("default", { month: "long" })}{" "}
+          {new Date().getFullYear()} Statistics
+        </h2>
         <p className="text-gray-600">
-          Quick summary of your partnership performance
+          Quick summary of this month partnership performance
         </p>
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h3 className="font-medium">Total Unique Visitors</h3>
+            <p className="text-2xl">{statsTM?.visits}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h3 className="font-medium">Requested Bookings (num of tickets)</h3>
+            <p className="text-2xl">{statsTM?.confirmed}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h3 className="font-medium">Paid Bookings (num of tickets)</h3>
+            <p className="text-2xl">{statsTM?.paid}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <h3 className="font-medium">
+              Total Commission (by ${statsTM.commission})
+            </h3>
+            <p className="text-2xl">${statsTM?.totalRevenue}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <h2 className="text-xl font-semibold col-span-4">
+          Overall Statistics, since we joined forces (including this month)
+        </h2>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="font-medium">Total Unique Visitors</h3>
           <p className="text-2xl">{stats?.visits}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="font-medium">Confirmed Bookings (num of tickets)</h3>
+          <h3 className="font-medium">Requested Bookings (num of tickets)</h3>
           <p className="text-2xl">{stats?.confirmed}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="font-medium">Paid Bookings (num of tickets)</h3>
+          <p className="text-2xl">{stats?.paid}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="font-medium">
