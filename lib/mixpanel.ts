@@ -9,6 +9,7 @@ export const initMixpanel = () => {
   mixpanel.init(MIXPANEL_TOKEN, {
     debug: process.env.NODE_ENV !== "production",
     persistence: "localStorage",
+    api_host: "https://mixpanel-tracking-proxy-lu3c56xu6a-oe.a.run.app/",
     track_pageview: true,
     autotrack: true,
     track_links_timeout: 3000,
