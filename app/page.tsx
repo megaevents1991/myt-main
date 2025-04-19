@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
 
-// Server component
+// Server comp
 async function getEvents() {
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/api/events`,

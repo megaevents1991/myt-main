@@ -8,6 +8,7 @@ export const initMixpanel = () => {
 
   mixpanel.init(MIXPANEL_TOKEN, {
     debug: process.env.NODE_ENV !== "production",
+    persistence: "localStorage",
     track_pageview: true,
     autotrack: true,
     track_links_timeout: 3000,

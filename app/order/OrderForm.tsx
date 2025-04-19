@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/price.utils";
 import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
+import { trackEvent } from "@/lib/mixpanel";
+import { useFetchAffiliate, useOrderVars } from "./hooks";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -30,7 +32,24 @@ export const OrderForm = ({ event }: { event: Event }) => {
     eventTicket,
     numberOfEventTickets,
     planeTickets,
+    selectedPlaneTicketsFilters,
+    selectedHotelFilters,
+    paymentMethod,
   } = useContext(OrderContext);
+
+  const { affDiscount, affId } = useFetchAffiliate();
+  const {
+    numberOfPersons,
+    finalPurchasePriceCalc,
+    recommendedPriceAllPax,
+    eventTicketPriceAddition,
+    flightPriceAddition,
+    numOfNights,
+    isCorrespondingToFlight,
+    airlineName,
+    hotelPriceAddition,
+    totalGuests,
+  } = useOrderVars();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -98,10 +117,37 @@ export const OrderForm = ({ event }: { event: Event }) => {
             numOfTicket: numberOfEventTickets,
           },
         });
+        const ticket = event.tickets_and_rates.find(
+          (ticket) => ticket.id === eventTicket.id
+        )!;
+        trackEvent("ticketSelected", {
+          ticketName: ticket.category,
+          ticketDescription: ticket.description,
+          numOfTickets: numberOfEventTickets,
+          addionalPricePerTicket: eventTicketPriceAddition,
+        });
       } else if (prev === 2) {
         orderStage("FLIGHT_SELECTED", {
           data: { flight: flight?.id },
         });
+        if (flight) {
+          trackEvent("flightSelected", {
+            selectedAirline: airlineName,
+            numOfPeople: numberOfPersons,
+            outboundDate: flight.outbound.departureTime,
+            inboundDate: flight.inbound.departureTime,
+            isDefaultDates:
+              new Date(event.def_date_depart).toDateString() ===
+                new Date(flight.outbound.departureTime).toDateString() &&
+              new Date(event.def_date_return).toDateString() ===
+                new Date(flight.inbound.departureTime).toDateString(),
+            flightStops: flight.outbound.stops.length - 1,
+            includedCheckedBags: flight.outbound.checkBagsIncluded,
+            includedCabinBags: flight.outbound.cabinBagsIncluded,
+            selectedFilters: selectedPlaneTicketsFilters,
+            flightAddionalPrice: flightPriceAddition,
+          });
+        }
       } else if (prev === 3) {
         fetch(`/api/flights/pricing`, {
           method: "POST",
@@ -122,6 +168,21 @@ export const OrderForm = ({ event }: { event: Event }) => {
         orderStage("HOTEL_SELECTED", {
           data: { hotel: hotel?.id },
         });
+        if (hotel) {
+          trackEvent("hotelSelected", {
+            hotelId: hotel.id,
+            hotelName: hotel.name,
+            checkInDate: hotel.checkin,
+            checkOutDate: hotel.checkout,
+            numOfNights,
+            numOfRooms: hotel.guests.length,
+            numOfPeople: totalGuests,
+            isCorrespondingToFlight,
+            hotelInformation: hotel.hotelInformation,
+            hotelAddionalPrice: hotelPriceAddition,
+            selectedFilters: selectedHotelFilters,
+          });
+        }
       } else if (prev === 4) {
         orderStage("CONFIRMED", {
           // TO DO: NOT WORKING at the MOMENT - Check with Yakov
@@ -130,6 +191,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
             eventName: event.name,
             numOfTicket: numberOfEventTickets,
           },
+        });
+        trackEvent("eventCheckout", {
+          usrFinalPrice: finalPurchasePriceCalc(affDiscount),
+          fullPacagePrice: recommendedPriceAllPax,
+          paymentMethod,
+          affiliateDiscount: affDiscount * numberOfEventTickets,
+          affiliateId: affId,
         });
       }
       return prev + 1;

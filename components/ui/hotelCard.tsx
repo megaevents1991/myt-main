@@ -50,8 +50,16 @@ export const HotelCard = ({
       setSelectedRoomInfo(hotelInfo?.rooms[roomName]);
 
       if (isSelected) {
+        const hotelInformation = {
+          hotelName: hotelInfo.metadata.hotelName,
+          roomName,
+          stars: hotelInfo.metadata.rating,
+          amenities: hotelInfo.general.amenities,
+          distance: Math.ceil(hotelInfo.metadata.distanceFromCenter),
+        }
         handleSelectedRate({
           rate: room,
+          hotelInformation,
           address: hotelInfo.metadata.address,
           name: hotelInfo.metadata.hotelName,
           id: hotelInfo.metadata.id,

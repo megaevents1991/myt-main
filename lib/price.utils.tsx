@@ -4,7 +4,7 @@ import { Event } from "./app.types";
 export const getTotalPersons = (
   roomParams: { adults: number; children: number[] }[]
 ) => {
-  return roomParams.reduce(
+  return roomParams?.reduce(
     (ppl, room) => ppl + room.children.length + room.adults,
     0
   );

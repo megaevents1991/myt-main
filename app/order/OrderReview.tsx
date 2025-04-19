@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import type { OrderData } from "@/lib/app.types";
 import validator from "validator";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
-import { formatPrice, getTotalPersons } from "@/lib/price.utils";
+import { formatPrice } from "@/lib/price.utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -24,40 +24,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useFetchAffiliate, useOrderVars } from "./hooks";
+import { trackEvent } from "@/lib/mixpanel";
+import Image from "next/image";
 
 type Fields = "firstName" | "lastName" | "phone" | "email";
-
-const shortenAirlineName = (name: string | undefined) => {
-  if (!name) {
-    return "";
-  }
-
-  const words = name.split(/\s+/); // Split by spaces
-  let shortName = "";
-  let charCount = 0;
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-
-    // If it's the first word and longer than 6 chars, return it directly
-    if (i === 0 && word.length > 6) {
-      return word;
-    }
-
-    if (charCount + word.length > 6) {
-      if (word.length >= 10) {
-        return shortName.trim(); // Stop if the word is very long (10+ chars)
-      } else {
-        return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
-      }
-    }
-
-    shortName += (shortName ? " " : "") + word;
-    charCount += word.length;
-  }
-
-  return shortName.trim();
-};
 
 const validate: Record<Fields, (value: string) => string> = {
   firstName: (value: string) => {
@@ -95,39 +66,18 @@ const validate: Record<Fields, (value: string) => string> = {
   },
 };
 
-/**
- * Check if the price is outside the pack boundries
- * @param totalPrice - Total price for all passengers
- * @param basePrice - Base price per single passenger
- * @param paxs - Number of passengers
- * @returns boolean
- */
-const priceOutsidePackBoundries = (
-  totalPrice: number,
-  basePrice: number,
-  paxs: number
-) => {
-  const price = totalPrice / paxs;
-  return Math.abs(price - basePrice) >
-    Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4")
-    ? true
-    : false;
-};
-
-const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
-
 export default function OrderReview() {
   const {
     flight: selectedFlight,
     hotel: selectedHotel,
     eventTicket,
     event,
+    setPaymentMethod,
     numberOfEventTickets,
   } = useContext(OrderContext);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [affDiscount, setAffDiscount] = useState<number>(0);
-  const [affId, setAffId] = useState<string>("");
+  const { affId, affDiscount } = useFetchAffiliate();
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
   >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
@@ -149,32 +99,20 @@ export default function OrderReview() {
   );
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsCheckboxTouched, setTermsCheckboxTouched] = useState(false);
+  const {
+    numberOfPersons,
+    finalPurchasePriceCalc,
+    recommendedPriceAllPax,
+    packRecommendedPrice,
+    isNumberOfPersonsEqual,
+    eventTicketPriceAddition,
+    flightPriceAddition,
+    airlineName,
+    hotelPriceAddition,
+    totalGuests,
+  } = useOrderVars();
 
-  useEffect(() => {
-    let affiliateData;
-    try {
-      affiliateData = localStorage.getItem("mytData");
-    } catch (error) {
-      console.error("localStorage access error:", error);
-      // add statsig event
-    }
-    if (affiliateData) {
-      const parsedAffiliateData = JSON.parse(affiliateData);
-      if (parsedAffiliateData.affiliateId) {
-        fetch(
-          `/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.commission) {
-              setAffDiscount(data.commission);
-              setAffId(parsedAffiliateData.affiliateId);
-            }
-          })
-          .catch(console.error);
-      }
-    }
-  }, []);
+  const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
 
   const setErrors = () => {
     const allErrors = [...validationErrors];
@@ -241,11 +179,6 @@ export default function OrderReview() {
     [passengers, validationErrors]
   );
 
-  const airlineName = useMemo(
-    () => shortenAirlineName(selectedFlight?.metadata.name),
-    [selectedFlight?.metadata.name]
-  );
-
   if (!event || !selectedFlight || !selectedHotel) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
@@ -301,58 +234,6 @@ export default function OrderReview() {
     return await response.json();
   };
 
-  /* Calculate total guests */
-  const totalGuests = getTotalPersons(selectedHotel.guests);
-
-  /* Fetch lowest avaiable ticket price */
-  const minTicketPrice = Math.min(
-    ...event.tickets_and_rates.map((ticket) => ticket.price)
-  );
-
-  /* Fetch Pack recommended price */
-  const packRecommendedPrice = Math.ceil(
-    event.base_flight_price + event.base_hotel_price + minTicketPrice + maup
-  );
-
-  /* Main variables to calculate price additions */
-  const eventTicketPriceAddition = eventTicket.price - minTicketPrice;
-
-  const flightPriceAddition = priceOutsidePackBoundries(
-    selectedFlight.price,
-    event.base_flight_price,
-    selectedFlight.numOfTravelers
-  )
-    ? selectedFlight.price / selectedFlight.numOfTravelers -
-      event.base_flight_price
-    : 0;
-
-  const hotelPriceAddition = priceOutsidePackBoundries(
-    +selectedHotel.price,
-    event.base_hotel_price,
-    totalGuests
-  )
-    ? +selectedHotel.price / totalGuests - event.base_hotel_price
-    : 0;
-
-  /* Calculation of final price for the customer after discounts and such */
-  const finalPurchasePrice = Math.ceil(
-    (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
-      (flightPriceAddition + event.base_flight_price) *
-        selectedFlight.numOfTravelers +
-      (hotelPriceAddition + event.base_hotel_price) * totalGuests
-  );
-
-  const isNumberOfPersonsEqual =
-    totalGuests === numberOfEventTickets &&
-    totalGuests === selectedFlight.numOfTravelers;
-
-  const numberOfPersons =
-    selectedFlight.numOfTravelers > numberOfEventTickets
-      ? selectedFlight.numOfTravelers
-      : numberOfEventTickets;
-
-  const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTermsCheckboxTouched(true);
@@ -388,7 +269,7 @@ export default function OrderReview() {
       hotel_order_info: selectedHotel || {},
       user_shown_price: finalPurchasePrice,
       event_id: event?.id || 0,
-      aff_partner_tracking_code: affId,
+      aff_partner_tracking_code: affId || "",
     };
 
     try {
@@ -401,6 +282,14 @@ export default function OrderReview() {
           eventName: event.name,
           numOfTicket: numberOfEventTickets,
         },
+      });
+
+      trackEvent("eventCheckout", {
+        userFinalPrice: finalPurchasePrice,
+        fullPacagePrice: recommendedPriceAllPax,
+        paymentMethod: "", // @TODO: Add payment method
+        affiliateDiscount: affDiscount * numberOfEventTickets,
+        affiliateId: affId,
       });
 
       const confirmationUrl = new URL("/confirmation", window.location.origin);
@@ -721,7 +610,10 @@ export default function OrderReview() {
                   </Label>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <button className="text-sm mr-1 text-blue-600 hover:underline">
+                      <button
+                        className="text-sm mr-1 text-blue-600 hover:underline"
+                        name="terms"
+                      >
                         התנאים וההגבלות
                       </button>
                     </DialogTrigger>
@@ -983,6 +875,54 @@ export default function OrderReview() {
                 </div>
               </div>
             </Card>
+            <Card
+              className="bg-white shadow-lg overflow-hidden order-4 md:order-3"
+              dir="rtl"
+            >
+              {(() => {
+                const items = [
+                  {
+                    title: "100% אחריות",
+                    description:
+                      "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל-30 שנות ניסיון ואלפי לקוחות מרוצים.",
+                  },
+                  {
+                    title: "כרטיסים בטוחים",
+                    description:
+                      "כל כרטיס נרכש מספק רשמי, כך שהכרטיסים שלכם 100% בטוחים.",
+                  },
+                  {
+                    title: "שירות אישי ואנושי",
+                    description:
+                      "הצוות שלנו זמין עבורכם מרחוק הודעת וואטסאפ, לפני, בזמן ואחרי החופשה.",
+                  },
+                ];
+
+                return (
+                  <div className="bg-white p-4 md:p-8 space-y-6 mx-auto text-right">
+                    {items.map((item, idx) => (
+                      <div key={idx} className="flex">
+                        <Image
+                          src="/icons/checkmark-wavey-circle.svg"
+                          alt="check"
+                          width={24}
+                          height={24}
+                          className="w-7 h-7 mt-1"
+                        />
+                        <div className="flex-1 pr-4">
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            {item.title}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </Card>
             <div
               className="flex md:hidden flex-col mr-2 mt-4 mb-2 text-right"
               dir="rtl"
@@ -1004,7 +944,10 @@ export default function OrderReview() {
                   </Label>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <button className="text-sm mr-1 text-blue-600 hover:underline">
+                      <button
+                        className="text-sm mr-1 text-blue-600 hover:underline"
+                        name="terms"
+                      >
                         התנאים וההגבלות
                       </button>
                     </DialogTrigger>
@@ -1099,100 +1042,16 @@ export default function OrderReview() {
                 setTouched(touched);
                 // Check if form is valid after validation
                 if (isFormValid && !isSubmitting) {
-                  handleSubmit(e);
+                  setPaymentMethod("phone_order");
+                  setTimeout(() => {
+                    handleSubmit(e);
+                  });
                 }
               }}
               className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden"
             >
               שלח בקשה לנציג{" "}
             </Button>
-            <Card
-              className="bg-white shadow-lg overflow-hidden order-4 md:order-3"
-              dir="rtl"
-            >
-              <div className="p-6">
-                <div className="space-y-3 text-[13px] text-[#444]">
-                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-                    <div className="flex items-start">
-                      <svg
-                        className="w-4 h-4 text-[#277e89] flex-shrink-0 mt-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-[#05203c] inline-block">
-                        100% אחריות מבית מגה תיירות
-                      </h3>
-                      <div className="mr-1">
-                        החוויה שלכם חשובה לנו - התקשרנו עם ספקים רשמיים ואמינים
-                        כדי שנוכל להתחייב שהכרטיסים שלכם 100% בטוחים, בהתחייבות.
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-                    <div className="flex items-start">
-                      <svg
-                        className="w-4 h-4 text-[#277e89] flex-shrink-0 mt-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-[#05203c] inline-block">
-                        מקצועיות ומוניטין
-                      </h3>
-                      <div className="mr-1">
-                        אנחנו בתחום אירועי הספורט והמוזיקה כבר עשור. דאגנו לוודא
-                        עם האיצטדיונים כל מה שצריך כדי שלכם תהיה חוויה מיטבית
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-                    <div className="flex items-start">
-                      <svg
-                        className="w-4 h-4 text-[#277e89] flex-shrink-0 mt-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-[#05203c] inline-block">
-                        ליווי אישי ומענה אנושי
-                      </h3>
-                      <div className="mr-1">
-                        אנחנו נהיה זמינים עבורכם בווטסאפ טרם האירוע לכל מקרה או
-                        שאלה.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
       </main>

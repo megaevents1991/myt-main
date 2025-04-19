@@ -43,6 +43,7 @@ export const FlightSelection = () => {
     numberOfEventTickets,
     setPlaneTickets,
     planeTickets,
+    setSelectedPlaneTicketsFilters,
   } = useContext(OrderContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
@@ -94,6 +95,10 @@ export const FlightSelection = () => {
   useEffect(() => {
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
     fetchFlights({ adults: numberOfEventTickets });
+  }, []);
+
+  useEffect(() => {
+    setSelectedPlaneTicketsFilters({});
   }, []);
 
   useEffect(() => {
@@ -218,6 +223,10 @@ export const FlightSelection = () => {
     value,
     type,
   }: FlightSearchCriteria) => {
+    setSelectedPlaneTicketsFilters((prev) => ({
+      ...prev,
+      [type]: value,
+    }));
     switch (type) {
       case "arrivalRanges":
         setArrivalRanges(value);

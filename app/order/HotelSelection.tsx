@@ -64,6 +64,7 @@ export const HotelSelection = () => {
     planeTickets,
     flight,
     event = {} as Event,
+    setSelectedHotelFilters,
   } = useContext(OrderContext);
   const [showFilters, setShowFilters] = useState(false);
   const [hotels, setHotels] = useState<Hotel[]>([]);
@@ -166,6 +167,10 @@ export const HotelSelection = () => {
   }, []);
 
   useEffect(() => {
+    setSelectedHotelFilters({});
+  }, []);
+
+  useEffect(() => {
     if (!isMobile) return;
     const timer = setTimeout(() => {
       window.scrollTo({
@@ -263,6 +268,14 @@ export const HotelSelection = () => {
       distanceFromCenter: [0, maxDistance],
     });
 
+    const hotelInformation = {
+      hotelName: hotelsInfo[0]?.metadata?.hotelName,
+      roomName: hotelsInfo[0]?.rooms[0]?.name,
+      stars: hotelsInfo[0]?.metadata?.rating,
+      amenities: hotelsInfo[0]?.general?.amenities,
+      distance: hotelsInfo[0]?.metadata?.distanceFromCenter,
+    };
+
     setBasePricePerPerson(basePricePerPerson);
     setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
@@ -280,6 +293,7 @@ export const HotelSelection = () => {
       guests: data.debug.request.guests,
       id: hotelsToSet[0].id || "",
       name: hotelsInfo[hotelsToSet[0].id].metadata.hotelName,
+      hotelInformation,
       price:
         hotelsToSet[0].rates[0].payment_options.payment_types[0].show_amount,
       rate: hotelsToSet[0].rates[0],
@@ -311,6 +325,11 @@ export const HotelSelection = () => {
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
+
+    setSelectedHotelFilters((prev) => ({
+      ...prev,
+      [type]: value,
+    }));
 
     switch (type) {
       case "freeCancellation": {
@@ -383,8 +402,16 @@ export const HotelSelection = () => {
   const handleSelectedRate = (
     orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">
   ) => {
+    const hotelInformation = {
+      hotelName: hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
+      roomName: hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
+      stars: hotelsInfo[orderHotel?.id]?.metadata?.rating,
+      amenities: hotelsInfo[orderHotel?.id]?.general?.amenities,
+      distance: hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
+    };
     setHotel({
       ...orderHotel,
+      hotelInformation,
       guests: requestDebug.guests,
       checkin: requestDebug.checkin,
       checkout: requestDebug.checkout,

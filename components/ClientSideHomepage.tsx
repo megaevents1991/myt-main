@@ -16,6 +16,7 @@ import { MYT } from "./ui/myt";
 import { isMobile } from "react-device-detect";
 import Fuse from "fuse.js";
 import { ContactUs } from "@/components/ui/ContactUs";
+import { trackEvent } from "@/lib/mixpanel";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -122,7 +123,7 @@ const SearchCombobox = ({
             value="feedback"
             style={{ textAlign: "right", fontSize: "16px" }}
           >
-            לא מצאתם מה שחיפשתם? ספרו לנו
+            לא מצאתם מה ניסוי? ספרו לנו
           </Combobox.Option>
         </Combobox.Options>
       </Combobox.Dropdown>
@@ -396,9 +397,19 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       eventLocation: event.location.name,
                     },
                   });
-                  //statsig.logEvent("user_selected_event", event.id, {
-                  //  item_name: event.name,
-                  //});
+                  trackEvent("eventSelected", {
+                    eventId: event.id,
+                    eventName: event.name,
+                    eventDate: event.date,
+                    eventLocation: event.location.name,
+                    eventPrice:
+                      event.base_flight_price +
+                      event.base_hotel_price +
+                      Math.min(
+                        ...event.tickets_and_rates.map((ticket) => ticket.price)
+                      ) +
+                      Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
+                  });
                 }}
               >
                 <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
@@ -501,9 +512,21 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                   key={event.id}
                   onClick={() => {
                     orderStage("EVENT_SELECTED", { event: event.name });
-                    //statsig.logEvent("user_selected_event", event.id, {
-                    //  item_name: event.name,
-                    //});
+                    trackEvent("eventSelected", {
+                      eventId: event.id,
+                      eventName: event.name,
+                      eventDate: event.date,
+                      eventLocation: event.location.name,
+                      eventPrice:
+                        event.base_flight_price +
+                        event.base_hotel_price +
+                        Math.min(
+                          ...event.tickets_and_rates.map(
+                            (ticket) => ticket.price
+                          )
+                        ) +
+                        Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
+                    });
                   }}
                 >
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
