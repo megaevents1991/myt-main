@@ -17,13 +17,14 @@ const MixpanelProvider = () => {
       if (target.tagName === "BUTTON") {
         mixpanel.track("buttonClicked", {
           buttonName: target.innerText,
+          buttonTag: target.getAttribute("name") || "",
         });
       }
-    }
+    };
     document.addEventListener("click", handleClick);
     return () => {
       document.removeEventListener("click", handleClick);
-    }
+    };
   }, []);
 
   return null;
