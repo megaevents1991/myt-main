@@ -94,7 +94,7 @@ export default async function ArtistPage({
               >
                 <EventButton event={event}>
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                    <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
+                    <div className="relative group overflow-hidden rounded-r-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
                       <Image
                         src={event.card_image_url}
                         alt={name}
@@ -113,12 +113,8 @@ export default async function ArtistPage({
                           ? dayjs(event.date).format("DD/MM/YYYY")
                           : "תאריך יפורסם בקרוב"}
                       </div>
-                      <div className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center">
-                        <span>{event.location.name}</span>
-                        <span className="sm:inline hidden mx-2">|</span>
-                        <span className="w-full sm:w-auto whitespace-nowrap">
-                          {event.name}
-                        </span>
+                      <div className="py-1 px-2 bg-secondary text-white flex flex-wrap text-lg justify-center items-center">
+                        {event.location.name}
                       </div>
                       <div className="p-2 text-right flex flex-col flex-grow">
                         <div className="text-sm sm:text-base">

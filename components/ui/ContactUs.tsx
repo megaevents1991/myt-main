@@ -28,7 +28,7 @@ export const ContactUs = () => {
         >
           <Image
             className="bg-[#20B038] rounded-md p-[4px]"
-            alt="amenity icon"
+            alt="whatsapp icon"
             src={whatsappIcon}
             width={26}
             height={26}
