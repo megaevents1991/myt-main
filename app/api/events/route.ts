@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { getEvents } from "../eventsData";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { events } = await getEvents();
+    // Extract the 'id' parameter from the request URL, if present
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+    
+    const { events } = await getEvents(id ? parseInt(id) : undefined);
 
     if (!events.length) throw "failed to fetch events";
 

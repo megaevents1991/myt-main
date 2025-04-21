@@ -1,7 +1,6 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-// import { useSearchParams } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
@@ -11,8 +10,6 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { isMobile } from "react-device-detect";
 
 export const TicketSelection = () => {
-  //const eventId = useSearchParams().get("eventId") as string;
-  //const event = events.find((e) => e.id === eventId);
   const { setEventTicket, event } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState(Object);

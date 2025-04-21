@@ -1,4 +1,5 @@
 "use client";
+
 import { ReactNode, useEffect, useState } from "react";
 import { OrderContext } from "../app.context";
 import {
@@ -38,7 +39,12 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/events"); // TO DO: Why is it also in page?
+        const id = eventId || "";
+        if (!id) {
+          console.error("Event ID is missing");
+          return;
+        }
+        const response = await fetch(`/api/events?id=${id}`);
         const { events }: { events: Event[] } = await response.json();
         setEvent(() => events.find((e) => e.id === +eventId));
       } catch (error) {

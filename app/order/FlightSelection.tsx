@@ -1,3 +1,5 @@
+"use client";
+
 import { DateRange } from "@/components/ui/dateInput";
 import { CustomSlider } from "@/components/ui/CustomSlider";
 import {
