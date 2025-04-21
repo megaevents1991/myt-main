@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Mail } from "lucide-react";
+import whatsappIcon from "@/public/icons/Digital_Glyph_White.svg";
 
 const PHONE_NUMBER = "+972542002722";
 const text = "דברו איתנו";
@@ -28,7 +29,7 @@ export const ContactUs = () => {
           <Image
             className="bg-[#20B038] rounded-md p-[4px]"
             alt="amenity icon"
-            src="Digital_Glyph_White.svg"
+            src={whatsappIcon}
             width={26}
             height={26}
           />
