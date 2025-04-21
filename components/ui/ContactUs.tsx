@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Mail } from "lucide-react";
-import whatsappIcon from "@/public/icons/Digital_Glyph_White.svg";
+import whatsappIcon from "@/public/Digital_Glyph_White.svg";
 
 const PHONE_NUMBER = "+972542002722";
 const text = "דברו איתנו";
