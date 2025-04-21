@@ -157,7 +157,9 @@ export const HotelSelection = () => {
   const [freeCancellation, setFreeCancellation] = useState<
     ("withFreeCancellation" | "withoutFreeCancellation")[]
   >(["withFreeCancellation"]);
-
+  const [prevDateRange, setPrevDateRange] = useState<
+    [Date | null, Date | null]
+  >(getDefaultDateRange(event, flight));
   const [, startTransition] = useTransition();
 
   const matches = useMediaQuery("(min-width: 1024px)");
@@ -438,13 +440,27 @@ export const HotelSelection = () => {
   };
 
   const handleDatePopoverClose = () => {
+    // Handle empty date case as before
     if (!dateRange[0] || !dateRange[1]) {
       const defaultDates = getDefaultDateRange(event, flight);
       setDateRange(defaultDates);
+      setPrevDateRange(defaultDates);
+      fetchHotels();
       return;
     }
 
-    fetchHotels();
+    // Check if dates have actually changed
+    const datesChanged =
+      !prevDateRange[0] ||
+      !prevDateRange[1] ||
+      prevDateRange[0].getTime() !== dateRange[0].getTime() ||
+      prevDateRange[1].getTime() !== dateRange[1].getTime();
+
+    // Only fetch hotels if dates have changed
+    if (datesChanged) {
+      setPrevDateRange([dateRange[0], dateRange[1]]);
+      fetchHotels();
+    }
   };
 
   return (

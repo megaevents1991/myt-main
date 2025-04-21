@@ -81,6 +81,9 @@ export const FlightSelection = () => {
   const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(400);
   const [, startTransition] = useTransition();
+  const [prevDateRange, setPrevDateRange] = useState<
+    [Date | null, Date | null]
+  >([new Date(event.def_date_depart), new Date(event.def_date_return)]);
 
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -306,16 +309,30 @@ export const FlightSelection = () => {
   }
 
   const handleDatePopoverClose = () => {
+    // Handle empty date case as before
     if (!dateRange[0] || !dateRange[1]) {
       const defaultDates: [Date, Date] = [
         new Date(event.def_date_depart),
         new Date(event.def_date_return),
       ];
       setDateRange(defaultDates);
+      setPrevDateRange(defaultDates);
+      fetchFlights();
       return;
     }
 
-    fetchFlights();
+    // Check if dates have actually changed
+    const datesChanged =
+      !prevDateRange[0] ||
+      !prevDateRange[1] ||
+      prevDateRange[0].getTime() !== dateRange[0].getTime() ||
+      prevDateRange[1].getTime() !== dateRange[1].getTime();
+
+    // Only fetch flights if dates have changed
+    if (datesChanged) {
+      setPrevDateRange([dateRange[0], dateRange[1]]);
+      fetchFlights();
+    }
   };
 
   return (
