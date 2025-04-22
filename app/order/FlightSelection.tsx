@@ -85,7 +85,10 @@ export const FlightSelection = () => {
   const [, startTransition] = useTransition();
   const [prevDateRange, setPrevDateRange] = useState<
     [Date | null, Date | null]
-  >([new Date(event.def_date_depart), new Date(event.def_date_return)]);
+  >([
+    new Date(new Date(event.def_date_depart).getTime() - 3 * 60 * 60 * 1000),
+    new Date(new Date(event.def_date_return).getTime() - 3 * 60 * 60 * 1000),
+  ]);
 
   const filterRef = useRef<HTMLDivElement>(null);
 
