@@ -388,23 +388,23 @@ export default function OrderReview() {
   return (
     <div className="min-h-screen bg-white">
       <Modal
-        title={isTimeout ? "הזמן אזל" : "שימו לב, המחירים עדכניים לכרגע"}
+        title={isTimeout ? "הזמן אזל" : "הכרטיסים שלכם שמורים!"}
         description={
           isTimeout
             ? "לצערנו היינו חייבים לשחרר את ההזמנה"
-            : `אתם יכולים להבטיח אותם במידה ותשלימו את ההזמנה
-ב- 15 דקות הקרובות`
+            : `יש לכם 15 דקות להשלים את ההזמנה ולא לאבד את הכרטיסים שבחרתם במחיר זה`
         }
         action={
           <Button
             variant="secondary"
-            className="font-bold"
+            className="font-bold w-full"
             onClick={HandleTimeoutModalAction}
           >
             {isTimeout ? "שננסה מחדש?" : "הבנתי"}
           </Button>
         }
         opened={openModal}
+        iconType="Clock9"
       />
       {/* Main Content */}
       <main className="max-w-[1200px] mx-auto lg:px-6 py-4">

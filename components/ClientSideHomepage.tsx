@@ -492,11 +492,11 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 return garuarntees.map((g, i) => (
                   <div
                     key={i}
-                    className="flex flex-col justify-center items-center text-center text-[12px] w-1/3 px-1"
+                    className="flex flex-col justify-center items-center text-center w-1/3"
                   >
                     {g.svg}
                     <span className="font-bold text-[13px]">{g.title}</span>
-                    <span className="text-[12px] whitespace-pre-wrap">
+                    <span className="text-[12px] leading-tight whitespace-pre-wrap">
                       {g.subtitle}
                     </span>
                   </div>
