@@ -396,7 +396,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
         <div className="container mx-auto">
           <div className="sm:hidden bg-secondary-600 py-1">
             <div
-              className="flex justify-around items-center text-right container px-2 mb-4"
+              className="flex justify-around items-center text-right container mb-4"
               dir="rtl"
             >
               {(() => {
@@ -495,8 +495,8 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                     className="flex flex-col justify-center items-center text-center text-[12px] w-1/3 px-1"
                   >
                     {g.svg}
-                    <span className="font-bold">{g.title}</span>
-                    <span className="text-[11px] whitespace-pre-wrap">
+                    <span className="font-bold text-[13px]">{g.title}</span>
+                    <span className="text-[12px] whitespace-pre-wrap">
                       {g.subtitle}
                     </span>
                   </div>
