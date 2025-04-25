@@ -27,6 +27,8 @@ import { Label } from "@/components/ui/label";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { trackEvent } from "@/lib/mixpanel";
 import Image from "next/image";
+import { Modal } from "@/components/ui/Modal";
+import { Timer } from "@/components/ui/Timer";
 
 type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -66,6 +68,8 @@ const validate: Record<Fields, (value: string) => string> = {
   },
 };
 
+const TIMEOUT = 15 * 60;
+
 export default function OrderReview() {
   const {
     flight: selectedFlight,
@@ -74,6 +78,7 @@ export default function OrderReview() {
     event,
     setPaymentMethod,
     numberOfEventTickets,
+    setStep,
   } = useContext(OrderContext);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,6 +116,8 @@ export default function OrderReview() {
     hotelPriceAddition,
     totalGuests,
   } = useOrderVars();
+  const [openModal, setOpenModal] = useState(true);
+  const [isTimeout, setIsTimeout] = useState(false);
 
   const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
 
@@ -151,6 +158,11 @@ export default function OrderReview() {
     }));
     setTouched(newTouched);
   }, [passengers]);
+
+  const HandleTimeout = useCallback(() => {
+    setIsTimeout(true);
+    setOpenModal(true);
+  }, []);
 
   const updatePassenger = useCallback(
     (index: number, field: Fields, value: string) => {
@@ -366,15 +378,42 @@ export default function OrderReview() {
     </p>
   );
 
+  const HandleTimeoutModalAction = () => {
+    setOpenModal(false);
+    if (isTimeout) {
+      setStep(1);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
+      <Modal
+        title={isTimeout ? "הזמן אזל" : "כמו ששמתם לב, המחירים עדכניים לרגע זה"}
+        description={
+          isTimeout
+            ? "ולצערנו היינו חייבים לשחרר את המקומות שהזמנתם"
+            : `אתם יכולים להבטיח אותם במידה ותשלימו את ההזמנה
+ב- 15 דקות הקרובות`
+        }
+        action={
+          <Button
+            variant="secondary"
+            className="font-bold"
+            onClick={HandleTimeoutModalAction}
+          >
+            {isTimeout ? "שננסה לתפוס מחדש?" : "הבנתי"}
+          </Button>
+        }
+        opened={openModal}
+      />
       {/* Main Content */}
       <main className="max-w-[1200px] mx-auto lg:px-6 py-4">
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Left Column - Booking Summary and CTA */}
           <div className="space-y-4 order-1 md:order-1">
             <Card className="bg-white shadow-lg overflow-hidden">
-              <div className="bg-[#277e89] text-white py-4 px-6 ">
+              <div className="bg-[#277e89] text-white py-4 px-6 flex flex-row justify-between items-center">
+                <Timer onTimeElapsed={HandleTimeout} duration={TIMEOUT} />
                 <h2 className="text-2xl font-bold text-right">סיכום הזמנה</h2>
               </div>
               <div className="flex flex-row justify-between items-center p-6 border-b border-gray-400">
@@ -728,7 +767,7 @@ export default function OrderReview() {
                   פרטי הנוסעים
                 </h2>
                 <h3 className="text-lg mb-4 text-right">
-                  בבקשה הזינו את השמות באנגלית כפי שמופיעים בדרכון
+                  יש להזין שמות כפי שמופיעים בדרכון
                 </h3>
                 <div className="space-y-5" dir="rtl">
                   {passengers.map(
