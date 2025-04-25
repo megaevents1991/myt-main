@@ -137,8 +137,10 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [feedbackInSearchModal, setfeedbackInSearchModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const mobileComboboxRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -154,6 +156,19 @@ export function ClientSideHomepage({ initialEvents }: Props) {
       setErrorDebug({ message, error });
       console.error("Global error caught:", message, error);
     };
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const heroSection = document.querySelector("section.bg-main");
+      if (heroSection && searchContainerRef.current) {
+        const heroBottom = heroSection.getBoundingClientRect().bottom;
+        setIsSticky(heroBottom < 0);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useAffiliate();
@@ -322,8 +337,20 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             </p>
           )}
         </div>
-        <div className="w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
-          <form className="flex center shadow-md" dir="rtl">
+        <div
+          ref={searchContainerRef}
+          className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 ${
+            isSticky
+              ? "fixed top-0 left-0 right-0 z-50 bg-white py-4 shadow-md transition-all duration-300"
+              : "absolute bottom-0 left-0 right-0 transform translate-y-1/2"
+          } min-w-70`}
+        >
+          <form
+            className={`flex center shadow-md ${
+              isSticky ? "max-w-xl mx-auto" : ""
+            }`}
+            dir="rtl"
+          >
             {!matches ? (
               <input
                 onFocus={(e) => {
@@ -334,7 +361,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 value={searchValue}
                 placeholder="חפש אירוע..."
                 type="text"
-                className="w-2/3 rounded-r rounded-l-none p-2 text-main border"
+                className={`w-2/3 rounded-r rounded-l-none p-2 text-main border ${
+                  isSticky ? "border-secondary" : ""
+                }`}
               />
             ) : (
               <SearchCombobox
@@ -461,7 +490,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                             Number(process.env.NEXT_PUBLIC_MARKUP || "150")
                           ).toLocaleString("en-US")}
                         </div>
-                        {/*
+                        {/* 
                           <div className="text-sm line-through mr-1">
                             ${event.usual_price.toLocaleString("en-US")}
                           </div>
@@ -576,7 +605,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                               Number(process.env.NEXT_PUBLIC_MARKUP || "150")
                             ).toLocaleString("en-US")}
                           </div>
-                          {/*
+                          {/* 
                           <div className="text-sm line-through mr-1">
                             ${event.usual_price.toLocaleString("en-US")}
                           </div>
