@@ -303,7 +303,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           </form>
         )}
       </Modal>
-      <section className="w-full py-3 lg:py-6 px-4 md:px-6 text-white bg-main relative">
+      <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
             <span> כל האירועים השווים בחו״ל</span>
@@ -322,7 +322,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             </p>
           )}
         </div>
-        <div className="w-full max-w-sm lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
+        <div className="w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 absolute bottom-0 left-0 right-0 transform translate-y-1/2 min-w-70">
           <form className="flex center shadow-md" dir="rtl">
             {!matches ? (
               <input
@@ -347,7 +347,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               />
             )}
             <button
-              className="w-1/3 bg-secondary text-white rounded-l"
+              className="w-1/3 bg-secondary text-white font-bold rounded-l"
               onClick={(e) => {
                 e.preventDefault();
                 if (!matches) {
@@ -357,16 +357,16 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 }
               }}
             >
-              בוא נתחיל לתכנן!
+              התחילו לתכנן!
             </button>
           </form>
         </div>
       </section>
-      <section className="w-full py-12 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
+      <section className="w-full py-10 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
         <div className="container mx-auto">
-          <div className="flex flex-row justify-end items-stretch">
+          <div className="flex flex-row mb-4 lg:mb-6 justify-end items-stretch">
             <div>
-              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mb-8 mx-2">
+              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                 המבוקשים ביותר
               </h2>
             </div>
@@ -480,9 +480,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               </Link>
             ))}
           </div>
-          <div className="flex flex-row justify-end mt-12 items-stretch">
+          <div className="flex flex-row justify-end mt-8 mb-4 lg:mb-6 items-stretch">
             <div>
-              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mb-8 mx-2">
+              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                 האירועים שלנו
               </h2>
             </div>

@@ -155,13 +155,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <AuthProvider>
             <Suspense>
               <MantineProvider theme={theme}>
-                <Container className="py-2 min-h-200" fluid bg={"#05203C"}>
-                  <div className="flex scale-25 justify-center sm:justify-between">
+                <Container className="py-2 lg:py-4" fluid bg={"#05203C"}>
+                  <div className="flex justify-center sm:justify-between">
                     <div className="flex">
                       <ContactUs />
                     </div>
                     <Link href="/">
-                      <MYT className="scale-75 md:scale-100" />
+                      <MYT className="scale-[0.85] md:scale-100" />
                     </Link>
                   </div>
                 </Container>
