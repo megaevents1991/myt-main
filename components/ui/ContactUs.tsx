@@ -28,7 +28,12 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
           {text} {"054-200-2722"}
         </a>
       </div>
-      <div className="flex gap-1 sm:gap-2 items-center justify-left w-full flex-row">
+      <div
+        className={cn(
+          "flex gap-1 sm:gap-2 items-center justify-left w-full flex-col",
+          inHeader && "flex-row"
+        )}
+      >
         {inHeader && (
           <a href="mailto:reservations@mega-events.co.il" className="flex">
             <Image
