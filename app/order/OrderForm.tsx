@@ -213,7 +213,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {/* Sticky Footer */}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-0">
         <div className="bottom-20 left-4 z-50 flex sm:hidden w-full">
-          <ContactUs />
+          <ContactUs inHeader={false} />
         </div>
         <div className="mt-4 w-screen bg-gray-200">
           <div className="w-full">

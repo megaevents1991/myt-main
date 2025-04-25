@@ -157,7 +157,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               <MantineProvider theme={theme}>
                 <Container className="py-2 min-h-200" fluid bg={"#05203C"}>
                   <div className="flex scale-25 justify-center sm:justify-between">
-                    <div className="hidden sm:flex">
+                    <div className="flex">
                       <ContactUs />
                     </div>
                     <Link href="/">

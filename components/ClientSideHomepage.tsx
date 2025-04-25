@@ -595,7 +595,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 </Link>
               ))}
             <div className="fixed bottom-20 left-2 z-50 flex sm:hidden w-full">
-              <ContactUs />
+              <ContactUs inHeader={false} />
             </div>
             <div
               className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
