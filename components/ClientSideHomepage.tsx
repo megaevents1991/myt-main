@@ -394,7 +394,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
       </section>
       <section className="w-full py-10 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
         <div className="container mx-auto">
-          <div className="sm:hidden bg-secondary-600 py-1">
+          <div className="sm:hidden py-1">
             <div
               className="flex justify-around items-center text-right container mb-4"
               dir="rtl"
@@ -433,7 +433,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                           מבית מגה תיירות
                         </a>
                         <br />
-                        31 שנות ניסון
+                        31 שנות ניסיון
                       </span>
                     ),
                   },
