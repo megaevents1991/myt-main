@@ -401,6 +401,7 @@ export const FlightSelection = () => {
                   setDateRange={setDateRange}
                   eventDay={event?.date}
                   onPopoverClose={handleDatePopoverClose}
+                  showTooltip={true}
                 />
                 <button
                   onClick={handleFlightSearch}

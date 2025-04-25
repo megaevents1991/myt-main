@@ -1,11 +1,9 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { DatePickerInput } from "@mantine/dates";
 import { Calendar } from "lucide-react";
-// import { Indicator } from "@mantine/core";
 import { isMobile } from "react-device-detect";
-import { useMediaQuery } from "@mantine/hooks";
-
-// Alterntive in case needed: https://codesandbox.io/p/sandbox/material-ui-rtl-date-range-picker-ojf0d?file=%2Fsrc%2FApp.js%3A12%2C49
+import { useClickOutside, useMediaQuery } from "@mantine/hooks";
+import { Tooltip } from "@mantine/core";
 
 export const DateRange = ({
   dateRange,
@@ -13,17 +11,29 @@ export const DateRange = ({
   eventDay,
   onPopoverClose,
   disabled,
+  showTooltip = false,
+  tooltipText = "אתם מוזמנים לבחור תאריך לפי העדפתכם",
 }: {
   dateRange: [Date | null, Date | null];
   setDateRange: (value: [Date | null, Date | null]) => void;
   eventDay: string;
   onPopoverClose: () => void;
   disabled: boolean;
+  showTooltip?: boolean;
+  tooltipText?: string;
 }) => {
   const matches = useMediaQuery("(min-width: 1024px)");
+  const [tooltipOpened, setTooltipOpened] = useState(false);
+  const inputRef = useRef<HTMLButtonElement>(null);
+  const ref = useClickOutside(() => setTooltipOpened(false));
 
-  const inputRef = React.useRef<HTMLButtonElement>(null);
-  return (
+  useEffect(() => {
+    setTimeout(() => {
+      setTooltipOpened(true);
+    }, 100);
+  }, []);
+
+  const datePickerInput = (
     <DatePickerInput
       disabled={disabled}
       ref={inputRef}
@@ -34,7 +44,7 @@ export const DateRange = ({
       rightSection={
         matches ? (
           <Calendar
-            className="cursor-pointer	"
+            className="cursor-pointer"
             onClick={() => inputRef.current?.click()}
           />
         ) : undefined
@@ -64,17 +74,6 @@ export const DateRange = ({
             {date.getDate()}
           </div>
         );
-
-        // return (
-        //   <Indicator
-        //     size={6}
-        //     color="red"
-        //     offset={-2}
-        //     disabled={day !== new Date(eventDay).toDateString()}
-        //   >
-        //     <div>{date.getDate()}</div>
-        //   </Indicator>
-        // );
       }}
       onChange={setDateRange}
       dropdownType={isMobile ? "modal" : "popover"}
@@ -88,10 +87,25 @@ export const DateRange = ({
           borderTopRightRadius: "var(--radius)",
           borderBottomLeftRadius: "0",
           borderTopLeftRadius: "0",
-          //fontSize: "20px",
-          //fontWeight: "300",
         },
       }}
     />
+  );
+
+  return showTooltip ? (
+    <Tooltip
+      label={tooltipText}
+      opened={tooltipOpened}
+      position="top"
+      withArrow
+      color="blue"
+    >
+      <div>
+        {datePickerInput}
+        <span ref={ref} />
+      </div>
+    </Tooltip>
+  ) : (
+    datePickerInput
   );
 };
