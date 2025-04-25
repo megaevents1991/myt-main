@@ -98,7 +98,7 @@ export const DateRange = ({
       opened={tooltipOpened}
       position="top"
       withArrow
-      color="blue"
+      color="black"
     >
       <div>
         {datePickerInput}
