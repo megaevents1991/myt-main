@@ -423,7 +423,19 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                       </svg>
                     ),
                     title: "אלפי לקוחות מרוצים",
-                    subtitle: "מבית מגה תיירות\n31 שנות ניסון",
+                    subtitle: (
+                      <span>
+                        <a
+                          href="https://www.google.com/search?q=%D7%9E%D7%92%D7%94+%D7%AA%D7%99%D7%99%D7%A8%D7%95%D7%AA"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          מבית מגה תיירות
+                        </a>
+                        <br />
+                        31 שנות ניסון
+                      </span>
+                    ),
                   },
                   {
                     svg: (
