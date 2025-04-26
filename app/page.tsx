@@ -22,16 +22,18 @@ export default async function Home() {
 
   return (
     <main>
-      <Suspense fallback={<div>Loading...</div>}>
-        <ClientSideHomepage initialEvents={events} />
-      </Suspense>
-
-      <Suspense fallback={<div>טוען עלינו...</div>}>
-        <MegaEventsSection />
-      </Suspense>
-
-      <Suspense fallback={<div>טוען שאלות נפוצות...</div>}>
-        <FAQ />
+      <Suspense
+        fallback={
+          <div className="min-h-[80vh] flex items-center justify-center">
+            Loading...
+          </div>
+        }
+      >
+        <div className="content-wrapper">
+          <ClientSideHomepage initialEvents={events} />
+          <MegaEventsSection />
+          <FAQ />
+        </div>
       </Suspense>
     </main>
   );

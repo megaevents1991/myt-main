@@ -171,7 +171,7 @@ export default function MegaEventsSection() {
                 className="flex flex-col items-center bg-gray-50 rounded-2xl p-4 shadow-sm hover:shadow-md transition"
               >
                 {item.icon}
-                <p className="font-semibold text-base mt-2">{item.text}</p>
+                <p className="font-bold text-base mt-2">{item.text}</p>
                 <p className="text-base leading-snug">{item.sub}</p>
               </div>
             ))}
