@@ -530,7 +530,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             ))}
           </div>
           <ElfsightWidget widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7" />
-          <div className="flex flex-row justify-end mt-8 mb-4 lg:mb-6 items-stretch">
+          <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
             <div>
               <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                 האירועים שלנו

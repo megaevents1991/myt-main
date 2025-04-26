@@ -166,14 +166,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                   </div>
                 </Container>
                 {children}
-                <footer className="py-6 w-full px-4 md:px-6 border-t" dir="rtl">
-                  <p className="container mx-auto mb-4 text-gray-500 dark:text-gray-400">
+                <footer
+                  className="py-6 w-full px-4 md:px-6 border-t bg-[#05203C]"
+                  dir="rtl"
+                >
+                  <p className="container mx-auto mb-4 text-white">
                     לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
-                    מהווה הסכמה לשימוש זה.למידע נוסף ניתן לעיין במדיניות הפרטיות
-                    של האתר.
+                    מהווה הסכמה לשימוש זה. למידע נוסף ניתן לעיין במדיניות
+                    הפרטיות של האתר.
                   </p>
-                  <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center h-[2vh]">
-                    <nav className="flex gap-4 sm:gap-6">
+                  <div className="container mx-auto text-white flex flex-col sm:flex-row justify-between items-center h-[2vh] gap-y-2 sm:gap-0 mb-8">
+                    <nav className="flex gap-4 sm:gap-6 font-bold">
                       <Link
                         className="text-sm hover:underline underline-offset-4"
                         href="/artists"
@@ -199,7 +202,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                         ביטול הזמנה
                       </Link>
                     </nav>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 sm:mb-0">
+                    <p className="text-sm mb-4 sm:mb-0">
                       © 2025 Megaevents. כל הזכויות שמורות.
                     </p>
                   </div>
