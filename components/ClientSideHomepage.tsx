@@ -633,7 +633,9 @@ function EventCard({ event }: { event: Event }) {
             </span>
           </div>
           <div className="p-2 text-ceמter flex flex-col flex-grow" dir="rtl">
-            <div>מחיר חבילה ממוצע לאדם</div>
+            <div className="text-[15px] sm:text-base">
+              מחיר חבילה ממוצע לאדם
+            </div>
             <div className="flex justify-center items-baseline gap-1">
               <div className="text-2xl font-extrabold">
                 $
@@ -647,9 +649,9 @@ function EventCard({ event }: { event: Event }) {
                 ).toLocaleString("en-US")}
               </div>
               {/*
-              <div className="text-sm line-through mr-1">
-                ${event.usual_price.toLocaleString("en-US")}
-              </div>
+                <div className="text-sm text-red-500 line-through mr-1">
+                  ${event.usual_price.toLocaleString("en-US")}
+                </div>
               */}
             </div>
             <div className="flex-grow min-h-[4px]"></div>
@@ -658,13 +660,11 @@ function EventCard({ event }: { event: Event }) {
             </div>
             {isMobile ? (
               <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center">
-                חסכו או שדרגו כאן
-                {"  >"}
+                שדרגו והוזילו עוד {"  >"}
               </div>
             ) : (
               <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold">
-                חסכו או שדרגו כאן
-                {"  >"}
+                שדרגו והוזילו עוד {"  >"}
               </u>
             )}
           </div>

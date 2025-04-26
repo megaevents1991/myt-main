@@ -101,7 +101,7 @@ export default async function FootballPage({
                         priority={true}
                         width={400}
                         height={300}
-                        className="object-cover w-full h-60 transition-transform group-hover:scale-105"
+                        className="object-cover w-full h-72 transition-transform group-hover:scale-105"
                       />
                     </div>
                     <div className="flex flex-col text-center w-[52%] sm:w-auto">
@@ -122,7 +122,7 @@ export default async function FootballPage({
                           {event.location.name}
                         </span>
                       </div>
-                      <div className="p-2 text-right flex flex-col flex-grow">
+                      <div className="p-2 text-center flex flex-col flex-grow">
                         <div className="text-sm sm:text-base">
                           מחיר חבילה ממוצע לאדם
                         </div>
@@ -136,7 +136,7 @@ export default async function FootballPage({
                                 (ticket) => ticket.price
                               )
                             ) +
-                            Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                            Number(process.env.NEXT_PUBLIC_MARKUP || "175")
                           ).toLocaleString("en-US")}
                         </div>
                         <div className="flex-grow min-h-[4px]"></div>
@@ -146,6 +146,12 @@ export default async function FootballPage({
                         >
                           לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
                         </div>
+                        <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center sm:hidden">
+                          שדרגו והוזילו עוד {"  >"}
+                        </div>
+                        <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold hidden sm:flex">
+                          שדרגו והוזילו עוד {"  >"}
+                        </u>
                       </div>
                     </div>
                   </div>
