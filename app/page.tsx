@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
+import { FAQ } from "@/components/ui/FAQ";
+import MegaEventsSection from "@/components/ui/aboutUsMega";
 
 const envServer = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 // Server comp
@@ -22,6 +24,14 @@ export default async function Home() {
     <main>
       <Suspense fallback={<div>Loading...</div>}>
         <ClientSideHomepage initialEvents={events} />
+      </Suspense>
+
+      <Suspense fallback={<div>טוען עלינו...</div>}>
+        <MegaEventsSection />
+      </Suspense>
+
+      <Suspense fallback={<div>טוען שאלות נפוצות...</div>}>
+        <FAQ />
       </Suspense>
     </main>
   );
