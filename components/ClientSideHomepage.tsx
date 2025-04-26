@@ -17,6 +17,7 @@ import { isMobile } from "react-device-detect";
 import Fuse from "fuse.js";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
+import { ElfsightWidget } from "@/components/ui/elfReviews";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -523,11 +524,12 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               style={{ height: 40, width: 46 }}
             />
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             {prioitized_events.map((event) => (
               <EventCard event={event} key={event.id} />
             ))}
           </div>
+          <ElfsightWidget widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7" />
           <div className="flex flex-row justify-end mt-8 mb-4 lg:mb-6 items-stretch">
             <div>
               <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
