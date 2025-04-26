@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       const fixedRates = hotel.rates.map((rate) => {
         const fixedPaymentTypes = rate.payment_options.payment_types.map(
           (paymentType) => {
-            const vat = paymentType.tax_data["taxes"].find(
+            const vat = paymentType.tax_data?.["taxes"]?.find(
               (tax) => tax.name === "vat"
             );
             const tax =
