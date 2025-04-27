@@ -34,6 +34,7 @@ import { prepareFlightsData } from "@/lib/prepareFlightsData";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { isMobile } from "react-device-detect";
+import dayjs from "dayjs";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -83,12 +84,10 @@ export const FlightSelection = () => {
   const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(400);
   const [, startTransition] = useTransition();
-  const [prevDateRange, setPrevDateRange] = useState<
-    [Date | null, Date | null]
-  >([
-    new Date(new Date(event.def_date_depart).getTime() - 3 * 60 * 60 * 1000),
-    new Date(new Date(event.def_date_return).getTime() - 3 * 60 * 60 * 1000),
-  ]);
+  const [debug, setDebug] = useState<{
+    departureDate: Date;
+    returnDate: Date;
+  }>({ departureDate: new Date(), returnDate: new Date() });
 
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -149,7 +148,13 @@ export const FlightSelection = () => {
       if (!res.ok) {
         throw new Error("Failed to fetch flights");
       }
-      const flights: Flight[] = await res.json();
+      const {
+        flights,
+        debug,
+      }: {
+        flights: Flight[];
+        debug: { departureDate: string; returnDate: string };
+      } = await res.json();
 
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);
@@ -168,7 +173,10 @@ export const FlightSelection = () => {
       setFilteredFlights(filteredFlights.slice(0, 50));
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setSelectedFlightPrice(Math.ceil(maxPrice));
-
+      setDebug({
+        departureDate: new Date(debug.departureDate),
+        returnDate: new Date(debug.returnDate),
+      });
       setFlightsMeta({
         maxDuration: Math.ceil(maxDuration / 60),
         minDuration: Math.ceil(minDuration / 60),
@@ -314,30 +322,23 @@ export const FlightSelection = () => {
   }
 
   const handleDatePopoverClose = () => {
-    // Handle empty date case as before
     if (!dateRange[0] || !dateRange[1]) {
       const defaultDates: [Date, Date] = [
         new Date(event.def_date_depart),
         new Date(event.def_date_return),
       ];
       setDateRange(defaultDates);
-      setPrevDateRange(defaultDates);
-      fetchFlights();
       return;
     }
 
-    // Check if dates have actually changed
-    const datesChanged =
-      !prevDateRange[0] ||
-      !prevDateRange[1] ||
-      prevDateRange[0].getTime() !== dateRange[0].getTime() ||
-      prevDateRange[1].getTime() !== dateRange[1].getTime();
-
-    // Only fetch flights if dates have changed
-    if (datesChanged) {
-      setPrevDateRange([dateRange[0], dateRange[1]]);
-      fetchFlights();
+    if (
+      dayjs(dateRange[0]).isSame(dayjs(debug.departureDate), "day") &&
+      dayjs(dateRange[1]).isSame(dayjs(debug.returnDate), "day")
+    ) {
+      return;
     }
+
+    fetchFlights();
   };
 
   return (

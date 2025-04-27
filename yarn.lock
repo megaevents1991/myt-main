@@ -2037,6 +2037,15 @@ formdata-polyfill@^4.0.10:
   dependencies:
     fetch-blob "^3.1.2"
 
+framer-motion@^12.9.2:
+  version "12.9.2"
+  resolved "https://registry.yarnpkg.com/framer-motion/-/framer-motion-12.9.2.tgz#d6b5f7c9553da17a4d92db293eebfbbf97bd4c33"
+  integrity sha512-R0O3Jdqbfwywpm45obP+8sTgafmdEcUoShQTAV+rB5pi+Y1Px/FYL5qLLRe5tPtBdN1J4jos7M+xN2VV2oEAbQ==
+  dependencies:
+    motion-dom "^12.9.1"
+    motion-utils "^12.8.3"
+    tslib "^2.4.0"
+
 fs-extra@^11.1.0:
   version "11.2.0"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-11.2.0.tgz#e70e17dfad64232287d01929399e0ea7c86b0e5b"
@@ -2814,6 +2823,18 @@ mixpanel-browser@^2.60.0:
   dependencies:
     rrweb "2.0.0-alpha.13"
 
+motion-dom@^12.9.1:
+  version "12.9.1"
+  resolved "https://registry.yarnpkg.com/motion-dom/-/motion-dom-12.9.1.tgz#1e128c7db7f98994a305933df3b11d47b7467085"
+  integrity sha512-xqXEwRLDYDTzOgXobSoWtytRtGlf7zdkRfFbrrdP7eojaGQZ5Go4OOKtgnx7uF8sAkfr1ZjMvbCJSCIT2h6fkQ==
+  dependencies:
+    motion-utils "^12.8.3"
+
+motion-utils@^12.8.3:
+  version "12.8.3"
+  resolved "https://registry.yarnpkg.com/motion-utils/-/motion-utils-12.8.3.tgz#d72bd9712574266088f0903f69466a9d3ad206c4"
+  integrity sha512-GYVauZEbca8/zOhEiYOY9/uJeedYQld6co/GJFKOy//0c/4lDqk0zB549sBYqqV2iMuX+uHrY1E5zd8A2L+1Lw==
+
 ms@^2.1.1, ms@^2.1.3:
   version "2.1.3"
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.3.tgz#574c8138ce1d2b5861f0b44579dbadd60c6615b2"
@@ -2842,6 +2863,13 @@ natural-compare@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
   integrity sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==
+
+next-elfsight-widget@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/next-elfsight-widget/-/next-elfsight-widget-1.1.1.tgz#2acd653f6312ffa64d6af2dd53ad0a133fd5a1fb"
+  integrity sha512-n/vrSq6mfvX5oCaExLrvlXC9eFb7Je5glcy53teBqAp0ouBYydxyTQRB/X50jERgTvuRiQ6clDCFN3KTnKsnZw==
+  dependencies:
+    react-elfsight-widget "^1.1.1"
 
 next@^15.1.6:
   version "15.1.6"
@@ -3251,6 +3279,16 @@ react-dom@19.0.0-rc-66855b96-20241106:
   integrity sha512-D25vdaytZ1wFIRiwNU98NPQ/upS2P8Co4/oNoa02PzHbh8deWdepjm5qwZM/46OdSiGv4WSWwxP55RO9obqJEQ==
   dependencies:
     scheduler "0.25.0-rc-66855b96-20241106"
+
+react-elfsight-widget@^1.1.1:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/react-elfsight-widget/-/react-elfsight-widget-1.1.2.tgz#8334ebe8570ec00f683ef6295649333e9ffc92a3"
+  integrity sha512-FT/H1f3jtrTD1jqpubl+wyqE/FfJM6TpbfpUFpDoYoofoVzPAbjGiqKs1t8IQh2D3zeoP72IgfP5/idyKyabzw==
+
+react-icons@^5.5.0:
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/react-icons/-/react-icons-5.5.0.tgz#8aa25d3543ff84231685d3331164c00299cdfaf2"
+  integrity sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==
 
 react-is@^16.13.1:
   version "16.13.1"

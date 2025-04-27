@@ -186,7 +186,12 @@ export async function POST(request: Request) {
       return acc;
     }, [] as Flight[]);
 
-    return NextResponse.json(flights);
+    const debug = {
+      departureDate: departureDateFromUi,
+      returnDate: returnDateFromUi,
+    };
+
+    return NextResponse.json({ flights, debug });
   } catch (error) {
     console.error("Error fetching flights:", error);
     return NextResponse.json(
