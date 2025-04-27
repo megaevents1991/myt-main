@@ -595,7 +595,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
 function EventCard({ event }: { event: Event }) {
   return (
     <Link
-      href={event.tags === "Sold" ? "#" : `/order?eventId=${event.id}`}
+      href={event.tags === "Sold" ? "#no-op" : `/order?eventId=${event.id}`}
       className={`cursor-pointer ${
         event.tags === "Sold" ? "cursor-default" : ""
       }`}

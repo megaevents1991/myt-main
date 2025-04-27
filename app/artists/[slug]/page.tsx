@@ -90,7 +90,9 @@ export default async function ArtistPage({
               <Link
                 key={event.id}
                 href={
-                  event.tags === "Sold" ? "#" : `/order?eventId=${event.id}`
+                  event.tags === "Sold"
+                    ? "#no-op"
+                    : `/order?eventId=${event.id}`
                 }
                 className={`cursor-pointer ${
                   event.tags === "Sold" ? "cursor-default" : ""
