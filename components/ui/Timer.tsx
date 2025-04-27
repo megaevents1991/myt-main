@@ -17,22 +17,26 @@ export const Timer = ({
   duration?: number;
 }) => {
   const [secondsLeft, setSecondsLeft] = useState(duration);
+  const [startTime] = useState(Date.now());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          clearInterval(interval);
-          onTimeElapsed();
-          return 0;
-        }
-        return next;
-      });
-    }, 1000);
+    const tick = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      const remaining = Math.max(duration - elapsed, 0);
+      setSecondsLeft(remaining);
 
-    return () => clearInterval(interval);
-  }, [onTimeElapsed]);
+      if (remaining === 0) {
+        clearInterval(timer);
+        onTimeElapsed?.();
+      }
+    };
+
+    const timer = setInterval(tick, 1000);
+    tick();
+
+    return () => clearInterval(timer);
+  }, [startTime, duration, onTimeElapsed]);
 
   return <div className="font-bold">{formatTime(secondsLeft)}</div>;
 };
