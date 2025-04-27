@@ -231,8 +231,23 @@ export function ClientSideHomepage({ initialEvents }: Props) {
     (event) => event.is_prioritized === false
   );
 
-  const prioitized_events = prioritizedEvents.slice(0, 4);
-  const rest_events = [...prioritizedEvents.slice(4), ...nonPrioritizedEvents];
+  const prioitized_events = prioritizedEvents.slice(0, 4).sort((a, b) => {
+    // Sort by non-null tags first
+    if (a.tags && !b.tags) return -1;
+    if (!a.tags && b.tags) return 1;
+    return 0;
+  });
+
+  const rest_events = [
+    ...prioritizedEvents.slice(4),
+    ...nonPrioritizedEvents,
+  ].sort((a, b) => {
+    // Sort by non-null tags first
+    if (a.tags && !b.tags) return -1;
+    if (!a.tags && b.tags) return 1;
+    // Then sort by date
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 
   return (
     <>
@@ -585,10 +600,28 @@ export function ClientSideHomepage({ initialEvents }: Props) {
 function EventCard({ event }: { event: Event }) {
   return (
     <Link
-      href={`/order?eventId=${event.id}`}
-      className="cursor-pointer"
+      href={event.tags === "Sold" ? "#" : `/order?eventId=${event.id}`}
+      className={`cursor-pointer ${
+        event.tags === "Sold" ? "cursor-default" : ""
+      }`}
       key={event.id}
-      onClick={() => {
+      onClick={(e) => {
+        trackEvent("eventSelected", {
+          eventId: event.id,
+          eventName: event.name,
+          eventDate: event.date,
+          eventLocation: event.location.name,
+          eventStatus: event.tags,
+          eventPrice:
+            event.base_flight_price +
+            event.base_hotel_price +
+            Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
+            Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+        });
+        if (event.tags === "Sold") {
+          e.preventDefault();
+          return;
+        }
         orderStage("EVENT_SELECTED", {
           data: {
             event: event.name,
@@ -596,21 +629,28 @@ function EventCard({ event }: { event: Event }) {
             eventLocation: event.location.name,
           },
         });
-        trackEvent("eventSelected", {
-          eventId: event.id,
-          eventName: event.name,
-          eventDate: event.date,
-          eventLocation: event.location.name,
-          eventPrice:
-            event.base_flight_price +
-            event.base_hotel_price +
-            Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
-            Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
-        });
       }}
     >
       <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-        <div className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
+        <div
+          className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
+          dir="rtl"
+        >
+          {event.tags === "LastTickets" && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+              כרטיסים אחרונים!
+            </div>
+          )}
+          {event.tags === "Popular" && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+              נמכר במהירות!
+            </div>
+          )}
+          {event.tags === "Sold" && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+              אזלו הכרטיסים
+            </div>
+          )}
           <Image
             src={event.card_image_url}
             alt={event.name}
@@ -660,13 +700,19 @@ function EventCard({ event }: { event: Event }) {
             <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
               לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
             </div>
-            {isMobile ? (
+            {event.tags === "Sold" ? (
+              // Empty space placeholder with same height to maintain layout
+              <div
+                className="my-2 py-2 flex-shrink-0"
+                style={{ height: isMobile ? "40px" : "22px" }}
+              ></div>
+            ) : isMobile ? (
               <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center">
-                שדרגו והוזילו עוד {"  >"}
+                הוזילו או שדרגו כאן {"  >"}
               </div>
             ) : (
               <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold">
-                שדרגו והוזילו עוד {"  >"}
+                הוזילו או שדרגו כאן {"  >"}
               </u>
             )}
           </div>

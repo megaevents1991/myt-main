@@ -89,12 +89,34 @@ export default async function FootballPage({
             {events.map((event) => (
               <Link
                 key={event.id}
-                href={`/order?eventId=${event.id}`}
-                className="cursor-pointer"
+                href={
+                  event.tags === "Sold" ? "#" : `/order?eventId=${event.id}`
+                }
+                className={`cursor-pointer ${
+                  event.tags === "Sold" ? "cursor-default" : ""
+                }`}
               >
                 <EventButton event={event}>
                   <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                    <div className="relative group overflow-hidden rounded-r-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto">
+                    <div
+                      className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
+                      dir="rtl"
+                    >
+                      {event.tags === "LastTickets" && (
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                          כרטיסים אחרונים!
+                        </div>
+                      )}
+                      {event.tags === "Popular" && (
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                          נמכר במהירות!
+                        </div>
+                      )}
+                      {event.tags === "Sold" && (
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                          אזלו הכרטיסים
+                        </div>
+                      )}
                       <Image
                         src={event.card_image_url}
                         alt={name}
@@ -146,12 +168,18 @@ export default async function FootballPage({
                         >
                           לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
                         </div>
-                        <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center sm:hidden">
-                          שדרגו והוזילו עוד {"  >"}
-                        </div>
-                        <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold hidden sm:flex">
-                          שדרגו והוזילו עוד {"  >"}
-                        </u>
+                        {event.tags === "Sold" ? (
+                          <div className="my-2 py-2 flex-shrink-0 h-[22px] sm:h-[40px]"></div>
+                        ) : (
+                          <>
+                            <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center sm:hidden">
+                              הוזילו או שדרגו כאן {"  >"}
+                            </div>
+                            <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold hidden sm:flex">
+                              הוזילו או שדרגו כאן {"  >"}
+                            </u>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
