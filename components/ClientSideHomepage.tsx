@@ -565,14 +565,9 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             />
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {rest_events
-              .sort(
-                (a, b) =>
-                  new Date(a.date).getTime() - new Date(b.date).getTime()
-              )
-              .map((event) => (
-                <EventCard event={event} key={event.id} />
-              ))}
+            {rest_events.map((event) => (
+              <EventCard event={event} key={event.id} />
+            ))}
             <div className="fixed bottom-20 left-2 z-50 flex sm:hidden w-full">
               <ContactUs inHeader={false} />
             </div>
