@@ -94,8 +94,8 @@ export default async function FootballPage({
                     ? "#no-op"
                     : `/order?eventId=${event.id}`
                 }
-                className={`cursor-pointer ${
-                  event.tags === "Sold" ? "cursor-default" : ""
+                className={`${
+                  event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
                 }`}
               >
                 <EventButton event={event}>
