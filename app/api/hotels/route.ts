@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         return data;
       });
 
-    const fixedHotels: Hotel[] = data.data.hotels.map((hotel) => {
+    const fixedHotels: Hotel[] = data.data.hotels.filter((hotel) => hotel.rates && Array.isArray(hotel.rates) && hotel.rates.length > 0).map((hotel) => {
       const fixedRates = hotel.rates.map((rate) => {
         const fixedPaymentTypes = rate.payment_options?.payment_types.map(
           (paymentType) => {
