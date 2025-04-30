@@ -721,7 +721,7 @@ export default function OrderReview() {
                         <p>
                           ביטול או שינוי חינם עד לתאריך ה-{" "}
                           {dayjs(
-                            selectedHotel.rate.payment_options.payment_types[0]
+                            selectedHotel.rate.payment_options?.payment_types[0]
                               .cancellation_penalties.free_cancellation_before
                           )
                             .subtract(7, "day")
@@ -1053,7 +1053,7 @@ export default function OrderReview() {
                         <p>
                           ביטול או שינוי חינם עד לתאריך ה-{" "}
                           {dayjs(
-                            selectedHotel.rate.payment_options.payment_types[0]
+                            selectedHotel.rate.payment_options?.payment_types[0]
                               .cancellation_penalties.free_cancellation_before
                           )
                             .subtract(7, "day")

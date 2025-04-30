@@ -56,14 +56,14 @@ export const HotelCard = ({
           stars: hotelInfo.metadata.rating,
           amenities: hotelInfo.general.amenities,
           distance: Math.ceil(hotelInfo.metadata.distanceFromCenter),
-        }
+        };
         handleSelectedRate({
           rate: room,
           hotelInformation,
           address: hotelInfo.metadata.address,
           name: hotelInfo.metadata.hotelName,
           id: hotelInfo.metadata.id,
-          price: room.payment_options.payment_types[0].show_amount,
+          price: room.payment_options?.payment_types[0]?.show_amount,
         });
       }
     },
@@ -79,7 +79,7 @@ export const HotelCard = ({
   }, [isSelected, hotelRates]);
 
   const selectedPrice =
-    +(selectedRoom || hotelRates[0]).payment_options.payment_types[0]
+    +(selectedRoom || hotelRates[0]).payment_options?.payment_types[0]
       .show_amount / persons;
 
   const priceToShowFull = useMemo(() => {

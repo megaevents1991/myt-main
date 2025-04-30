@@ -246,14 +246,15 @@ export const HotelSelection = () => {
     const maxPrice = Math.max(
       ...data.data.hotels.map(
         (hotel) =>
-          +hotel.rates[hotel.rates.length - 1].payment_options.payment_types[0]
+          +hotel.rates[hotel.rates.length - 1].payment_options?.payment_types[0]
             .show_amount
       )
     );
 
     const minPrice = Math.min(
       ...data.data.hotels.map(
-        (hotel) => +hotel.rates[0].payment_options.payment_types[0].show_amount
+        (hotel) =>
+          +hotel.rates[0].payment_options?.payment_types[0]?.show_amount
       )
     );
 
@@ -297,7 +298,7 @@ export const HotelSelection = () => {
       name: hotelsInfo[hotelsToSet[0].id].metadata.hotelName,
       hotelInformation,
       price:
-        hotelsToSet[0].rates[0].payment_options.payment_types[0].show_amount,
+        hotelsToSet[0].rates[0].payment_options?.payment_types[0]?.show_amount,
       rate: hotelsToSet[0].rates[0],
       checkin: data.debug.request.checkin,
       checkout: data.debug.request.checkout,

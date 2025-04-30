@@ -32,10 +32,10 @@ export const applyFiltersAndSorting = ({
   const filteredHotels = hotels
     .filter((hotel) => {
       const priceLow =
-        +hotel.rates[0].payment_options.payment_types[0].show_amount;
+        +hotel.rates[0].payment_options?.payment_types[0]?.show_amount;
 
       const priceHigh =
-        +hotel.rates[hotel.rates.length - 1].payment_options.payment_types[0]
+        +hotel.rates[hotel.rates.length - 1].payment_options?.payment_types[0]
           .show_amount;
 
       const hotelRating = hotelsInfo[hotel.id]?.metadata.rating;
@@ -61,7 +61,7 @@ export const applyFiltersAndSorting = ({
         !!freeCancellation.length &&
         (freeCancellation.length === 2 ||
           hotel.rates.some((rate) =>
-            rate.payment_options.payment_types.some((paymentType) =>
+            rate.payment_options?.payment_types.some((paymentType) =>
               isFreeCancellation
                 ? !!paymentType.cancellation_penalties.free_cancellation_before
                 : !paymentType.cancellation_penalties.free_cancellation_before
@@ -94,7 +94,7 @@ export const applyFiltersAndSorting = ({
     })
     .map((hotel) => {
       const filteredRates = hotel.rates.filter((rate) => {
-        const price = +rate.payment_options.payment_types[0].show_amount;
+        const price = +rate.payment_options?.payment_types[0]?.show_amount;
 
         const matchHasMeal = meal.includes("withMeal")
           ? rate.meal_data.has_breakfast
@@ -107,7 +107,7 @@ export const applyFiltersAndSorting = ({
         const matchFreeCancellation =
           !!freeCancellation.length &&
           (freeCancellation.length === 2 ||
-            rate.payment_options.payment_types.every((paymentType) =>
+            rate.payment_options?.payment_types.every((paymentType) =>
               isFreeCancellation
                 ? !!paymentType.cancellation_penalties.free_cancellation_before
                 : !paymentType.cancellation_penalties.free_cancellation_before
@@ -135,8 +135,8 @@ export const hotelSort = (
     switch (sortOption) {
       case "price_asc":
         return (
-          +a.rates[0].payment_options.payment_types[0].show_amount -
-          +b.rates[0].payment_options.payment_types[0].show_amount
+          +a.rates[0].payment_options?.payment_types[0]?.show_amount -
+          +b.rates[0].payment_options?.payment_types[0]?.show_amount
         );
       case "rating":
         return (

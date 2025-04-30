@@ -15,7 +15,7 @@ export const RoomCard = ({
   onRoomSelect: (room: Rate) => void;
 }) => {
   const selectedPrice =
-    +room.payment_options.payment_types[0].show_amount / persons;
+    +room.payment_options?.payment_types[0]?.show_amount / persons;
 
   const priceToShowFull =
     selectedPrice - minPrice !== 0
