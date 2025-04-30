@@ -12,9 +12,7 @@ export const StarsGroup = ({
 }) => {
   const handleOnChange = (index: number) => {
     const newValue = [...value];
-
     newValue[index] = !newValue[index];
-
     onChange(newValue);
   };
 
