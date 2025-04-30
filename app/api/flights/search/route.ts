@@ -67,6 +67,7 @@ export async function POST(request: Request) {
     });
 
     // Transform Amadeus response to match our flight data structure
+    // TODO: Consider code performance and memory usage optimization
     const flights: Flight[] = response.result.data.reduce((acc, offer) => {
       const {
         id,
