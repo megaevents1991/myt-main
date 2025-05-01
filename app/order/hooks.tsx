@@ -11,7 +11,7 @@ import { getTotalPersons } from "@/lib/price.utils";
  * @param paxs - Number of passengers
  * @returns boolean
  */
-const priceOutsidePackBoundries = (
+const priceOutsidePackBoundaries = (
   totalPrice: number,
   basePrice: number,
   paxs: number
@@ -76,7 +76,7 @@ export function useOrderVars() {
     if (!selectedHotel || !event) {
       return 0;
     }
-    return priceOutsidePackBoundries(
+    return priceOutsidePackBoundaries(
       +selectedHotel.price,
       event.base_hotel_price,
       totalGuests
@@ -94,7 +94,7 @@ export function useOrderVars() {
     if (!selectedFlight || !event) {
       return 0;
     }
-    return priceOutsidePackBoundries(
+    return priceOutsidePackBoundaries(
       selectedFlight.price,
       event.base_flight_price,
       selectedFlight.numOfTravelers

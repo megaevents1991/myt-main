@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Hotel,
-  HotelResponse,
-  HotelsInfoClient,
-  HotelInfoClient,
-  HotelKind,
-} from "@/lib/hotel.type";
+import { Hotel, HotelInfoClient, HotelKind } from "@/lib/hotel.type";
 import { Popover, Skeleton } from "@mantine/core";
 import { useState, useEffect, useContext, useMemo, useTransition } from "react";
 import { OrderContext } from "../app.context";
@@ -21,7 +15,6 @@ import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import {
   Event,
-  Flight,
   HotelSearchCriteria,
   OrderHotel,
   SortOptions,
@@ -30,33 +23,10 @@ import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { getTotalPersons } from "@/lib/price.utils";
 import { isMobile } from "react-device-detect";
-import dayjs from "dayjs";
 import { logger } from "@/lib/logger";
-
-const getDefaultDateRange = (event: Event, flight?: Flight): [Date, Date] => {
-  const arrivalTime = flight?.outbound?.arrivalTime
-    ? new Date(flight.outbound.arrivalTime)
-    : null;
-
-  let checkInDate = new Date(event.def_date_depart);
-
-  if (arrivalTime) {
-    const hours = arrivalTime.getHours();
-    if (hours < 8) {
-      // If arrival is before 8 AM, set check-in to previous day
-      checkInDate = new Date(arrivalTime);
-      checkInDate.setDate(checkInDate.getDate() - 1);
-    } else {
-      // If arrival is 8 AM or later, use the same day
-      checkInDate = new Date(arrivalTime);
-    }
-  }
-
-  return [
-    checkInDate,
-    new Date(flight?.inbound?.departureTime ?? event.def_date_return),
-  ];
-};
+import { HotelFetchContext, HotelsData } from "../HotelFetch.provider";
+import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
+import { getRoomParams } from "@/lib/getRoomParams";
 
 export const HotelSelection = () => {
   const {
@@ -66,52 +36,21 @@ export const HotelSelection = () => {
     event = {} as Event,
     setSelectedHotelFilters,
   } = useContext(OrderContext);
+  const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
-  const [hotels, setHotels] = useState<Hotel[]>([]);
   const [selectedHotelId, setSelectedHotelId] = useState("");
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
     getDefaultDateRange(event, flight)
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [roomParams, setRoomParams] = useState<
     {
       adults: number;
       children: number[];
     }[]
-  >(() => {
-    const totalAdults = planeTickets.adults;
-    const baseRoom = { children: [] };
-    const rooms: Array<{ children: never[]; adults: number }> = [];
-
-    // Maximum possible rooms with 3 adults
-    const maxThreePersonRooms = Math.floor(totalAdults / 3);
-    const remainingAdults = totalAdults % 3;
-
-    // Distribute 3-person rooms
-    for (let i = 0; i < maxThreePersonRooms; i++) {
-      rooms.push({ ...baseRoom, adults: 3 });
-    }
-
-    // Handle remaining adults
-    if (remainingAdults === 1 && rooms.length > 0) {
-      // Convert one 3-person room to two 2-person rooms
-      rooms.pop();
-      rooms.push({ ...baseRoom, adults: 2 });
-      rooms.push({ ...baseRoom, adults: 2 });
-    } else if (remainingAdults === 1 && rooms.length === 0) {
-      rooms.push({ ...baseRoom, adults: 1 });
-    } else if (remainingAdults === 2) {
-      rooms.push({ ...baseRoom, adults: 2 });
-    }
-
-    return rooms;
-  });
+  >(getRoomParams(planeTickets?.adults));
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
-  const [hotelsInfo, setHotelsInfo] = useState<HotelsInfoClient>(
-    {} as HotelsInfoClient
-  );
   const [rating, setRating] = useState<boolean[]>([
     false,
     false,
@@ -124,34 +63,12 @@ export const HotelSelection = () => {
   const [meal, setMeal] = useState<("withMeal" | "withoutMeal")[]>([
     "withoutMeal",
   ]);
-  const [kind, setKind] = useState<
-    (
-      | "Resort"
-      | "Sanatorium"
-      | "Guesthouse"
-      | "Mini-hotel"
-      | "Castle"
-      | "Hotel"
-      | "Boutique_and_Design"
-      | "Apartment"
-      | "Cottages_and_Houses"
-      | "Farm"
-      | "Villas_and_Bungalows"
-      | "Camping"
-      | "Hostel"
-      | "BNB"
-      | "Glamping"
-      | "Apart-hotel"
-    )[]
-  >(["Hotel"]);
+  const [kind, setKind] = useState<HotelKind[]>(["Hotel"]);
   const [maxDistance, setMaxDistance] = useState(0);
   const [distanceRange, setDistanceRange] = useState<[number, number]>([
     0,
     maxDistance,
   ]);
-  const [requestDebug, setRequestDebug] = useState(
-    {} as HotelResponse["debug"]["request"]
-  );
   const [minPrice, setMinPrice] = useState(0);
   const [basePricePerPerson, setBasePricePerPerson] = useState(0);
   const [freeCancellation, setFreeCancellation] = useState<
@@ -165,12 +82,14 @@ export const HotelSelection = () => {
   const matches = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
-    fetchHotels();
+    setSelectedHotelFilters({});
   }, []);
 
   useEffect(() => {
-    setSelectedHotelFilters({});
-  }, []);
+    if (hotelsData.data.debug && !isFetching) {
+      prepareHotelData(hotelsData);
+    }
+  }, [isFetching]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -194,47 +113,7 @@ export const HotelSelection = () => {
     }
   }, []);
 
-  const fetchHotels = async (parameters?: { radius: number }) => {
-    setIsLoading(true);
-    setHotel(undefined);
-
-    const res = await fetch(`/api/hotels`, {
-      method: "POST",
-      body: JSON.stringify({
-        location: event.location,
-        checkin: dayjs(dateRange?.[0]?.toDateString()).format("YYYY-MM-DD"),
-        checkout: dayjs(dateRange?.[1]?.toDateString()).format("YYYY-MM-DD"),
-        guests: roomParams,
-        radius: parameters?.radius || distanceRange[1] || 2000,
-      }),
-    });
-    const data: HotelResponse = await res.json();
-
-    const hotels = data?.data?.hotels?.map((hotel) => {
-      const allRooms = hotel.rates.map(
-        (rate) =>
-          rate.room_data_trans.main_name +
-          (rate.room_data_trans.bedding_type
-            ? " " + rate.room_data_trans.bedding_type
-            : "")
-      );
-
-      const rooms = [...new Set(allRooms)];
-      return { id: hotel.id, hid: hotel.hid, rooms };
-    });
-
-    const hotelsInfoRes = await fetch(`/api/hotels-info`, {
-      method: "POST",
-      body: JSON.stringify({
-        hotels,
-        event: {
-          location: event.location,
-        },
-      }),
-    });
-
-    const hotelsInfo: HotelsInfoClient = await hotelsInfoRes.json();
-
+  const prepareHotelData = ({ hotelsInfo, data }: HotelsData) => {
     const maxDistance = Math.max(
       ...Object.values(hotelsInfo).map(
         (hotel) => hotel.metadata?.distanceFromCenter
@@ -280,15 +159,11 @@ export const HotelSelection = () => {
     };
 
     setBasePricePerPerson(basePricePerPerson);
-    setRequestDebug(data.debug.request);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
     setPriceRange([0, Math.ceil(maxPrice)]);
-    setHotelsInfo(hotelsInfo);
     setMaxPrice(maxPrice / totalPersons);
-    setHotels(data.data.hotels);
     setFilteredHotels(hotelsToSet.slice(0, 50));
-    setIsLoading(false);
     setSelectedHotelId(hotelsToSet[0].id);
     setMinPrice(Math.floor(minPrice / totalPersons));
     setHotel({
@@ -305,11 +180,22 @@ export const HotelSelection = () => {
     });
   };
 
+  const fetchHotels = async (parameters?: { radius: number }) => {
+    setHotel(undefined);
+
+    await getHotels({
+      dateRange,
+      location: event.location,
+      guests: roomParams,
+      radius: parameters?.radius || distanceRange[1] || 2000,
+    });
+  };
+
   const hotelKinds: HotelKind[] = useMemo(
     () =>
       Array.from(
         new Set(
-          Object.values(hotelsInfo)
+          Object.values(hotelsData.hotelsInfo)
             .map((hotel: HotelInfoClient) => hotel.metadata?.kind)
             .filter(
               (kind) =>
@@ -323,7 +209,7 @@ export const HotelSelection = () => {
             )
         )
       ),
-    [hotelsInfo]
+    [hotelsData.hotelsInfo]
   );
 
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
@@ -343,7 +229,9 @@ export const HotelSelection = () => {
         setRating(value);
         break;
       case "priceRange":
-        const persons = getTotalPersons(requestDebug.guests);
+        const persons = getTotalPersons(
+          hotelsData?.data?.debug?.request?.guests
+        );
         filterValue = value.map((price) => price * persons) as [number, number];
         setPriceRange(filterValue);
         break;
@@ -374,10 +262,10 @@ export const HotelSelection = () => {
 
     startTransition(() => {
       const hotelsToSet = applyFiltersAndSorting({
-        hotels,
+        hotels: hotelsData.data.data.hotels,
         priceRange,
         rating,
-        hotelsInfo,
+        hotelsInfo: hotelsData.hotelsInfo,
         meal,
         kind,
         freeCancellation,
@@ -406,18 +294,19 @@ export const HotelSelection = () => {
     orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">
   ) => {
     const hotelInformation = {
-      hotelName: hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
-      roomName: hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
-      stars: hotelsInfo[orderHotel?.id]?.metadata?.rating,
-      amenities: hotelsInfo[orderHotel?.id]?.general?.amenities,
-      distance: hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
+      hotelName: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
+      roomName: hotelsData.hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
+      stars: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.rating,
+      amenities: hotelsData.hotelsInfo[orderHotel?.id]?.general?.amenities,
+      distance:
+        hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
     };
     setHotel({
       ...orderHotel,
       hotelInformation,
-      guests: requestDebug.guests,
-      checkin: requestDebug.checkin,
-      checkout: requestDebug.checkout,
+      guests: hotelsData?.data?.debug?.request?.guests,
+      checkin: hotelsData?.data?.debug?.request?.checkin,
+      checkout: hotelsData?.data?.debug?.request?.checkout,
     });
   };
 
@@ -559,14 +448,14 @@ export const HotelSelection = () => {
 
               <div className="flex flex-row w-min items-center">
                 <DateRange
-                  disabled={isLoading}
+                  disabled={isFetching}
                   onPopoverClose={handleDatePopoverClose}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
                 />
                 <button
-                  disabled={isLoading}
+                  disabled={isFetching}
                   onClick={() => fetchHotels()}
                   className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                 >
@@ -590,7 +479,7 @@ export const HotelSelection = () => {
             !matches ? "w-full" : "sticky top-0"
           )}
         >
-          <Skeleton visible={isLoading}>
+          <Skeleton visible={isFetching}>
             <SortOptionsContainer
               sortOptions={
                 <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
@@ -632,7 +521,7 @@ export const HotelSelection = () => {
             />
           </Skeleton>
           {matches && (
-            <Skeleton visible={isLoading}>
+            <Skeleton visible={isFetching}>
               <HotelFilters
                 freeCancellation={freeCancellation}
                 basePrice={basePricePerPerson}
@@ -652,22 +541,24 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 gap-4 items-start">
             {filteredHotels.map(
               (hotel) =>
-                hotelsInfo[hotel.id] && (
+                hotelsData.hotelsInfo[hotel.id] && (
                   <HotelCard
-                    persons={getTotalPersons(requestDebug?.guests || [])}
+                    persons={getTotalPersons(
+                      hotelsData?.data?.debug?.request?.guests || []
+                    )}
                     minPrice={basePricePerPerson}
-                    isLoading={isLoading}
+                    isLoading={isFetching}
                     isSelected={hotel.id === selectedHotelId}
                     key={hotel.id}
                     hotelRates={hotel.rates}
-                    hotelInfo={hotelsInfo[hotel.id]}
+                    hotelInfo={hotelsData.hotelsInfo[hotel.id]}
                     handleSelect={() => setSelectedHotelId(hotel.id)}
                     handleSelectedRate={handleSelectedRate}
                   />
                 )
             )}
-            {hotels.length === 0 &&
-              isLoading &&
+            {!hotelsData.data?.data?.hotels?.length &&
+              isFetching &&
               Array.from({ length: 4 }, (_, i) => (
                 <div key={i} className="flex justify-center">
                   <Skeleton className="p-28" />

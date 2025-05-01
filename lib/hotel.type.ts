@@ -140,8 +140,23 @@ export type Room = {
   amenities: string[];
 };
 
-export type HotelKind = "Resort"|"Sanatorium"|"Guesthouse"|"Mini-hotel"|"Castle"|"Hotel"|"Boutique_and_Design"|"Apartment"|"Cottages_and_Houses"|"Farm"|"Villas_and_Bungalows"|"Camping"|"Hostel"|"BNB"|"Glamping"|"Apart-hotel";
-
+export type HotelKind =
+  | "Resort"
+  | "Sanatorium"
+  | "Guesthouse"
+  | "Mini-hotel"
+  | "Castle"
+  | "Hotel"
+  | "Boutique_and_Design"
+  | "Apartment"
+  | "Cottages_and_Houses"
+  | "Farm"
+  | "Villas_and_Bungalows"
+  | "Camping"
+  | "Hostel"
+  | "BNB"
+  | "Glamping"
+  | "Apart-hotel";
 
 export type HotelInfoClient = {
   rooms: Record<string, Room>;

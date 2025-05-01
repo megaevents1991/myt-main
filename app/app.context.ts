@@ -1,4 +1,11 @@
-import { Flight, OrderHotel, Event, OrderTicket, FlightSearchCriteria, HotelSearchCriteria } from "@/lib/app.types";
+import {
+  Flight,
+  OrderHotel,
+  Event,
+  OrderTicket,
+  FlightSearchCriteria,
+  HotelSearchCriteria,
+} from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
 
 type AppContext = {
@@ -18,13 +25,13 @@ type AppContext = {
   };
   setPaymentMethod: (paymentMethod: string) => void;
   paymentMethod: string;
-  selectedPlaneTicketsFilters: Partial<Record<FlightSearchCriteria['type'], FlightSearchCriteria['value']>>;
+  selectedPlaneTicketsFilters: Partial<FlightSearchCriteria>;
   setSelectedPlaneTicketsFilters: Dispatch<
-    SetStateAction<Partial<Record<FlightSearchCriteria['type'], FlightSearchCriteria['value']>>>
+    SetStateAction<Partial<FlightSearchCriteria>>
   >;
-  selectedHotelFilters: Partial<Record<HotelSearchCriteria['type'], HotelSearchCriteria['value']>>;
+  selectedHotelFilters: Partial<HotelSearchCriteria>;
   setSelectedHotelFilters: Dispatch<
-    SetStateAction<Partial<Record<HotelSearchCriteria['type'], HotelSearchCriteria['value']>>>
+    SetStateAction<Partial<HotelSearchCriteria>>
   >;
   setPlaneTickets: (planeTickets: { adults: number; children: number }) => void;
   step: number;

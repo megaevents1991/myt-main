@@ -15,6 +15,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
 import { Stepper } from "@/components/ui/Stepper";
+import { HotelFetchProvider } from "../HotelFetch.provider";
 
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
@@ -27,13 +28,9 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
   const eventId = useSearchParams().get("eventId") as string;
   const [selectedPlaneTicketsFilters, setSelectedPlaneTicketsFilters] =
-    useState<
-      Partial<
-        Record<FlightSearchCriteria["type"], FlightSearchCriteria["value"]>
-      >
-    >({});
+    useState<Partial<FlightSearchCriteria>>({});
   const [selectedHotelFilters, setSelectedHotelFilters] = useState<
-    Partial<Record<HotelSearchCriteria["type"], HotelSearchCriteria["value"]>>
+    Partial<HotelSearchCriteria>
   >({});
 
   useEffect(() => {
@@ -90,7 +87,7 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
           setPlaneTickets,
         }}
       >
-        {children}
+        <HotelFetchProvider>{children}</HotelFetchProvider>
       </OrderContext.Provider>
     </div>
   );

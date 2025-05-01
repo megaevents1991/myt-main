@@ -35,6 +35,9 @@ import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { isMobile } from "react-device-detect";
 import dayjs from "dayjs";
+import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
+import { getRoomParams } from "@/lib/getRoomParams";
+import { HotelFetchContext } from "../HotelFetch.provider";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -48,6 +51,7 @@ export const FlightSelection = () => {
     planeTickets,
     setSelectedPlaneTicketsFilters,
   } = useContext(OrderContext);
+  const { getHotels, hotelsData } = useContext(HotelFetchContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [filters, setFilters] = useState<{
@@ -103,6 +107,32 @@ export const FlightSelection = () => {
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
     fetchFlights({ adults: numberOfEventTickets });
   }, []);
+
+  // Fetch hotels when the orderFlight dates or number of adults change
+  useEffect(() => {
+    if (orderFlight?.id) {
+      getHotels({
+        dateRange: getDefaultDateRange(event, orderFlight),
+        guests: getRoomParams(planeTickets.adults),
+        location: event.location,
+      });
+    }
+  }, [
+    dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD"),
+    dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD"),
+    planeTickets.adults,
+  ]);
+
+  // First time fetching hotels, only if no hotels are already fetched
+  useEffect(() => {
+    if (orderFlight?.id && !hotelsData?.data?.data?.hotels) {
+      getHotels({
+        dateRange: getDefaultDateRange(event, orderFlight),
+        guests: getRoomParams(planeTickets.adults),
+        location: event.location,
+      });
+    }
+  }, [orderFlight?.id]);
 
   useEffect(() => {
     setSelectedPlaneTicketsFilters({});
@@ -192,6 +222,7 @@ export const FlightSelection = () => {
       }));
       setFlights(flights);
       setFlight(flights[0]);
+      return flights;
     } catch (err) {
       console.error(err);
       setError(
