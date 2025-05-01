@@ -12,6 +12,7 @@ import dayjs from "dayjs";
 
 export const maxDuration = 30;
 const currencyCode = "USD";
+const MAX_STOP_DURATION_HOURS = 8; // Define a constant for maximum stop duration
 
 export async function POST(request: Request) {
   if (!amadeus) {
@@ -67,7 +68,6 @@ export async function POST(request: Request) {
     });
 
     // Transform Amadeus response to match our flight data structure
-    // TODO: Consider code performance and memory usage optimization
     const flights: Flight[] = response.result.data.reduce((acc, offer) => {
       const {
         id,
@@ -84,10 +84,10 @@ export async function POST(request: Request) {
 
       const toDeparture = itineraries[0].segments[0];
       const toArrival = itineraries[0].segments.at(-1);
-
       const fromDeparture = itineraries[1].segments[0];
       const fromArrival = itineraries[1].segments.at(-1);
 
+      // Calculate stops and durations early
       const toStops = itineraries[0].segments.map((segment, i) => ({
         iataCode: segment.arrival.iataCode,
         duration: Math.ceil(
@@ -109,6 +109,16 @@ export async function POST(request: Request) {
             60
         ),
       }));
+
+      const hasLongLayover = 
+      toStops.some(stop => stop.duration > MAX_STOP_DURATION_HOURS) ||
+      fromStops.some(stop => stop.duration > MAX_STOP_DURATION_HOURS);
+
+      // Skip flights with layovers longer than threshold
+      if (hasLongLayover) {
+        return acc;
+      }
+
 
       const fromCheckBagsIncluded = itineraries[0].segments.every((segment) =>
         travelerPricings[0].fareDetailsBySegment.some(
