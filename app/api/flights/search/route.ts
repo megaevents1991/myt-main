@@ -12,7 +12,8 @@ import dayjs from "dayjs";
 
 export const maxDuration = 30;
 const currencyCode = "USD";
-const MAX_STOP_DURATION_HOURS = 8; // Define a constant for maximum stop duration
+const MAX_STOP_DURATION_HOURS = 6;
+const MAX_STOPS = 1; // Maximum allowed stops per journey
 
 export async function POST(request: Request) {
   if (!amadeus) {
@@ -80,6 +81,14 @@ export async function POST(request: Request) {
 
       if (!airlineByIata.logo) {
         return acc;
+      }
+
+      // Filter flights with too many stops (early check)
+      const outboundStops = itineraries[0].segments.length - 1;
+      const inboundStops = itineraries[1].segments.length - 1;
+
+      if (outboundStops > MAX_STOPS || inboundStops > MAX_STOPS) {
+        return acc; // Skip flights with too many stops
       }
 
       const toDeparture = itineraries[0].segments[0];
