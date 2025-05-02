@@ -786,6 +786,7 @@ export default function OrderReview() {
                             <Input
                               dir="rtl"
                               name="first-name"
+                              data-mp-allow="true"
                               autoComplete="given-name"
                               type="text"
                               placeholder="שם פרטי באנגלית"
@@ -817,6 +818,7 @@ export default function OrderReview() {
                               dir="rtl"
                               placeholder="שם משפחה באנגלית"
                               type="text"
+                              data-mp-allow="true"
                               name="last-name"
                               autoComplete="family-name"
                               className={cn(
