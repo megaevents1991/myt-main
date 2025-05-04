@@ -34,6 +34,23 @@ export async function POST(req: Request) {
   }
   console.log("(1/3) New Reservation was saved to DB");
 
+  const newTrackingCode = validatedData.main_contact_first_name.toLocaleLowerCase() + "_" + id.toString();
+
+  const { data: partner } = await supabase
+      .from('partners')
+      .insert({
+        partner_tracking_code: newTrackingCode,
+        name_hebrew: "החזר ללקוח ניתן להתעלם- " + validatedData.main_contact_first_name,
+        email: "support@mega-events.co.il",
+        password: newTrackingCode + "_pass",
+        commission: 40,
+        user_discount: 20,
+      })
+      .select()
+      .single();
+
+  const newPromoterCode = partner?.partner_tracking_code;
+
   const transporter = nodemailer.createTransport({
     service: "Zoho",
     auth: {
@@ -98,6 +115,7 @@ export async function POST(req: Request) {
       {
         message: "Order confirmed and email sent to sales rep",
         bookingReference: bookingRef,
+        newPromoterCode: newPromoterCode,
       },
       { status: 200 }
     );

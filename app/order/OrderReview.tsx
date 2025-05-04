@@ -307,6 +307,7 @@ export default function OrderReview() {
       const confirmationUrl = new URL("/confirmation", window.location.origin);
       const params = {
         bookingReference: result.bookingReference,
+        promoCode: result.newPromoterCode,
         eventName: event.name,
         eventDate: event.date,
         eventLocation: event.location.name,
