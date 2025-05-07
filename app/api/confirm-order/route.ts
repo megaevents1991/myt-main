@@ -35,19 +35,24 @@ export async function POST(req: Request) {
   console.log("(1/3) New Reservation was saved to DB");
 
   const newTrackingCode = validatedData.main_contact_first_name.toLocaleLowerCase() + "_" + id.toString();
+  const passcode = newTrackingCode + "_pass";
 
-  const { data: partner } = await supabase
+  const { data: partner, error: error2 } = await supabase
       .from('partners')
       .insert({
         partner_tracking_code: newTrackingCode,
-        name_hebrew: "החזר ללקוח ניתן להתעלם- " + validatedData.main_contact_first_name,
         email: "support@mega-events.co.il",
-        password: newTrackingCode + "_pass",
+        password: passcode,
         commission: 40,
         user_discount: 20,
+        created_at: new Date().toISOString().split('T')[0],
       })
       .select()
       .single();
+  
+  if (error2) {
+    console.error("Error inserting into partners table:", JSON.stringify(error2));
+  }
 
   const newPromoterCode = partner?.partner_tracking_code;
 
@@ -55,8 +60,8 @@ export async function POST(req: Request) {
     host: "smtp.zeptomail.com",
     port: 587,
     auth: {
-    user: "emailappsmtp.76a0821c4726b0f6",
-    pass: "0ydLtPuSA9ic"
+    user: process.env.EMAIL_SERVER_USER,
+    pass: process.env.EMAIL_SERVER_PASSWORD,
     }
   });
 
