@@ -3,9 +3,12 @@ import { ClientSideHomepage } from "@/components/ClientSideHomepage";
 import { FAQ } from "@/components/ui/FAQ";
 import MegaEventsSection from "@/components/ui/aboutUsMega";
 
-const envServer = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const envServer =
+  process.env.NEXT_PUBLIC_API_URL ||
+  `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
 
 async function getEvents() {
+  console.log(envServer);
   const response = await fetch(`${envServer}/api/events`, {
     cache: process.env.NODE_ENV === "development" ? "no-store" : "default",
     next:
