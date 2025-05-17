@@ -65,12 +65,16 @@ export function useOrderVars() {
   } = useContext(OrderContext);
 
   /* Calculate total guests */
-  const totalGuests = useMemo(() => {
-    if (!selectedHotel) {
+  const totalHotelGuests = useMemo(() => {
+    if (!selectedHotel?.guests) {
       return 0;
     }
-    return getTotalPersons(selectedHotel.guests);
+    return selectedHotel.guests.reduce((ppl, room) => {
+      return ppl + room.children.length + room.adults;
+    }, 0);
   }, [selectedHotel]);
+
+  const totalFlightTraverls = selectedFlight?.numOfTravelers || 0;
 
   const hotelPriceAddition = useMemo(() => {
     if (!selectedHotel || !event) {
@@ -79,11 +83,11 @@ export function useOrderVars() {
     return priceOutsidePackBoundaries(
       +selectedHotel.price,
       event.base_hotel_price,
-      totalGuests
+      totalHotelGuests
     )
-      ? +selectedHotel.price / totalGuests - event.base_hotel_price
+      ? +selectedHotel.price / totalHotelGuests - event.base_hotel_price
       : 0;
-  }, [selectedHotel, event, totalGuests]);
+  }, [selectedHotel, event, totalHotelGuests]);
 
   const airlineName = useMemo(
     () => shortenAirlineName(selectedFlight?.metadata?.name),
@@ -122,19 +126,18 @@ export function useOrderVars() {
       return false;
     }
     return (
-      totalGuests === numberOfEventTickets &&
-      totalGuests === selectedFlight.numOfTravelers
+      totalHotelGuests === numberOfEventTickets &&
+      totalHotelGuests === selectedFlight.numOfTravelers
     );
-  }, [totalGuests, numberOfEventTickets, selectedFlight]);
+  }, [totalHotelGuests, numberOfEventTickets, selectedFlight]);
 
   const numberOfPersons = useMemo(() => {
-    if (!selectedFlight) {
-      return 0;
-    }
-    return selectedFlight.numOfTravelers > numberOfEventTickets
-      ? selectedFlight.numOfTravelers
-      : numberOfEventTickets;
-  }, [selectedFlight, numberOfEventTickets]);
+    return Math.max(
+      numberOfEventTickets,
+      totalFlightTraverls,
+      totalHotelGuests
+    );
+  }, [totalFlightTraverls, numberOfEventTickets, totalHotelGuests]);
 
   /* Fetch Pack recommended price */
   const packRecommendedPrice = useMemo(() => {
@@ -150,26 +153,33 @@ export function useOrderVars() {
 
   /* Calculation of final price for the customer after discounts and such */
   const finalPurchasePriceCalc = useCallback(
-    (affDiscount: number) => {
-      if (!eventTicket || !event || !selectedFlight) {
+    (affDiscount: number, override: Partial<{travelers: number, guests: number, attendents: number}> = {}) => {
+      if (!event) {
         return 0;
       }
+      const travelers = override.travelers ?? (selectedFlight?.id ? totalFlightTraverls : numberOfPersons);
+      const guests = override.guests ?? (selectedHotel?.guests ? totalHotelGuests : numberOfPersons);
+      const attendents = override.attendents ?? numberOfEventTickets;
+
       return Math.ceil(
-        (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
+        (eventTicket.price + maup - affDiscount || 0) * attendents +
           (flightPriceAddition + event.base_flight_price) *
-            selectedFlight.numOfTravelers +
-          (hotelPriceAddition + event.base_hotel_price) * totalGuests
+            travelers +
+          (hotelPriceAddition + event.base_hotel_price) * guests
       );
     },
     [
+      numberOfPersons,
+      selectedFlight,
+      selectedHotel,
       eventTicket,
       maup,
       numberOfEventTickets,
-      selectedFlight,
+      totalFlightTraverls,
       flightPriceAddition,
       event,
       hotelPriceAddition,
-      totalGuests,
+      totalHotelGuests,
     ]
   );
 
@@ -205,7 +215,8 @@ export function useOrderVars() {
     recommendedPriceAllPax,
     isNumberOfPersonsEqual,
     numberOfPersons,
-    totalGuests,
+    totalHotelGuests,
+    totalFlightTraverls,
     numOfNights,
     isCorrespondingToFlight,
     finalPurchasePriceCalc,

@@ -114,7 +114,7 @@ export default function OrderReview() {
     flightPriceAddition,
     airlineName,
     hotelPriceAddition,
-    totalGuests,
+    totalHotelGuests,
   } = useOrderVars();
   const [openModal, setOpenModal] = useState(true);
   const [isTimeout, setIsTimeout] = useState(false);
@@ -548,7 +548,7 @@ export default function OrderReview() {
                     <div>
                       {hotelPriceAddition
                         ? formatPrice(hotelPriceAddition, {
-                            factor: totalGuests,
+                            factor: totalHotelGuests,
                             applyColor: true,
                             bold: true,
                           })

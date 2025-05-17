@@ -24,6 +24,7 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
   const [planeTickets, setPlaneTickets] = useState({ adults: 2, children: 0 });
+  const [numOfGuests, setNumOfGuests] = useState(2);
   const [step, setStep] = useState(1);
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
   const eventId = useSearchParams().get("eventId") as string;
@@ -85,6 +86,8 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
           setNumberOfEventTickets,
           planeTickets,
           setPlaneTickets,
+          numOfGuests,
+          setNumOfGuests,
         }}
       >
         <HotelFetchProvider>{children}</HotelFetchProvider>

@@ -35,6 +35,7 @@ export const HotelSelection = () => {
     flight,
     event = {} as Event,
     setSelectedHotelFilters,
+    setNumOfGuests: setNumOfGuests,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -102,6 +103,11 @@ export const HotelSelection = () => {
 
     return () => clearTimeout(timer); // Cleanup timeout if component unmounts
   }, []);
+
+  useEffect(() => {
+    setNumOfGuests(getTotalPersons(roomParams));
+  }, [roomParams, setNumOfGuests]);
+    
 
   useEffect(() => {
     if (!flight?.outbound?.arrivalTime || !flight?.inbound?.departureTime) {

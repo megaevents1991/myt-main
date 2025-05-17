@@ -14,6 +14,7 @@ import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
+import { AnimatedPrice } from "@/components/ui/AnimatedPrice";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -31,10 +32,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
     hotel,
     eventTicket,
     numberOfEventTickets,
-    planeTickets,
     selectedPlaneTicketsFilters,
     selectedHotelFilters,
     paymentMethod,
+    planeTickets,
+    numOfGuests,
   } = useContext(OrderContext);
 
   const { affDiscount, affId } = useFetchAffiliate();
@@ -48,64 +50,21 @@ export const OrderForm = ({ event }: { event: Event }) => {
     isCorrespondingToFlight,
     airlineName,
     hotelPriceAddition,
-    totalGuests,
+    totalHotelGuests,
   } = useOrderVars();
+
+  const finalPurchasePrice = finalPurchasePriceCalc(affDiscount, {
+    attendents: step === 1 ? numberOfEventTickets : undefined,
+    travelers: step === 2 ? planeTickets.adults + planeTickets.children: undefined,
+    guests: step === 3 ? numOfGuests : undefined,
+  });
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  function shortenAirlineName(name: string | undefined) {
-    if (!name) {
-      return "";
-    }
-
-    const words = name.split(/\s+/); // Split by spaces
-    let shortName = "";
-    let charCount = 0;
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-
-      // If it's the first word and longer than 6 chars, return it directly
-      if (i === 0 && word.length > 6) {
-        return word;
-      }
-
-      if (charCount + word.length > 6) {
-        if (word.length >= 10) {
-          return shortName.trim(); // Stop if the word is very long (10+ chars)
-        } else {
-          return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
-        }
-      }
-
-      shortName += (shortName ? " " : "") + word;
-      charCount += word.length;
-    }
-
-    return shortName.trim();
-  }
-
   const buttonDisabled =
     (!flight?.id && step === 2) || (!hotel?.id && step === 3);
-
-  const airline = shortenAirlineName(flight?.metadata?.name);
-
-  const ticketCategory = eventTicket.category;
-
-  const minTicketPrice = Math.min(
-    ...event.tickets_and_rates.map((ticket) => ticket.price)
-  );
-
-  const ticketRelativePrice = eventTicket.price - minTicketPrice;
-
-  const basePrice = Math.ceil(
-    event.base_flight_price +
-      event.base_hotel_price +
-      minTicketPrice +
-      Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-  ).toLocaleString("en-US");
 
   const nextStep = () =>
     setStep((prev) => {
@@ -176,7 +135,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
             checkOutDate: hotel.checkout,
             numOfNights,
             numOfRooms: hotel.guests.length,
-            numOfPeople: totalGuests,
+            numOfPeople: totalHotelGuests,
             isCorrespondingToFlight,
             hotelInformation: hotel.hotelInformation,
             hotelAddionalPrice: hotelPriceAddition,
@@ -234,64 +193,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   </button>
 
                   {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
-                    {step > 2 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
-                          {formatPrice(
-                            Math.ceil(
-                              (flight?.price || 0) / planeTickets.adults -
-                                event.base_flight_price
-                            )
-                          )}
-                        </span>
-                        <div className="flex items-center justify-end">
-                          <span className="text-right mr-2 lg:ml-2">
-                            {airline}
-                          </span>
-                          <Image
-                            alt="plane icon"
-                            src={`/plane.svg`}
-                            width={16}
-                            height={16}
-                          />
-                        </div>
-                        <span className="hidden lg:inline ml-2">|</span>
-                      </div>
-                    )}
-                    {step > 1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
-                          {ticketRelativePrice > 0
-                            ? formatPrice(ticketRelativePrice)
-                            : "(כלול במחיר)"}
-                        </span>
-                        <div className="flex items-center justify-end">
-                          <span className="text-right mr-2 lg:ml-2">
-                            {ticketCategory}
-                          </span>
-                          <Image
-                            alt="ticket icon"
-                            src={`/ticket.svg`}
-                            width={16}
-                            height={16}
-                          />
-                        </div>
-                        <span className="hidden lg:inline ml-2">|</span>
-                      </div>
-                    )}
-                    {step > -1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto">
-                        <span className="text-left lg:ml-2 font-bold tracking-wide">
-                          ${basePrice}
-                        </span>
-                        <div className="flex items-center justify-end lg:ml-2">
-                          <span className="text-right font-bold">
-                            {event.name}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                  <div className="text-lg font-semibold text-gray-900 flex flex-row-reverse items-center">
+                    <span className="text-sm text-gray-700 ml-2">סה"כ מחיר לאדם</span>
+                    <AnimatedPrice value={`$${Math.ceil(
+                        finalPurchasePrice / numberOfPersons
+                      ).toLocaleString("en-US")}`} />
                   </div>
                 </div>
               </div>

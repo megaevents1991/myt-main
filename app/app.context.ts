@@ -18,6 +18,8 @@ type AppContext = {
   setFlight: Dispatch<SetStateAction<Flight | undefined>>;
   setEvent: (event: Event) => void;
   numberOfEventTickets: number;
+  numOfGuests: number;
+  setNumOfGuests: Dispatch<SetStateAction<number>>;
   setNumberOfEventTickets: (numberOfEventTickets: number) => void;
   planeTickets: {
     adults: number;

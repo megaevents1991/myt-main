@@ -59,6 +59,15 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        pulseScale: {
+          '0%, 50%, 100%': { transform: 'scale(1)' },
+          '25%, 75%': { transform: 'scale(1.1)' },
+        },
+      },
+      animation: {
+        'pulse-scale': 'pulseScale 1s ease-in-out',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
