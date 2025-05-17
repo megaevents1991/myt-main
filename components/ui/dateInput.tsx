@@ -12,7 +12,7 @@ export const DateRange = ({
   onPopoverClose,
   disabled,
   showTooltip = false,
-  tooltipText = "רוצים תאריכים אחרים? בחרו כאן",
+  tooltipText = "רוצים לטוס בתאריכים אחרים? בחרו כאן",
 }: {
   dateRange: [Date | null, Date | null];
   setDateRange: (value: [Date | null, Date | null]) => void;
