@@ -48,13 +48,14 @@ export async function GET(request: Request) {
 
     const { data: partner, error: error2 } = await supabase
       .from('partners')
-      .select('commission')
+      .select('commission, type')
       .eq('partner_tracking_code', affiliateId)
       .limit(1);
 
     if (error2) throw error2;
 
     const commission = partner[0]?.commission || 0;
+    const type = partner[0]?.type || 'affiliate';
 
     // Get the current month range
     const now = new Date();
@@ -102,6 +103,7 @@ export async function GET(request: Request) {
         confirmed: totalConfirmedTickets,
         paid: totalPaidTickets,
         commission: commission,
+        type,
         totalRevenue: totalPaidTickets * commission
       };
     };

@@ -82,7 +82,7 @@ export default function OrderReview() {
   } = useContext(OrderContext);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { affId, affDiscount } = useFetchAffiliate();
+  const { affId, affDiscount, agentCommision } = useFetchAffiliate();
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
   >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
@@ -442,9 +442,13 @@ export default function OrderReview() {
                 </div>
                 <div className="flex flex-col items-start font-bold" dir="rtl">
                   <span className="text-[22px] ">סה&quot;כ</span>
-                  {affDiscount > 0 && (
+                  {agentCommision > 0 ? (
                     <span className="text-[14px]" style={{ color: "green" }}>
-                      כולל הנחת ${affDiscount * numberOfEventTickets}
+                     עמלה צפויה ${(agentCommision / 100 * finalPurchasePrice).toLocaleString("en-US")}
+                    </span>
+                  ) : affDiscount > 0 && (
+                    <span className="text-[14px]" style={{ color: "green" }}>
+                      כולל הנחת ${(affDiscount * numberOfEventTickets).toLocaleString("en-US")}
                     </span>
                   )}
                 </div>
