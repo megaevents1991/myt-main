@@ -60,6 +60,7 @@ const SearchCombobox = ({
       value={item.id.toString()}
       key={item.id}
       style={{ textAlign: "right" }}
+      onClick={() => trackEvent('buttonClick', { buttonTag: 'search-option', buttonName: item.name })}
     >
       <span className="font-bold text-lg">{item.name}</span>
       <br />
@@ -105,7 +106,10 @@ const SearchCombobox = ({
             }
             combobox.updateSelectedOptionIndex();
           }}
-          onClick={() => searchValue.length > 1 && combobox.openDropdown()}
+          onClick={() => {
+            trackEvent('buttonClick', { buttonTag: 'search-bar' });
+            if(searchValue.length > 1) combobox.openDropdown();
+          }}
           onFocus={() => searchValue.length > 1 && combobox.openDropdown()}
           onBlur={() => combobox.closeDropdown()}
         />
