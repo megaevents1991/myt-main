@@ -216,7 +216,9 @@ export function useOrderVars() {
 
 export function useFetchAffiliate() {
   const [affDiscount, setAffDiscount] = useState(0);
+  const [agentCommision, setAgentCommission] = useState(0);
   const [affId, setAffId] = useState<string | null>(null);
+  const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
 
   useEffect(() => {
     let affiliateData;
@@ -234,8 +236,14 @@ export function useFetchAffiliate() {
         )
           .then((res) => res.json())
           .then((data) => {
-            if (data?.commission) {
-              setAffDiscount(data.commission);
+            if (data) {
+              if (data.type === "agent") {
+                setAgentCommission(data.commission);
+                setAffType("agent");
+              } else if (data.type === "affiliate") {
+                setAffDiscount(data.discount);
+                setAffType("affiliate");
+              }
               setAffId(parsedAffiliateData.affiliateId);
             }
           })
@@ -247,5 +255,7 @@ export function useFetchAffiliate() {
   return {
     affDiscount,
     affId,
+    affType,
+    agentCommision,
   };
 }

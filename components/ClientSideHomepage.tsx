@@ -60,6 +60,12 @@ const SearchCombobox = ({
       value={item.id.toString()}
       key={item.id}
       style={{ textAlign: "right" }}
+      onClick={() =>
+        trackEvent("buttonClick", {
+          buttonTag: "search-option",
+          buttonName: item.name,
+        })
+      }
     >
       <span className="font-bold text-lg">{item.name}</span>
       <br />
@@ -105,7 +111,10 @@ const SearchCombobox = ({
             }
             combobox.updateSelectedOptionIndex();
           }}
-          onClick={() => searchValue.length > 1 && combobox.openDropdown()}
+          onClick={() => {
+            trackEvent("buttonClick", { buttonTag: "search-bar" });
+            if (searchValue.length > 1) combobox.openDropdown();
+          }}
           onFocus={() => searchValue.length > 1 && combobox.openDropdown()}
           onBlur={() => combobox.closeDropdown()}
         />
@@ -642,6 +651,11 @@ function EventCard({ event }: { event: Event }) {
           {event.tags === "Popular" && (
             <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
               נמכר במהירות!
+            </div>
+          )}
+          {event.tags === "Restock" && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+              חזר למלאי!
             </div>
           )}
           {event.tags === "Sold" && (

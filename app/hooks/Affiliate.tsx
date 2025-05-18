@@ -57,7 +57,7 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
 
   // Parse stored data or initialize empty object
   const affiliateData = storedData ? JSON.parse(storedData) : {};
-  let flagSave = false;
+  let flagSave = !!affParam;
 
   // Assign userId if not exists
   if (!affiliateData.userId) {
@@ -66,7 +66,10 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
   }
 
   // Set affiliateId from stored data or URL param
-  if (!affiliateData.affiliateId && affParam) {
+  if (
+    (!affiliateData.affiliateId && affParam) ||
+    affiliateData.affiliateId !== affParam
+  ) {
     affiliateData.affiliateId = affParam;
   }
 

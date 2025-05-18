@@ -114,6 +114,11 @@ export default async function FootballPage({
                           נמכר במהירות!
                         </div>
                       )}
+                      {event.tags === "Restock" && (
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                          חזר למלאי!
+                        </div>
+                      )}
                       {event.tags === "Sold" && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
                           אזלו הכרטיסים

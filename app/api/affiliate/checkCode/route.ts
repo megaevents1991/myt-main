@@ -12,14 +12,16 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await supabase
       .from('partners')
-      .select("partner_tracking_code, user_discount")
+      .select("partner_tracking_code, user_discount, commission, type")
       .eq('partner_tracking_code', affiliateId)
       .single();
     if (error) throw error;    
     
     if (data && data?.user_discount)
       return NextResponse.json({
-        commission: data.user_discount,
+        discount: data.user_discount,
+        commission: data.commission,
+        type: data.type,
       });
     else
     return NextResponse.json({ });
