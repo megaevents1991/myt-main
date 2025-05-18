@@ -9,8 +9,6 @@ import { Event, Flight } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/price.utils";
-import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
@@ -55,7 +53,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const finalPurchasePrice = finalPurchasePriceCalc(affDiscount, {
     attendents: step === 1 ? numberOfEventTickets : undefined,
-    travelers: step === 2 ? planeTickets.adults + planeTickets.children: undefined,
+    travelers:
+      step === 2 ? planeTickets.adults + planeTickets.children : undefined,
     guests: step === 3 ? numOfGuests : undefined,
   });
 
@@ -194,10 +193,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
                   {/* Order Summary Section */}
                   <div className="text-lg font-semibold text-gray-900 flex flex-row-reverse items-center">
-                    <span className="text-sm text-gray-700 ml-2">סה"כ מחיר לאדם</span>
-                    <AnimatedPrice value={`$${Math.ceil(
+                    <span className="text-sm text-gray-700 ml-2">
+                      סה&quot;כ מחיר לאדם
+                    </span>
+                    <AnimatedPrice
+                      value={`$${Math.ceil(
                         finalPurchasePrice / numberOfPersons
-                      ).toLocaleString("en-US")}`} />
+                      ).toLocaleString("en-US")}`}
+                    />
                   </div>
                 </div>
               </div>

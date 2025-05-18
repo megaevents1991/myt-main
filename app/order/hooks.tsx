@@ -2,7 +2,6 @@
 
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
-import { getTotalPersons } from "@/lib/price.utils";
 
 /**
  * Check if the price is outside the pack boundries
@@ -153,18 +152,28 @@ export function useOrderVars() {
 
   /* Calculation of final price for the customer after discounts and such */
   const finalPurchasePriceCalc = useCallback(
-    (affDiscount: number, override: Partial<{travelers: number, guests: number, attendents: number}> = {}) => {
+    (
+      affDiscount: number,
+      override: Partial<{
+        travelers: number;
+        guests: number;
+        attendents: number;
+      }> = {}
+    ) => {
       if (!event) {
         return 0;
       }
-      const travelers = override.travelers ?? (selectedFlight?.id ? totalFlightTraverls : numberOfPersons);
-      const guests = override.guests ?? (selectedHotel?.guests ? totalHotelGuests : numberOfPersons);
+      const travelers =
+        override.travelers ??
+        (selectedFlight?.id ? totalFlightTraverls : numberOfPersons);
+      const guests =
+        override.guests ??
+        (selectedHotel?.guests ? totalHotelGuests : numberOfPersons);
       const attendents = override.attendents ?? numberOfEventTickets;
 
       return Math.ceil(
         (eventTicket.price + maup - affDiscount || 0) * attendents +
-          (flightPriceAddition + event.base_flight_price) *
-            travelers +
+          (flightPriceAddition + event.base_flight_price) * travelers +
           (hotelPriceAddition + event.base_hotel_price) * guests
       );
     },
@@ -229,7 +238,7 @@ export function useFetchAffiliate() {
   const [affDiscount, setAffDiscount] = useState(0);
   const [agentCommision, setAgentCommission] = useState(0);
   const [affId, setAffId] = useState<string | null>(null);
-  const [affType, setAffType] = useState<'agent' | 'affiliate' | null>(null);
+  const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
 
   useEffect(() => {
     let affiliateData;
