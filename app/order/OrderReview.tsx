@@ -257,7 +257,7 @@ export default function OrderReview() {
 
     setIsSubmitting(true);
 
-    // Collect data from your UI elements
+    // Collect data from your UI element
     const updatedFormData = {
       main_contact_first_name: passengers[0].firstName,
       main_contact_last_name: passengers[0].lastName,
@@ -444,12 +444,21 @@ export default function OrderReview() {
                   <span className="text-[22px] ">סה&quot;כ</span>
                   {agentCommision > 0 ? (
                     <span className="text-[14px]" style={{ color: "green" }}>
-                     עמלה צפויה ${(agentCommision / 100 * finalPurchasePrice).toLocaleString("en-US")}
+                      עמלה צפויה $
+                      {(
+                        (agentCommision / 100) *
+                        finalPurchasePrice
+                      ).toLocaleString("en-US")}
                     </span>
-                  ) : affDiscount > 0 && (
-                    <span className="text-[14px]" style={{ color: "green" }}>
-                      כולל הנחת ${(affDiscount * numberOfEventTickets).toLocaleString("en-US")}
-                    </span>
+                  ) : (
+                    affDiscount > 0 && (
+                      <span className="text-[14px]" style={{ color: "green" }}>
+                        כולל הנחת $
+                        {(affDiscount * numberOfEventTickets).toLocaleString(
+                          "en-US"
+                        )}
+                      </span>
+                    )
                   )}
                 </div>
               </div>
