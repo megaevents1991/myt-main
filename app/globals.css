@@ -9,6 +9,10 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.faq-rich-content strong {
+  font-weight: 700;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

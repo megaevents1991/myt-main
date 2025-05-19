@@ -5,19 +5,33 @@ import { useState } from "react";
 type FAQItem = {
   question: string;
   answer: string;
+  hasRichText?: boolean;
 };
 
 export default function FAQAccordion({ items }: { items: FAQItem[] }) {
   return (
     <>
       {items.map((item, index) => (
-        <FAQItem key={index} question={item.question} answer={item.answer} />
+        <FAQItem
+          key={index}
+          question={item.question}
+          answer={item.answer}
+          hasRichText={item.hasRichText}
+        />
       ))}
     </>
   );
 }
 
-function FAQItem({ question, answer }: { question: string; answer: string }) {
+function FAQItem({
+  question,
+  answer,
+  hasRichText = false,
+}: {
+  question: string;
+  answer: string;
+  hasRichText?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -33,7 +47,18 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         </span>
       </button>
 
-      {isOpen && <div className="p-4 bg-white">{answer}</div>}
+      {isOpen && (
+        <div className="p-4 bg-white">
+          {hasRichText ? (
+            <div
+              dangerouslySetInnerHTML={{ __html: answer }}
+              className="faq-rich-content"
+            />
+          ) : (
+            answer
+          )}
+        </div>
+      )}
     </div>
   );
 }
