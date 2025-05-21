@@ -8,15 +8,26 @@ const envServer =
   `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
 
 async function getEvents() {
-  const response = await fetch(`${envServer}/api/events`, {
-    cache: process.env.NODE_ENV === "development" ? "no-store" : "default",
-    next:
-      process.env.NODE_ENV === "development"
-        ? undefined
-        : { revalidate: 3600, tags: ["events"] },
-  });
-  const { events } = await response.json();
-  return events;
+  try {
+    const response = await fetch(`${envServer}/api/events`, {
+      cache: process.env.NODE_ENV === "development" ? "no-store" : "default",
+      next:
+        process.env.NODE_ENV === "development"
+          ? undefined
+          : { revalidate: 3600, tags: ["events"] },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch events: ${response.status}`);
+      return []; // Return empty array as fallback
+    }
+
+    const { events } = await response.json();
+    return events;
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    return []; // Return empty array as fallback
+  }
 }
 
 function HomePageSkeleton() {
