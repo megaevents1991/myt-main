@@ -24,6 +24,12 @@ export const trackEvent = (eventName: string, properties?: Record<string, any>) 
   }
 };
 
+export const superTrack = (properties: object) => {
+  if (typeof window !== "undefined") {
+    mixpanel.register(properties);
+  }
+};
+
 export const identifyUser = (userId: string) => {
   if (typeof window !== "undefined") {
     mixpanel.identify(userId);

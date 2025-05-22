@@ -37,7 +37,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     paymentMethod,
   } = useContext(OrderContext);
 
-  const { affDiscount, affId } = useFetchAffiliate();
+  const { affDiscount, affId } = useFetchAffiliate(); // @TODO: should be removed and called once in ticket selection
   const {
     numberOfPersons,
     finalPurchasePriceCalc,

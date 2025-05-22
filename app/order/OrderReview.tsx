@@ -29,6 +29,10 @@ import { trackEvent } from "@/lib/mixpanel";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
+import AgentMode from "@/components/AgentMode";
+import AgentPrintSettings from "@/components/AgentPrintSettings";
+import PrintableOrderSummary from "@/components/PrintableOrderSummary";
+import usePrintableWindow from "../hooks/usePrintableWindow";
 
 type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -119,6 +123,18 @@ export default function OrderReview() {
   const [openModal, setOpenModal] = useState(true);
   const [isTimeout, setIsTimeout] = useState(false);
 
+  const [isAgentMode, setIsAgentMode] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(() => {
+    try {
+      const raw = localStorage.getItem("mytData");
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed?.logoUrl || "";
+    } catch (e) {
+      console.error("Failed to parse localStorage mytData", e);
+      return "";
+    }
+  });
+
   const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
 
   const setErrors = () => {
@@ -145,6 +161,60 @@ export default function OrderReview() {
     });
 
     setValidationErrors(allErrors);
+  };
+
+  const [finalPrice, setFinalPrice] = useState(finalPurchasePrice);
+
+  const { openPrintableWindow } = usePrintableWindow({
+    title: "Trip Booking Summary",
+  });
+
+  const handlePrintForClient = () => {
+    // Open the printable window with the customized data
+
+    const tripData = {
+      tripDetails: {
+        destination: event?.location.name || "",
+        price: finalPrice,
+        pricePerPerson: finalPrice / numberOfPersons,
+        travelers: 2,
+      },
+      flightDetails: {
+        outboundDepartureTime: selectedFlight?.outbound.departureTime || "",
+        outboundDepartureAirport:
+          selectedFlight?.outbound.departureAirport || "",
+        outboundArrivalTime: selectedFlight?.outbound.arrivalTime || "",
+        outboundArrivalAirport: selectedFlight?.outbound.arrivalAirport || "",
+        inboundDepartureTime: selectedFlight?.inbound.departureTime || "",
+        inboundDepartureAirport: selectedFlight?.inbound.departureAirport || "",
+        inboundArrivalTime: selectedFlight?.inbound.arrivalTime || "",
+        inboundArrivalAirport: selectedFlight?.inbound.arrivalAirport || "",
+        airline: selectedFlight?.airline || "",
+      },
+      hotelDetails: {
+        name: selectedHotel?.hotelInformation.hotelName || "",
+        roomType: selectedHotel?.hotelInformation.roomName || "",
+        checkIn: selectedHotel?.checkin || "",
+        checkOut: selectedHotel?.checkout || "",
+      },
+      eventDetails: {
+        eventName: event?.name || "",
+        eventDate: event?.date || "",
+        eventLocation: event?.location.name || "",
+        ticketType: eventTicket.category,
+        quantity: numberOfEventTickets,
+      },
+    };
+
+    openPrintableWindow(
+      <PrintableOrderSummary
+        logoUrl={logoUrl}
+        tripDetails={tripData.tripDetails}
+        flightDetails={tripData.flightDetails}
+        hotelDetails={tripData.hotelDetails}
+        eventDetails={tripData.eventDetails}
+      />
+    );
   };
 
   useEffect(() => {
@@ -282,6 +352,7 @@ export default function OrderReview() {
       user_shown_price: finalPurchasePrice,
       event_id: event?.id || 0,
       aff_partner_tracking_code: affId || "",
+      is_agent_booking: agentCommision > 0,
     };
 
     try {
@@ -302,6 +373,7 @@ export default function OrderReview() {
         paymentMethod: "", // @TODO: Add payment method
         affiliateDiscount: affDiscount * numberOfEventTickets,
         affiliateId: affId,
+        isAgentBooking: agentCommision > 0,
       });
 
       const confirmationUrl = new URL("/confirmation", window.location.origin);
@@ -409,6 +481,25 @@ export default function OrderReview() {
       />
       {/* Main Content */}
       <main className="max-w-[1200px] mx-auto lg:px-6 py-4">
+        {agentCommision > 0 && (
+          <div>
+            <AgentMode
+              isAgentMode={isAgentMode}
+              onToggleAgentMode={() => setIsAgentMode(!isAgentMode)}
+              onPrintForClient={handlePrintForClient}
+            />
+
+            {isAgentMode && (
+              <AgentPrintSettings
+                logoUrl={logoUrl}
+                setLogoUrl={setLogoUrl}
+                finalPrice={finalPrice}
+                setFinalPrice={setFinalPrice}
+                originalPrice={finalPurchasePrice}
+              />
+            )}
+          </div>
+        )}
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Left Column - Booking Summary and CTA */}
           <div className="space-y-4 order-1 md:order-1">
@@ -423,7 +514,8 @@ export default function OrderReview() {
                     <span className="text-xl">
                       ${finalPurchasePrice.toLocaleString("en-US")}
                     </span>
-                    {isNumberOfPersonsEqual &&
+                    {agentCommision <= 0 &&
+                      isNumberOfPersonsEqual &&
                       recommendedPriceAllPax > finalPurchasePrice && (
                         <span className="line-through text-[red]">
                           ${recommendedPriceAllPax.toLocaleString("en-US")}
@@ -496,25 +588,29 @@ export default function OrderReview() {
                             {eventTicket.category}
                           </span>
                         </div>
+                        {agentCommision <= 0 && (
+                          <div>
+                            {eventTicketPriceAddition ? (
+                              <>
+                                ({formatPrice(eventTicketPriceAddition)})/לכרטיס
+                              </>
+                            ) : (
+                              ""
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {agentCommision <= 0 && (
                         <div>
-                          {eventTicketPriceAddition ? (
-                            <>
-                              ({formatPrice(eventTicketPriceAddition)})/לכרטיס
-                            </>
-                          ) : (
-                            ""
-                          )}
+                          {eventTicketPriceAddition
+                            ? formatPrice(eventTicketPriceAddition, {
+                                factor: numberOfEventTickets,
+                                applyColor: true,
+                                bold: true,
+                              })
+                            : "כלול במחיר"}
                         </div>
-                      </div>
-                      <div>
-                        {eventTicketPriceAddition
-                          ? formatPrice(eventTicketPriceAddition, {
-                              factor: numberOfEventTickets,
-                              applyColor: true,
-                              bold: true,
-                            })
-                          : "כלול במחיר"}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -550,7 +646,7 @@ export default function OrderReview() {
                         <div>
                           {selectedHotel.guests.length > 1 &&
                             ` | ${selectedHotel.guests.length} חדרים`}{" "}
-                          {hotelPriceAddition ? (
+                          {agentCommision <= 0 && hotelPriceAddition ? (
                             <>({formatPrice(hotelPriceAddition)})/לאורח</>
                           ) : (
                             ""
@@ -558,15 +654,17 @@ export default function OrderReview() {
                         </div>
                       </div>
                     </div>
-                    <div>
-                      {hotelPriceAddition
-                        ? formatPrice(hotelPriceAddition, {
-                            factor: totalGuests,
-                            applyColor: true,
-                            bold: true,
-                          })
-                        : "כלול במחיר"}
-                    </div>
+                    {agentCommision <= 0 && (
+                      <div>
+                        {hotelPriceAddition
+                          ? formatPrice(hotelPriceAddition, {
+                              factor: totalGuests,
+                              applyColor: true,
+                              bold: true,
+                            })
+                          : "כלול במחיר"}
+                      </div>
+                    )}
                   </div>
                   <div className="flex text-[16px]" dir="rtl">
                     <div>מ-</div>
@@ -599,13 +697,15 @@ export default function OrderReview() {
                         <div className="font-bold ml-1" dir="ltr">
                           {airlineName}
                         </div>
-                        <div>
-                          {formatPrice(flightPriceAddition) ? (
-                            <>({formatPrice(flightPriceAddition)})/לנוסע</>
-                          ) : (
-                            ""
-                          )}
-                        </div>
+                        {agentCommision <= 0 && (
+                          <div>
+                            {formatPrice(flightPriceAddition) ? (
+                              <>({formatPrice(flightPriceAddition)})/לנוסע</>
+                            ) : (
+                              ""
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="flex text-[16px]" dir="rtl">
                         <div>מ-</div>
@@ -623,15 +723,17 @@ export default function OrderReview() {
                         </div>
                       </div>
                     </div>
-                    <div>
-                      {formatPrice(flightPriceAddition)
-                        ? formatPrice(flightPriceAddition, {
-                            factor: selectedFlight.numOfTravelers,
-                            applyColor: true,
-                            bold: true,
-                          })
-                        : "כלול במחיר"}
-                    </div>
+                    {agentCommision <= 0 && (
+                      <div>
+                        {formatPrice(flightPriceAddition)
+                          ? formatPrice(flightPriceAddition, {
+                              factor: selectedFlight.numOfTravelers,
+                              applyColor: true,
+                              bold: true,
+                            })
+                          : "כלול במחיר"}
+                      </div>
+                    )}
                   </div>
                   <div className="h-1"></div>
                   <div className="text-[12px] mt-2 px-2" dir="rtl">
@@ -930,54 +1032,56 @@ export default function OrderReview() {
                 </div>
               </div>
             </Card>
-            <Card
-              className="bg-white shadow-lg overflow-hidden order-4 md:order-3"
-              dir="rtl"
-            >
-              {(() => {
-                const items = [
-                  {
-                    title: "100% אחריות",
-                    description:
-                      "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל-30 שנות ניסיון ואלפי לקוחות מרוצים.",
-                  },
-                  {
-                    title: "כרטיסים מובטחים",
-                    description:
-                      "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים –אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
-                  },
-                  {
-                    title: "שירות אישי ואנושי",
-                    description:
-                      "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בוואטספ!)",
-                  },
-                ];
+            {agentCommision <= 0 && (
+              <Card
+                className="bg-white shadow-lg overflow-hidden order-4 md:order-3"
+                dir="rtl"
+              >
+                {(() => {
+                  const items = [
+                    {
+                      title: "100% אחריות",
+                      description:
+                        "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל-30 שנות ניסיון ואלפי לקוחות מרוצים.",
+                    },
+                    {
+                      title: "כרטיסים מובטחים",
+                      description:
+                        "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים –אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
+                    },
+                    {
+                      title: "שירות אישי ואנושי",
+                      description:
+                        "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בוואטספ!)",
+                    },
+                  ];
 
-                return (
-                  <div className="bg-white p-4 md:p-8 space-y-6 mx-auto text-right">
-                    {items.map((item, idx) => (
-                      <div key={idx} className="flex">
-                        <Image
-                          src="/icons/checkmark-wavey-circle.svg"
-                          alt="check"
-                          width={24}
-                          height={24}
-                          className="w-7 h-7 mt-1"
-                        />
-                        <div className="flex-1 pr-4">
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            {item.title}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {item.description}
-                          </p>
+                  return (
+                    <div className="bg-white p-4 md:p-8 space-y-6 mx-auto text-right">
+                      {items.map((item, idx) => (
+                        <div key={idx} className="flex">
+                          <Image
+                            src="/icons/checkmark-wavey-circle.svg"
+                            alt="check"
+                            width={24}
+                            height={24}
+                            className="w-7 h-7 mt-1"
+                          />
+                          <div className="flex-1 pr-4">
+                            <h3 className="text-lg font-semibold text-gray-800">
+                              {item.title}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {item.description}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </Card>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </Card>
+            )}
             <div
               className="flex md:hidden flex-col mr-2 mt-4 mb-2 text-right"
               dir="rtl"

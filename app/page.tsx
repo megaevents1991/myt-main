@@ -2,31 +2,15 @@ import { Suspense } from "react";
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
 import { FAQ } from "@/components/ui/FAQ";
 import MegaEventsSection from "@/components/ui/aboutUsMega";
+import { getCachedEvents } from "./api/eventsData";
 
-const envServer =
-  process.env.NEXT_PUBLIC_API_URL ||
-  `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-
-async function getEvents() {
+async function getEventsForPage() {
   try {
-    const response = await fetch(`${envServer}/api/events`, {
-      cache: process.env.NODE_ENV === "development" ? "no-store" : "default",
-      next:
-        process.env.NODE_ENV === "development"
-          ? undefined
-          : { revalidate: 3600, tags: ["events"] },
-    });
-
-    if (!response.ok) {
-      console.error(`Failed to fetch events: ${response.status}`);
-      return []; // Return empty array as fallback
-    }
-
-    const { events } = await response.json();
+    const events = await getCachedEvents(); // Use the cached function
     return events;
   } catch (error) {
-    console.error("Error fetching events:", error);
-    return []; // Return empty array as fallback
+    console.error("Page: Failed to get events for rendering:", error);
+    return { events: [] };
   }
 }
 
@@ -87,13 +71,14 @@ function HomePageSkeleton() {
 }
 
 export default async function Home() {
-  const events = await getEvents();
+  const events = await getEventsForPage();
 
   return (
     <main>
       <Suspense fallback={<HomePageSkeleton />}>
+        <h1 className="hidden"></h1>
         <div className="content-wrapper">
-          <ClientSideHomepage initialEvents={events} />
+          <ClientSideHomepage initialEvents={events.events} />
           <MegaEventsSection />
           <FAQ />
         </div>

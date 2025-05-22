@@ -99,6 +99,7 @@ export const TicketSelection = () => {
               className="rounded-lg"
               width={600}
               height={600}
+              priority={true}
               src={event?.map_image_url || ""}
               alt="Event map"
             />
@@ -108,6 +109,7 @@ export const TicketSelection = () => {
               className="rounded-lg w-auto h-auto w-full"
               width={600}
               height={600}
+              priority={true}
               src={event?.map_image_url || ""}
               alt="Event map"
             />

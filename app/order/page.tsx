@@ -17,7 +17,7 @@ export default function OrderPage() {
     if (event) {
       const timer = setTimeout(() => {
         setShowAboutSection(true);
-      }, 400); // Adjust delay as needed
+      }, 200); // Adjust delay as needed
 
       return () => clearTimeout(timer);
     }

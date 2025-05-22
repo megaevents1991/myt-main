@@ -148,6 +148,7 @@ export const HotelCard = ({
                                 className="border rounded-lg"
                                 src={image.replace("{size}", "x500")}
                                 alt="image"
+                                sizes="(max-width: 768px) 100vw, 300px"
                               />
                             ) : (
                               <HotelSVG className="m-auto" size={100} />

@@ -1,6 +1,17 @@
 import { supabase } from "@/lib/supabase";
 import { Event } from "@/lib/app.types";
-  
+import { unstable_cache as nextCache } from 'next/cache';
+
+export const getCachedEvents = nextCache(
+  getEvents,
+  ['all-events'],
+  {
+    tags: ['events'],
+    revalidate: 86400,
+  }
+);
+
+
 export async function getEvents(id?: number): Promise<{ events: Event[] }> {
 
   // Calculate date 7 days from now

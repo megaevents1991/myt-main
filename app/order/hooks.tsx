@@ -3,6 +3,7 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
 import { getTotalPersons } from "@/lib/price.utils";
+import { superTrack } from "@/lib/mixpanel";
 
 /**
  * Check if the price is outside the pack boundries
@@ -240,6 +241,10 @@ export function useFetchAffiliate() {
               if (data.type === "agent") {
                 setAgentCommission(data.commission);
                 setAffType("agent");
+                superTrack({
+                  isAgent: true,
+                  agentId: parsedAffiliateData.affiliateId,
+                });
               } else if (data.type === "affiliate") {
                 setAffDiscount(data.discount);
                 setAffType("affiliate");
