@@ -2,6 +2,11 @@ const nextConfig: import("next").NextConfig = {
   reactStrictMode: false,
   experimental: {
     optimizePackageImports: ["@mantine/core", "@mantine/hooks"],
+    serverActions: { 
+      allowedOrigins: 
+        ['www.mega-events.co.il', 
+          'pps.creditguard.co.il']
+      },
   },
   images: {
     minimumCacheTTL: 86400,
