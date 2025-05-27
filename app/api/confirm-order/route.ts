@@ -34,6 +34,8 @@ export async function POST(req: Request) {
   const id = data?.id;
 
   if (error) {
+    console.error("Error inserting into reservations table:", JSON.stringify(error));
+    console.error("Error inserting into reservations table:", JSON.stringify(data));
     return NextResponse.json(
       { error: "Failed to confirm order" },
       { status: 500 }
@@ -139,7 +141,8 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Failed to send email:", error);
+    console.error("Error sending email into reservations table:", JSON.stringify(error));
+    console.error("Error sending email into reservations table:", JSON.stringify(data));
     return NextResponse.json(
       { error: "Failed to confirm order" },
       { status: 500 }
