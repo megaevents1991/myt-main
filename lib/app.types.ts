@@ -63,7 +63,13 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
-  hotelInformation: {hotelName:string, roomName:string, stars:number, amenities: string[],  distance:number}
+  hotelInformation: {
+    hotelName: string;
+    roomName: string;
+    stars: number;
+    amenities: string[];
+    distance: number;
+  };
 };
 
 export type Order = {
@@ -207,7 +213,7 @@ export type OrderTicket = Omit<EventTicket, "description" | "colorOnTheMap"> & {
   quantity: number;
 };
 
-export interface OrderData {
+export type OrderData = {
   main_contact_first_name: string;
   main_contact_last_name: string;
   main_contact_phone_number: string;
@@ -231,7 +237,12 @@ export interface OrderData {
   user_shown_price: number;
   event_id: number;
   aff_partner_tracking_code: string;
-}
+  booking_reference: string;
+  final_purchase_price_ils: number;
+  exchange_rate_usd_ils_100: number;
+  is_agent_booking: boolean;
+  confirmation_email_sent: boolean;
+};
 
 export type ArtistFields = {
   contentTypeId: "artistTemplate";
@@ -304,4 +315,11 @@ export type FootballFields = {
 export type Log = {
   type?: "error" | "warn" | "log";
   data: Record<string, unknown> | string;
+};
+
+export type PaymentRequest = {
+  amount: number;
+  email: string;
+  orderId: string;
+  promoCode: string;
 };

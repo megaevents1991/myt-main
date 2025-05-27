@@ -1,19 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-export async function PATCH(request: NextRequest) {
+/**
+ * @deprecated
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Extract ID from the URL path - Yakov This is not tested yet
-    const id = request.url.split('/').pop();
-    
+    const { id } = await params;
+
     // Extract only payment_info from the request
     const { payment_info } = await request.json();
-    
+
     // Only update the payment_info field
     const { data, error } = await supabase
       .from("reservations")
       .update({ payment_info })
-      .eq("id", parseInt(id as string, 10))
+      .eq("id", id)
       .select()
       .single();
 
@@ -22,6 +27,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error confirming order:", error);
-    return NextResponse.json({ error: "Failed to confirm order" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to confirm order" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("*")
+      .eq("id", id)
+      .limit(1)
+      .single();
+
+    if (error) throw error;
+
+    console.log("Fetched order data:", data);
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error fetching order data:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch order data", orderId: id },
+      { status: 200 }
+    );
   }
 }

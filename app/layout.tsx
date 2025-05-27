@@ -63,7 +63,6 @@ export const metadata: Metadata = {
     images: [
       "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
     ], // Same as Open Graph image
-    //creator: "@your_twitter_handle", // Optional, if you have a Twitter account
   },
   robots: {
     index: true,
@@ -203,7 +202,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                       </Link>
                     </nav>
                     <p className="text-sm mb-4 sm:mb-0">
-                      © 2025 Megaevents. כל הזכויות שמורות.
+                      © 2025 מגה איבנטס מבית מגה תיירות. כל הזכויות שמורות.
                     </p>
                   </div>
                 </footer>

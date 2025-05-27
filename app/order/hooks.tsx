@@ -3,58 +3,11 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
 import { getTotalPersons } from "@/lib/price.utils";
+import {
+  priceOutsidePackBoundaries,
+  shortenAirlineName,
+} from "./order-review.utils";
 import { superTrack } from "@/lib/mixpanel";
-
-/**
- * Check if the price is outside the pack boundries
- * @param totalPrice - Total price for all passengers
- * @param basePrice - Base price per single passenger
- * @param paxs - Number of passengers
- * @returns boolean
- */
-const priceOutsidePackBoundaries = (
-  totalPrice: number,
-  basePrice: number,
-  paxs: number
-) => {
-  const price = totalPrice / paxs;
-  return Math.abs(price - basePrice) >
-    Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4")
-    ? true
-    : false;
-};
-
-const shortenAirlineName = (name: string | undefined) => {
-  if (!name) {
-    return "";
-  }
-
-  const words = name.split(/\s+/); // Split by spaces
-  let shortName = "";
-  let charCount = 0;
-
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
-
-    // If it's the first word and longer than 6 chars, return it directly
-    if (i === 0 && word.length > 6) {
-      return word;
-    }
-
-    if (charCount + word.length > 6) {
-      if (word.length >= 10) {
-        return shortName.trim(); // Stop if the word is very long (10+ chars)
-      } else {
-        return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
-      }
-    }
-
-    shortName += (shortName ? " " : "") + word;
-    charCount += word.length;
-  }
-
-  return shortName.trim();
-};
 
 export function useOrderVars() {
   const {
@@ -217,7 +170,7 @@ export function useOrderVars() {
 
 export function useFetchAffiliate() {
   const [affDiscount, setAffDiscount] = useState(0);
-  const [agentCommision, setAgentCommission] = useState(0);
+  const [agentCommission, setAgentCommission] = useState(0);
   const [affId, setAffId] = useState<string | null>(null);
   const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
 
@@ -261,6 +214,6 @@ export function useFetchAffiliate() {
     affDiscount,
     affId,
     affType,
-    agentCommision,
+    agentCommission,
   };
 }
