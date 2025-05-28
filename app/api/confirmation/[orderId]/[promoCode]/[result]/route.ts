@@ -1,104 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ orderId: string; promoCode: string; result: string }> } // <-- Type params as a Promise
-) {
-  try {
-    const { orderId, promoCode, result } = await params; // <-- Await params here
-    const { searchParams } = new URL(request.url);
-
-    // Get all query parameters from CreditGuard
-    const queryString = searchParams.toString();
-
-    // Construct the redirect URL to your existing confirmation page
-    // This preserves all the query parameters
-    const redirectUrl = new URL(
-      `/confirmation/${orderId}/${promoCode}/${result}${
-        queryString ? `?${queryString}` : ""
-      }`,
-      request.url
-    );
-
-    // Optional: Log the payment callback for debugging/tracking
-    console.log("Payment callback received:", {
-      orderId,
-      promoCode,
-      queryParams: Object.fromEntries(searchParams.entries()),
-      timestamp: new Date().toISOString(),
-    });
-
-    // Optional: You can add any server-side processing here before redirecting
-    // For example: logging, analytics, webhook calls, etc.
-
-    // Redirect to your existing confirmation page with all query parameters intact
-    return NextResponse.redirect(redirectUrl);
-  } catch (error) {
-    console.error("Error processing payment callback:", error);
-
-    // You also need to await params here if you access them after the initial await
-    // Or, better, if params might be the cause of the error, handle it gracefully.
-    // For simplicity, let's assume params are available from the try block if no error occurred in awaiting them.
-    let orderIdForError = 'unknown';
-    let promoCodeForError = 'unknown';
-    try {
-        const resolvedParams = await params;
-        orderIdForError = resolvedParams.orderId;
-        promoCodeForError = resolvedParams.promoCode;
-    } catch (paramError) {
-        console.error("Error resolving params in error handler:", paramError);
-    }
-
-
-    // Redirect to error page or back to confirmation with error status
-    const errorUrl = new URL(
-      `/confirmation/${orderIdForError}/${promoCodeForError}/error`,
-      request.url
-    );
-
-    return NextResponse.redirect(errorUrl);
-  }
-}
-
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string; promoCode: string; result: string }> } // <-- Type params as a Promise
+  { params }: { params: Promise<{ orderId: string; promoCode: string; result: string }> }
 ) {
   try {
-    const { orderId, promoCode, result } = await params; // <-- Await params here
-    const { searchParams } = new URL(request.url);
-
-    // Get all query parameters from CreditGuard
-    const queryString = searchParams.toString();
+    const { orderId, promoCode, result } = await params;
+    
+    // Extract form data from the request payload
+    const formData = await request.formData();
+    
+    // Convert form data to a regular object for easier handling
+    const paymentData: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      paymentData[key] = value.toString();
+    });
 
     // Construct the redirect URL to your existing confirmation page
-    // This preserves all the query parameters
+    // Convert form data to query parameters for the redirect
+    const queryParams = new URLSearchParams(paymentData);
     const redirectUrl = new URL(
       `/confirmation/${orderId}/${promoCode}/${result}${
-        queryString ? `?${queryString}` : ""
+        queryParams.toString() ? `?${queryParams.toString()}` : ""
       }`,
       request.url
     );
 
-    // Optional: Log the payment callback for debugging/tracking
+    // Log the payment callback for debugging/tracking
     console.log("Payment callback received:", {
       orderId,
       promoCode,
-      queryParams: Object.fromEntries(searchParams.entries()),
+      result,
+      formData: paymentData,
       timestamp: new Date().toISOString(),
     });
 
     // Optional: You can add any server-side processing here before redirecting
     // For example: logging, analytics, webhook calls, etc.
 
-    // Redirect to your existing confirmation page with all query parameters intact
+    // Redirect to your existing confirmation page with all form data as query parameters
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("Error processing payment callback:", error);
 
-    // You also need to await params here if you access them after the initial await
-    // Or, better, if params might be the cause of the error, handle it gracefully.
-    // For simplicity, let's assume params are available from the try block if no error occurred in awaiting them.
     let orderIdForError = 'unknown';
     let promoCodeForError = 'unknown';
     try {
@@ -109,8 +53,7 @@ export async function POST(
         console.error("Error resolving params in error handler:", paramError);
     }
 
-
-    // Redirect to error page or back to confirmation with error status
+    // Redirect to error page
     const errorUrl = new URL(
       `/confirmation/${orderIdForError}/${promoCodeForError}/error`,
       request.url
