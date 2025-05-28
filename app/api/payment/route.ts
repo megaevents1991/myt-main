@@ -24,9 +24,9 @@ export async function POST(request: Request) {
     mid,
     uniqueid: uuidv4(),
     total: amount * 100,
-    successUrl: `${returnUrl}/confirmation/${orderId}/${promoCode}/success`,
-    errorUrl: `${returnUrl}/confirmation/${orderId}/${promoCode}/error`,
-    cancelUrl: `${returnUrl}/confirmation/${orderId}/${promoCode}/cancel`,
+    successUrl: `${returnUrl}/api/confirmation/${orderId}/${promoCode}/success`,
+    errorUrl: `${returnUrl}/api/confirmation/${orderId}/${promoCode}/error`,
+    cancelUrl: `${returnUrl}/api/confirmation/${orderId}/${promoCode}/cancel`,
     email,
   });
 
