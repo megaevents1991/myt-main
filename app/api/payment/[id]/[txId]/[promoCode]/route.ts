@@ -58,6 +58,8 @@ export async function GET(
     .single();
 
   const orderData = data as OrderData;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateObj = { payment_info: result, status: isSuccess ? "Paid" : "Pending" } as any;
 
   if (!orderData.confirmation_email_sent) {
     await sendUserEmail({
@@ -66,11 +68,13 @@ export async function GET(
       payNow: true,
       partnerTrackingCode: promoCode,
     });
+
+    updateObj["confirmation_email_sent"] = true;
   }
 
   await supabase
     .from("reservations")
-    .update({ payment_info: result, status: isSuccess ? "Paid" : "Pending" })
+    .update(updateObj)
     .eq("id", id)
     .select()
     .single();
