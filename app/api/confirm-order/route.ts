@@ -86,17 +86,29 @@ export async function POST(req: Request) {
           New Order Details:
           Name: ${validatedData.main_contact_first_name} ${validatedData.main_contact_last_name}
           Contact Details: ${validatedData.main_contact_phone_number}, ${validatedData.main_contact_email}
-          More Pax: ${JSON.stringify(validatedData.more_pax_info)}
+          Payment Method: ${payNow ? "Credit Card" : "Phone Order"}
+          More Pax: ${validatedData.more_pax_info.length}- ${validatedData.more_pax_info.map(pax => `${pax.first_name} ${pax.last_name}`).join('; ')}
+
+          ******** Event Details ********
           Event: ${validatedData.event_order_info.name}
           Date: ${validatedData.event_order_info.date}
           Ticket Type: ${validatedData.event_order_info.category}
           Quantity: ${validatedData.event_order_info.number_of_ticket}
+
+          ******** Flight Info **********
           Flight Outbound Number: ${(validatedData.flight_order_info.outbound.flightNumber)}
           Flight Outbound Date: ${(validatedData.flight_order_info.outbound.departureTime)}
           Flight Inbound Number: ${(validatedData.flight_order_info.inbound.flightNumber)}
           Flight Inbound Date: ${(validatedData.flight_order_info.inbound.departureTime)}
+
+          ******* Hotel Details *********
           Hotel: ${(validatedData.hotel_order_info.name)}
-          Total Price: ${validatedData.user_shown_price}
+          Room Type: ${(validatedData.hotel_order_info.rate.room_name)}
+
+          ******************
+          Total Price USD: ${validatedData.user_shown_price}
+          Total Price ILS: ${validatedData.final_purchase_price_ils}
+          Exchange Rate: ${validatedData.exchange_rate_usd_ils_100}
         `;
 
   try {
