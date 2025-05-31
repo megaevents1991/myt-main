@@ -49,18 +49,41 @@ interface UsePrintableWindowProps {
 
 const usePrintableWindow = ({ title = 'Booking Summary' }: UsePrintableWindowProps = {}) => {
   const openPrintableWindow = useCallback((content: React.ReactElement) => {
-    // Convert React component to HTML string
     const htmlContent = ReactDOMServer.renderToString(content);
-    
-    // Create a new window
     const printWindow = window.open('', '_blank', 'width=1000,height=800');
     
     if (!printWindow) {
       alert('Please allow pop-ups to open the printable version');
       return;
     }
+
+    // Get all stylesheets from the current document
+    const stylesheets = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          // For <link href="..."> stylesheets
+          if (sheet.href) {
+            return `<link rel="stylesheet" href="${sheet.href}">`;
+          }
+          // For <style>...</style> tags
+          if (sheet.cssRules) {
+            const rules = Array.from(sheet.cssRules)
+              .map(rule => rule.cssText)
+              .join('\n');
+            return `<style>${rules}</style>`;
+          }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e) {
+          // Catch potential security errors when accessing cross-origin stylesheets' rules
+          // console.warn('Could not access stylesheet rules:', e);
+          if (sheet.href) { // Still try to link external stylesheets
+            return `<link rel="stylesheet" href="${sheet.href}">`;
+          }
+        }
+        return '';
+      })
+      .join('\n');
     
-    // Write content to the new window
     printWindow.document.write(`
       <!DOCTYPE html>
       <html lang="en">
@@ -68,15 +91,13 @@ const usePrintableWindow = ({ title = 'Booking Summary' }: UsePrintableWindowPro
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${title}</title>
-          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+          ${stylesheets} 
           <style>${printStyles}</style>
         </head>
         <body>
           <div id="root">${htmlContent}</div>
           <script>
-            // Automatically open print dialog when content is loaded
             window.onload = function() {
-              // Small delay to ensure everything is rendered
               setTimeout(() => {
                 window.print();
               }, 500);
