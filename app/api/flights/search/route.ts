@@ -9,11 +9,106 @@ import { getAirlineByIata } from "aircodes";
 import { amadeus } from "../amadeusClient";
 import { getEvents } from "../../eventsData";
 import dayjs from "dayjs";
+import { supabase } from "@/lib/supabase";
+import { serialize } from 'tinyduration';
 
 export const maxDuration = 30;
 const currencyCode = "USD";
 const MAX_STOP_DURATION_HOURS = 6;
 const MAX_STOPS = 1; // Maximum allowed stops per journey
+
+const PTfunction = (duration: string): string => {
+  const parts = duration.split(':').map(Number);
+  const hours = parts[0];
+  const minutes = parts[1];
+
+  const durationObject = {
+      hours: hours,
+      minutes: minutes,
+  };
+  return serialize(durationObject);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const transformDbFlightToFlight = (dbFlight: any, id: number, num_of_travelers: number): any => {
+  if (dbFlight.initial_quantity - dbFlight.consumed_quantity < num_of_travelers) {
+    return {};
+  }
+  return {
+    offer: {},
+    id: (id+1).toString(),
+    numOfTravelers: num_of_travelers,
+    price: parseFloat(dbFlight.price),
+    duration: PTfunction(dbFlight.duration),
+    stops: dbFlight.stops,
+    airline: dbFlight.airline_code,
+    outbound: {
+      stops: [
+        {
+          "iataCode": dbFlight.outbound_arrival_airport,
+          "duration": null
+        }
+      ],
+      departureTime: dbFlight.outbound_departure_time,
+      departureAirport: dbFlight.outbound_departure_airport,
+      arrivalAirport: dbFlight.outbound_arrival_airport,
+      arrivalTime: dbFlight.outbound_arrival_time,
+      duration: PTfunction(dbFlight.outbound_duration),
+      checkBagsIncluded: dbFlight.outbound_check_bags_included,
+      cabinBagsIncluded: dbFlight.outbound_cabin_bags_included,
+      flightNumber: dbFlight.outbound_flight_number,
+    },
+    inbound: {
+      stops: [
+        {
+          "iataCode": dbFlight.inbound_arrival_airport,
+          "duration": null
+        }
+      ], 
+      departureTime: dbFlight.inbound_departure_time,
+      departureAirport: dbFlight.inbound_departure_airport,
+      arrivalAirport: dbFlight.inbound_arrival_airport,
+      arrivalTime: dbFlight.inbound_arrival_time,
+      duration: PTfunction(dbFlight.inbound_duration),
+      checkBagsIncluded: dbFlight.inbound_check_bags_included,
+      cabinBagsIncluded: dbFlight.inbound_cabin_bags_included,
+      flightNumber: dbFlight.inbound_flight_number,
+    },
+    metadata: {
+      iata: dbFlight.metadata_iata,
+      icao: dbFlight.metadata_iata+"a",
+      name: dbFlight.metadata_name,
+      logo: dbFlight.metadata_logo,
+    },
+  };
+};
+
+const getOfflineFlightsFromDB = async (
+  destination: string,
+  depart_date: string,
+  return_date: string,
+  indexShift: number,
+  num_of_travelers: number
+): Promise<Flight[]> => {
+  try {
+    const { data: flights, error } = await supabase
+      .from("flights")
+      .select("*")
+      .eq("outbound_arrival_airport", destination)
+      .gte("outbound_departure_time", `${depart_date}T00:00:00`)
+      .lt("outbound_departure_time", `${depart_date}T23:59:59`)
+      .gte("inbound_departure_time", `${return_date}T00:00:00`)
+      .lt("inbound_departure_time", `${return_date}T23:59:59`);
+
+    if (error) throw error;
+
+    // Transform DB records to Flight objects
+    return flights ? flights.map((flight, index) => transformDbFlightToFlight(flight, index+indexShift, num_of_travelers)) : [] as Flight[];
+  } catch (error) {
+    console.error("DB flights static data retrieval error:", error);
+    return [] as Flight[];
+  }
+};
 
 export async function POST(request: Request) {
   if (!amadeus) {
@@ -54,8 +149,7 @@ export async function POST(request: Request) {
     }: FlightSearchOptions = await request.json();
 
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
-
-    const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
+    const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD"); 
 
     const response = await amadeus.shopping.flightOffersSearch.get({
       originLocationCode,
@@ -68,10 +162,18 @@ export async function POST(request: Request) {
       currencyCode,
     });
 
+    const flights = await getOfflineFlightsFromDB(
+      event.location.city_iata,
+      departureDate,
+      returnDate,
+      0,
+      adults || 1
+    );
+
     // Transform Amadeus response to match our flight data structure
-    const flights: Flight[] = response.result.data.reduce((acc, offer) => {
+    const moreFlights: Flight[] = response.result.data.reduce((acc, offer, index) => {
+      const adjustedIndex = index + flights.length;
       const {
-        id,
         validatingAirlineCodes,
         price,
         itineraries,
@@ -119,15 +221,14 @@ export async function POST(request: Request) {
         ),
       }));
 
-      const hasLongLayover = 
-      toStops.some(stop => stop.duration > MAX_STOP_DURATION_HOURS) ||
-      fromStops.some(stop => stop.duration > MAX_STOP_DURATION_HOURS);
+      const hasLongLayover =
+        toStops.some((stop) => stop.duration > MAX_STOP_DURATION_HOURS) ||
+        fromStops.some((stop) => stop.duration > MAX_STOP_DURATION_HOURS);
 
       // Skip flights with layovers longer than threshold
       if (hasLongLayover) {
         return acc;
       }
-
 
       const fromCheckBagsIncluded = itineraries[0].segments.every((segment) =>
         travelerPricings[0].fareDetailsBySegment.some(
@@ -187,7 +288,7 @@ export async function POST(request: Request) {
 
       acc.push({
         offer,
-        id,
+        id: adjustedIndex.toString(),
         numOfTravelers: travelerPricings.length,
         price: parseFloat(price.grandTotal),
         duration: itineraries[0].duration,
@@ -203,6 +304,13 @@ export async function POST(request: Request) {
         },
       });
 
+      // Special Handling: Check and update logo for LUFTHANSA
+      const currentFlight = acc[acc.length - 1];
+      if (currentFlight.metadata.name === "LUFTHANSA") {
+        currentFlight.metadata.logo =
+          "https://www.avcodes.co.uk/images/logos/DLH.png";
+      }
+
       return acc;
     }, [] as Flight[]);
 
@@ -210,6 +318,8 @@ export async function POST(request: Request) {
       departureDate: departureDateFromUi,
       returnDate: returnDateFromUi,
     };
+
+    flights.push(...moreFlights);
 
     return NextResponse.json({ flights, debug });
   } catch (error) {

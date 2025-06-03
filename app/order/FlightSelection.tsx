@@ -226,7 +226,7 @@ export const FlightSelection = () => {
     } catch (err) {
       console.error(err);
       setError(
-        "היי חברים, סליחה, יש לנו תקלה, ואנחנו על זה, נסו אותנו יותר מאוחר בבקשה."
+        "היי חברים, סליחה, יש לנו תקלה ואנחנו על זה. נסו אותנו יותר מאוחר בבקשה."
       );
     } finally {
       setIsLoading(false);

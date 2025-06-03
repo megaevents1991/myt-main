@@ -27,6 +27,26 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // Validate the flightOffer object for offline Flights
+  if (!flightOffer || Object.keys(flightOffer).length === 0) {
+    const penalties = `PE.PENALTIES 
+CANCELLATIONS 
+45 DAYS OR MORE BEFORE DEPARTURE CHARGE USD 100.00 FOR CANCELLATIONS PER TICKET.
+44-30 DAYS BEFORE DEPARTURE CHARGE USD 250.00 FOR CANCELLATIONS PER TICKET.
+LESS THAN 30 DAYS BEFORE DEPARTURE NON-REFUNDABLE. 
+CHANGES 
+BEFORE DEPARTURE CHARGE USD 120.00 FOR REISSUE/REVALIDATION. NOTE - WHEN THE FIRST FLIGHT COUPON IS BEING CHANGED NEW FARE WILL BE RECALCULATED USING FARES AND IATA RATE OF EXCHANGE IN EFFECT ON THE DATE OF REISSUE. 
+AFTER DEPARTURE CHARGE USD 120.00 FOR REISSUE/REVALIDATION. CHARGE USD 200.00 FOR NO-SHOW. NOTE - BEFORE EXPIRY OF FLIGHT COUPON. UPGRADE TO ANY HIGHER FARE PERMITTED IN WHICH CASE CHANGE OF RESERVATION FEE OF USD 120.00 WILL ALSO APPLY. ------------------------------------------------ THE AP THE SECURITY AND INSURANCE SURCHARGE WHICH IS COLLECTED IN THE TFC AREA OF THE TICKET IS NOT REFUNDABLE. UNLESS THE TICKETS FARE IS FULLY REFUNDABLE `;
+    return NextResponse.json({ bags: 65, penalties });
+  } else if (flightOffer.validatingAirlineCodes[0] === 'LY') {
+    const penalties = `PE.PENALTIES 
+CANCELLATIONS
+ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
+FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION.`;
+    return NextResponse.json({ bags: 65, penalties });
+  }
+
   try {
     const response = await amadeus.shopping.flightOffers.pricing.post(
       {
@@ -39,9 +59,7 @@ export async function POST(request: Request) {
     );
 
     // processing the response and returning it to the client.
-
     const data = JSON.parse(response.body);
-
     const penalties = data.included?.["detailed-fare-rules"]?.[
       "1"
     ]?.fareNotes?.descriptions?.find(
