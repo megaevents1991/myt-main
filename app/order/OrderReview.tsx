@@ -890,7 +890,7 @@ export default function OrderReview() {
 
                           <h3 className="font-bold mt-4 mb-2">מלון</h3>
                           <p>
-                            ביטול או שינוי חינם עד לתאריך ה-{" "}
+                            החזר מלא או שינוי חינם עד לתאריך ה-{" "}
                             {dayjs(
                               selectedHotel.rate.payment_options
                                 ?.payment_types[0].cancellation_penalties

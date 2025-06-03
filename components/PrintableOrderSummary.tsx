@@ -179,7 +179,7 @@ const PrintableOrderSummary: React.FC<PrintableOrderSummaryProps> = ({
             className="text-right text-xl font-semibold text-gray-900 mb-4"
             dir="rtl"
           >
-            פרטי טיסה
+            פרטי טיסות
           </h2>
 
           {/* Outbound Flight */}
@@ -221,7 +221,7 @@ const PrintableOrderSummary: React.FC<PrintableOrderSummaryProps> = ({
             className="text-xl text-right font-semibold text-gray-900 mb-4"
             dir="rtl"
           >
-            לינה
+            פרטי מלון
           </h2>
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="text-lg font-medium text-gray-900 mb-1">
