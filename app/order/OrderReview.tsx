@@ -75,6 +75,7 @@ export default function OrderReview() {
   const {
     numberOfPersons,
     finalPurchasePriceCalc,
+    finalPurchasePriceILSCalc,
     recommendedPriceAllPax,
     packRecommendedPrice,
     isNumberOfPersonsEqual,
@@ -101,39 +102,21 @@ export default function OrderReview() {
   });
 
   const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
-  const [rate, setRate] = useState<number>(3.7); // Default fallback rate
-  const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(
-    finalPurchasePrice * rate
-  );
+  const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
+  const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.7);
 
   useEffect(() => {
-    const fetchExchangeRate = async () => {
-      try {
-        const response = await fetch(
-          `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch exchange rate");
-        }
-
-        const data = await response.json();
-
-        if (data && data.usd && data.usd.ils) {
-          setRate(Math.ceil(data.usd.ils * 1.01 * 100) / 100);
-          setFinalPurchasePriceILS(Math.ceil(finalPurchasePrice * rate));
-        } else {
-          throw new Error("Invalid exchange rate data");
-        }
-      } catch (error) {
-        console.error("Error fetching exchange rate:", error);
-        // Keep fallback rate (3.7)
-        setFinalPurchasePriceILS(finalPurchasePrice * 3.7);
+    let isMounted = true;
+    finalPurchasePriceILSCalc(finalPurchasePrice).then(({ ils, rate }) => {
+      if (isMounted) {
+        setFinalPurchasePriceILS(ils);
+        setUSD_ILS_RATE(rate);
       }
+    });
+    return () => {
+      isMounted = false;
     };
-
-    fetchExchangeRate();
-  }, [finalPurchasePrice]);
+  }, [finalPurchasePrice, finalPurchasePriceILSCalc]);
 
   const setErrors = () => {
     const allErrors = [...validationErrors];
@@ -365,7 +348,6 @@ export default function OrderReview() {
     }
     setIsPayNow(payNow);
     setPaymentMethod(payNow ? "credit_card" : "phone_order");
-
     setIsSubmitting(true);
 
     // Collect data from your UI elements
@@ -391,7 +373,7 @@ export default function OrderReview() {
       flight_order_info: selectedFlight || {},
       hotel_order_info: selectedHotel || {},
       user_shown_price: finalPurchasePrice,
-      exchange_rate_usd_ils_100: rate * 100,
+      exchange_rate_usd_ils_100: usd_ils_rate * 100,
       final_purchase_price_ils: finalPurchasePriceILS,
       event_id: event?.id || 0,
       aff_partner_tracking_code: affId || "",
@@ -413,7 +395,7 @@ export default function OrderReview() {
       trackEvent("eventCheckout", {
         userFinalPrice: finalPurchasePrice,
         userFinalPriceILS: finalPurchasePriceILS,
-        userFinalPriceRate: rate,
+        userFinalPriceRate: usd_ils_rate,
         fullPacagePrice: recommendedPriceAllPax,
         paymentMethod: payNow ? "credit_card" : "phone_order",
         affiliateDiscount: affDiscount * numberOfEventTickets,

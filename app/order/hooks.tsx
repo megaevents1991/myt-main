@@ -127,6 +127,36 @@ export function useOrderVars() {
     ]
   );
 
+  const finalPurchasePriceILSCalc = useCallback(async (USDprice: number) => {
+    try {
+      const response = await fetch(
+        "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch exchange rate from API");
+      }
+      const data = await response.json();
+      if (data && data.usd && data.usd.ils) {
+        const USD_ILS_Rate = Math.ceil(data.usd.ils * 100) / 100;
+        const exchangeRateTravel = Math.ceil(USD_ILS_Rate * 1.015 * 100) / 100; // Adding 1.5% for travel expenses
+        return {
+          ils: Math.ceil(USDprice * exchangeRateTravel),
+          rate: exchangeRateTravel,
+        };
+      } else {
+        throw new Error("Invalid exchange rate data");
+      }
+    } catch (error) {
+      console.error("General error fetching exchange rate:", error);
+      // Fallback to a hardcoded rate
+      const fallbackRate = 3.7;
+      return {
+        ils: Math.ceil(USDprice * fallbackRate),
+        rate: fallbackRate,
+      };
+    }
+  }, []);
+
   const numOfNights = useMemo(() => {
     if (!selectedHotel) {
       return 0;
@@ -162,6 +192,7 @@ export function useOrderVars() {
     totalGuests,
     numOfNights,
     isCorrespondingToFlight,
+    finalPurchasePriceILSCalc,
     finalPurchasePriceCalc,
     hotelPriceAddition,
     flightPriceAddition,
