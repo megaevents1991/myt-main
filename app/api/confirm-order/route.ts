@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       hotel_order_info: validatedData.hotel_order_info,
       user_shown_price: validatedData.user_shown_price,
       event_id: validatedData.event_id,
+      payment_info: payNow ? {} : null,
       aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
       final_purchase_price_ils: validatedData.final_purchase_price_ils,
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
