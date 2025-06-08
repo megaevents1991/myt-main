@@ -27,13 +27,14 @@ import { trackEvent } from "@/lib/mixpanel";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
-import { Fields, validate } from "./order-review.utils";
+import { type Fields, validate } from "./order-review.utils";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import AgentMode from "@/components/AgentMode";
 import AgentPrintSettings from "@/components/AgentPrintSettings";
 import PrintableOrderSummary from "@/components/PrintableOrderSummary";
 import usePrintableWindow from "../hooks/usePrintableWindow";
+import { ShareButton } from "@/components/ui/shareButton";
 
 const TIMEOUT = 15 * 60;
 
@@ -104,6 +105,33 @@ export default function OrderReview() {
   const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
   const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.7);
+
+  // Format the share text according to the specified template
+  const getShareText = () => {
+    if (!event || !selectedFlight || !selectedHotel) return "";
+
+    const eventDate = dayjs(event.date).format("DD/MM/YYYY");
+    const departureDateTime = dayjs(
+      selectedFlight.outbound.departureTime
+    ).format("DD/MM/YYYY HH:mm");
+    const returnDateTime = dayjs(selectedFlight.inbound.departureTime).format(
+      "DD/MM/YYYY HH:mm"
+    );
+
+    return `האירוע הבא שלכם מחכה ב - MegaEvents! 🎉
+
+🎤 *פרטי אירוע*
+${event.name}- ${event.location.name}
+בתאריך: ${eventDate}
+
+✈️ *טיסה*
+${airlineName || ""}
+${departureDateTime} - ${returnDateTime}
+
+🏨 *מלון*
+${selectedHotel.name}
+חדר: ${selectedHotel.rate?.room_data_trans?.main_name || ""}`;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -469,6 +497,8 @@ export default function OrderReview() {
     }
   };
 
+  const shareText = getShareText();
+
   return (
     <div className="min-h-screen bg-white">
       <Modal
@@ -527,7 +557,12 @@ export default function OrderReview() {
               <Card className="bg-white shadow-lg overflow-hidden">
                 <div className="bg-[#277e89] text-white py-4 px-6 flex flex-row justify-between items-center">
                   <Timer onTimeElapsed={HandleTimeout} duration={TIMEOUT} />
-                  <h2 className="text-2xl font-bold text-right">סיכום הזמנה</h2>
+                  <div className="flex items-center gap-2">
+                    <ShareButton shareText={shareText} />
+                    <h2 className="text-2xl font-bold text-right">
+                      סיכום הזמנה
+                    </h2>
+                  </div>
                 </div>
                 <div className="flex flex-row justify-between items-center py-4 px-6 border-b border-gray-400">
                   <div>
