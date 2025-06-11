@@ -48,14 +48,28 @@ const getHotelsStaticDataFromDB = async (
   hids: number[]
 ): Promise<HotelInfoDB[] | null> => {
   try {
-    const { data: hotels, error } = await supabase
-      .from("hotels")
-      .select("*")
-      .in("hid", hids);
+    // Limit batch size to prevent timeouts
+    const BATCH_SIZE = 100;
+    const batches = [];
+    
+    for (let i = 0; i < hids.length; i += BATCH_SIZE) {
+      batches.push(hids.slice(i, i + BATCH_SIZE));
+    }
 
-    if (error) throw error;
+    const allHotels: HotelInfoDB[] = [];
+    
+    for (const batch of batches) {
+      const { data: hotels, error } = await supabase
+        .from("hotels")
+        .select("*")
+        .in("hid", batch)
+        .abortSignal(AbortSignal.timeout(15000)); // 15 second timeout
 
-    return hotels;
+      if (error) throw error;
+      if (hotels) allHotels.push(...hotels);
+    }
+
+    return allHotels;
   } catch (error) {
     console.error("DB hotels static data retrieval error:", error);
     return null;
