@@ -354,7 +354,7 @@ export const HotelSelection = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2 lg:space-y-6">
       <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
         <HotelFilters
           basePrice={basePricePerPerson}
@@ -469,7 +469,7 @@ export const HotelSelection = () => {
       </div>
       <div
         className={cn(
-          "flex flex-row gap-4 flex-row-reverse items-start w-full",
+          "flex flex-row lg:gap-4 gap-2 flex-row-reverse items-start w-full",
           !matches && "flex-col"
         )}
       >
@@ -538,7 +538,7 @@ export const HotelSelection = () => {
           )}
         </div>
         <div className="w-full">
-          <div className="grid grid-cols-1 gap-4 items-start">
+          <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
             {filteredHotels.map(
               (hotel) =>
                 hotelsData.hotelsInfo[hotel.id] && (

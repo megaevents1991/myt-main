@@ -373,7 +373,7 @@ export const FlightSelection = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2 lg:space-y-6">
       {!matches && (
         <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
           <FlightFilters
@@ -450,8 +450,8 @@ export const FlightSelection = () => {
       </div>
       <div
         className={cn(
-          "flex gap-4 flex-row-reverse justify-between items-start  w-full",
-          !matches && "flex-col"
+          "flex lg:gap-4 flex-row-reverse justify-between items-start w-full",
+          !matches && "flex-col gap-2"
         )}
       >
         <div
@@ -523,7 +523,7 @@ export const FlightSelection = () => {
           )}
         </div>
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
-          <div className="grid grid-cols-1 gap-4 items-start">
+          <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
             {flightTicketCards}
             {filteredFlights.length === 0 && !isLoading ? (
               <div className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex">

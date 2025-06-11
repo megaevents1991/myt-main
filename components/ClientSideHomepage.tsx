@@ -164,6 +164,16 @@ export function ClientSideHomepage({ initialEvents }: Props) {
 
   useEffect(() => {
     window.onerror = function (message, source, lineno, colno, error) {
+      // Filter out benign ResizeObserver errors
+      if (
+        typeof message === "string" &&
+        message.includes(
+          "ResizeObserver loop completed with undelivered notifications"
+        )
+      ) {
+        return true; // Suppress this error
+      }
+
       setErrorDebug({ message, error });
       console.error("Global error caught:", message, error);
     };

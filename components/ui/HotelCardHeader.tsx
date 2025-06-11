@@ -32,35 +32,35 @@ export const HotelCardHeader = ({
           </div>
           <Stars rating={rating} />
         </div>
-        <div className="text-[16px]">
+        <div className="text-[14px]">
           {Math.floor(distanceFromCenter / 100) / 10} ק&quot;מ ממרכז העיר
         </div>
-      </div>
-      {roomName && (
-        <div className="w-full flex flex-col lg:flex-row justify-between items-left text-sm lg:w-2/3">
-          <div
-            onTouchStart={() => setTooltipOpened((curr) => !curr)}
-            className="text-xs font-bold flex"
-          >
-            <span className="font-bold text-[16px] ml-2" dir="ltr">
-              {roomName}
-            </span>
-            {meals ? (
-              <Tooltip
-                label="כולל ארוחת בוקר"
-                position="top"
-                opened={true && (isMobile ? tooltipOpened : undefined)}
-              >
-                <div className="w-4 h-4">
-                  <span> {<Utensils size={18} />}</span>
-                </div>
-              </Tooltip>
-            ) : (
-              <div />
-            )}
+        {roomName && (
+          <div className="w-full flex flex-col lg:flex-row justify-between items-left text-sm lg:w-2/3">
+            <div
+              onTouchStart={() => setTooltipOpened((curr) => !curr)}
+              className="text-xs leading-tight font-bold flex"
+            >
+              <span className="font-bold text-[16px] ml-2" dir="ltr">
+                {roomName}
+              </span>
+              {meals ? (
+                <Tooltip
+                  label="כולל ארוחת בוקר"
+                  position="top"
+                  opened={true && (isMobile ? tooltipOpened : undefined)}
+                >
+                  <div className="w-4 h-4">
+                    <span> {<Utensils size={18} />}</span>
+                  </div>
+                </Tooltip>
+              ) : (
+                <div />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

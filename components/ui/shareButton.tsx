@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Share } from "lucide-react";
+import { Share2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,7 +83,7 @@ export function ShareButton({ shareText }: ShareButtonProps) {
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 rounded-full">
-          <Share className="!w-5 !h-5" />
+          <Share2 className="!w-5 !h-5" />
           <span className="sr-only">שתף</span>
         </Button>
       </DropdownMenuTrigger>

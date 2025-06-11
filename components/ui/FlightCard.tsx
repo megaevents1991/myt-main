@@ -4,10 +4,12 @@ import Image from "next/image";
 import { Plane } from "lucide-react";
 import { Skeleton, Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
 import { formatPrice } from "@/lib/price.utils";
 import { airports } from "@nwpr/airport-codes";
+import { cn } from "@/lib/utils";
+//import { InfoIcon } from "../icons/InfoIcon";
 
 type FlightTicketCardProps = {
   isSelected: boolean;
@@ -74,6 +76,86 @@ const convertDuration = (duration: string) => {
   return duration;
 };
 
+const BagIconContainer = ({
+  bagIcon,
+  count,
+}: {
+  bagIcon: ReactNode;
+  count: number;
+}) => {
+  return (
+    <div className="text-xs font-bold flex items-center justify-end gap-1 w-full">
+      <div className="w-full flex justify-center">{bagIcon}</div>
+      <div>{count}</div>
+    </div>
+  );
+};
+
+const LuggageButton = ({
+  cabinBagsIncluded,
+  checkBagsIncluded,
+  isSelected,
+}: {
+  cabinBagsIncluded: boolean;
+  checkBagsIncluded: boolean;
+  isSelected: boolean;
+}) => {
+  return (
+    <button
+      className={cn(
+        "bg-gray-200 rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
+        isSelected && "bg-[#277E892e]"
+      )}
+    >
+      <div className="flex flex-col items-center justify-evenly h-full gap-0">
+        <BagIconContainer
+          bagIcon={
+            <Image
+              alt="hand-bag-icon"
+              src="/icons/hand-bag.svg"
+              width={12}
+              height={12}
+            />
+          }
+          count={1}
+        />
+        <div className="border-b w-full border-gray-400"></div>
+        <BagIconContainer
+          count={cabinBagsIncluded ? 1 : 0}
+          bagIcon={
+            <Image
+              alt="cabin-bag-icon"
+              src="/icons/cabin-bag.svg"
+              width={14}
+              height={14}
+            />
+          }
+        />
+        <div className="border-b w-full border-gray-400"></div>
+
+        <BagIconContainer
+          bagIcon={
+            <Image
+              alt="checked-bag-icon"
+              src="/icons/checked-bag.svg"
+              width={22}
+              height={22}
+            />
+          }
+          count={checkBagsIncluded ? 1 : 0}
+        />
+        {/*
+          <div className="border-b w-full border-gray-400"></div>
+
+        <div className="text-xs font-bold flex items-center justify-center gap-1 w-full ">
+          <InfoIcon fill={isSelected ? "#277E89" : "grey"} />
+        </div>
+           */}
+      </div>
+    </button>
+  );
+};
+
 export const FlightTicketCard = ({
   onClick,
   isSelected,
@@ -93,14 +175,15 @@ export const FlightTicketCard = ({
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
-        <div className="flex flex-col items-center lg:flex-row w-full py-2">
-          <div className="w-full lg:w-5/6">
+        <div className="flex items-center lg:flex-row w-full py-2 pl-12 lg:pl-0">
+          <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
             <FlightCard {...outbound} metadata={metadata} />
             <div className="border w-full my-2"></div>
             <FlightCard {...inbound} metadata={metadata} />
           </div>
           <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
-          <div className="font-bold lg:w-1/6 mt-2 w-full text-center border-t-2 pt-2 lg:border-none">
+          {/* Desktop pricing element */}
+          <div className="hidden lg:block font-bold w-1/6 mt-2 text-center pt-2 border-none">
             {priceOutsidePackBoundries ? (
               <>
                 <span className="text-lg lg:text-2xl">{priceToShow}</span>
@@ -118,6 +201,34 @@ export const FlightTicketCard = ({
               <span className="text-xl">כלול במחיר</span>
             )}
           </div>
+          {/* Mobile pricing element */}
+          <div
+            className={cn(
+              "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
+              isSelected && "bg-secondary text-white"
+            )}
+          >
+            {priceOutsidePackBoundries ? (
+              <>
+                {price - minPrice < 0 ? (
+                  <span>
+                    {"הפחיתו"} {priceToShow} {"לנוסע ממחיר החבילה"}
+                  </span>
+                ) : (
+                  <span>
+                    {"תוספת"} {priceToShow} {"לנוסע"}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span>כלול במחיר</span>
+            )}
+          </div>
+          <LuggageButton
+            isSelected={isSelected}
+            cabinBagsIncluded={outbound.cabinBagsIncluded}
+            checkBagsIncluded={outbound.checkBagsIncluded}
+          />
         </div>
       </CardWrapper>
     </Skeleton>
@@ -150,10 +261,10 @@ const FlightCard = ({
         </div>
         <div className="text-sm hidden lg:block">{flightNumber}</div>
       </div>
-      <div className="w-[70%] lg:w-[50%] flex justify-center">
+      <div className="w-full lg:w-[50%] flex justify-center">
         <FlightMeta {...flightMeta} />
       </div>
-      <div className="w-[10%] lg:w-[20%] pr-2 text-center display flex flex-col lg:items-start gap-2">
+      <div className="hidden lg:block lg:w-[20%] pr-2 text-center flex flex-col lg:items-start gap-2">
         {checkBagsIncluded && (
           <div className="text-xs font-bold flex flex-col lg:flex-row gap-2 text-right items-center whitespace-nowrap">
             <div

@@ -11,6 +11,7 @@ import { HotelCardHeader } from "./HotelCardHeader";
 import { Amenities } from "./Amenities";
 import { formatPrice } from "@/lib/price.utils";
 // import { isMobile } from "react-device-detect";
+import { cn } from "@/lib/utils"; // Import cn utility
 
 export const HotelCard = ({
   hotelRates,
@@ -82,6 +83,11 @@ export const HotelCard = ({
     +(selectedRoom || hotelRates[0]).payment_options?.payment_types[0]
       .show_amount / persons;
 
+  // Variables for mobile pricing display
+  const priceDifferenceMobile = selectedPrice - minPrice;
+  const displayPriceMobile = formatPrice(Math.abs(priceDifferenceMobile));
+  const priceOutsidePackBoundariesMobile = Math.abs(priceDifferenceMobile) > 4;
+
   const priceToShowFull = useMemo(() => {
     const styledPrice = formatPrice(selectedPrice - minPrice);
 
@@ -113,7 +119,7 @@ export const HotelCard = ({
   return (
     <Skeleton visible={isLoading}>
       <CardWrapper isSelected={isSelected} onClick={handleSelect}>
-        <div className="w-full flex flex-col items-right gap-2">
+        <div className="w-full flex flex-col pt-2 lg:pt-0 items-right gap-2">
           <div className="flex flex-col lg:flex-row lg:content-between gap-2">
             <div className="flex flex-col lg:w-4/5 items-right gap-2">
               <div className="flex flex-col gap-1">
@@ -168,9 +174,11 @@ export const HotelCard = ({
                       rating={hotelInfo.metadata.rating}
                       roomName={selectedRoom?.room_data_trans.main_name || ""}
                     />
+                    {/* REMOVE OLD MOBILE PRICE DISPLAY 
                     <div className="w-full text-center lg:hidden p-1 mb-2 mt-2 border-main border rounded-lg bg-gray-200">
                       {priceToShowFull}
                     </div>
+                    */}
                     {/* {hotelRates.length > 1 && (
                       <div className="w-full flex flex-col justify-between lg:items-right mt-2 mb-2">
                         <div
@@ -249,6 +257,29 @@ export const HotelCard = ({
               />
             </div>
           </div>
+        </div>
+        {/* Mobile pricing element - similar to FlightTicketCard */}
+        <div
+          className={cn(
+            "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
+            isSelected && "bg-secondary text-white"
+          )}
+        >
+          {priceOutsidePackBoundariesMobile ? (
+            <>
+              {priceDifferenceMobile < 0 ? (
+                <span>
+                  {"הפחיתו"} {displayPriceMobile} {"לאורח ממחיר החבילה"}
+                </span>
+              ) : (
+                <span>
+                  {"תוספת"} {displayPriceMobile} {"לאורח"}
+                </span>
+              )}
+            </>
+          ) : (
+            <span>כלול במחיר</span>
+          )}
         </div>
       </CardWrapper>
     </Skeleton>
