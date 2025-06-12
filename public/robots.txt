@@ -1,0 +1,33 @@
+User-agent: *
+Allow: /
+
+# Allow all major search engines and AI crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+User-agent: BraveBot
+Allow: /
+
+# Sitemap location
+Sitemap: https://mega-events.co.il/sitemap.xml
+
+# Crawl delay (optional, helps with server load)
+Crawl-delay: 1

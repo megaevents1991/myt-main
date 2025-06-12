@@ -468,7 +468,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                           מבית מגה תיירות
                         </a>
                         <br />
-                        31 שנות ניסיון
+                        30 שנות ניסיון
                       </span>
                     ),
                   },

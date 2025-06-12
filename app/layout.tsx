@@ -30,18 +30,39 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
   description:
-    "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם.",
-  keywords: ["אירועים בחו״ל", "כרטיסים להופעות", "חבילות ספורט", "מגה איבנטס"], // Helps SEO
+    "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם. 30 שנות ניסיון, כרטיסים רשמיים, טיסות גמישות ומלונות איכותיים.",
+  keywords: [
+    "אירועים בחו״ל",
+    "כרטיסים להופעות",
+    "חבילות ספורט",
+    "מגה איבנטס",
+    "מבית מגה תיירות",
+    "טיסות לאירועים",
+    "מלונות לאירועים",
+    "כרטיסים רשמיים",
+    'הופעות בחו"ל',
+    "משחקי כדורגל",
+    "קונצרטים",
+    "אירועי ספורט",
+  ],
+  authors: [{ name: "מגה תיירות" }],
+  creator: "מגה תיירות",
+  publisher: "מגה איבנטס",
   applicationName: "Mega Events",
   generator: "Next.js",
-  metadataBase: new URL("https://mega-events.co.il"), // Base URL for relative links
+  category: "Travel & Events",
+  classification: "Travel Agency, Event Tickets, Tourism",
+  metadataBase: new URL("https://mega-events.co.il"),
   alternates: {
     canonical: "https://mega-events.co.il",
+    languages: {
+      "he-IL": "https://mega-events.co.il",
+    },
   },
   openGraph: {
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
-      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם.",
+      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם. 30 שנות ניסיון, כרטיסים רשמיים בלבד.",
     url: "https://mega-events.co.il",
     siteName: "Mega Events",
     type: "website",
@@ -56,24 +77,37 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary", //TODO: summary_large_image with 1200x630px image
+    card: "summary_large_image",
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
-      "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם.",
+      "מגה איבנטס מבית מגה תיירות - חבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם. 30 שנות ניסיון, כרטיסים רשמיים בלבד.",
     images: [
       "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-    ], // Same as Open Graph image
+    ],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  verification: {
+    google: "YOUR_GOOGLE_VERIFICATION_CODE", // Replace with actual verification code
   },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
   other: {
-    "google-site-verification": "YOUR_GOOGLE_VERIFICATION_CODE", // Optional for Google Search Console
+    "format-detection": "telephone=no", // Prevents automatic phone number detection
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
   },
 };
 
@@ -175,7 +209,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                     הפרטיות של האתר.
                   </p>
                   <div className="container mx-auto text-white flex flex-col sm:flex-row justify-between items-center h-[2vh] gap-y-2 sm:gap-0 mb-8">
+                    {" "}
                     <nav className="flex gap-4 sm:gap-6 font-bold">
+                      <Link
+                        className="text-sm hover:underline underline-offset-4"
+                        href="/about"
+                      >
+                        אודותינו
+                      </Link>
+                      <Link
+                        className="text-sm hover:underline underline-offset-4"
+                        href="/faq"
+                      >
+                        שאלות נפוצות
+                      </Link>
                       <Link
                         className="text-sm hover:underline underline-offset-4"
                         href="/artists"
