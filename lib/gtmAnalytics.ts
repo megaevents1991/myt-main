@@ -90,7 +90,9 @@ export async function trackServerSideEvent(options: AnalyticsOptions): Promise<b
       `https://gtm.mega-events.co.il/server_side?measurment_id=G-0000000000`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",
+          "X-Gtm-Server-Preview": "ZW52LTY1fGp3TDM3R055LUFWSV9GY2QySGNpX2d8MTk3NjJmYmFmZmI1NmY3OTNhZTFl"
+        },
         body: JSON.stringify(analyticsPayload),
       }
     );
