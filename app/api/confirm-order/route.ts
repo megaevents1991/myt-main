@@ -4,9 +4,14 @@ import { supabase } from "@/lib/supabase";
 import { OrderData } from "@/lib/app.types";
 import { validateOrderData } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
+import { 
+  trackServerSideEvent, 
+  extractIpFromRequest, 
+  extractUserAgentFromRequest 
+} from "@/lib/gtmAnalytics";
 
 export async function POST(req: Request) {
-  const { payNow, ...orderDetails } = await req.json();
+  const { payNow, gtmIdnts, ...orderDetails } = await req.json();
 
   const validatedData: OrderData = await validateOrderData(orderDetails);
 
@@ -27,6 +32,7 @@ export async function POST(req: Request) {
       aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
       final_purchase_price_ils: validatedData.final_purchase_price_ils,
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
+      gtmIdnts: gtmIdnts || null,
       status: "Pending",
     })
     .select()
@@ -121,13 +127,38 @@ export async function POST(req: Request) {
     });
 
     const bookingReference = `ME${new Date().getDate()}${id}`;
-
+    
     await supabase
       .from("reservations")
       .update({
         booking_reference: bookingReference,
       })
       .eq("id", id);
+
+    // Track analytics event - purchase for immediate payment, begin_checkout for phone orders
+    try {
+      const ip = extractIpFromRequest(req);
+      const userAgent = extractUserAgentFromRequest(req);
+      
+      await trackServerSideEvent({
+        eventData: {
+          id: validatedData.event_id,
+          name: validatedData.event_order_info.name,
+          value: validatedData.user_shown_price,
+          currency: "USD",
+          category: "Music",
+          brand: "Mega Events",
+          quantity: validatedData.event_order_info.number_of_ticket
+        },
+        eventType: payNow ? "begin_checkout" : "generate_lead",
+        gtmIdnts,
+        userAgent,
+        ip,
+      });
+    } catch (analyticsError) {
+      // Don't fail the main request if analytics fails
+      console.warn("Analytics tracking failed for order confirmation:", analyticsError);
+    }
 
     if (!payNow) { // confirmation email to user when ask for phone order
       await sendUserEmail({

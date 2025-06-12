@@ -91,6 +91,7 @@ export type FlightSearchOptions = {
   infants: string;
   destination: string;
   nonStop: boolean;
+  gtmIdnts?: string;
 };
 
 export type TimeRange = [

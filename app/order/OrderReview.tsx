@@ -317,6 +317,12 @@ ${selectedHotel.name}
     orderData: Omit<OrderData, "booking_reference" | "confirmation_email_sent">,
     payNow: boolean
   ) => {
+    const gtmIdnts =
+      document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("gtmIdnts="))
+        ?.split("=")[1] || "";
+
     const response = await fetch("/api/confirm-order", {
       method: "POST",
       headers: {
@@ -325,6 +331,7 @@ ${selectedHotel.name}
       body: JSON.stringify({
         ...orderData,
         payNow,
+        gtmIdnts,
       }),
     });
 

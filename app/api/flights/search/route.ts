@@ -10,7 +10,12 @@ import { amadeus } from "../amadeusClient";
 import { getEvents } from "../../eventsData";
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
-import { serialize } from "tinyduration";
+import { serialize } from 'tinyduration';
+import { 
+  trackServerSideEvent, 
+  extractIpFromRequest, 
+  extractUserAgentFromRequest 
+} from "@/lib/gtmAnalytics";
 
 export const maxDuration = 30;
 const currencyCode = "USD";
@@ -154,15 +159,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  try {
-    const {
+  const {
       returnDate: returnDateFromUi,
       departureDate: departureDateFromUi,
       originLocationCode = "TLV",
       adults,
       nonStop,
+      gtmIdnts,
     }: FlightSearchOptions = await request.json();
 
+  // Track flight search analytics
+  try {
+    const ip = extractIpFromRequest(request);
+    const userAgent = extractUserAgentFromRequest(request);
+    
+    await trackServerSideEvent({
+      eventData: {
+        id: event.id,
+        name: event.name,
+        value: 1500,
+        currency: "USD",
+        category: "Music",
+        brand: "Mega Events"
+      },
+      eventType: "add_to_cart",
+      gtmIdnts,
+      userAgent,
+      ip,
+    });
+  } catch (analyticsError) {
+    // Don't fail the main request if analytics fails
+    console.warn("Analytics tracking failed for flight search:", analyticsError);
+  }
+
+  try {
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 

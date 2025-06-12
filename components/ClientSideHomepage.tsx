@@ -646,6 +646,28 @@ function EventCard({ event }: { event: Event }) {
             eventLocation: event.location.name,
           },
         });
+        const gtmIdnts =
+          document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("gtmIdnts="))
+            ?.split("=")[1] || "";
+
+        fetch("/api/events-info", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            eventData: {
+              id: event.id,
+              name: event.name,
+            },
+            gtmIdnts,
+            eventType: "select_item",
+          }),
+        }).catch((error) => {
+          console.error("Analytics tracking failed:", error);
+        });
       }}
     >
       <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">

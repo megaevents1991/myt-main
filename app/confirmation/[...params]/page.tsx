@@ -66,6 +66,33 @@ export default function ConfirmationPage() {
     return data;
   };
 
+  const trackAnalyticsEvent = (orderData: OrderData) => {
+    try {
+      const gtmIdnts =
+        document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("gtmIdnts="))
+          ?.split("=")[1] || "";
+
+      fetch("/api/events-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventData: {
+            id: orderData.event_id,
+            name: orderData.event_order_info.name,
+          },
+          eventType: "purchase",
+          gtmIdnts,
+        }),
+      });
+    } catch (error) {
+      console.warn("Analytics tracking failed:", error);
+    }
+  };
+
   const handlePageOpen = async () => {
     setIsLoading(true);
     try {
@@ -80,6 +107,9 @@ export default function ConfirmationPage() {
       }
 
       if (orderData) {
+        if (isPaid === "success") {
+          trackAnalyticsEvent(orderData);
+        }
         const orderDataToShow: OrderConfirmationData = {
           eventName: orderData.event_order_info.name,
           eventDate: orderData.event_order_info.date.toString(),

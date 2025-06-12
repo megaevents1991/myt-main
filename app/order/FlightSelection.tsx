@@ -166,12 +166,18 @@ export const FlightSelection = () => {
 
     try {
       const adults = options.adults || planeTickets.adults;
+      const gtmIdnts =
+        document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("gtmIdnts="))
+          ?.split("=")[1] || "";
       const res = await fetch(`/api/flights/search?eventId=${event?.id}`, {
         body: JSON.stringify({
           ...options,
           adults,
           departureDate: dateRange[0]?.toDateString(),
           returnDate: dateRange[1]?.toDateString(),
+          gtmIdnts,
         }),
         method: "POST",
       });
