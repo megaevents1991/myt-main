@@ -215,6 +215,7 @@ export type OrderTicket = Omit<EventTicket, "description" | "colorOnTheMap"> & {
 };
 
 export type OrderData = {
+  payment_info?: object;
   main_contact_first_name: string;
   main_contact_last_name: string;
   main_contact_phone_number: string;

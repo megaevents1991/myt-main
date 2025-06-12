@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { OrderData } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
+import { trackEvent } from "@/lib/mixpanel";
 
 type PaymentStatus = "success" | "error" | "pending";
 
@@ -105,7 +106,6 @@ export default function ConfirmationPage() {
         const { isSuccess } = await validatePayment(resultObject.txId);
         isPaid = isSuccess ? "success" : "error";
       }
-
       if (orderData) {
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
@@ -129,6 +129,25 @@ export default function ConfirmationPage() {
           partnerTrackingCode: promoCode === "dummy_code" ? null : promoCode,
         };
         setOrderConfirmationData(orderDataToShow);
+
+        // Track payment resolution event in Mixpanel
+        trackEvent("eventPayment", {
+          orderId: orderId,
+          paymentStatus: isPaid,
+          eventName: orderData.event_order_info.name,
+          eventDate: orderData.event_order_info.date,
+          eventLocation: orderData.event_order_info.location_name,
+          ticketCategory: orderData.event_order_info.category,
+          numberOfTickets: orderData.event_order_info.number_of_ticket,
+          airline: orderData.flight_order_info.metadata.name,
+          hotel: orderData.hotel_order_info.name,
+          paymentMethod:
+            Object.keys(orderData.payment_info || {}).length === 0
+              ? "Phone"
+              : "CreditCard",
+          affiliateId: orderData.aff_partner_tracking_code || null,
+          finalPrice: orderData.final_purchase_price_ils,
+        });
       }
     } catch {
     } finally {

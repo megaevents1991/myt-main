@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackEvent } from "@/lib/mixpanel";
 
 type FAQItem = {
   question: string;
@@ -38,7 +39,16 @@ function FAQItem({
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <button
         className="w-full flex justify-between items-center p-4 text-right bg-gray-50 hover:bg-gray-100 transition-colors"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (isOpen === false) {
+            trackEvent("buttonClick", {
+              buttonTag: "faq",
+              buttonName: question,
+              action: !isOpen ? "expand" : "collapse",
+            });
+          }
+          setIsOpen(!isOpen);
+        }}
         aria-expanded={isOpen}
       >
         <span className="font-bold">{question}</span>
