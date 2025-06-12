@@ -2,6 +2,7 @@ import MegaEventsSection from "@/components/ui/aboutUsMega";
 import { StructuredData } from "@/components/StructuredData";
 import { getCachedEvents } from "../api/eventsData";
 import { Metadata } from "next";
+import Link from "next/link";
 
 // Force static generation
 export const dynamic = "force-static";
@@ -161,22 +162,15 @@ export default async function AboutPage() {
       {/* Contact Section */}
       <section className="w-full py-12 bg-main text-white" dir="rtl">
         <div className="container mx-auto max-w-4xl text-center px-4">
-          <h2 className="text-2xl font-bold mb-4">
+          <h2 className="text-2xl font-bold mb-10">
             מוכנים להתחיל לתכנן את החוויה הבאה שלכם?
           </h2>
-          <p className="text-lg mb-6">
-            צרו איתנו קשר היום ותנו לנו לעזור לכם ליצור זיכרונות בלתי נשכחים
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <a
-              href="https://wa.me/972542002722"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-green-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-600 transition-colors"
-            >
-              התחילו איתנו שיחה ב- WhatsApp
-            </a>
-          </div>
+          <Link
+            href="/"
+            className="bg-secondary text-white px-16 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors"
+          >
+            הזמינו עכשיו!
+          </Link>
         </div>
       </section>
     </main>
