@@ -508,7 +508,7 @@ export const FlightSelection = () => {
                   </button>
                   <button
                     className={cn(
-                      "font-bold text-md px-3 py-1 rounded-l-md whitespace-nowrap",
+                      "font-bold text-md px-3 py-1 rounded-l-md bg-[#e6cc00] whitespace-nowrap",
                       isIsraeliFilter && "text-white bg-secondary"
                     )}
                     onClick={handleIsraeliFilter}
