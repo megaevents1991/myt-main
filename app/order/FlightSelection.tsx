@@ -80,6 +80,7 @@ export const FlightSelection = () => {
   const [selectedFlightPrice, setSelectedFlightPrice] = useState(0);
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
+  const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(event.def_date_depart),
     new Date(event.def_date_return),
@@ -242,13 +243,27 @@ export const FlightSelection = () => {
   const handleFlightSearch = async () => {
     await fetchFlights();
   };
-
   const handleSortChange = (selectedSortOption: SortOptions) => {
     setSortOption(selectedSortOption);
 
     startTransition(() => {
       const sortedData = flightSort(filteredFlights, selectedSortOption);
       setFilteredFlights(sortedData.slice(0, 50));
+    });
+  };
+
+  const handleIsraeliFilter = () => {
+    const newIsraeliFilter = !isIsraeliFilter;
+    setIsIsraeliFilter(newIsraeliFilter);
+
+    const israeliAirlines = ["LY", "6H", "IZ", "BZ", "U8"];
+    const airlineFilter = newIsraeliFilter
+      ? israeliAirlines
+      : airlines.map((a) => a.value);
+
+    handleFlightSearchCriteriaChange({
+      type: "airline",
+      value: airlineFilter,
     });
   };
 
@@ -475,7 +490,7 @@ export const FlightSelection = () => {
                 <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
                   <button
                     className={cn(
-                      "font-bold px-6 py-1 rounded-r-md",
+                      "font-bold text-md px-3 py-1 rounded-r-md",
                       sortOption === "price_asc" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("price_asc")}
@@ -484,12 +499,21 @@ export const FlightSelection = () => {
                   </button>
                   <button
                     className={cn(
-                      "font-bold px-6 py-1 rounded-l-md whitespace-nowrap",
+                      "font-bold text-md px-3 py-1 whitespace-nowrap",
                       sortOption === "duration" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("duration")}
                   >
                     משך טיסה
+                  </button>
+                  <button
+                    className={cn(
+                      "font-bold text-md px-3 py-1 rounded-l-md whitespace-nowrap",
+                      isIsraeliFilter && "text-white bg-secondary"
+                    )}
+                    onClick={handleIsraeliFilter}
+                  >
+                    ישראלי
                   </button>
                 </div>
               }

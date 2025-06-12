@@ -20,7 +20,7 @@ export const SortOptionsContainer = ({
             <div
               className={cn("flex gap-2", matches && "justify-between w-full")}
             >
-              <div className="flex items-center text-xl gap-2">מיון לפי</div>
+              <div className="flex items-center text-lg gap-2">מיון לפי</div>
               <div className="flex items-center gap-2">{sortOptions}</div>
             </div>
           </div>
