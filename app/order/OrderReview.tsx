@@ -135,12 +135,14 @@ ${selectedHotel.name}
 
   useEffect(() => {
     let isMounted = true;
-    finalPurchasePriceILSCalc(finalPurchasePrice).then(({ ils, rate }) => {
-      if (isMounted) {
-        setFinalPurchasePriceILS(ils);
-        setUSD_ILS_RATE(rate);
+    finalPurchasePriceILSCalc(finalPurchasePrice).then(
+      ({ ils, travelRate }) => {
+        if (isMounted) {
+          setFinalPurchasePriceILS(ils);
+          setUSD_ILS_RATE(travelRate);
+        }
       }
-    });
+    );
     return () => {
       isMounted = false;
     };
