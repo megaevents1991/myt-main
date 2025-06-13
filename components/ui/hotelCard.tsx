@@ -85,7 +85,7 @@ export const HotelCard = ({
 
   // Variables for mobile pricing display
   const priceDifferenceMobile = selectedPrice - minPrice;
-  const displayPriceMobile = formatPrice(Math.abs(priceDifferenceMobile));
+  const displayPriceMobile = formatPrice(priceDifferenceMobile);
   const priceOutsidePackBoundariesMobile = Math.abs(priceDifferenceMobile) > 4;
 
   const priceToShowFull = useMemo(() => {
