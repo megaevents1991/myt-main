@@ -1,4 +1,6 @@
 import { getCachedEvents } from "../api/eventsData";
+import { contentfulClient } from "@/lib/contentful";
+import { ArtistFields, FootballFields } from "@/lib/app.types";
 
 export async function GET() {
   const events = await getCachedEvents();
@@ -47,7 +49,6 @@ export async function GET() {
       priority: 0.3,
     },
   ];
-
   const eventPages = events.events.map((event) => ({
     url: `${baseUrl}/order?eventId=${event.id}`,
     lastModified: new Date().toISOString(),
@@ -55,7 +56,31 @@ export async function GET() {
     priority: 0.9,
   }));
 
-  const allPages = [...staticPages, ...eventPages];
+  // Fetch artists from Contentful
+  const { items: artists } = await contentfulClient.getEntries<ArtistFields>({
+    content_type: "artistTemplate",
+  });
+
+  const artistPages = artists.map((artist) => ({
+    url: `${baseUrl}/artists/${artist.sys.id}`,
+    lastModified: new Date().toISOString(),
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  // Fetch football teams from Contentful
+  const { items: footballTeams } = await contentfulClient.getEntries<FootballFields>({
+    content_type: "footballTeamTemplate",
+  });
+
+  const footballPages = footballTeams.map((team) => ({
+    url: `${baseUrl}/football/${team.sys.id}`,
+    lastModified: new Date().toISOString(),
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  const allPages = [...staticPages, ...eventPages, ...artistPages, ...footballPages];
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

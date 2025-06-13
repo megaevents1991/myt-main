@@ -1,8 +1,16 @@
 "use client";
 
 import { Hotel, HotelInfoClient, HotelKind } from "@/lib/hotel.type";
-import { Popover, Skeleton } from "@mantine/core";
-import { useState, useEffect, useContext, useMemo, useTransition } from "react";
+import { Popover, ScrollArea, Skeleton } from "@mantine/core";
+import {
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  useTransition,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import { OrderContext } from "../app.context";
 import { DateRange } from "@/components/ui/dateInput";
 import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
@@ -64,6 +72,7 @@ export const HotelSelection = () => {
     "withoutMeal",
   ]);
   const [kind, setKind] = useState<HotelKind[]>(["Hotel"]);
+  const [scrollerHeight, setScrollerHeight] = useState(600);
   const [maxDistance, setMaxDistance] = useState(0);
   const [distanceRange, setDistanceRange] = useState<[number, number]>([
     0,
@@ -80,6 +89,16 @@ export const HotelSelection = () => {
   const [, startTransition] = useTransition();
 
   const matches = useMediaQuery("(min-width: 1024px)");
+
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (filterRef.current && matches) {
+      setScrollerHeight(filterRef.current.offsetHeight);
+    } else if (!matches) {
+      setScrollerHeight(600);
+    }
+  }, [matches, hotelsData]);
 
   useEffect(() => {
     setSelectedHotelFilters({});
@@ -475,9 +494,10 @@ export const HotelSelection = () => {
       >
         <div
           className={cn(
-            "w-1/3 space-y-4 ",
+            "w-1/4 space-y-4 ",
             !matches ? "w-full" : "sticky top-0"
           )}
+          ref={filterRef}
         >
           <Skeleton visible={isFetching}>
             <SortOptionsContainer
@@ -537,7 +557,7 @@ export const HotelSelection = () => {
             </Skeleton>
           )}
         </div>
-        <div className="w-full">
+        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
             {filteredHotels.map(
               (hotel) =>
@@ -565,7 +585,7 @@ export const HotelSelection = () => {
                 </div>
               ))}
           </div>
-        </div>
+        </ScrollArea.Autosize>
       </div>
     </div>
   );
