@@ -208,13 +208,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 1 && <TicketSelection />}
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
-      {step === 4 && <OrderReview />}
-
+      {step === 4 && <OrderReview />}{" "}
+      {/* Floating ContactUs - separate from footer */}
+      <div className="fixed bottom-24 left-2 z-50 sm:hidden">
+        <ContactUs inHeader={false} />
+      </div>
       {/* Sticky Footer */}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-0">
-        <div className="bottom-20 left-4 z-50 flex sm:hidden w-full">
-          <ContactUs inHeader={false} />
-        </div>
         <div className="mt-4 w-screen bg-gray-200">
           <div className="w-full">
             {step < 4 && (

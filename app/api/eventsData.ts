@@ -15,9 +15,7 @@ export const getCachedEvents = nextCache(
 export async function getEvents(id?: number): Promise<{ events: Event[] }> {
 
   // Calculate date 7 days from now
-  const today = new Date();
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(today.getDate() + 7);
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   
   // Format to YYYY-MM-DD for database comparison
   const futureDate = sevenDaysFromNow.toISOString().split('T')[0]; // Format: 2025-04-32

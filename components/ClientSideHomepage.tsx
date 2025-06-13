@@ -589,8 +589,8 @@ export function ClientSideHomepage({ initialEvents }: Props) {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {rest_events.map((event) => (
               <EventCard event={event} key={event.id} />
-            ))}
-            <div className="fixed bottom-20 left-2 z-50 flex sm:hidden w-full">
+            ))}{" "}
+            <div className="fixed bottom-20 left-2 z-50 sm:hidden">
               <ContactUs inHeader={false} />
             </div>
             <div

@@ -87,7 +87,7 @@ export const FlightSelection = () => {
   ]);
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
-  const [scrollerHeight, setScrollerHeight] = useState(400);
+  const [scrollerHeight, setScrollerHeight] = useState(600);
   const [, startTransition] = useTransition();
   const [debug, setDebug] = useState<{
     departureDate: Date;
@@ -100,7 +100,7 @@ export const FlightSelection = () => {
     if (filterRef.current && matches) {
       setScrollerHeight(filterRef.current.offsetHeight);
     } else if (!matches) {
-      setScrollerHeight(400);
+      setScrollerHeight(600);
     }
   }, [matches, flights]);
 

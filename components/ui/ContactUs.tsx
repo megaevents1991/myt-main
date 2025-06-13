@@ -27,11 +27,11 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
         <a href={`tel:${PHONE_NUMBER}`}>
           {text} {"054-200-2722"}
         </a>
-      </div>
+      </div>{" "}
       <div
         className={cn(
-          "flex gap-1 sm:gap-2 items-center justify-left w-full flex-col",
-          inHeader && "flex-row"
+          "flex gap-1 sm:gap-2 items-center justify-left flex-col",
+          inHeader && "flex-row w-full"
         )}
       >
         {inHeader && (
