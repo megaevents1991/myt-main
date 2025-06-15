@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
 import { useMediaQuery } from "@mantine/hooks";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Event } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { ArrowLeftIcon } from "lucide-react";
@@ -48,7 +48,8 @@ const SearchCombobox = ({
   const router = useRouter();
   const combobox = useCombobox();
 
-  const fuse = new Fuse(events, fuseOptions);
+  // Memoize Fuse instance to prevent recreation on every render
+  const fuse = useMemo(() => new Fuse(events, fuseOptions), [events]);
 
   const value = searchValue.toLowerCase().trim();
   const filteredOptions = value
@@ -143,7 +144,7 @@ const SearchCombobox = ({
 };
 
 export function ClientSideHomepage({ initialEvents }: Props) {
-  const matches = useMediaQuery("(min-width: 768px)");
+  const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [feedbackInSearchModal, setfeedbackInSearchModal] = useState(false);
