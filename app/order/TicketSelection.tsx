@@ -7,7 +7,7 @@ import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
-import { isMobile } from "react-device-detect";
+import { useMediaQuery } from "@mantine/hooks";
 
 export const TicketSelection = () => {
   const { setEventTicket, event } = useContext(OrderContext);
@@ -21,6 +21,8 @@ export const TicketSelection = () => {
 
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
+
+  const matches = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
     const cheapt = event?.tickets_and_rates.reduce(
@@ -38,16 +40,16 @@ export const TicketSelection = () => {
   }, [event]);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (matches) return; // Don't scroll on desktop (1024px+)
     const timer = setTimeout(() => {
       window.scrollTo({
         top: 90,
-        behavior: "smooth", // Adds a smooth scrolling effect
+        behavior: "smooth",
       });
     }, 1000); // 1 second delay
 
     return () => clearTimeout(timer); // Cleanup timeout if component unmounts
-  }, []);
+  }, [matches]); // Add matches as dependency
 
   const handleTicketSelect = (ticket: {
     id: string;

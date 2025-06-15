@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Plane } from "lucide-react";
 import { Skeleton, Tooltip } from "@mantine/core";
 import { isMobile } from "react-device-detect";
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, memo } from "react";
 import { useClickOutside } from "@mantine/hooks";
 import { formatPrice } from "@/lib/price.utils";
 import { airports } from "@nwpr/airport-codes";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 //import { InfoIcon } from "../icons/InfoIcon";
 
 type FlightTicketCardProps = {
-  isSelected: boolean;
+  selectedFlightId?: string;
   onClick: (flightId: string) => void;
   flightId: string;
   isLoading: boolean;
@@ -156,84 +156,102 @@ const LuggageButton = ({
   );
 };
 
-export const FlightTicketCard = ({
-  onClick,
-  isSelected,
-  outbound,
-  inbound,
-  metadata,
-  flightId,
-  price,
-  isLoading,
-  minPrice,
-}: FlightTicketCardProps) => {
-  const priceToShow = formatPrice(price - minPrice);
+export const FlightTicketCard = memo(
+  ({
+    onClick,
+    selectedFlightId,
+    outbound,
+    inbound,
+    metadata,
+    flightId,
+    price,
+    isLoading,
+    minPrice,
+  }: FlightTicketCardProps) => {
+    const isSelected = selectedFlightId === flightId;
+    const priceToShow = formatPrice(price - minPrice);
 
-  const priceOutsidePackBoundries =
-    Math.abs(price - minPrice) > 4 ? true : false;
+    const priceOutsidePackBoundries =
+      Math.abs(price - minPrice) > 4 ? true : false;
 
-  return (
-    <Skeleton visible={isLoading}>
-      <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
-        <div className="flex items-center lg:flex-row w-full py-2 pl-12 lg:pl-0">
-          <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
-            <FlightCard {...outbound} metadata={metadata} />
-            <div className="border w-full my-2"></div>
-            <FlightCard {...inbound} metadata={metadata} />
+    return (
+      <Skeleton visible={isLoading}>
+        <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
+          <div className="flex items-center lg:flex-row w-full py-2 pl-12 lg:pl-0">
+            <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
+              <FlightCard {...outbound} metadata={metadata} />
+              <div className="border w-full my-2"></div>
+              <FlightCard {...inbound} metadata={metadata} />
+            </div>
+            <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
+            {/* Desktop pricing element */}
+            <div className="hidden lg:block font-bold w-1/6 mt-2 text-center pt-2 border-none">
+              {priceOutsidePackBoundries ? (
+                <>
+                  <span className="text-lg lg:text-2xl">{priceToShow}</span>
+                  {price - minPrice < 0 ? (
+                    <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
+                      {"חסכון לכל נוסע"}
+                    </span>
+                  ) : (
+                    <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
+                      {"תוספת לכל נוסע"}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-xl">כלול במחיר</span>
+              )}
+            </div>
+            {/* Mobile pricing element */}
+            <div
+              className={cn(
+                "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
+                isSelected && "bg-secondary text-white"
+              )}
+            >
+              {priceOutsidePackBoundries ? (
+                <>
+                  {price - minPrice < 0 ? (
+                    <span>
+                      {"הפחיתו"} {priceToShow} {"לנוסע ממחיר החבילה"}
+                    </span>
+                  ) : (
+                    <span>
+                      {"תוספת"} {priceToShow} {"לנוסע"}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span>כלול במחיר</span>
+              )}
+            </div>
+            <LuggageButton
+              isSelected={isSelected}
+              cabinBagsIncluded={outbound.cabinBagsIncluded}
+              checkBagsIncluded={outbound.checkBagsIncluded}
+            />{" "}
           </div>
-          <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
-          {/* Desktop pricing element */}
-          <div className="hidden lg:block font-bold w-1/6 mt-2 text-center pt-2 border-none">
-            {priceOutsidePackBoundries ? (
-              <>
-                <span className="text-lg lg:text-2xl">{priceToShow}</span>
-                {price - minPrice < 0 ? (
-                  <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
-                    {"חסכון לכל נוסע"}
-                  </span>
-                ) : (
-                  <span className="whitespace-nowrap text-lg inline pr-2 lg:block lg:pr-0">
-                    {"תוספת לכל נוסע"}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-xl">כלול במחיר</span>
-            )}
-          </div>
-          {/* Mobile pricing element */}
-          <div
-            className={cn(
-              "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
-              isSelected && "bg-secondary text-white"
-            )}
-          >
-            {priceOutsidePackBoundries ? (
-              <>
-                {price - minPrice < 0 ? (
-                  <span>
-                    {"הפחיתו"} {priceToShow} {"לנוסע ממחיר החבילה"}
-                  </span>
-                ) : (
-                  <span>
-                    {"תוספת"} {priceToShow} {"לנוסע"}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span>כלול במחיר</span>
-            )}
-          </div>
-          <LuggageButton
-            isSelected={isSelected}
-            cabinBagsIncluded={outbound.cabinBagsIncluded}
-            checkBagsIncluded={outbound.checkBagsIncluded}
-          />
-        </div>
-      </CardWrapper>
-    </Skeleton>
-  );
-};
+        </CardWrapper>
+      </Skeleton>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Only re-render if the selection state for this specific card changes
+    // or if other critical props change
+    const prevSelected = prevProps.selectedFlightId === prevProps.flightId;
+    const nextSelected = nextProps.selectedFlightId === nextProps.flightId;
+
+    return (
+      prevSelected === nextSelected &&
+      prevProps.isLoading === nextProps.isLoading &&
+      prevProps.price === nextProps.price &&
+      prevProps.flightId === nextProps.flightId
+    );
+  }
+);
+
+FlightTicketCard.displayName = "FlightTicketCard";
 
 type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
   FlightSegment;

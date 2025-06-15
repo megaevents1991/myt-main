@@ -33,7 +33,6 @@ import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
-import { isMobile } from "react-device-detect";
 import dayjs from "dayjs";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
@@ -140,16 +139,16 @@ export const FlightSelection = () => {
   }, []);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (matches) return; // Don't scroll on desktop (1024px+)
     const timer = setTimeout(() => {
       window.scrollTo({
         top: 90,
-        behavior: "smooth", // Adds a smooth scrolling effect
+        behavior: "smooth",
       });
-    }, 1000); // 1 second delay
+    }, 1000);
 
-    return () => clearTimeout(timer); // Cleanup timeout if component unmounts
-  }, []);
+    return () => clearTimeout(timer);
+  }, [matches]); // Add matches as dependency
 
   const fetchFlights = async (options: Partial<FlightSearchOptions> = {}) => {
     const directOnly = !!options.nonStop;
@@ -335,7 +334,6 @@ export const FlightSelection = () => {
       setFilteredFlights(filteredFlights.slice(0, 50));
     });
   };
-
   const flightTicketCards = useMemo(
     () =>
       filteredFlights.map((flight) => {
@@ -347,7 +345,7 @@ export const FlightSelection = () => {
             {...flight}
             price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
             flightId={flight.id}
-            isSelected={orderFlight?.id === flight.id}
+            selectedFlightId={orderFlight?.id}
             onClick={handleFlightChange}
           />
         );

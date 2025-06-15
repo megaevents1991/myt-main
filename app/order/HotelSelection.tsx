@@ -7,6 +7,7 @@ import {
   useEffect,
   useContext,
   useMemo,
+  useCallback,
   useTransition,
   useRef,
   useLayoutEffect,
@@ -30,7 +31,6 @@ import {
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { getTotalPersons } from "@/lib/price.utils";
-import { isMobile } from "react-device-detect";
 import { logger } from "@/lib/logger";
 import { HotelFetchContext, HotelsData } from "../HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
@@ -87,6 +87,7 @@ export const HotelSelection = () => {
     [Date | null, Date | null]
   >(getDefaultDateRange(event, flight));
   const [, startTransition] = useTransition();
+  const [isProcessingHotels, setIsProcessingHotels] = useState(false);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -103,24 +104,30 @@ export const HotelSelection = () => {
   useEffect(() => {
     setSelectedHotelFilters({});
   }, []);
-
   useEffect(() => {
     if (hotelsData.data.debug && !isFetching) {
-      prepareHotelData(hotelsData);
+      setIsProcessingHotels(true);
+      startTransition(() => {
+        prepareHotelData(hotelsData);
+        setIsProcessingHotels(false);
+      });
+    } else if (!hotelsData.data.debug) {
+      // Reset processing state if no data
+      setIsProcessingHotels(false);
     }
   }, [isFetching]);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (matches) return; // Don't scroll on desktop (1024px+)
     const timer = setTimeout(() => {
       window.scrollTo({
         top: 90,
-        behavior: "smooth", // Adds a smooth scrolling effect
+        behavior: "smooth",
       });
-    }, 1000); // 1 second delay
+    }, 1000);
 
-    return () => clearTimeout(timer); // Cleanup timeout if component unmounts
-  }, []);
+    return () => clearTimeout(timer);
+  }, [matches]); // Add matches as dependency
 
   useEffect(() => {
     if (!flight?.outbound?.arrivalTime || !flight?.inbound?.departureTime) {
@@ -131,8 +138,8 @@ export const HotelSelection = () => {
       });
     }
   }, []);
-
   const prepareHotelData = ({ hotelsInfo, data }: HotelsData) => {
+    // Calculate all values first
     const maxDistance = Math.max(
       ...Object.values(hotelsInfo).map(
         (hotel) => hotel.metadata?.distanceFromCenter
@@ -177,19 +184,24 @@ export const HotelSelection = () => {
       distance: hotelsInfo[0]?.metadata?.distanceFromCenter,
     };
 
+    // Batch all state updates together using React's automatic batching
+    const selectedHotelId = hotelsToSet[0].id;
+
     setBasePricePerPerson(basePricePerPerson);
     setMaxDistance(maxDistance);
     setDistanceRange([0, maxDistance]);
     setPriceRange([0, Math.ceil(maxPrice)]);
     setMaxPrice(maxPrice / totalPersons);
     setFilteredHotels(hotelsToSet.slice(0, 50));
-    setSelectedHotelId(hotelsToSet[0].id);
+    setSelectedHotelId(selectedHotelId);
     setMinPrice(Math.floor(minPrice / totalPersons));
+
+    // Set hotel last as it depends on the selectedHotelId
     setHotel({
-      address: hotelsInfo[hotelsToSet[0].id]?.metadata.address,
+      address: hotelsInfo[selectedHotelId]?.metadata.address,
       guests: data.debug.request.guests,
-      id: hotelsToSet[0].id || "",
-      name: hotelsInfo[hotelsToSet[0].id].metadata.hotelName,
+      id: selectedHotelId || "",
+      name: hotelsInfo[selectedHotelId].metadata.hotelName,
       hotelInformation,
       price:
         hotelsToSet[0].rates[0].payment_options?.payment_types[0]?.show_amount,
@@ -308,26 +320,26 @@ export const HotelSelection = () => {
       setFilteredHotels(hotelsToSet.slice(0, 50));
     });
   };
-
-  const handleSelectedRate = (
-    orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">
-  ) => {
-    const hotelInformation = {
-      hotelName: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
-      roomName: hotelsData.hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
-      stars: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.rating,
-      amenities: hotelsData.hotelsInfo[orderHotel?.id]?.general?.amenities,
-      distance:
-        hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
-    };
-    setHotel({
-      ...orderHotel,
-      hotelInformation,
-      guests: hotelsData?.data?.debug?.request?.guests,
-      checkin: hotelsData?.data?.debug?.request?.checkin,
-      checkout: hotelsData?.data?.debug?.request?.checkout,
-    });
-  };
+  const handleSelectedRate = useCallback(
+    (orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">) => {
+      const hotelInformation = {
+        hotelName: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
+        roomName: hotelsData.hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
+        stars: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.rating,
+        amenities: hotelsData.hotelsInfo[orderHotel?.id]?.general?.amenities,
+        distance:
+          hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
+      };
+      setHotel({
+        ...orderHotel,
+        hotelInformation,
+        guests: hotelsData?.data?.debug?.request?.guests,
+        checkin: hotelsData?.data?.debug?.request?.checkin,
+        checkout: hotelsData?.data?.debug?.request?.checkout,
+      });
+    },
+    [hotelsData, setHotel]
+  );
 
   const handleSetRooms = (room: {
     adults: number;
@@ -371,6 +383,38 @@ export const HotelSelection = () => {
       fetchHotels();
     }
   };
+
+  const hotelCards = useMemo(
+    () =>
+      filteredHotels.map(
+        (hotel) =>
+          hotelsData.hotelsInfo[hotel.id] && (
+            <HotelCard
+              persons={getTotalPersons(
+                hotelsData?.data?.debug?.request?.guests || []
+              )}
+              minPrice={basePricePerPerson}
+              isLoading={isFetching}
+              selectedHotelId={selectedHotelId}
+              hotelId={hotel.id}
+              key={hotel.id}
+              hotelRates={hotel.rates}
+              hotelInfo={hotelsData.hotelsInfo[hotel.id]}
+              handleSelect={() => setSelectedHotelId(hotel.id)}
+              handleSelectedRate={handleSelectedRate}
+            />
+          )
+      ),
+    [
+      filteredHotels,
+      hotelsData.hotelsInfo,
+      hotelsData?.data?.debug?.request?.guests,
+      basePricePerPerson,
+      isFetching,
+      selectedHotelId,
+      handleSelectedRate,
+    ]
+  );
 
   return (
     <div className="space-y-2 lg:space-y-6">
@@ -499,7 +543,8 @@ export const HotelSelection = () => {
           )}
           ref={filterRef}
         >
-          <Skeleton visible={isFetching}>
+          {" "}
+          <Skeleton visible={isFetching || isProcessingHotels}>
             <SortOptionsContainer
               sortOptions={
                 <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
@@ -541,7 +586,7 @@ export const HotelSelection = () => {
             />
           </Skeleton>
           {matches && (
-            <Skeleton visible={isFetching}>
+            <Skeleton visible={isFetching || isProcessingHotels}>
               <HotelFilters
                 freeCancellation={freeCancellation}
                 basePrice={basePricePerPerson}
@@ -556,34 +601,25 @@ export const HotelSelection = () => {
               />
             </Skeleton>
           )}
-        </div>
+        </div>{" "}
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
-            {filteredHotels.map(
-              (hotel) =>
-                hotelsData.hotelsInfo[hotel.id] && (
-                  <HotelCard
-                    persons={getTotalPersons(
-                      hotelsData?.data?.debug?.request?.guests || []
-                    )}
-                    minPrice={basePricePerPerson}
-                    isLoading={isFetching}
-                    isSelected={hotel.id === selectedHotelId}
-                    key={hotel.id}
-                    hotelRates={hotel.rates}
-                    hotelInfo={hotelsData.hotelsInfo[hotel.id]}
-                    handleSelect={() => setSelectedHotelId(hotel.id)}
-                    handleSelectedRate={handleSelectedRate}
-                  />
-                )
-            )}
+            {isProcessingHotels || isFetching
+              ? // Show skeletons while processing or fetching
+                Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="flex justify-center">
+                    <Skeleton className="p-28" />
+                  </div>
+                ))
+              : // Show actual hotel cards when ready
+                hotelCards}
             {!hotelsData.data?.data?.hotels?.length &&
-              isFetching &&
-              Array.from({ length: 4 }, (_, i) => (
-                <div key={i} className="flex justify-center">
-                  <Skeleton className="p-28" />
+              !isProcessingHotels &&
+              !isFetching && (
+                <div className="text-center w-full items-center text-gray-500 min-h-64 flex">
+                  No hotels found. Please adjust your search criteria.
                 </div>
-              ))}
+              )}
           </div>
         </ScrollArea.Autosize>
       </div>
