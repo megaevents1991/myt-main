@@ -220,14 +220,13 @@ export const FlightSelection = () => {
         minPrice,
         numOfPassengers: adults,
       });
-
       setFilters((prev) => ({
         ...prev,
         airline: airlines,
         directOnly,
       }));
       setFlights(flights);
-      setFlight(flights[0]);
+      setFlight(filteredFlights[0]);
       return flights;
     } catch (err) {
       console.error(err);
@@ -247,7 +246,15 @@ export const FlightSelection = () => {
 
     startTransition(() => {
       const sortedData = flightSort(filteredFlights, selectedSortOption);
-      setFilteredFlights(sortedData.slice(0, 50));
+      const slicedData = sortedData.slice(0, 50);
+      setFilteredFlights(slicedData);
+      // Update selected flight to maintain visual consistency
+      if (
+        slicedData.length > 0 &&
+        (!orderFlight || !slicedData.find((f) => f.id === orderFlight.id))
+      ) {
+        setFlight(slicedData[0]);
+      }
     });
   };
 
