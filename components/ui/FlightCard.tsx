@@ -253,6 +253,8 @@ export const FlightTicketCard = memo(
 
 FlightTicketCard.displayName = "FlightTicketCard";
 
+export const MemoizedFlightCard = memo(FlightTicketCard);
+
 type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
   FlightSegment;
 

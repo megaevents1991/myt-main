@@ -24,7 +24,7 @@ import {
   useTransition,
 } from "react";
 import { OrderContext } from "../app.context";
-import { FlightTicketCard } from "@/components/ui/FlightCard";
+import { MemoizedFlightCard } from "@/components/ui/FlightCard";
 import { SelectWithIcon } from "@/components/ui/inputWithIcon";
 import { FlightFilters } from "@/components/ui/FlightFilters";
 import { useMediaQuery } from "@mantine/hooks";
@@ -288,9 +288,9 @@ export const FlightSelection = () => {
 
   const handleFlightChange = useCallback(
     (value: string) => {
-      setFlight(flights.find((f) => f.id === value));
+      setFlight(filteredFlights.find((f) => f.id === value));
     },
-    [flights, setFlight]
+    [filteredFlights]
   );
 
   const handleFlightSearchCriteriaChange = ({
@@ -345,7 +345,7 @@ export const FlightSelection = () => {
     () =>
       filteredFlights.map((flight) => {
         return (
-          <FlightTicketCard
+          <MemoizedFlightCard
             minPrice={event.base_flight_price}
             isLoading={isLoading}
             key={flight.id}
