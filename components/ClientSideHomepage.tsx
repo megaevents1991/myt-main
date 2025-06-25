@@ -95,7 +95,7 @@ const SearchCombobox = ({
         <input
           ref={ref}
           className={cn(
-            "w-full",
+            "w-full bg-white",
             inline ? "rounded-r" : "rounded border-secondary",
             "p-2 text-main border",
             "placeholder-black"
@@ -398,7 +398,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
                 value={searchValue}
                 placeholder="חפש אירוע..."
                 type="text"
-                className={`w-2/3 rounded-r rounded-l-none p-2 text-main border ${
+                className={`w-2/3 rounded-r rounded-l-none p-2 text-main border bg-white ${
                   isSticky ? "border-secondary" : ""
                 }`}
               />
