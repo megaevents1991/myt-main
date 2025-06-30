@@ -55,7 +55,7 @@ export async function trackServerSideEvent(options: AnalyticsOptions): Promise<b
 
     // Construct the analytics payload
     const analyticsPayload = {
-      client_id: parsedGtmIdnts.ga_fpid || "",
+      client_id: parsedGtmIdnts.ga_fpid || parsedGtmIdnts.ga_cid || "",
       events: [
       {
         name: eventType,
