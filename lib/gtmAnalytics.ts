@@ -69,12 +69,9 @@ export async function trackServerSideEvent(options: AnalyticsOptions): Promise<b
         value: eventData.value || 1500,
         currency: eventData.currency || "USD",
         product_name: eventData.name,
-        item_id: eventData.id, // @todo: sort the category and brand
-        item_name: eventData.name,
-        item_brand: eventData.brand || "Mega Events",
-        item_category: eventData.category || "Music",
-        price: eventData.value || 1500,
-        quantity: eventData.quantity || 1,
+        product_id: eventData.id, // @todo: sort the category and brand
+        product_brand: eventData.brand || "Mega Events",
+        product_category: eventData.category || "Music",
         "x-ga-system_properties": { c: "1" },
         items: [
           {
