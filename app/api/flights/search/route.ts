@@ -50,7 +50,7 @@ const transformDbFlightToFlight = (
     offer: {} as Flight["offer"],
     id: (id + 1).toString(),
     numOfTravelers: num_of_travelers,
-    price: parseFloat(dbFlight.price),
+    price: parseFloat(dbFlight.price) * num_of_travelers,
     duration: PTfunction(dbFlight.duration),
     stops: dbFlight.stops,
     airline: dbFlight.airline_code,
