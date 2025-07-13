@@ -47,6 +47,12 @@ const nextConfig: import("next").NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.xs2event.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
   async redirects() {
