@@ -208,7 +208,7 @@ export type FlightSearchCriteria =
       value: string[];
     };
 
-type EventTicket = {
+export type EventTicket = {
   category: string;
   price: number;
   id: string;

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Event } from './app.types';
+import { Event, EventTicket } from './app.types';
 import { exchangeRateService } from './exchangeRateService';
 
 interface TicketUpdateData {
@@ -165,7 +165,7 @@ class TicketUpdateService {
           .then(async ({ data: event, error: selectError }) => {
             if (selectError) throw selectError;
             
-            const updatedTickets = event.tickets_and_rates.map((ticket: any) => {
+            const updatedTickets = event.tickets_and_rates.map((ticket: EventTicket) => {
               if (ticket.id === ticketId) {
                 return {
                   ...ticket,
