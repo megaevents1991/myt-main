@@ -218,7 +218,7 @@ export async function POST(request: Request) {
     // Transform Amadeus response to match our flight data structure
     const moreFlights: Flight[] = response.result.data.reduce(
       (acc, offer, index) => {
-        const adjustedIndex = index + flights.length;
+        const adjustedIndex = index + flights.length + 1; // Adjust index to avoid conflicts with offline flights
         const { validatingAirlineCodes, price, itineraries, travelerPricings } =
           offer;
         const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
