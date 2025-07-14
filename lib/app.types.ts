@@ -2,10 +2,16 @@ import { Airline } from "aircodes";
 import { Guest, Rate } from "./hotel.type";
 import { EntryFieldTypes } from "contentful";
 
+export type EventType =
+  | "sports_event"
+  | "music_event"
+  | "sports_event_dynamic";
+
 export type Event = {
   id: number;
   name: string;
   name_english: string;
+  type: EventType;
   date: string;
   location: {
     latitude: number;
@@ -208,6 +214,8 @@ type EventTicket = {
   id: string;
   description: string;
   colorOnTheMap: string;
+  available?: boolean; // For dynamic sports events
+  lastUpdated?: string; // ISO string for last update timestamp
 };
 
 export type OrderTicket = Omit<EventTicket, "description" | "colorOnTheMap"> & {

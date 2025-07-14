@@ -6,6 +6,8 @@ import {
   type EventType,
 } from "@/lib/gtmAnalytics";
 import { exchangeRateService } from "@/lib/exchangeRateService";
+// Import ticket update service to ensure it's initialized on server startup
+import "@/lib/ticketUpdateService";
 
 // GTM server-side event tracking route
 // This route handles POST requests to track events server-side using Google Tag Manager (GTM).
