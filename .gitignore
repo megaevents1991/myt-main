@@ -34,7 +34,7 @@ yarn-error.log*
 .env*
 
 # vercel
-.vscode/
+.vscode
 .vercel
 
 # typescript
