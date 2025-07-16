@@ -12,6 +12,7 @@ import { Amenities } from "./Amenities";
 import { formatPrice } from "@/lib/price.utils";
 // import { isMobile } from "react-device-detect";
 import { cn } from "@/lib/utils"; // Import cn utility
+import { useMediaQuery } from "@mantine/hooks";
 
 export const HotelCard = memo(
   ({
@@ -42,6 +43,9 @@ export const HotelCard = memo(
     const [selectedRoom, setSelectedRoom] = useState<Rate | null>(null);
     const [selectedRoomInfo, setSelectedRoomInfo] = useState<Room | null>(null);
     const [embla, setEmbla] = useState<Embla | null>(null);
+
+    const isMobile = useMediaQuery("(max-width: 768px)");
+    const imageSize = isMobile ? "x220" : "x500";
 
     const handleRoomSelect = useCallback(
       (room: Rate, isSelected = false) => {
@@ -157,9 +161,10 @@ export const HotelCard = memo(
                                     objectFit: "cover",
                                   }}
                                   className="border rounded-lg"
-                                  src={image.replace("{size}", "x500")}
+                                  src={image.replace("{size}", imageSize)}
                                   alt="image"
                                   sizes="(max-width: 768px) 100vw, 300px"
+                                  unoptimized
                                 />
                               ) : (
                                 <HotelSVG className="m-auto" size={100} />
@@ -179,68 +184,6 @@ export const HotelCard = memo(
                         rating={hotelInfo.metadata.rating}
                         roomName={selectedRoom?.room_data_trans.main_name || ""}
                       />
-                      {/* REMOVE OLD MOBILE PRICE DISPLAY 
-                    <div className="w-full text-center lg:hidden p-1 mb-2 mt-2 border-main border rounded-lg bg-gray-200">
-                      {priceToShowFull}
-                    </div>
-                    */}
-                      {/* {hotelRates.length > 1 && (
-                      <div className="w-full flex flex-col justify-between lg:items-right mt-2 mb-2">
-                        <div
-                          className="w-full lg:w-fit flex-row flex items-center text-center lg:text-right cursor-pointer rounded-lg bg-gray-200 px-2"
-                          onClick={() => setOpened((prev) => !prev)}
-                        >
-                          <div className="flex w-full items-center justify-center lg:justify-between gap-2">
-                            {isSelected ? (
-                              <div className="flex items-center gap-2">
-                                {hotelRates.length - 1}
-                                <span>סוגי חדרים נוספים</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                {hotelRates.length}
-                                <span>סוגי חדרים</span>
-                              </div>
-                            )}
-                            {opened ? (
-                              <ChevronUp color="black" />
-                            ) : (
-                              <ChevronDown color="black" />
-                            )}
-                          </div>
-                        </div>
-                        <Collapse
-                          in={opened}
-                          className="mt-2 w-full rounded-lg bg-gray-200 px-2"
-                        >
-                          {isSelected && (
-                            <ScrollArea
-                              className="w-full h-32"
-                              scrollbarSize={0}
-                            >
-                              <div className="flex flex-col">
-                                {hotelRates.map((room) => (
-                                  <RoomCard
-                                    persons={persons}
-                                    minPrice={minPrice}
-                                    key={room.match_hash}
-                                    room={room}
-                                    isSelected={
-                                      selectedRoom?.match_hash ===
-                                      room.match_hash
-                                    }
-                                    onRoomSelect={(room) => {
-                                      handleRoomSelect(room);
-                                      setOpened((prev) => !prev);
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            </ScrollArea>
-                          )}
-                        </Collapse>
-                      </div>
-                    )} */}
                       <div className="hidden lg:block">
                         <br />
                         <Amenities

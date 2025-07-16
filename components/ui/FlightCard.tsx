@@ -115,6 +115,7 @@ const LuggageButton = ({
               src="/icons/hand-bag.svg"
               width={12}
               height={12}
+              unoptimized
             />
           }
           count={1}
@@ -128,6 +129,7 @@ const LuggageButton = ({
               src="/icons/cabin-bag.svg"
               width={14}
               height={14}
+              unoptimized
             />
           }
         />
@@ -140,6 +142,7 @@ const LuggageButton = ({
               src="/icons/checked-bag.svg"
               width={22}
               height={22}
+              unoptimized
             />
           }
           count={checkBagsIncluded ? 1 : 0}
@@ -277,6 +280,7 @@ const FlightCard = ({
             alt={`${metadata.name} logo`}
             width={100}
             height={100}
+            unoptimized
           />
         </div>
         <div className="text-sm hidden lg:block">{flightNumber}</div>
@@ -302,6 +306,7 @@ const FlightCard = ({
                     src="/icons/noun-luggage-3710164.svg"
                     width={isMobile ? 28 : 32}
                     height={isMobile ? 28 : 32}
+                    unoptimized
                   />
                   <span className="hidden text-[15px] mr-1 lg:block">
                     כולל מזוודה
@@ -329,6 +334,7 @@ const FlightCard = ({
                     width={isMobile ? 20 : 24}
                     height={isMobile ? 20 : 24}
                     className="lg:mr-1 lg:ml-1"
+                    unoptimized
                   />
                   <span className="hidden text-[15px] mr-1 lg:block">
                     כולל טרולי

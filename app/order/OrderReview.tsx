@@ -941,6 +941,7 @@ ${selectedHotel.name}
                   width={40}
                   height={25}
                   className="h-6 w-auto"
+                  unoptimized
                 />
                 <Image
                   src="/logo__pci.svg"
@@ -948,6 +949,7 @@ ${selectedHotel.name}
                   width={40}
                   height={25}
                   className="h-7 w-auto"
+                  unoptimized
                 />
                 <Image
                   src="/mastercardSecuerd.png"
@@ -955,6 +957,7 @@ ${selectedHotel.name}
                   width={50}
                   height={30}
                   className="h-8 w-auto"
+                  unoptimized
                 />
                 <Image
                   src="/VisaVerify.png"
@@ -962,6 +965,7 @@ ${selectedHotel.name}
                   width={50}
                   height={30}
                   className="h-8 w-auto"
+                  unoptimized
                 />
               </div>
 
@@ -1173,6 +1177,7 @@ ${selectedHotel.name}
                               width={24}
                               height={24}
                               className="w-7 h-7 mt-1"
+                              unoptimized
                             />
                             <div className="flex-1 pr-4">
                               <h3 className="text-lg font-semibold text-gray-800">
@@ -1305,6 +1310,7 @@ ${selectedHotel.name}
                   width={40}
                   height={25}
                   className="h-6 w-auto"
+                  unoptimized
                 />
                 <Image
                   src="/logo__pci.svg"
@@ -1312,6 +1318,7 @@ ${selectedHotel.name}
                   width={40}
                   height={25}
                   className="h-7 w-auto"
+                  unoptimized
                 />
                 <Image
                   src="/mastercardSecuerd.png"
@@ -1319,6 +1326,7 @@ ${selectedHotel.name}
                   width={50}
                   height={30}
                   className="h-8 w-auto"
+                  unoptimized
                 />
                 <Image
                   src="/VisaVerify.png"
@@ -1326,6 +1334,7 @@ ${selectedHotel.name}
                   width={50}
                   height={30}
                   className="h-8 w-auto"
+                  unoptimized
                 />
               </div>
               {/* CTA Button */}

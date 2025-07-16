@@ -119,6 +119,7 @@ export const ReferFriend = ({
                     src="/line-13.svg"
                     width={2}
                     height={16}
+                    unoptimized
                   />
                 )}
               </div>

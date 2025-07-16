@@ -21,6 +21,7 @@ export const SelectWithIcon = ({
             alt="Traveler icon"
             width={24}
             height={24}
+            unoptimized
           />
         )}
       </span>

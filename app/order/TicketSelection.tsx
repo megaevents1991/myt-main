@@ -104,6 +104,7 @@ export const TicketSelection = () => {
               priority={true}
               src={event?.map_image_url || ""}
               alt="Event map"
+              unoptimized
             />
           </Spoiler>
           <div className="lg:w-[45%] hidden lg:block">
@@ -114,6 +115,7 @@ export const TicketSelection = () => {
               priority={true}
               src={event?.map_image_url || ""}
               alt="Event map"
+              unoptimized
             />
           </div>
           <div className="w-full lg:w-[55%]" dir="ltr">

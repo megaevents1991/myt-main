@@ -41,6 +41,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
               src={mail}
               width={iconSize}
               height={iconSize}
+              unoptimized
             />
           </a>
         )}
@@ -56,6 +57,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
             src={phone}
             width={iconSize}
             height={iconSize}
+            unoptimized
           />
         </a>
         <a
@@ -72,6 +74,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
             src={whatsapp}
             width={iconSize}
             height={iconSize}
+            unoptimized
           />
         </a>
       </div>

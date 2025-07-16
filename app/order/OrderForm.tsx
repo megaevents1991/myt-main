@@ -254,6 +254,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                             src={`/plane.svg`}
                             width={16}
                             height={16}
+                            unoptimized
                           />
                         </div>
                         <span className="hidden lg:inline ml-2">|</span>
@@ -275,6 +276,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                             src={`/ticket.svg`}
                             width={16}
                             height={16}
+                            unoptimized
                           />
                         </div>
                         <span className="hidden lg:inline ml-2">|</span>

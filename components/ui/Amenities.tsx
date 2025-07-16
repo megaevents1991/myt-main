@@ -49,6 +49,7 @@ export const Amenities = ({
                 src={`/icons/${icon?.icon}`}
                 width={16}
                 height={16}
+                unoptimized
               />
             </div>
           </span>
