@@ -17,7 +17,7 @@ class ExchangeRateService {
       source: 'fallback'
     },
     eurUsd: {
-      rate: 1.1, // fallback rate
+      rate: 1.2, // fallback rate
       lastUpdated: new Date(),
       source: 'fallback'
     }
