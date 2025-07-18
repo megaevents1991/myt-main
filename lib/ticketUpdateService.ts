@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { Event, EventTicket } from './app.types';
 import { exchangeRateService } from './exchangeRateService';
+import pLimit from 'p-limit';
 
 interface TicketUpdateData {
   id: string;
@@ -235,12 +236,13 @@ class TicketUpdateService {
 
       console.log(`Found ${dynamicEvents.length} dynamic sports events to update`);
 
+      const limit = pLimit(5); // Limit to 5 concurrent updates (adjust as needed)
       const updatePromises: Promise<TicketUpdateResult>[] = [];
 
       for (const event of dynamicEvents) {
         if (event.tickets_and_rates && Array.isArray(event.tickets_and_rates)) {
           for (const ticket of event.tickets_and_rates) {
-            updatePromises.push(this.updateSingleTicket(event.id, ticket.id));
+            updatePromises.push(limit(() => this.updateSingleTicket(event.id, ticket.id)));
           }
         }
       }
