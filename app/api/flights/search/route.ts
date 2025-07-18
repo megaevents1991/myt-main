@@ -7,7 +7,7 @@ import {
 } from "@/lib/app.types";
 import { getAirlineByIata } from "aircodes";
 import { amadeus } from "../amadeusClient";
-import { getEvents } from "../../eventsData";
+import { getEvents } from "@/lib/eventsData";
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
 import { serialize } from 'tinyduration';

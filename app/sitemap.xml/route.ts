@@ -1,4 +1,4 @@
-import { getCachedEvents } from "../api/eventsData";
+import { getCachedEvents } from "@/lib/eventsData";
 import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields, FootballFields } from "@/lib/app.types";
 

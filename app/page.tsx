@@ -1,7 +1,7 @@
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
 import { FAQ } from "@/components/ui/FAQ";
 import MegaEventsSection from "@/components/ui/aboutUsMega";
-import { getCachedEvents } from "./api/eventsData";
+import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
 
 // Force static generation

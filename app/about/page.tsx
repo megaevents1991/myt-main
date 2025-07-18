@@ -1,6 +1,6 @@
 import MegaEventsSection from "@/components/ui/aboutUsMega";
 import { StructuredData } from "@/components/StructuredData";
-import { getCachedEvents } from "../api/eventsData";
+import { getCachedEvents } from "@/lib/eventsData";
 import { Metadata } from "next";
 import Link from "next/link";
 

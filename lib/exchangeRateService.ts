@@ -31,7 +31,7 @@ class ExchangeRateService {
   };
   private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
   private readonly MAX_RETRIES = 3;
-  private readonly RETRY_DELAY = 5000; // 5 seconds
+  private readonly RETRY_DELAY = 1000; // 1 second
 
   constructor() {
     // Initialize on startup
@@ -77,8 +77,8 @@ class ExchangeRateService {
           throw new Error(`Invalid exchange rate data structure for ${currencyPair}`);
         }
       } catch (error) {
-        console.error(`${currencyPair} exchange rate fetch attempt ${attempt} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        
+        console.error(`${currencyPair} exchange rate fetch attempt ${attempt} failed: ${error instanceof Error ? JSON.stringify(error) : 'Unknown error'}`);
+
         if (attempt < retries) {
           console.log(`Retrying in ${this.RETRY_DELAY}ms...`);
           await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));

@@ -10,7 +10,7 @@ import {
 import { ReactNode } from "react";
 import dayjs from "dayjs";
 import Link from "next/link";
-import { getEventsByName } from "@/app/api/eventsData";
+import { getEventsByName } from "@/lib/eventsData";
 import ClientTracker from "../../../components/ClientTracker";
 import EventButton from "../../../components/EventButton";
 

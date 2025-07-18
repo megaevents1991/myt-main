@@ -1,7 +1,7 @@
 import { faqItems } from "@/components/ui/FAQ";
 import { StructuredData } from "@/components/StructuredData";
 import { FAQStructuredData } from "@/components/FAQStructuredData";
-import { getCachedEvents } from "../api/eventsData";
+import { getCachedEvents } from "@/lib/eventsData";
 import FAQAccordion from "@/components/ui/FAQAccordion";
 import { Metadata } from "next";
 import Link from "next/link";
