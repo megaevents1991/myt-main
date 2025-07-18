@@ -280,7 +280,6 @@ const FlightCard = ({
             alt={`${metadata.name} logo`}
             width={100}
             height={100}
-            unoptimized
           />
         </div>
         <div className="text-sm hidden lg:block">{flightNumber}</div>
