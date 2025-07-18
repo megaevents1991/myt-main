@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const secret = searchParams.get('secret');
   const path = searchParams.get('path');
 
-  if (secret !== process.env.REVALIDATION_SECRET) {
+  if (secret !== process.env.NEXT_SECRET_REVALIDATION_SECRET) {
     return new Response('Invalid token', { status: 401 });
   }
 
