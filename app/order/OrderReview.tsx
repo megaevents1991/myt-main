@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -102,7 +102,10 @@ export default function OrderReview() {
     }
   });
 
-  const finalPurchasePrice = finalPurchasePriceCalc(affDiscount);
+  const finalPurchasePrice = useMemo(() => 
+    finalPurchasePriceCalc(affDiscount), 
+    [finalPurchasePriceCalc, affDiscount]
+  );
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
   const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.7);
 
