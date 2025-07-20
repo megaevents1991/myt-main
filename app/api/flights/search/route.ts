@@ -19,7 +19,7 @@ import {
 
 export const maxDuration = 30;
 const currencyCode = "USD";
-const MAX_STOP_DURATION_HOURS = 6;
+const MAX_STOP_DURATION_HOURS = 4;
 const MAX_STOPS = 1; // Maximum allowed stops per journey
 
 const PTfunction = (duration: string): string => {

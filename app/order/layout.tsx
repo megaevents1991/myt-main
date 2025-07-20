@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import { OrderContext } from "../app.context";
 import {
   Event,
@@ -10,7 +10,6 @@ import {
   FlightSearchCriteria,
   HotelSearchCriteria,
 } from "@/lib/app.types";
-import { useSearchParams } from "next/navigation";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
@@ -26,31 +25,11 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [planeTickets, setPlaneTickets] = useState({ adults: 2, children: 0 });
   const [step, setStep] = useState(1);
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
-  const eventId = useSearchParams().get("eventId") as string;
   const [selectedPlaneTicketsFilters, setSelectedPlaneTicketsFilters] =
     useState<Partial<FlightSearchCriteria>>({});
   const [selectedHotelFilters, setSelectedHotelFilters] = useState<
     Partial<HotelSearchCriteria>
   >({});
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const id = eventId || "";
-        if (!id) {
-          console.error("Event ID is missing");
-          return;
-        }
-        const response = await fetch(`/api/events?id=${id}`);
-        const { events }: { events: Event[] } = await response.json();
-        setEvent(() => events.find((e) => e.id === +eventId));
-      } catch (error) {
-        console.error("Error fetching cards:", error);
-        // Better user error (via the client).
-      }
-    };
-    fetchData();
-  }, []);
 
   const handleStepperClick = (index: number) => {
     if (index + 1 < step) {

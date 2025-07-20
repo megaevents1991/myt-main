@@ -92,7 +92,7 @@ export default async function FootballPage({
                 href={
                   event.tags === "Sold"
                     ? "#no-op"
-                    : `/order?eventId=${event.id}`
+                    : `/order/${event.id}`
                 }
                 className={`${
                   event.tags === "Sold" ? "cursor-default" : "cursor-pointer"

@@ -25,7 +25,11 @@ export const TicketSelection = () => {
   const matches = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
-    const cheapt = event?.tickets_and_rates.reduce(
+    if (!event?.tickets_and_rates || event.tickets_and_rates.length === 0) {
+      return;
+    }
+    
+    const cheapt = event.tickets_and_rates.reduce(
       (min, ticket) => (ticket.price < min.price ? ticket : min),
       event.tickets_and_rates[0]
     );
@@ -37,7 +41,7 @@ export const TicketSelection = () => {
       price: cheapt?.price || 0,
       quantity: 2,
     });
-  }, [event]);
+  }, [event, setEventTicket]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)

@@ -94,11 +94,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const ticketCategory = eventTicket.category;
 
-  const minTicketPrice = Math.min(
-    ...event.tickets_and_rates.map((ticket) => ticket.price)
-  );
+  const minTicketPrice = event.tickets_and_rates?.length > 0 
+    ? Math.min(...event.tickets_and_rates.map((ticket) => ticket.price))
+    : 0;
 
-  const ticketRelativePrice = eventTicket.price - minTicketPrice;
+  const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 
   const basePrice = Math.ceil(
     event.base_flight_price +

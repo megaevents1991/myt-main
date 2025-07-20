@@ -50,7 +50,7 @@ export async function GET() {
     },
   ];
   const eventPages = events.events.map((event) => ({
-    url: `${baseUrl}/order?eventId=${event.id}`,
+    url: `${baseUrl}/order/${event.id}`,
     lastModified: new Date().toISOString(),
     changeFrequency: "daily",
     priority: 0.9,

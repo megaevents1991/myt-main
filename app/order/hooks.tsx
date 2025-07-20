@@ -60,14 +60,14 @@ export function useOrderVars() {
 
   /* Fetch lowest avaiable ticket price */
   const minTicketPrice = useMemo(() => {
-    if (!event) {
+    if (!event || !event.tickets_and_rates || event.tickets_and_rates.length === 0) {
       return 0;
     }
     return Math.min(...event.tickets_and_rates.map((ticket) => ticket.price));
   }, [event]);
 
   /* Main variables to calculate price additions */
-  const eventTicketPriceAddition = eventTicket.price - minTicketPrice;
+  const eventTicketPriceAddition = (eventTicket.price || 0) - minTicketPrice;
 
   const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
 

@@ -24,7 +24,9 @@ export default function EventButton({
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
-            Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
+            (event.tickets_and_rates?.length > 0 
+              ? Math.min(...event.tickets_and_rates.map((ticket) => ticket.price))
+              : 0) +
             Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
         });
         if (event.tags === "Sold") {

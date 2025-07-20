@@ -86,7 +86,7 @@ const SearchCombobox = ({
             events.find((item) => item.id.toString() === optionValue)?.name ||
               ""
           );
-          router.push(`/order?eventId=${optionValue}`);
+          router.push(`/order/${optionValue}`);
         }
       }}
       store={combobox}
@@ -618,7 +618,7 @@ export function ClientSideHomepage({ initialEvents }: Props) {
 function EventCard({ event }: { event: Event }) {
   return (
     <Link
-      href={event.tags === "Sold" ? "#no-op" : `/order?eventId=${event.id}`}
+      href={event.tags === "Sold" ? "#no-op" : `/order/${event.id}`}
       className={`${
         event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
       }`}
