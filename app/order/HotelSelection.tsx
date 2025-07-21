@@ -31,7 +31,6 @@ import {
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { getTotalPersons } from "@/lib/price.utils";
-import { logger } from "@/lib/logger";
 import { HotelFetchContext, HotelsData } from "../HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
@@ -127,17 +126,8 @@ export const HotelSelection = () => {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [matches]); // Add matches as dependency
+  }, [matches]);
 
-  useEffect(() => {
-    if (!flight?.outbound?.arrivalTime || !flight?.inbound?.departureTime) {
-      logger.error({
-        description: "Missing flight dates",
-        outbound: flight?.outbound?.arrivalTime,
-        inbound: flight?.inbound?.departureTime,
-      });
-    }
-  }, []);
   const prepareHotelData = ({ hotelsInfo, data }: HotelsData) => {
     // Calculate all values first
     const maxDistance = Math.max(

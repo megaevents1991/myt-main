@@ -55,24 +55,6 @@ export async function GET(request: Request) {
     };
 
     console.error("[Events API] Failed to fetch events:", errorDetails);
-    
-    // Also send to our logging endpoint for centralized monitoring
-    try {
-      fetch('/api/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'error',
-          data: {
-            endpoint: '/api/events',
-            error: errorDetails,
-            severity: 'high'
-          }
-        })
-      }).catch(() => {}); // Don't fail the main request if logging fails
-    } catch (loggingError) {
-      console.error("[Events API] Failed to send error log:", loggingError);
-    }
 
     return NextResponse.json(
       { 
