@@ -214,6 +214,7 @@ export type EventTicket = {
   id: string;
   description: string;
   colorOnTheMap: string;
+  vendor?: string; // Optional vendor field
   available?: boolean; // For dynamic sports events
   lastUpdated?: string; // ISO string for last update timestamp
 };
