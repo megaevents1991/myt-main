@@ -409,6 +409,8 @@ ${selectedHotel.name}
         category: eventTicket.category,
         price_per_ticket: eventTicket.price,
         total_tickets_price: eventTicket.price * numberOfEventTickets,
+        vendor: eventTicket.vendor,
+        id: eventTicket.id,
       },
       flight_order_info: selectedFlight || {},
       hotel_order_info: selectedHotel || {},

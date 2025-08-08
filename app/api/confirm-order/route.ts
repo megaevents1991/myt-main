@@ -101,6 +101,8 @@ export async function POST(req: Request) {
           Date: ${validatedData.event_order_info.date}
           Ticket Type: ${validatedData.event_order_info.category}
           Quantity: ${validatedData.event_order_info.number_of_ticket}
+          Ticket ID: ${validatedData.event_order_info.id || 'N/A'}
+          Vendor: ${validatedData.event_order_info.vendor || 'N/A'}
 
           ******** Flight Info **********
           Flight Outbound Number: ${(validatedData.flight_order_info.outbound.flightNumber)}

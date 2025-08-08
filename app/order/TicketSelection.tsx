@@ -37,6 +37,7 @@ export const TicketSelection = () => {
     setSelectedTicket(cheapt?.id);
     setEventTicket({
       id: cheapt?.id || "",
+      vendor: cheapt?.vendor || "",
       category: cheapt?.category || "",
       price: cheapt?.price || 0,
       quantity: 2,
@@ -59,8 +60,12 @@ export const TicketSelection = () => {
     id: string;
     category: string;
     price: number;
+    vendor?: string;
   }) => {
-    setEventTicket({ ...ticket, quantity: numberOfEventTickets });
+    setEventTicket({ 
+      ...ticket, 
+      quantity: numberOfEventTickets
+    });
     setSelectedTicket(ticket.id);
   };
 
@@ -140,6 +145,7 @@ export const TicketSelection = () => {
                           id: ticket.id,
                           price: ticket.price,
                           category: ticket.category,
+                          vendor: ticket.vendor,
                         })
                       }
                       numberOfTickets={numberOfEventTickets}

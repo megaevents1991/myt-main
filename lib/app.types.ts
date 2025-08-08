@@ -242,6 +242,8 @@ export type OrderData = {
     category: string;
     price_per_ticket: number;
     total_tickets_price: number;
+    vendor?: string;
+    id?: string;
   };
   flight_order_info: Flight; // You might need to define a specific interface here
   hotel_order_info: OrderHotel; // You might need to define a specific interface here

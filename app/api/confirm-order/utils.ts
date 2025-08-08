@@ -19,6 +19,8 @@ const orderSchema = yup.object().shape({
       date: yup.date().required(),
       name: yup.string().required().min(1),
       number_of_ticket: yup.number().required(),
+      vendor: yup.string(),
+      id: yup.string(),
       category: yup.string().required().min(1),
       price_per_ticket: yup.number().required(),
       total_tickets_price: yup.number().required(),
