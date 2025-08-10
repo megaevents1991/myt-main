@@ -237,6 +237,7 @@ export type OrderData = {
     event_id: number;
     date: Date;
     name: string;
+    event_type: EventType;
     location_name: string;
     number_of_ticket: number;
     category: string;

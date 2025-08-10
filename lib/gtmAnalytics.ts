@@ -7,7 +7,7 @@ export type EventType =
   | "purchase"
   | "view_cart"
   | "generate_lead"
-  | "add_shipping_info";
+  | "add_payment_info"; // @todo: Add to hyp.
 
 export interface EventData {
   id: number;
@@ -72,14 +72,14 @@ export async function trackServerSideEvent(options: AnalyticsOptions): Promise<b
         product_name: eventData.name,
         product_id: eventData.id, // @todo: sort the category and brand
         product_brand: eventData.brand || "Mega Events",
-        product_category: eventData.category || "Music",
+        product_category: eventData.category || "music_event",
         "x-ga-system_properties": { c: "1" },
         items: [
           {
           item_id: eventData.id,
           item_name: eventData.name,
           item_brand: eventData.brand || "Mega Events",
-          item_category: eventData.category || "Music",
+          item_category: eventData.category || "music_event",
           price: eventData.value || 1500,
           quantity: eventData.quantity || 1,
           },

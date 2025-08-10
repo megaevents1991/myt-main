@@ -148,7 +148,7 @@ export async function POST(req: Request) {
           name: validatedData.event_order_info.name,
           value: validatedData.user_shown_price,
           currency: "USD",
-          category: "Music",
+          category: validatedData.event_order_info.event_type || "music_event",
           brand: "Mega Events",
           quantity: validatedData.event_order_info.number_of_ticket
         },

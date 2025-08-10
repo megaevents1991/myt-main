@@ -119,6 +119,10 @@ export default function OrderReview() {
           eventData: {
             id: event?.id,
             name: event?.name,
+            date: event?.date,
+            category: event?.type,
+            location: event?.location?.name,
+            tags: event?.tags
           },
           eventType: "view_cart",
           gtmIdnts,
@@ -170,6 +174,9 @@ ${selectedHotel.name}
         if (isMounted) {
           setFinalPurchasePriceILS(ils);
           setUSD_ILS_RATE(travelRate);
+          if (event) {
+            trackAnalyticsEvent(event);
+          }
         }
       }
     );
@@ -177,13 +184,6 @@ ${selectedHotel.name}
       isMounted = false;
     };
   }, [finalPurchasePrice, finalPurchasePriceILSCalc]);
-
-  // Track analytics event when user enters the page
-  useEffect(() => {
-    if (event) {
-      trackAnalyticsEvent(event);
-    }
-  }, [event, trackAnalyticsEvent]);
 
   const setErrors = () => {
     const allErrors = [...validationErrors];
@@ -441,6 +441,7 @@ ${selectedHotel.name}
         location_name: event?.location.name || "",
         number_of_ticket: numberOfEventTickets,
         category: eventTicket.category,
+        event_type: event?.type || "",
         price_per_ticket: eventTicket.price,
         total_tickets_price: eventTicket.price * numberOfEventTickets,
         vendor: eventTicket.vendor,

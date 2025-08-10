@@ -84,6 +84,8 @@ export default function ConfirmationPage() {
           eventData: {
             id: orderData.event_id,
             name: orderData.event_order_info.name,
+            date: orderData.event_order_info.date,
+            category: orderData.event_order_info.event_type,
           },
           eventType: "purchase",
           gtmIdnts,

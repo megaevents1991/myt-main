@@ -179,7 +179,7 @@ export async function POST(request: Request) {
         name: event.name,
         value: 1500,
         currency: "USD",
-        category: "Music",
+        category: event.type || "music_event",
         brand: "Mega Events"
       },
       eventType: "add_to_cart",

@@ -628,6 +628,7 @@ function EventCard({ event }: { event: Event }) {
           eventId: event.id,
           eventName: event.name,
           eventDate: event.date,
+          eventType: event.type,
           eventLocation: event.location.name,
           eventStatus: event.tags,
           eventPrice:
@@ -662,6 +663,10 @@ function EventCard({ event }: { event: Event }) {
             eventData: {
               id: event.id,
               name: event.name,
+              date: event.date,
+              category: event.type,
+              location: event.location.name,
+              tags: event.tags
             },
             gtmIdnts,
             eventType: "select_item",
