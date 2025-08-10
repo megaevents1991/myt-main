@@ -102,6 +102,33 @@ export default function OrderReview() {
     }
   });
 
+  const trackAnalyticsEvent = (event: import("@/lib/app.types").Event) => {
+    try {
+      const gtmIdnts =
+        document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("gtmIdnts="))
+          ?.split("=")[1] || "";
+
+      fetch("/api/events-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventData: {
+            id: event?.id,
+            name: event?.name,
+          },
+          eventType: "view_cart",
+          gtmIdnts,
+        }),
+      });
+    } catch (error) {
+      console.warn("Analytics tracking failed:", error);
+    }
+  };
+
   const finalPurchasePrice = useMemo(() => 
     finalPurchasePriceCalc(affDiscount), 
     [finalPurchasePriceCalc, affDiscount]
@@ -150,6 +177,13 @@ ${selectedHotel.name}
       isMounted = false;
     };
   }, [finalPurchasePrice, finalPurchasePriceILSCalc]);
+
+  // Track analytics event when user enters the page
+  useEffect(() => {
+    if (event) {
+      trackAnalyticsEvent(event);
+    }
+  }, [event, trackAnalyticsEvent]);
 
   const setErrors = () => {
     const allErrors = [...validationErrors];

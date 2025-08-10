@@ -5,6 +5,7 @@ export type EventType =
   | "add_to_cart"
   | "begin_checkout"
   | "purchase"
+  | "view_cart"
   | "generate_lead"
   | "add_shipping_info";
 
