@@ -53,6 +53,12 @@ const nextConfig: import("next").NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+        port: "",
+        pathname: "/wikipedia/**",
+      },
     ],
   },
   async redirects() {

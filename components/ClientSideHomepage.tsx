@@ -6,14 +6,15 @@ import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
 import { useMediaQuery } from "@mantine/hooks";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Event } from "@/lib/app.types";
+import { Event, FootballTeam } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
+import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon } from "lucide-react";
 import { Dispatch, RefObject, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
-import { isMobile } from "react-device-detect";
+import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
@@ -27,6 +28,7 @@ const fuseOptions = {
 };
 interface Props {
   initialEvents: Event[];
+  footballTeams: FootballTeam[];
 }
 
 const SearchCombobox = ({
@@ -143,7 +145,304 @@ const SearchCombobox = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents }: Props) {
+const MobileCarousel = ({ events }: { events: Event[] }) => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted || events.length === 0) {
+    return null;
+  }
+
+  return (
+    <Carousel
+      withIndicators={events.length > 1}
+      withControls={events.length > 1}
+      slideSize="100%"
+      slideGap="md"
+      align="start"
+      dragFree
+      loop
+      classNames={{
+        control:
+          "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70",
+        indicator: "bg-gray-300 data-[active]:bg-secondary",
+        indicators: "gap-2 mt-4",
+      }}
+    >
+      {events.map((event) => (
+        <Carousel.Slide key={event.id}>
+          <EventCard event={event} />
+        </Carousel.Slide>
+      ))}
+    </Carousel>
+  );
+};
+
+// Compact Event Card for Sports Section
+function CompactEventCard({ event }: { event: Event }) {
+  return (
+    <Link
+      href={event.tags === "Sold" ? "#no-op" : `/order/${event.id}`}
+      className={`${
+        event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
+      }`}
+      key={event.id}
+      onClick={(e) => {
+        trackEvent("eventSelected", {
+          eventId: event.id,
+          eventName: event.name,
+          eventDate: event.date,
+          eventType: event.type,
+          eventLocation: event.location.name,
+          eventStatus: event.tags,
+          eventPrice:
+            event.base_flight_price +
+            event.base_hotel_price +
+            Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
+            Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+        });
+        if (event.tags === "Sold") {
+          e.preventDefault();
+          return;
+        }
+        orderStage("EVENT_SELECTED", {
+          data: {
+            event: event.name,
+            eventDate: event.date,
+            eventLocation: event.location.name,
+          },
+        });
+        const gtmIdnts =
+          document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("gtmIdnts="))
+            ?.split("=")[1] || "";
+
+        fetch("/api/events-info", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            eventData: {
+              id: event.id,
+              name: event.name,
+            },
+            gtmIdnts,
+            eventType: "select_item",
+          }),
+        }).catch((error) => {
+          console.error("Analytics tracking failed:", error);
+        });
+      }}
+    >
+      <div
+        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:max-w-[240px] sm:w-[240px]"
+        style={{
+          height: "245px",
+        }}
+      >
+        <div
+          className="relative group overflow-hidden rounded-t-lg flex-1"
+          dir="rtl"
+        >
+          {event.tags === "LastTickets" && (
+            <div className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+              כרטיסים אחרונים!
+            </div>
+          )}
+          {event.tags === "Popular" && (
+            <div className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+              נמכר במהירות!
+            </div>
+          )}
+          {event.tags === "Restock" && (
+            <div className="absolute top-0 left-0 w-32 h-6 bg-[#52C4A3] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+              חזר למלאי!
+            </div>
+          )}
+          {event.tags === "VIP" && (
+            <div className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+              אירוח VIP
+            </div>
+          )}
+          {event.tags === "Sold" && (
+            <div className="absolute top-0 left-0 w-32 h-6 bg-[#d63a59] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+              אזלו הכרטיסים
+            </div>
+          )}
+          <Image
+            src={event.card_image_url}
+            alt={event.name}
+            priority={true}
+            width={240}
+            height={180}
+            className="object-cover w-full h-full transition-transform group-hover:scale-105"
+          />
+        </div>
+        <div className="p-3 text-center flex-shrink-0">
+          <div
+            className="text-sm font-bold"
+            style={{ lineHeight: "1.2" }}
+            title={event.name}
+          >
+            {event.name}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Compact Team Card for Football Section
+function CompactTeamCard({ team }: { team: FootballTeam }) {
+  return (
+    <Link
+      href={`/football/${team.sys?.id}`}
+      className="block hover:opacity-90 transition-opacity"
+      key={team.sys.id}
+    >
+      <div
+        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:max-w-[240px] sm:w-[240px]"
+        style={{
+          height: "245px",
+        }}
+      >
+        <div className="relative group overflow-hidden rounded-t-lg flex-1">
+          {team.fields.heroBanner?.fields?.file?.url && (
+            <Image
+              src={"https:" + team.fields.heroBanner.fields.file.url}
+              alt={team.fields.name || "Football team"}
+              priority={true}
+              width={240}
+              height={180}
+              className="object-cover w-full h-full transition-transform group-hover:scale-105"
+            />
+          )}
+        </div>
+        <div className="p-3 text-center flex-shrink-0" dir="rtl">
+          <div
+            className="text-sm font-bold mb-1"
+            style={{ lineHeight: "1.2" }}
+            title={team.fields.name || ""}
+          >
+            {team.fields.name || ""}
+          </div>
+          {team.fields.previewText && (
+            <div className="text-xs text-gray-600 line-clamp-2">
+              {team.fields.previewText.length > 40
+                ? team.fields.previewText.substring(0, 40) + "..."
+                : team.fields.previewText}
+            </div>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+const UniversalCarousel = ({
+  events,
+  teams,
+  variant = "default",
+}: {
+  events?: Event[];
+  teams?: FootballTeam[];
+  variant?: "default" | "compact";
+}) => {
+  const [isMounted, setIsMounted] = useState(false);
+  const { isMobile } = useIsMobile();
+
+  const items = teams || events || [];
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted || items.length === 0) {
+    return null;
+  }
+
+  // Calculate how many slides to show based on variant and screen size
+  let slideSize: string;
+  let slidesToScroll: number;
+
+  if (variant === "compact") {
+    if (isMobile) {
+      slideSize = "50%"; // 2 cards on mobile
+      slidesToScroll = 2;
+    } else {
+      slideSize = "20%"; // 5 cards on desktop (240px each with gaps)
+      slidesToScroll = 1;
+    }
+  } else {
+    slideSize = isMobile ? "100%" : "25%"; // 1 on mobile, 4 on desktop
+    slidesToScroll = 1;
+  }
+
+  const showControls =
+    items.length >
+    (variant === "compact" ? (isMobile ? 2 : 5) : isMobile ? 1 : 4);
+  const showIndicators = variant === "default" && isMobile && items.length > 1;
+
+  return (
+    <Carousel
+      withIndicators={showIndicators}
+      withControls={showControls}
+      slideSize={slideSize}
+      slideGap={variant === "compact" ? "md" : "sm"}
+      align="start"
+      dragFree
+      loop={false}
+      slidesToScroll={slidesToScroll}
+      classNames={{
+        container: "py-[2px]",
+        control:
+          variant === "compact" && !isMobile
+            ? "w-8 h-8 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600"
+            : "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70",
+        indicator: "bg-gray-300 data-[active]:bg-secondary",
+        indicators: "gap-2 mt-4",
+        viewport: variant === "compact" && !isMobile ? "h-[245px]" : "",
+      }}
+      styles={{
+        control: {
+          fontSize: variant === "compact" && !isMobile ? "16px" : "20px",
+        },
+      }}
+    >
+      {items.map((item) => (
+        <Carousel.Slide
+          key={teams ? (item as FootballTeam).sys.id : (item as Event).id}
+        >
+          <div
+            className={
+              variant === "compact" && isMobile
+                ? "px-2 flex justify-center"
+                : ""
+            }
+          >
+            {variant === "compact" ? (
+              teams ? (
+                <CompactTeamCard team={item as FootballTeam} />
+              ) : (
+                <CompactEventCard event={item as Event} />
+              )
+            ) : (
+              <EventCard event={item as Event} />
+            )}
+          </div>
+        </Carousel.Slide>
+      ))}
+    </Carousel>
+  );
+};
+
+export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -155,6 +454,10 @@ export function ClientSideHomepage({ initialEvents }: Props) {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleSearchModalOpen = () => {
     setShowSearchModal(true);
@@ -244,28 +547,69 @@ export function ClientSideHomepage({ initialEvents }: Props) {
     );
   }
 
-  const prioritizedEvents = initialEvents.filter(
-    (event) => event.is_prioritized === true
-  );
-  const nonPrioritizedEvents = initialEvents.filter(
-    (event) => event.is_prioritized === false
-  );
+  // Prevent hydration mismatches by only rendering after client mount
+  if (!isMounted) {
+    return null;
+  }
 
-  const prioitized_events = prioritizedEvents.slice(0, 4).sort((a, b) => {
-    // Sort by non-null tags first
-    if (a.tags && !b.tags) return -1;
-    if (!a.tags && b.tags) return 1;
-    return 0;
-  });
+  // Separate VIP events
+  const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
-  const rest_events = [
-    ...prioritizedEvents.slice(4),
-    ...nonPrioritizedEvents,
-  ].sort((a, b) => {
-    // Sort by non-null tags first
-    if (a.tags && !b.tags) return -1;
-    if (!a.tags && b.tags) return 1;
-    // Then sort by date
+  // Get prioritized events for "המבוקשים ביותר" section (including VIP if prioritized)
+  const prioritized_events = (() => {
+    const prioritizedEvents = initialEvents.filter(
+      (event) => event.is_prioritized === true
+    );
+    const nonPrioritizedEvents = initialEvents.filter(
+      (event) =>
+        event.is_prioritized === false &&
+        event.tags !== "VIP" &&
+        event.type !== "sports_event"
+    );
+
+    // Ensure we always have exactly 8 events for "המבוקשים ביותר"
+    if (prioritizedEvents.length >= 8) {
+      return prioritizedEvents.slice(0, 8).sort((a, b) => {
+        // Sort events with tags first, then by date
+        if (a.tags && !b.tags) return -1;
+        if (!a.tags && b.tags) return 1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+    } else {
+      // Fill remaining slots with non-prioritized non-VIP non-sports events
+      const combined = [
+        ...prioritizedEvents,
+        ...nonPrioritizedEvents.slice(0, 8 - prioritizedEvents.length),
+      ];
+      return combined.slice(0, 8).sort((a, b) => {
+        // Sort events with tags first, then by date
+        if (a.tags && !b.tags) return -1;
+        if (!a.tags && b.tags) return 1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+    }
+  })();
+
+  // Get music events (only music_event type, excluding VIP and already used prioritized events)
+  const musicEvents = (() => {
+    const usedEventIds = new Set(prioritized_events.map((event) => event.id));
+    const remainingEvents = initialEvents.filter(
+      (event) =>
+        event.type === "music_event" &&
+        event.tags !== "VIP" &&
+        !usedEventIds.has(event.id)
+    );
+
+    return remainingEvents.sort((a, b) => {
+      // Sort events with tags first, then by date
+      if (a.tags && !b.tags) return -1;
+      if (!a.tags && b.tags) return 1;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+  })();
+
+  // Sort VIP events by date
+  const sortedVipEvents = vipEvents.sort((a, b) => {
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
@@ -358,21 +702,15 @@ export function ClientSideHomepage({ initialEvents }: Props) {
       <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
-            <span> כל האירועים השווים בחו״ל</span>
+            האירועים השווים בחו״ל
             <span className="text-secondary whitespace-nowrap text-5xl">
               {" "}
               במקום אחד
             </span>
+            <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-8">
+              בהתאמה אישית משתלמת{" "}
+            </span>
           </h1>
-          {isMobile ? (
-            <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              הרכיבו את החבילה שלכם{" "}
-            </p>
-          ) : (
-            <p className="text-3xl sm:text-4xl md:text-5xl mb-8">
-              הרכיבו את החבילה המשתלמת ביותר{" "}
-            </p>
-          )}
         </div>
         <div
           ref={searchContainerRef}
@@ -551,16 +889,16 @@ export function ClientSideHomepage({ initialEvents }: Props) {
               style={{ height: 40, width: 23 }}
             />
             <div
-              className="bg-secondary  mx-1"
+              className="bg-secondary mx-1 hidden sm:block"
               style={{ height: 40, width: 23 }}
             />
             <div
-              className="bg-secondary  mx-1"
+              className="bg-secondary mx-1 hidden sm:block"
               style={{ height: 40, width: 46 }}
             />
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            {prioitized_events.map((event) => (
+            {prioritized_events.map((event) => (
               <EventCard event={event} key={event.id} />
             ))}
           </div>
@@ -568,47 +906,140 @@ export function ClientSideHomepage({ initialEvents }: Props) {
             widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7"
             lazy="first-activity"
           />
-          <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
-            <div>
-              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
-                האירועים שלנו
-              </h2>
-            </div>
-            <div
-              className="bg-secondary mx-1"
-              style={{ height: 40, width: 23 }}
-            />
-            <div
-              className="bg-secondary  mx-1"
-              style={{ height: 40, width: 23 }}
-            />
-            <div
-              className="bg-secondary  mx-1"
-              style={{ height: 40, width: 46 }}
-            />
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {rest_events.map((event) => (
-              <EventCard event={event} key={event.id} />
-            ))}{" "}
-            <div className="fixed bottom-20 left-2 z-50 sm:hidden">
-              <ContactUs inHeader={false} />
-            </div>
-            <div
-              className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
-              onClick={() => setShowFeedbackModal(true)}
-            >
-              <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
-                <MYT className="" />
+
+          {/* Sports Section */}
+          {footballTeams && footballTeams.length > 0 && (
+            <>
+              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+                <div>
+                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                    כדורגל
+                  </h2>
+                </div>
+                <div
+                  className="bg-secondary mx-1"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 46 }}
+                />
               </div>
-              <div
-                className="p-4 text-center text-main text-xl font-bold h-20"
-                dir="rtl"
-              >
-                לא מצאתם מה שחיפשתם? ספרו לנו
+              {/* Mobile carousel for Sports events */}
+              <div className="block sm:hidden mb-8">
+                <UniversalCarousel teams={footballTeams} variant="compact" />
               </div>
-            </div>
-          </div>
+              {/* Desktop carousel for Sports events */}
+              <div className="hidden sm:block mb-8">
+                <UniversalCarousel teams={footballTeams} variant="compact" />
+              </div>
+            </>
+          )}
+
+          {/* Music Section (renamed from "האירועים שלנו") */}
+          {musicEvents.length > 0 && (
+            <>
+              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+                <div>
+                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                    מוזיקה
+                  </h2>
+                </div>
+                <div
+                  className="bg-secondary mx-1"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 46 }}
+                />
+              </div>
+              {/* Mobile carousel for Music events */}
+              <div className="block sm:hidden mb-8">
+                <MobileCarousel events={musicEvents} />
+                <div className="grid gap-6 grid-cols-1 mt-6">
+                  <div className="fixed bottom-20 left-2 z-50">
+                    <ContactUs inHeader={false} />
+                  </div>
+                  <div
+                    className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
+                    onClick={() => setShowFeedbackModal(true)}
+                  >
+                    <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
+                      <MYT className="" />
+                    </div>
+                    <div
+                      className="p-4 text-center text-main text-xl font-bold h-20"
+                      dir="rtl"
+                    >
+                      לא מצאתם מה שחיפשתם? ספרו לנו
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Desktop grid for Music events */}
+              <div className="hidden sm:grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+                {musicEvents.map((event) => (
+                  <EventCard event={event} key={event.id} />
+                ))}
+                <div
+                  className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
+                  onClick={() => setShowFeedbackModal(true)}
+                >
+                  <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
+                    <MYT className="" />
+                  </div>
+                  <div
+                    className="p-4 text-center text-main text-xl font-bold h-20"
+                    dir="rtl"
+                  >
+                    לא מצאתם מה שחיפשתם? ספרו לנו
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* VIP Section */}
+          {sortedVipEvents.length > 0 && (
+            <>
+              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+                <div>
+                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                    וכרטיסי פרימיום VIP אירוח
+                  </h2>
+                </div>
+                <div
+                  className="bg-secondary mx-1"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 46 }}
+                />
+              </div>
+              {/* Mobile carousel for VIP events */}
+              <div className="block sm:hidden mb-8">
+                <UniversalCarousel events={sortedVipEvents} />
+              </div>
+              {/* Desktop carousel for VIP events */}
+              <div className="hidden sm:block mb-8">
+                <UniversalCarousel events={sortedVipEvents} />
+              </div>
+            </>
+          )}
         </div>
       </section>
     </>
@@ -616,6 +1047,13 @@ export function ClientSideHomepage({ initialEvents }: Props) {
 }
 
 function EventCard({ event }: { event: Event }) {
+  const [isMounted, setIsMounted] = useState(false);
+  const { isMobile } = useIsMobile();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   return (
     <Link
       href={event.tags === "Sold" ? "#no-op" : `/order/${event.id}`}
@@ -696,6 +1134,11 @@ function EventCard({ event }: { event: Event }) {
               חזר למלאי!
             </div>
           )}
+          {event.tags === "VIP" && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+              אירוח VIP
+            </div>
+          )}
           {event.tags === "Sold" && (
             <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
               אזלו הכרטיסים
@@ -754,9 +1197,9 @@ function EventCard({ event }: { event: Event }) {
               // Empty space placeholder with same height to maintain layout
               <div
                 className="my-2 py-2 flex-shrink-0"
-                style={{ height: isMobile ? "40px" : "22px" }}
+                style={{ height: isMounted && isMobile ? "40px" : "22px" }}
               ></div>
-            ) : isMobile ? (
+            ) : isMounted && isMobile ? (
               <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center">
                 הוזילו או שדרגו כאן {"  >"}
               </div>

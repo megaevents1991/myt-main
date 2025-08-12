@@ -368,6 +368,26 @@ export async function POST(request: Request) {
           currentFlight.metadata.logo =
             "https://www.avcodes.co.uk/images/logos/DLH.png";
         }
+        // Special Handling: Check and update for Bluebird
+        else if (currentFlight.metadata.iata === "HR") {
+          if (currentFlight.offer.itineraries[0].segments[0].operating?.carrierCode === "BZ") {
+            currentFlight.metadata.logo =
+              "https://upload.wikimedia.org/wikipedia/fr/c/c2/Bluebird_Airways_logo.png";
+              currentFlight.metadata.name = "Bluebird Airways";
+              currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
+          }
+        }
+        // Special Handling: For low-cost carriers
+        else if (currentFlight.metadata.iata === "6H") {
+          currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
+        }
+        else if (currentFlight.metadata.iata === "IZ") {
+          currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
+        }
+        else if (currentFlight.metadata.iata === "U8") {
+          currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
+        }
+        
 
         return acc;
       },

@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_Hebrew } from "next/font/google";
 import "@mantine/core/styles.css";
+import "@mantine/carousel/styles.css";
 import { Suspense, ReactNode } from "react";
 import Script from "next/script";
 import {

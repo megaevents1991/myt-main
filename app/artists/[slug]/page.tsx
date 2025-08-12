@@ -38,7 +38,7 @@ export default async function ArtistPage({
     notFound();
   }
 
-  const { name, nameDBenglish, bio, heroBanner } = artist.fields;
+  const { name, nameDBenglish, bio } = artist.fields;
   const bioDocument = bio as Document;
 
   const { events } = await getEventsByName(String(nameDBenglish));
@@ -65,16 +65,6 @@ export default async function ArtistPage({
   return (
     <div dir="rtl" className="container mx-auto py-8 px-4">
       <ClientTracker />
-      {heroBanner?.fields?.file?.url && (
-        <Image
-          src={`https:${heroBanner.fields.file.url}`}
-          alt={name || ""}
-          priority={true}
-          width={heroBanner.fields.file.details?.image?.width || 1024}
-          height={heroBanner.fields.file.details?.image?.height || 384}
-          className="w-full h-96 object-cover rounded-lg mb-8"
-        />
-      )}
       <h1 className="text-4xl font-bold mb-4">{name}</h1>
       <div className="prose max-w-none">
         {documentToReactComponents(bioDocument, options)}
@@ -119,6 +109,11 @@ export default async function ArtistPage({
                           חזר למלאי!
                         </div>
                       )}
+                      {event.tags === "VIP" && (
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                          אירוח VIP
+                        </div>
+                      )}
                       {event.tags === "Sold" && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
                           אזלו הכרטיסים
@@ -142,7 +137,7 @@ export default async function ArtistPage({
                           ? dayjs(event.date).format("DD/MM/YYYY")
                           : "תאריך יפורסם בקרוב"}
                       </div>
-                      <div className="py-1 px-2 bg-secondary text-white flex flex-wrap text-lg justify-center items-center">
+                      <div className="py-1 px-2 bg-secondary text-white font-semibold flex flex-wrap text-lg justify-center items-center">
                         {event.location.name}
                       </div>
                       <div className="p-2 text-center flex flex-col flex-grow">

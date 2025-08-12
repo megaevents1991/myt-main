@@ -19,6 +19,7 @@ export default function EventButton({
           eventId: event.id,
           eventName: event.name,
           eventDate: event.date,
+          eventType: event.type,
           eventLocation: event.location.name,
           eventStatus: event.tags,
           eventType: event.type,

@@ -326,6 +326,39 @@ export type FootballFields = {
   };
 };
 
+export type FootballTeam = {
+  sys: {
+    id: string;
+  };
+  fields: {
+    name?: string;
+    nameDBenglish?: string;
+    previewText?: string;
+    heroBanner?: {
+      fields?: {
+        file?: {
+          url?: string;
+          details?: {
+            image?: {
+              height?: number;
+              width?: number;
+            };
+          };
+        };
+        description?: string;
+        title?: string;
+      };
+    };
+    bio?: {
+      content?: {
+        content?: {
+          value?: string;
+        }[];
+      }[];
+    };
+  };
+};
+
 export type Log = {
   type?: "error" | "warn" | "log";
   data: Record<string, unknown> | string;
