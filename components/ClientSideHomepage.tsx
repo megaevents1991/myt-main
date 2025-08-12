@@ -601,9 +601,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
     );
 
     return remainingEvents.sort((a, b) => {
-      // Sort events with tags first, then by date
-      if (a.tags && !b.tags) return -1;
-      if (!a.tags && b.tags) return 1;
+      // Sort events with tags first (except "Sold"), then by date
+      const aHasPriorityTag = a.tags && a.tags !== "Sold";
+      const bHasPriorityTag = b.tags && b.tags !== "Sold";
+      
+      if (aHasPriorityTag && !bHasPriorityTag) return -1;
+      if (!aHasPriorityTag && bHasPriorityTag) return 1;
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
   })();
