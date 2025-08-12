@@ -22,7 +22,6 @@ export default function EventButton({
           eventType: event.type,
           eventLocation: event.location.name,
           eventStatus: event.tags,
-          eventType: event.type,
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
