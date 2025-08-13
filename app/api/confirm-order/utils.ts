@@ -20,6 +20,8 @@ const orderSchema = yup.object().shape({
       name: yup.string().required().min(1),
       number_of_ticket: yup.number().required(),
       vendor: yup.string(),
+      event_tags: yup.string(),
+      event_type: yup.string(),
       id: yup.string(),
       category: yup.string().required().min(1),
       price_per_ticket: yup.number().required(),

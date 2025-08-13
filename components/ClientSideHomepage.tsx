@@ -6,7 +6,7 @@ import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
 import { useMediaQuery } from "@mantine/hooks";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Event, FootballTeam } from "@/lib/app.types";
+import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon } from "lucide-react";
@@ -29,6 +29,7 @@ const fuseOptions = {
 interface Props {
   initialEvents: Event[];
   footballTeams: FootballTeam[];
+  artists: Artist[];
 }
 
 const SearchCombobox = ({
@@ -84,11 +85,57 @@ const SearchCombobox = ({
         if (optionValue === "feedback") {
           onOpenFeedbackModal();
         } else {
-          setSearchValue(
-            events.find((item) => item.id.toString() === optionValue)?.name ||
-              ""
-          );
-          router.push(`/order/${optionValue}`);
+          const selectedEvent = events.find((item) => item.id.toString() === optionValue);
+          if (selectedEvent) {
+            // Track event selection from search
+            trackEvent("eventSelected", {
+              eventId: selectedEvent.id,
+              eventName: selectedEvent.name,
+              eventDate: selectedEvent.date,
+              eventType: selectedEvent.type,
+              eventLocation: selectedEvent.location.name,
+              eventTags: selectedEvent.tags,
+              eventPrice:
+                selectedEvent.base_flight_price +
+                selectedEvent.base_hotel_price +
+                Math.min(...selectedEvent.tickets_and_rates.map((ticket) => ticket.price)) +
+                Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+            });
+            
+            orderStage("EVENT_SELECTED", {
+              data: {
+                event: selectedEvent.name,
+                eventDate: selectedEvent.date,
+                eventLocation: selectedEvent.location.name,
+              },
+            });
+            
+            const gtmIdnts =
+              document.cookie
+                .split("; ")
+                .find((row) => row.startsWith("gtmIdnts="))
+                ?.split("=")[1] || "";
+
+            fetch("/api/events-info", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                eventData: {
+                  id: selectedEvent.id,
+                  name: selectedEvent.name,
+                },
+                gtmIdnts,
+                eventType: "select_item",
+              }),
+            }).catch((error) => {
+              console.error("Analytics tracking failed:", error);
+            });
+            
+            setSearchValue(selectedEvent.name);
+            router.push(`/order/${optionValue}`);
+          }
         }
       }}
       store={combobox}
@@ -199,7 +246,7 @@ function CompactEventCard({ event }: { event: Event }) {
           eventDate: event.date,
           eventType: event.type,
           eventLocation: event.location.name,
-          eventStatus: event.tags,
+          eventTags: event.tags,
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
@@ -325,21 +372,54 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
             />
           )}
         </div>
-        <div className="p-3 text-center flex-shrink-0" dir="rtl">
+        <div className="p-3 text-center flex-none">
           <div
-            className="text-sm font-bold mb-1"
+            className="font-bold text-md text-gray-800 line-clamp-2 mb-1"
             style={{ lineHeight: "1.2" }}
             title={team.fields.name || ""}
           >
             {team.fields.name || ""}
           </div>
-          {team.fields.previewText && (
-            <div className="text-xs text-gray-600 line-clamp-2">
-              {team.fields.previewText.length > 40
-                ? team.fields.previewText.substring(0, 40) + "..."
-                : team.fields.previewText}
-            </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Compact Artist Card for Artists Section
+function CompactArtistCard({ artist }: { artist: Artist }) {
+  return (
+    <Link
+      href={`/artists/${artist.sys?.id}`}
+      className="block hover:opacity-90 transition-opacity"
+      key={artist.sys.id}
+    >
+      <div
+        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:max-w-[240px] sm:w-[240px]"
+        style={{
+          height: "245px",
+        }}
+      >
+        <div className="relative group overflow-hidden rounded-t-lg flex-1">
+          {artist.fields.heroBanner?.fields?.file?.url && (
+            <Image
+              src={"https:" + artist.fields.heroBanner.fields.file.url}
+              alt={artist.fields.name || "Artist"}
+              priority={true}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
           )}
+        </div>
+        <div className="p-3 text-center flex-none">
+          <div
+            className="font-bold text-md text-gray-800 line-clamp-2 mb-1"
+            style={{ lineHeight: "1.2" }}
+            title={artist.fields.name || ""}
+          >
+            {artist.fields.name || ""}
+          </div>
         </div>
       </div>
     </Link>
@@ -349,16 +429,18 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
 const UniversalCarousel = ({
   events,
   teams,
+  artists,
   variant = "default",
 }: {
   events?: Event[];
   teams?: FootballTeam[];
+  artists?: Artist[];
   variant?: "default" | "compact";
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
 
-  const items = teams || events || [];
+  const items = teams || artists || events || [];
 
   useEffect(() => {
     setIsMounted(true);
@@ -416,34 +498,46 @@ const UniversalCarousel = ({
         },
       }}
     >
-      {items.map((item) => (
-        <Carousel.Slide
-          key={teams ? (item as FootballTeam).sys.id : (item as Event).id}
-        >
-          <div
-            className={
-              variant === "compact" && isMobile
-                ? "px-2 flex justify-center"
-                : ""
-            }
-          >
-            {variant === "compact" ? (
-              teams ? (
-                <CompactTeamCard team={item as FootballTeam} />
+      {items.map((item) => {
+        // Determine the type of item and generate appropriate key
+        let key: string;
+        if (teams) {
+          key = (item as FootballTeam).sys.id;
+        } else if (artists) {
+          key = (item as Artist).sys.id;
+        } else {
+          key = (item as Event).id.toString();
+        }
+
+        return (
+          <Carousel.Slide key={key}>
+            <div
+              className={
+                variant === "compact" && isMobile
+                  ? "px-2 flex justify-center"
+                  : ""
+              }
+            >
+              {variant === "compact" ? (
+                teams ? (
+                  <CompactTeamCard team={item as FootballTeam} />
+                ) : artists ? (
+                  <CompactArtistCard artist={item as Artist} />
+                ) : (
+                  <CompactEventCard event={item as Event} />
+                )
               ) : (
-                <CompactEventCard event={item as Event} />
-              )
-            ) : (
-              <EventCard event={item as Event} />
-            )}
-          </div>
-        </Carousel.Slide>
-      ))}
+                <EventCard event={item as Event} />
+              )}
+            </div>
+          </Carousel.Slide>
+        );
+      })}
     </Carousel>
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
@@ -557,6 +651,55 @@ export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
   // Separate VIP events
   const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
+  // Function to filter events from artists that appear in the carousel
+  // Keep only one event per artist (preferably with a tag)
+  const filterEventsFromCarouselArtists = (events: Event[]) => {
+    if (!artists || artists.length === 0) return events;
+
+    // Get list of artist names that appear in the carousel
+    const carouselArtistNames = new Set(
+      artists
+        .map(artist => artist.fields.nameDBenglish)
+        .filter(Boolean)
+        .map(name => name!.trim().toLowerCase()) // Trim whitespaces before lowercasing
+    );
+
+    // Group events by artist
+    const eventsByArtist = new Map<string, Event[]>();
+    const nonArtistEvents: Event[] = [];
+
+    events.forEach(event => {
+      const eventArtistName = event.name_english?.trim().toLowerCase(); // Trim whitespaces before lowercasing
+      if (eventArtistName && carouselArtistNames.has(eventArtistName)) {
+        if (!eventsByArtist.has(eventArtistName)) {
+          eventsByArtist.set(eventArtistName, []);
+        }
+        eventsByArtist.get(eventArtistName)!.push(event);
+      } else {
+        nonArtistEvents.push(event);
+      }
+    });
+
+    // For each artist, keep only one event (preferably with a tag)
+    const filteredArtistEvents: Event[] = [];
+    eventsByArtist.forEach(artistEvents => {
+      // Sort events to prioritize those with tags (except "Sold")
+      const sortedEvents = artistEvents.sort((a, b) => {
+        const aHasTag = a.tags && a.tags !== "Sold";
+        const bHasTag = b.tags && b.tags !== "Sold";
+        
+        if (aHasTag && !bHasTag) return -1;
+        if (!aHasTag && bHasTag) return 1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+      
+      // Keep only the first (best) event for this artist
+      filteredArtistEvents.push(sortedEvents[0]);
+    });
+
+    return [...nonArtistEvents, ...filteredArtistEvents];
+  };
+
   // Get prioritized events for "המבוקשים ביותר" section (including VIP if prioritized)
   const prioritized_events = (() => {
     const prioritizedEvents = initialEvents.filter(
@@ -578,10 +721,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       });
     } else {
-      // Fill remaining slots with non-prioritized non-VIP non-sports events
+      // Filter out events from carousel artists before using them to fill slots
+      const filteredNonPrioritizedEvents = filterEventsFromCarouselArtists(nonPrioritizedEvents);
+      
+      // Fill remaining slots with filtered non-prioritized non-VIP non-sports events
       const combined = [
         ...prioritizedEvents,
-        ...nonPrioritizedEvents.slice(0, 8 - prioritizedEvents.length),
+        ...filteredNonPrioritizedEvents.slice(0, 8 - prioritizedEvents.length),
       ];
       return combined.slice(0, 8).sort((a, b) => {
         // Sort events with tags first, then by date
@@ -602,7 +748,10 @@ export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
         !usedEventIds.has(event.id)
     );
 
-    return remainingEvents.sort((a, b) => {
+    // Filter out events from carousel artists (keeping only one per artist)
+    const filteredEvents = filterEventsFromCarouselArtists(remainingEvents);
+
+    return filteredEvents.sort((a, b) => {
       // Sort events with tags first (except "Sold"), then by date
       const aHasPriorityTag = a.tags && a.tags !== "Sold";
       const bHasPriorityTag = b.tags && b.tags !== "Sold";
@@ -945,13 +1094,46 @@ export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
             </>
           )}
 
+          {/* Sports Section */}
+          {artists && artists.length > 0 && (
+            <>
+              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+                <div>
+                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                    אמנים מובילים
+                  </h2>
+                </div>
+                <div
+                  className="bg-secondary mx-1"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 23 }}
+                />
+                <div
+                  className="bg-secondary mx-1 hidden sm:block"
+                  style={{ height: 40, width: 46 }}
+                />
+              </div>
+              {/* Mobile carousel for Artists */}
+              <div className="block sm:hidden mb-8">
+                <UniversalCarousel artists={artists} variant="compact" />
+              </div>
+              {/* Desktop carousel for Artists */}
+              <div className="hidden sm:block mb-8">
+                <UniversalCarousel artists={artists} variant="compact" />
+              </div>
+            </>
+          )}
+
           {/* Music Section (renamed from "האירועים שלנו") */}
           {musicEvents.length > 0 && (
             <>
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
                   <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
-                    מוזיקה
+                    הופעות
                   </h2>
                 </div>
                 <div
@@ -1073,7 +1255,7 @@ function EventCard({ event }: { event: Event }) {
           eventDate: event.date,
           eventType: event.type,
           eventLocation: event.location.name,
-          eventStatus: event.tags,
+          eventTags: event.tags,
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +

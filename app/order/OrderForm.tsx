@@ -198,6 +198,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           paymentMethod,
           affiliateDiscount: affDiscount * numberOfEventTickets,
           affiliateId: affId,
+          eventTags: event.tags,
         });
       }
       return prev + 1;

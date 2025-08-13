@@ -241,6 +241,7 @@ export type OrderData = {
     location_name: string;
     number_of_ticket: number;
     category: string;
+    event_tags?: string;
     price_per_ticket: number;
     total_tickets_price: number;
     vendor?: string;
@@ -292,6 +293,14 @@ export type ArtistFields = {
   };
 };
 
+export type CarouselFields = {
+  contentTypeId: "carousel";
+  fields: {
+    title?: string;
+    items: EntryFieldTypes.Array<EntryFieldTypes.EntryLink<ArtistFields>>;
+  };
+};
+
 export type FootballFields = {
   contentTypeId: "footballTeamTemplate";
   fields: {
@@ -327,6 +336,39 @@ export type FootballFields = {
 };
 
 export type FootballTeam = {
+  sys: {
+    id: string;
+  };
+  fields: {
+    name?: string;
+    nameDBenglish?: string;
+    previewText?: string;
+    heroBanner?: {
+      fields?: {
+        file?: {
+          url?: string;
+          details?: {
+            image?: {
+              height?: number;
+              width?: number;
+            };
+          };
+        };
+        description?: string;
+        title?: string;
+      };
+    };
+    bio?: {
+      content?: {
+        content?: {
+          value?: string;
+        }[];
+      }[];
+    };
+  };
+};
+
+export type Artist = {
   sys: {
     id: string;
   };

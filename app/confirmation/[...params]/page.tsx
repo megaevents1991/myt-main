@@ -138,6 +138,8 @@ export default function ConfirmationPage() {
           paymentStatus: isPaid,
           eventName: orderData.event_order_info.name,
           eventDate: orderData.event_order_info.date,
+          eventType: orderData.event_order_info.event_type,
+          eventTags: orderData.event_order_info.event_tags,
           eventLocation: orderData.event_order_info.location_name,
           ticketCategory: orderData.event_order_info.category,
           numberOfTickets: orderData.event_order_info.number_of_ticket,

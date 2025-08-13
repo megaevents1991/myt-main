@@ -442,6 +442,7 @@ ${selectedHotel.name}
         number_of_ticket: numberOfEventTickets,
         category: eventTicket.category,
         event_type: event?.type || "",
+        event_tags: event?.tags || "",
         price_per_ticket: eventTicket.price,
         total_tickets_price: eventTicket.price * numberOfEventTickets,
         vendor: eventTicket.vendor,
@@ -478,6 +479,10 @@ ${selectedHotel.name}
         affiliateDiscount: affDiscount * numberOfEventTickets,
         affiliateId: affId,
         isAgentBooking: agentCommission > 0,
+        eventTags: event.tags,
+        eventId: event.id,
+        eventName: event.name,
+        eventDate: event.date,
       });
 
       if (payNow) {
