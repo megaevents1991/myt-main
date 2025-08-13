@@ -289,7 +289,7 @@ function CompactEventCard({ event }: { event: Event }) {
       }}
     >
       <div
-        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:max-w-[240px] sm:w-[240px]"
+        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
@@ -355,7 +355,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
       key={team.sys.id}
     >
       <div
-        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:max-w-[240px] sm:w-[240px]"
+        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
@@ -395,7 +395,7 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
       key={artist.sys.id}
     >
       <div
-        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:max-w-[240px] sm:w-[240px]"
+        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
@@ -406,9 +406,9 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
               src={"https:" + artist.fields.heroBanner.fields.file.url}
               alt={artist.fields.name || "Artist"}
               priority={true}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              width={240}
+              height={180}
+              className="object-cover w-full h-full transition-transform group-hover:scale-105"
             />
           )}
         </div>
@@ -459,7 +459,7 @@ const UniversalCarousel = ({
       slideSize = "50%"; // 2 cards on mobile
       slidesToScroll = 2;
     } else {
-      slideSize = "20%"; // 5 cards on desktop (240px each with gaps)
+      slideSize = "240px"; // Fixed width for desktop instead of percentage
       slidesToScroll = 1;
     }
   } else {
@@ -513,8 +513,10 @@ const UniversalCarousel = ({
           <Carousel.Slide key={key}>
             <div
               className={
-                variant === "compact" && isMobile
-                  ? "px-2 flex justify-center"
+                variant === "compact"
+                  ? isMobile 
+                    ? "px-2 flex justify-center"
+                    : "flex justify-center w-[240px] min-w-[240px] max-w-[240px]" // Fixed width for desktop slides
                   : ""
               }
             >
