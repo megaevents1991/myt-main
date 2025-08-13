@@ -555,6 +555,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 
   useEffect(() => {
     setIsMounted(true);
+    // Scroll to top when component mounts (page load/navigation)
+    window.scrollTo(0, 0);
   }, []);
 
   const handleSearchModalOpen = () => {
@@ -645,9 +647,30 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     );
   }
 
-  // Prevent hydration mismatches by only rendering after client mount
+  // Prevent hydration mismatches by showing a loading state instead of null
   if (!isMounted) {
-    return null;
+    return (
+      <div style={{ minHeight: '60vh' }}>
+        {/* Basic layout structure to prevent content jump */}
+        <section className="bg-main relative overflow-hidden">
+          <div className="container mx-auto flex flex-col lg:flex-row items-center justify-between py-12 px-4 md:px-8 min-h-[400px]">
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="animate-pulse bg-white/20 h-8 w-64 rounded"></div>
+            </div>
+          </div>
+        </section>
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse space-y-8">
+            <div className="h-6 bg-gray-200 rounded w-48"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-64 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Separate VIP events

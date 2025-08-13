@@ -138,8 +138,24 @@ const GTM_URL = `https://www.googletagmanager.com/ns.html?id=${GTM_TAG}`;
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="he" className="bg-white text-black" suppressHydrationWarning>
-      {GTM_TAG && (
-        <head>
+      <head>
+        <Script id="scroll-restoration" strategy="beforeInteractive">
+          {`
+          if (typeof window !== 'undefined') {
+            // Disable automatic scroll restoration
+            if ('scrollRestoration' in history) {
+              history.scrollRestoration = 'manual';
+            }
+            // Ensure page starts at top on load
+            window.addEventListener('load', function() {
+              setTimeout(() => {
+                window.scrollTo(0, 0);
+              }, 0);
+            });
+          }
+          `}
+        </Script>
+        {GTM_TAG && (
           <Script id="gtm-head" strategy="afterInteractive">
             {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -149,8 +165,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_TAG}');
           `}
           </Script>
-        </head>
-      )}
+        )}
+      </head>
       <body className={`${inter.className} text-black`}>
         {GTM_TAG && (
           <noscript>

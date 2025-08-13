@@ -89,7 +89,7 @@ export default async function FootballPage({
                 }`}
               >
                 <EventButton event={event}>
-                  <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+                  <div className="rounded-lg shadow-lg flex flex-row-reverse sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
                     <div
                       className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
                       dir="rtl"
