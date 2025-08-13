@@ -166,10 +166,12 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
       dragFree
       loop
       classNames={{
+        root: "mx-[-8px]",
         control:
           "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70",
         indicator: "bg-gray-300 data-[active]:bg-secondary",
         indicators: "gap-2 mt-4",
+        container: "py-[4px] px-[8px]",
       }}
     >
       {events.map((event) => (
@@ -604,7 +606,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams }: Props) {
       // Sort events with tags first (except "Sold"), then by date
       const aHasPriorityTag = a.tags && a.tags !== "Sold";
       const bHasPriorityTag = b.tags && b.tags !== "Sold";
-      
+
       if (aHasPriorityTag && !bHasPriorityTag) return -1;
       if (!aHasPriorityTag && bHasPriorityTag) return 1;
       return new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -1107,7 +1109,7 @@ function EventCard({ event }: { event: Event }) {
               date: event.date,
               category: event.type,
               location: event.location.name,
-              tags: event.tags
+              tags: event.tags,
             },
             gtmIdnts,
             eventType: "select_item",
