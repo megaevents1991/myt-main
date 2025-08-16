@@ -1158,7 +1158,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
                   <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
-                    הופעות
+                    הופעות נוספות
                   </h2>
                 </div>
                 <div
