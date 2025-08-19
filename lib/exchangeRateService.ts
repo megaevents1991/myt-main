@@ -77,7 +77,12 @@ class ExchangeRateService {
           throw new Error(`Invalid exchange rate data structure for ${currencyPair}`);
         }
       } catch (error) {
-        console.error(`${currencyPair} exchange rate fetch attempt ${attempt} failed: ${error instanceof Error ? JSON.stringify(error) : 'Unknown error'}`);
+        if (attempt === 3) {
+          console.error(`Failed to fetch ${currencyPair} exchange rate after ${attempt} attempts: ${error instanceof Error ? JSON.stringify(error) : 'Unknown error'}`);
+        }
+        else {
+          console.warn(`${currencyPair} exchange rate fetch attempt ${attempt} failed: ${error instanceof Error ? JSON.stringify(error) : 'Unknown error'}`);
+        }
 
         if (attempt < retries) {
           console.log(`Retrying in ${this.RETRY_DELAY}ms...`);
