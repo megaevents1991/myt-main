@@ -881,13 +881,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
       <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
-            האירועים השווים בחו״ל
+            האירועים הכי שווים בעולם
             <span className="text-secondary whitespace-nowrap text-5xl">
               {" "}
               במקום אחד
             </span>
             <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-8">
-              בהתאמה אישית משתלמת{" "}
+              בתנאים שלך{" "}
             </span>
           </h1>
         </div>
