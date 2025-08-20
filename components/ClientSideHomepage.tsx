@@ -213,7 +213,7 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
       dragFree
       loop
       classNames={{
-        root: "mx-[-8px]",
+        root: "mx-[-8px] mobile-carousel-rtl",
         control:
           "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70",
         indicator: "bg-gray-300 data-[active]:bg-secondary",
@@ -483,6 +483,7 @@ const UniversalCarousel = ({
       loop={false}
       slidesToScroll={slidesToScroll}
       classNames={{
+        root: isMobile ? "mobile-carousel-rtl" : "",
         container: "py-[2px]",
         control:
           variant === "compact" && !isMobile
@@ -887,7 +888,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               במקום אחד
             </span>
             <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-8">
-              בתנאים שלך{" "}
+              ובתנאים שלכם{" "}
             </span>
           </h1>
         </div>
