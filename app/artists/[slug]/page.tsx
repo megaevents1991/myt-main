@@ -17,13 +17,18 @@ import ClientTracker from "../../../components/ClientTracker";
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const { items } = await contentfulClient.getEntries({
-    content_type: "artistTemplate",
-  });
+  try {
+    const { items } = await contentfulClient.getEntries({
+      content_type: "artistTemplate",
+    });
 
-  return items.map((item) => ({
-    slug: item.sys.id,
-  }));
+    return items.map((item) => ({
+      slug: item.sys.id,
+    }));
+  } catch (error) {
+    console.error('Error generating static params for artists:', error);
+    return [];
+  }
 }
 
 export default async function ArtistPage({
@@ -32,16 +37,25 @@ export default async function ArtistPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const artist = await contentfulClient.getEntry<ArtistFields>(slug);
+  
+  try {
+    const artist = await contentfulClient.getEntry<ArtistFields>(slug);
 
-  if (!artist) {
-    notFound();
-  }
+    if (!artist || !artist.fields) {
+      notFound();
+    }
 
-  const { name, nameDBenglish, bio } = artist.fields;
-  const bioDocument = bio as Document;
+    const { name, nameDBenglish, bio } = artist.fields;
+    
+    // Defensive checks for required fields
+    if (!name || !nameDBenglish) {
+      console.error('Artist missing required fields:', { slug, name, nameDBenglish });
+      notFound();
+    }
+    
+    const bioDocument = bio as Document;
 
-  const { events } = await getEventsByName(String(nameDBenglish));
+    const { events } = await getEventsByName(String(nameDBenglish));
 
   const Bold = ({ children }: { children: ReactNode }) => (
     <span className="font-bold">{children}</span>
@@ -189,4 +203,9 @@ export default async function ArtistPage({
       </div>
     </div>
   );
+  } catch (error) {
+    // Log the error for debugging but don't crash the server
+    console.error('Error fetching artist:', error);
+    notFound();
+  }
 }

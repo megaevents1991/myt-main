@@ -17,13 +17,18 @@ import EventButton from "../../../components/EventButton";
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const { items } = await contentfulClient.getEntries({
-    content_type: "footballTeamTemplate",
-  });
+  try {
+    const { items } = await contentfulClient.getEntries({
+      content_type: "footballTeamTemplate",
+    });
 
-  return items.map((item) => ({
-    slug: item.sys.id,
-  }));
+    return items.map((item) => ({
+      slug: item.sys.id,
+    }));
+  } catch (error) {
+    console.error('Error generating static params for football teams:', error);
+    return [];
+  }
 }
 
 export default async function FootballPage({
@@ -32,13 +37,22 @@ export default async function FootballPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const team = await contentfulClient.getEntry<FootballFields>(slug);
+  
+  try {
+    const team = await contentfulClient.getEntry<FootballFields>(slug);
 
-  if (!team) {
+  if (!team || !team.fields) {
     notFound();
   }
 
   const { name, nameDBenglish, bio } = team.fields;
+  
+  // Defensive checks for required fields
+  if (!name || !nameDBenglish) {
+    console.error('Football team missing required fields:', { slug, name, nameDBenglish });
+    notFound();
+  }
+  
   const bioDocument = bio as Document;
 
   const { events } = await getEventsByName(String(nameDBenglish));
@@ -195,4 +209,9 @@ export default async function FootballPage({
       </div>
     </div>
   );
+  } catch (error) {
+    // Log the error for debugging but don't crash the server
+    console.error('Error fetching football team:', error);
+    notFound();
+  }
 }
