@@ -555,6 +555,10 @@ ${selectedHotel.name}
 
   return (
     <div className="min-h-screen bg-white">
+      <div className="sr-only">
+        <h1>סיכום הזמנה לאירוע {event?.name}</h1>
+        <p>בדוק את פרטי ההזמנה שלך, הזן פרטי נוסעים ואשר את התנאים כדי להשלים את ההזמנה</p>
+      </div>
       <Modal
         title={isTimeout ? "הזמן אזל" : "הכרטיסים שלכם שמורים!"}
         description={
@@ -1040,13 +1044,18 @@ ${selectedHotel.name}
             <div className="space-y-6 order-2 md:order-2">
               <Card className="bg-white shadow-lg overflow-hidden">
                 <div className="px-8 pt-6 pb-8">
-                  <h2 className="text-2xl font-bold mb-4 text-right">
+                  <h2 className="text-2xl font-bold mb-4 text-right" id="passenger-details-heading">
                     פרטי הנוסעים
                   </h2>
                   <h3 className="text-lg mb-4 text-right">
                     יש להזין שמות כפי שמופיעים בדרכון
                   </h3>
-                  <div className="space-y-5" dir="rtl">
+                  <form 
+                    className="space-y-5" 
+                    dir="rtl"
+                    aria-labelledby="passenger-details-heading"
+                    noValidate
+                  >
                     {passengers.map(
                       (
                         passenger,
@@ -1054,19 +1063,31 @@ ${selectedHotel.name}
                       ) => (
                         <div key={index} className="space-y-4">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[15px]">
+                            <h3 className="font-medium text-[15px]" id={`passenger-${index}-heading`}>
                               נוסע {index + 1}
                             </h3>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <fieldset className="grid grid-cols-2 gap-4" aria-labelledby={`passenger-${index}-heading`}>
                             <div className="space-y-1">
+                              <Label htmlFor={`firstName-${index}`} className="sr-only">
+                                שם פרטי באנגלית לנוסע {index + 1}
+                              </Label>
                               <Input
+                                id={`firstName-${index}`}
                                 dir="rtl"
                                 name="first-name"
                                 data-mp-allow="true"
                                 autoComplete="given-name"
                                 type="text"
                                 placeholder="שם פרטי באנגלית"
+                                aria-label={`שם פרטי באנגלית לנוסע ${index + 1}`}
+                                aria-required="true"
+                                aria-invalid={touched[index]?.firstName && !!validationErrors[index]?.firstName}
+                                aria-describedby={
+                                  touched[index]?.firstName && validationErrors[index]?.firstName 
+                                    ? `firstName-error-${index}` 
+                                    : undefined
+                                }
                                 className={cn(
                                   "h-11 text-right",
                                   touched[index]?.firstName &&
@@ -1085,19 +1106,36 @@ ${selectedHotel.name}
                               />
                               {touched[index]?.firstName &&
                                 validationErrors[index]?.firstName && (
-                                  <p className="text-sm text-red-500 text-right">
+                                  <p 
+                                    id={`firstName-error-${index}`}
+                                    className="text-sm text-red-500 text-right"
+                                    role="alert"
+                                    aria-live="polite"
+                                  >
                                     {validationErrors[index].firstName}
                                   </p>
                                 )}
                             </div>
                             <div className="space-y-1">
+                              <Label htmlFor={`lastName-${index}`} className="sr-only">
+                                שם משפחה באנגלית לנוסע {index + 1}
+                              </Label>
                               <Input
+                                id={`lastName-${index}`}
                                 dir="rtl"
                                 placeholder="שם משפחה באנגלית"
                                 type="text"
                                 data-mp-allow="true"
                                 name="last-name"
                                 autoComplete="family-name"
+                                aria-label={`שם משפחה באנגלית לנוסע ${index + 1}`}
+                                aria-required="true"
+                                aria-invalid={touched[index]?.lastName && !!validationErrors[index]?.lastName}
+                                aria-describedby={
+                                  touched[index]?.lastName && validationErrors[index]?.lastName 
+                                    ? `lastName-error-${index}` 
+                                    : undefined
+                                }
                                 className={cn(
                                   "h-11 text-right",
                                   touched[index]?.lastName &&
@@ -1116,12 +1154,17 @@ ${selectedHotel.name}
                               />
                               {touched[index]?.lastName &&
                                 validationErrors[index]?.lastName && (
-                                  <p className="text-sm text-red-500 text-right">
+                                  <p 
+                                    id={`lastName-error-${index}`}
+                                    className="text-sm text-red-500 text-right"
+                                    role="alert"
+                                    aria-live="polite"
+                                  >
                                     {validationErrors[index].lastName}
                                   </p>
                                 )}
                             </div>
-                          </div>
+                          </fieldset>
                           {index === 0 && (
                             <>
                               <div className="space-y-1">
@@ -1190,7 +1233,7 @@ ${selectedHotel.name}
                         </div>
                       )
                     )}
-                  </div>
+                  </form>
                 </div>
               </Card>
               {agentCommission <= 0 && (

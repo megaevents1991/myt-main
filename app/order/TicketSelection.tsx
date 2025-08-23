@@ -80,6 +80,10 @@ export const TicketSelection = () => {
 
   return (
     <div>
+      <div className="sr-only">
+        <h1>בחירת כרטיסים לאירוע {event?.name}</h1>
+        <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{event?.location?.name}</p>
+      </div>
       <div className="flex flex-col items-center ">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
@@ -87,7 +91,7 @@ export const TicketSelection = () => {
           </div>
         </div>
       </div>
-      <div className="flex flex-col" dir="rtl">
+      <main className="flex flex-col" dir="rtl" role="main">
         <div className="mt-4 text-lg">
           בחרו כמות כרטיסים וקטגוריה מועדפת,
           <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
@@ -97,14 +101,15 @@ export const TicketSelection = () => {
             className="w-full lg:hidden flex justify-center"
             style={{ margin: 0 }}
             maxHeight={90}
-            showLabel={<ChevronDownCircle fill="black" width={"100%"} />}
+            showLabel={<ChevronDownCircle fill="black" width={"100%"} aria-label="הרחב מפת האירוע" />}
             controlRef={(ref) => {
               ref?.setAttribute(
                 "style",
                 "left: 50%; transform: translate(-50%, -120%); color: white;"
               );
+              ref?.setAttribute("aria-label", "הרחב מפת האירוע");
             }}
-            hideLabel={<ChevronUpCircle fill="black" width={"100%"} />}
+            hideLabel={<ChevronUpCircle fill="black" width={"100%"} aria-label="כווץ מפת האירוע" />}
           >
             <Image
               className="rounded-lg"
@@ -112,7 +117,7 @@ export const TicketSelection = () => {
               height={600}
               priority={true}
               src={event?.map_image_url || ""}
-              alt="Event map"
+              alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה`}
               unoptimized
             />
           </Spoiler>
@@ -123,18 +128,25 @@ export const TicketSelection = () => {
               height={600}
               priority={true}
               src={event?.map_image_url || ""}
-              alt="Event map"
+              alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה ובלוקים`}
               unoptimized
             />
           </div>
           <div className="w-full lg:w-[55%]" dir="ltr">
             <ScrollArea h={"60vh"}>
               {errorMessage && (
-                <Text c="red" ta="right" mb="xs">
+                <Text c="red" ta="right" mb="xs" role="alert" aria-live="polite">
                   {errorMessage}
                 </Text>
               )}
-              <div className="flex flex-col gap-2">
+              <div 
+                className="flex flex-col gap-2"
+                role="group"
+                aria-labelledby="ticket-selection-heading"
+              >
+                <div id="ticket-selection-heading" className="sr-only">
+                  קטגוריות כרטיסים זמינות
+                </div>
                 {[...(event?.tickets_and_rates || [])]
                   .sort((a, b) => a.price - b.price)
                   .map((ticket, index) => (
@@ -163,7 +175,7 @@ export const TicketSelection = () => {
             </ScrollArea>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

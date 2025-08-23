@@ -14,18 +14,23 @@ export default async function ArtistsPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          role="main"
+          aria-label="רשימת האומנים"
+        >
           {items.map((artist) => (
             <Link
               href={`/artists/${artist.sys?.id}`}
               key={artist.sys.id}
               className="block hover:opacity-90 transition-opacity"
+              aria-label={`עמוד האומן ${artist.fields.name || "לא ידוע"}`}
             >
-              <div className="border rounded-lg overflow-hidden">
+              <article className="border rounded-lg overflow-hidden">
                 {artist.fields.heroBanner?.fields && (
                   <Image
                     src={"https:" + artist.fields.heroBanner?.fields?.file?.url}
-                    alt={String(artist.fields.name)}
+                    alt={`תמונה של האומן ${String(artist.fields.name)}`}
                     priority={true}
                     width={400}
                     height={300}
@@ -40,7 +45,7 @@ export default async function ArtistsPage() {
                     {String(artist.fields?.previewText)}
                   </p>
                 </div>
-              </div>
+              </article>
             </Link>
           ))}
         </div>
@@ -51,7 +56,7 @@ export default async function ArtistsPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
-        <p className="text-center text-gray-500">שגיאה בטעינת הנתונים</p>
+        <p className="text-center text-gray-500" role="alert" aria-live="polite">שגיאה בטעינת הנתונים</p>
       </div>
     );
   }

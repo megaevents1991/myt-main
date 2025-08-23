@@ -400,8 +400,21 @@ export const FlightSelection = () => {
 
   return (
     <div className="space-y-2 lg:space-y-6">
+      <div className="sr-only">
+        <h1>בחירת טיסה לאירוע {event.name}</h1>
+        <p>בחר טיסה, כמות נוסעים ותאריכי נסיעה עבור האירוע ב{event.location?.name}</p>
+      </div>
       {!matches && (
-        <FiltersModal show={showFilters} onClose={() => setShowFilters(false)}>
+        <FiltersModal 
+          show={showFilters} 
+          onClose={() => setShowFilters(false)}
+          aria-labelledby="flight-filters-title"
+          aria-describedby="flight-filters-description"
+        >
+          <div id="flight-filters-title" className="sr-only">מסנני טיסות</div>
+          <div id="flight-filters-description" className="sr-only">
+            השתמש במסננים כדי לחפש טיסות לפי מחיר, משך טיסה, חברת תעופה ועוד
+          </div>
           <FlightFilters
             handleFlightSearchCriteriaChange={handleFlightSearchCriteriaChange}
             priceComponent={
@@ -445,6 +458,7 @@ export const FlightSelection = () => {
                     setPlaneTickets({ adults: +(value || 0), children: 0 })
                   }
                   icon={null}
+                  aria-label="בחר כמות נוסעים"
                 />
               </div>
               {matches && (
@@ -460,13 +474,14 @@ export const FlightSelection = () => {
                   eventDay={event?.date}
                   onPopoverClose={handleDatePopoverClose}
                   showTooltip={true}
+                  aria-label="בחר תאריכי יציאה וחזרה"
                 />
                 <button
                   onClick={handleFlightSearch}
                   disabled={isLoading}
                   className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                   type="button"
-                  aria-label="חפש טיסות"
+                  aria-label={isLoading ? "מחפש טיסות..." : "חפש טיסות"}
                 >
                   <Search size={24} />
                 </button>
@@ -492,10 +507,11 @@ export const FlightSelection = () => {
                 <button 
                   className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
                   type="button"
-                  aria-label="הגדרות מסננים"
+                  aria-label="פתח הגדרות מסננים"
+                  aria-expanded={showFilters}
                   onClick={() => setShowFilters(true)}
                 >
-                  <Settings2Icon />
+                  <Settings2Icon aria-hidden="true" />
                 </button>
               }
               sortOptions={
@@ -574,16 +590,26 @@ export const FlightSelection = () => {
           )}
         </div>
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
-          <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
+          <div 
+            className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start"
+            role="region"
+            aria-label="רשימת טיסות זמינות"
+            aria-live="polite"
+            aria-relevant="additions removals"
+          >
             {flightTicketCards}
             {filteredFlights.length === 0 && !isLoading ? (
-              <div className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex">
-                No flights match your criteria. Please adjust your filters.
+              <div 
+                className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex"
+                role="status"
+                aria-live="polite"
+              >
+                לא נמצאו טיסות התואמות לקריטריונים שלכם. אנא התאימו את המסננים.
               </div>
             ) : (
               filteredFlights.length === 0 &&
               Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="p-24" />
+                <Skeleton key={i} className="p-24" aria-label={`טוען טיסה ${i + 1}`} />
               ))
             )}
           </div>

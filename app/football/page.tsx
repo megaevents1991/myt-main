@@ -14,18 +14,23 @@ export default async function FootballsPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-4xl font-bold text-right mb-8">הקבוצות שלנו</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          role="main"
+          aria-label="רשימת קבוצות הכדורגל"
+        >
           {items.map((team) => (
             <Link
               href={`/football/${team.sys?.id}`}
               key={team.sys.id}
               className="block hover:opacity-90 transition-opacity"
+              aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
             >
-              <div className="border rounded-lg overflow-hidden">
+              <article className="border rounded-lg overflow-hidden">
                 {team.fields.heroBanner?.fields && (
                   <Image
                     src={"https:" + team.fields.heroBanner?.fields?.file?.url}
-                    alt={String(team.fields.name)}
+                    alt={`לוגו של קבוצת ${String(team.fields.name)}`}
                     priority={true}
                     width={400}
                     height={300}
@@ -40,7 +45,7 @@ export default async function FootballsPage() {
                     {String(team.fields?.previewText)}
                   </p>
                 </div>
-              </div>
+              </article>
             </Link>
           ))}
         </div>
@@ -51,7 +56,7 @@ export default async function FootballsPage() {
     return (
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-4xl font-bold text-right mb-8">הקבוצות שלנו</h1>
-        <p className="text-center text-gray-500">שגיאה בטעינת הנתונים</p>
+        <p className="text-center text-gray-500" role="alert" aria-live="polite">שגיאה בטעינת הנתונים</p>
       </div>
     );
   }

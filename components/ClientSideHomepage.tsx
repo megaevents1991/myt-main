@@ -167,6 +167,11 @@ const SearchCombobox = ({
           }}
           onFocus={() => searchValue.length > 1 && combobox.openDropdown()}
           onBlur={() => combobox.closeDropdown()}
+          aria-label="חיפוש אירועים"
+          aria-describedby="search-instructions"
+          role="combobox"
+          aria-expanded={combobox.dropdownOpened}
+          aria-autocomplete="list"
         />
       </Combobox.Target>
       <Combobox.Dropdown
@@ -239,6 +244,8 @@ function CompactEventCard({ event }: { event: Event }) {
         event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
       }`}
       key={event.id}
+      aria-label={`${event.name} - ${event.date} ב${event.location.name}${event.tags === "Sold" ? " - אזלו הכרטיסים" : ""}`}
+      aria-disabled={event.tags === "Sold"}
       onClick={(e) => {
         trackEvent("eventSelected", {
           eventId: event.id,
@@ -353,6 +360,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
       href={`/football/${team.sys?.id}`}
       className="block hover:opacity-90 transition-opacity"
       key={team.sys.id}
+      aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
     >
       <div
         className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
@@ -393,6 +401,7 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
       href={`/artists/${artist.sys?.id}`}
       className="block hover:opacity-90 transition-opacity"
       key={artist.sys.id}
+      aria-label={`עמוד האומן ${artist.fields.name || "לא ידוע"}`}
     >
       <div
         className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
@@ -482,6 +491,7 @@ const UniversalCarousel = ({
       dragFree
       loop={false}
       slidesToScroll={slidesToScroll}
+      aria-label={`רכיבי ${variant === "compact" ? "קומפקטי" : "רגיל"} עם ${items.length} פריטים`}
       classNames={{
         root: isMobile ? "mobile-carousel-rtl" : "",
         container: "py-[2px]",
@@ -564,6 +574,15 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     setShowSearchModal(true);
     setTimeout(() => {
       mobileComboboxRef.current?.focus();
+    }, 100);
+  };
+
+  const handleSearchModalClose = () => {
+    setShowSearchModal(false);
+    // Return focus to the trigger button when modal closes
+    setTimeout(() => {
+      const searchButton = document.querySelector('[aria-label="התחל לחפש אירועים"]') as HTMLElement;
+      searchButton?.focus();
     }, 100);
   };
 
@@ -795,16 +814,26 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 
   return (
     <>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-secondary text-white p-2 rounded z-50">
+        דלג לתוכן הראשי
+      </a>
       {!matches && (
         <Modal
           closeButtonProps={{
             icon: <ArrowLeftIcon />,
             style: { position: "absolute" },
+            "aria-label": "סגור חיפוש"
           }}
           opened={showSearchModal}
           fullScreen
-          onClose={() => setShowSearchModal(false)}
+          onClose={handleSearchModalClose}
+          title="חיפוש אירועים"
+          aria-labelledby="search-modal-title"
+          aria-describedby="search-modal-description"
         >
+          <div id="search-modal-description" className="sr-only">
+            השתמש בשדה החיפוש למציאת אירועים לפי שם, מיקום או תאריך
+          </div>
           <SearchCombobox
             ref={mobileComboboxRef}
             events={initialEvents}
@@ -816,6 +845,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
             }}
             mobile={true}
           />
+          <div id="search-instructions" className="sr-only">
+            הקלד לפחות 2 תווים כדי לראות הצעות חיפוש. השתמש בחצי למעלה ולמטה לניווט ובאנטר לבחירה.
+          </div>
         </Modal>
       )}
       <Modal
@@ -880,7 +912,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           </form>
         )}
       </Modal>
-      <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative">
+      <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative" role="banner">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
             האירועים הכי שווים בעולם
@@ -920,6 +952,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                 className={`w-2/3 rounded-r rounded-l-none p-2 text-main border bg-white ${
                   isSticky ? "border-secondary" : ""
                 }`}
+                aria-label="חיפוש אירועים - לחץ לפתיחת חיפוש מלא"
+                aria-describedby="search-instructions"
               />
             ) : (
               <SearchCombobox
@@ -949,7 +983,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           </form>
         </div>
       </section>
-      <section className="w-full py-10 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6">
+      <section className="w-full py-10 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6" role="main" id="main-content">
         <div className="container mx-auto">
           <div className="sm:hidden py-1">
             <div
@@ -1277,6 +1311,8 @@ function EventCard({ event }: { event: Event }) {
         event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
       }`}
       key={event.id}
+      aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${event.tags === "Sold" ? " - אזלו הכרטיסים" : ""}`}
+      aria-disabled={event.tags === "Sold"}
       onClick={(e) => {
         trackEvent("eventSelected", {
           eventId: event.id,
@@ -1336,27 +1372,47 @@ function EventCard({ event }: { event: Event }) {
           dir="rtl"
         >
           {event.tags === "LastTickets" && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+            <div 
+              className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
+              aria-label="כרטיסים אחרונים זמינים"
+              role="status"
+            >
               כרטיסים אחרונים!
             </div>
           )}
           {event.tags === "Popular" && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+            <div 
+              className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
+              aria-label="אירוע פופולרי שנמכר במהירות"
+              role="status"
+            >
               נמכר במהירות!
             </div>
           )}
           {event.tags === "Restock" && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+            <div 
+              className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
+              aria-label="אירוע שחזר למלאי"
+              role="status"
+            >
               חזר למלאי!
             </div>
           )}
           {event.tags === "VIP" && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+            <div 
+              className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
+              aria-label="אירוח VIP זמין"
+              role="status"
+            >
               אירוח VIP
             </div>
           )}
           {event.tags === "Sold" && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+            <div 
+              className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
+              aria-label="אזלו הכרטיסים לאירוע זה"
+              role="status"
+            >
               אזלו הכרטיסים
             </div>
           )}
