@@ -336,6 +336,9 @@ function CompactEventCard({ event }: { event: Event }) {
             priority={true}
             width={240}
             height={180}
+            style={{
+              objectPosition: 'center top' // or 'center center', '20% 30%', etc.
+            }}
             className="object-cover w-full h-full transition-transform group-hover:scale-105"
           />
         </div>
@@ -376,6 +379,9 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
               priority={true}
               width={240}
               height={180}
+              style={{
+                objectPosition: 'center top' // or 'center center', '20% 30%', etc.
+              }}
               className="object-cover w-full h-full transition-transform group-hover:scale-105"
             />
           )}
@@ -417,6 +423,9 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
               priority={true}
               width={240}
               height={180}
+              style={{
+                objectPosition: 'center top' // or 'center center', '20% 30%', etc.
+              }}
               className="object-cover w-full h-full transition-transform group-hover:scale-105"
             />
           )}
@@ -1422,6 +1431,9 @@ function EventCard({ event }: { event: Event }) {
             priority={true}
             width={400}
             height={300}
+            style={{
+              objectPosition: 'center top' // or 'center center', '20% 30%', etc.
+            }}
             className="object-cover w-full h-72 transition-transform group-hover:scale-105"
           />
         </div>

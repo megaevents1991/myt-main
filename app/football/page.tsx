@@ -34,6 +34,9 @@ export default async function FootballsPage() {
                     priority={true}
                     width={400}
                     height={300}
+                    style={{
+                      objectPosition: 'center top' // or 'center center', '20% 30%', etc.
+                    }}
                     className="w-full h-48 object-cover"
                   />
                 )}
