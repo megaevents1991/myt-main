@@ -47,6 +47,7 @@ export default function LoginPage() {
         <button
           type="submit"
           className="w-full bg-blue-500 text-white p-2 rounded"
+          aria-label="התחבר למערכת השותפים"
         >
           Login
         </button>

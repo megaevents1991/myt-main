@@ -131,13 +131,17 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
         onClick={() => onChange(value - 1)}
         disabled={+value <= minValue}
         className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
+        type="button"
+        aria-label="הפחת כמות כרטיסים"
       >
         <Minus className="h-4 w-4" />
       </button>
-      <div className="w-8 text-xl font-bold text-center">{value}</div>
+      <div className="w-8 text-xl font-bold text-center" role="status" aria-live="polite" aria-label={`${value} כרטיסים נבחרו`}>{value}</div>
       <button
         onClick={() => onChange(value + 1)}
         className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
+        type="button"
+        aria-label="הוסף כמות כרטיסים"
       >
         <Plus className="h-4 w-4" />
       </button>

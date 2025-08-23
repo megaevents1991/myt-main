@@ -465,6 +465,8 @@ export const HotelSelection = () => {
                             <button
                               className="text-[red] px-2 w-full text-right"
                               onClick={() => handleRoomRemove(i)}
+                              type="button"
+                              aria-label={`מחק חדר ${i + 1}`}
                             >
                               מחק חדר
                             </button>
@@ -486,6 +488,8 @@ export const HotelSelection = () => {
                             { adults: 1, children: [] },
                           ])
                         }
+                        type="button"
+                        aria-label="הוסף חדר נוסף"
                       >
                         +הוסף חדר
                       </button>
@@ -511,6 +515,8 @@ export const HotelSelection = () => {
                   disabled={isFetching}
                   onClick={() => fetchHotels()}
                   className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
+                  type="button"
+                  aria-label="חפש מלונות"
                 >
                   <Search size={24} />
                 </button>
@@ -549,6 +555,9 @@ export const HotelSelection = () => {
                         type: "sortOption",
                       })
                     }
+                    type="button"
+                    aria-label="מיין לפי מחיר"
+                    aria-pressed={sortOption === "price_asc"}
                   >
                     מחיר
                   </button>
@@ -563,14 +572,22 @@ export const HotelSelection = () => {
                         type: "sortOption",
                       })
                     }
+                    type="button"
+                    aria-label="מיין לפי דירוג כוכבים"
+                    aria-pressed={sortOption === "rating"}
                   >
                     כוכבים
                   </button>
                 </div>
               }
               settings={
-                <button className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg">
-                  <Settings2Icon onClick={() => setShowFilters(true)} />
+                <button 
+                  className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
+                  type="button"
+                  aria-label="הגדרות מסננים"
+                  onClick={() => setShowFilters(true)}
+                >
+                  <Settings2Icon />
                 </button>
               }
             />

@@ -46,6 +46,8 @@ export class OrderErrorBoundary extends Component<Props, State> {
             <button
               onClick={() => this.setState({ hasError: false })}
               className="bg-main text-white px-6 py-2 rounded-lg hover:bg-secondary transition-colors"
+              type="button"
+              aria-label="Try loading the page again"
             >
               Try Again
             </button>

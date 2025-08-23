@@ -890,6 +890,8 @@ ${selectedHotel.name}
                         <button
                           className="text-sm mr-1 text-blue-600 hover:underline"
                           name="terms"
+                          type="button"
+                          aria-label="קרא את התנאים וההגבלות"
                         >
                           התנאים וההגבלות
                         </button>
@@ -1263,6 +1265,8 @@ ${selectedHotel.name}
                         <button
                           className="text-sm mr-1 text-blue-600 hover:underline"
                           name="terms"
+                          type="button"
+                          aria-label="קרא את התנאים וההגבלות"
                         >
                           התנאים וההגבלות
                         </button>

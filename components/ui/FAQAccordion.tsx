@@ -34,6 +34,7 @@ function FAQItem({
   hasRichText?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const contentId = `faq-content-${question.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -50,15 +51,17 @@ function FAQItem({
           setIsOpen(!isOpen);
         }}
         aria-expanded={isOpen}
+        aria-controls={contentId}
+        type="button"
       >
         <span className="font-bold">{question}</span>
-        <span className="text-xl font-bold text-gray-500">
+        <span className="text-xl font-bold text-gray-500" aria-hidden="true">
           {isOpen ? "−" : "+"}
         </span>
       </button>
 
       {isOpen && (
-        <div className="p-4 bg-white">
+        <div className="p-4 bg-white" id={contentId} role="region" aria-labelledby={contentId}>
           {hasRichText ? (
             <div
               dangerouslySetInnerHTML={{ __html: answer }}

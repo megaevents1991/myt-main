@@ -465,6 +465,8 @@ export const FlightSelection = () => {
                   onClick={handleFlightSearch}
                   disabled={isLoading}
                   className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
+                  type="button"
+                  aria-label="חפש טיסות"
                 >
                   <Search size={24} />
                 </button>
@@ -487,8 +489,13 @@ export const FlightSelection = () => {
           <Skeleton visible={isLoading}>
             <SortOptionsContainer
               settings={
-                <button className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg">
-                  <Settings2Icon onClick={() => setShowFilters(true)} />
+                <button 
+                  className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
+                  type="button"
+                  aria-label="הגדרות מסננים"
+                  onClick={() => setShowFilters(true)}
+                >
+                  <Settings2Icon />
                 </button>
               }
               sortOptions={
@@ -499,6 +506,9 @@ export const FlightSelection = () => {
                       sortOption === "price_asc" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("price_asc")}
+                    type="button"
+                    aria-label="מיין לפי מחיר"
+                    aria-pressed={sortOption === "price_asc"}
                   >
                     מחיר
                   </button>
@@ -508,6 +518,9 @@ export const FlightSelection = () => {
                       sortOption === "duration" && "text-white bg-main"
                     )}
                     onClick={() => handleSortChange("duration")}
+                    type="button"
+                    aria-label="מיין לפי משך טיסה"
+                    aria-pressed={sortOption === "duration"}
                   >
                     משך טיסה
                   </button>
@@ -517,6 +530,9 @@ export const FlightSelection = () => {
                       isIsraeliFilter && "text-white bg-secondary"
                     )}
                     onClick={handleIsraeliFilter}
+                    type="button"
+                    aria-label="הצג רק חברות תעופה ישראליות"
+                    aria-pressed={isIsraeliFilter}
                   >
                     ישראלי
                   </button>

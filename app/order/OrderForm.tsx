@@ -230,6 +230,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
                       "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
                       buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                     )}
+                    type="button"
+                    aria-label={buttonText[step]}
                   >
                     {buttonText[step]}
                   </button>

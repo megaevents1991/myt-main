@@ -204,8 +204,11 @@ export const HotelFilters = ({
             placeholder="חפש מלון..."
             type="text"
             className="w-2/3 rounded-r p-2 text-main border text-xs"
+            id="hotel-search-input"
+            aria-label="חפש מלון לפי שם"
           />
           <button
+            type="submit"
             className="w-1/3 bg-secondary text-white rounded-l flex items-center justify-center"
             onClick={(e) => {
               e.preventDefault();
@@ -215,6 +218,7 @@ export const HotelFilters = ({
               });
               setSearchValue("");
             }}
+            aria-label="חפש מלון"
           >
             <Search />
           </button>

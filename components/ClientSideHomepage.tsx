@@ -873,6 +873,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
             <button
               type="submit"
               className="bg-secondary hover:bg-secondary-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              aria-label="שלח בקשה להצעת מחיר"
             >
               שלח
             </button>
@@ -940,6 +941,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                   ref.current?.focus();
                 }
               }}
+              type="button"
+              aria-label="התחל לחפש אירועים"
             >
               התחילו לתכנן!
             </button>

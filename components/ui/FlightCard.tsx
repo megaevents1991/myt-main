@@ -106,6 +106,8 @@ const LuggageButton = ({
         "bg-gray-200 rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
         isSelected && "bg-[#277E892e]"
       )}
+      type="button"
+      aria-label={`מידע על מזוודות: תיק יד כלול, ${cabinBagsIncluded ? 'מזוודת תא נוסעים כלולה' : 'מזוודת תא נוסעים לא כלולה'}, ${checkBagsIncluded ? 'מזוודה נרשמת כלולה' : 'מזוודה נרשמת לא כלולה'}`}
     >
       <div className="flex flex-col items-center justify-evenly h-full gap-0">
         <BagIconContainer
