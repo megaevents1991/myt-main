@@ -371,7 +371,7 @@ export const FlightSelection = () => {
     return (
       <div className="text-center text-red-500">
         <p>{error}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4">
+        <Button onClick={() => window.location.reload()} className="mt-4" aria-label="נסה שוב לטעון טיסות">
           Try Again
         </Button>
       </div>

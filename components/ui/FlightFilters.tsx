@@ -52,6 +52,16 @@ const TimeBlock = ({
       "flex flex-col items-center p-2 rounded-lg cursor-pointer transition-colors",
       selected ? "bg-primary/10" : "hover:bg-primary/5"
     )}
+    role="button"
+    tabIndex={0}
+    aria-pressed={selected}
+    aria-label={`${label} - ${time}`}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onClick?.();
+      }
+    }}
   >
     {icon}
     <div className="text-lg font-medium text-right">{label}</div>
@@ -269,10 +279,10 @@ export const FlightFilters = ({
         <h3 className="text-lg font-semibold mt-4 mb-2">חברות תעופה</h3>
         <Checkbox.Group value={selectedValues} onChange={handleChangeAirlines}>
           <div className="flex space-x-2 space-x-reverse mt-2">
-            <Button size="xs" variant="outline" onClick={selectAll}>
+            <Button size="xs" variant="outline" onClick={selectAll} aria-label="בחר את כל חברות התעופה">
               בחר הכל
             </Button>
-            <Button size="xs" variant="outline" onClick={clearAll}>
+            <Button size="xs" variant="outline" onClick={clearAll} aria-label="נקה את כל חברות התעופה">
               נקה הכל
             </Button>
           </div>

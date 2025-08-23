@@ -567,6 +567,7 @@ ${selectedHotel.name}
             variant="secondary"
             className="font-bold w-full"
             onClick={HandleTimeoutModalAction}
+            aria-label={isTimeout ? "התחל הזמנה חדשה" : "סגור הודעת זמן"}
           >
             {isTimeout ? "שננסה מחדש?" : "הבנתי"}
           </Button>
@@ -1021,6 +1022,7 @@ ${selectedHotel.name}
                 onClick={(e) => handleSubmit(e, true)}
                 className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] hidden md:block"
                 disabled={isSubmitting}
+                aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
                 המשך לתשלום מאובטח
               </Button>
@@ -1030,6 +1032,7 @@ ${selectedHotel.name}
                 variant={"link"}
                 className="w-full text-[14px] font-bold !mt-0 underline h-[52px] hidden md:block"
                 disabled={isSubmitting}
+                aria-label="דבר עם נציג לקבלת עזרה"
               >
                 צריך עזרה? דבר עם נציג
               </Button>
@@ -1391,6 +1394,7 @@ ${selectedHotel.name}
                 onClick={(e) => handleSubmit(e, true)}
                 className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden"
                 disabled={isSubmitting}
+                aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
                 המשך לתשלום מאובטח
               </Button>
@@ -1400,6 +1404,7 @@ ${selectedHotel.name}
                 variant={"link"}
                 className="w-full text-[14px] font-bold !mt-0 underline h-[52px] block md:hidden"
                 disabled={isSubmitting}
+                aria-label="דבר עם נציג לקבלת עזרה"
               >
                 צריך עזרה? דבר עם נציג
               </Button>

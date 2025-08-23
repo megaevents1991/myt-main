@@ -264,7 +264,7 @@ export default function ConfirmationPage() {
               </div>
             </div>
             <Link href="/" className="mt-6">
-              <Button className="w-full">חזור לדף הבית</Button>
+              <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
             </Link>
           </div>
         </div>
@@ -325,7 +325,7 @@ export default function ConfirmationPage() {
               </div>
             </div>
             <Link href="/" className="mt-6">
-              <Button className="w-full">חזור לדף הבית</Button>
+              <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
             </Link>
           </div>
         </div>

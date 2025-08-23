@@ -26,11 +26,17 @@ const CounterInput: React.FC<CounterInputProps> = ({
       size="icon"
       onClick={onDecrement}
       disabled={+value <= minValue}
+      aria-label={`הפחת ${label}`}
     >
       <Minus className="h-4 w-4" />
     </Button>
-    <div className="w-16 text-center">{value}</div>
-    <Button variant="outline" size="icon" onClick={onIncrement}>
+    <div className="w-16 text-center" role="status" aria-live="polite" aria-label={`${value} ${label}`}>{value}</div>
+    <Button 
+      variant="outline" 
+      size="icon" 
+      onClick={onIncrement}
+      aria-label={`הוסף ${label}`}
+    >
       <Plus className="h-4 w-4" />
     </Button>
   </div>
@@ -129,6 +135,7 @@ const ChildrenAgeSelect = ({
       value={age}
       onChange={handleChange}
       className="text-center border border-gray-300 rounded-md px-2 py-1"
+      aria-label="גיל ילד"
     >
       <option value="1">0-1</option>
       {Array.from({ length: 16 }, (_, i) => i).map((age) => (

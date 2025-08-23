@@ -82,7 +82,7 @@ export function ShareButton({ shareText }: ShareButtonProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 rounded-full">
+        <Button variant="ghost" className="h-8 w-8 rounded-full" aria-label="שתף תוכן">
           <Share2 className="!w-5 !h-5" />
           <span className="sr-only">שתף</span>
         </Button>
@@ -91,6 +91,7 @@ export function ShareButton({ shareText }: ShareButtonProps) {
         <DropdownMenuItem
           onClick={() => window.open(shareLinks.whatsapp, "_blank")}
           className="cursor-pointer hover:bg-green-50"
+          role="menuitem"
         >
           <div className="flex items-center gap-3">
             <WhatsAppIcon />
@@ -100,6 +101,7 @@ export function ShareButton({ shareText }: ShareButtonProps) {
         <DropdownMenuItem
           onClick={() => window.open(shareLinks.messenger, "_blank")}
           className="cursor-pointer hover:bg-blue-50"
+          role="menuitem"
         >
           <div className="flex items-center gap-3">
             <MessengerIcon />
@@ -109,6 +111,7 @@ export function ShareButton({ shareText }: ShareButtonProps) {
         <DropdownMenuItem
           onClick={() => window.open(shareLinks.telegram, "_blank")}
           className="cursor-pointer hover:bg-blue-50"
+          role="menuitem"
         >
           <div className="flex items-center gap-3">
             <TelegramIcon />

@@ -84,6 +84,7 @@ export const ReferFriend = ({
           variant="default"
           className="flex items-center justify-center px-3 py-1 w-full bg-white rounded-[10px] hover:bg-white/90"
           onClick={handleGetReferralLink}
+          aria-label="קבל קישור הפניה לחברים"
         >
           <span className="font-bold text-[#277e89] text-base leading-normal [font-family:'IBM_Plex_Sans_Hebrew',Helvetica] tracking-[0] [direction:rtl]">
             {"העתיקו את הקישור"}
@@ -152,6 +153,7 @@ export const ReferFriend = ({
                 variant="outline"
                 className="flex flex-col items-center p-8"
                 onClick={handleCopy}
+                aria-label="העתק קישור הפניה"
               >
                 <FiCopy size={36} className="text-[#277e89]" />
                 <span className="text-base font-medium">העתק</span>
