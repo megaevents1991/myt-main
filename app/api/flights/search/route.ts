@@ -17,6 +17,53 @@ import {
   extractUserAgentFromRequest 
 } from "@/lib/gtmAnalytics";
 
+// Type definition for Amadeus API error response
+interface AmadeusError {
+  response?: {
+    result?: {
+      errors?: Array<{
+        status: number;
+        code: number;
+        title: string;
+      }>;
+    };
+  };
+}
+
+// Helper function to retry Amadeus API calls with exponential backoff
+// This specifically handles the "SYSTEM ERROR HAS OCCURRED" (status: 500, code: 141) error from Amadeus
+async function retryAmadeusCall<T>(
+  apiCall: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error: unknown) {
+      // Check if this is the specific Amadeus system error we want to retry
+      const amadeusError = error as AmadeusError;
+      const isSystemError = amadeusError?.response?.result?.errors?.some(
+        (err) => err.status === 500 && err.code === 141 && err.title === "SYSTEM ERROR HAS OCCURRED"
+      );
+      
+      // If it's the last attempt or not a system error, throw the error
+      if (attempt === maxRetries || !isSystemError) {
+        throw error;
+      }
+      
+      // Calculate delay with exponential backoff (1s, 2s, 4s, etc.)
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.warn(`Amadeus API system error (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error("All retry attempts failed");
+}
+
 export const maxDuration = 30;
 const currencyCode = "USD";
 const MAX_STOP_DURATION_HOURS = 4;
@@ -196,16 +243,18 @@ export async function POST(request: Request) {
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 
-    const response = await amadeus.shopping.flightOffersSearch.get({
-      originLocationCode,
-      destinationLocationCode: event.location.city_iata,
-      departureDate,
-      returnDate,
-      adults: adults || 1,
-      max: 250,
-      nonStop,
-      currencyCode,
-    });
+    const response = await retryAmadeusCall(() => 
+      amadeus.shopping.flightOffersSearch.get({
+        originLocationCode,
+        destinationLocationCode: event.location.city_iata,
+        departureDate,
+        returnDate,
+        adults: adults || 1,
+        max: 250,
+        nonStop,
+        currencyCode,
+      })
+    );
 
     const flights = await getOfflineFlightsFromDB(
       event.location.city_iata,
