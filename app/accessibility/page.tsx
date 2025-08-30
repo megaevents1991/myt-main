@@ -107,7 +107,7 @@ export default async function AccessibilityPage() {
         <div className="container mx-auto max-w-4xl px-4">
           <div className="prose prose-lg max-w-none">
             <p className="text-gray-700 mb-8 text-lg leading-relaxed">
-              אנו ב־<strong>מגה איבנטס</strong> רואים חשיבות רבה במתן שירות שוויוני לכלל הציבור ובשיפור הנגישות באתר ובשירותים הדיגיטליים שלנו, מתוך מטרה לאפשר לאנשים עם מוגבלות להשתמש בשירותי האתר באופן שוויוני, נגיש ונוח ככל האפשר.
+              אנו ב<strong>מגה איבנטס</strong> רואים חשיבות רבה במתן שירות שוויוני לכלל הציבור ובשיפור הנגישות באתר ובשירותים הדיגיטליים שלנו, מתוך מטרה לאפשר לאנשים עם מוגבלות להשתמש בשירותי האתר באופן שוויוני, נגיש ונוח ככל האפשר.
             </p>
 
             <p className="text-gray-700 mb-12 text-lg leading-relaxed">

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const dynamic = "force-static"; // This is optional, but good for fully static pages
 export const revalidate = 3600; // Optional: revalidate every hour
 
@@ -203,8 +205,11 @@ export default function TermsOfUse() {
         <h2 className="text-2xl font-semibold mb-2">שמירה על פרטיות וסודיות</h2>
         <p>
           1. מגה איבנטס מכבדת את פרטיות הלקוח ונוקטת באמצעים המקובלים לשמור
-          עליה, ככל האפשר. לעיון <a href="#">(הכנס לינק) {/* TODO */}</a>{" "}
-          במדיניות הפרטיות של האתר לחץ כאן.
+          עליה, ככל האפשר. לפרטים נוספים על אופן איסוף ושימוש במידע אישי, עיין ב
+          <Link href="/privacy" className="text-blue-600 hover:underline mx-1">
+            מדיניות הפרטיות שלנו
+          </Link>
+          .
         </p>
         <p>
           2. הואיל ומדיניות הפרטיות יכולה להשתנות מדי פעם, מומלץ לחזור ולקרוא את
