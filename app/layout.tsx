@@ -203,46 +203,59 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                     מהווה הסכמה לשימוש זה. למידע נוסף ניתן לעיין במדיניות
                     הפרטיות של האתר.
                   </p>{" "}
-                  <div className="container mx-auto text-white flex flex-col sm:flex-row justify-between items-center gap-y-4 sm:gap-0 mb-8">
-                    <nav className="flex gap-4 sm:gap-6 font-bold">
-                      <Link
-                        className="text-sm hover:underline underline-offset-4"
-                        href="/about"
-                      >
-                        אודותינו
-                      </Link>
-                      <Link
-                        className="text-sm hover:underline underline-offset-4"
-                        href="/faq"
-                      >
-                        שאלות נפוצות
-                      </Link>
-                      <Link
-                        className="text-sm hover:underline underline-offset-4"
-                        href="/artists"
-                      >
-                        האומנים שלנו
-                      </Link>
-                      <Link
-                        className="text-sm hover:underline underline-offset-4"
-                        href="/football"
-                      >
-                        הקבוצות שלנו
-                      </Link>
-                      <Link
-                        className="text-sm hover:underline underline-offset-4"
-                        href="/terms"
-                      >
-                        תנאי שימוש
-                      </Link>
-                      <Link
-                        className="text-sm hover:underline underline-offset-4"
-                        href="/cancellation"
-                      >
-                        ביטול הזמנה
-                      </Link>
-                    </nav>
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="container mx-auto text-white mb-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-y-4 sm:gap-0">
+                      <nav className="flex flex-wrap gap-x-4 gap-y-3 sm:gap-x-6 sm:gap-y-4 font-bold justify-center sm:justify-start">
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/about"
+                        >
+                          אודותינו
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/faq"
+                        >
+                          שאלות נפוצות
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/artists"
+                        >
+                          האומנים שלנו
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/football"
+                        >
+                          הקבוצות שלנו
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/terms"
+                        >
+                          תנאי שימוש
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/privacy"
+                        >
+                          מדיניות פרטיות
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/accessibility"
+                        >
+                          הצהרת נגישות
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/cancellation"
+                        >
+                          ביטול הזמנה
+                        </Link>
+                      </nav>
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
                       {" "}
                       {/* Social Media Links */}
                       <div className="flex gap-4">
@@ -286,9 +299,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                           </div>
                         </Link>
                       </div>
-                      <p className="text-sm mb-4 sm:mb-0">
+                      <p className="text-xs sm:text-sm text-center sm:text-left">
                         © 2025 מגה איבנטס מבית מגה תיירות. כל הזכויות שמורות.
                       </p>
+                      </div>
                     </div>
                   </div>
                 </footer>
