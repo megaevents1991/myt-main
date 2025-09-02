@@ -55,6 +55,18 @@ const nextConfig: import("next").NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "doctorticket.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.doctorticket.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "upload.wikimedia.org",
         port: "",
         pathname: "/wikipedia/**",
