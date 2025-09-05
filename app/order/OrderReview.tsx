@@ -1122,7 +1122,7 @@ ${selectedHotel.name}
               {/* CTA Button */}
               <Button
                 onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] hidden md:block"
+                className="w-full bg-[#05203c] font-bold hover:bg-[#05203c]/90 text-[18px] h-[52px] hidden md:block"
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
@@ -1133,20 +1133,21 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                  className="flex-1 text-[18px] font-bold underline h-[52px] border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
-                  דבר עם נציג
+                  ?רוצים לפצל תשלום<br />דברו עם נציג
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                  className="flex-1 text-[18px] font-bold underline h-[52px] border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
-                  הבטיחו את המחיר ל-24 שעות
+                  ?צריכים עוד זמן<br />
+                  הבטיחו מחיר ל-24 שעות
                 </Button>
               </div>
             </div>
@@ -1511,7 +1512,7 @@ ${selectedHotel.name}
               {/* CTA Button */}
               <Button
                 onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-[#05203c] hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden"
+                className="w-full bg-[#05203c] font-bold hover:bg-[#05203c]/90 text-[18px] h-[52px] block md:hidden"
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
