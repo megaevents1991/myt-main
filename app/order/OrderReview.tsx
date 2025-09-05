@@ -1401,7 +1401,7 @@ ${selectedHotel.name}
                 className="flex md:hidden flex-col mr-2 mt-4 mb-2 text-right"
                 dir="rtl"
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 justify-center">
                   <div className="relative">
                     <Checkbox
                       id="terms-mobile"
@@ -1424,7 +1424,7 @@ ${selectedHotel.name}
                           type="button"
                           aria-label="קרא את התנאים וההגבלות"
                         >
-                          התנאים וההגבלות
+                          התנאים ומדיניות הביטולים
                         </button>
                       </DialogTrigger>
                       <DialogContent
