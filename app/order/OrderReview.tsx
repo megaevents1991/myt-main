@@ -871,11 +871,109 @@ ${selectedHotel.name}
                 </div>
               </Card>
 
+              {/* Mobile: Payment security logos moved directly after summary (before passenger details) */}
+              <div className="flex items-center justify-center gap-4 !my-8 md:hidden">
+                <Image
+                  src="/amex.svg"
+                  alt="American Express"
+                  width={40}
+                  height={25}
+                  className="h-6 w-auto"
+                  unoptimized
+                />
+                <Image
+                  src="/logo__pci.svg"
+                  alt="PCI Compliant"
+                  width={40}
+                  height={25}
+                  className="h-7 w-auto"
+                  unoptimized
+                />
+                <Image
+                  src="/mastercardSecuerd.png"
+                  alt="Mastercard Secure"
+                  width={50}
+                  height={30}
+                  className="h-8 w-auto"
+                  unoptimized
+                />
+                <Image
+                  src="/VisaVerify.png"
+                  alt="Visa Verified"
+                  width={50}
+                  height={30}
+                  className="h-8 w-auto"
+                  unoptimized
+                />
+              </div>
+
+              {/* Mobile: Interest-free installment banner (restyled to appear informational, not a button) */}
+              <div className="md:hidden w-full -mt-4 mb-6 px-4" aria-label="תשלומים ללא ריבית 5">
+                <div className="w-full rounded-md bg-secondary/10  border-secondary/40 text-secondary text-center py-2.5 px-3 text-[15px] font-semibold leading-snug tracking-wide shadow-sm">
+<span dir="rtl" className="inline-block align-middle">
+  5 תשלומים ללא ריבית בכרטיס אשראי
+</span>
+                </div>
+              </div>
+
+              {/* Mobile: Trust section repositioned right after payment logos */}
+              {agentCommission <= 0 && (
+                <Card
+                  className="bg-white shadow-lg overflow-hidden md:hidden"
+                  dir="rtl"
+                >
+                  {(() => {
+                    const items = [
+                      {
+                        title: "100% אחריות",
+                        description:
+                          "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל- 30 שנות ניסיון ואלפי לקוחות מרוצים.",
+                      },
+                      {
+                        title: "כרטיסים מובטחים",
+                        description:
+                          "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים - אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
+                      },
+                      {
+                        title: "שירות אישי ואנושי",
+                        description:
+                          "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בווטסאפ!)",
+                      },
+                    ];
+
+                    return (
+                      <div className="bg-white p-4 md:p-8 space-y-6 mx-auto text-right">
+                        {items.map((item, idx) => (
+                          <div key={idx} className="flex">
+                            <Image
+                              src="/icons/checkmark-wavey-circle.svg"
+                              alt="check"
+                              width={24}
+                              height={24}
+                              className="w-7 h-7 mt-1"
+                              unoptimized
+                            />
+                            <div className="flex-1 pr-4">
+                              <h3 className="text-lg font-semibold text-gray-800">
+                                {item.title}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {item.description}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </Card>
+              )}
+
               <div
                 className="hidden md:flex flex-col mr-2 mt-4 mb-2 text-right"
                 dir="rtl"
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <div className="relative">
                     <Checkbox
                       id="terms"
@@ -898,7 +996,7 @@ ${selectedHotel.name}
                           type="button"
                           aria-label="קרא את התנאים וההגבלות"
                         >
-                          התנאים וההגבלות
+                          התנאים ומדיניות הביטולים
                         </button>
                       </DialogTrigger>
                       <DialogContent
@@ -1247,9 +1345,10 @@ ${selectedHotel.name}
                   </form>
                 </div>
               </Card>
+              {/* Trust */}
               {agentCommission <= 0 && (
                 <Card
-                  className="bg-white shadow-lg overflow-hidden order-4 md:order-3"
+                  className="bg-white shadow-lg overflow-hidden order-4 md:order-3 hidden md:block"
                   dir="rtl"
                 >
                   {(() => {
@@ -1267,7 +1366,7 @@ ${selectedHotel.name}
                       {
                         title: "שירות אישי ואנושי",
                         description:
-                          "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בוואטספ!)",
+                          "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בווטסאפ!)",
                       },
                     ];
 
@@ -1408,41 +1507,7 @@ ${selectedHotel.name}
                 </div>
                 {termsCheckboxTouched && !termsAccepted && <TermsError />}{" "}
               </div>
-              {/* Payment security logos */}
-              <div className="flex items-center justify-center gap-4 my-4 md:hidden">
-                <Image
-                  src="/amex.svg"
-                  alt="American Express"
-                  width={40}
-                  height={25}
-                  className="h-6 w-auto"
-                  unoptimized
-                />
-                <Image
-                  src="/logo__pci.svg"
-                  alt="PCI Compliant"
-                  width={40}
-                  height={25}
-                  className="h-7 w-auto"
-                  unoptimized
-                />
-                <Image
-                  src="/mastercardSecuerd.png"
-                  alt="Mastercard Secure"
-                  width={50}
-                  height={30}
-                  className="h-8 w-auto"
-                  unoptimized
-                />
-                <Image
-                  src="/VisaVerify.png"
-                  alt="Visa Verified"
-                  width={50}
-                  height={30}
-                  className="h-8 w-auto"
-                  unoptimized
-                />
-              </div>
+              {/* Payment security logos (mobile moved earlier) - removed here */}
               {/* CTA Button */}
               <Button
                 onClick={(e) => handleSubmit(e, true)}
