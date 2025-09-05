@@ -1031,15 +1031,26 @@ ${selectedHotel.name}
                 המשך לתשלום מאובטח
               </Button>
 
-              <Button
-                onClick={handleSubmit}
-                variant={"link"}
-                className="w-full text-[14px] font-bold !mt-0 underline h-[52px] hidden md:block"
-                disabled={isSubmitting}
-                aria-label="דבר עם נציג לקבלת עזרה"
-              >
-                צריך עזרה? דבר עם נציג
-              </Button>
+              <div className="hidden md:flex gap-2 mt-0">
+                <Button
+                  onClick={handleSubmit}
+                  variant={"link"}
+                  className="flex-1 text-[18px] font-bold underline h-[52px]"
+                  disabled={isSubmitting}
+                  aria-label="צור קשר עם נציג"
+                >
+                  דבר עם נציג
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  variant={"link"}
+                  className="flex-1 text-[18px] font-bold underline h-[52px]"
+                  disabled={isSubmitting}
+                  aria-label="הבטיחו את המחיר ל-24 שעות"
+                >
+                  הבטיחו את המחיר ל-24 שעות
+                </Button>
+              </div>
             </div>
             <div className="space-y-6 order-2 md:order-2">
               <Card className="bg-white shadow-lg overflow-hidden">
@@ -1246,12 +1257,12 @@ ${selectedHotel.name}
                       {
                         title: "100% אחריות",
                         description:
-                          "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל-30 שנות ניסיון ואלפי לקוחות מרוצים.",
+                          "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל- 30 שנות ניסיון ואלפי לקוחות מרוצים.",
                       },
                       {
                         title: "כרטיסים מובטחים",
                         description:
-                          "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים –אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
+                          "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים - אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
                       },
                       {
                         title: "שירות אישי ואנושי",
@@ -1442,15 +1453,26 @@ ${selectedHotel.name}
                 המשך לתשלום מאובטח
               </Button>
 
-              <Button
-                onClick={handleSubmit}
-                variant={"link"}
-                className="w-full text-[14px] font-bold !mt-0 underline h-[52px] block md:hidden"
-                disabled={isSubmitting}
-                aria-label="דבר עם נציג לקבלת עזרה"
-              >
-                צריך עזרה? דבר עם נציג
-              </Button>
+        <div className="flex gap-2 mt-0 md:hidden w-full flex-wrap">
+                <Button
+                  onClick={handleSubmit}
+                  variant={"link"}
+          className="flex-1 min-w-0 text-[14px] font-bold underline h-[52px] whitespace-normal break-words text-center"
+                  disabled={isSubmitting}
+                  aria-label="צור קשר עם נציג"
+                >
+                  דבר עם נציג
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  variant={"link"}
+          className="flex-1 min-w-0 text-[14px] font-bold underline h-[52px] whitespace-normal break-words text-center"
+                  disabled={isSubmitting}
+                  aria-label="הבטיחו את המחיר ל-24 שעות"
+                >
+                  הבטיחו את המחיר ל-24 שעות
+                </Button>
+              </div>
             </div>
           </div>
         </main>

@@ -73,13 +73,13 @@ export default function MegaEventsSection() {
         >
           <p className="mb-6">
             Mega Events הוא שירות חדשני מבית{" "}
-            <span className="font-semibold text-primary">מגה תיירות</span> –
+            <span className="font-semibold text-primary">מגה תיירות</span> -
             מובילה בתחום התיירות כבר יותר מ-30 שנה.
           </p>
           <p className="mb-6">
             אנו מבינים כמה חשוב לכם לדעת שהכל מתנהל בידיים בטוחות, לכן יצרנו
             עבורכם פלטפורמה חכמה להרכבת חבילות בהתאמה אישית. כאן הכל בידיים
-            שלכם: לבחור, לשנות, להתאים – בקלות, במהירות, ובגיבוי מלא של צוות
+            שלכם: לבחור, לשנות, להתאים - בקלות, במהירות, ובגיבוי מלא של צוות
             המומחים שלנו.
           </p>
 
@@ -88,7 +88,7 @@ export default function MegaEventsSection() {
             אחריות מלאה על הכרטיסים!
           </div>
 
-          {/* אמינות – מיני כרטיסים */}
+          {/* אמינות - מיני כרטיסים */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-primary text-center mb-6">
             {[
               {
@@ -179,7 +179,7 @@ export default function MegaEventsSection() {
 
           {/* סיום */}
           <p className="font-bold text-main">
-            הרכיבו את החוויה שמתאימה לכם – ואנחנו נדאג שהיא תתממש בדיוק כפי
+            הרכיבו את החוויה שמתאימה לכם - ואנחנו נדאג שהיא תתממש בדיוק כפי
             שבחרתם.
           </p>
         </motion.div>

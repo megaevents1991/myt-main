@@ -63,7 +63,7 @@ export const userEmail = (
           <div style="color: #ffffff; margin-bottom: 15px; direction: rtl;" dir="rtl">
               <p style="font-size: 18px; margin: 0 0 10px 0; direction: rtl;" dir="rtl">הזמינו חברים לחופשה ותוכלו לקבל</p>
               <p style="font-size: 24px; font-weight: bold; margin: 0 0 10px 0; direction: rtl;" dir="rtl">עד <span style="unicode-bidi: embed;">$800</span> החזר!</p>
-              <p style="font-size: 16px; margin: 0; direction: rtl;" dir="rtl">המליצו לחברים – <strong>תקבלו $40 על כל נוסע שיזמין דרך הלינק, </strong>וגם הם יהנו מהטבה בלעדית!</p>
+              <p style="font-size: 16px; margin: 0; direction: rtl;" dir="rtl">המליצו לחברים - <strong>תקבלו $40 על כל נוסע שיזמין דרך הלינק, </strong>וגם הם יהנו מהטבה בלעדית!</p>
           </div>
           
           <!-- Referral Link (LTR content in RTL context) -->

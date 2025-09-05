@@ -94,7 +94,7 @@ export default async function PrivacyPage() {
       <header className="w-full py-8 px-4 text-white bg-main" dir="rtl">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-4">
-            מדיניות פרטיות – MegaEvents
+            מדיניות פרטיות - MegaEvents
           </h1>
           <p className="text-lg max-w-2xl mx-auto">
             עדכון אחרון: 10.08.2025
@@ -151,8 +151,8 @@ export default async function PrivacyPage() {
                 אנו משתמשים במידע האישי שלך אך ורק לצרכים הבאים:
               </p>
               <ol className="list-decimal list-inside space-y-3 text-gray-700">
-                <li>מתן השירותים שהזמנת – רכישת חבילות תיירות, לינה, טיסות ואירועים.</li>
-                <li>שיווק והצעות מותאמות אישית – אך רק אם נתת הסכמה מראש (double opt-in).</li>
+                <li>מתן השירותים שהזמנת - רכישת חבילות תיירות, לינה, טיסות ואירועים.</li>
+                <li>שיווק והצעות מותאמות אישית - אך רק אם נתת הסכמה מראש (double opt-in).</li>
                 <li>ניתוח סטטיסטי לשיפור חוויית המשתמש באתר ובשירותים.</li>
               </ol>
             </div>
@@ -166,9 +166,9 @@ export default async function PrivacyPage() {
                 מידע אישי עשוי להיות משותף עם:
               </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 mb-6">
-                <li>ספקי תשלום (PCI compliant) – אין לנו גישה למידע הפיננסי.</li>
+                <li>ספקי תשלום (PCI compliant) - אין לנו גישה למידע הפיננסי.</li>
                 <li>ספקי שירותי אנליטיקה (Google Analytics, Mixpanel).</li>
-                <li>ספקי שירותי שיווק – רק אם תסכים לקבל דיוור שיווקי בעתיד.</li>
+                <li>ספקי שירותי שיווק - רק אם תסכים לקבל דיוור שיווקי בעתיד.</li>
               </ul>
               <p className="text-gray-700">
                 אנו מתחייבים לא לשתף את המידע שלך עם צדדים אחרים ללא הסכמתך, למעט דרישות חוקיות.
@@ -184,10 +184,10 @@ export default async function PrivacyPage() {
                 לפי חוק הגנת הפרטיות, יש לך את הזכויות הבאות:
               </p>
               <ol className="list-decimal list-inside space-y-3 text-gray-700 mb-6">
-                <li><strong>זכות העיון</strong> – לבקש לדעת איזה מידע אישי נשמר עליך.</li>
-                <li><strong>זכות התיקון</strong> – לבקש לתקן מידע אישי שגוי או לא מדויק.</li>
-                <li><strong>זכות המחיקה</strong> – לבקש למחוק את המידע האישי שלך, למעט מידע הכרחי לעמידה בחובות חוקיות (למשל חיוב כספי או שמירה על ספרי חשבונות).</li>
-                <li><strong>זכות ההתנגדות</strong> – להתנגד לשימוש במידע שלך לצרכים שאינם חיוניים, כגון שיווק ישיר.</li>
+                <li><strong>זכות העיון</strong> - לבקש לדעת איזה מידע אישי נשמר עליך.</li>
+                <li><strong>זכות התיקון</strong> - לבקש לתקן מידע אישי שגוי או לא מדויק.</li>
+                <li><strong>זכות המחיקה</strong> - לבקש למחוק את המידע האישי שלך, למעט מידע הכרחי לעמידה בחובות חוקיות (למשל חיוב כספי או שמירה על ספרי חשבונות).</li>
+                <li><strong>זכות ההתנגדות</strong> - להתנגד לשימוש במידע שלך לצרכים שאינם חיוניים, כגון שיווק ישיר.</li>
               </ol>
               <div className="bg-green-50 border-r-4 border-green-400 p-4">
                 <p className="text-gray-700">
@@ -212,7 +212,7 @@ export default async function PrivacyPage() {
               </ul>
               <p className="text-gray-700">
                 ניתן לשלוט בהגדרות ה-Cookies דרך דפדפן האינטרנט שלך.
-                בעתיד, אם תחליט לקבל דיוור שיווקי – יופיע <strong>checkbox הסכמה</strong> וניתן יהיה להסיר את עצמך מהדיוור בכל עת.
+                בעתיד, אם תחליט לקבל דיוור שיווקי - יופיע <strong>checkbox הסכמה</strong> וניתן יהיה להסיר את עצמך מהדיוור בכל עת.
               </p>
             </div>
 
