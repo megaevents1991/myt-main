@@ -1133,7 +1133,7 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
@@ -1142,7 +1142,7 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
@@ -1523,7 +1523,7 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
@@ -1532,7 +1532,7 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
