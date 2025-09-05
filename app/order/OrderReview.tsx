@@ -1035,7 +1035,7 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                  className="flex-1 text-[18px] font-bold underline h-[52px]"
+                  className="flex-1 text-[18px] font-bold underline h-[52px] border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
@@ -1044,7 +1044,7 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                  className="flex-1 text-[18px] font-bold underline h-[52px]"
+                  className="flex-1 text-[18px] font-bold underline h-[52px] border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
@@ -1452,12 +1452,12 @@ ${selectedHotel.name}
               >
                 המשך לתשלום מאובטח
               </Button>
-
-        <div className="flex gap-2 mt-0 md:hidden w-full flex-wrap">
+              
+              <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-          className="flex-1 min-w-0 text-[14px] font-bold underline h-[52px] whitespace-normal break-words text-center"
+                className="flex-[2] min-w-0 px-2 text-[16px] font-bold h-[52px] whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
@@ -1466,11 +1466,11 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-          className="flex-1 min-w-0 text-[14px] font-bold underline h-[52px] whitespace-normal break-words text-center"
+                className="flex-[3] min-w-0 px-2 text-[16px] font-bold h-[52px] whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
-                  הבטיחו את המחיר ל-24 שעות
+                  הבטיחו מחיר ל-24 שעות
                 </Button>
               </div>
             </div>
