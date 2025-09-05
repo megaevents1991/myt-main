@@ -908,7 +908,7 @@ ${selectedHotel.name}
               </div>
 
               {/* Mobile: Interest-free installment banner (restyled to appear informational, not a button) */}
-              <div className="md:hidden w-full -mt-4 mb-6 px-4" aria-label="תשלומים ללא ריבית 5">
+              <div className="md:hidden w-full !my-8 px-4" aria-label="תשלומים ללא ריבית 5">
                 <div className="w-full rounded-md bg-secondary/10  border-secondary/40 text-secondary text-center py-2.5 px-3 text-[15px] font-semibold leading-snug tracking-wide shadow-sm">
 <span dir="rtl" className="inline-block align-middle">
   5 תשלומים ללא ריבית בכרטיס אשראי
@@ -1522,19 +1522,20 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[2] min-w-0 px-2 text-[16px] font-bold h-[52px] whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
-                  דבר עם נציג
+                  ?רוצים לפצל תשלום<br />דברו עם נציג
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[16px] font-bold h-[52px] whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
+                  ?צריכים עוד זמן<br />
                   הבטיחו מחיר ל-24 שעות
                 </Button>
               </div>
