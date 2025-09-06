@@ -187,7 +187,7 @@ export async function POST(request: Request) {
 
         // Transform rooms data
         const rooms = hotel.room_groups?.reduce((roomsAcc, room) => {
-          if (room.name && !!room.images.length) {
+          if (room.name && !!room.images?.length) {
             roomsAcc[room.name] = {
               name: room.name,
               images: room.images,
