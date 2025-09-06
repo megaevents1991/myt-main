@@ -51,8 +51,10 @@ const SearchCombobox = ({
   const router = useRouter();
   const combobox = useCombobox();
 
+  const NonSoldOutEvents4Search = events.filter(event => event.tags !== "Sold");
+
   // Memoize Fuse instance to prevent recreation on every render
-  const fuse = useMemo(() => new Fuse(events, fuseOptions), [events]);
+  const fuse = useMemo(() => new Fuse(NonSoldOutEvents4Search, fuseOptions), [NonSoldOutEvents4Search]);
 
   const value = searchValue.toLowerCase().trim();
   const filteredOptions = value
