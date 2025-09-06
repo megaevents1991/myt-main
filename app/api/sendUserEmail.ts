@@ -9,11 +9,13 @@ const EMAIL_SERVER_PASSWORD = process.env.EMAIL_SERVER_PASSWORD || "";
 export const sendUserEmail = async ({
   orderData,
   payNow = false,
+  onlySave = false,
   isPaymentSuccess = false,
   partnerTrackingCode = null,
 }: {
   orderData: OrderData;
   payNow?: boolean;
+  onlySave?: boolean;
   isPaymentSuccess?: boolean;
   partnerTrackingCode?: string | null;
 }) => {
@@ -43,9 +45,23 @@ export const sendUserEmail = async ({
       title: "הזמנתך נתקבלה בהצלחה",
       message: "נציג ממגה איבנטס ייצור איתך קשר ביום העסקים הקרוב לקבלת תשלום ומתן מענה לכל שאלה נוספת.",
     },
+    savedOrder: {
+      // OnlySave = true (hold) – similar to phone order but wording indicates a temporary hold
+      subject: `שמירת ההזמנה ל-24 שעות | מגה איבנטס`,
+      title: "ההזמנה נשמרה ל-24 שעות",
+      message:
+        `שמחנו לשמור עבורך את ההזמנה למשך 24 שעות הקרובות.<br>להשלמת הרכישה ותשלום עכשיו ניתן ליצור איתנו קשר בטלפון <strong>054-200-2722</strong> או להשיב למייל זה.<br>שימי/שימו לב: המחירים והמלאי אינם מובטחים לאחר תום תקופת ההחזקה ועלולים להשתנות.<br>נשמח לעמוד לרשותך בכל שאלה.`,
+    },
   };
 
-  const emailTemplate = payNow ? ( isPaymentSuccess ? emailtemplates.successfulPurchase : emailtemplates.failedPurchase ) : emailtemplates.phoneOrder;
+  // Template selection precedence: saved hold (onlySave) > payNow success/fail > phone order fallback
+  const emailTemplate = onlySave
+    ? emailtemplates.savedOrder
+    : payNow
+    ? isPaymentSuccess
+      ? emailtemplates.successfulPurchase
+      : emailtemplates.failedPurchase
+    : emailtemplates.phoneOrder;
 
   const replacements = {
     bookingReference: orderData.booking_reference,

@@ -11,7 +11,7 @@ import {
 } from "@/lib/gtmAnalytics";
 
 export async function POST(req: Request) {
-  const { payNow, gtmIdnts, ...orderDetails } = await req.json();
+  const { payNow, onlySave, gtmIdnts, ...orderDetails } = await req.json();
 
   const validatedData: OrderData = await validateOrderData(orderDetails);
 
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       final_purchase_price_ils: validatedData.final_purchase_price_ils,
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
       gtmIdnts: gtmIdnts || null,
-      status: "Pending",
+      status: onlySave ? "24Save" : "Pending",
     })
     .select()
     .single();
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
           New Order Details:
           Name: ${validatedData.main_contact_first_name} ${validatedData.main_contact_last_name}
           Contact Details: ${validatedData.main_contact_phone_number}, ${validatedData.main_contact_email}
-          Payment Method: ${payNow ? "Credit Card" : "Phone Order"}
+          Payment Method: ${onlySave ? "24Save" : (payNow ? "Credit Card" : "Phone Order")}
           More Pax: ${validatedData.more_pax_info.length}- ${validatedData.more_pax_info.map(pax => `${pax.first_name} ${pax.last_name}`).join('; ')}
 
           ******** Event Details ********
@@ -166,6 +166,7 @@ export async function POST(req: Request) {
       await sendUserEmail({
         orderData: { ...validatedData, booking_reference: bookingReference },
         payNow,
+        onlySave,
         partnerTrackingCode,
       });
 

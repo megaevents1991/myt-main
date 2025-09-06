@@ -354,7 +354,8 @@ ${selectedHotel.name}
 
   const submitOrder = async (
     orderData: Omit<OrderData, "booking_reference" | "confirmation_email_sent">,
-    payNow: boolean
+    payNow: boolean,
+    onlySave: boolean
   ) => {
     const gtmIdnts =
       document.cookie
@@ -371,6 +372,7 @@ ${selectedHotel.name}
         ...orderData,
         payNow,
         gtmIdnts,
+        onlySave,
       }),
     });
 
@@ -400,7 +402,7 @@ ${selectedHotel.name}
     return await response.json();
   };
 
-  const handleSubmit = async (e: React.FormEvent, payNow = false) => {
+  const handleSubmit = async (e: React.FormEvent, payNow = false, onlySave = false) => {
     e.preventDefault();
     setTermsCheckboxTouched(true);
 
@@ -459,7 +461,7 @@ ${selectedHotel.name}
     };
 
     try {
-      const result = await submitOrder(updatedFormData, payNow);
+      const result = await submitOrder(updatedFormData, payNow, onlySave);
 
       orderStage("CONFIRMED", {
         // TO DO: temp workaround as order stage doesn't work (router.push?)
@@ -492,8 +494,11 @@ ${selectedHotel.name}
         }
         window.location.replace(url);
       } else {
-        // Redirect to the order confirmation page
-        router.push(`/confirmation/${result.id}/${result.newPromoterCode}`);
+        // Redirect to the order confirmation page.
+        // If this was a 24h hold (onlySave), append a query param so the confirmation screen can show hold-specific messaging.
+        const basePath = `/confirmation/${result.id}/${result.newPromoterCode}`;
+        const targetPath = onlySave ? `${basePath}?onlySave=1` : basePath;
+        router.push(targetPath);
       }
     } catch (error) {
       // TO DO: Handle error (e.g., show error message)
@@ -1140,7 +1145,7 @@ ${selectedHotel.name}
                   ?רוצים לפצל תשלום<br />דברו עם נציג
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  onClick={(e) => handleSubmit(e, false, true)}
                   variant={"link"}
                 className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
@@ -1530,7 +1535,7 @@ ${selectedHotel.name}
                   ?רוצים לפצל תשלום<br />דברו עם נציג
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  onClick={(e) => handleSubmit(e, false, true)}
                   variant={"link"}
                 className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}

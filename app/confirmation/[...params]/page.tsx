@@ -29,6 +29,7 @@ type OrderConfirmationData = {
 
 export default function ConfirmationPage() {
   const searchParams = useSearchParams();
+  const isHold = searchParams.get("onlySave") === "1"; // 24h hold (onlySave flow)
   const [isLoading, setIsLoading] = useState(true);
   const [orderConfirmationData, setOrderConfirmationData] =
     useState<OrderConfirmationData>({} as OrderConfirmationData);
@@ -195,8 +196,14 @@ export default function ConfirmationPage() {
         <div className="rounded-full bg-green-100 p-3 mb-4">
           <Check className="h-8 w-8 text-green-600" />
         </div>
-        <h1 className="text-3xl font-bold">הזמנתכם נקלטה</h1>
-        <p className="mt-2 text-xl">תודה שבחרתם MegaEvents ו- {eventName}</p>
+        <h1 className="text-3xl font-bold">
+          {isHold ? "ההזמנה נשמרה ל-24 שעות" : "הזמנתכם נקלטה"}
+        </h1>
+        <p className="mt-2 text-xl">
+          {isHold
+            ? <>תודה שבחרתם MegaEvents – שמרנו עבורכם את החבילה ל-24 שעות עבור {eventName}</>
+            : <>תודה שבחרתם MegaEvents ו- {eventName}</>}
+        </p>
       </div>
       {partnerTrackingCode ? (
         <div className="md:flex md:flex-row md:gap-8 md:items-start md:max-w-4xl w-full flex flex-col">
@@ -210,20 +217,24 @@ export default function ConfirmationPage() {
             id="order_summary_confirmation"
             className="max-w-md w-full mt-6 text-center order-1 md:order-2"
           >
-            {isPaid === "success" ? (
+            {isHold ? (
+              <p className="my-2 text-blue-700 font-bold" dir="rtl">
+                ההזמנה נשמרה עבורך ל-24 שעות. להשלמת הרכישה ולקיבוע המחיר חייג/י
+                <span className="mx-1 font-extrabold">054-200-2722</span>
+                או השב/י למייל שנשלח אליך. לאחר 24 שעות המלאי והמחיר עלולים
+                להשתנות.
+              </p>
+            ) : isPaid === "success" ? (
               <p className="my-2 text-lg text-green-600" dir="rtl">
-                התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים
-                הבא.
+                התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
               </p>
             ) : isPaid === "error" ? (
               <p className="my-2 text-lg text-red-600" dir="rtl">
-                אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים
-                הבא.
+                אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
               </p>
             ) : (
               <p className="my-2 text-green-600 font-bold" dir="rtl">
-                ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת
-                תשלום ואישור הרכישה.
+                ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
               </p>
             )}
             <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
@@ -271,20 +282,24 @@ export default function ConfirmationPage() {
       ) : (
         <div>
           <div className="max-w-md w-full mt-6 text-center">
-            {isPaid === "success" ? (
+            {isHold ? (
+              <p className="my-2 text-blue-700 font-bold" dir="rtl">
+                ההזמנה נשמרה עבורך ל-24 שעות. להשלמת הרכישה ולקיבוע המחיר חייג/י
+                <span className="mx-1 font-extrabold">054-200-2722</span>
+                או השב/י למייל שנשלח אליך. לאחר 24 שעות המלאי והמחיר עלולים
+                להשתנות.
+              </p>
+            ) : isPaid === "success" ? (
               <p className="my-2 text-lg text-green-600" dir="rtl">
-                התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים
-                הבא.
+                התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
               </p>
             ) : isPaid === "error" ? (
               <p className="my-2 text-lg text-red-600" dir="rtl">
-                אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים
-                הבא.
+                אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
               </p>
             ) : (
               <p className="my-2 text-green-600 font-bold" dir="rtl">
-                ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת
-                תשלום ואישור הרכישה.
+                ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
               </p>
             )}
             <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
