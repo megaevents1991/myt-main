@@ -5,6 +5,7 @@ import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields, ArtistFields, Artist, CarouselFields } from "@/lib/app.types";
+import CacheValidator from "@/components/CacheValidator";
 
 // Force static generation
 export const dynamic = "force-static";
@@ -76,12 +77,18 @@ async function getOrderedArtists(): Promise<Artist[]> {
 }
 
 export default async function Home() {
+  // Add timestamp for cache validation
+  const timestamp = Date.now();
+  
   const events = await getEventsForPage();
   const footballTeams = await getFootballTeams();
   const artists = await getOrderedArtists();
 
   return (
     <main>
+      <CacheValidator pageId="homepage" />
+      {/* Add invisible element with timestamp for client checking */}
+      <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
       <StructuredData events={events.events} />
       <ClientSideHomepage initialEvents={events.events} footballTeams={footballTeams} artists={artists} />
       <MegaEventsSection />

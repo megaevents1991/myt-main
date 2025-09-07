@@ -13,6 +13,7 @@ import Link from "next/link";
 import { getEventsByName } from "@/lib/eventsData";
 import EventButton from "../../../components/EventButton";
 import ClientTracker from "../../../components/ClientTracker";
+import CacheValidator from "../../../components/CacheValidator";
 
 export const revalidate = 3600;
 
@@ -37,6 +38,9 @@ export default async function ArtistPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  
+  // Add timestamp for cache validation
+  const timestamp = Date.now();
   
   try {
     const artist = await contentfulClient.getEntry<ArtistFields>(slug);
@@ -79,6 +83,9 @@ export default async function ArtistPage({
   return (
     <div dir="rtl" className="container mx-auto py-8 px-4">
       <ClientTracker />
+      <CacheValidator pageId={slug} />
+      {/* Add invisible element with timestamp for client checking */}
+      <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
       <h1 className="text-4xl font-bold mb-4">{name}</h1>
       <div className="prose max-w-none">
         {documentToReactComponents(bioDocument, options)}
