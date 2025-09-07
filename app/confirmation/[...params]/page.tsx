@@ -3,7 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Copy, Link2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { OrderData } from "@/lib/app.types";
 import dayjs from "dayjs";
@@ -25,6 +25,7 @@ type OrderConfirmationData = {
   hotel: string;
   isPaid: PaymentStatus;
   partnerTrackingCode: string | null;
+  eventId: number;
 };
 
 export default function ConfirmationPage() {
@@ -33,6 +34,7 @@ export default function ConfirmationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [orderConfirmationData, setOrderConfirmationData] =
     useState<OrderConfirmationData>({} as OrderConfirmationData);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const { params } = useParams();
 
@@ -130,6 +132,7 @@ export default function ConfirmationPage() {
           bookingReference: orderData.booking_reference,
           isPaid,
           partnerTrackingCode: promoCode === "dummy_code" ? null : promoCode,
+          eventId: orderData.event_id,
         };
         setOrderConfirmationData(orderDataToShow);
 
@@ -163,6 +166,78 @@ export default function ConfirmationPage() {
   useEffect(() => {
     handlePageOpen();
   }, []);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+    }
+  };
+
+  const getOrderRecoveryUrl = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/order/${orderConfirmationData.eventId}?orderId=${orderId}`;
+  };
+
+  const OrderRecoverySection = () => {
+    const recoveryUrl = getOrderRecoveryUrl();
+    
+    return (
+      <div className="bg-secondary/5 border border-secondary/20 rounded-lg p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3" dir="rtl">
+          <Link2 className="h-5 w-5 text-secondary" />
+          <h3 className="font-semibold text-secondary">קישור להשלמת ההזמנה</h3>
+        </div>
+        <p className="text-sm text-secondary/80 mb-3" dir="rtl">
+          שמרו את הקישור כדי לגשת להזמנה שלכם ב-24 שעות הקרובות ולשלם במועד מאוחר יותר אם תרצו
+        </p>
+        <div 
+          className={`relative cursor-pointer rounded-lg border-2 transition-all duration-200 ${
+            copySuccess 
+              ? "bg-secondary/10 border-secondary/50 shadow-sm" 
+              : "bg-secondary/5 border-secondary/40 hover:border-secondary/60 hover:bg-secondary/10"
+          }`}
+          onClick={() => copyToClipboard(recoveryUrl)}
+        >
+          <div className="flex items-center justify-between p-4">
+            <div className="flex-1 min-w-0 ml-3">
+              <p className="text-sm font-medium text-secondary mb-1" dir="rtl">
+                לחץ כדי להעתיק קישור
+              </p>
+              <p className="text-xs text-secondary/90 break-all font-mono leading-relaxed">
+                {recoveryUrl}
+              </p>
+            </div>
+            <div className="flex items-center flex-shrink-0">
+              <Copy className={`h-5 w-5 transition-colors ${
+                copySuccess ? "text-secondary" : "text-secondary"
+              }`} />
+            </div>
+          </div>
+          {copySuccess && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-lg">
+              <div className="flex items-center gap-2 px-6 py-3 bg-secondary text-white rounded-full shadow-lg border border-secondary/20">
+                <Check className="h-5 w-5 text-white" />
+                <span className="text-sm font-medium text-white">הלינק הועתק</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex justify-center">
+          <Button 
+            onClick={() => window.open(recoveryUrl, '_blank')}
+            className="bg-secondary hover:bg-secondary/90 text-white px-4 py-2 text-sm"
+            dir="rtl"
+          >
+            עבור להשלמת ההזמנה
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -200,9 +275,7 @@ export default function ConfirmationPage() {
           {isHold ? "ההזמנה נשמרה ל-24 שעות" : "הזמנתכם נקלטה"}
         </h1>
         <p className="mt-2 text-xl">
-          {isHold
-            ? <>תודה שבחרתם MegaEvents – שמרנו עבורכם את החבילה ל-24 שעות עבור {eventName}</>
-            : <>תודה שבחרתם MegaEvents ו- {eventName}</>}
+          {<>תודה שבחרתם MegaEvents</>}
         </p>
       </div>
       {partnerTrackingCode ? (
@@ -217,26 +290,26 @@ export default function ConfirmationPage() {
             id="order_summary_confirmation"
             className="max-w-md w-full mt-6 text-center order-1 md:order-2"
           >
-            {isHold ? (
-              <p className="my-2 text-blue-700 font-bold" dir="rtl">
-                ההזמנה נשמרה עבורך ל-24 שעות. להשלמת הרכישה ולקיבוע המחיר חייג/י
-                <span className="mx-1 font-extrabold">054-200-2722</span>
-                או השב/י למייל שנשלח אליך. לאחר 24 שעות המלאי והמחיר עלולים
-                להשתנות.
-              </p>
-            ) : isPaid === "success" ? (
-              <p className="my-2 text-lg text-green-600" dir="rtl">
-                התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
-              </p>
-            ) : isPaid === "error" ? (
-              <p className="my-2 text-lg text-red-600" dir="rtl">
-                אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
-              </p>
-            ) : (
-              <p className="my-2 text-green-600 font-bold" dir="rtl">
-                ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
-              </p>
+            {!isHold && (
+              <>
+                {isPaid === "success" ? (
+                  <p className="my-2 text-lg text-green-600" dir="rtl">
+                    התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
+                  </p>
+                ) : isPaid === "error" ? (
+                  <p className="my-2 text-lg text-red-600" dir="rtl">
+                    אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
+                  </p>
+                ) : (
+                  <p className="my-2 text-green-600 font-bold" dir="rtl">
+                    ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
+                  </p>
+                )}
+              </>
             )}
+            
+            <OrderRecoverySection />
+            
             <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
               <h2 className="text-2xl font-bold mb-4 text-center">
                 פרטי ההזמנה
@@ -274,6 +347,7 @@ export default function ConfirmationPage() {
                 </p>
               </div>
             </div>
+            
             <Link href="/" className="mt-6">
               <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
             </Link>
@@ -282,26 +356,26 @@ export default function ConfirmationPage() {
       ) : (
         <div>
           <div className="max-w-md w-full mt-6 text-center">
-            {isHold ? (
-              <p className="my-2 text-blue-700 font-bold" dir="rtl">
-                ההזמנה נשמרה עבורך ל-24 שעות. להשלמת הרכישה ולקיבוע המחיר חייג/י
-                <span className="mx-1 font-extrabold">054-200-2722</span>
-                או השב/י למייל שנשלח אליך. לאחר 24 שעות המלאי והמחיר עלולים
-                להשתנות.
-              </p>
-            ) : isPaid === "success" ? (
-              <p className="my-2 text-lg text-green-600" dir="rtl">
-                התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
-              </p>
-            ) : isPaid === "error" ? (
-              <p className="my-2 text-lg text-red-600" dir="rtl">
-                אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
-              </p>
-            ) : (
-              <p className="my-2 text-green-600 font-bold" dir="rtl">
-                ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
-              </p>
+            {!isHold && (
+              <>
+                {isPaid === "success" ? (
+                  <p className="my-2 text-lg text-green-600" dir="rtl">
+                    התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
+                  </p>
+                ) : isPaid === "error" ? (
+                  <p className="my-2 text-lg text-red-600" dir="rtl">
+                    אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
+                  </p>
+                ) : (
+                  <p className="my-2 text-green-600 font-bold" dir="rtl">
+                    ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
+                  </p>
+                )}
+              </>
             )}
+            
+            <OrderRecoverySection />
+            
             <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
               <h2 className="text-2xl font-bold mb-4 text-center">
                 פרטי ההזמנה
@@ -339,6 +413,7 @@ export default function ConfirmationPage() {
                 </p>
               </div>
             </div>
+            
             <Link href="/" className="mt-6">
               <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
             </Link>

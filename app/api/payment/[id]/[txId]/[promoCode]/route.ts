@@ -67,6 +67,7 @@ export async function GET(
       isPaymentSuccess: isSuccess,
       payNow: true,
       partnerTrackingCode: promoCode,
+      orderId: parseInt(id),
     });
 
     updateObj["confirmation_email_sent"] = true;

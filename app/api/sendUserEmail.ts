@@ -12,12 +12,14 @@ export const sendUserEmail = async ({
   onlySave = false,
   isPaymentSuccess = false,
   partnerTrackingCode = null,
+  orderId,
 }: {
   orderData: OrderData;
   payNow?: boolean;
   onlySave?: boolean;
   isPaymentSuccess?: boolean;
   partnerTrackingCode?: string | null;
+  orderId?: number;
 }) => {
   const transporter = nodemailer.createTransport({
     host: "smtp.zeptomail.com",
@@ -46,7 +48,6 @@ export const sendUserEmail = async ({
       message: "נציג ממגה איבנטס ייצור איתך קשר ביום העסקים הקרוב לקבלת תשלום ומתן מענה לכל שאלה נוספת.",
     },
     savedOrder: {
-      // OnlySave = true (hold) – similar to phone order but wording indicates a temporary hold
       subject: `שמירת ההזמנה ל-24 שעות | מגה איבנטס`,
       title: "ההזמנה נשמרה ל-24 שעות",
       message:
@@ -86,6 +87,8 @@ export const sendUserEmail = async ({
     hotel: orderData.hotel_order_info?.name,
     price: orderData.final_purchase_price_ils,
     promoCode: partnerTrackingCode || undefined,
+    orderId: orderId,
+    eventId: orderData.event_id,
   };
 
   const userEmailContent = userEmail(replacements); // @TODO YAKOV - Only for the secondary CTA of talk to rep. For payment CTA we need to send the emails after payment resultion.

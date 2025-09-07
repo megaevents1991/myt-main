@@ -15,8 +15,11 @@ import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
 import { Stepper } from "@/components/ui/Stepper";
 import { HotelFetchProvider } from "../hooks/HotelFetch.provider";
+import { LoaderWrapper } from "@/components/ui/loader";
+import { OrderExpiryProvider, useOrderExpiry } from "../hooks/useOrderExpiry";
+import OrderExpiredNotice from "@/components/OrderExpiredNotice";
 
-const OrderLayout = ({ children }: { children: ReactNode }) => {
+const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>(undefined);
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
@@ -30,12 +33,29 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [selectedHotelFilters, setSelectedHotelFilters] = useState<
     Partial<HotelSearchCriteria>
   >({});
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [passengers, setPassengers] = useState<
+    { [key: string]: string }[] | undefined
+  >(undefined);
+  
+  const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
+  
   const handleStepperClick = (index: number) => {
     if (index + 1 < step) {
       setStep(index + 1);
     }
   };
+
+  // If order is expired, show the expiry notice
+  if (isOrderExpired) {
+    return (
+      <OrderExpiredNotice
+        eventId={expiryDetails?.eventId}
+        eventName={expiryDetails?.eventName}
+        onRedirect={clearExpiry}
+      />
+    );
+  }
 
   return (
     <div className="w-full">
@@ -64,11 +84,25 @@ const OrderLayout = ({ children }: { children: ReactNode }) => {
           setNumberOfEventTickets,
           planeTickets,
           setPlaneTickets,
+          globalLoader: isLoading,
+          setGlobalLoader: setIsLoading,
+          passengers,
+          setPassengers,
         }}
       >
-        <HotelFetchProvider>{children}</HotelFetchProvider>
+        <HotelFetchProvider>
+          <LoaderWrapper isLoading={isLoading}>{children}</LoaderWrapper>
+        </HotelFetchProvider>
       </OrderContext.Provider>
     </div>
+  );
+};
+
+const OrderLayout = ({ children }: { children: ReactNode }) => {
+  return (
+    <OrderExpiryProvider>
+      <OrderLayoutContent>{children}</OrderLayoutContent>
+    </OrderExpiryProvider>
   );
 };
 export default OrderLayout;

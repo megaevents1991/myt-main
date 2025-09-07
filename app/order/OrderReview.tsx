@@ -48,6 +48,8 @@ export default function OrderReview() {
     setPaymentMethod,
     numberOfEventTickets,
     setStep,
+    passengers: passengersContext,
+    setPassengers: setPassengersContext,
   } = useContext(OrderContext);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,12 +58,13 @@ export default function OrderReview() {
     { [key: string]: string }[]
   >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
   const [passengers, setPassengers] = useState(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
-      firstName: "",
-      lastName: "",
-      phone: "",
-      email: "",
-    }))
+    passengersContext ||
+      Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+        firstName: "",
+        lastName: "",
+        phone: "",
+        email: "",
+      }))
   );
   const [touched, setTouched] = useState(
     Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
@@ -71,7 +74,10 @@ export default function OrderReview() {
       email: false,
     }))
   );
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(
+    //If there are passengers in context from existing order, assume terms were accepted, we can keep separate state for it if needed in the future
+    passengersContext ? true : false
+  );
   const [termsCheckboxTouched, setTermsCheckboxTouched] = useState(false);
   const {
     numberOfPersons,
@@ -86,6 +92,14 @@ export default function OrderReview() {
     hotelPriceAddition,
     totalGuests,
   } = useOrderVars();
+
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount, clear passengers in context to avoid stale data
+      setPassengersContext(undefined);
+    };
+  }, []);
+
   const [openModal, setOpenModal] = useState(true);
   const [isTimeout, setIsTimeout] = useState(false);
   const [isPayNow, setIsPayNow] = useState(false);
@@ -122,7 +136,7 @@ export default function OrderReview() {
             date: event?.date,
             category: event?.type,
             location: event?.location?.name,
-            tags: event?.tags
+            tags: event?.tags,
           },
           eventType: "view_cart",
           gtmIdnts,
@@ -133,8 +147,8 @@ export default function OrderReview() {
     }
   };
 
-  const finalPurchasePrice = useMemo(() => 
-    finalPurchasePriceCalc(affDiscount), 
+  const finalPurchasePrice = useMemo(
+    () => finalPurchasePriceCalc(affDiscount),
     [finalPurchasePriceCalc, affDiscount]
   );
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
@@ -402,7 +416,11 @@ ${selectedHotel.name}
     return await response.json();
   };
 
-  const handleSubmit = async (e: React.FormEvent, payNow = false, onlySave = false) => {
+  const handleSubmit = async (
+    e: React.FormEvent,
+    payNow = false,
+    onlySave = false
+  ) => {
     e.preventDefault();
     setTermsCheckboxTouched(true);
 
@@ -562,7 +580,10 @@ ${selectedHotel.name}
     <div className="min-h-screen bg-white">
       <div className="sr-only">
         <h1>סיכום הזמנה לאירוע {event?.name}</h1>
-        <p>בדוק את פרטי ההזמנה שלך, הזן פרטי נוסעים ואשר את התנאים כדי להשלים את ההזמנה</p>
+        <p>
+          בדוק את פרטי ההזמנה שלך, הזן פרטי נוסעים ואשר את התנאים כדי להשלים את
+          ההזמנה
+        </p>
       </div>
       <Modal
         title={isTimeout ? "הזמן אזל" : "הכרטיסים שלכם שמורים!"}
@@ -913,11 +934,14 @@ ${selectedHotel.name}
               </div>
 
               {/* Mobile: Interest-free installment banner (restyled to appear informational, not a button) */}
-              <div className="md:hidden w-full !my-8 px-4" aria-label="תשלומים ללא ריבית 5">
+              <div
+                className="md:hidden w-full !my-8 px-4"
+                aria-label="תשלומים ללא ריבית 5"
+              >
                 <div className="w-full rounded-md bg-secondary/10  border-secondary/40 text-secondary text-center py-2.5 px-3 text-[15px] font-semibold leading-snug tracking-wide shadow-sm">
-<span dir="rtl" className="inline-block align-middle">
-  5 תשלומים ללא ריבית בכרטיס אשראי
-</span>
+                  <span dir="rtl" className="inline-block align-middle">
+                    5 תשלומים ללא ריבית בכרטיס אשראי
+                  </span>
                 </div>
               </div>
 
@@ -1138,20 +1162,23 @@ ${selectedHotel.name}
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
+                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
-                  ?רוצים לפצל תשלום<br />דברו עם נציג
+                  ?רוצים לפצל תשלום
+                  <br />
+                  דברו עם נציג
                 </Button>
                 <Button
                   onClick={(e) => handleSubmit(e, false, true)}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
+                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
-                  ?צריכים עוד זמן<br />
+                  ?צריכים עוד זמן
+                  <br />
                   הבטיחו מחיר ל-24 שעות
                 </Button>
               </div>
@@ -1159,14 +1186,17 @@ ${selectedHotel.name}
             <div className="space-y-6 order-2 md:order-2">
               <Card className="bg-white shadow-lg overflow-hidden">
                 <div className="px-8 pt-6 pb-8">
-                  <h2 className="text-2xl font-bold mb-4 text-right" id="passenger-details-heading">
+                  <h2
+                    className="text-2xl font-bold mb-4 text-right"
+                    id="passenger-details-heading"
+                  >
                     פרטי הנוסעים
                   </h2>
                   <h3 className="text-lg mb-4 text-right">
                     יש להזין שמות כפי שמופיעים בדרכון
                   </h3>
-                  <form 
-                    className="space-y-5" 
+                  <form
+                    className="space-y-5"
                     dir="rtl"
                     aria-labelledby="passenger-details-heading"
                     noValidate
@@ -1178,13 +1208,22 @@ ${selectedHotel.name}
                       ) => (
                         <div key={index} className="space-y-4">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-[15px]" id={`passenger-${index}-heading`}>
+                            <h3
+                              className="font-medium text-[15px]"
+                              id={`passenger-${index}-heading`}
+                            >
                               נוסע {index + 1}
                             </h3>
                           </div>
-                          <fieldset className="grid grid-cols-2 gap-4" aria-labelledby={`passenger-${index}-heading`}>
+                          <fieldset
+                            className="grid grid-cols-2 gap-4"
+                            aria-labelledby={`passenger-${index}-heading`}
+                          >
                             <div className="space-y-1">
-                              <Label htmlFor={`firstName-${index}`} className="sr-only">
+                              <Label
+                                htmlFor={`firstName-${index}`}
+                                className="sr-only"
+                              >
                                 שם פרטי באנגלית לנוסע {index + 1}
                               </Label>
                               <Input
@@ -1195,12 +1234,18 @@ ${selectedHotel.name}
                                 autoComplete="given-name"
                                 type="text"
                                 placeholder="שם פרטי באנגלית"
-                                aria-label={`שם פרטי באנגלית לנוסע ${index + 1}`}
+                                aria-label={`שם פרטי באנגלית לנוסע ${
+                                  index + 1
+                                }`}
                                 aria-required="true"
-                                aria-invalid={touched[index]?.firstName && !!validationErrors[index]?.firstName}
+                                aria-invalid={
+                                  touched[index]?.firstName &&
+                                  !!validationErrors[index]?.firstName
+                                }
                                 aria-describedby={
-                                  touched[index]?.firstName && validationErrors[index]?.firstName 
-                                    ? `firstName-error-${index}` 
+                                  touched[index]?.firstName &&
+                                  validationErrors[index]?.firstName
+                                    ? `firstName-error-${index}`
                                     : undefined
                                 }
                                 className={cn(
@@ -1221,7 +1266,7 @@ ${selectedHotel.name}
                               />
                               {touched[index]?.firstName &&
                                 validationErrors[index]?.firstName && (
-                                  <p 
+                                  <p
                                     id={`firstName-error-${index}`}
                                     className="text-sm text-red-500 text-right"
                                     role="alert"
@@ -1232,7 +1277,10 @@ ${selectedHotel.name}
                                 )}
                             </div>
                             <div className="space-y-1">
-                              <Label htmlFor={`lastName-${index}`} className="sr-only">
+                              <Label
+                                htmlFor={`lastName-${index}`}
+                                className="sr-only"
+                              >
                                 שם משפחה באנגלית לנוסע {index + 1}
                               </Label>
                               <Input
@@ -1243,12 +1291,18 @@ ${selectedHotel.name}
                                 data-mp-allow="true"
                                 name="last-name"
                                 autoComplete="family-name"
-                                aria-label={`שם משפחה באנגלית לנוסע ${index + 1}`}
+                                aria-label={`שם משפחה באנגלית לנוסע ${
+                                  index + 1
+                                }`}
                                 aria-required="true"
-                                aria-invalid={touched[index]?.lastName && !!validationErrors[index]?.lastName}
+                                aria-invalid={
+                                  touched[index]?.lastName &&
+                                  !!validationErrors[index]?.lastName
+                                }
                                 aria-describedby={
-                                  touched[index]?.lastName && validationErrors[index]?.lastName 
-                                    ? `lastName-error-${index}` 
+                                  touched[index]?.lastName &&
+                                  validationErrors[index]?.lastName
+                                    ? `lastName-error-${index}`
                                     : undefined
                                 }
                                 className={cn(
@@ -1269,7 +1323,7 @@ ${selectedHotel.name}
                               />
                               {touched[index]?.lastName &&
                                 validationErrors[index]?.lastName && (
-                                  <p 
+                                  <p
                                     id={`lastName-error-${index}`}
                                     className="text-sm text-red-500 text-right"
                                     role="alert"
@@ -1523,25 +1577,28 @@ ${selectedHotel.name}
               >
                 המשך לתשלום מאובטח
               </Button>
-              
+
               <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
+                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
-                  ?רוצים לפצל תשלום<br />דברו עם נציג
+                  ?רוצים לפצל תשלום
+                  <br />
+                  דברו עם נציג
                 </Button>
                 <Button
                   onClick={(e) => handleSubmit(e, false, true)}
                   variant={"link"}
-                className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
+                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}
                   aria-label="הבטיחו את המחיר ל-24 שעות"
                 >
-                  ?צריכים עוד זמן<br />
+                  ?צריכים עוד זמן
+                  <br />
                   הבטיחו מחיר ל-24 שעות
                 </Button>
               </div>

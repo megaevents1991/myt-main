@@ -14,6 +14,8 @@ import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
+import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
+import { shortenAirlineName } from "./order-review.utils";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -37,6 +39,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
     paymentMethod,
   } = useContext(OrderContext);
 
+  useHandleExistingOrder();
+
   const { affDiscount, affId } = useFetchAffiliate(); // @TODO: should be removed and called once in ticket selection
   const {
     numberOfPersons,
@@ -55,38 +59,6 @@ export const OrderForm = ({ event }: { event: Event }) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  function shortenAirlineName(name: string | undefined) {
-    if (!name) {
-      return "";
-    }
-
-    const words = name.split(/\s+/); // Split by spaces
-    let shortName = "";
-    let charCount = 0;
-
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-
-      // If it's the first word and longer than 6 chars, return it directly
-      if (i === 0 && word.length > 6) {
-        return word;
-      }
-
-      if (charCount + word.length > 6) {
-        if (word.length >= 10) {
-          return shortName.trim(); // Stop if the word is very long (10+ chars)
-        } else {
-          return (shortName + " " + word[0] + ".").trim(); // Add first letter of next word + "."
-        }
-      }
-
-      shortName += (shortName ? " " : "") + word;
-      charCount += word.length;
-    }
-
-    return shortName.trim();
-  }
-
   const buttonDisabled =
     (!flight?.id && step === 2) || (!hotel?.id && step === 3);
 
@@ -94,9 +66,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const ticketCategory = eventTicket.category;
 
-  const minTicketPrice = event.tickets_and_rates?.length > 0 
-    ? Math.min(...event.tickets_and_rates.map((ticket) => ticket.price))
-    : 0;
+  const minTicketPrice =
+    event.tickets_and_rates?.length > 0
+      ? Math.min(...event.tickets_and_rates.map((ticket) => ticket.price))
+      : 0;
 
   const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 
@@ -194,7 +167,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
         });
         trackEvent("eventCheckout", {
           usrFinalPrice: finalPurchasePriceCalc(affDiscount),
-          fullPacagePrice: recommendedPriceAllPax,
+          fullPackagePrice: recommendedPriceAllPax,
           paymentMethod,
           affiliateDiscount: affDiscount * numberOfEventTickets,
           affiliateId: affId,
@@ -209,7 +182,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 1 && <TicketSelection />}
       {step === 2 && <FlightSelection />}
       {step === 3 && <HotelSelection />}
-      {step === 4 && <OrderReview />}{" "}
+      {step === 4 && <OrderReview />}
       {/* Floating ContactUs - separate from footer */}
       <div className="fixed bottom-24 left-2 z-50 sm:hidden">
         <ContactUs inHeader={false} />

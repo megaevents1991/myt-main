@@ -168,6 +168,7 @@ export async function POST(req: Request) {
         payNow,
         onlySave,
         partnerTrackingCode,
+        orderId: id,
       });
 
       await supabase

@@ -36,6 +36,12 @@ type AppContext = {
   setPlaneTickets: (planeTickets: { adults: number; children: number }) => void;
   step: number;
   setStep: Dispatch<SetStateAction<number>>;
+  globalLoader: boolean;
+  setGlobalLoader: Dispatch<SetStateAction<boolean>>;
+  passengers?: { [key: string]: string }[] | undefined;
+  setPassengers: Dispatch<
+    SetStateAction<{ [key: string]: string }[] | undefined>
+  >;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

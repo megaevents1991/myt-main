@@ -212,6 +212,26 @@ export const userEmail = (
                                       <p style="color: #666666; font-size: 16px; margin: 0; direction: rtl; width: 100%; max-width: 400px; margin: 0 auto;" dir="rtl">${replacements.message}</p>
                                   </div>
   
+                                  ${replacements.orderId && replacements.eventId ? `
+                                  <!-- Order Recovery Section -->
+                                  <div style="background-color: #f0f8f8; border: 1px solid #277e89; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
+                                      <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; direction: rtl;" dir="rtl">
+                                          <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: #277e89; stroke-width: 2; margin-left: 8px;">
+                                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"></path>
+                                          </svg>
+                                          <h3 style="color: #277e89; font-size: 18px; margin: 0; direction: rtl;" dir="rtl">שחזור הזמנה</h3>
+                                      </div>
+                                      <p style="color: #277e89; font-size: 14px; margin: 0 0 15px 0; text-align: center; direction: rtl;" dir="rtl">לשחזור ההזמנה והוספת פרטים נוספים, לחצו על הקישור:</p>
+                                      <div style="text-align: center; direction: rtl;" dir="rtl">
+                                          <a href="https://mega-events.co.il/order/${replacements.eventId}?orderId=${replacements.orderId}" 
+                                             style="display: inline-block; background-color: #277e89; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; font-size: 14px; direction: rtl;" dir="rtl">
+                                              שחזור הזמנה
+                                          </a>
+                                      </div>
+                                  </div>
+                                  ` : ''}
+  
                                   <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
                                       <h2 style="color: #05203c; font-size: 20px; margin: 0 0 20px 0; text-align: center; direction: rtl;" dir="rtl">פרטי ההזמנה</h2>
                                       
