@@ -36,7 +36,7 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import dayjs from "dayjs";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
-import { HotelFetchContext } from "../HotelFetch.provider";
+import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 
 const MAX_FLIGHT_DURATION = 30;
 

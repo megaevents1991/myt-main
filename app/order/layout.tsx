@@ -14,7 +14,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
 import { Stepper } from "@/components/ui/Stepper";
-import { HotelFetchProvider } from "../HotelFetch.provider";
+import { HotelFetchProvider } from "../hooks/HotelFetch.provider";
 
 const OrderLayout = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);

@@ -14,7 +14,7 @@ interface OrderPageClientProps {
 }
 
 export default function OrderPageClient({ initialEvent, eventId }: OrderPageClientProps) {
-  const { event, setEvent } = useContext(OrderContext);
+  const { event, setEvent, step } = useContext(OrderContext);
   const [showAboutSection, setShowAboutSection] = useState(false);
 
   // Set the event from props when component mounts, or fetch it if we have eventId but no event
@@ -40,15 +40,19 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
   }, [initialEvent, eventId, event, setEvent]); // More stable order
 
   // Delay rendering of MegaEventsSection until after main content
+  // Don't show MegaEventsSection on OrderReview step (step 4)
   useEffect(() => {
-    if (event) {
+    if (event && step !== 4) {
       const timer = setTimeout(() => {
         setShowAboutSection(true);
       }, 200); // Adjust delay as needed
 
       return () => clearTimeout(timer);
+    } else {
+      // Hide the section when on step 4 (OrderReview)
+      setShowAboutSection(false);
     }
-  }, [event]);
+  }, [event, step]);
 
   return (
     <Suspense

@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { getTotalPersons } from "@/lib/price.utils";
-import { HotelFetchContext, HotelsData } from "../HotelFetch.provider";
+import { HotelFetchContext, HotelsData } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 

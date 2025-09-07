@@ -6,7 +6,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { fetchHotels, FetchHotelsParams } from "./order/fetchHotels";
+import { fetchHotels, FetchHotelsParams } from "../order/fetchHotels";
 
 export type HotelsData = {
   data: HotelResponse;
