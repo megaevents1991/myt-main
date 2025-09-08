@@ -13,7 +13,6 @@ import Link from "next/link";
 import { getEventsByName } from "@/lib/eventsData";
 import ClientTracker from "../../../components/ClientTracker";
 import EventButton from "../../../components/EventButton";
-import CacheValidator from "../../../components/CacheValidator";
 
 export const revalidate = 3600;
 
@@ -83,7 +82,6 @@ export default async function FootballPage({
   return (
     <div dir="rtl" className="container mx-auto py-8 px-4">
       <ClientTracker />
-      <CacheValidator pageId={slug} />
       {/* Add invisible element with timestamp for client checking */}
       <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
       <h1 className="text-4xl font-bold mb-4">{name}</h1>

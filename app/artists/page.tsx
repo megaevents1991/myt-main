@@ -2,7 +2,6 @@ import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields } from "@/lib/app.types";
 import Link from "next/link";
 import Image from "next/image";
-import CacheValidator from "../../components/CacheValidator";
 
 export const revalidate = 3600;
 
@@ -17,7 +16,6 @@ export default async function ArtistsPage() {
 
     return (
       <div className="container mx-auto py-8 px-4">
-        <CacheValidator pageId="artists-list" />
         {/* Add invisible element with timestamp for client checking */}
         <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
         <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
