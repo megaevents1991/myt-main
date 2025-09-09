@@ -124,17 +124,17 @@ export default async function ArtistPage({
                         </div>
                       )}
                       {event.tags === "Popular" && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אירוע פופולרי">
                           נמכר במהירות!
                         </div>
                       )}
                       {event.tags === "Restock" && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חזר למלאי">
                           חזר למלאי!
                         </div>
                       )}
                       {event.tags === "VIP" && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
                           אירוח VIP
                         </div>
                       )}
