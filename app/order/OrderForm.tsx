@@ -184,9 +184,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step === 3 && <HotelSelection />}
       {step === 4 && <OrderReview />}
       {/* Floating ContactUs - separate from footer */}
-      <div className="fixed bottom-24 left-2 z-50 sm:hidden">
-        <ContactUs inHeader={false} />
-      </div>
+      {step !== 4 && (
+        <div className="fixed bottom-24 left-2 z-50 sm:hidden">
+          <ContactUs inHeader={false} />
+        </div>
+      )}
       {/* Sticky Footer */}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-0">
         <div className="mt-4 w-screen bg-gray-200">
