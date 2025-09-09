@@ -11,7 +11,7 @@ import {
 } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
-import { Button, ScrollArea, Skeleton } from "@mantine/core";
+import { Button, ScrollArea } from "@mantine/core";
 import { Settings2Icon, Search } from "lucide-react";
 import {
   useCallback,
@@ -27,6 +27,7 @@ import { OrderContext } from "../app.context";
 import { MemoizedFlightCard } from "@/components/ui/FlightCard";
 import { SelectWithIcon } from "@/components/ui/inputWithIcon";
 import { FlightFilters } from "@/components/ui/FlightFilters";
+import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
@@ -347,7 +348,7 @@ export const FlightSelection = () => {
         return (
           <MemoizedFlightCard
             minPrice={event.base_flight_price}
-            isLoading={isLoading}
+            isLoading={false} // We handle loading at the container level now
             key={flight.id}
             {...flight}
             price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
@@ -360,7 +361,6 @@ export const FlightSelection = () => {
     [
       filteredFlights,
       event.base_flight_price,
-      isLoading,
       flightsMeta.numOfPassengers,
       orderFlight?.id,
       handleFlightChange,
@@ -501,7 +501,7 @@ export const FlightSelection = () => {
           className={cn("w-1/4 space-y-4", !matches && "w-full")}
           ref={filterRef}
         >
-          <Skeleton visible={isLoading}>
+          <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
             <SortOptionsContainer
               settings={
                 <button 
@@ -525,6 +525,7 @@ export const FlightSelection = () => {
                     type="button"
                     aria-label="מיין לפי מחיר"
                     aria-pressed={sortOption === "price_asc"}
+                    disabled={isLoading}
                   >
                     מחיר
                   </button>
@@ -537,6 +538,7 @@ export const FlightSelection = () => {
                     type="button"
                     aria-label="מיין לפי משך טיסה"
                     aria-pressed={sortOption === "duration"}
+                    disabled={isLoading}
                   >
                     משך טיסה
                   </button>
@@ -549,15 +551,16 @@ export const FlightSelection = () => {
                     type="button"
                     aria-label="הצג רק חברות תעופה ישראליות"
                     aria-pressed={isIsraeliFilter}
+                    disabled={isLoading}
                   >
                     ישראלי
                   </button>
                 </div>
               }
             />
-          </Skeleton>
+          </div>
           {matches && (
-            <Skeleton visible={isLoading}>
+            <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
               <FlightFilters
                 handleFlightSearchCriteriaChange={
                   handleFlightSearchCriteriaChange
@@ -586,33 +589,32 @@ export const FlightSelection = () => {
                 airlines={airlines}
                 filters={filters}
               />
-            </Skeleton>
+            </div>
           )}
         </div>
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
-          <div 
-            className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start"
-            role="region"
-            aria-label="רשימת טיסות זמינות"
-            aria-live="polite"
-            aria-relevant="additions removals"
-          >
-            {flightTicketCards}
-            {filteredFlights.length === 0 && !isLoading ? (
-              <div 
-                className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex"
-                role="status"
-                aria-live="polite"
-              >
-                לא נמצאו טיסות התואמות לקריטריונים שלכם. אנא התאימו את המסננים.
-              </div>
-            ) : (
-              filteredFlights.length === 0 &&
-              Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="p-24" aria-label={`טוען טיסה ${i + 1}`} />
-              ))
-            )}
-          </div>
+          {isLoading ? (
+            <FlightLoadingTransition />
+          ) : (
+            <div 
+              className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start"
+              role="region"
+              aria-label="רשימת טיסות זמינות"
+              aria-live="polite"
+              aria-relevant="additions removals"
+            >
+              {flightTicketCards}
+              {filteredFlights.length === 0 && (
+                <div 
+                  className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex"
+                  role="status"
+                  aria-live="polite"
+                >
+                  לא נמצאו טיסות התואמות לקריטריונים שלכם. אנא התאימו את המסננים.
+                </div>
+              )}
+            </div>
+          )}
         </ScrollArea.Autosize>
       </div>
     </div>
