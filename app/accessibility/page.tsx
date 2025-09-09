@@ -187,9 +187,9 @@ export default async function AccessibilityPage() {
       </section>
 
       {/* Contact Section */}
-      <section className="w-full py-12 bg-main text-white" dir="rtl">
+      <section className="w-full py-12 bg-main text-white" dir="rtl" aria-labelledby="contact-heading">
         <div className="container mx-auto max-w-4xl text-center px-4">
-          <h2 className="text-2xl font-bold mb-6">
+          <h2 id="contact-heading" className="text-2xl font-bold mb-6">
             שאלות נוספות על נגישות האתר?
           </h2>
           <p className="mb-8 text-lg">
@@ -198,13 +198,15 @@ export default async function AccessibilityPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <a
               href="tel:054-200-2722"
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block"
+              className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
+              aria-label="התקשרו לרכז הנגישות: 054-200-2722"
             >
               התקשרו: 054-200-2722
             </a>
             <a
               href="mailto:accessibility@mega-events.co.il"
-              className="bg-white text-main px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors inline-block"
+              className="bg-white text-main px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-main"
+              aria-label="שלחו מייל לרכז הנגישות"
             >
               שלחו מייל
             </a>

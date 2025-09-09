@@ -15,11 +15,13 @@ export default async function ArtistsPage() {
     });
 
     return (
-      <div className="container mx-auto py-8 px-4">
+      <main className="container mx-auto py-8 px-4">
         {/* Add invisible element with timestamp for client checking */}
         <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
-        <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
-        <div 
+        <header>
+          <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
+        </header>
+        <section 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           role="main"
           aria-label="רשימת האומנים"
@@ -28,7 +30,7 @@ export default async function ArtistsPage() {
             <Link
               href={`/artists/${artist.sys?.id}`}
               key={artist.sys.id}
-              className="block hover:opacity-90 transition-opacity"
+              className="block hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg"
               aria-label={`עמוד האומן ${artist.fields.name || "לא ידוע"}`}
             >
               <article className="border rounded-lg overflow-hidden">
@@ -40,7 +42,7 @@ export default async function ArtistsPage() {
                     width={400}
                     height={300}
                     style={{
-                      objectPosition: 'center top' // or 'center center', '20% 30%', etc.
+                      objectPosition: 'center top'
                     }}
                     className="w-full h-48 object-cover"
                   />
@@ -56,16 +58,18 @@ export default async function ArtistsPage() {
               </article>
             </Link>
           ))}
-        </div>
-      </div>
+        </section>
+      </main>
     );
   } catch (error) {
     console.error('Error fetching artists:', error);
     return (
-      <div className="container mx-auto py-8 px-4">
-        <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
+      <main className="container mx-auto py-8 px-4">
+        <header>
+          <h1 className="text-4xl font-bold text-right mb-8">האומנים שלנו</h1>
+        </header>
         <p className="text-center text-gray-500" role="alert" aria-live="polite">שגיאה בטעינת הנתונים</p>
-      </div>
+      </main>
     );
   }
 }

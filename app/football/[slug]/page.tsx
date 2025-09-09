@@ -80,21 +80,24 @@ export default async function FootballPage({
   };
 
   return (
-    <div dir="rtl" className="container mx-auto py-8 px-4">
+    <main dir="rtl" className="container mx-auto py-8 px-4">
       <ClientTracker />
       {/* Add invisible element with timestamp for client checking */}
       <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
-      <h1 className="text-4xl font-bold mb-4">{name}</h1>
-      <div className="prose max-w-none">
-        {documentToReactComponents(bioDocument, options)}
-      </div>
+      <header className="mb-8">
+        <h1 className="text-4xl font-bold mb-4">{name}</h1>
+        <section className="prose max-w-none" aria-labelledby="team-bio">
+          <h2 id="team-bio" className="sr-only">מידע על הקבוצה</h2>
+          {documentToReactComponents(bioDocument, options)}
+        </section>
+      </header>
       {/* Event Card Section */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold text-secondary mb-6">
+      <section className="mt-12" aria-labelledby="upcoming-matches">
+        <h2 id="upcoming-matches" className="text-2xl font-bold text-secondary mb-6">
           אירועים קרובים
         </h2>
         {events.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="רשימת משחקים קרובים">
             {events.map((event) => (
               <Link
                 key={event.id}
@@ -106,6 +109,8 @@ export default async function FootballPage({
                 className={`${
                   event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
                 }`}
+                aria-label={event.tags === "Sold" ? `משחק - אזל מהמלאי` : `הזמנת כרטיסים למשחק`}
+                role="listitem"
               >
                 <EventButton event={event}>
                   <div className="rounded-lg shadow-lg flex flex-row-reverse sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
@@ -212,10 +217,10 @@ export default async function FootballPage({
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500">אין אירועים קרובים</p>
+          <p className="text-center text-gray-500" role="status" aria-live="polite">אין אירועים קרובים</p>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
   } catch (error) {
     // Log the error for debugging but don't crash the server

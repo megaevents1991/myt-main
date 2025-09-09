@@ -111,16 +111,17 @@ export default async function FAQPage() {
       </header>
 
       {/* FAQ Content */}
-      <div className="container mx-auto max-w-[80%] py-8 lg:max-w-[40%]">
+      <section className="container mx-auto max-w-[80%] py-8 lg:max-w-[40%]" aria-labelledby="faq-heading">
+        <h2 id="faq-heading" className="sr-only">שאלות ותשובות</h2>
         <div className="space-y-4" dir="rtl">
           <FAQAccordion items={faqItems} />
         </div>
-      </div>
+      </section>
 
       {/* Additional Help Section */}
-      <section className="w-full py-12 bg-gray-50" dir="rtl">
+      <section className="w-full py-12 bg-gray-50" dir="rtl" aria-labelledby="help-section">
         <div className="container mx-auto max-w-4xl text-center px-4">
-          <h2 className="text-2xl font-bold text-main mb-4">
+          <h2 id="help-section" className="text-2xl font-bold text-main mb-4">
             לא מצאתם את התשובה שחיפשתם?
           </h2>
           <p className="text-lg mb-6">
@@ -131,7 +132,8 @@ export default async function FAQPage() {
               href="https://wa.me/972542002722"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-green-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-600 transition-colors"
+              className="bg-green-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2"
+              aria-label="פתחו שיחה באפליקציית וואטסאפ"
             >
               התחילו איתנו שיחה ב- WhatsApp
             </a>
@@ -165,7 +167,8 @@ export default async function FAQPage() {
           <div className="flex pt-16 flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
               href="/"
-              className="bg-main text-white px-16 py-3 rounded-lg font-bold hover:bg-secondary transition-colors"
+              className="bg-main text-white px-16 py-3 rounded-lg font-bold hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-main focus:ring-offset-2 inline-block"
+              aria-label="עברו לעמוד הראשי להזמנת אירועים"
             >
               הזמינו עכשיו!
             </Link>

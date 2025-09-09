@@ -258,9 +258,9 @@ export default async function PrivacyPage() {
       </section>
 
       {/* Contact Section */}
-      <section className="w-full py-12 bg-main text-white" dir="rtl">
+      <section className="w-full py-12 bg-main text-white" dir="rtl" aria-labelledby="privacy-contact">
         <div className="container mx-auto max-w-4xl text-center px-4">
-          <h2 className="text-2xl font-bold mb-6">
+          <h2 id="privacy-contact" className="text-2xl font-bold mb-6">
             שאלות נוספות על מדיניות הפרטיות?
           </h2>
           <p className="mb-8 text-lg">
@@ -268,7 +268,8 @@ export default async function PrivacyPage() {
           </p>
           <a
             href="mailto:privacy@mega-events.co.il"
-            className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block"
+            className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
+            aria-label="שלחו מייל לאחראי הפרטיות"
           >
             צרו קשר בנושא פרטיות
           </a>

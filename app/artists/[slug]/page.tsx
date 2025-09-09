@@ -80,21 +80,24 @@ export default async function ArtistPage({
   };
 
   return (
-    <div dir="rtl" className="container mx-auto py-8 px-4">
+    <main dir="rtl" className="container mx-auto py-8 px-4">
       <ClientTracker />
       {/* Add invisible element with timestamp for client checking */}
       <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
-      <h1 className="text-4xl font-bold mb-4">{name}</h1>
-      <div className="prose max-w-none">
-        {documentToReactComponents(bioDocument, options)}
-      </div>
+      <header className="mb-8">
+        <h1 className="text-4xl font-bold mb-4">{name}</h1>
+        <section className="prose max-w-none" aria-labelledby="artist-bio">
+          <h2 id="artist-bio" className="sr-only">ביוגרפיה</h2>
+          {documentToReactComponents(bioDocument, options)}
+        </section>
+      </header>
       {/* Event Card Section */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold text-secondary mb-6">
+      <section className="mt-12" aria-labelledby="upcoming-events">
+        <h2 id="upcoming-events" className="text-2xl font-bold text-secondary mb-6">
           אירועים קרובים
         </h2>
         {events.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="רשימת אירועים קרובים">
             {events.map((event) => (
               <Link
                 key={event.id}
@@ -106,15 +109,17 @@ export default async function ArtistPage({
                 className={`${
                   event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
                 }`}
+                aria-label={event.tags === "Sold" ? `אירוע - אזל מהמלאי` : `הזמנת כרטיסים לאירוע`}
+                role="listitem"
               >
                 <EventButton event={event}>
-                  <div className="rounded-lg shadow-lg flex flex-row-reverse sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+                  <article className="rounded-lg shadow-lg flex flex-row-reverse sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
                     <div
                       className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
                       dir="rtl"
                     >
                       {event.tags === "LastTickets" && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="כרטיסים אחרונים זמינים">
                           כרטיסים אחרונים!
                         </div>
                       )}
@@ -200,16 +205,16 @@ export default async function ArtistPage({
                         )}
                       </div>
                     </div>
-                  </div>
+                  </article>
                 </EventButton>
               </Link>
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500">אין אירועים קרובים</p>
+          <p className="text-center text-gray-500" role="status" aria-live="polite">אין אירועים קרובים</p>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
   } catch (error) {
     // Log the error for debugging but don't crash the server

@@ -5,10 +5,12 @@ export const revalidate = 3600; // Optional: revalidate every hour
 
 export default function TermsOfUse() {
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">תנאי שימוש באתר</h1>
-      <section className="mb-6" dir="rtl">
-        <h2 className="text-2xl font-semibold mb-2">הקדמה</h2>
+    <main className="container mx-auto p-6">
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold mb-6 text-center">תנאי שימוש באתר</h1>
+      </header>
+      <section className="mb-6" dir="rtl" aria-labelledby="introduction">
+        <h2 id="introduction" className="text-2xl font-semibold mb-2">הקדמה</h2>
         <p>
           1. אתר האינטרנט מופעל ע&quot;י &quot;מגה איבנטס&quot;, מרחוב ראול
           ולנברג בתל אביב (להלן: &quot;האתר&quot; או &quot;מגה איבנטס&quot;).
@@ -52,8 +54,8 @@ export default function TermsOfUse() {
           בתקנון זה
         </p>
       </section>
-      <section className="mb-6" dir="rtl">
-        <h2 className="text-2xl font-semibold mb-2">כללי</h2>
+      <section className="mb-6" dir="rtl" aria-labelledby="general-terms">
+        <h2 id="general-terms" className="text-2xl font-semibold mb-2">כללי</h2>
         <p>
           1. מגה איבנטס מאפשרת לך לרכוש מוצרים ושירותים שונים באמצעות האתר ו/או
           באמצעות מוקד טלפוני.
@@ -305,6 +307,6 @@ export default function TermsOfUse() {
           איבנטס על פי שיקול דעתה הבלעדי.
         </p>
       </section>
-    </div>
+    </main>
   );
 }

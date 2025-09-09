@@ -173,10 +173,12 @@ const SearchCombobox = ({
           aria-describedby="search-instructions"
           role="combobox"
           aria-expanded={combobox.dropdownOpened}
+          aria-controls="search-dropdown"
           aria-autocomplete="list"
         />
       </Combobox.Target>
       <Combobox.Dropdown
+        id="search-dropdown"
         styles={{
           dropdown: {
             maxHeight: "30vh",
@@ -219,6 +221,18 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
       align="start"
       dragFree
       loop
+      aria-label={`קרוסלה של אירועים נייד עם ${events.length} אירועים. השתמש בחצים לניווט או גרור את הקרוסלה.`}
+      aria-live="polite"
+      role="region"
+      // Accessibility: Enhanced mobile carousel controls with proper ARIA labels
+      previousControlProps={{
+        'aria-label': 'עבור לאירוע הקודם',
+        title: 'עבור לאירוע הקודם'
+      }}
+      nextControlProps={{
+        'aria-label': 'עבור לאירוע הבא',
+        title: 'עבור לאירוע הבא'
+      }}
       classNames={{
         root: "mx-[-8px] mobile-carousel-rtl",
         control:
@@ -307,34 +321,56 @@ function CompactEventCard({ event }: { event: Event }) {
           className="relative group overflow-hidden rounded-t-lg flex-1"
           dir="rtl"
         >
+          {/* Accessibility: Added proper ARIA labels and role for status badges */}
           {event.tags === "LastTickets" && (
-            <div className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+            <div 
+              className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
+              aria-label="כרטיסים אחרונים זמינים לאירוע זה"
+              role="status"
+            >
               כרטיסים אחרונים!
             </div>
           )}
           {event.tags === "Popular" && (
-            <div className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+            <div 
+              className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
+              aria-label="אירוע פופולרי שנמכר במהירות"
+              role="status"
+            >
               נמכר במהירות!
             </div>
           )}
           {event.tags === "Restock" && (
-            <div className="absolute top-0 left-0 w-32 h-6 bg-[#52C4A3] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+            <div 
+              className="absolute top-0 left-0 w-32 h-6 bg-[#52C4A3] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
+              aria-label="אירוע שחזר למלאי"
+              role="status"
+            >
               חזר למלאי!
             </div>
           )}
           {event.tags === "VIP" && (
-            <div className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+            <div 
+              className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
+              aria-label="אירוח VIP זמין לאירוע זה"
+              role="status"
+            >
               אירוח VIP
             </div>
           )}
           {event.tags === "Sold" && (
-            <div className="absolute top-0 left-0 w-32 h-6 bg-[#d63a59] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3">
+            <div 
+              className="absolute top-0 left-0 w-32 h-6 bg-[#d63a59] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
+              aria-label="אזלו הכרטיסים לאירוע זה"
+              role="status"
+            >
               אזלו הכרטיסים
             </div>
           )}
+          {/* Accessibility: Enhanced alt text with descriptive event information */}
           <Image
             src={event.card_image_url}
-            alt={event.name}
+            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
             priority={true}
             width={240}
             height={180}
@@ -345,13 +381,14 @@ function CompactEventCard({ event }: { event: Event }) {
           />
         </div>
         <div className="p-3 text-center flex-shrink-0">
-          <div
+          {/* Accessibility: Added semantic heading for event name */}
+          <h3
             className="text-sm font-bold"
             style={{ lineHeight: "1.2" }}
             title={event.name}
           >
             {event.name}
-          </div>
+          </h3>
         </div>
       </div>
     </Link>
@@ -374,10 +411,11 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
         }}
       >
         <div className="relative group overflow-hidden rounded-t-lg flex-1">
+          {/* Accessibility: Enhanced alt text with descriptive team information */}
           {team.fields.heroBanner?.fields?.file?.url && (
             <Image
               src={"https:" + team.fields.heroBanner.fields.file.url}
-              alt={team.fields.name || "Football team"}
+              alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחץ לצפייה באירועים של הקבוצה`}
               priority={true}
               width={240}
               height={180}
@@ -389,13 +427,14 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
           )}
         </div>
         <div className="p-3 text-center flex-none">
-          <div
+          {/* Accessibility: Added semantic heading for team name */}
+          <h3
             className="font-bold text-md text-gray-800 line-clamp-2 mb-1"
             style={{ lineHeight: "1.2" }}
             title={team.fields.name || ""}
           >
             {team.fields.name || ""}
-          </div>
+          </h3>
         </div>
       </div>
     </Link>
@@ -418,10 +457,11 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
         }}
       >
         <div className="relative group overflow-hidden rounded-t-lg flex-1">
+          {/* Accessibility: Enhanced alt text with descriptive artist information */}
           {artist.fields.heroBanner?.fields?.file?.url && (
             <Image
               src={"https:" + artist.fields.heroBanner.fields.file.url}
-              alt={artist.fields.name || "Artist"}
+              alt={`תמונה של האומן ${artist.fields.name || "לא ידוע"} - לחץ לצפייה באירועים של האומן`}
               priority={true}
               width={240}
               height={180}
@@ -433,13 +473,14 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
           )}
         </div>
         <div className="p-3 text-center flex-none">
-          <div
+          {/* Accessibility: Added semantic heading for artist name */}
+          <h3
             className="font-bold text-md text-gray-800 line-clamp-2 mb-1"
             style={{ lineHeight: "1.2" }}
             title={artist.fields.name || ""}
           >
             {artist.fields.name || ""}
-          </div>
+          </h3>
         </div>
       </div>
     </Link>
@@ -492,6 +533,9 @@ const UniversalCarousel = ({
     (variant === "compact" ? (isMobile ? 2 : 5) : isMobile ? 1 : 4);
   const showIndicators = variant === "default" && isMobile && items.length > 1;
 
+  // Accessibility: Determine content type for ARIA labeling
+  const contentType = teams ? "קבוצות כדורגל" : artists ? "אמנים" : "אירועים";
+
   return (
     <Carousel
       withIndicators={showIndicators}
@@ -502,7 +546,9 @@ const UniversalCarousel = ({
       dragFree
       loop={false}
       slidesToScroll={slidesToScroll}
-      aria-label={`רכיבי ${variant === "compact" ? "קומפקטי" : "רגיל"} עם ${items.length} פריטים`}
+      aria-label={`קרוסלה של ${contentType} עם ${items.length} פריטים. השתמש בחצים לניווט או גרור את הקרוסלה.`}
+      aria-live="polite"
+      role="region"
       classNames={{
         root: isMobile ? "mobile-carousel-rtl" : "",
         container: "py-[2px]",
@@ -518,6 +564,15 @@ const UniversalCarousel = ({
         control: {
           fontSize: variant === "compact" && !isMobile ? "16px" : "20px",
         },
+      }}
+      // Accessibility: Enhanced carousel controls with proper ARIA labels
+      previousControlProps={{
+        'aria-label': `עבור לפריט הקודם ברשימת ${contentType}`,
+        title: `עבור לפריט הקודם ברשימת ${contentType}`
+      }}
+      nextControlProps={{
+        'aria-label': `עבור לפריט הבא ברשימת ${contentType}`,
+        title: `עבור לפריט הבא ברשימת ${contentType}`
       }}
     >
       {items.map((item) => {
@@ -825,7 +880,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 
   return (
     <>
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-secondary text-white p-2 rounded z-50">
+      {/* Accessibility: Live region for dynamic content announcements */}
+      <div 
+        id="live-region" 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="sr-only"
+        role="status"
+      ></div>
+      
+      {/* Accessibility: Enhanced skip link for keyboard navigation */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-secondary text-white p-3 rounded z-50 focus:outline focus:outline-2 focus:outline-white font-bold">
         דלג לתוכן הראשי
       </a>
       {!matches && (
@@ -833,7 +898,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           closeButtonProps={{
             icon: <ArrowLeftIcon />,
             style: { position: "absolute" },
-            "aria-label": "סגור חיפוש"
+            "aria-label": "סגור את חלון החיפוש וחזור לעמוד הראשי"
           }}
           opened={showSearchModal}
           fullScreen
@@ -841,9 +906,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           title="חיפוש אירועים"
           aria-labelledby="search-modal-title"
           aria-describedby="search-modal-description"
+          // Accessibility: Enhanced modal with proper focus management
+          trapFocus
+          returnFocus
         >
+          {/* Accessibility: Screen reader instructions for search functionality */}
           <div id="search-modal-description" className="sr-only">
-            השתמש בשדה החיפוש למציאת אירועים לפי שם, מיקום או תאריך
+            השתמש בשדה החיפוש למציאת אירועים לפי שם, מיקום או תאריך. הקלד לפחות 2 תווים כדי לראות הצעות.
           </div>
           <SearchCombobox
             ref={mobileComboboxRef}
@@ -866,13 +935,23 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
         onClose={() => setShowFeedbackModal(false)}
         title="ספרו לנו לאן תרצו לטוס"
         dir="rtl"
+        // Accessibility: Enhanced feedback modal with proper focus management
+        trapFocus
+        returnFocus
+        aria-labelledby="feedback-modal-title"
+        aria-describedby="feedback-modal-description"
       >
+        {/* Accessibility: Screen reader description for feedback modal */}
+        <div id="feedback-modal-description" className="sr-only">
+          טופס בקשה לאירועים נוספים. מלא את הפרטים והגש בקשה.
+        </div>
         {showSuccessMessage ? (
-          <div className="text-center">
+          <div className="text-center" role="status" aria-live="polite">
             <h2 className="text-2xl font-bold mb-4">תודה על שיתוף הפעולה!</h2>
             <p>האירוע נשלח בהצלחה.</p>
           </div>
         ) : (
+          /* Accessibility: Enhanced form with proper fieldset, legend, and form validation */
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -882,49 +961,66 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                 setShowSuccessMessage(true);
               }
             }}
+            noValidate
           >
-            <div className="mb-4">
-              <label
-                className="block text-gray-700 text-sm font-bold mb-2"
-                htmlFor="event"
-              >
-                מה שם האומן/משחק והאם יש העדפה למקום? *
-              </label>
-              <input
-                id="event"
-                name="event"
-                type="text"
-                required
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="ביונסה בפריז"
-              />
-              <label
-                className="block text-gray-700 text-sm font-bold mt-6 mb-2"
-                htmlFor="email"
-              >
-                שנחזור אליכם עם הצעה? *
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="text"
-                required
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="טלפון או אימייל"
-              />
-            </div>
+            <fieldset className="border border-gray-300 rounded p-4 mb-4">
+              <legend className="px-2 font-bold text-lg">פרטי הבקשה</legend>
+              <div className="mb-4">
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="event"
+                >
+                  מה שם האומן/משחק והאם יש העדפה למקום? <span className="text-red-500" aria-label="שדה חובה">*</span>
+                </label>
+                <input
+                  id="event"
+                  name="event"
+                  type="text"
+                  required
+                  aria-required="true"
+                  aria-describedby="event-help"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-secondary"
+                  placeholder="ביונסה בפריז"
+                />
+                <div id="event-help" className="text-xs text-gray-600 mt-1">
+                  לדוגמה: שם האומן או שם הקבוצה והעיר המועדפת
+                </div>
+              </div>
+              <div className="mb-4">
+                <label
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                  htmlFor="email"
+                >
+                  שנחזור אליכם עם הצעה? <span className="text-red-500" aria-label="שדה חובה">*</span>
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="text"
+                  required
+                  aria-required="true"
+                  aria-describedby="email-help"
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-secondary"
+                  placeholder="טלפון או אימייל"
+                />
+                <div id="email-help" className="text-xs text-gray-600 mt-1">
+                  מספר טלפון או כתובת אימייל ליצירת קשר
+                </div>
+              </div>
+            </fieldset>
             <button
               type="submit"
-              className="bg-secondary hover:bg-secondary-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              aria-label="שלח בקשה להצעת מחיר"
+              className="bg-secondary hover:bg-secondary-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
+              aria-label="שלח בקשה להצעת מחיר לאירוע"
             >
-              שלח
+              שלח בקשה
             </button>
           </form>
         )}
       </Modal>
       <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative" role="banner">
         <div className="container mx-auto max-w-4xl text-center">
+          {/* Accessibility: Proper main heading hierarchy */}
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
             האירועים הכי שווים בעולם
             <span className="text-secondary whitespace-nowrap text-5xl">
@@ -936,6 +1032,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
             </span>
           </h1>
         </div>
+        {/* Accessibility: Enhanced search form with proper labeling and instructions */}
         <div
           ref={searchContainerRef}
           className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 ${
@@ -943,12 +1040,15 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               ? "fixed top-0 left-0 right-0 z-50 bg-white py-4 shadow-md transition-all duration-300"
               : "absolute bottom-0 left-0 right-0 transform translate-y-1/2"
           } min-w-70`}
+          role="search"
+          aria-label="חיפוש אירועים"
         >
           <form
             className={`flex center shadow-md ${
               isSticky ? "max-w-xl mx-auto" : ""
             }`}
             dir="rtl"
+            role="search"
           >
             {!matches ? (
               <input
@@ -963,8 +1063,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                 className={`w-2/3 rounded-r rounded-l-none p-2 text-main border bg-white ${
                   isSticky ? "border-secondary" : ""
                 }`}
-                aria-label="חיפוש אירועים - לחץ לפתיחת חיפוש מלא"
-                aria-describedby="search-instructions"
+                aria-label="חיפוש אירועים - לחץ לפתיחת חיפוש מלא עם הצעות"
+                aria-describedby="search-instructions-main"
+                role="searchbox"
               />
             ) : (
               <SearchCombobox
@@ -977,7 +1078,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               />
             )}
             <button
-              className="w-1/3 bg-secondary text-white font-bold rounded-l"
+              className="w-1/3 bg-secondary text-white font-bold rounded-l hover:bg-secondary-dark focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
               onClick={(e) => {
                 e.preventDefault();
                 if (!matches) {
@@ -987,58 +1088,69 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                 }
               }}
               type="button"
-              aria-label="התחל לחפש אירועים"
+              aria-label="התחל לחפש אירועים - פתח את חלון החיפוש המלא"
             >
               התחילו לתכנן!
             </button>
           </form>
+          {/* Accessibility: Hidden instructions for screen readers */}
+          <div id="search-instructions-main" className="sr-only">
+            שדה חיפוש לאירועים. במכשירים ניידים יפתח חלון חיפוש מלא, במחשב יציג הצעות חיפוש בזמן אמת.
+          </div>
         </div>
       </section>
       <section className="w-full py-10 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6" role="main" id="main-content">
         <div className="container mx-auto">
+          {/* Accessibility: Enhanced mobile guarantees section with semantic structure */}
           <div className="sm:hidden py-1">
-            <div
-              className="flex justify-around items-center text-right container mb-4"
-              dir="rtl"
-            >
-              {(() => {
-                const garuarntees = [
-                  {
-                    svg: (
-                      <svg
-                        width="36"
-                        height="36"
-                        viewBox="0 0 36 36"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M32.6768 4.03516C33.047 4.03522 33.3457 4.32524 33.3457 4.68945V10.9434C33.3456 11.8852 33.0311 12.7547 32.4863 13.4561V29.0029C32.4863 30.6431 31.1174 31.9648 29.4375 31.9648H6.56445C4.88458 31.9648 3.51562 30.6431 3.51562 29.0029V13.4561C2.98141 12.7559 2.65536 11.8866 2.65527 10.9434V4.68945C2.65527 4.32335 2.9673 4.03516 3.3252 4.03516H32.6768ZM25.3389 13.1885C24.5721 14.3701 23.2178 15.1533 21.6699 15.1533C20.131 15.1533 18.7763 14.3699 18.001 13.1885C17.2342 14.3701 15.8799 15.1532 14.332 15.1533C12.7931 15.1533 11.4384 14.3699 10.6631 13.1885C9.8963 14.3701 8.54204 15.1532 6.99414 15.1533C6.21927 15.1533 5.48793 14.9533 4.85352 14.6045V29.0029C4.85352 29.9117 5.62326 30.6572 6.56445 30.6572H29.4375C30.3886 30.6572 31.1475 29.9123 31.1475 29.0029V14.6064C30.5207 14.9542 29.7898 15.1533 29.0078 15.1533C27.4689 15.1533 26.1142 14.3699 25.3389 13.1885ZM3.99414 10.9434C3.99435 12.5425 5.34031 13.8467 6.99414 13.8467C8.65802 13.8465 9.99296 12.5427 9.99316 10.9434V5.34277H3.99414V10.9434ZM11.332 10.9434C11.3322 12.5425 12.6782 13.8467 14.332 13.8467C15.9959 13.8466 17.3308 12.5428 17.3311 10.9434V5.34277H11.332V10.9434ZM18.6699 10.9434C18.6701 12.5425 20.0161 13.8467 21.6699 13.8467C23.3338 13.8466 24.6687 12.5428 24.6689 10.9434V5.34277H18.6699V10.9434ZM26.0078 10.9434C26.008 12.5425 27.354 13.8467 29.0078 13.8467C30.6717 13.8466 32.0066 12.5428 32.0068 10.9434V5.34277H26.0078V10.9434Z"
-                          fill="#277E89"
-                          stroke="#287E89"
-                          strokeWidth="0.290446"
-                        />
-                        <path
-                          d="M17.5413 17.4809C17.6862 17.0349 18.3172 17.0349 18.4621 17.4809L19.4145 20.4123C19.4793 20.6118 19.6652 20.7468 19.8749 20.7468H22.9572C23.4262 20.7468 23.6211 21.3469 23.2418 21.6225L20.7481 23.4342C20.5785 23.5575 20.5075 23.776 20.5723 23.9754L21.5248 26.9069C21.6697 27.3529 21.1592 27.7237 20.7798 27.4481L18.2862 25.6364C18.1165 25.5131 17.8868 25.5131 17.7171 25.6364L15.2235 27.4481C14.8441 27.7237 14.3337 27.3529 14.4786 26.9069L15.4311 23.9754C15.4959 23.776 15.4249 23.5575 15.2552 23.4342L12.7616 21.6225C12.3822 21.3469 12.5772 20.7468 13.0461 20.7468H16.1284C16.3381 20.7468 16.524 20.6118 16.5888 20.4123L17.5413 17.4809Z"
-                          fill="#277E89"
-                        />
-                      </svg>
-                    ),
-                    title: "אלפי לקוחות מרוצים",
-                    subtitle: (
-                      <span>
-                        <a
-                          href="https://www.google.com/search?q=%D7%9E%D7%92%D7%94+%D7%AA%D7%99%D7%99%D7%A8%D7%95%D7%AA"
-                          target="_blank"
-                          rel="noopener noreferrer"
+            <section aria-labelledby="guarantees-heading">
+              <h2 id="guarantees-heading" className="sr-only">היתרונות שלנו</h2>
+              <div
+                className="flex justify-around items-center text-right container mb-4"
+                dir="rtl"
+                role="list"
+                aria-label="רשימת היתרונות והאחריות שלנו"
+              >
+                {(() => {
+                  const garuarntees = [
+                    {
+                      svg: (
+                        <svg
+                          width="36"
+                          height="36"
+                          viewBox="0 0 36 36"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden="true"
                         >
-                          מבית מגה תיירות
-                        </a>
-                        <br />
-                        30 שנות ניסיון
-                      </span>
-                    ),
-                  },
+                          <path
+                            d="M32.6768 4.03516C33.047 4.03522 33.3457 4.32524 33.3457 4.68945V10.9434C33.3456 11.8852 33.0311 12.7547 32.4863 13.4561V29.0029C32.4863 30.6431 31.1174 31.9648 29.4375 31.9648H6.56445C4.88458 31.9648 3.51562 30.6431 3.51562 29.0029V13.4561C2.98141 12.7559 2.65536 11.8866 2.65527 10.9434V4.68945C2.65527 4.32335 2.9673 4.03516 3.3252 4.03516H32.6768ZM25.3389 13.1885C24.5721 14.3701 23.2178 15.1533 21.6699 15.1533C20.131 15.1533 18.7763 14.3699 18.001 13.1885C17.2342 14.3701 15.8799 15.1532 14.332 15.1533C12.7931 15.1533 11.4384 14.3699 10.6631 13.1885C9.8963 14.3701 8.54204 15.1532 6.99414 15.1533C6.21927 15.1533 5.48793 14.9533 4.85352 14.6045V29.0029C4.85352 29.9117 5.62326 30.6572 6.56445 30.6572H29.4375C30.3886 30.6572 31.1475 29.9123 31.1475 29.0029V14.6064C30.5207 14.9542 29.7898 15.1533 29.0078 15.1533C27.4689 15.1533 26.1142 14.3699 25.3389 13.1885ZM3.99414 10.9434C3.99435 12.5425 5.34031 13.8467 6.99414 13.8467C8.65802 13.8465 9.99296 12.5427 9.99316 10.9434V5.34277H3.99414V10.9434ZM11.332 10.9434C11.3322 12.5425 12.6782 13.8467 14.332 13.8467C15.9959 13.8466 17.3308 12.5428 17.3311 10.9434V5.34277H11.332V10.9434ZM18.6699 10.9434C18.6701 12.5425 20.0161 13.8467 21.6699 13.8467C23.3338 13.8466 24.6687 12.5428 24.6689 10.9434V5.34277H18.6699V10.9434ZM26.0078 10.9434C26.008 12.5425 27.354 13.8467 29.0078 13.8467C30.6717 13.8466 32.0066 12.5428 32.0068 10.9434V5.34277H26.0078V10.9434Z"
+                            fill="#277E89"
+                            stroke="#287E89"
+                            strokeWidth="0.290446"
+                          />
+                          <path
+                            d="M17.5413 17.4809C17.6862 17.0349 18.3172 17.0349 18.4621 17.4809L19.4145 20.4123C19.4793 20.6118 19.6652 20.7468 19.8749 20.7468H22.9572C23.4262 20.7468 23.6211 21.3469 23.2418 21.6225L20.7481 23.4342C20.5785 23.5575 20.5075 23.776 20.5723 23.9754L21.5248 26.9069C21.6697 27.3529 21.1592 27.7237 20.7798 27.4481L18.2862 25.6364C18.1165 25.5131 17.8868 25.5131 17.7171 25.6364L15.2235 27.4481C14.8441 27.7237 14.3337 27.3529 14.4786 26.9069L15.4311 23.9754C15.4959 23.776 15.4249 23.5575 15.2552 23.4342L12.7616 21.6225C12.3822 21.3469 12.5772 20.7468 13.0461 20.7468H16.1284C16.3381 20.7468 16.524 20.6118 16.5888 20.4123L17.5413 17.4809Z"
+                            fill="#277E89"
+                          />
+                        </svg>
+                      ),
+                      title: "אלפי לקוחות מרוצים",
+                      subtitle: (
+                        <span>
+                          <a
+                            href="https://www.google.com/search?q=%D7%9E%D7%92%D7%94+%D7%AA%D7%99%D7%99%D7%A8%D7%95%D7%AA"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="חפש ביקורות של מגה תיירות בגוגל - נפתח בחלון חדש"
+                          >
+                            מבית מגה תיירות
+                          </a>
+                          <br />
+                          30 שנות ניסיון
+                        </span>
+                      ),
+                    },
                   {
                     svg: (
                       <svg
@@ -1067,6 +1179,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                         height="36"
                         viewBox="0 0 36 36"
                         fill="none"
+                        aria-hidden="true"
                       >
                         <path
                           d="M31.8005 34.829V31.2806C31.7983 30.2139 31.3846 29.1893 30.6455 28.4201C29.9064 27.651 28.8989 27.1968 27.8332 27.1522C28.439 26.4702 28.8347 25.6277 28.9728 24.726C29.111 23.8243 28.9856 22.9019 28.6117 22.0699C28.2379 21.2378 27.6315 20.5315 26.8657 20.036C26.0998 19.5405 25.207 19.2769 24.2949 19.2769C23.3827 19.2769 22.4899 19.5405 21.724 20.036C20.9582 20.5315 20.3518 21.2378 19.978 22.0699C19.6042 22.9019 19.4787 23.8243 19.6169 24.726C19.755 25.6277 20.1507 26.4702 20.7565 27.1522C19.6845 27.1972 18.6725 27.6598 17.9371 28.4411C17.2166 27.7195 16.2691 27.2685 15.2547 27.1643C15.8641 26.4835 16.2634 25.6408 16.4043 24.738C16.5453 23.8352 16.4219 22.9109 16.049 22.0767C15.6761 21.2425 15.0697 20.5341 14.303 20.037C13.5363 19.5399 12.6421 19.2754 11.7284 19.2754C10.8147 19.2754 9.92048 19.5399 9.15379 20.037C8.3871 20.5341 7.78071 21.2425 7.40784 22.0767C7.03496 22.9109 6.91155 23.8352 7.0525 24.738C7.19345 25.6408 7.59274 26.4835 8.20215 27.1643C7.11039 27.275 6.09857 27.787 5.36266 28.601C4.62675 29.4151 4.21913 30.4732 4.21875 31.5706V34.829C4.21875 35.0427 4.30362 35.2476 4.45469 35.3986C4.60576 35.5497 4.81065 35.6346 5.02429 35.6346H30.9949C31.2086 35.6346 31.4135 35.5497 31.5646 35.3986C31.7156 35.2476 31.8005 35.0427 31.8005 34.829ZM24.2928 20.9052C24.9102 20.9052 25.5137 21.0883 26.027 21.4313C26.5404 21.7743 26.9405 22.2618 27.1767 22.8322C27.413 23.4026 27.4748 24.0302 27.3543 24.6357C27.2339 25.2412 26.9366 25.7974 26.5001 26.2339C26.0635 26.6705 25.5073 26.9678 24.9018 27.0882C24.2963 27.2087 23.6687 27.1468 23.0983 26.9106C22.5279 26.6743 22.0404 26.2742 21.6974 25.7609C21.3544 25.2476 21.1714 24.6441 21.1714 24.0267C21.1714 23.1989 21.5002 22.4049 22.0856 21.8195C22.671 21.2341 23.465 20.9052 24.2928 20.9052ZM11.7103 20.9052C12.3278 20.9044 12.9317 21.0868 13.4456 21.4294C13.9594 21.7719 14.3601 22.2591 14.597 22.8294C14.8339 23.3997 14.8963 24.0274 14.7763 24.6332C14.6563 25.239 14.3593 25.7956 13.923 26.2325C13.4866 26.6695 12.9304 26.9671 12.3248 27.0879C11.7191 27.2087 11.0913 27.1471 10.5207 26.911C9.9501 26.6748 9.46235 26.2747 9.11918 25.7613C8.77601 25.2479 8.59284 24.6443 8.59284 24.0267C8.5939 23.1999 8.92256 22.4071 9.50685 21.8221C10.0911 21.2371 10.8834 20.9074 11.7103 20.9052ZM17.5988 34.0235H5.81372V31.5746C5.81372 30.8269 6.11076 30.1098 6.6395 29.581C7.16824 29.0523 7.88537 28.7552 8.63312 28.7552H14.7794C15.5271 28.7552 16.2443 29.0523 16.773 29.581C17.3018 30.1098 17.5988 30.8269 17.5988 31.5746V34.0235ZM30.1975 34.0235H19.2099V31.5746C19.2096 30.975 19.0877 30.3817 18.8514 29.8306C19.0836 29.499 19.3922 29.2282 19.7511 29.041C20.11 28.8538 20.5088 28.7558 20.9136 28.7552H27.6681C28.3375 28.7563 28.9792 29.0227 29.4526 29.4961C29.926 29.9695 30.1924 30.6112 30.1934 31.2806L30.1975 34.0235Z"
@@ -1095,6 +1208,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                   <div
                     key={i}
                     className="flex flex-col justify-center items-center text-center w-1/3"
+                    role="listitem"
                   >
                     {g.svg}
                     <span className="font-bold text-[13px]">{g.title}</span>
@@ -1105,7 +1219,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                 ));
               })()}
             </div>
+            </section>
           </div>
+          {/* Accessibility: Enhanced section headings with proper hierarchy */}
           <div className="flex flex-row mb-4 lg:mb-6 justify-end items-stretch">
             <div>
               <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
@@ -1125,11 +1241,21 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               style={{ height: 40, width: 46 }}
             />
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-            {prioritized_events.map((event) => (
-              <EventCard event={event} key={event.id} />
-            ))}
-          </div>
+          {/* Accessibility: Enhanced prioritized events section with semantic structure */}
+          <section aria-labelledby="prioritized-events-heading">
+            <div id="prioritized-events-heading" className="sr-only">
+              <h2>המבוקשים ביותר</h2>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8" 
+                 role="list" 
+                 aria-label="רשימת האירועים המבוקשים ביותר">
+              {prioritized_events.map((event) => (
+                <div key={event.id} role="listitem">
+                  <EventCard event={event} />
+                </div>
+              ))}
+            </div>
+          </section>
           <ElfsightWidget
             widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7"
             lazy="first-activity"
@@ -1137,24 +1263,27 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 
           {/* Sports Section */}
           {footballTeams && footballTeams.length > 0 && (
-            <>
+            <section aria-labelledby="football-section-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="football-section-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                     כדורגל
                   </h2>
                 </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 46 }}
+                  aria-hidden="true"
                 />
               </div>
               {/* Mobile carousel for Sports events */}
@@ -1165,29 +1294,32 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               <div className="hidden sm:block mb-8">
                 <UniversalCarousel teams={footballTeams} variant="compact" />
               </div>
-            </>
+            </section>
           )}
 
-          {/* Sports Section */}
+          {/* Artists Section */}
           {artists && artists.length > 0 && (
-            <>
+            <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="artists-section-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                     אמנים מובילים
                   </h2>
                 </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 46 }}
+                  aria-hidden="true"
                 />
               </div>
               {/* Mobile carousel for Artists */}
@@ -1198,29 +1330,32 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               <div className="hidden sm:block mb-8">
                 <UniversalCarousel artists={artists} variant="compact" />
               </div>
-            </>
+            </section>
           )}
 
           {/* Music Section (renamed from "האירועים שלנו") */}
           {musicEvents.length > 0 && (
-            <>
+            <section aria-labelledby="music-events-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="music-events-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                     הופעות נוספות
                   </h2>
                 </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 46 }}
+                  aria-hidden="true"
                 />
               </div>
               {/* Mobile carousel for Music events */}
@@ -1230,9 +1365,19 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                   <div className="fixed bottom-20 left-2 z-50">
                     <ContactUs inHeader={false} />
                   </div>
+                  {/* Accessibility: Enhanced feedback card with proper labeling */}
                   <div
                     className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
                     onClick={() => setShowFeedbackModal(true)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="פתח טופס בקשה לאירועים נוספים"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setShowFeedbackModal(true);
+                      }
+                    }}
                   >
                     <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
                       <MYT className="" />
@@ -1247,13 +1392,27 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                 </div>
               </div>
               {/* Desktop grid for Music events */}
-              <div className="hidden sm:grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+              <div className="hidden sm:grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
+                   role="list"
+                   aria-label="רשימת הופעות נוספות">
                 {musicEvents.map((event) => (
-                  <EventCard event={event} key={event.id} />
+                  <div key={event.id} role="listitem">
+                    <EventCard event={event} />
+                  </div>
                 ))}
+                {/* Accessibility: Enhanced feedback card with proper labeling */}
                 <div
                   className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
                   onClick={() => setShowFeedbackModal(true)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="פתח טופס בקשה לאירועים נוספים"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setShowFeedbackModal(true);
+                    }
+                  }}
                 >
                   <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
                     <MYT className="" />
@@ -1266,29 +1425,32 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                   </div>
                 </div>
               </div>
-            </>
+            </section>
           )}
 
           {/* VIP Section */}
           {sortedVipEvents.length > 0 && (
-            <>
+            <section aria-labelledby="vip-events-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="vip-events-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
                     וכרטיסי פרימיום VIP אירוח
                   </h2>
                 </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 23 }}
+                  aria-hidden="true"
                 />
                 <div
                   className="bg-secondary mx-1 hidden sm:block"
                   style={{ height: 40, width: 46 }}
+                  aria-hidden="true"
                 />
               </div>
               {/* Mobile carousel for VIP events */}
@@ -1299,7 +1461,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               <div className="hidden sm:block mb-8">
                 <UniversalCarousel events={sortedVipEvents} />
               </div>
-            </>
+            </section>
           )}
         </div>
       </section>
@@ -1377,59 +1539,16 @@ function EventCard({ event }: { event: Event }) {
         });
       }}
     >
-      <div className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
+      {/* Accessibility: Enhanced event card with proper semantic structure */}
+      <article className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
         <div
           className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
           dir="rtl"
         >
-          {event.tags === "LastTickets" && (
-            <div 
-              className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
-              aria-label="כרטיסים אחרונים זמינים"
-              role="status"
-            >
-              כרטיסים אחרונים!
-            </div>
-          )}
-          {event.tags === "Popular" && (
-            <div 
-              className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
-              aria-label="אירוע פופולרי שנמכר במהירות"
-              role="status"
-            >
-              נמכר במהירות!
-            </div>
-          )}
-          {event.tags === "Restock" && (
-            <div 
-              className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
-              aria-label="אירוע שחזר למלאי"
-              role="status"
-            >
-              חזר למלאי!
-            </div>
-          )}
-          {event.tags === "VIP" && (
-            <div 
-              className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
-              aria-label="אירוח VIP זמין"
-              role="status"
-            >
-              אירוח VIP
-            </div>
-          )}
-          {event.tags === "Sold" && (
-            <div 
-              className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5"
-              aria-label="אזלו הכרטיסים לאירוע זה"
-              role="status"
-            >
-              אזלו הכרטיסים
-            </div>
-          )}
+          {/* Accessibility: Enhanced image with descriptive alt text */}
           <Image
             src={event.card_image_url}
-            alt={event.name}
+            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
             priority={true}
             width={400}
             height={300}
@@ -1440,24 +1559,29 @@ function EventCard({ event }: { event: Event }) {
           />
         </div>
         <div className="flex flex-col text-center w-[52%] sm:w-auto">
-          <div className="p-2 text-2xl font-bold" style={{ lineHeight: "1.1" }}>
-            {event.name}
-          </div>
+          {/* Accessibility: Added semantic heading for event name */}
+          <header className="p-2">
+            <h3 className="text-2xl font-bold" style={{ lineHeight: "1.1" }}>
+              {event.name}
+            </h3>
+          </header>
           <div
             className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center"
             dir="rtl"
+            role="group"
+            aria-label="פרטי האירוע: תאריך ומיקום"
           >
             <span>{dayjs(event.date).format("DD/MM/YYYY")}</span>
-            <span className="sm:inline hidden mx-2">|</span>
+            <span className="sm:inline hidden mx-2" aria-hidden="true">|</span>
             <span className="w-full sm:w-auto whitespace-nowrap">
               {event.location.name}
             </span>
           </div>
-          <div className="p-2 text-ceמter flex flex-col flex-grow" dir="rtl">
+          <div className="p-2 text-center flex flex-col flex-grow" dir="rtl">
             <div className="text-[15px] sm:text-base">
               מחיר חבילה ממוצע לאדם
             </div>
-            <div className="flex justify-center items-baseline gap-1">
+            <div className="flex justify-center items-baseline gap-1" role="group" aria-label="מחיר">
               <div className="text-2xl font-extrabold">
                 $
                 {(
@@ -1484,19 +1608,24 @@ function EventCard({ event }: { event: Event }) {
               <div
                 className="my-2 py-2 flex-shrink-0"
                 style={{ height: isMounted && isMobile ? "40px" : "22px" }}
+                aria-hidden="true"
               ></div>
             ) : isMounted && isMobile ? (
-              <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center">
+              <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center"
+                   role="button"
+                   aria-label="הוזילו או שדרגו את החבילה">
                 הוזילו או שדרגו כאן {"  >"}
               </div>
             ) : (
-              <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold">
+              <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold"
+                 role="button"
+                 aria-label="הוזילו או שדרגו את החבילה">
                 הוזילו או שדרגו כאן {"  >"}
               </u>
             )}
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
