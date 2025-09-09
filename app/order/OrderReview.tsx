@@ -108,8 +108,10 @@ export default function OrderReview() {
 
   // Sticky footer state and refs
   const [showStickyFooter, setShowStickyFooter] = useState(false);
+  const [showStickyOptions, setShowStickyOptions] = useState(false);
   const originalButtonRef = useRef<HTMLButtonElement>(null);
   const passengerDetailsRef = useRef<HTMLDivElement>(null);
+  const stickyFooterRef = useRef<HTMLDivElement>(null);
 
   const [isAgentMode, setIsAgentMode] = useState(false);
   const [logoUrl, setLogoUrl] = useState(() => {
@@ -214,9 +216,16 @@ ${selectedHotel.name}
         const isButtonVisible = buttonRect.top < window.innerHeight && buttonRect.bottom > 0;
         
         // Show sticky footer when original button is not visible and we're on mobile
-        setShowStickyFooter(!isButtonVisible);
+        const shouldShowSticky = !isButtonVisible;
+        setShowStickyFooter(shouldShowSticky);
+        
+        // Close options when sticky footer disappears
+        if (!shouldShowSticky) {
+          setShowStickyOptions(false);
+        }
       } else {
         setShowStickyFooter(false);
+        setShowStickyOptions(false);
       }
     };
 
@@ -234,6 +243,22 @@ ${selectedHotel.name}
     }
   }, [isMobile]);
 
+  // Click outside handler for sticky options
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (stickyFooterRef.current && !stickyFooterRef.current.contains(event.target as Node)) {
+        setShowStickyOptions(false);
+      }
+    };
+
+    if (showStickyOptions) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showStickyOptions]);
+
   const setErrors = () => {
     const allErrors = [...validationErrors];
     passengers.forEach((passenger, index) => {
@@ -241,13 +266,21 @@ ${selectedHotel.name}
         (field) => {
           let error = "";
           const value = passenger[field];
+          const isMainContact = index === 0;
 
-          if (field === "phone" || field === "email") {
-            if (index === 0) {
+          if (isMainContact) {
+            // For main contact (נוסע 1), validate all fields as required
+            if (field === "phone" || field === "email") {
+              error = validate[field](value);
+            } else {
               error = validate[field](value);
             }
           } else {
-            error = validate[field](value);
+            // For additional passengers, only validate if the field has a value
+            // Don't require any fields to be filled
+            if (value && value.trim() !== "") {
+              error = validate[field](value);
+            }
           }
 
           if (error) {
@@ -344,7 +377,19 @@ ${selectedHotel.name}
       newPassengers[index][field] = finalValue;
       setPassengers(newPassengers);
 
-      const error = validate[field](finalValue);
+      const isMainContact = index === 0;
+      let error = "";
+
+      if (isMainContact) {
+        // For main contact, always validate (required fields)
+        error = validate[field](finalValue);
+      } else {
+        // For additional passengers, only validate if field has content
+        if (finalValue && finalValue.trim() !== "") {
+          error = validate[field](finalValue);
+        }
+      }
+
       const newErrors = [...validationErrors];
 
       if (error) {
@@ -392,12 +437,31 @@ ${selectedHotel.name}
 
     // Validate on blur
     const value = passengers[index][field];
-    const error = validate[field](value);
+    const isMainContact = index === 0;
+    let error = "";
+
+    if (isMainContact) {
+      // For main contact, always validate (required fields)
+      error = validate[field](value);
+    } else {
+      // For additional passengers, only validate if field has content
+      if (value && value.trim() !== "") {
+        error = validate[field](value);
+      }
+    }
 
     if (error) {
       const newErrors = [...validationErrors];
       newErrors[index] = { ...newErrors[index], [field]: error };
       setValidationErrors(newErrors);
+    } else {
+      // Clear error if validation passes
+      const newErrors = [...validationErrors];
+      if (newErrors[index]) {
+        const { [field]: _, ...rest } = newErrors[index];
+        newErrors[index] = rest;
+        setValidationErrors(newErrors);
+      }
     }
   };
 
@@ -460,11 +524,11 @@ ${selectedHotel.name}
     setTermsCheckboxTouched(true);
 
     setErrors();
-    const touched = passengers.map(() => ({
-      firstName: true,
-      lastName: true,
-      phone: true,
-      email: true,
+    const touched = passengers.map((_, index) => ({
+      firstName: index === 0 ? true : false, // Only mark first passenger as touched on submit
+      lastName: index === 0 ? true : false,
+      phone: index === 0 ? true : false,
+      email: index === 0 ? true : false,
     }));
     setTouched(touched);
 
@@ -605,11 +669,17 @@ ${selectedHotel.name}
     passengers.every((passenger, i) => {
       const hasErrors = Object.keys(validationErrors[i]).length > 0;
       const isMainContact = i === 0;
-      const hasRequiredFields = passenger.firstName && passenger.lastName;
-      const hasContactInfo =
-        !isMainContact || (passenger.phone && passenger.email);
-
-      return !hasErrors && hasRequiredFields && hasContactInfo;
+      
+      // Only validate first passenger (נוסע 1) completely
+      if (isMainContact) {
+        const hasRequiredFields = passenger.firstName && passenger.lastName;
+        const hasContactInfo = passenger.phone && passenger.email;
+        return !hasErrors && hasRequiredFields && hasContactInfo;
+      } else {
+        // For additional passengers, only check for errors if fields are filled
+        // Don't require any fields to be filled
+        return !hasErrors;
+      }
     }) && termsAccepted;
 
   const TermsError = () => (
@@ -668,7 +738,7 @@ ${selectedHotel.name}
         }
       >
         {/* Main Content */}
-        <main className={cn("max-w-[1200px] mx-auto lg:px-6 py-4", showStickyFooter && "pb-24")}>
+        <main className={cn("max-w-[1200px] mx-auto lg:px-6 py-4", showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24"))}>
           {agentCommission > 0 && (
             <div>
               <AgentMode
@@ -1396,7 +1466,7 @@ ${selectedHotel.name}
                                 aria-label={`שם פרטי באנגלית לנוסע ${
                                   index + 1
                                 }`}
-                                aria-required="true"
+                                aria-required={index === 0 ? "true" : "false"}
                                 aria-invalid={
                                   touched[index]?.firstName &&
                                   !!validationErrors[index]?.firstName
@@ -1453,7 +1523,7 @@ ${selectedHotel.name}
                                 aria-label={`שם משפחה באנגלית לנוסע ${
                                   index + 1
                                 }`}
-                                aria-required="true"
+                                aria-required={index === 0 ? "true" : "false"}
                                 aria-invalid={
                                   touched[index]?.lastName &&
                                   !!validationErrors[index]?.lastName
@@ -1769,15 +1839,54 @@ ${selectedHotel.name}
       
       {/* Sticky Footer for Mobile */}
       {showStickyFooter && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 md:hidden">
-          <Button
-            onClick={(e) => handleSubmit(e, true)}
-            className="w-full bg-[#05203c] font-bold hover:bg-[#05203c]/90 text-[18px] h-[52px]"
-            disabled={isSubmitting}
-            aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
-          >
-            המשך לתשלום מאובטח
-          </Button>
+        <div ref={stickyFooterRef} className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 md:hidden">
+          {/* Additional Options Dropdown */}
+          {showStickyOptions && (
+            <div className="mb-4 flex gap-2">
+              <Button
+                onClick={handleSubmit}
+                variant={"link"}
+                className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
+                disabled={isSubmitting}
+                aria-label="צור קשר עם נציג"
+              >
+                ?רוצים לפצל תשלום
+                <br />
+                דברו עם נציג
+              </Button>
+              <Button
+                onClick={(e) => handleSubmit(e, false, true)}
+                variant={"link"}
+                className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
+                disabled={isSubmitting}
+                aria-label="הבטיחו את המחיר ל-24 שעות"
+              >
+                ?צריכים עוד זמן
+                <br />
+                הבטיחו מחיר ל-24 שעות
+              </Button>
+            </div>
+          )}
+          
+          {/* Main Buttons Row */}
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowStickyOptions(!showStickyOptions)}
+              variant="outline"
+              className="w-[20%] h-[52px] text-[12px] leading-tight border-[#05203c] text-[#05203c] hover:bg-[#05203c]/10 whitespace-normal break-words px-1"
+              aria-label="אפשרויות נוספות"
+            >
+              {showStickyOptions ? "סגור" : "אפשרויות נוספות"}
+            </Button>
+            <Button
+              onClick={(e) => handleSubmit(e, true)}
+              className="flex-1 bg-[#05203c] font-bold hover:bg-[#05203c]/90 text-[18px] h-[52px]"
+              disabled={isSubmitting}
+              aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
+            >
+              המשך לתשלום מאובטח
+            </Button>
+          </div>
         </div>
       )}
     </div>
