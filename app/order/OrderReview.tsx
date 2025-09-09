@@ -458,6 +458,7 @@ ${selectedHotel.name}
       // Clear error if validation passes
       const newErrors = [...validationErrors];
       if (newErrors[index]) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [field]: _, ...rest } = newErrors[index];
         newErrors[index] = rest;
         setValidationErrors(newErrors);
