@@ -259,7 +259,7 @@ ${selectedHotel.name}
     }
   }, [showStickyOptions]);
 
-  const setErrors = () => {
+  const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];
     passengers.forEach((passenger, index) => {
       (["firstName", "lastName", "phone", "email"] as Fields[]).forEach(
@@ -268,18 +268,29 @@ ${selectedHotel.name}
           const value = passenger[field];
           const isMainContact = index === 0;
 
-          if (isMainContact) {
-            // For main contact (נוסע 1), validate all fields as required
-            if (field === "phone" || field === "email") {
+          if (requireAllPassengers) {
+            // For payment (המשך לתשלום), validate all passengers' names
+            if (field === "firstName" || field === "lastName") {
               error = validate[field](value);
-            } else {
-              error = validate[field](value);
+            } else if (field === "phone" || field === "email") {
+              // Phone and email only required for main contact
+              if (isMainContact) {
+                error = validate[field](value);
+              }
             }
           } else {
-            // For additional passengers, only validate if the field has a value
-            // Don't require any fields to be filled
-            if (value && value.trim() !== "") {
-              error = validate[field](value);
+            // For נציג/שמירה, only validate main contact
+            if (isMainContact) {
+              if (field === "phone" || field === "email") {
+                error = validate[field](value);
+              } else {
+                error = validate[field](value);
+              }
+            } else {
+              // For additional passengers, only validate if the field has a value
+              if (value && value.trim() !== "") {
+                error = validate[field](value);
+              }
             }
           }
 
@@ -524,19 +535,23 @@ ${selectedHotel.name}
     e.preventDefault();
     setTermsCheckboxTouched(true);
 
-    setErrors();
+    // Set errors based on the action type
+    setErrors(payNow);
+    
+    // Set touched fields based on action type
     const touched = passengers.map((_, index) => ({
-      firstName: index === 0 ? true : false, // Only mark first passenger as touched on submit
-      lastName: index === 0 ? true : false,
-      phone: index === 0 ? true : false,
-      email: index === 0 ? true : false,
+      firstName: payNow ? true : (index === 0 ? true : false),
+      lastName: payNow ? true : (index === 0 ? true : false),
+      phone: payNow ? (index === 0 ? true : false) : (index === 0 ? true : false), // Phone only for main contact
+      email: payNow ? (index === 0 ? true : false) : (index === 0 ? true : false), // Email only for main contact
     }));
     setTouched(touched);
 
-    // Check if form is valid after validation
-    if (!isFormValid || isSubmitting) {
+    // Check if form is valid after validation based on action type
+    const isValidForAction = isFormValidForAction(payNow);
+    if (!isValidForAction || isSubmitting) {
       // If validation fails, scroll to passenger details section
-      if (!isFormValid && passengerDetailsRef.current) {
+      if (!isValidForAction && passengerDetailsRef.current) {
         passengerDetailsRef.current.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'start' 
@@ -666,20 +681,26 @@ ${selectedHotel.name}
     );
   };
 
-  const isFormValid =
+  const isFormValidForAction = (requireAllPassengers: boolean) =>
     passengers.every((passenger, i) => {
       const hasErrors = Object.keys(validationErrors[i]).length > 0;
       const isMainContact = i === 0;
       
-      // Only validate first passenger (נוסע 1) completely
-      if (isMainContact) {
+      if (requireAllPassengers) {
+        // For payment (המשך לתשלום), require all passengers' names
         const hasRequiredFields = passenger.firstName && passenger.lastName;
-        const hasContactInfo = passenger.phone && passenger.email;
+        const hasContactInfo = !isMainContact || (passenger.phone && passenger.email);
         return !hasErrors && hasRequiredFields && hasContactInfo;
       } else {
-        // For additional passengers, only check for errors if fields are filled
-        // Don't require any fields to be filled
-        return !hasErrors;
+        // For נציג/שמירה, only validate first passenger completely
+        if (isMainContact) {
+          const hasRequiredFields = passenger.firstName && passenger.lastName;
+          const hasContactInfo = passenger.phone && passenger.email;
+          return !hasErrors && hasRequiredFields && hasContactInfo;
+        } else {
+          // For additional passengers, only check for errors if fields are filled
+          return !hasErrors;
+        }
       }
     }) && termsAccepted;
 
