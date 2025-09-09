@@ -683,7 +683,7 @@ ${selectedHotel.name}
     }) && termsAccepted;
 
   const TermsError = () => (
-    <p className="text-sm text-red-500 text-right mt-1">
+    <p className="text-sm text-red-500 text-center mt-1">
       יש לאשר את פרטי ההזמנה ותנאי השימוש
     </p>
   );
