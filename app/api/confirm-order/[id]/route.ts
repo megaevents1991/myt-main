@@ -49,8 +49,6 @@ export async function GET(
 
     if (error) throw error;
 
-    console.log("Fetched order data:", data);
-
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching order data:", error);

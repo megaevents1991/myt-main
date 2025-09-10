@@ -24,6 +24,16 @@ export const trackEvent = (eventName: string, properties?: Record<string, any>) 
   }
 };
 
+export const getUTMParams = () => {
+  if (typeof window === "undefined") return {};
+  const utm = {
+    source: mixpanel.get_property("utm_source"),
+    medium: mixpanel.get_property("utm_medium"),
+    campaign: mixpanel.get_property("utm_campaign"),
+  };
+  return utm;
+};
+
 export const superTrack = (properties: object) => {
   if (typeof window !== "undefined") {
     mixpanel.register(properties);

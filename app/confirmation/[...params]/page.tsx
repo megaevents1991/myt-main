@@ -308,7 +308,7 @@ export default function ConfirmationPage() {
               </>
             )}
             
-            <OrderRecoverySection />
+            {isHold && <OrderRecoverySection />}
             
             <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
               <h2 className="text-2xl font-bold mb-4 text-center">
@@ -374,7 +374,7 @@ export default function ConfirmationPage() {
               </>
             )}
             
-            <OrderRecoverySection />
+            {isHold && <OrderRecoverySection />}
             
             <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
               <h2 className="text-2xl font-bold mb-4 text-center">

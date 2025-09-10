@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
-import { trackEvent } from "@/lib/mixpanel";
+import { trackEvent, getUTMParams } from "@/lib/mixpanel";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
@@ -575,6 +575,8 @@ ${selectedHotel.name}
     setPaymentMethod(payNow ? "credit_card" : "phone_order");
     setIsSubmitting(true);
 
+    const utmParams = getUTMParams() as { [key: string]: string };
+
     // Collect data from your UI elements
     const updatedFormData = {
       main_contact_first_name: passengers[0].firstName,
@@ -605,7 +607,7 @@ ${selectedHotel.name}
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
       final_purchase_price_ils: finalPurchasePriceILS,
       event_id: event?.id || 0,
-      aff_partner_tracking_code: affId || "",
+      aff_partner_tracking_code: affId || utmParams.source || "",
       is_agent_booking: agentCommission > 0,
     };
 
