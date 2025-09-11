@@ -213,11 +213,11 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
   }
 
   return (
-    <Carousel
+      <Carousel
       withIndicators={events.length > 1}
       withControls={events.length > 1}
       slideSize="100%"
-      slideGap="md"
+        slideGap="16px"
       align="start"
       dragFree
       loop
@@ -240,12 +240,12 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
         style: { transition: "all 0.2s ease-in-out" }
       }}
       classNames={{
-        root: "mx-[-8px]", // Removed mobile-carousel-rtl for LTR scrolling
+        root: "", // Remove breakout to align with container
         control:
           "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70 transition-all duration-200",
         indicator: "bg-gray-300 data-[active]:bg-secondary transition-all duration-200",
         indicators: "gap-2 mt-4",
-        container: "py-[4px] px-[8px]",
+        container: "py-[4px]",
         slide: "transition-transform duration-300 ease-out", // Smooth slide transitions
       }}
       styles={{
@@ -539,14 +539,17 @@ const UniversalCarousel = ({
 
   if (variant === "compact") {
     if (isMobile) {
-      slideSize = "50%"; // 2 cards on mobile
-      slidesToScroll = 1; // Scroll one at a time for smoother experience
+      // Show 2 cards per view on mobile with a 16px gap
+      slideSize = "calc((100% - 16px) / 2)";
+      slidesToScroll = 1;
     } else {
-      slideSize = "20%"; // 5 cards on desktop to match grid spacing better
+      // Desktop: let slides size to their intrinsic width (240px)
+      slideSize = "auto";
       slidesToScroll = 1;
     }
   } else {
-    slideSize = isMobile ? "100%" : "25%"; // 1 on mobile, 4 on desktop
+    // Default: 1 on mobile, 4 on desktop with 24px gaps
+    slideSize = isMobile ? "100%" : "calc((100% - (3 * 24px)) / 4)";
     slidesToScroll = 1;
   }
 
@@ -563,7 +566,7 @@ const UniversalCarousel = ({
       withIndicators={showIndicators}
       withControls={showControls}
       slideSize={slideSize}
-      slideGap={variant === "compact" ? "md" : "sm"}
+  slideGap={isMobile ? "16px" : "24px"}
       align="start"
       dragFree
       loop={false}
@@ -576,8 +579,8 @@ const UniversalCarousel = ({
       aria-live="polite"
       role="region"
       classNames={{
-        root: isMobile ? "mx-[-16px]" : "", // Removed mobile-carousel-rtl for LTR scrolling
-        container: isMobile ? "py-[4px] px-[16px]" : "py-[2px]",
+        root: "", // Remove breakout to align with container
+        container: "py-[2px] px-0",
         control:
           variant === "compact" && !isMobile
             ? "w-8 h-8 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 transition-all duration-200"
@@ -629,15 +632,7 @@ const UniversalCarousel = ({
 
         return (
           <Carousel.Slide key={key}>
-            <div
-              className={
-                variant === "compact"
-                  ? isMobile 
-                    ? "px-2 flex justify-center transition-transform duration-300 ease-out"
-                    : "flex justify-center transition-transform duration-300 ease-out" // Removed fixed width for desktop slides to allow flex
-                  : "transition-transform duration-300 ease-out"
-              }
-            >
+            <div className="transition-transform duration-300 ease-out">
               {variant === "compact" ? (
                 teams ? (
                   <CompactTeamCard team={item as FootballTeam} />
