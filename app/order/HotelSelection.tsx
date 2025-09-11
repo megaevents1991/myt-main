@@ -34,6 +34,7 @@ import { getTotalPersons } from "@/lib/price.utils";
 import { HotelFetchContext, HotelsData } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
+import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 
 export const HotelSelection = () => {
   const {
@@ -611,15 +612,22 @@ export const HotelSelection = () => {
         </div>{" "}
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
-            {isProcessingHotels || isFetching
-              ? // Show skeletons while processing or fetching
-                Array.from({ length: 4 }, (_, i) => (
-                  <div key={i} className="flex justify-center">
-                    <Skeleton className="p-28" />
-                  </div>
-                ))
-              : // Show actual hotel cards when ready
-                hotelCards}
+            {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) ? (
+              <FlightLoadingTransition
+                title="וואו, מביך, לא הספקנו עם המלונות"
+                subtitle="עוד רגע אחד והם כבר יופיעו"
+                showHotelOnly
+                className="py-12"
+              />
+            ) : isProcessingHotels || isFetching ? (
+              Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="flex justify-center">
+                  <Skeleton className="p-28" />
+                </div>
+              ))
+            ) : (
+              hotelCards
+            )}
             {!hotelsData.data?.data?.hotels?.length &&
               !isProcessingHotels &&
               !isFetching && (
