@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 interface ExchangeRateData {
   rate: number;
   lastUpdated: Date;
@@ -63,7 +65,7 @@ class ExchangeRateService {
   private async fetchExchangeRateWithRetry(currencyPair: 'USD/ILS' | 'EUR/USD', retries = this.MAX_RETRIES): Promise<number | null> {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        console.log(`Fetching ${currencyPair} exchange rate - attempt ${attempt}/${retries}`);
+  logger.debug(`Fetching ${currencyPair} exchange rate - attempt ${attempt}/${retries}`);
         
         const url = `${this.API_BASE_URL}?symbol=${currencyPair}&apikey=${this.API_KEY}`;
         const response = await this.fetchWithTimeout(url, 10000);
@@ -80,7 +82,7 @@ class ExchangeRateService {
           
           // Validate the rate is within reasonable limits
           if (this.isValidRate(rate, rateKey)) {
-            console.log(`Successfully fetched ${currencyPair} exchange rate: ${rate}`);
+            logger.debug(`Successfully fetched ${currencyPair} exchange rate: ${rate}`);
             return rate;
           } else {
             throw new Error(`Exchange rate ${rate} for ${currencyPair} is outside valid range (${this.RATE_LIMITS[rateKey].min}-${this.RATE_LIMITS[rateKey].max})`);
@@ -90,20 +92,20 @@ class ExchangeRateService {
         }
       } catch (error) {
         if (attempt === retries) {
-          console.error(`Failed to fetch ${currencyPair} exchange rate after ${attempt} attempts:`, error instanceof Error ? error.message : 'Unknown error');
+          logger.error(`Failed to fetch ${currencyPair} exchange rate after ${attempt} attempts:`, error instanceof Error ? error.message : 'Unknown error');
         }
         else {
-          console.warn(`${currencyPair} exchange rate fetch attempt ${attempt} failed:`, error instanceof Error ? error.message : 'Unknown error');
+          logger.warn(`${currencyPair} exchange rate fetch attempt ${attempt} failed:`, error instanceof Error ? error.message : 'Unknown error');
         }
 
         if (attempt < retries) {
-          console.log(`Retrying in ${this.RETRY_DELAY}ms...`);
+          logger.debug(`Retrying in ${this.RETRY_DELAY}ms...`);
           await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
         }
       }
     }
 
-    console.error(`All ${retries} attempts to fetch ${currencyPair} exchange rate failed`);
+  logger.error(`All ${retries} attempts to fetch ${currencyPair} exchange rate failed`);
     return null;
   }
 
@@ -118,19 +120,19 @@ class ExchangeRateService {
           lastUpdated: new Date(),
           source: 'api'
         };
-        console.log(`${currencyPair} exchange rate updated successfully: ${rate} (from API)`);
+  logger.info(`${currencyPair} exchange rate updated successfully: ${rate} (from API)`);
       } else {
         // Keep the existing rate (whether from previous API call or fallback)
         const currentRate = this.currentRates[rateKey];
-        console.warn(`Failed to fetch new ${currencyPair} rate after ${this.MAX_RETRIES} attempts. Maintaining previous rate: ${currentRate.rate} (from ${currentRate.source}, last updated: ${currentRate.lastUpdated.toISOString()})`);
+  logger.warn(`Failed to fetch new ${currencyPair} rate after ${this.MAX_RETRIES} attempts. Maintaining previous rate: ${currentRate.rate} (from ${currentRate.source}, last updated: ${currentRate.lastUpdated.toISOString()})`);
       }
     } catch (error) {
-      console.error(`Unexpected error during ${currencyPair} exchange rate update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  logger.error(`Unexpected error during ${currencyPair} exchange rate update: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   private async updateAllExchangeRates(): Promise<void> {
-    console.log('Starting exchange rates update for all currency pairs');
+  logger.info('Starting exchange rates update for all currency pairs');
     
     // Update both currency pairs concurrently
     await Promise.allSettled([
@@ -138,7 +140,7 @@ class ExchangeRateService {
       this.updateSingleExchangeRate('EUR/USD')
     ]);
     
-    console.log('Completed exchange rates update for all currency pairs');
+  logger.info('Completed exchange rates update for all currency pairs');
   }
 
   private startPeriodicUpdates(): void {
@@ -147,11 +149,11 @@ class ExchangeRateService {
     }
 
     this.intervalId = setInterval(() => {
-      console.log('Starting scheduled exchange rate update');
+  logger.info('Starting scheduled exchange rate update');
       this.updateAllExchangeRates();
     }, this.UPDATE_INTERVAL);
 
-    console.log(`Exchange rate service started - will update every ${this.UPDATE_INTERVAL / 1000 / 60} minutes`);
+  logger.info(`Exchange rate service started - will update every ${this.UPDATE_INTERVAL / 1000 / 60} minutes`);
   }
 
   public getTravelRate(): number {
@@ -182,7 +184,7 @@ class ExchangeRateService {
   }
 
   public async forceUpdate(): Promise<void> {
-    console.log('Forcing exchange rate update');
+  logger.info('Forcing exchange rate update');
     await this.updateAllExchangeRates();
   }
 
@@ -190,7 +192,7 @@ class ExchangeRateService {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('Exchange rate service stopped');
+  logger.info('Exchange rate service stopped');
     }
   }
 }

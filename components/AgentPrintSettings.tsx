@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pencil, Check, X } from "lucide-react";
+import Image from "next/image";
 
 interface AgentPrintSettingsProps {
   logoUrl: string;
@@ -20,6 +21,12 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
   const [tempFinalPrice, setTempFinalPrice] = useState(finalPrice);
   const [editingLogo, setEditingLogo] = useState(false);
   const [editingPrice, setEditingPrice] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  // Reset preview error when the saved logo URL changes
+  useEffect(() => {
+    setLogoError(false);
+  }, [logoUrl]);
 
   const handleLogoSave = () => {
     setLogoUrl(tempLogoUrl);
@@ -95,15 +102,16 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
             </div>
           )}
 
-          {logoUrl && (
+          {logoUrl && !logoError && (
             <div className="mt-2 max-w-xs">
-              <img
+              <Image
                 src={logoUrl}
                 alt="Company logo preview"
+                width={200}
+                height={48}
                 className="max-h-12 object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                unoptimized
+                onError={() => setLogoError(true)}
               />
             </div>
           )}

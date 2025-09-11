@@ -1,12 +1,29 @@
 "use client";
 
 import { Suspense, useContext, useState, useEffect } from "react";
-import { OrderForm } from "./OrderForm";
+import dynamic from "next/dynamic";
 import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
 import { OrderContext } from "../app.context";
-import MegaEventsSection from "@/components/ui/aboutUsMega";
+// Code-split heavy components
+const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
+  // Keep SSR to preserve SSG/ISR HTML for SEO-critical content
+  ssr: true,
+  loading: () => (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-main mx-auto mb-4"></div>
+        <p className="text-lg">Loading form...</p>
+      </div>
+    </div>
+  ),
+});
+
+const MegaEventsSection = dynamic(() => import("@/components/ui/aboutUsMega"), {
+  // This is supplemental content; avoid server render to keep above-the-fold smaller
+  ssr: false,
+});
 
 interface OrderPageClientProps {
   initialEvent?: Event;
