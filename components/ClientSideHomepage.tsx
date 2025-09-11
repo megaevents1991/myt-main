@@ -760,7 +760,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
   }
 
   // Separate VIP events
-  const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
+  // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
   // Function to filter events from artists that appear in the carousel
   // Keep only one event per artist (preferably with a tag)
