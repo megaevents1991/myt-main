@@ -520,7 +520,7 @@ const UniversalCarousel = ({
       slideSize = "50%"; // 2 cards on mobile
       slidesToScroll = 2;
     } else {
-      slideSize = "240px"; // Fixed width for desktop instead of percentage
+      slideSize = "20%"; // 5 cards on desktop to match grid spacing better
       slidesToScroll = 1;
     }
   } else {
@@ -550,8 +550,8 @@ const UniversalCarousel = ({
       aria-live="polite"
       role="region"
       classNames={{
-        root: isMobile ? "mobile-carousel-rtl" : "",
-        container: "py-[2px]",
+        root: isMobile ? "mx-[-16px] mobile-carousel-rtl" : "",
+        container: isMobile ? "py-[4px] px-[16px]" : "py-[2px]",
         control:
           variant === "compact" && !isMobile
             ? "w-8 h-8 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600"
@@ -593,7 +593,7 @@ const UniversalCarousel = ({
                 variant === "compact"
                   ? isMobile 
                     ? "px-2 flex justify-center"
-                    : "flex justify-center w-[240px] min-w-[240px] max-w-[240px]" // Fixed width for desktop slides
+                    : "flex justify-center" // Removed fixed width for desktop slides to allow flex
                   : ""
               }
             >
@@ -874,9 +874,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
   })();
 
   // Sort VIP events by date
-  const sortedVipEvents = vipEvents.sort((a, b) => {
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
-  });
+  //const sortedVipEvents = vipEvents.sort((a, b) => {
+  //  return new Date(a.date).getTime() - new Date(b.date).getTime();
+  //});
 
   return (
     <>
@@ -1424,42 +1424,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                     לא מצאתם מה שחיפשתם? ספרו לנו
                   </div>
                 </div>
-              </div>
-            </section>
-          )}
-
-          {/* VIP Section */}
-          {sortedVipEvents.length > 0 && (
-            <section aria-labelledby="vip-events-heading">
-              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
-                <div>
-                  <h2 id="vip-events-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
-                    וכרטיסי פרימיום VIP אירוח
-                  </h2>
-                </div>
-                <div
-                  className="bg-secondary mx-1"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 46 }}
-                  aria-hidden="true"
-                />
-              </div>
-              {/* Mobile carousel for VIP events */}
-              <div className="block sm:hidden mb-8">
-                <UniversalCarousel events={sortedVipEvents} />
-              </div>
-              {/* Desktop carousel for VIP events */}
-              <div className="hidden sm:block mb-8">
-                <UniversalCarousel events={sortedVipEvents} />
               </div>
             </section>
           )}
