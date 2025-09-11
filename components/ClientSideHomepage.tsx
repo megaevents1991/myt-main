@@ -221,30 +221,52 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
       align="start"
       dragFree
       loop
+      speed={12} // Faster transition speed
+      includeGapInSize={false} // Better spacing calculation
+      containScroll="trimSnaps" // Smooth scrolling at boundaries
+      skipSnaps={false} // Ensure smooth snap points
       aria-label={`קרוסלה של אירועים נייד עם ${events.length} אירועים. השתמש בחצים לניווט או גרור את הקרוסלה.`}
       aria-live="polite"
       role="region"
       // Accessibility: Enhanced mobile carousel controls with proper ARIA labels
       previousControlProps={{
         'aria-label': 'עבור לאירוע הקודם',
-        title: 'עבור לאירוע הקודם'
+        title: 'עבור לאירוע הקודם',
+        style: { transition: "all 0.2s ease-in-out" }
       }}
       nextControlProps={{
         'aria-label': 'עבור לאירוע הבא',
-        title: 'עבור לאירוע הבא'
+        title: 'עבור לאירוע הבא',
+        style: { transition: "all 0.2s ease-in-out" }
       }}
       classNames={{
-        root: "mx-[-8px] mobile-carousel-rtl",
+        root: "mx-[-8px]", // Removed mobile-carousel-rtl for LTR scrolling
         control:
-          "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70",
-        indicator: "bg-gray-300 data-[active]:bg-secondary",
+          "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70 transition-all duration-200",
+        indicator: "bg-gray-300 data-[active]:bg-secondary transition-all duration-200",
         indicators: "gap-2 mt-4",
         container: "py-[4px] px-[8px]",
+        slide: "transition-transform duration-300 ease-out", // Smooth slide transitions
+      }}
+      styles={{
+        viewport: {
+          // Improve scroll performance
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+          perspective: "1000px",
+        },
+        container: {
+          // Hardware acceleration for smoother scrolling
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden",
+        }
       }}
     >
       {events.map((event) => (
         <Carousel.Slide key={event.id}>
-          <EventCard event={event} />
+          <div className="transition-transform duration-300 ease-out">
+            <EventCard event={event} />
+          </div>
         </Carousel.Slide>
       ))}
     </Carousel>
@@ -518,7 +540,7 @@ const UniversalCarousel = ({
   if (variant === "compact") {
     if (isMobile) {
       slideSize = "50%"; // 2 cards on mobile
-      slidesToScroll = 2;
+      slidesToScroll = 1; // Scroll one at a time for smoother experience
     } else {
       slideSize = "20%"; // 5 cards on desktop to match grid spacing better
       slidesToScroll = 1;
@@ -546,33 +568,52 @@ const UniversalCarousel = ({
       dragFree
       loop={false}
       slidesToScroll={slidesToScroll}
+      speed={12} // Faster transition speed (default is 500ms)
+      includeGapInSize={false} // Better spacing calculation
+      containScroll="trimSnaps" // Smooth scrolling at boundaries
+      skipSnaps={false} // Ensure smooth snap points
       aria-label={`קרוסלה של ${contentType} עם ${items.length} פריטים. השתמש בחצים לניווט או גרור את הקרוסלה.`}
       aria-live="polite"
       role="region"
       classNames={{
-        root: isMobile ? "mx-[-16px] mobile-carousel-rtl" : "",
+        root: isMobile ? "mx-[-16px]" : "", // Removed mobile-carousel-rtl for LTR scrolling
         container: isMobile ? "py-[4px] px-[16px]" : "py-[2px]",
         control:
           variant === "compact" && !isMobile
-            ? "w-8 h-8 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600"
-            : "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70",
-        indicator: "bg-gray-300 data-[active]:bg-secondary",
+            ? "w-8 h-8 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 transition-all duration-200"
+            : "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70 transition-all duration-200",
+        indicator: "bg-gray-300 data-[active]:bg-secondary transition-all duration-200",
         indicators: "gap-2 mt-4",
         viewport: variant === "compact" && !isMobile ? "h-[245px]" : "",
+        slide: "transition-transform duration-300 ease-out", // Smooth slide transitions
       }}
       styles={{
         control: {
           fontSize: variant === "compact" && !isMobile ? "16px" : "20px",
+          transition: "all 0.2s ease-in-out", // Smooth control hover effects
         },
+        viewport: {
+          // Improve scroll performance
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+          perspective: "1000px",
+        },
+        container: {
+          // Hardware acceleration for smoother scrolling
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden",
+        }
       }}
       // Accessibility: Enhanced carousel controls with proper ARIA labels
       previousControlProps={{
         'aria-label': `עבור לפריט הקודם ברשימת ${contentType}`,
-        title: `עבור לפריט הקודם ברשימת ${contentType}`
+        title: `עבור לפריט הקודם ברשימת ${contentType}`,
+        style: { transition: "all 0.2s ease-in-out" }
       }}
       nextControlProps={{
         'aria-label': `עבור לפריט הבא ברשימת ${contentType}`,
-        title: `עבור לפריט הבא ברשימת ${contentType}`
+        title: `עבור לפריט הבא ברשימת ${contentType}`,
+        style: { transition: "all 0.2s ease-in-out" }
       }}
     >
       {items.map((item) => {
@@ -592,9 +633,9 @@ const UniversalCarousel = ({
               className={
                 variant === "compact"
                   ? isMobile 
-                    ? "px-2 flex justify-center"
-                    : "flex justify-center" // Removed fixed width for desktop slides to allow flex
-                  : ""
+                    ? "px-2 flex justify-center transition-transform duration-300 ease-out"
+                    : "flex justify-center transition-transform duration-300 ease-out" // Removed fixed width for desktop slides to allow flex
+                  : "transition-transform duration-300 ease-out"
               }
             >
               {variant === "compact" ? (
@@ -1186,7 +1227,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                           fill="#287E89"
                         />
                         <path
-                          d="M17.5833 1.64705C17.7144 1.24375 18.285 1.24375 18.416 1.64705L19.2773 4.29798C19.3359 4.47835 19.504 4.60046 19.6937 4.60046H22.481C22.9051 4.60046 23.0814 5.14311 22.7383 5.39237L20.4833 7.03073C20.3299 7.1422 20.2657 7.33979 20.3243 7.52015L21.1856 10.1711C21.3167 10.5744 20.8551 10.9098 20.512 10.6605L18.257 9.02214C18.1035 8.91067 17.8958 8.91067 17.7424 9.02214L15.4873 10.6605C15.1443 10.9098 14.6827 10.5744 14.8137 10.1711L15.675 7.52015C15.7337 7.33979 15.6695 7.1422 15.516 7.03073L13.261 5.39237C12.9179 5.14311 13.0943 4.60046 13.5183 4.60046H16.3057C16.4953 4.60046 16.6634 4.47835 16.722 4.29798L17.5833 1.64705Z"
+                          d="M17.5833 1.64705C17.7144 1.24375 18.285 1.24375 18.416 1.64705L19.2773 4.29798C19.3359 4.47835 19.504 4.60046 19.6937 4.60046H22.481C22.9051 4.60046 23.0814 5.14311 22.7383 5.39237L20.4833 7.03073C20.3299 7.1422 20.2657 7.33979 20.3243 7.52015L21.1856 10.1711C21.3167 10.5744 20.8551 10.9098 20.512 10.6605L18.257 9.02214C18.1035 8.91067 17.8958 8.91067 17.7424 9.02214L15.4873 10.6605C15.1443 10.9098 14.6827 10.5744 14.8137 10.1711L15.675 7.52015C15.7337 7.33979 15.6695 7.1422 15.516 7.03073L13.261 5.39237C12.9179 5.14311 13.0943 4.60046 13.5183 4.60046H16.3057C16.4953 4.60046 16.6634 4.47835 16.7383 4.29798L17.5833 1.64705Z"
                           fill="#277E89"
                         />
                         <path
