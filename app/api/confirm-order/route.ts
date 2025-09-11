@@ -13,7 +13,7 @@ import {
 export async function POST(req: Request) {
   const { payNow, onlySave, gtmIdnts, ...orderDetails } = await req.json();
 
-  const validatedData: OrderData = await validateOrderData(orderDetails);
+  const validatedData: OrderData = await validateOrderData(orderDetails, payNow);
 
   const { data, error } = await supabase
     .from("reservations")

@@ -1,48 +1,59 @@
 import { OrderData } from "@/lib/app.types";
 import * as yup from "yup";
 
-const orderSchema = yup.object().shape({
-  main_contact_first_name: yup.string().required().min(1),
-  main_contact_last_name: yup.string().required().min(1),
-  main_contact_phone_number: yup.string().required().min(1),
-  main_contact_email: yup.string().required().min(1),
-  more_pax_info: yup.array().of(
-    yup.object().shape({
-      first_name: yup.string().required().min(1),
-      last_name: yup.string().required().min(1),
-    })
-  ),
-  event_order_info: yup
-    .object()
-    .shape({
-      event_id: yup.number().required(),
-      date: yup.date().required(),
-      name: yup.string().required().min(1),
-      number_of_ticket: yup.number().required(),
-      vendor: yup.string(),
-      event_tags: yup.string(),
-      event_type: yup.string(),
-      id: yup.string(),
-      category: yup.string().required().min(1),
-      price_per_ticket: yup.number().required(),
-      total_tickets_price: yup.number().required(),
-    })
-    .required(),
-  flight_order_info: yup.object().required(),
-  hotel_order_info: yup.object().required(),
-  user_shown_price: yup.number().required(),
-  event_id: yup.number().required(),
-  exchange_rate_usd_ils_100 : yup.number().required(),
-  final_purchase_price_ils: yup.number().required(),
-  aff_partner_tracking_code: yup.string(),
-  is_agent_booking: yup.boolean(),
-});
-
 export const validateOrderData = async (
-  data: OrderData
+  data: OrderData,
+  payNow = false
 ): Promise<OrderData> => {
   try {
-    await orderSchema.validate(data);
+    // Create a dynamic schema based on payment type
+    const dynamicOrderSchema = yup.object().shape({
+      main_contact_first_name: yup.string().required().min(1),
+      main_contact_last_name: yup.string().required().min(1),
+      main_contact_phone_number: yup.string().required().min(1),
+      main_contact_email: yup.string().required().min(1),
+      more_pax_info: payNow 
+        ? // For credit card orders (payNow=true): require all passenger details
+          yup.array().of(
+            yup.object().shape({
+              first_name: yup.string().required().min(1),
+              last_name: yup.string().required().min(1),
+            })
+          )
+        : // For phone/hold orders (payNow=false): allow empty passenger details
+          yup.array().of(
+            yup.object().shape({
+              first_name: yup.string().optional(),
+              last_name: yup.string().optional(),
+            })
+          ),
+      event_order_info: yup
+        .object()
+        .shape({
+          event_id: yup.number().required(),
+          date: yup.date().required(),
+          name: yup.string().required().min(1),
+          number_of_ticket: yup.number().required(),
+          vendor: yup.string(),
+          event_tags: yup.string(),
+          event_type: yup.string(),
+          id: yup.string(),
+          category: yup.string().required().min(1),
+          price_per_ticket: yup.number().required(),
+          total_tickets_price: yup.number().required(),
+        })
+        .required(),
+      flight_order_info: yup.object().required(),
+      hotel_order_info: yup.object().required(),
+      user_shown_price: yup.number().required(),
+      event_id: yup.number().required(),
+      exchange_rate_usd_ils_100 : yup.number().required(),
+      final_purchase_price_ils: yup.number().required(),
+      aff_partner_tracking_code: yup.string(),
+      is_agent_booking: yup.boolean(),
+    });
+
+    await dynamicOrderSchema.validate(data);
     return data as OrderData;
   } catch (error) {
     const errorMessage =
