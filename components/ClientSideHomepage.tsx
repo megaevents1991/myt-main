@@ -218,10 +218,10 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
       withControls={events.length > 1}
       slideSize="100%"
         slideGap="16px"
-      align="start"
-      dragFree
+  align="start"
+  dragFree={false}
       loop
-      speed={12} // Faster transition speed
+      speed={6} // Smoother/slower transition speed
       includeGapInSize={false} // Better spacing calculation
       containScroll="trimSnaps" // Smooth scrolling at boundaries
       skipSnaps={false} // Ensure smooth snap points
@@ -269,7 +269,7 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
           </div>
         </Carousel.Slide>
       ))}
-    </Carousel>
+  </Carousel>
   );
 };
 
@@ -567,11 +567,11 @@ const UniversalCarousel = ({
       withControls={showControls}
       slideSize={slideSize}
   slideGap={isMobile ? "16px" : "24px"}
-      align="start"
-      dragFree
+  align="start"
+  dragFree={false}
       loop={false}
       slidesToScroll={slidesToScroll}
-      speed={12} // Faster transition speed (default is 500ms)
+      speed={6} // Smoother/slower transition speed
       includeGapInSize={false} // Better spacing calculation
       containScroll="trimSnaps" // Smooth scrolling at boundaries
       skipSnaps={false} // Ensure smooth snap points
@@ -648,7 +648,7 @@ const UniversalCarousel = ({
           </Carousel.Slide>
         );
       })}
-    </Carousel>
+  </Carousel>
   );
 };
 
