@@ -1,18 +1,19 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
+import type { EventTicket } from "@/lib/app.types";
 
 export const TicketSelection = () => {
   const { setEventTicket, event } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
-  const [cheapestTicket, setCheapestTicket] = useState(Object);
+  const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
   );
@@ -24,14 +25,23 @@ export const TicketSelection = () => {
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
+  // Consider only tickets that are available (t.available !== false). If "available" is undefined, treat as available.
+  const availableTickets: EventTicket[] = useMemo(
+    () => (event?.tickets_and_rates || []).filter((t: EventTicket) => t?.available !== false),
+    [event?.tickets_and_rates]
+  );
+
   useEffect(() => {
-    if (!event?.tickets_and_rates || event.tickets_and_rates.length === 0) {
+    if (!availableTickets || availableTickets.length === 0) {
+      // No tickets available; clear selection and cheapest ticket.
+      setCheapestTicket(null);
+      setSelectedTicket(undefined);
       return;
     }
-    
-    const cheapt = event.tickets_and_rates.reduce(
-      (min, ticket) => (ticket.price < min.price ? ticket : min),
-      event.tickets_and_rates[0]
+
+    const cheapt = availableTickets.reduce<EventTicket>((min, ticket) =>
+      ticket.price < min.price ? ticket : min,
+      availableTickets[0]
     );
     setCheapestTicket(cheapt);
     setSelectedTicket(cheapt?.id);
@@ -42,7 +52,7 @@ export const TicketSelection = () => {
       price: cheapt?.price || 0,
       quantity: 2,
     });
-  }, [event, setEventTicket]);
+  }, [availableTickets, setEventTicket]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)
@@ -62,6 +72,10 @@ export const TicketSelection = () => {
     price: number;
     vendor?: string;
   }) => {
+    // Defensive: ensure the selected ticket is still available
+    if (!availableTickets.some((t) => t.id === ticket.id)) {
+      return;
+    }
     setEventTicket({ 
       ...ticket, 
       quantity: numberOfEventTickets
@@ -139,7 +153,7 @@ export const TicketSelection = () => {
                   {errorMessage}
                 </Text>
               )}
-              <div 
+              <div
                 className="flex flex-col gap-2"
                 role="group"
                 aria-labelledby="ticket-selection-heading"
@@ -147,30 +161,36 @@ export const TicketSelection = () => {
                 <div id="ticket-selection-heading" className="sr-only">
                   קטגוריות כרטיסים זמינות
                 </div>
-                {[...(event?.tickets_and_rates || [])]
-                  .sort((a, b) => a.price - b.price)
-                  .map((ticket, index) => (
-                    <EventTicketCard
-                      index={index}
-                      onClick={() =>
-                        handleTicketSelect({
-                          id: ticket.id,
-                          price: ticket.price,
-                          category: ticket.category,
-                          vendor: ticket.vendor,
-                        })
-                      }
-                      numberOfTickets={numberOfEventTickets}
-                      onChangeNumberOfTickets={handleQuantityChange}
-                      key={ticket.id}
-                      category={ticket.category}
-                      categoryDescription={ticket.description}
-                      colorOnTheMap={ticket.colorOnTheMap || ""}
-                      isSelected={selectedTicket === ticket.id}
-                      price={ticket.price}
-                      basePrice={cheapestTicket.price}
-                    />
-                  ))}
+                {availableTickets.length === 0 ? (
+                  <Text ta="center" c="dimmed" aria-live="polite">
+                    אין כרטיסים זמינים כרגע.
+                  </Text>
+                ) : (
+                  [...availableTickets]
+                    .sort((a: EventTicket, b: EventTicket) => a.price - b.price)
+                    .map((ticket: EventTicket, index: number) => (
+                      <EventTicketCard
+                        index={index}
+                        onClick={() =>
+                          handleTicketSelect({
+                            id: ticket.id,
+                            price: ticket.price,
+                            category: ticket.category,
+                            vendor: ticket.vendor,
+                          })
+                        }
+                        numberOfTickets={numberOfEventTickets}
+                        onChangeNumberOfTickets={handleQuantityChange}
+                        key={ticket.id}
+                        category={ticket.category}
+                        categoryDescription={ticket.description}
+                        colorOnTheMap={ticket.colorOnTheMap || ""}
+                        isSelected={selectedTicket === ticket.id}
+                        price={ticket.price}
+                        basePrice={cheapestTicket?.price ?? 0}
+                      />
+                    ))
+                )}
               </div>
             </ScrollArea>
           </div>

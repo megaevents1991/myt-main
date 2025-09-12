@@ -57,7 +57,14 @@ export function StructuredData({ events }: StructuredDataProps) {
         price: (
           event.base_flight_price +
           event.base_hotel_price +
-          Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
+          (() => {
+            const available = event.tickets_and_rates.filter(
+              (t) => t?.available !== false
+            );
+            return available.length > 0
+              ? Math.min(...available.map((t) => t.price))
+              : 0;
+          })() +
           Number(process.env.NEXT_PUBLIC_MARKUP || "150")
         ).toString(),
         validFrom: new Date().toISOString(),
@@ -82,9 +89,14 @@ export function StructuredData({ events }: StructuredDataProps) {
             price: (
               event.base_flight_price +
               event.base_hotel_price +
-              Math.min(
-                ...event.tickets_and_rates.map((ticket) => ticket.price)
-              ) +
+              (() => {
+                const available = event.tickets_and_rates.filter(
+                  (t) => t?.available !== false
+                );
+                return available.length > 0
+                  ? Math.min(...available.map((t) => t.price))
+                  : 0;
+              })() +
               Number(process.env.NEXT_PUBLIC_MARKUP || "150")
             ).toString(),
             availability: "https://schema.org/InStock",

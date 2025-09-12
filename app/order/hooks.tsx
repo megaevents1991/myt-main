@@ -58,12 +58,14 @@ export function useOrderVars() {
       : 0;
   }, [selectedFlight, event]);
 
-  /* Fetch lowest avaiable ticket price */
+  /* Fetch lowest available ticket price (exclude tickets with available === false) */
   const minTicketPrice = useMemo(() => {
     if (!event || !event.tickets_and_rates || event.tickets_and_rates.length === 0) {
       return 0;
     }
-    return Math.min(...event.tickets_and_rates.map((ticket) => ticket.price));
+    const available = event.tickets_and_rates.filter((t) => t?.available !== false);
+    if (available.length === 0) return 0;
+    return Math.min(...available.map((ticket) => ticket.price));
   }, [event]);
 
   /* Main variables to calculate price additions */

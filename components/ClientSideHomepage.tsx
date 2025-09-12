@@ -51,7 +51,7 @@ const SearchCombobox = ({
   const router = useRouter();
   const combobox = useCombobox();
 
-  const NonSoldOutEvents4Search = events.filter(event => event.tags !== "Sold");
+  const NonSoldOutEvents4Search = events.filter(event => event.tags !== "Sold"); // make sure sold out also with tickets. events don't appear in search
 
   // Memoize Fuse instance to prevent recreation on every render
   const fuse = useMemo(() => new Fuse(NonSoldOutEvents4Search, fuseOptions), [NonSoldOutEvents4Search]);
@@ -100,7 +100,9 @@ const SearchCombobox = ({
               eventPrice:
                 selectedEvent.base_flight_price +
                 selectedEvent.base_hotel_price +
-                Math.min(...selectedEvent.tickets_and_rates.map((ticket) => ticket.price)) +
+                Math.min(...selectedEvent.tickets_and_rates
+                  .filter(ticket => ticket.available !== false)
+                  .map((ticket) => ticket.price)) +
                 Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
             });
             
@@ -295,8 +297,10 @@ function CompactEventCard({ event }: { event: Event }) {
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
-            Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
-            Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+            Math.min(...event.tickets_and_rates
+              .filter(ticket => ticket.available !== false)
+              .map((ticket) => ticket.price)) +
+              Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
         });
         if (event.tags === "Sold") {
           e.preventDefault();
@@ -1497,8 +1501,10 @@ function EventCard({ event }: { event: Event }) {
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
-            Math.min(...event.tickets_and_rates.map((ticket) => ticket.price)) +
-            Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+            Math.min(...event.tickets_and_rates
+              .filter(ticket => ticket.available !== false)
+              .map((ticket) => ticket.price)) +
+              Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
         });
         if (event.tags === "Sold") {
           e.preventDefault();
@@ -1587,17 +1593,12 @@ function EventCard({ event }: { event: Event }) {
                 {(
                   event.base_flight_price +
                   event.base_hotel_price +
-                  Math.min(
-                    ...event.tickets_and_rates.map((ticket) => ticket.price)
-                  ) +
-                  Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+                  Math.min(...event.tickets_and_rates
+                    .filter(ticket => ticket.available !== false)
+                    .map((ticket) => ticket.price)) +
+                    Number(process.env.NEXT_PUBLIC_MARKUP || "175")
                 ).toLocaleString("en-US")}
               </div>
-              {/*
-                <div className="text-sm text-red-500 line-through mr-1">
-                  ${event.usual_price.toLocaleString("en-US")}
-                </div>
-              */}
             </div>
             <div className="flex-grow min-h-[4px]"></div>
             <div className="text-[14px]" style={{ lineHeight: "1.1" }}>

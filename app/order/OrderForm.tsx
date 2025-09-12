@@ -68,8 +68,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const minTicketPrice =
     event.tickets_and_rates?.length > 0
-      ? Math.min(...event.tickets_and_rates.map((ticket) => ticket.price))
-      : 0;
+      ? Math.min(...event.tickets_and_rates
+          .filter(ticket => ticket.available !== false)
+          .map((ticket) => ticket.price)) : 0;
 
   const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 

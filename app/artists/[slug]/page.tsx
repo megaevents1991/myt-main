@@ -176,11 +176,16 @@ export default async function ArtistPage({
                           {(
                             event.base_flight_price +
                             event.base_hotel_price +
-                            Math.min(
-                              ...event.tickets_and_rates.map(
-                                (ticket) => ticket.price
-                              )
-                            ) +
+                            (() => {
+                              const available = event.tickets_and_rates.filter(
+                                (t) => t?.available !== false
+                              );
+                              const min =
+                                available.length > 0
+                                  ? Math.min(...available.map((t) => t.price))
+                                  : 0;
+                              return min;
+                            })() +
                             Number(process.env.NEXT_PUBLIC_MARKUP || "175")
                           ).toLocaleString("en-US")}
                         </div>
