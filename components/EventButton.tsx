@@ -12,6 +12,12 @@ export default function EventButton({
   event: Event;
   children: ReactNode;
 }) {
+  const tickets = event.tickets_and_rates || [];
+  const hasAvailableTickets = tickets.some((t) => t?.available !== false);
+  const computedTags = hasAvailableTickets ? event.tags : "Sold";
+  const minAvailablePrice = hasAvailableTickets
+    ? Math.min(...tickets.filter((t) => t?.available !== false).map((t) => t.price))
+    : 0;
   return (
     <div
       onClick={() => {
@@ -21,21 +27,14 @@ export default function EventButton({
           eventDate: event.date,
           eventType: event.type,
           eventLocation: event.location.name,
-          eventTags: event.tags,
+          eventTags: computedTags,
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
-            (() => {
-              const available = (event.tickets_and_rates || []).filter(
-                (t) => t?.available !== false
-              );
-              return available.length > 0
-                ? Math.min(...available.map((t) => t.price))
-                : 0;
-            })() +
+            minAvailablePrice +
             Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
         });
-        if (event.tags === "Sold") {
+        if (computedTags === "Sold") {
           return;
         }
         orderStage("EVENT_SELECTED", {
@@ -63,7 +62,7 @@ export default function EventButton({
                 date: event.date,
                 category: event.type,
                 location: event.location.name,
-                tags: event.tags
+                tags: computedTags,
               },
               gtmIdnts,
               eventType: "select_item",

@@ -48,7 +48,14 @@ export function StructuredData({ events }: StructuredDataProps) {
     hasOfferCatalog: {
       "@type": "OfferCatalog",
       name: "אירועים זמינים",
-      itemListElement: events.slice(0, 10).map((event, index) => ({
+      itemListElement: events.slice(0, 10).map((event, index) => {
+        const hasAvailableTickets = (event.tickets_and_rates || []).some(
+          (t) => t?.available !== false
+        );
+        const availabilityUrl = hasAvailableTickets
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock";
+        return ({
         "@type": "Offer",
         position: index + 1,
         name: event.name,
@@ -69,7 +76,7 @@ export function StructuredData({ events }: StructuredDataProps) {
         ).toString(),
         validFrom: new Date().toISOString(),
         validThrough: event.date,
-        availability: "https://schema.org/InStock",
+  availability: availabilityUrl,
         itemOffered: {
           "@type": "Event",
           name: event.name,
@@ -99,10 +106,10 @@ export function StructuredData({ events }: StructuredDataProps) {
               })() +
               Number(process.env.NEXT_PUBLIC_MARKUP || "150")
             ).toString(),
-            availability: "https://schema.org/InStock",
+            availability: availabilityUrl,
           },
         },
-      })),
+      })}),
     },
   };
 

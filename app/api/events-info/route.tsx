@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     console.error("Error getting exchange rate:", error);
 
     // Return fallback rate if service fails
-    const fallbackRate = 3.7;
+    const fallbackRate = 3.5;
     return NextResponse.json({
       success: false,
       travelRate: fallbackRate,

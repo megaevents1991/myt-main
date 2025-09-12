@@ -98,18 +98,15 @@ export default async function ArtistPage({
         </h2>
         {events.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="רשימת אירועים קרובים">
-            {events.map((event) => (
+            {events.map((event) => {
+              const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
+              const computedSold = !hasAvailableTickets || event.tags === "Sold";
+              return (
               <Link
                 key={event.id}
-                href={
-                  event.tags === "Sold"
-                    ? "#no-op"
-                    : `/order/${event.id}`
-                }
-                className={`${
-                  event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
-                }`}
-                aria-label={event.tags === "Sold" ? `אירוע - אזל מהמלאי` : `הזמנת כרטיסים לאירוע`}
+                href={computedSold ? "#no-op" : `/order/${event.id}`}
+                className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
+                aria-label={computedSold ? `אירוע - אזל מהמלאי` : `הזמנת כרטיסים לאירוע`}
                 role="listitem"
               >
                 <EventButton event={event}>
@@ -118,27 +115,27 @@ export default async function ArtistPage({
                       className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
                       dir="rtl"
                     >
-                      {event.tags === "LastTickets" && (
+                      {event.tags === "LastTickets" && !computedSold && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="כרטיסים אחרונים זמינים">
                           כרטיסים אחרונים!
                         </div>
                       )}
-                      {event.tags === "Popular" && (
+                      {event.tags === "Popular" && !computedSold && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אירוע פופולרי">
                           נמכר במהירות!
                         </div>
                       )}
-                      {event.tags === "Restock" && (
+                      {event.tags === "Restock" && !computedSold && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חזר למלאי">
                           חזר למלאי!
                         </div>
                       )}
-                      {event.tags === "VIP" && (
+                      {event.tags === "VIP" && !computedSold && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
                           אירוח VIP
                         </div>
                       )}
-                      {event.tags === "Sold" && (
+                      {(computedSold) && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
                           אזלו הכרטיסים
                         </div>
@@ -213,7 +210,7 @@ export default async function ArtistPage({
                   </article>
                 </EventButton>
               </Link>
-            ))}
+            );})}
           </div>
         ) : (
           <p className="text-center text-gray-500" role="status" aria-live="polite">אין אירועים קרובים</p>

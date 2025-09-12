@@ -277,15 +277,15 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
 
 // Compact Event Card for Sports Section
 function CompactEventCard({ event }: { event: Event }) {
+  const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
+  const computedSold = !hasAvailableTickets || event.tags === "Sold";
   return (
     <Link
-      href={event.tags === "Sold" ? "#no-op" : `/order/${event.id}`}
-      className={`${
-        event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
-      }`}
+      href={computedSold ? "#no-op" : `/order/${event.id}`}
+      className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
       key={event.id}
-      aria-label={`${event.name} - ${event.date} ב${event.location.name}${event.tags === "Sold" ? " - אזלו הכרטיסים" : ""}`}
-      aria-disabled={event.tags === "Sold"}
+      aria-label={`${event.name} - ${event.date} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
+      aria-disabled={computedSold}
       onClick={(e) => {
         trackEvent("eventSelected", {
           eventId: event.id,
@@ -302,7 +302,7 @@ function CompactEventCard({ event }: { event: Event }) {
               .map((ticket) => ticket.price)) +
               Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
         });
-        if (event.tags === "Sold") {
+  if (computedSold) {
           e.preventDefault();
           return;
         }
@@ -1476,6 +1476,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 function EventCard({ event }: { event: Event }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
+  const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
+  const computedSold = !hasAvailableTickets || event.tags === "Sold";
 
   useEffect(() => {
     setIsMounted(true);
@@ -1483,13 +1485,11 @@ function EventCard({ event }: { event: Event }) {
 
   return (
     <Link
-      href={event.tags === "Sold" ? "#no-op" : `/order/${event.id}`}
-      className={`${
-        event.tags === "Sold" ? "cursor-default" : "cursor-pointer"
-      }`}
+      href={computedSold ? "#no-op" : `/order/${event.id}`}
+      className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
       key={event.id}
-      aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${event.tags === "Sold" ? " - אזלו הכרטיסים" : ""}`}
-      aria-disabled={event.tags === "Sold"}
+      aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
+      aria-disabled={computedSold}
       onClick={(e) => {
         trackEvent("eventSelected", {
           eventId: event.id,
@@ -1497,7 +1497,7 @@ function EventCard({ event }: { event: Event }) {
           eventDate: event.date,
           eventType: event.type,
           eventLocation: event.location.name,
-          eventTags: event.tags,
+          eventTags: computedSold ? "Sold" : event.tags,
           eventPrice:
             event.base_flight_price +
             event.base_hotel_price +
@@ -1506,7 +1506,7 @@ function EventCard({ event }: { event: Event }) {
               .map((ticket) => ticket.price)) +
               Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
         });
-        if (event.tags === "Sold") {
+  if (computedSold) {
           e.preventDefault();
           return;
         }
