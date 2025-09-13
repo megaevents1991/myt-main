@@ -1,6 +1,6 @@
 import { Modal as MantineModal } from "@mantine/core";
 import React from "react";
-import { InfoIcon, Clock9 } from "lucide-react";
+import { InfoIcon, Clock9, Plane } from "lucide-react";
 
 // Function to wrap icons with a styled background
 const IconWithBackground = ({ children }: { children: React.ReactNode }) => (
@@ -14,6 +14,11 @@ const iconStyles = {
   Clock9: (
     <IconWithBackground>
       <Clock9 size={32} color="black" />
+    </IconWithBackground>
+  ),
+  Plane: (
+    <IconWithBackground>
+      <Plane size={32} color="black" />
     </IconWithBackground>
   ),
 };
@@ -30,7 +35,7 @@ export const Modal = ({
   customIcon,
 }: {
   title: string;
-  description: string;
+  description: React.ReactNode;
   action: React.ReactNode;
   opened: boolean;
   iconType?: IconType;
@@ -62,7 +67,7 @@ export const Modal = ({
         dir="rtl"
       >
         <h1 className="font-bold text-lg">{title}</h1>
-        <p className="text-md mb-4">{description}</p>
+  <div className="text-md mb-4">{description}</div>
         {action}
       </div>
     </MantineModal>

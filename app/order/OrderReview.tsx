@@ -731,11 +731,21 @@ ${selectedHotel.name}
         </p>
       </div>
       <Modal
-        title={isTimeout ? "הזמן אזל" : "הכרטיסים שלכם שמורים!"}
-        description={
+        title={
           isTimeout
-            ? "לצערנו היינו חייבים לשחרר את ההזמנה"
-            : `יש לכם 15 דקות להשלים את ההזמנה ולא לאבד את הכרטיסים שבחרתם במחיר זה`
+            ? "הזמן אזל"
+            : "היי, אתם כבר כמעט שם 🎉"
+        }
+        description={
+          isTimeout ? (
+            "לצערנו היינו חייבים לשחרר את ההזמנה"
+          ) : (
+            <>
+              המחיר אצלנו שקוף והוגן - מוצג גם בשקלים, מחויב בשקלים, בלי עמלות ובלי הפתעות.
+              <br /> <br />
+              אגב, הכרטיסים שמורים לכם ל-15 דקות, מספיק זמן לסגור את ההזמנה בראש שקט.
+            </>
+          )
         }
         action={
           <Button
@@ -748,7 +758,7 @@ ${selectedHotel.name}
           </Button>
         }
         opened={openModal}
-        iconType="Clock9"
+        iconType="Plane"
       />
       <LoaderWrapper
         isLoading={isSubmitting}
