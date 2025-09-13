@@ -35,7 +35,6 @@ import AgentPrintSettings from "@/components/AgentPrintSettings";
 import PrintableOrderSummary from "@/components/PrintableOrderSummary";
 import usePrintableWindow from "../hooks/usePrintableWindow";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { ShareButton } from "@/components/ui/shareButton";
 
 const TIMEOUT = 15 * 60;
 
@@ -86,11 +85,11 @@ export default function OrderReview() {
     finalPurchasePriceCalc,
     finalPurchasePriceILSCalc,
     recommendedPriceAllPax,
-    packRecommendedPrice,
     isNumberOfPersonsEqual,
     eventTicketPriceAddition,
     flightPriceAddition,
     airlineName,
+    airlineFullName,
     hotelPriceAddition,
     totalGuests,
   } = useOrderVars();
@@ -163,32 +162,6 @@ export default function OrderReview() {
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
   const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.7);
 
-  // Format the share text according to the specified template
-  const getShareText = () => {
-    if (!event || !selectedFlight || !selectedHotel) return "";
-
-    const eventDate = dayjs(event.date).format("DD/MM/YYYY");
-    const departureDateTime = dayjs(
-      selectedFlight.outbound.departureTime
-    ).format("DD/MM/YYYY HH:mm");
-    const returnDateTime = dayjs(selectedFlight.inbound.departureTime).format(
-      "DD/MM/YYYY HH:mm"
-    );
-
-    return `האירוע הבא שלכם מחכה ב - MegaEvents! 🎉
-
-🎤 *פרטי אירוע*
-${event.name}- ${event.location.name}
-בתאריך: ${eventDate}
-
-✈️ *טיסה*
-${airlineName || ""}
-${departureDateTime} - ${returnDateTime}
-
-🏨 *מלון*
-${selectedHotel.name}
-חדר: ${selectedHotel.rate?.room_data_trans?.main_name || ""}`;
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -719,8 +692,6 @@ ${selectedHotel.name}
     }
   };
 
-  const shareText = getShareText();
-
   return (
     <div className="min-h-screen bg-white">
       <div className="sr-only">
@@ -798,7 +769,6 @@ ${selectedHotel.name}
                 <div className="bg-[#277e89] text-white py-4 px-6 flex flex-row justify-between items-center">
                   <Timer onTimeElapsed={HandleTimeout} duration={TIMEOUT} />
                   <div className="flex items-center gap-2">
-                    <ShareButton shareText={shareText} />
                     <h2 className="text-2xl font-bold text-right">
                       סיכום הזמנה
                     </h2>
@@ -867,10 +837,6 @@ ${selectedHotel.name}
                         " | " +
                         dayjs(event.date).format("DD/MM/YYYY")}
                     </p>
-                    <div className="font-lg" dir="rtl">
-                      מחיר חבילה התחלתי לאדם: $
-                      {packRecommendedPrice.toLocaleString("en-US")}
-                    </div>
                   </div>
                   <div className="">
                     <h3 className="font-bold text-lg">
@@ -941,24 +907,6 @@ ${selectedHotel.name}
                         <p dir="ltr">
                           {selectedHotel.rate.room_data_trans.main_name}
                         </p>
-                        <div className="flex items-center gap-1">
-                          <div>
-                            {`${selectedHotel.guests.reduce(
-                              (ppl, room) =>
-                                ppl + room.children.length + room.adults,
-                              0
-                            )} אורחים`}
-                          </div>
-                          <div>
-                            {selectedHotel.guests.length > 1 &&
-                              ` | ${selectedHotel.guests.length} חדרים`}{" "}
-                            {agentCommission <= 0 && hotelPriceAddition ? (
-                              <>({formatPrice(hotelPriceAddition)})/לאורח</>
-                            ) : (
-                              ""
-                            )}
-                          </div>
-                        </div>
                       </div>
                       {agentCommission <= 0 && (
                         <div>
@@ -1003,17 +951,8 @@ ${selectedHotel.name}
                           dir="rtl"
                         >
                           <div className="font-bold ml-1" dir="ltr">
-                            {airlineName}
+                            {airlineFullName}
                           </div>
-                          {agentCommission <= 0 && (
-                            <div>
-                              {formatPrice(flightPriceAddition) ? (
-                                <>({formatPrice(flightPriceAddition)})/לנוסע</>
-                              ) : (
-                                ""
-                              )}
-                            </div>
-                          )}
                         </div>
                         <div className="flex text-[16px]" dir="rtl">
                           <div>מ-</div>

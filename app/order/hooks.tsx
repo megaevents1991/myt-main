@@ -44,6 +44,11 @@ export function useOrderVars() {
     [selectedFlight?.metadata?.name]
   );
 
+  const airlineFullName = useMemo(
+    () => (selectedFlight?.metadata?.name),
+    [selectedFlight?.metadata?.name]
+  );
+
   const flightPriceAddition = useMemo(() => {
     if (!selectedFlight || !event) {
       return 0;
@@ -178,6 +183,7 @@ export function useOrderVars() {
 
   return {
     airlineName,
+    airlineFullName,
     eventTicketPriceAddition,
     packRecommendedPrice,
     recommendedPriceAllPax,

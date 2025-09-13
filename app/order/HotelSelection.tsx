@@ -614,7 +614,7 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
             {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) ? (
               <FlightLoadingTransition
-                title="כבר הספקתם לבחור טיסות!?"
+                title="!?כבר הספקתם לבחור טיסות"
                 subtitle="ממש עוד רגע יופיעו המלונות"
                 showHotelOnly
                 className="py-12"
