@@ -246,5 +246,7 @@ export function useFetchAffiliate() {
     affId,
     affType,
     agentCommission,
+    // expose setter to allow contextual promos (e.g., inactivity special offer)
+    setAffDiscount,
   };
 }

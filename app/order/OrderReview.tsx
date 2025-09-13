@@ -54,7 +54,7 @@ export default function OrderReview() {
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { affId, affDiscount, agentCommission } = useFetchAffiliate();
+  const { affId, affDiscount, agentCommission, setAffDiscount } = useFetchAffiliate();
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
   >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
@@ -104,6 +104,10 @@ export default function OrderReview() {
   const [openModal, setOpenModal] = useState(true);
   const [isTimeout, setIsTimeout] = useState(false);
   const [isPayNow, setIsPayNow] = useState(false);
+  // Special offer (inactivity) modal state
+  const [specialOfferOpen, setSpecialOfferOpen] = useState(false);
+  const hasInteractedRef = useRef(false);
+  const inactivityTimeoutRef = useRef<number | null>(null);
 
   // Sticky footer state and refs
   const [showStickyFooter, setShowStickyFooter] = useState(false);
@@ -231,6 +235,45 @@ export default function OrderReview() {
       };
     }
   }, [showStickyOptions]);
+
+  // Inactivity detection for special offer (desktop + mobile)
+  useEffect(() => {
+    // Only for non-agent bookings and only when initial info modal is closed
+    if (agentCommission > 0 || openModal) return;
+
+    const handleUserInteraction = () => {
+      if (!hasInteractedRef.current) {
+        hasInteractedRef.current = true;
+        if (inactivityTimeoutRef.current) {
+          window.clearTimeout(inactivityTimeoutRef.current);
+          inactivityTimeoutRef.current = null;
+        }
+      }
+    };
+
+    // Start one-shot inactivity timer (20s) from when the page is ready for interaction
+    inactivityTimeoutRef.current = window.setTimeout(() => {
+      if (!hasInteractedRef.current) {
+        setSpecialOfferOpen(true);
+      }
+    }, 20000);
+
+    // Listen broadly for interactions on the page
+    document.addEventListener("click", handleUserInteraction, true);
+    document.addEventListener("keydown", handleUserInteraction, true);
+    document.addEventListener("input", handleUserInteraction, true);
+    document.addEventListener("touchstart", handleUserInteraction, true);
+
+    return () => {
+      document.removeEventListener("click", handleUserInteraction, true);
+      document.removeEventListener("keydown", handleUserInteraction, true);
+      document.removeEventListener("input", handleUserInteraction, true);
+      document.removeEventListener("touchstart", handleUserInteraction, true);
+      if (inactivityTimeoutRef.current) {
+        window.clearTimeout(inactivityTimeoutRef.current);
+      }
+    };
+  }, [agentCommission, openModal]);
 
   const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];
@@ -692,6 +735,19 @@ export default function OrderReview() {
     }
   };
 
+  const handleSpecialOfferAccept = () => {
+    // Close modal and apply $70 discount per person (per ticket)
+    setSpecialOfferOpen(false);
+    if (agentCommission <= 0) {
+      const newDiscount = affDiscount > 50
+        ? 100
+        : affDiscount > 10
+        ? affDiscount * 2
+        : 60;
+      setAffDiscount(newDiscount);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="sr-only">
@@ -730,6 +786,25 @@ export default function OrderReview() {
         }
         opened={openModal}
         iconType="Plane"
+      />
+      {/* Special offer modal - triggered by 20s of inactivity, non-agent only */}
+      <Modal
+        title="הנה משהו מאיתנו לתחילת השנה"
+        description={<>
+          היי, <br />תפסתם אותנו באווירה טובה!<br />נשמח לפרגן לכם בהנחה מיוחדת
+        </>}
+        action={
+          <Button
+            variant="secondary"
+            className="font-bold w-full"
+            onClick={handleSpecialOfferAccept}
+            aria-label="אשמח להנחה"
+          >
+            אשמח להנחה
+          </Button>
+        }
+        opened={agentCommission <= 0 && specialOfferOpen}
+        iconType="Beer"
       />
       <LoaderWrapper
         isLoading={isSubmitting}
