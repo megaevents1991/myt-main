@@ -132,7 +132,6 @@ export const TicketSelection = () => {
               priority={true}
               src={event?.map_image_url || ""}
               alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה`}
-              unoptimized
             />
           </Spoiler>
           <div className="lg:w-[45%] hidden lg:block">
@@ -143,7 +142,6 @@ export const TicketSelection = () => {
               priority={true}
               src={event?.map_image_url || ""}
               alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה ובלוקים`}
-              unoptimized
             />
           </div>
           <div className="w-full lg:w-[55%]" dir="ltr">

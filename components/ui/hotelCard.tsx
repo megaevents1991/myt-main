@@ -164,7 +164,6 @@ export const HotelCard = memo(
                                   src={image.replace("{size}", imageSize)}
                                   alt="image"
                                   sizes="(max-width: 768px) 100vw, 300px"
-                                  unoptimized
                                 />
                               ) : (
                                 <HotelSVG className="m-auto" size={100} />
