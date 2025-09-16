@@ -789,16 +789,16 @@ export default function OrderReview() {
       />
       {/* Special offer modal - triggered by 20s of inactivity, non-agent only */}
       <Modal
-        title="הנה משהו מאיתנו לתחילת השנה"
+        title="מתחילים את השנה עם מתנה בלעדית!"
         description={<>
-          היי, <br />תפסתם אותנו באווירה טובה!<br />נשמח לפרגן לכם בהנחה מיוחדת
+          היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />❤️נשמח לעזור לכם בהחלטה
         </>}
         action={
           <Button
             variant="secondary"
             className="font-bold w-full"
             onClick={handleSpecialOfferAccept}
-            aria-label="אשמח להנחה"
+            aria-label="לחצו להוספת ההנחה"
           >
             אשמח להנחה
           </Button>
