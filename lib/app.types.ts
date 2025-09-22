@@ -219,7 +219,7 @@ export type EventTicket = {
   lastUpdated?: string; // ISO string for last update timestamp
 };
 
-export type OrderTicket = Omit<EventTicket, "description" | "colorOnTheMap"> & {
+export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   quantity: number;
 };
 

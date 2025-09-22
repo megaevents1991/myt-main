@@ -2,17 +2,22 @@
 
 import type React from "react";
 
-import { useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
+import {
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { OrderContext } from "../app.context";
-import { FlightMeta } from "@/components/ui/FlightCard";
 import { cn } from "@/lib/utils";
 import type { OrderData } from "@/lib/app.types";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
-import { formatPrice } from "@/lib/price.utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -35,8 +40,17 @@ import AgentPrintSettings from "@/components/AgentPrintSettings";
 import PrintableOrderSummary from "@/components/PrintableOrderSummary";
 import usePrintableWindow from "../hooks/usePrintableWindow";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { formatPhoneNumber, getPenText, TIMEOUT } from "./utils";
+import { Review } from "./OrderSummary/Review";
+import { PriceSummary } from "./OrderSummary/PriceSummary";
+import { ButtonSummary } from "./OrderSummary/ButtonSummary";
+import { MobileHeader } from "./OrderSummary/MobileHeader";
 
-const TIMEOUT = 15 * 60;
+const TermsError = () => (
+  <p className="text-sm text-red-500 text-center mt-1">
+    יש לאשר את פרטי ההזמנה ותנאי השימוש
+  </p>
+);
 
 // One line shift down, imports
 export default function OrderReview() {
@@ -54,7 +68,8 @@ export default function OrderReview() {
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { affId, affDiscount, agentCommission, setAffDiscount } = useFetchAffiliate();
+  const { affId, affDiscount, agentCommission, setAffDiscount } =
+    useFetchAffiliate();
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
   >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
@@ -166,7 +181,6 @@ export default function OrderReview() {
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
   const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.7);
 
-
   useEffect(() => {
     let isMounted = true;
     finalPurchasePriceILSCalc(finalPurchasePrice).then(
@@ -190,12 +204,13 @@ export default function OrderReview() {
     const handleScroll = () => {
       if (originalButtonRef.current && isMobile) {
         const buttonRect = originalButtonRef.current.getBoundingClientRect();
-        const isButtonVisible = buttonRect.top < window.innerHeight && buttonRect.bottom > 0;
-        
+        const isButtonVisible =
+          buttonRect.top < window.innerHeight && buttonRect.bottom > 0;
+
         // Show sticky footer when original button is not visible and we're on mobile
         const shouldShowSticky = !isButtonVisible;
         setShowStickyFooter(shouldShowSticky);
-        
+
         // Close options when sticky footer disappears
         if (!shouldShowSticky) {
           setShowStickyOptions(false);
@@ -207,15 +222,15 @@ export default function OrderReview() {
     };
 
     if (isMobile) {
-      window.addEventListener('scroll', handleScroll);
-      window.addEventListener('resize', handleScroll);
-      
+      window.addEventListener("scroll", handleScroll);
+      window.addEventListener("resize", handleScroll);
+
       // Initial check
       handleScroll();
 
       return () => {
-        window.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('resize', handleScroll);
+        window.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("resize", handleScroll);
       };
     }
   }, [isMobile]);
@@ -223,15 +238,18 @@ export default function OrderReview() {
   // Click outside handler for sticky options
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (stickyFooterRef.current && !stickyFooterRef.current.contains(event.target as Node)) {
+      if (
+        stickyFooterRef.current &&
+        !stickyFooterRef.current.contains(event.target as Node)
+      ) {
         setShowStickyOptions(false);
       }
     };
 
     if (showStickyOptions) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener("mousedown", handleClickOutside);
       };
     }
   }, [showStickyOptions]);
@@ -389,7 +407,7 @@ export default function OrderReview() {
     setTouched(newTouched);
   }, [passengers]);
 
-  const HandleTimeout = useCallback(() => {
+  const handleTimeout = useCallback(() => {
     setIsTimeout(true);
     setOpenModal(true);
   }, []);
@@ -442,20 +460,6 @@ export default function OrderReview() {
       </div>
     );
   }
-
-  const formatPhoneNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, "");
-    let formatted = cleaned;
-
-    if (cleaned.length >= 3) {
-      formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
-    }
-    if (cleaned.length >= 6) {
-      formatted = `${formatted.slice(0, 7)}-${formatted.slice(7)}`;
-    }
-
-    return formatted.slice(0, 12); // Limit length
-  };
 
   const handleBlur = (index: number, field: Fields) => {
     const newTouched = [...touched];
@@ -553,13 +557,13 @@ export default function OrderReview() {
 
     // Set errors based on the action type
     setErrors(payNow);
-    
+
     // Set touched fields based on action type
     const touched = passengers.map((_, index) => ({
-      firstName: payNow ? true : (index === 0 ? true : false),
-      lastName: payNow ? true : (index === 0 ? true : false),
-      phone: payNow ? (index === 0 ? true : false) : (index === 0 ? true : false), // Phone only for main contact
-      email: payNow ? (index === 0 ? true : false) : (index === 0 ? true : false), // Email only for main contact
+      firstName: payNow ? true : index === 0 ? true : false,
+      lastName: payNow ? true : index === 0 ? true : false,
+      phone: payNow ? (index === 0 ? true : false) : index === 0 ? true : false, // Phone only for main contact
+      email: payNow ? (index === 0 ? true : false) : index === 0 ? true : false, // Email only for main contact
     }));
     setTouched(touched);
 
@@ -568,9 +572,9 @@ export default function OrderReview() {
     if (!isValidForAction || isSubmitting) {
       // If validation fails, scroll to passenger details section
       if (!isValidForAction && passengerDetailsRef.current) {
-        passengerDetailsRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+        passengerDetailsRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
         });
       }
       return;
@@ -580,9 +584,9 @@ export default function OrderReview() {
       setIsSubmitting(false);
       // Scroll to passenger details if terms not accepted as well
       if (passengerDetailsRef.current) {
-        passengerDetailsRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+        passengerDetailsRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
         });
       }
       return;
@@ -675,39 +679,16 @@ export default function OrderReview() {
     }
   };
 
-  const penText = () => {
-    if (!selectedFlight.penalties) return "";
-
-    return (
-      selectedFlight.penalties
-        .replace(/PE\.PENALTIES\s*\n/, "")
-        .replace(
-          /CANCELLATIONS\s*\n/,
-          '<h3 class="font-bold mt-4 mb-2">Cancellation Policy</h3>'
-        )
-        .replace(
-          /CHANGES\s*\n/,
-          '<h3 class="font-bold mt-4 mb-2">Change Policy</h3>'
-        )
-        .replace(/NOTE -/g, "<strong>Note:</strong>")
-        .replace(/--+/g, '<hr class="my-2">')
-        // Convert newlines to paragraphs
-        .split("\n")
-        .filter((line) => line.trim())
-        .map((line) => `<p class="mb-2">${line}</p>`)
-        .join("")
-    );
-  };
-
   const isFormValidForAction = (requireAllPassengers: boolean) =>
     passengers.every((passenger, i) => {
       const hasErrors = Object.keys(validationErrors[i]).length > 0;
       const isMainContact = i === 0;
-      
+
       if (requireAllPassengers) {
         // For payment (המשך לתשלום), require all passengers' names
         const hasRequiredFields = passenger.firstName && passenger.lastName;
-        const hasContactInfo = !isMainContact || (passenger.phone && passenger.email);
+        const hasContactInfo =
+          !isMainContact || (passenger.phone && passenger.email);
         return !hasErrors && hasRequiredFields && hasContactInfo;
       } else {
         // For נציג/שמירה, only validate first passenger completely
@@ -722,13 +703,7 @@ export default function OrderReview() {
       }
     }) && termsAccepted;
 
-  const TermsError = () => (
-    <p className="text-sm text-red-500 text-center mt-1">
-      יש לאשר את פרטי ההזמנה ותנאי השימוש
-    </p>
-  );
-
-  const HandleTimeoutModalAction = () => {
+  const handleTimeoutModalAction = () => {
     setOpenModal(false);
     if (isTimeout) {
       setStep(1);
@@ -739,17 +714,18 @@ export default function OrderReview() {
     // Close modal and apply $70 discount per person (per ticket)
     setSpecialOfferOpen(false);
     if (agentCommission <= 0) {
-      const newDiscount = affDiscount > 50
-        ? 100
-        : affDiscount > 10
-        ? affDiscount * 2
-        : 60;
+      const newDiscount =
+        affDiscount > 50 ? 100 : affDiscount > 10 ? affDiscount * 2 : 60;
       setAffDiscount(newDiscount);
     }
   };
 
+  const penText = getPenText(selectedFlight);
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col items-center">
+      {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} />}
+
       <div className="sr-only">
         <h1>סיכום הזמנה לאירוע {event?.name}</h1>
         <p>
@@ -758,19 +734,17 @@ export default function OrderReview() {
         </p>
       </div>
       <Modal
-        title={
-          isTimeout
-            ? "הזמן אזל"
-            : "היי, אתם כבר כמעט שם 🎉"
-        }
+        title={isTimeout ? "הזמן אזל" : "היי, אתם כבר כמעט שם 🎉"}
         description={
           isTimeout ? (
             "לצערנו היינו חייבים לשחרר את ההזמנה"
           ) : (
             <>
-              המחיר אצלנו שקוף והוגן - מוצג גם בשקלים, מחויב בשקלים, בלי עמלות ובלי הפתעות.
+              המחיר אצלנו שקוף והוגן - מוצג גם בשקלים, מחויב בשקלים, בלי עמלות
+              ובלי הפתעות.
               <br /> <br />
-              אגב, הכרטיסים שמורים לכם ל-15 דקות, מספיק זמן לסגור את ההזמנה בראש שקט.
+              אגב, הכרטיסים שמורים לכם ל-15 דקות, מספיק זמן לסגור את ההזמנה בראש
+              שקט.
             </>
           )
         }
@@ -778,7 +752,7 @@ export default function OrderReview() {
           <Button
             variant="secondary"
             className="font-bold w-full"
-            onClick={HandleTimeoutModalAction}
+            onClick={handleTimeoutModalAction}
             aria-label={isTimeout ? "התחל הזמנה חדשה" : "סגור הודעת זמן"}
           >
             {isTimeout ? "שננסה מחדש?" : "הבנתי"}
@@ -792,7 +766,8 @@ export default function OrderReview() {
         title="מתחילים את השנה עם מתנה בלעדית!"
         description={<>
           היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />❤️נשמח לעזור לכם בהחלטה
-        </>}
+        </>
+        }
         action={
           <Button
             variant="secondary"
@@ -818,7 +793,12 @@ export default function OrderReview() {
         }
       >
         {/* Main Content */}
-        <main className={cn("max-w-[1200px] mx-auto lg:px-6 py-4", showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24"))}>
+        <main
+          className={cn(
+            "max-w-[1200px] mx-auto lg:px-6 py-3",
+            showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24")
+          )}
+        >
           {agentCommission > 0 && (
             <div>
               <AgentMode
@@ -838,236 +818,66 @@ export default function OrderReview() {
               )}
             </div>
           )}
-          <div className="grid md:grid-cols-2 gap-8 items-start">
+          <div className="grid md:grid-cols-2 gap-4 items-start">
             <div className="space-y-4 order-1 md:order-1">
               <Card className="bg-white shadow-lg overflow-hidden">
-                <div className="bg-[#277e89] text-white py-4 px-6 flex flex-row justify-between items-center">
-                  <Timer onTimeElapsed={HandleTimeout} duration={TIMEOUT} />
+                <div
+                  className={cn(
+                    "bg-[#277e89] text-white py-4 px-6 flex flex-row justify-between items-center"
+                  )}
+                >
+                  {!isMobile ? (
+                    <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
+                  ) : (
+                    <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
+                      <div>
+                        {dayjs(selectedFlight.outbound.departureTime).format(
+                          "DD/MM/YYYY"
+                        )}
+                      </div>
+                      <div>-</div>
+                      <div>
+                        {dayjs(selectedFlight.inbound.departureTime).format(
+                          "DD/MM/YYYY"
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold text-right">
                       סיכום הזמנה
                     </h2>
                   </div>
                 </div>
-                <div className="flex flex-row justify-between items-center py-4 px-6 border-b border-gray-400">
-                  <div>
-                    <div className="flex justify-between items-baseline w-full text-[18px] gap-2 font-bold">
-                      <span className="text-xl">
-                        ${finalPurchasePrice.toLocaleString("en-US")}
-                      </span>
-                      {agentCommission <= 0 &&
-                        isNumberOfPersonsEqual &&
-                        recommendedPriceAllPax > finalPurchasePrice && (
-                          <span className="line-through text-[red]">
-                            ${recommendedPriceAllPax.toLocaleString("en-US")}
-                          </span>
-                        )}
-                    </div>
-                    <div className="flex justify-left items-center w-full text-gray-500 gap-1">
-                      <span>לאדם</span>
-                      <span>
-                        $
-                        {Math.ceil(
-                          finalPurchasePrice / numberOfPersons
-                        ).toLocaleString("en-US")}
-                      </span>
-                    </div>
-                    <div dir="rtl" className="text-left">
-                      {finalPurchasePriceILS.toLocaleString("en-US")} ש&quot;ח
-                    </div>
-                  </div>
-                  <div
-                    className="flex flex-col items-start font-bold"
-                    dir="rtl"
-                  >
-                    <span className="text-[22px] ">סה&quot;כ</span>
-                    {agentCommission > 0 ? (
-                      <span className="text-[14px]" style={{ color: "green" }}>
-                        עמלה צפויה $
-                        {(
-                          (agentCommission / 100) *
-                          finalPurchasePrice
-                        ).toLocaleString("en-US")}
-                      </span>
-                    ) : (
-                      affDiscount > 0 && (
-                        <span
-                          className="text-[14px]"
-                          style={{ color: "green" }}
-                        >
-                          כולל הנחת $
-                          {(affDiscount * numberOfEventTickets).toLocaleString(
-                            "en-US"
-                          )}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
-                <div className="py-4 px-6 space-y-3 text-right">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold">{event.name}</h2>
-                    <p className="text-lg">
-                      {event.location.name +
-                        " | " +
-                        dayjs(event.date).format("DD/MM/YYYY")}
-                    </p>
-                  </div>
-                  <div className="">
-                    <h3 className="font-bold text-lg">
-                      כרטיסים{" "}
-                      <span>
-                        {"("}
-                        {numberOfEventTickets}
-                        {" כרטיסים)"}
-                      </span>
-                    </h3>
-                    <div className="flex justify-between items-center w-full">
-                      <div
-                        className="flex w-full text-[16px] justify-between gap-1"
-                        dir="rtl"
-                      >
-                        <div className="flex gap-[2px]">
-                          <div className="ml-1">
-                            קטגוריה:{" "}
-                            <span className="font-bold">
-                              {eventTicket.category}
-                            </span>
-                          </div>
-                          {agentCommission <= 0 && (
-                            <div>
-                              {eventTicketPriceAddition ? (
-                                <>
-                                  ({formatPrice(eventTicketPriceAddition)}
-                                  )/לכרטיס
-                                </>
-                              ) : (
-                                ""
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {agentCommission <= 0 && (
-                          <div>
-                            {eventTicketPriceAddition
-                              ? formatPrice(eventTicketPriceAddition, {
-                                  factor: numberOfEventTickets,
-                                  applyColor: true,
-                                  bold: true,
-                                })
-                              : "כלול במחיר"}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="">
-                    <h3 className="font-bold text-lg">
-                      לינה{" "}
-                      <span>
-                        {"("}
-                        {selectedHotel.guests.reduce(
-                          (ppl, room) =>
-                            ppl + room.children.length + room.adults,
-                          0
-                        )}
-                        {" אורחים)"}
-                      </span>
-                    </h3>
-                    <div className="flex w-full justify-between" dir="rtl">
-                      <div>
-                        <p className="font-bold" dir="ltr">
-                          {selectedHotel.name}
-                        </p>
-                        <p dir="ltr">
-                          {selectedHotel.rate.room_data_trans.main_name}
-                        </p>
-                      </div>
-                      {agentCommission <= 0 && (
-                        <div>
-                          {hotelPriceAddition
-                            ? formatPrice(hotelPriceAddition, {
-                                factor: totalGuests,
-                                applyColor: true,
-                                bold: true,
-                              })
-                            : "כלול במחיר"}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex text-[16px]" dir="rtl">
-                      <div>מ-</div>
-                      <div>
-                        {dayjs(selectedHotel.checkin).format(
-                          // pass check-in and check-out dates to selectedhotel (need to chaned hotel order type)
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
-                      <div className="w-1"></div>
-                      <div>עד-</div>
-                      <div>
-                        {dayjs(selectedHotel.checkout).format("DD/MM/YYYY")}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="">
-                    <h3 className="font-bold text-lg">
-                      טיסה{" "}
-                      <span>
-                        {"("}
-                        {selectedFlight.numOfTravelers}
-                        {" נוסעים)"}
-                      </span>
-                    </h3>
-                    <div className="flex justify-between w-full" dir="rtl">
-                      <div>
-                        <div
-                          className="text-[16px] flex items-center"
-                          dir="rtl"
-                        >
-                          <div className="font-bold ml-1" dir="ltr">
-                            {airlineFullName}
-                          </div>
-                        </div>
-                        <div className="flex text-[16px]" dir="rtl">
-                          <div>מ-</div>
-                          <div>
-                            {dayjs(
-                              selectedFlight.outbound.departureTime
-                            ).format("DD/MM/YYYY")}
-                          </div>
-                          <div className="w-1"></div>
-                          <div>עד-</div>
-                          <div>
-                            {dayjs(selectedFlight.inbound.departureTime).format(
-                              "DD/MM/YYYY"
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {agentCommission <= 0 && (
-                        <div>
-                          {formatPrice(flightPriceAddition)
-                            ? formatPrice(flightPriceAddition, {
-                                factor: selectedFlight.numOfTravelers,
-                                applyColor: true,
-                                bold: true,
-                              })
-                            : "כלול במחיר"}
-                        </div>
-                      )}
-                    </div>
-                    <div className="h-1"></div>
-                    <div className="text-[12px] mt-2 px-2" dir="rtl">
-                      <FlightMeta {...selectedFlight.outbound} />
-                      <FlightMeta {...selectedFlight.inbound} />
-                    </div>
-                  </div>
-                </div>
+                {!isMobile && (
+                  <PriceSummary
+                    finalPurchasePrice={finalPurchasePrice}
+                    finalPurchasePriceILS={finalPurchasePriceILS}
+                    recommendedPriceAllPax={recommendedPriceAllPax}
+                    numberOfPersons={numberOfPersons}
+                    agentCommission={agentCommission}
+                    affDiscount={affDiscount}
+                    isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                    numberOfEventTickets={numberOfEventTickets}
+                  />
+                )}
+                <Review
+                  event={event}
+                  selectedFlight={selectedFlight}
+                  selectedHotel={selectedHotel}
+                  eventTicket={eventTicket}
+                  numberOfEventTickets={numberOfEventTickets}
+                  flightPriceAddition={flightPriceAddition}
+                  hotelPriceAddition={hotelPriceAddition}
+                  totalGuests={totalGuests}
+                  agentCommission={agentCommission}
+                  airlineFullName={airlineFullName}
+                  eventTicketPriceAddition={eventTicketPriceAddition}
+                />
               </Card>
 
               {/* Mobile: Payment security logos moved directly after summary (before passenger details) */}
-              <div className="flex items-center justify-center gap-4 !my-8 md:hidden">
+              <div className="flex items-center justify-center gap-4 !my-6 md:hidden">
                 <Image
                   src="/amex.svg"
                   alt="American Express"
@@ -1104,7 +914,7 @@ export default function OrderReview() {
 
               {/* Mobile: Interest-free installment banner (restyled to appear informational, not a button) */}
               <div
-                className="md:hidden w-full !my-8 px-4"
+                className="md:hidden w-full !my-6 px-4"
                 aria-label="תשלומים ללא ריבית 5"
               >
                 <div className="w-full rounded-md bg-secondary/10  border-secondary/40 text-secondary text-center py-2.5 px-3 text-[15px] font-semibold leading-snug tracking-wide shadow-sm">
@@ -1361,7 +1171,9 @@ export default function OrderReview() {
                               <div
                                 dir="ltr"
                                 className="text-left"
-                                dangerouslySetInnerHTML={{ __html: penText() }}
+                                dangerouslySetInnerHTML={{
+                                  __html: penText,
+                                }}
                               />
                             </DialogContent>
                           </Dialog>
@@ -1461,7 +1273,10 @@ export default function OrderReview() {
               </div>
             </div>
             <div className="space-y-6 order-2 md:order-2">
-              <Card className="bg-white shadow-lg overflow-hidden" ref={passengerDetailsRef}>
+              <Card
+                className="bg-white shadow-lg overflow-hidden"
+                ref={passengerDetailsRef}
+              >
                 <div className="px-8 pt-6 pb-8">
                   <h2
                     className="text-2xl font-bold mb-4 text-right"
@@ -1817,7 +1632,9 @@ export default function OrderReview() {
                               <div
                                 dir="ltr"
                                 className="text-left"
-                                dangerouslySetInnerHTML={{ __html: penText() }}
+                                dangerouslySetInnerHTML={{
+                                  __html: penText,
+                                }}
                               />
                             </DialogContent>
                           </Dialog>
@@ -1853,7 +1670,15 @@ export default function OrderReview() {
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
-                המשך לתשלום מאובטח
+                <ButtonSummary
+                  finalPurchasePrice={finalPurchasePrice}
+                  finalPurchasePriceILS={finalPurchasePriceILS}
+                  recommendedPriceAllPax={recommendedPriceAllPax}
+                  numberOfPersons={numberOfPersons}
+                  agentCommission={agentCommission}
+                  isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                  isSticky={false}
+                />
               </Button>
 
               <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
@@ -1884,10 +1709,13 @@ export default function OrderReview() {
           </div>
         </main>
       </LoaderWrapper>
-      
+
       {/* Sticky Footer for Mobile */}
       {showStickyFooter && (
-        <div ref={stickyFooterRef} className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 md:hidden">
+        <div
+          ref={stickyFooterRef}
+          className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 md:hidden"
+        >
           {/* Additional Options Dropdown */}
           {showStickyOptions && (
             <div className="mb-4 flex gap-2">
@@ -1915,7 +1743,7 @@ export default function OrderReview() {
               </Button>
             </div>
           )}
-          
+
           {/* Main Buttons Row */}
           <div className="flex gap-2">
             <Button
@@ -1928,11 +1756,19 @@ export default function OrderReview() {
             </Button>
             <Button
               onClick={(e) => handleSubmit(e, true)}
-              className="flex-1 bg-[#05203c] font-bold hover:bg-[#05203c]/90 text-[18px] h-[52px]"
+              className="flex-1 bg-[#05203c] font-bold hover:bg-[#05203c]/90 text-[18px] h-[52px] w-full justify-between"
               disabled={isSubmitting}
               aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
             >
-              המשך לתשלום מאובטח
+              <ButtonSummary
+                finalPurchasePrice={finalPurchasePrice}
+                finalPurchasePriceILS={finalPurchasePriceILS}
+                recommendedPriceAllPax={recommendedPriceAllPax}
+                numberOfPersons={numberOfPersons}
+                agentCommission={agentCommission}
+                isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                isSticky
+              />
             </Button>
           </div>
         </div>

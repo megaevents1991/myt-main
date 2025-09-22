@@ -50,6 +50,7 @@ export const TicketSelection = () => {
       vendor: cheapt?.vendor || "",
       category: cheapt?.category || "",
       price: cheapt?.price || 0,
+      description: cheapt?.description || "",
       quantity: 2,
     });
   }, [availableTickets, setEventTicket]);
@@ -71,14 +72,16 @@ export const TicketSelection = () => {
     category: string;
     price: number;
     vendor?: string;
+    description?: string;
   }) => {
     // Defensive: ensure the selected ticket is still available
     if (!availableTickets.some((t) => t.id === ticket.id)) {
       return;
     }
-    setEventTicket({ 
-      ...ticket, 
-      quantity: numberOfEventTickets
+    setEventTicket({
+      ...ticket,
+      description: ticket.description || "",
+      quantity: numberOfEventTickets,
     });
     setSelectedTicket(ticket.id);
   };
@@ -170,12 +173,13 @@ export const TicketSelection = () => {
                       <EventTicketCard
                         index={index}
                         onClick={() =>
-                          handleTicketSelect({
-                            id: ticket.id,
-                            price: ticket.price,
-                            category: ticket.category,
-                            vendor: ticket.vendor,
-                          })
+                            handleTicketSelect({
+                              id: ticket.id,
+                              price: ticket.price,
+                              category: ticket.category,
+                              vendor: ticket.vendor,
+                              description: ticket.description,
+                            })
                         }
                         numberOfTickets={numberOfEventTickets}
                         onChangeNumberOfTickets={handleQuantityChange}

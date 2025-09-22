@@ -108,6 +108,7 @@ export const useHandleExistingOrder = () => {
         category: data.event_order_info.category,
         id: data.event_order_info.id,
         price: data.event_order_info.price_per_ticket,
+        description: "",
         quantity: data.event_order_info.number_of_ticket,
       });
 

@@ -615,7 +615,7 @@ export const HotelSelection = () => {
             {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) ? (
               <FlightLoadingTransition
                 title="!?כבר הספקתם לבחור טיסות"
-                subtitle="ממש עוד רגע יופיעו המלונות"
+                subtitle="ממש עוד רגע יופיעו גם המלונות"
                 showHotelOnly
                 className="py-12"
               />

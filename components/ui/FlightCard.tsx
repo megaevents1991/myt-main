@@ -107,7 +107,11 @@ const LuggageButton = ({
         isSelected && "bg-[#277E892e]"
       )}
       type="button"
-      aria-label={`מידע על מזוודות: תיק יד כלול, ${cabinBagsIncluded ? 'מזוודת תא נוסעים כלולה' : 'מזוודת תא נוסעים לא כלולה'}, ${checkBagsIncluded ? 'מזוודה נרשמת כלולה' : 'מזוודה נרשמת לא כלולה'}`}
+      aria-label={`מידע על מזוודות: תיק יד כלול, ${
+        cabinBagsIncluded
+          ? "מזוודת תא נוסעים כלולה"
+          : "מזוודת תא נוסעים לא כלולה"
+      }, ${checkBagsIncluded ? "מזוודה נרשמת כלולה" : "מזוודה נרשמת לא כלולה"}`}
     >
       <div className="flex flex-col items-center justify-evenly h-full gap-0">
         <BagIconContainer
@@ -374,7 +378,7 @@ export const FlightMeta = ({
   return (
     <div className="flex flex-row items-center w-full justify-around" ref={ref}>
       <div className="text-end">
-        <div className="flex flex-row items-center text-md font-bold lg:text-2xl">
+        <div className="flex flex-row items-center text-md font-bold lg:text-2xl whitespace-nowrap">
           {String(new Date(departureTime).getHours()).padStart(2, "0")}:
           {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
         </div>
@@ -426,7 +430,7 @@ export const FlightMeta = ({
         </div>
       </div>
       <div>
-        <div className="flex flex-row items-center relative text-md font-bold lg:text-2xl">
+        <div className="flex flex-row items-center relative text-md font-bold lg:text-2xl whitespace-nowrap">
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
           <Tooltip label="נחיתה ביום למחרת" position="top">
