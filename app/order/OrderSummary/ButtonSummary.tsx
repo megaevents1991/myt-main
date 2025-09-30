@@ -10,6 +10,7 @@ export const ButtonSummary = ({
   agentCommission,
   isNumberOfPersonsEqual,
   isSticky = false,
+  affDiscount = 0,
 }: {
   finalPurchasePrice: number;
   finalPurchasePriceILS: number;
@@ -18,6 +19,7 @@ export const ButtonSummary = ({
   agentCommission: number;
   isNumberOfPersonsEqual: boolean;
   isSticky?: boolean; // when true show shorter label
+  affDiscount?: number;
 }) => {
   const {
     finalPurchasePrice: finalPurchasePriceFormatted,
@@ -44,8 +46,13 @@ export const ButtonSummary = ({
       </span>
       {isMobile && (
         <div className="flex flex-col items-end">
-          <div className="text-xs line-through">
-            ${originalNoDiscount}
+          <div className="flex items-center gap-1 text-xs">
+            {affDiscount > 0 && (
+              <span className="text-[10px] font-bold whitespace-nowrap">
+                כולל הנחת ${affDiscount}
+              </span>
+            )}
+            <span className="line-through">${originalNoDiscount}</span>
           </div>
           <div className="flex flex-row items-baseline items-center">
             <div className="pl-1 text-xs">

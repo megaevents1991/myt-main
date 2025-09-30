@@ -395,6 +395,14 @@ export default function OrderReview() {
     );
   };
 
+  // Restrict 24h hold for specific events by English name (case-insensitive)
+  // Example: block Ariana Grande
+  const isHoldAllowed = useMemo(() => {
+    const name = (event?.name_english || "").toLowerCase();
+    const blockedSubstrings = ["ariana grande"]; // easy to extend
+    return !blockedSubstrings.some((s) => name.includes(s));
+  }, [event?.name_english]);
+
   useEffect(() => {
     setErrors();
     // Mark fields as touched if they have values (indicating autofill)
@@ -553,6 +561,10 @@ export default function OrderReview() {
     onlySave = false
   ) => {
     e.preventDefault();
+    // Safety: if hold is not allowed for this event, force onlySave off
+    if (onlySave && !isHoldAllowed) {
+      onlySave = false;
+    }
     setTermsCheckboxTouched(true);
 
     // Set errors based on the action type
@@ -1259,17 +1271,19 @@ export default function OrderReview() {
                   <br />
                   דברו עם נציג
                 </Button>
-                <Button
-                  onClick={(e) => handleSubmit(e, false, true)}
-                  variant={"link"}
-                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
-                  disabled={isSubmitting}
-                  aria-label="הבטיחו את המחיר ל-24 שעות"
-                >
-                  ?צריכים עוד זמן
-                  <br />
-                  הבטיחו מחיר ל-24 שעות
-                </Button>
+                {isHoldAllowed && (
+                  <Button
+                    onClick={(e) => handleSubmit(e, false, true)}
+                    variant={"link"}
+                    className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
+                    disabled={isSubmitting}
+                    aria-label="הבטיחו את המחיר ל-24 שעות"
+                  >
+                    ?צריכים עוד זמן
+                    <br />
+                    הבטיחו מחיר ל-24 שעות
+                  </Button>
+                )}
               </div>
             </div>
             <div className="space-y-6 order-2 md:order-2">
@@ -1678,6 +1692,7 @@ export default function OrderReview() {
                   agentCommission={agentCommission}
                   isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                   isSticky={false}
+                  affDiscount={(affDiscount || 0) * numberOfEventTickets}
                 />
               </Button>
 
@@ -1693,17 +1708,19 @@ export default function OrderReview() {
                   <br />
                   דברו עם נציג
                 </Button>
-                <Button
-                  onClick={(e) => handleSubmit(e, false, true)}
-                  variant={"link"}
-                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
-                  disabled={isSubmitting}
-                  aria-label="הבטיחו את המחיר ל-24 שעות"
-                >
-                  ?צריכים עוד זמן
-                  <br />
-                  הבטיחו מחיר ל-24 שעות
-                </Button>
+                {isHoldAllowed && (
+                  <Button
+                    onClick={(e) => handleSubmit(e, false, true)}
+                    variant={"link"}
+                    className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
+                    disabled={isSubmitting}
+                    aria-label="הבטיחו את המחיר ל-24 שעות"
+                  >
+                    ?צריכים עוד זמן
+                    <br />
+                    הבטיחו מחיר ל-24 שעות
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -1730,17 +1747,19 @@ export default function OrderReview() {
                 <br />
                 דברו עם נציג
               </Button>
-              <Button
-                onClick={(e) => handleSubmit(e, false, true)}
-                variant={"link"}
-                className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
-                disabled={isSubmitting}
-                aria-label="הבטיחו את המחיר ל-24 שעות"
-              >
-                ?צריכים עוד זמן
-                <br />
-                הבטיחו מחיר ל-24 שעות
-              </Button>
+              {isHoldAllowed && (
+                <Button
+                  onClick={(e) => handleSubmit(e, false, true)}
+                  variant={"link"}
+                  className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
+                  disabled={isSubmitting}
+                  aria-label="הבטיחו את המחיר ל-24 שעות"
+                >
+                  ?צריכים עוד זמן
+                  <br />
+                  הבטיחו מחיר ל-24 שעות
+                </Button>
+              )}
             </div>
           )}
 
@@ -1768,6 +1787,7 @@ export default function OrderReview() {
                 agentCommission={agentCommission}
                 isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                 isSticky
+                affDiscount={(affDiscount || 0) * numberOfEventTickets}
               />
             </Button>
           </div>
