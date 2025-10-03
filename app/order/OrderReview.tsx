@@ -269,24 +269,24 @@ export default function OrderReview() {
       }
     };
 
-    // Start one-shot inactivity timer (20s) from when the page is ready for interaction
+    // Start one-shot inactivity timer (30s) from when the page is ready for interaction
     inactivityTimeoutRef.current = window.setTimeout(() => {
       if (!hasInteractedRef.current) {
         setSpecialOfferOpen(true);
       }
-    }, 20000);
+    }, 30000);
 
     // Listen broadly for interactions on the page
     document.addEventListener("click", handleUserInteraction, true);
     document.addEventListener("keydown", handleUserInteraction, true);
     document.addEventListener("input", handleUserInteraction, true);
-    document.addEventListener("touchstart", handleUserInteraction, true);
+    document.addEventListener("focusin", handleUserInteraction, true);
 
     return () => {
       document.removeEventListener("click", handleUserInteraction, true);
       document.removeEventListener("keydown", handleUserInteraction, true);
       document.removeEventListener("input", handleUserInteraction, true);
-      document.removeEventListener("touchstart", handleUserInteraction, true);
+      document.removeEventListener("focusin", handleUserInteraction, true);
       if (inactivityTimeoutRef.current) {
         window.clearTimeout(inactivityTimeoutRef.current);
       }
@@ -723,11 +723,10 @@ export default function OrderReview() {
   };
 
   const handleSpecialOfferAccept = () => {
-    // Close modal and apply $70 discount per person (per ticket)
     setSpecialOfferOpen(false);
     if (agentCommission <= 0) {
       const newDiscount =
-        affDiscount > 50 ? 100 : affDiscount > 10 ? affDiscount * 2 : 60;
+        affDiscount > 50 ? 90 : affDiscount > 10 ? affDiscount * 1.75 : 50;
       setAffDiscount(newDiscount);
     }
   };
@@ -777,7 +776,7 @@ export default function OrderReview() {
       <Modal
         title="מתחילים את השנה עם מתנה בלעדית!"
         description={<>
-          היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />❤️נשמח לעזור לכם בהחלטה
+          היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />נשמח לעזור לכם בהחלטה❤️
         </>
         }
         action={
