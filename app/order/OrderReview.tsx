@@ -254,10 +254,34 @@ export default function OrderReview() {
     }
   }, [showStickyOptions]);
 
+  // Restrict 24h hold for specific events by English name (case-insensitive)
+  // Example: block Ariana Grande
+  const isHoldAllowed = useMemo(() => {
+    const name = (event?.name_english || "").toLowerCase();
+    const blockedSubstrings = [
+      "ariana grande",
+    ]; // easy to extend
+    return !blockedSubstrings.some((s) => name.includes(s));
+  }, [event?.name_english]);
+
+  // Restrict inactivity-based special offer (extra discount) for specific events
+  // Keep a separate list so product can tune hold vs. offer independently
+  const isSpecialOfferAllowed = useMemo(() => {
+    const name = (event?.name_english || "").toLowerCase();
+    const blockedSubstrings = [
+      "ariana grande",
+      "katy perry",
+      "radiohead",
+      "bad bunny",
+      "metallica",
+    ]; // easy to extend
+    return !blockedSubstrings.some((s) => name.includes(s));
+  }, [event?.name_english]);
+
   // Inactivity detection for special offer (desktop + mobile)
   useEffect(() => {
-    // Only for non-agent bookings and only when initial info modal is closed
-    if (agentCommission > 0 || openModal) return;
+    // Only for non-agent bookings, only when initial info modal is closed, and if offer is allowed
+    if (agentCommission > 0 || openModal || !isSpecialOfferAllowed) return;
 
     const handleUserInteraction = () => {
       if (!hasInteractedRef.current) {
@@ -274,7 +298,7 @@ export default function OrderReview() {
       if (!hasInteractedRef.current) {
         setSpecialOfferOpen(true);
       }
-    }, 30000);
+    }, 22000);
 
     // Listen broadly for interactions on the page
     document.addEventListener("click", handleUserInteraction, true);
@@ -291,7 +315,7 @@ export default function OrderReview() {
         window.clearTimeout(inactivityTimeoutRef.current);
       }
     };
-  }, [agentCommission, openModal]);
+  }, [agentCommission, openModal, isSpecialOfferAllowed]);
 
   const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];
@@ -395,13 +419,7 @@ export default function OrderReview() {
     );
   };
 
-  // Restrict 24h hold for specific events by English name (case-insensitive)
-  // Example: block Ariana Grande
-  const isHoldAllowed = useMemo(() => {
-    const name = (event?.name_english || "").toLowerCase();
-    const blockedSubstrings = ["ariana grande"]; // easy to extend
-    return !blockedSubstrings.some((s) => name.includes(s));
-  }, [event?.name_english]);
+  
 
   useEffect(() => {
     setErrors();
@@ -723,6 +741,9 @@ export default function OrderReview() {
   };
 
   const handleSpecialOfferAccept = () => {
+    // Guard in case modal state changes mid-flight
+    if (!isSpecialOfferAllowed) return;
+
     setSpecialOfferOpen(false);
     if (agentCommission <= 0) {
       const newDiscount =
@@ -789,7 +810,7 @@ export default function OrderReview() {
             אשמח להנחה
           </Button>
         }
-        opened={agentCommission <= 0 && specialOfferOpen}
+        opened={agentCommission <= 0 && specialOfferOpen && isSpecialOfferAllowed}
         iconType="Beer"
       />
       <LoaderWrapper
