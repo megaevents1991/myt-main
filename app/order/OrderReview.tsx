@@ -259,7 +259,7 @@ export default function OrderReview() {
   const isHoldAllowed = useMemo(() => {
     const name = (event?.name_english || "").toLowerCase();
     const blockedSubstrings = [
-      "ariana grande",
+      "123abc",
     ]; // easy to extend
     return !blockedSubstrings.some((s) => name.includes(s));
   }, [event?.name_english]);
@@ -269,11 +269,7 @@ export default function OrderReview() {
   const isSpecialOfferAllowed = useMemo(() => {
     const name = (event?.name_english || "").toLowerCase();
     const blockedSubstrings = [
-      "ariana grande",
-      "katy perry",
-      "radiohead",
-      "bad bunny",
-      "metallica",
+      "123abc",
     ]; // easy to extend
     return !blockedSubstrings.some((s) => name.includes(s));
   }, [event?.name_english]);
