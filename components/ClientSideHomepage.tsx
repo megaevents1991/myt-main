@@ -1551,6 +1551,31 @@ function EventCard({ event }: { event: Event }) {
           className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
           dir="rtl"
         >
+          {event.tags === "LastTickets" && !computedSold && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="כרטיסים אחרונים זמינים">
+              כרטיסים אחרונים!
+            </div>
+          )}
+          {event.tags === "Popular" && !computedSold && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אירוע פופולרי">
+              נמכר במהירות!
+            </div>
+          )}
+          {event.tags === "Restock" && !computedSold && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חזר למלאי">
+              חזר למלאי!
+            </div>
+          )}
+          {event.tags === "VIP" && !computedSold && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
+              אירוח VIP
+            </div>
+          )}
+          {computedSold && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
+              אזלו הכרטיסים
+            </div>
+          )}
           {/* Accessibility: Enhanced image with descriptive alt text */}
           <Image
             src={event.card_image_url}
