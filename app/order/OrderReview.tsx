@@ -323,7 +323,7 @@ export default function OrderReview() {
           const isMainContact = index === 0;
 
           if (requireAllPassengers) {
-            // For payment (המשך לתשלום), validate all passengers' names
+            // For credit card and phone order: require all passengers' names
             if (field === "firstName" || field === "lastName") {
               error = validate[field](value);
             } else if (field === "phone" || field === "email") {
@@ -333,13 +333,9 @@ export default function OrderReview() {
               }
             }
           } else {
-            // For נציג/שמירה, only validate main contact
+            // For 24h hold: only validate main contact
             if (isMainContact) {
-              if (field === "phone" || field === "email") {
-                error = validate[field](value);
-              } else {
-                error = validate[field](value);
-              }
+              error = validate[field](value);
             } else {
               // For additional passengers, only validate if the field has a value
               if (value && value.trim() !== "") {
@@ -350,6 +346,12 @@ export default function OrderReview() {
 
           if (error) {
             allErrors[index] = { ...allErrors[index], [field]: error };
+          } else {
+            if (allErrors[index]) {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { [field]: _, ...rest } = allErrors[index];
+              allErrors[index] = rest;
+            }
           }
         }
       );
@@ -448,12 +450,16 @@ export default function OrderReview() {
       let error = "";
 
       if (isMainContact) {
-        // For main contact, always validate (required fields)
+        // Main contact: always validate all fields (required)
         error = validate[field](finalValue);
       } else {
-        // For additional passengers, only validate if field has content
+        // Additional passengers: only validate if field has content
+        // This allows empty fields for optional passengers (e.g., 24h hold)
         if (finalValue && finalValue.trim() !== "") {
-          error = validate[field](finalValue);
+          if (field === "firstName" || field === "lastName") {
+            error = validate[field](finalValue);
+          }
+          // Phone and email not needed for additional passengers
         }
       }
 
@@ -494,12 +500,16 @@ export default function OrderReview() {
     let error = "";
 
     if (isMainContact) {
-      // For main contact, always validate (required fields)
+      // Main contact: always validate all fields (required)
       error = validate[field](value);
     } else {
-      // For additional passengers, only validate if field has content
+      // Additional passengers: only validate if field has content
+      // This allows empty fields for optional passengers (e.g., 24h hold)
       if (value && value.trim() !== "") {
-        error = validate[field](value);
+        if (field === "firstName" || field === "lastName") {
+          error = validate[field](value);
+        }
+        // Phone and email not needed for additional passengers
       }
     }
 
@@ -577,27 +587,44 @@ export default function OrderReview() {
     e.preventDefault();
     // Safety: if hold is not allowed for this event, force onlySave off
     if (onlySave && !isHoldAllowed) {
+      console.log("⚠️ Hold not allowed for this event, converting to phone order");
       onlySave = false;
     }
     setTermsCheckboxTouched(true);
 
     // Set errors based on the action type
-    setErrors(payNow);
+    // For 24h hold (onlySave=true), only require main contact
+    // For credit card and phone order, require all passengers
+    setErrors(!onlySave);
 
     // Set touched fields based on action type
     const touched = passengers.map((_, index) => ({
-      firstName: payNow ? true : index === 0 ? true : false,
-      lastName: payNow ? true : index === 0 ? true : false,
-      phone: payNow ? (index === 0 ? true : false) : index === 0 ? true : false, // Phone only for main contact
-      email: payNow ? (index === 0 ? true : false) : index === 0 ? true : false, // Email only for main contact
+      firstName: onlySave ? (index === 0 ? true : false) : true, // 24h hold: main only, others: all
+      lastName: onlySave ? (index === 0 ? true : false) : true,  // 24h hold: main only, others: all
+      phone: index === 0 ? true : false, // Phone only for main contact
+      email: index === 0 ? true : false, // Email only for main contact
     }));
     setTouched(touched);
 
     // Check if form is valid after validation based on action type
-    const isValidForAction = isFormValidForAction(payNow);
+    // For 24h hold (onlySave), requireAllPassengers = false
+    // For credit card and phone order, requireAllPassengers = true
+    const isValidForAction = isFormValidForAction(!onlySave);
     if (!isValidForAction || isSubmitting) {
       // If validation fails, scroll to passenger details section
       if (!isValidForAction && passengerDetailsRef.current) {
+        passengerDetailsRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+      return;
+    }
+
+    if (!termsAccepted) {
+      setIsSubmitting(false);
+      // Scroll to passenger details if terms not accepted as well
+      if (passengerDetailsRef.current) {
         passengerDetailsRef.current.scrollIntoView({
           behavior: "smooth",
           block: "start",
@@ -711,13 +738,13 @@ export default function OrderReview() {
       const isMainContact = i === 0;
 
       if (requireAllPassengers) {
-        // For payment (המשך לתשלום), require all passengers' names
+        // For credit card and phone order: require all passengers' names
         const hasRequiredFields = passenger.firstName && passenger.lastName;
         const hasContactInfo =
           !isMainContact || (passenger.phone && passenger.email);
         return !hasErrors && hasRequiredFields && hasContactInfo;
       } else {
-        // For נציג/שמירה, only validate first passenger completely
+        // For 24h hold: only validate first passenger completely
         if (isMainContact) {
           const hasRequiredFields = passenger.firstName && passenger.lastName;
           const hasContactInfo = passenger.phone && passenger.email;
@@ -1359,7 +1386,7 @@ export default function OrderReview() {
                                 aria-label={`שם פרטי באנגלית לנוסע ${
                                   index + 1
                                 }`}
-                                aria-required={index === 0 ? "true" : "false"}
+                                aria-required="true"
                                 aria-invalid={
                                   touched[index]?.firstName &&
                                   !!validationErrors[index]?.firstName
@@ -1416,7 +1443,7 @@ export default function OrderReview() {
                                 aria-label={`שם משפחה באנגלית לנוסע ${
                                   index + 1
                                 }`}
-                                aria-required={index === 0 ? "true" : "false"}
+                                aria-required="true"
                                 aria-invalid={
                                   touched[index]?.lastName &&
                                   !!validationErrors[index]?.lastName
