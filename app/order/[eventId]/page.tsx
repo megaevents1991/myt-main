@@ -1,9 +1,9 @@
 import { getCachedEvents } from "@/lib/eventsData";
-import { redirect } from "next/navigation";
 import OrderPageClient from "../OrderPageClient";
 import { Event } from "@/lib/app.types";
 import { Metadata } from "next";
 import { OrderErrorBoundary } from "../OrderErrorBoundary";
+import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 
 export const revalidate = 3600; // 1 hour
 
@@ -87,7 +87,7 @@ export default async function OrderPageWithId({
   const { eventId } = await params;
 
   if (!eventId) {
-    redirect("/");
+    return <EventNotFoundNotice />;
   }
 
   // Fetch the event data server-side
@@ -97,11 +97,11 @@ export default async function OrderPageWithId({
     event = events.find((e) => e.id === parseInt(eventId));
   } catch (error) {
     console.error("Error fetching event:", error);
-    redirect("/");
+    return <EventNotFoundNotice eventId={eventId} />;
   }
 
   if (!event) {
-    redirect("/");
+    return <EventNotFoundNotice eventId={eventId} />;
   }
 
   return (
