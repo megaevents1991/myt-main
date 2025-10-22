@@ -1,5 +1,5 @@
 import { getCachedEvents } from "@/lib/eventsData";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import OrderPageClient from "../OrderPageClient";
 import { Event } from "@/lib/app.types";
 import { Metadata } from "next";
@@ -87,7 +87,7 @@ export default async function OrderPageWithId({
   const { eventId } = await params;
 
   if (!eventId) {
-    notFound();
+    redirect("/");
   }
 
   // Fetch the event data server-side
@@ -97,11 +97,11 @@ export default async function OrderPageWithId({
     event = events.find((e) => e.id === parseInt(eventId));
   } catch (error) {
     console.error("Error fetching event:", error);
-    notFound();
+    redirect("/");
   }
 
   if (!event) {
-    notFound();
+    redirect("/");
   }
 
   return (
