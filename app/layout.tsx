@@ -139,6 +139,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="he" className="bg-white text-black" suppressHydrationWarning>
       <head>
+        <Script id="pagesense" strategy="beforeInteractive">
+          {`(function(w,s){var e=document.createElement("script");e.type="text/javascript";e.async=true;e.src="https://cdn.pagesense.io/js/903892598/564f3fae378b4276a55128c6c4698102.js";var x=document.getElementsByTagName("script")[0];x.parentNode.insertBefore(e,x);})(window,"script");`}
+        </Script>
         <Script id="scroll-restoration" strategy="beforeInteractive">
           {`
           if (typeof window !== 'undefined') {
