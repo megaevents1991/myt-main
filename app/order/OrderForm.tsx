@@ -60,7 +60,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
   }, [step]);
 
   const buttonDisabled =
-    (!flight?.id && step === 2) || (!hotel?.id && step === 3);
+    (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
+    (!flight?.id && step === 2) || 
+    (!hotel?.id && step === 3);
 
   const airline = shortenAirlineName(flight?.metadata?.name);
 

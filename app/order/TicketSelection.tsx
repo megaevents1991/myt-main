@@ -9,6 +9,7 @@ import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
 import type { EventTicket } from "@/lib/app.types";
+import { getAvailableTickets } from "@/lib/utils";
 
 export const TicketSelection = () => {
   const { setEventTicket, event } = useContext(OrderContext);
@@ -27,22 +28,48 @@ export const TicketSelection = () => {
 
   // Consider only tickets that are available (t.available !== false). If "available" is undefined, treat as available.
   const availableTickets: EventTicket[] = useMemo(
-    () => (event?.tickets_and_rates || []).filter((t: EventTicket) => t?.available !== false),
-    [event?.tickets_and_rates]
+    () => {
+      const tickets = getAvailableTickets(event);
+      const filteredOut = (event?.tickets_and_rates || []).length - tickets.length;
+      
+      if (filteredOut > 0) {
+        console.log(`[TicketSelection] Filtered out ${filteredOut} unavailable ticket(s) for event ${event?.id}`);
+      }
+      
+      return tickets;
+    },
+    [event]
   );
 
   useEffect(() => {
     if (!availableTickets || availableTickets.length === 0) {
-      // No tickets available; clear selection and cheapest ticket.
+      // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
+      console.log('No available tickets found - clearing all ticket state');
       setCheapestTicket(null);
       setSelectedTicket(undefined);
+      // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
+      setEventTicket({
+        id: "",
+        vendor: "",
+        category: "",
+        price: 0,
+        description: "",
+        quantity: 0,
+      });
       return;
     }
+
+    console.log(`Found ${availableTickets.length} available tickets:`, 
+      availableTickets.map(t => ({ id: t.id, category: t.category, available: t.available }))
+    );
 
     const cheapt = availableTickets.reduce<EventTicket>((min, ticket) =>
       ticket.price < min.price ? ticket : min,
       availableTickets[0]
     );
+    
+    console.log(`Auto-selecting cheapest ticket: ${cheapt.category} (ID: ${cheapt.id}, available: ${cheapt.available})`);
+    
     setCheapestTicket(cheapt);
     setSelectedTicket(cheapt?.id);
     setEventTicket({
@@ -75,9 +102,18 @@ export const TicketSelection = () => {
     description?: string;
   }) => {
     // Defensive: ensure the selected ticket is still available
-    if (!availableTickets.some((t) => t.id === ticket.id)) {
+    const ticketInAvailableList = availableTickets.find((t) => t.id === ticket.id);
+    if (!ticketInAvailableList) {
+      console.warn(`Attempted to select unavailable ticket: ${ticket.category} (ID: ${ticket.id})`);
       return;
     }
+    
+    // Additional check: verify the ticket is not explicitly marked as unavailable
+    if (ticketInAvailableList.available === false) {
+      console.warn(`Ticket is marked as unavailable: ${ticket.category} (ID: ${ticket.id})`);
+      return;
+    }
+    
     setEventTicket({
       ...ticket,
       description: ticket.description || "",
@@ -163,12 +199,28 @@ export const TicketSelection = () => {
                   קטגוריות כרטיסים זמינות
                 </div>
                 {availableTickets.length === 0 ? (
-                  <Text ta="center" c="dimmed" aria-live="polite">
-                    אין כרטיסים זמינים כרגע.
-                  </Text>
+                  <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
+                    <Text size="xl" fw={700} c="red" aria-live="polite">
+                      אין כרטיסים זמינים כרגע
+                    </Text>
+                    <Text size="md" c="dimmed">
+                      כל הכרטיסים לאירוע זה אזלו או אינם זמינים למכירה.
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      אנא נסו אירוע אחר או צרו קשר עם שירות הלקוחות לקבלת עזרה.
+                    </Text>
+                  </div>
                 ) : (
                   [...availableTickets]
                     .sort((a: EventTicket, b: EventTicket) => a.price - b.price)
+                    .filter((ticket: EventTicket) => {
+                      // Double-check: ensure ticket is still available before rendering
+                      if (ticket.available === false) {
+                        console.warn(`Attempted to render unavailable ticket: ${ticket.category} (ID: ${ticket.id})`);
+                        return false;
+                      }
+                      return true;
+                    })
                     .map((ticket: EventTicket, index: number) => (
                       <EventTicketCard
                         index={index}
