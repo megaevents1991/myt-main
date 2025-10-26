@@ -60,12 +60,12 @@ export const getPrices = ({
     isNumberOfPersonsEqual &&
     recommendedPriceAllPax > finalPurchasePrice
       ? recommendedPriceAllPax
-      : 0;
+      : null;
 
   const pricePerPerson = Math.ceil(finalPurchasePrice / numberOfPersons);
 
   return {
-    originalNoDiscount: originalNoDiscount.toLocaleString("en-US"),
+    originalNoDiscount: originalNoDiscount ? originalNoDiscount.toLocaleString("en-US") : null,
     pricePerPerson: pricePerPerson.toLocaleString("en-US"),
     finalPurchasePrice: finalPurchasePrice.toLocaleString("en-US"),
     finalPurchasePriceILS: finalPurchasePriceILS.toLocaleString("en-US"),

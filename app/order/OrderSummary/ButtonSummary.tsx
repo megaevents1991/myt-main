@@ -52,7 +52,9 @@ export const ButtonSummary = ({
                 כולל הנחת ${affDiscount}
               </span>
             )}
-            <span className="line-through">${originalNoDiscount}</span>
+            {originalNoDiscount && (
+              <span className="line-through">${originalNoDiscount}</span>
+            )}
           </div>
           <div className="flex flex-row items-baseline items-center">
             <div className="pl-1 text-xs">
