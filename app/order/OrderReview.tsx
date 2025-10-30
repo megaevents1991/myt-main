@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { trackEvent, getUTMParams } from "@/lib/mixpanel";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
@@ -662,7 +663,7 @@ export default function OrderReview() {
       })),
       event_order_info: {
         event_id: event?.id || 0,
-        date: event ? new Date(event.date) : new Date(),
+        date: event ? parseLocalDate(event.date) : new Date(),
         name: event?.name || "",
         location_name: event?.location.name || "",
         number_of_ticket: numberOfEventTickets,

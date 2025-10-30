@@ -16,6 +16,7 @@ import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
 import { shortenAirlineName } from "./order-review.utils";
+import { parseLocalDate, parseLocalDateTime, isSameDay } from "@/lib/dateUtils";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -113,10 +114,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
             outboundDate: flight.outbound.departureTime,
             inboundDate: flight.inbound.departureTime,
             isDefaultDates:
-              new Date(event.def_date_depart).toDateString() ===
-                new Date(flight.outbound.departureTime).toDateString() &&
-              new Date(event.def_date_return).toDateString() ===
-                new Date(flight.inbound.departureTime).toDateString(),
+              isSameDay(
+                parseLocalDate(event.def_date_depart),
+                parseLocalDateTime(flight.outbound.departureTime)
+              ) &&
+              isSameDay(
+                parseLocalDate(event.def_date_return),
+                parseLocalDateTime(flight.inbound.departureTime)
+              ),
             flightStops: flight.outbound.stops.length - 1,
             includedCheckedBags: flight.outbound.checkBagsIncluded,
             includedCabinBags: flight.outbound.cabinBagsIncluded,

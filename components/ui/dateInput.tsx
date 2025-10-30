@@ -4,6 +4,7 @@ import { Calendar } from "lucide-react";
 import { isMobile } from "react-device-detect";
 import { useClickOutside, useMediaQuery } from "@mantine/hooks";
 import { Tooltip } from "@mantine/core";
+import { parseLocalDate, isSameDay } from "@/lib/dateUtils";
 
 export const DateRange = ({
   dateRange,
@@ -57,9 +58,11 @@ export const DateRange = ({
       value={dateRange}
       valueFormat="DD/MM/YY"
       renderDay={(date) => {
-        const day = date.toDateString();
+        // Compare dates using local date components only (timezone-agnostic)
+        const eventDate = parseLocalDate(eventDay);
+        const isEventDay = isSameDay(date, eventDate);
 
-        if (day !== new Date(eventDay).toDateString()) {
+        if (!isEventDay) {
           return <div>{date.getDate()}</div>;
         }
 

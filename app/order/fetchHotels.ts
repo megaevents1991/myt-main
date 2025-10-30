@@ -1,6 +1,6 @@
 import { Event } from "@/lib/app.types";
 import { HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
-import dayjs from "dayjs";
+import { formatLocalDate } from "@/lib/dateUtils";
 
 export type FetchHotelsParams = {
   location: Event["location"];
@@ -31,8 +31,8 @@ export const fetchHotels = async (
     method: "POST",
     body: JSON.stringify({
       location,
-      checkin: dayjs(dateRange[0]?.toDateString()).format("YYYY-MM-DD"),
-      checkout: dayjs(dateRange[1]?.toDateString()).format("YYYY-MM-DD"),
+      checkin: dateRange[0] ? formatLocalDate(dateRange[0]) : null,
+      checkout: dateRange[1] ? formatLocalDate(dateRange[1]) : null,
       guests,
       radius,
     }),

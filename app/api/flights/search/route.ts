@@ -240,6 +240,8 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Dates are now received as YYYY-MM-DD strings from the client (timezone-agnostic)
+    // These represent local dates in Israel and don't need timezone conversion
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 

@@ -9,6 +9,7 @@ import {
   FlightSearchOptions,
   TimeRange,
 } from "@/lib/app.types";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { flightSort, SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea } from "@mantine/core";
@@ -82,8 +83,8 @@ export const FlightSelection = () => {
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(event.def_date_depart),
-    new Date(event.def_date_return),
+    parseLocalDate(event.def_date_depart),
+    parseLocalDate(event.def_date_return),
   ]);
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
@@ -176,8 +177,8 @@ export const FlightSelection = () => {
         body: JSON.stringify({
           ...options,
           adults,
-          departureDate: dateRange[0]?.toDateString(),
-          returnDate: dateRange[1]?.toDateString(),
+          departureDate: formatLocalDate(dateRange[0]!),
+          returnDate: formatLocalDate(dateRange[1]!),
           gtmIdnts,
         }),
         method: "POST",
@@ -381,8 +382,8 @@ export const FlightSelection = () => {
   const handleDatePopoverClose = () => {
     if (!dateRange[0] || !dateRange[1]) {
       const defaultDates: [Date, Date] = [
-        new Date(event.def_date_depart),
-        new Date(event.def_date_return),
+        parseLocalDate(event.def_date_depart),
+        parseLocalDate(event.def_date_return),
       ];
       setDateRange(defaultDates);
       return;
