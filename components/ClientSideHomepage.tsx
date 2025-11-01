@@ -1068,7 +1068,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               במקום אחד
             </span>
             <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-8">
-              ובתנאים שלכם{" "}
+              בחרו, הרכיבו וטוסו להנות{" "}
             </span>
           </h1>
         </div>
