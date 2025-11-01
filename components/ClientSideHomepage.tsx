@@ -36,12 +36,16 @@ const SearchCombobox = ({
   searchValue,
   setSearchValue,
   events,
+  footballTeams,
+  artists,
   ref,
   inline,
   onOpenFeedbackModal,
 }: {
   setSearchValue: Dispatch<SetStateAction<string>>;
   events: Event[];
+  footballTeams: FootballTeam[];
+  artists: Artist[];
   searchValue: string;
   ref?: RefObject<HTMLInputElement>;
   inline?: boolean;
@@ -56,10 +60,36 @@ const SearchCombobox = ({
   // Memoize Fuse instance to prevent recreation on every render
   const fuse = useMemo(() => new Fuse(NonSoldOutEvents4Search, fuseOptions), [NonSoldOutEvents4Search]);
 
+  // Create Fuse instances for teams and artists with appropriate search fields
+  const teamsFuse = useMemo(() => new Fuse(footballTeams, {
+    keys: ["fields.name", "fields.nameDBenglish"],
+    threshold: 0.3,
+    findAllMatches: true,
+    ignoreLocation: true,
+    minMatchCharLength: 2, // Require at least 2 characters to match
+  }), [footballTeams]);
+
+  const artistsFuse = useMemo(() => new Fuse(artists, {
+    keys: ["fields.name", "fields.nameDBenglish"],
+    threshold: 0.3,
+    findAllMatches: true,
+    ignoreLocation: true,
+    minMatchCharLength: 2, // Require at least 2 characters to match
+  }), [artists]);
+
   const value = searchValue.toLowerCase().trim();
+  
   const filteredOptions = value
     ? fuse.search(value).map((result) => result.item)
     : events;
+  
+  const filteredTeams = value
+    ? teamsFuse.search(value).map((result) => result.item)
+    : [];
+  
+  const filteredArtists = value
+    ? artistsFuse.search(value).map((result) => result.item)
+    : [];
 
   const options = filteredOptions.map((item) => (
     <Combobox.Option
@@ -81,11 +111,73 @@ const SearchCombobox = ({
     </Combobox.Option>
   ));
 
+  // Add team options
+  const teamOptions = filteredTeams.map((team) => {
+    const teamName = team.fields.name;
+    
+    const displayText = `לכל המשחקים של ${teamName} לחצו כאן`;
+    
+    return (
+      <Combobox.Option
+        value={`team-${team.sys.id}`}
+        key={`team-${team.sys.id}`}
+        style={{ textAlign: "right" }}
+        onClick={() =>
+          trackEvent("buttonClick", {
+            buttonTag: "search-option-team",
+            buttonName: team.fields.name || team.fields.nameDBenglish || "",
+          })
+        }
+      >
+        <span className="text-lg font-bold">{displayText}</span>
+      </Combobox.Option>
+    );
+  });
+
+  // Add artist options
+  const artistOptions = filteredArtists.map((artist) => {
+    const artistName = artist.fields.name;
+    
+    const displayText = `לכל ההופעות של ${artistName} לחצו כאן`;
+    
+    return (
+      <Combobox.Option
+        value={`artist-${artist.sys.id}`}
+        key={`artist-${artist.sys.id}`}
+        style={{ textAlign: "right" }}
+        onClick={() =>
+          trackEvent("buttonClick", {
+            buttonTag: "search-option-artist",
+            buttonName: artist.fields.name || artist.fields.nameDBenglish || "",
+          })
+        }
+      >
+        <span className="text-lg font-bold">{displayText}</span>
+      </Combobox.Option>
+    );
+  });
+
   return (
     <Combobox
       onOptionSubmit={(optionValue) => {
         if (optionValue === "feedback") {
           onOpenFeedbackModal();
+        } else if (optionValue.startsWith("team-")) {
+          // Handle team click - navigate to football team page using sys.id
+          const teamId = optionValue.replace("team-", "");
+          const selectedTeam = footballTeams.find((team) => team.sys.id === teamId);
+          if (selectedTeam) {
+            setSearchValue(selectedTeam.fields.name || selectedTeam.fields.nameDBenglish || "");
+            router.push(`/football/${teamId}`);
+          }
+        } else if (optionValue.startsWith("artist-")) {
+          // Handle artist click - navigate to artist page using sys.id
+          const artistId = optionValue.replace("artist-", "");
+          const selectedArtist = artists.find((artist) => artist.sys.id === artistId);
+          if (selectedArtist) {
+            setSearchValue(selectedArtist.fields.name || selectedArtist.fields.nameDBenglish || "");
+            router.push(`/artists/${artistId}`);
+          }
         } else {
           const selectedEvent = events.find((item) => item.id.toString() === optionValue);
           if (selectedEvent) {
@@ -191,11 +283,21 @@ const SearchCombobox = ({
       >
         <Combobox.Options>
           {options}
+          {teamOptions}
+          {artistOptions}
           <Combobox.Option
             value="feedback"
-            style={{ textAlign: "right", fontSize: "16px" }}
+            style={{ 
+              textAlign: "right", 
+              fontSize: "16px",
+              backgroundColor: "#f5f5f5",
+              borderTop: "1px solid #e0e0e0",
+              marginTop: "4px",
+              paddingTop: "12px",
+              paddingBottom: "12px"
+            }}
           >
-            להופעות ואירועי ספורט רבים נוספים לחץ כאן
+            לא מצאתם מה שחיפשתם? לחצו כאן ודברו איתנו
           </Combobox.Option>
         </Combobox.Options>
       </Combobox.Dropdown>
@@ -441,7 +543,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
           {team.fields.heroBanner?.fields?.file?.url && (
             <Image
               src={"https:" + team.fields.heroBanner.fields.file.url}
-              alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחץ לצפייה באירועים של הקבוצה`}
+              alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של הקבוצה`}
               priority={true}
               width={240}
               height={180}
@@ -487,7 +589,7 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
           {artist.fields.heroBanner?.fields?.file?.url && (
             <Image
               src={"https:" + artist.fields.heroBanner.fields.file.url}
-              alt={`תמונה של האומן ${artist.fields.name || "לא ידוע"} - לחץ לצפייה באירועים של האומן`}
+              alt={`תמונה של האומן ${artist.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של האומן`}
               priority={true}
               width={240}
               height={180}
@@ -969,7 +1071,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
         <Modal
           closeButtonProps={{
             icon: <ArrowLeftIcon />,
-            style: { position: "absolute", left: "1rem", top: "1rem" },
+            style: { position: "absolute", left: "1rem", top: "1rem", zIndex: 100 },
             "aria-label": "סגור את חלון החיפוש וחזור לעמוד הראשי"
           }}
           opened={showSearchModal}
@@ -977,7 +1079,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           onClose={handleSearchModalClose}
           title={
             <div className="flex flex-col items-center justify-center w-full py-3 bg-main">
-              <div className="w-[120px] mb-2">
+              <div className="w-[180px] mb-2">
                 <MYT className="" />
               </div>
               <h2 className="text-white text-2xl font-bold">חיפוש אירועים</h2>
@@ -990,9 +1092,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               backgroundColor: "#05203C",
               padding: 0,
               marginBottom: "1rem",
+              position: "relative",
             },
             title: {
               width: "100%",
+              textAlign: "center",
+              paddingLeft: "3.5rem", // Compensate for close button (1rem left + ~2.5rem button width)
+              paddingRight: "3.5rem", // Equal padding on right to truly center
             },
             body: {
               paddingTop: "0.5rem",
@@ -1009,6 +1115,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           <SearchCombobox
             ref={mobileComboboxRef}
             events={initialEvents}
+            footballTeams={footballTeams}
+            artists={artists}
             searchValue={searchValue}
             setSearchValue={setSearchValue}
             onOpenFeedbackModal={() => {
@@ -1114,13 +1222,20 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
         <div className="container mx-auto max-w-4xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
-            האירועים הכי שווים בעולם
-            <span className="text-secondary whitespace-nowrap text-5xl">
+            {/* Mobile: האירועים first, then במקום */}
+            <span className="inline-block whitespace-nowrap md:hidden">האירועים הכי שווים בעולם</span>
+            <span className="text-secondary whitespace-nowrap text-5xl md:hidden">
               {" "}
               במקום אחד
             </span>
+            {/* Desktop: במקום first, then האירועים */}
+            <span className="text-secondary whitespace-nowrap text-5xl hidden md:inline-block">
+              במקום אחד
+            </span>
+            {" "}
+            <span className="inline-block whitespace-nowrap hidden md:inline-block">האירועים הכי שווים בעולם</span>
             <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-8">
-              בחרו, הרכיבו וטוסו להנות{" "}
+              בחרו, הרכיבו וטוסו ליהנות{" "}
             </span>
           </h1>
         </div>
@@ -1163,6 +1278,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               <SearchCombobox
                 inline
                 events={initialEvents}
+                footballTeams={footballTeams}
+                artists={artists}
                 searchValue={searchValue}
                 setSearchValue={setSearchValue}
                 ref={ref}
@@ -1478,7 +1595,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                       className="p-10 text-center text-main text-lg font-bold flex items-center justify-center min-h-[88px]"
                       dir="rtl"
                     >
-                      להופעות ואירועי ספורט רבים נוספים לחץ כאן
+                      לא מצאתם מה שחיפשתם? לחצו כאן ודברו איתנו
                     </div>
                   </div>
                 </div>
@@ -1513,7 +1630,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                     className="p-4 text-center text-main text-xl font-bold h-20"
                     dir="rtl"
                   >
-                    להופעות ואירועי ספורט רבים נוספים לחץ כאן
+                    לא מצאתם מה שחיפשתם? לחצו כאן ודברו איתנו
                   </div>
                 </div>
               </div>
