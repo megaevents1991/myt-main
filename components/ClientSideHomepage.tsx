@@ -195,7 +195,7 @@ const SearchCombobox = ({
             value="feedback"
             style={{ textAlign: "right", fontSize: "16px" }}
           >
-            לא מצאתם מה שחיפשתם? ספרו לנו
+            להופעות ואירועי ספורט רבים נוספים לחץ כאן
           </Combobox.Option>
         </Combobox.Options>
       </Combobox.Dropdown>
@@ -683,6 +683,38 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     }, 100);
   };
 
+  const handleSearchPromptClick = () => {
+    // On mobile, just open the search modal directly
+    if (!matches) {
+      handleSearchModalOpen();
+    } else {
+      // On desktop: scroll to top, focus search, and highlight it
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      setTimeout(() => {
+        // Find the search input - it's inside the SearchCombobox component
+        const searchInput = document.querySelector('[role="combobox"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select(); // Highlight the text if any
+          
+          // Add a temporary highlight effect to the parent container
+          const searchContainer = searchInput.closest('form') as HTMLElement;
+          if (searchContainer) {
+            searchContainer.style.transition = 'box-shadow 0.3s ease-in-out';
+            searchContainer.style.boxShadow = '0 0 0 4px rgba(255, 193, 7, 0.6)';
+            searchContainer.style.borderRadius = '0.375rem';
+            
+            // Remove highlight after 1 second
+            setTimeout(() => {
+              searchContainer.style.boxShadow = '';
+            }, 1000);
+          }
+        }
+      }, 500); // Wait for scroll to complete
+    }
+  };
+
   const handleSearchModalClose = () => {
     setShowSearchModal(false);
     // Return focus to the trigger button when modal closes
@@ -937,15 +969,35 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
         <Modal
           closeButtonProps={{
             icon: <ArrowLeftIcon />,
-            style: { position: "absolute" },
+            style: { position: "absolute", left: "1rem", top: "1rem" },
             "aria-label": "סגור את חלון החיפוש וחזור לעמוד הראשי"
           }}
           opened={showSearchModal}
           fullScreen
           onClose={handleSearchModalClose}
-          title="חיפוש אירועים"
+          title={
+            <div className="flex flex-col items-center justify-center w-full py-3 bg-main">
+              <div className="w-[120px] mb-2">
+                <MYT className="" />
+              </div>
+              <h2 className="text-white text-2xl font-bold">חיפוש אירועים</h2>
+            </div>
+          }
           aria-labelledby="search-modal-title"
           aria-describedby="search-modal-description"
+          styles={{
+            header: {
+              backgroundColor: "#05203C",
+              padding: 0,
+              marginBottom: "1rem",
+            },
+            title: {
+              width: "100%",
+            },
+            body: {
+              paddingTop: "0.5rem",
+            }
+          }}
           // Accessibility: Enhanced modal with proper focus management
           trapFocus
           returnFocus
@@ -1405,28 +1457,28 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                   <div className="fixed bottom-20 left-2 z-50">
                     <ContactUs inHeader={false} />
                   </div>
-                  {/* Accessibility: Enhanced feedback card with proper labeling */}
+                  {/* Accessibility: Enhanced search prompt card with proper labeling */}
                   <div
                     className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
-                    onClick={() => setShowFeedbackModal(true)}
+                    onClick={handleSearchPromptClick}
                     role="button"
                     tabIndex={0}
-                    aria-label="פתח טופס בקשה לאירועים נוספים"
+                    aria-label="פתח חיפוש אירועים"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setShowFeedbackModal(true);
+                        handleSearchPromptClick();
                       }
                     }}
                   >
-                    <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
+                    <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-52 flex items-center justify-center">
                       <MYT className="" />
                     </div>
                     <div
-                      className="p-4 text-center text-main text-xl font-bold h-20"
+                      className="p-10 text-center text-main text-lg font-bold flex items-center justify-center min-h-[88px]"
                       dir="rtl"
                     >
-                      לא מצאתם מה שחיפשתם? ספרו לנו
+                      להופעות ואירועי ספורט רבים נוספים לחץ כאן
                     </div>
                   </div>
                 </div>
@@ -1440,17 +1492,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                     <EventCard event={event} />
                   </div>
                 ))}
-                {/* Accessibility: Enhanced feedback card with proper labeling */}
+                {/* Accessibility: Enhanced search prompt card with proper labeling */}
                 <div
                   className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
-                  onClick={() => setShowFeedbackModal(true)}
+                  onClick={handleSearchPromptClick}
                   role="button"
                   tabIndex={0}
-                  aria-label="פתח טופס בקשה לאירועים נוספים"
+                  aria-label="פתח חיפוש אירועים"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      setShowFeedbackModal(true);
+                      handleSearchPromptClick();
                     }
                   }}
                 >
@@ -1461,7 +1513,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                     className="p-4 text-center text-main text-xl font-bold h-20"
                     dir="rtl"
                   >
-                    לא מצאתם מה שחיפשתם? ספרו לנו
+                    להופעות ואירועי ספורט רבים נוספים לחץ כאן
                   </div>
                 </div>
               </div>
