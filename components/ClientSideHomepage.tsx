@@ -1028,7 +1028,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     const usedEventIds = new Set(prioritized_events.map((event) => event.id));
     const remainingEvents = initialEvents.filter(
       (event) =>
-        event.type === "music_event" &&
+        (event.type === 'music_live_event_dynamic' || event.type === "music_event") &&
         event.tags !== "VIP" &&
         !usedEventIds.has(event.id)
     );

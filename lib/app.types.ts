@@ -5,7 +5,8 @@ import { EntryFieldTypes } from "contentful";
 export type EventType =
   | "sports_event"
   | "music_event"
-  | "sports_event_dynamic";
+  | "sports_event_dynamic"
+  | "music_live_event_dynamic";
 
 export type Event = {
   id: number;

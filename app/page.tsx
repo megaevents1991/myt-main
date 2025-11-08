@@ -8,7 +8,7 @@ import { FootballFields, ArtistFields, Artist, CarouselFields } from "@/lib/app.
 
 // Force static generation
 export const dynamic = "force-static";
-export const revalidate = 3600; // Revalidate every hour
+export const revalidate = 86400; // Revalidate every day
 
 async function getEventsForPage() {
   try {
