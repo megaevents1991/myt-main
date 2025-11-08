@@ -19,6 +19,7 @@ import Fuse from "fuse.js";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
+import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -55,7 +56,11 @@ const SearchCombobox = ({
   const router = useRouter();
   const combobox = useCombobox();
 
-  const NonSoldOutEvents4Search = events.filter(event => event.tags !== "Sold"); // make sure sold out also with tickets. events don't appear in search
+  // Filter out sold-out events from search (both tagged as "Sold" and those with no available tickets)
+  const NonSoldOutEvents4Search = useMemo(
+    () => events.filter(event => !isEventSoldOut(event)),
+    [events]
+  );
 
   // Memoize Fuse instance to prevent recreation on every render
   const fuse = useMemo(() => new Fuse(NonSoldOutEvents4Search, fuseOptions), [NonSoldOutEvents4Search]);
@@ -189,13 +194,7 @@ const SearchCombobox = ({
               eventType: selectedEvent.type,
               eventLocation: selectedEvent.location.name,
               eventTags: selectedEvent.tags,
-              eventPrice:
-                selectedEvent.base_flight_price +
-                selectedEvent.base_hotel_price +
-                Math.min(...selectedEvent.tickets_and_rates
-                  .filter(ticket => ticket.available !== false)
-                  .map((ticket) => ticket.price)) +
-                Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+              eventPrice: computePackagePrice(selectedEvent),
             });
             
             orderStage("EVENT_SELECTED", {
@@ -379,8 +378,9 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
 
 // Compact Event Card for Sports Section
 function CompactEventCard({ event }: { event: Event }) {
-  const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
-  const computedSold = !hasAvailableTickets || event.tags === "Sold";
+  const computedSold = isEventSoldOut(event);
+  const packagePrice = computePackagePrice(event);
+  
   return (
     <Link
       href={computedSold ? "#no-op" : `/order/${event.id}`}
@@ -396,13 +396,7 @@ function CompactEventCard({ event }: { event: Event }) {
           eventType: event.type,
           eventLocation: event.location.name,
           eventTags: event.tags,
-          eventPrice:
-            event.base_flight_price +
-            event.base_hotel_price +
-            Math.min(...event.tickets_and_rates
-              .filter(ticket => ticket.available !== false)
-              .map((ticket) => ticket.price)) +
-              Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+          eventPrice: packagePrice,
         });
   if (computedSold) {
           e.preventDefault();
@@ -954,6 +948,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     const nonArtistEvents: Event[] = [];
 
     events.forEach(event => {
+      // Skip sold-out events entirely
+      if (isEventSoldOut(event)) return;
+      
       const eventArtistName = event.name_english?.trim().toLowerCase(); // Trim whitespaces before lowercasing
       if (eventArtistName && carouselArtistNames.has(eventArtistName)) {
         if (!eventsByArtist.has(eventArtistName)) {
@@ -987,10 +984,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 
   // Get prioritized events for "המבוקשים ביותר" section (including VIP if prioritized)
   const prioritized_events = (() => {
-    const prioritizedEvents = initialEvents.filter(
+    // Filter out sold-out events from the start
+    const availableEvents = initialEvents.filter(event => !isEventSoldOut(event));
+    
+    const prioritizedEvents = availableEvents.filter(
       (event) => event.is_prioritized === true
     );
-    const nonPrioritizedEvents = initialEvents.filter(
+    const nonPrioritizedEvents = availableEvents.filter(
       (event) =>
         event.is_prioritized === false &&
         event.tags !== "VIP" &&
@@ -1023,11 +1023,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     }
   })();
 
-  // Get music events (only music_event type, excluding VIP and already used prioritized events)
+  // Get music events (only music types, excluding VIP and already used prioritized events)
   const musicEvents = (() => {
     const usedEventIds = new Set(prioritized_events.map((event) => event.id));
     const remainingEvents = initialEvents.filter(
       (event) =>
+        !isEventSoldOut(event) && // Exclude sold-out events
         (event.type === 'music_live_event_dynamic' || event.type === "music_event") &&
         event.tags !== "VIP" &&
         !usedEventIds.has(event.id)
@@ -1645,8 +1646,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
 function EventCard({ event }: { event: Event }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
-  const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
-  const computedSold = !hasAvailableTickets || event.tags === "Sold";
+  const computedSold = isEventSoldOut(event);
+  const packagePrice = computePackagePrice(event);
 
   useEffect(() => {
     setIsMounted(true);
@@ -1667,13 +1668,7 @@ function EventCard({ event }: { event: Event }) {
           eventType: event.type,
           eventLocation: event.location.name,
           eventTags: computedSold ? "Sold" : event.tags,
-          eventPrice:
-            event.base_flight_price +
-            event.base_hotel_price +
-            Math.min(...event.tickets_and_rates
-              .filter(ticket => ticket.available !== false)
-              .map((ticket) => ticket.price)) +
-              Number(process.env.NEXT_PUBLIC_MARKUP || "175"),
+          eventPrice: packagePrice,
         });
   if (computedSold) {
           e.preventDefault();
@@ -1781,23 +1776,31 @@ function EventCard({ event }: { event: Event }) {
             <div className="text-[15px] sm:text-base">
               מחיר חבילה ממוצע לאדם
             </div>
-            <div className="flex justify-center items-baseline gap-1" role="group" aria-label="מחיר">
-              <div className="text-2xl font-extrabold">
-                $
-                {(
-                  event.base_flight_price +
-                  event.base_hotel_price +
-                  Math.min(...event.tickets_and_rates
-                    .filter(ticket => ticket.available !== false)
-                    .map((ticket) => ticket.price)) +
-                    Number(process.env.NEXT_PUBLIC_MARKUP || "175")
-                ).toLocaleString("en-US")}
-              </div>
-            </div>
-            <div className="flex-grow min-h-[4px]"></div>
-            <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
-              לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
-            </div>
+            {packagePrice !== null ? (
+              <>
+                <div className="flex justify-center items-baseline gap-1" role="group" aria-label="מחיר">
+                  <div className="text-2xl font-extrabold">
+                    ${packagePrice.toLocaleString("en-US")}
+                  </div>
+                </div>
+                <div className="flex-grow min-h-[4px]"></div>
+                <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
+                  לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-center items-baseline gap-1" role="group" aria-label="סטטוס זמינות">
+                  <div className="text-2xl font-extrabold text-[#d63a59]">
+                    אזלו הכרטיסים
+                  </div>
+                </div>
+                <div className="flex-grow min-h-[4px]"></div>
+                <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
+                  &nbsp;
+                </div>
+              </>
+            )}
             {event.tags === "Sold" ? (
               // Empty space placeholder with same height to maintain layout
               <div
