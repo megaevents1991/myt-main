@@ -15,6 +15,7 @@ import ClientTracker from "../../../components/ClientTracker";
 import EventButton from "../../../components/EventButton";
 
 export const revalidate = 3600;
+export const dynamicParams = true; // Allow rendering pages for new teams on-demand
 
 export async function generateStaticParams() {
   try {

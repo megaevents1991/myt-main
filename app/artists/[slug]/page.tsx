@@ -15,6 +15,7 @@ import EventButton from "../../../components/EventButton";
 import ClientTracker from "../../../components/ClientTracker";
 
 export const revalidate = 3600;
+export const dynamicParams = true; // Allow rendering pages for new artists on-demand
 
 export async function generateStaticParams() {
   try {

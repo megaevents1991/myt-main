@@ -7,7 +7,7 @@ export const getCachedEvents = nextCache(
   ['all-events'],
   {
     tags: ['events'],
-    revalidate: 86400,
+    revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
   }
 );
 

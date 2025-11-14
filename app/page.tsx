@@ -6,9 +6,9 @@ import { StructuredData } from "@/components/StructuredData";
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields, ArtistFields, Artist, CarouselFields } from "@/lib/app.types";
 
-// Force static generation
+// Force static generation with ISR
 export const dynamic = "force-static";
-export const revalidate = 86400; // Revalidate every day
+export const revalidate = 3600; // Revalidate every hour (reduced from 24h for fresher content)
 
 async function getEventsForPage() {
   try {

@@ -8,6 +8,7 @@ import { hasAvailableTickets } from "@/lib/utils";
 import Link from "next/link";
 
 export const revalidate = 3600; // 1 hour
+export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
 
 export async function generateStaticParams() {
   try {
