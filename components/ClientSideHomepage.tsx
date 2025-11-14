@@ -9,7 +9,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dispatch, RefObject, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -304,7 +304,7 @@ const SearchCombobox = ({
   );
 };
 
-const MobileCarousel = ({ events }: { events: Event[] }) => {
+const MobileCarousel = ({ events, allEvents, artists }: { events: Event[]; allEvents?: Event[]; artists?: Artist[] }) => {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -316,40 +316,23 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
   }
 
   return (
-      <Carousel
-      withIndicators={events.length > 1}
+    <Carousel
+      withIndicators={false}
       withControls={events.length > 1}
       slideSize="100%"
-        slideGap="16px"
-  align="start"
-  dragFree={false}
+      slideGap="16px"
+      height="auto"
       loop
-      speed={6} // Smoother/slower transition speed
-      includeGapInSize={false} // Better spacing calculation
-      containScroll="trimSnaps" // Smooth scrolling at boundaries
-      skipSnaps={false} // Ensure smooth snap points
-      aria-label={`קרוסלה של אירועים נייד עם ${events.length} אירועים. השתמש בחצים לניווט או גרור את הקרוסלה.`}
-      aria-live="polite"
-      role="region"
-      // Accessibility: Enhanced mobile carousel controls with proper ARIA labels
-      previousControlProps={{
-        'aria-label': 'עבור לאירוע הקודם',
-        title: 'עבור לאירוע הקודם',
-        style: { transition: "all 0.2s ease-in-out" }
-      }}
-      nextControlProps={{
-        'aria-label': 'עבור לאירוע הבא',
-        title: 'עבור לאירוע הבא',
-        style: { transition: "all 0.2s ease-in-out" }
-      }}
+      align="start"
+      dragFree={false}
+      nextControlIcon={<ChevronRight size={22} />}
+      previousControlIcon={<ChevronLeft size={22} />}
       classNames={{
-        root: "", // Remove breakout to align with container
-        control:
-          "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70 transition-all duration-200",
-        indicator: "bg-gray-300 data-[active]:bg-secondary transition-all duration-200",
-        indicators: "gap-2 mt-4",
+        root: "",
+        control: "data-[inactive]:!opacity-0",
         container: "py-[4px]",
-        slide: "transition-transform duration-300 ease-out", // Smooth slide transitions
+        slide: "transition-transform duration-300 ease-out",
+        controls: "!-left-6 !-right-6",
       }}
       styles={{
         viewport: {
@@ -362,17 +345,36 @@ const MobileCarousel = ({ events }: { events: Event[] }) => {
           // Hardware acceleration for smoother scrolling
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
-        }
+        },
+        control: {
+          transition: "all 0.2s ease-in-out",
+          width: "32px",
+          height: "32px",
+          minWidth: "32px",
+          minHeight: "32px",
+          backgroundColor: "rgba(17, 17, 17, 0.6)",
+          borderRadius: "50%",
+          border: "none",
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+          color: "white",
+          '&[dataInactive]': {
+            opacity: 0,
+            cursor: 'default',
+          },
+          '&:not([dataInactive]):hover': {
+            backgroundColor: "rgba(107, 114, 128, 0.85)",
+          },
+        },
       }}
     >
       {events.map((event) => (
         <Carousel.Slide key={event.id}>
           <div className="transition-transform duration-300 ease-out">
-            <EventCard event={event} />
+            <EventCard event={event} allEvents={allEvents} artists={artists} />
           </div>
         </Carousel.Slide>
       ))}
-  </Carousel>
+    </Carousel>
   );
 };
 
@@ -648,8 +650,8 @@ const UniversalCarousel = ({
 
   if (variant === "compact") {
     if (isMobile) {
-      // Show 2 cards per view on mobile with a 16px gap
-      slideSize = "calc((100% - 16px) / 2)";
+      // Show 2 cards per view on mobile with a 2px gap
+      slideSize = "calc((100% - 2px) / 2)";
       slidesToScroll = 1;
     } else {
       // Desktop: let slides size to their intrinsic width (240px)
@@ -667,9 +669,6 @@ const UniversalCarousel = ({
     (variant === "compact" ? (isMobile ? 2 : 5) : isMobile ? 1 : 4);
   const showIndicators = variant === "default" && isMobile && items.length > 1;
 
-  // Accessibility: Determine content type for ARIA labeling
-  const contentType = teams ? "קבוצות כדורגל" : artists ? "אמנים" : "אירועים";
-
   return (
     <Carousel
       withIndicators={showIndicators}
@@ -680,52 +679,47 @@ const UniversalCarousel = ({
       dragFree={false}
       loop={false}
       slidesToScroll={slidesToScroll}
-      speed={6} // Smoother/slower transition speed
-      includeGapInSize={false} // Better spacing calculation
-      containScroll="trimSnaps" // Smooth scrolling at boundaries
-      skipSnaps={false} // Ensure smooth snap points
-      aria-label={`קרוסלה של ${contentType} עם ${items.length} פריטים. השתמש בחצים לניווט או גרור את הקרוסלה.`}
-      aria-live="polite"
-      role="region"
+      nextControlIcon={<ChevronRight size={22} />}
+      previousControlIcon={<ChevronLeft size={22} />}
       classNames={{
-        root: "", // Remove breakout to align with container
+        root: "",
         container: "py-[2px] px-0",
-        control:
-          variant === "compact" && !isMobile
-            ? "w-8 h-8 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 transition-all duration-200"
-            : "bg-black bg-opacity-50 text-white border-none hover:bg-opacity-70 transition-all duration-200",
+        control: "data-[inactive]:!opacity-0",
         indicator: "bg-gray-300 data-[active]:bg-secondary transition-all duration-200",
         indicators: "gap-2 mt-4",
         viewport: variant === "compact" && !isMobile ? "h-[245px]" : "",
-        slide: "transition-transform duration-300 ease-out", // Smooth slide transitions
+        slide: "transition-transform duration-300 ease-out",
+        controls: isMobile ? "!-left-7 !-right-7" : "!-left-9 !-right-9",
       }}
       styles={{
         control: {
-          fontSize: variant === "compact" && !isMobile ? "16px" : "20px",
-          transition: "all 0.2s ease-in-out", // Smooth control hover effects
+          transition: "all 0.2s ease-in-out",
+          width: "32px",
+          height: "32px",
+          minWidth: "32px",
+          minHeight: "32px",
+          backgroundColor: "rgba(17, 17, 17, 0.6)",
+          borderRadius: "50%",
+          border: "none",
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+          color: "white",
+          '&[dataInactive]': {
+            opacity: 0,
+            cursor: 'default',
+          },
+          '&:not([dataInactive]):hover': {
+            backgroundColor: "rgba(31, 34, 39, 0.85)",
+          },
         },
         viewport: {
-          // Improve scroll performance
           willChange: "transform",
           backfaceVisibility: "hidden",
           perspective: "1000px",
         },
         container: {
-          // Hardware acceleration for smoother scrolling
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
         }
-      }}
-      // Accessibility: Enhanced carousel controls with proper ARIA labels
-      previousControlProps={{
-        'aria-label': `עבור לפריט הקודם ברשימת ${contentType}`,
-        title: `עבור לפריט הקודם ברשימת ${contentType}`,
-        style: { transition: "all 0.2s ease-in-out" }
-      }}
-      nextControlProps={{
-        'aria-label': `עבור לפריט הבא ברשימת ${contentType}`,
-        title: `עבור לפריט הבא ברשימת ${contentType}`,
-        style: { transition: "all 0.2s ease-in-out" }
       }}
     >
       {items.map((item) => {
@@ -1470,7 +1464,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                  aria-label="רשימת האירועים המבוקשים ביותר">
               {prioritized_events.map((event) => (
                 <div key={event.id} role="listitem">
-                  <EventCard event={event} />
+                  <EventCard event={event} allEvents={initialEvents} artists={artists} />
                 </div>
               ))}
             </div>
@@ -1579,7 +1573,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               </div>
               {/* Mobile carousel for Music events */}
               <div className="block sm:hidden mb-8">
-                <MobileCarousel events={musicEvents} />
+                <MobileCarousel events={musicEvents} allEvents={initialEvents} artists={artists} />
                 <div className="grid gap-6 grid-cols-1 mt-6">
                   <div className="fixed bottom-20 left-2 z-50">
                     <ContactUs inHeader={false} />
@@ -1616,7 +1610,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                    aria-label="רשימת הופעות נוספות">
                 {musicEvents.map((event) => (
                   <div key={event.id} role="listitem">
-                    <EventCard event={event} />
+                    <EventCard event={event} allEvents={initialEvents} artists={artists} />
                   </div>
                 ))}
                 {/* Accessibility: Enhanced search prompt card with proper labeling */}
@@ -1652,11 +1646,50 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
   );
 }
 
-function EventCard({ event }: { event: Event }) {
+function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Event[]; artists?: Artist[] }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
   const computedSold = isEventSoldOut(event);
   const packagePrice = computePackagePrice(event);
+  const router = useRouter();
+
+  // Find matching artist if available
+  const matchingArtist = useMemo(() => {
+    if (!artists || !event.name_english) return null;
+    
+    const eventIdentifier = event.name_english.trim().toLowerCase();
+    return artists.find(artist => {
+      const artistIdentifier = artist.fields.nameDBenglish?.trim().toLowerCase();
+      return artistIdentifier === eventIdentifier;
+    });
+  }, [event, artists]);
+
+  // Check if there are multiple events with the same name AND a matching artist page exists
+  const hasMultipleDates = useMemo(() => {
+    if (!allEvents || !matchingArtist) return false;
+    
+    // Use name_english for comparison, fallback to name if not available
+    const eventIdentifier = event.name_english?.trim().toLowerCase() || event.name.trim().toLowerCase();
+    
+    // Count events with the same identifier (excluding sold-out events)
+    const eventsWithSameName = allEvents.filter(e => {
+      const eIdentifier = e.name_english?.trim().toLowerCase() || e.name.trim().toLowerCase();
+      return eIdentifier === eventIdentifier && !isEventSoldOut(e);
+    });
+    
+    return eventsWithSameName.length > 1;
+  }, [event, allEvents, matchingArtist]);
+
+  const handleStripClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (matchingArtist) {
+      // Navigate to artist page
+      router.push(`/artists/${matchingArtist.sys.id}`);
+    }
+    // If no matching artist, we could implement a search or filter functionality here
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -1719,11 +1752,12 @@ function EventCard({ event }: { event: Event }) {
       }}
     >
       {/* Accessibility: Enhanced event card with proper semantic structure */}
-      <article className="rounded-lg shadow-lg flex flex-row sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-        <div
-          className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
-          dir="rtl"
-        >
+      <article className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main">
+        <div className="flex flex-row sm:flex-col flex-1">
+          <div
+            className="relative group overflow-hidden rounded-tl-lg rounded-bl-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
+            dir="rtl"
+          >
           {event.tags === "LastTickets" && !computedSold && (
             <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="כרטיסים אחרונים זמינים">
               כרטיסים אחרונים!
@@ -1837,6 +1871,27 @@ function EventCard({ event }: { event: Event }) {
             )}
           </div>
         </div>
+        </div>
+        {/* Strip for multiple dates */}
+        {hasMultipleDates && (
+          <div 
+            className="w-full bg-gradient-to-r from-secondary to-[#0a4d6e] text-white text-center py-2 px-3 rounded-b-lg cursor-pointer hover:from-[#0a4d6e] hover:to-secondary transition-all duration-200"
+            role="button"
+            aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
+            onClick={handleStripClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleStripClick(e as unknown as React.MouseEvent<HTMLDivElement>);
+              }
+            }}
+            tabIndex={0}
+          >
+            <span className="text-sm font-bold">
+              לכל האירועים של {event.name} לחצו כאן
+            </span>
+          </div>
+        )}
       </article>
     </Link>
   );
