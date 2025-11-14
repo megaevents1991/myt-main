@@ -1685,6 +1685,19 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
     e.stopPropagation();
     
     if (matchingArtist) {
+      // Track analytics
+      trackEvent("artistStripClicked", {
+        eventId: event.id,
+        eventName: event.name,
+        eventDate: event.date,
+        eventLocation: event.location.name,
+        eventTags: computedSold ? "Sold" : event.tags,
+        eventPrice: packagePrice,
+        artistId: matchingArtist.sys.id,
+        artistName: matchingArtist.fields.name,
+        source: "homepage_eventCard"
+      });
+      
       // Navigate to artist page
       router.push(`/artists/${matchingArtist.sys.id}`);
     }
@@ -1703,6 +1716,15 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
       aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
       aria-disabled={computedSold}
       onClick={(e) => {
+        // Check if click originated from the strip
+        const target = e.target as HTMLElement;
+        const isStripClick = target.closest('[data-strip-click]');
+        
+        if (isStripClick) {
+          // Don't track or handle - let the strip handle it
+          return;
+        }
+        
         trackEvent("eventSelected", {
           eventId: event.id,
           eventName: event.name,
@@ -1712,7 +1734,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
           eventTags: computedSold ? "Sold" : event.tags,
           eventPrice: packagePrice,
         });
-  if (computedSold) {
+        if (computedSold) {
           e.preventDefault();
           return;
         }
@@ -1875,6 +1897,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
         {/* Strip for multiple dates */}
         {hasMultipleDates && (
           <div 
+            data-strip-click="true"
             className="w-full bg-gradient-to-r from-secondary to-[#0a4d6e] text-white text-center py-2 px-3 rounded-b-lg cursor-pointer hover:from-[#0a4d6e] hover:to-secondary transition-all duration-200"
             role="button"
             aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
