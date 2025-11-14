@@ -1596,7 +1596,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                       className="p-10 text-center text-main text-lg font-bold flex items-center justify-center min-h-[88px]"
                       dir="rtl"
                     >
-                      לא מצאתם מה שחיפשתם? לחצו כאן ודברו איתנו
+                      לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
                     </div>
                   </div>
                 </div>
@@ -1631,7 +1631,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
                     className="p-4 text-center text-main text-xl font-bold h-20"
                     dir="rtl"
                   >
-                    לא מצאתם מה שחיפשתם? לחצו כאן ודברו איתנו
+                    לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
                   </div>
                 </div>
               </div>
