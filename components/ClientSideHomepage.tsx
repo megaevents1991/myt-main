@@ -1774,10 +1774,10 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
       }}
     >
       {/* Accessibility: Enhanced event card with proper semantic structure */}
-      <article className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main">
+      <article className={`rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main ${hasMultipleDates ? 'sm:rounded-b-lg' : ''}`}>
         <div className="flex flex-row sm:flex-col flex-1">
           <div
-            className="relative group overflow-hidden rounded-tl-lg rounded-bl-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
+            className={`relative group overflow-hidden rounded-tl-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-bl-lg'}`}
             dir="rtl"
           >
           {event.tags === "LastTickets" && !computedSold && (
@@ -1823,7 +1823,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
             className="object-cover w-full h-72 transition-transform group-hover:scale-105"
           />
         </div>
-        <div className="flex flex-col text-center w-[52%] sm:w-auto">
+        <div className={`flex flex-col text-center w-[52%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-br-lg sm:rounded-br-none'}`}>
           {/* Accessibility: Added semantic heading for event name */}
           <header className="p-2">
             <h3 className="text-2xl font-bold" style={{ lineHeight: "1.1" }}>
