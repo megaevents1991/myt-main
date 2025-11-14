@@ -209,16 +209,22 @@ export type FlightSearchCriteria =
       value: string[];
     };
 
+export type VipConfig = {
+  enabled: boolean
+  details: string
+}
+
 export type EventTicket = {
-  category: string;
-  price: number;
-  id: string;
-  description: string;
-  colorOnTheMap: string;
-  vendor?: string; // Optional vendor field
-  available?: boolean; // For dynamic sports events
-  lastUpdated?: string; // ISO string for last update timestamp
-};
+  category: string
+  price: number
+  id: string
+  description: string
+  colorOnTheMap: string
+  vendor?: string
+  eid?: string
+  available?: boolean
+  vip?: VipConfig
+}
 
 export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   quantity: number;

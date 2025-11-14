@@ -242,6 +242,7 @@ export const TicketSelection = () => {
                         isSelected={selectedTicket === ticket.id}
                         price={ticket.price}
                         basePrice={cheapestTicket?.price ?? 0}
+                        vip={ticket.vip}
                       />
                     ))
                 )}

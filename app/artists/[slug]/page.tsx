@@ -131,9 +131,14 @@ export default async function ArtistPage({
                           חזר למלאי!
                         </div>
                       )}
-                      {event.tags === "VIP" && !computedSold && (
+                      {event.tags === "VIPevent" && !computedSold && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
                           אירוח VIP
+                        </div>
+                      )}
+                      {event.tags === "VIPavailable" && !computedSold && (
+                        <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אופציית VIP זמינה">
+                          אופציית VIP
                         </div>
                       )}
                       {(computedSold) && (

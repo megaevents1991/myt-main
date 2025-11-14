@@ -2,6 +2,7 @@ import { Minus, Plus } from "lucide-react";
 import { CardWrapper } from "./cardWrapper";
 import { Radio } from "@mantine/core";
 import { cn } from "@/lib/utils";
+import type { VipConfig } from "@/lib/app.types";
 
 export type TicketCardProps = {
   price: number;
@@ -14,6 +15,7 @@ export type TicketCardProps = {
   index: number;
   numberOfTickets: number;
   onChangeNumberOfTickets: (value: number) => void;
+  vip?: VipConfig;
 };
 
 export const EventTicketCard = ({
@@ -27,15 +29,28 @@ export const EventTicketCard = ({
   index,
   numberOfTickets = 1,
   onChangeNumberOfTickets,
+  vip,
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
+  const isVip = vip?.enabled === true;
+  const hasVipDetails = isVip && vip?.details && vip.details.trim().length > 0;
+  
   return (
     <CardWrapper
       isSelected={isSelected}
       onClick={onClick}
       hasBorderColor={colorOnTheMap}
-      className={cn("p-2 pr-8")}
+      className={cn("p-2 pr-8 relative overflow-visible")}
     >
+      {/* VIP Ribbon */}
+      {isVip && (
+        <div className="absolute top-0 left-0 w-24 h-24 overflow-hidden pointer-events-none z-20">
+          <div className="absolute top-[6px] -left-[40px] lg:top-[10px] lg:-left-[36px] w-28 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform rotate-[-45deg] flex items-center justify-center shadow-md">
+            <span className="text-center">VIP</span>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between w-full lg:flex-row flex-col">
         <div className="flex items-center justify-between w-full">
           <div
@@ -54,7 +69,9 @@ export const EventTicketCard = ({
               style={{ pointerEvents: "none" }}
             />
             <div>
-              <div className="text-xl font-bold">{category}</div>
+              <div className="text-xl font-bold flex items-center gap-2">
+                {category}
+              </div>
               {categoryDescription?.length > 0 && (
                 <div
                   className={`text-md ${
@@ -64,6 +81,11 @@ export const EventTicketCard = ({
                   }`}
                 >
                   {categoryDescription}
+                </div>
+              )}
+              {hasVipDetails && (
+                <div className="text-sm font-semibold">
+                  {vip.details}
                 </div>
               )}
             </div>

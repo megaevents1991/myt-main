@@ -471,13 +471,22 @@ function CompactEventCard({ event }: { event: Event }) {
               חזר למלאי!
             </div>
           )}
-          {event.tags === "VIP" && (
+          {event.tags === "VIPevent" && (
             <div 
               className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
               aria-label="אירוח VIP זמין לאירוע זה"
               role="status"
             >
               אירוח VIP
+            </div>
+          )}
+          {event.tags === "VIPavailable" && (
+            <div 
+              className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
+              aria-label="אופציית VIP זמינה לאירוע זה"
+              role="status"
+            >
+              אופציית VIP
             </div>
           )}
           {event.tags === "Sold" && (
@@ -993,7 +1002,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     const nonPrioritizedEvents = availableEvents.filter(
       (event) =>
         event.is_prioritized === false &&
-        event.tags !== "VIP" &&
+        event.tags !== "VIPevent" &&
         event.type !== "sports_event"
     );
 
@@ -1023,14 +1032,14 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     }
   })();
 
-  // Get music events (only music types, excluding VIP and already used prioritized events)
+  // Get music events (only music types, excluding VIPevent and already used prioritized events)
   const musicEvents = (() => {
     const usedEventIds = new Set(prioritized_events.map((event) => event.id));
     const remainingEvents = initialEvents.filter(
       (event) =>
         !isEventSoldOut(event) && // Exclude sold-out events
         (event.type === 'music_live_event_dynamic' || event.type === "music_event") &&
-        event.tags !== "VIP" &&
+        event.tags !== "VIPevent" &&
         !usedEventIds.has(event.id)
     );
 
@@ -1730,9 +1739,14 @@ function EventCard({ event }: { event: Event }) {
               חזר למלאי!
             </div>
           )}
-          {event.tags === "VIP" && !computedSold && (
+          {event.tags === "VIPevent" && !computedSold && (
             <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
               אירוח VIP
+            </div>
+          )}
+          {event.tags === "VIPavailable" && !computedSold && (
+            <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אופציית VIP זמינה">
+              אופציית VIP
             </div>
           )}
           {computedSold && (
