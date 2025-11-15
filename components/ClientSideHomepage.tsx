@@ -120,7 +120,7 @@ const SearchCombobox = ({
   const teamOptions = filteredTeams.map((team) => {
     const teamName = team.fields.name;
     
-    const displayText = `לכל המשחקים של ${teamName} לחצו כאן`;
+    const displayText = `-- לכל המשחקים של ${teamName} לחצו כאן --`;
     
     return (
       <Combobox.Option
@@ -143,7 +143,7 @@ const SearchCombobox = ({
   const artistOptions = filteredArtists.map((artist) => {
     const artistName = artist.fields.name;
     
-    const displayText = `לכל ההופעות של ${artistName} לחצו כאן`;
+    const displayText = `-- לכל ההופעות של ${artistName} לחצו כאן --`;
     
     return (
       <Combobox.Option

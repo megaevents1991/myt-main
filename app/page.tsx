@@ -4,7 +4,7 @@ import MegaEventsSection from "@/components/ui/aboutUsMega";
 import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
 import { contentfulClient } from "@/lib/contentful";
-import { FootballFields, ArtistFields, Artist, CarouselFields } from "@/lib/app.types";
+import { FootballFields, ArtistFields, Artist, CarouselFields, FootballTeam } from "@/lib/app.types";
 
 // Force static generation with ISR
 export const dynamic = "force-static";
@@ -20,15 +20,38 @@ async function getEventsForPage() {
   }
 }
 
-async function getFootballTeams() {
+async function getFootballTeams(): Promise<FootballTeam[]> {
   try {
-    const { items } = await contentfulClient.getEntries<FootballFields>({
-      content_type: "footballTeamTemplate",
+    // Fetch the specific carousel entry with its linked football teams
+    const carouselEntry = await contentfulClient.getEntry("2VjS97BWIScDQXwjx9Q4nP", {
+      include: 2, // Include linked entries (football teams)
     });
-    return items;
+
+    const items = carouselEntry.fields.items;
+    
+    if (!items || !Array.isArray(items)) {
+      console.warn("No items found in football carousel entry");
+      return [];
+    }
+
+    // Extract the ordered football teams (already have the correct structure)
+    const orderedFootballTeams: FootballTeam[] = items
+      .filter((item): item is FootballTeam => item !== null && typeof item === 'object' && 'fields' in item) as FootballTeam[];
+
+    return orderedFootballTeams;
   } catch (error) {
-    console.error("Page: Failed to get football teams for rendering:", error);
-    return [];
+    console.error("Page: Failed to get ordered football teams from carousel:", error);
+    
+    // Fallback: get all football teams if carousel fetch fails
+    try {
+      const { items } = await contentfulClient.getEntries<FootballFields>({
+        content_type: "footballTeamTemplate",
+      });
+      return items;
+    } catch (fallbackError) {
+      console.error("Page: Failed to get football teams fallback:", fallbackError);
+      return [];
+    }
   }
 }
 
