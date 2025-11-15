@@ -23,7 +23,7 @@ export const MobileHeader = ({
         דקות
       </div>
       {saving > 0 && (
-        <div className="w-full bg-[#DBE8EA] mt-3 p-2 rounded-xl flex items-center justify-center">
+        <div className="w-full bg-[#EBFFEE] mt-3 p-2 rounded-xl flex items-center justify-center">
           <span className="">וואו! חסכת <span className="font-bold">${saving}</span> עם החבילה הזאת</span>
           <img
         src="/Union.svg"

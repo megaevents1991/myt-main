@@ -23,8 +23,9 @@ export const ButtonSummary = ({
 }) => {
   const {
     finalPurchasePrice: finalPurchasePriceFormatted,
-    finalPurchasePriceILS: finalPurchasePriceILSFormatted,
+    //finalPurchasePriceILS: finalPurchasePriceILSFormatted,
     originalNoDiscount,
+    pricePerPerson,
   } = getPrices({
     finalPurchasePrice,
     recommendedPriceAllPax,
@@ -58,7 +59,7 @@ export const ButtonSummary = ({
           </div>
           <div className="flex flex-row items-baseline items-center">
             <div className="pl-1 text-xs">
-              (₪{finalPurchasePriceILSFormatted})
+              (${pricePerPerson} לאדם)
             </div>
             <div className="text-sm font-bold">${finalPurchasePriceFormatted}</div>
           </div>

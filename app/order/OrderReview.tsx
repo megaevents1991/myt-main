@@ -179,7 +179,7 @@ export default function OrderReview() {
     [finalPurchasePriceCalc, affDiscount]
   );
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
-  const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.7);
+  const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.5);
 
   useEffect(() => {
     let isMounted = true;
@@ -795,8 +795,7 @@ export default function OrderReview() {
             "לצערנו היינו חייבים לשחרר את ההזמנה"
           ) : (
             <>
-              המחיר אצלנו שקוף והוגן - מוצג גם בשקלים, מחויב בשקלים, בלי עמלות
-              ובלי הפתעות.
+              המחיר אצלנו שקוף והוגן - מוצג במלואו, בלי עמלות ובלי הפתעות.
               <br /> <br />
               אגב, הכרטיסים שמורים לכם ל-15 דקות, מספיק זמן לסגור את ההזמנה בראש
               שקט.
@@ -820,7 +819,7 @@ export default function OrderReview() {
       <Modal
         title="מתחילים את השנה עם מתנה בלעדית!"
         description={<>
-          היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />נשמח לעזור לכם בהחלטה❤️
+          היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />נשמח לעזור לכם בהחלטה ❤️
         </>
         }
         action={

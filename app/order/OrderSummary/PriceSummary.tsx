@@ -1,3 +1,4 @@
+import React from "react";
 import { getPrices } from "../utils";
 
 export const PriceSummary = ({
@@ -23,7 +24,6 @@ export const PriceSummary = ({
     originalNoDiscount,
     pricePerPerson,
     finalPurchasePrice: formattedFinalPurchasePrice,
-    finalPurchasePriceILS: formattedFinalPurchasePriceILS,
   } = getPrices({
     finalPurchasePrice,
     recommendedPriceAllPax,
@@ -44,13 +44,13 @@ export const PriceSummary = ({
             </span>
           )}
         </div>
-        <div className="flex justify-left items-center w-full text-gray-500 gap-1">
-          <span>לאדם</span>
-          <span>${pricePerPerson}</span>
+        <div className="flex justify-left items-center w-full text-lg font-semibold text-gray-500 gap-1">
+            <span>(לאדם</span>
+            <span>${pricePerPerson})</span>
         </div>
-        <div dir="rtl" className="text-left">
+        {/* <div dir="rtl" className="text-left">
           {formattedFinalPurchasePriceILS} ש&quot;ח
-        </div>
+        </div> */}
       </div>
       <div className="flex flex-col items-start font-bold" dir="rtl">
         <span className="text-[22px] ">סה&quot;כ</span>
