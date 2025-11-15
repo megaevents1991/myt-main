@@ -322,9 +322,9 @@ const MobileCarousel = ({ events, allEvents, artists }: { events: Event[]; allEv
       slideSize="100%"
       slideGap="16px"
       height="auto"
-      loop
       align="start"
       dragFree={false}
+      containScroll="trimSnaps"
       nextControlIcon={<ChevronRight size={22} />}
       previousControlIcon={<ChevronLeft size={22} />}
       classNames={{
@@ -677,8 +677,8 @@ const UniversalCarousel = ({
       slideGap={isMobile ? "16px" : "24px"}
       align="start"
       dragFree={false}
-      loop={false}
       slidesToScroll={slidesToScroll}
+      containScroll="trimSnaps"
       nextControlIcon={<ChevronRight size={22} />}
       previousControlIcon={<ChevronLeft size={22} />}
       classNames={{
