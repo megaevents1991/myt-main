@@ -40,7 +40,7 @@ async function getFootballTeams(): Promise<FootballTeam[]> {
 
     return orderedFootballTeams;
   } catch (error) {
-    console.error("Page: Failed to get ordered football teams from carousel:", error);
+    console.error("Page: Fail to get ordered football teams from carousel:", error);
     
     // Fallback: get all football teams if carousel fetch fails
     try {
