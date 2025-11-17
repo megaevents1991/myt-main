@@ -84,11 +84,14 @@ export const sendUserEmail = async ({
     returnFlightDate: dayjs(
       orderData.flight_order_info?.inbound.departureTime
     ).format("DD/MM/YYYY HH:MM"),
-    hotel: orderData.hotel_order_info?.name,
+    hotel: (orderData.hotel_order_info && Object.keys(orderData.hotel_order_info).length > 0) 
+      ? orderData.hotel_order_info.name 
+      : "ללא מלון",
     price: orderData.final_purchase_price_ils,
     promoCode: partnerTrackingCode || undefined,
     orderId: orderId,
     eventId: orderData.event_id,
+    showRecoveryLink: onlySave, // Only show recovery link for 24h hold
   };
 
   const userEmailContent = userEmail(replacements); // @TODO YAKOV - Only for the secondary CTA of talk to rep. For payment CTA we need to send the emails after payment resultion.

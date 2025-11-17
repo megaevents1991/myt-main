@@ -21,6 +21,7 @@ export const Review = ({
   flightPriceAddition,
   eventTicketPriceAddition,
   event,
+  skipHotel,
 }: {
   agentCommission: number;
   hotelPriceAddition: number;
@@ -36,6 +37,7 @@ export const Review = ({
   flightPriceAddition: number;
   eventTicketPriceAddition: number;
   event: Event;
+  skipHotel?: boolean;
 }) => {
   const items = useMemo(
     () => [
@@ -54,7 +56,8 @@ export const Review = ({
           />
         ),
       },
-      {
+      // Conditionally include hotel only if not skipped
+      ...(!skipHotel && selectedHotel ? [{
         id: "hotel-summary",
         primary: `לינה (${selectedHotel.guests.reduce(
           (ppl, room) => ppl + room.children.length + room.adults,
@@ -71,7 +74,7 @@ export const Review = ({
             totalGuests={totalGuests}
           />
         ),
-      },
+      }] : []),
       {
         id: "flight-summary",
         primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)` ,
@@ -99,6 +102,7 @@ export const Review = ({
       flightPriceAddition,
       airlineFullName,
       selectedFlight,
+      skipHotel,
     ]
   );
 

@@ -42,6 +42,8 @@ type AppContext = {
   setPassengers: Dispatch<
     SetStateAction<{ [key: string]: string }[] | undefined>
   >;
+  skipHotel: boolean;
+  setSkipHotel: (skip: boolean) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

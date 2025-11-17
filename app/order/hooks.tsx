@@ -16,6 +16,7 @@ export function useOrderVars() {
     eventTicket,
     event,
     numberOfEventTickets,
+    skipHotel,
   } = useContext(OrderContext);
 
   /* Calculate total guests */
@@ -27,6 +28,10 @@ export function useOrderVars() {
   }, [selectedHotel]);
 
   const hotelPriceAddition = useMemo(() => {
+    if (skipHotel && event) {
+      // When skipping hotel, add profit
+      return event.base_flight_price < 550 ? 100 : 150;
+    }
     if (!selectedHotel || !event) {
       return 0;
     }
@@ -37,7 +42,7 @@ export function useOrderVars() {
     )
       ? +selectedHotel.price / totalGuests - event.base_hotel_price
       : 0;
-  }, [selectedHotel, event, totalGuests]);
+  }, [skipHotel, selectedHotel, event, totalGuests]);
 
   const airlineName = useMemo(
     () => shortenAirlineName(selectedFlight?.metadata?.name),
@@ -115,11 +120,18 @@ export function useOrderVars() {
       if (!eventTicket || !event || !selectedFlight) {
         return 0;
       }
+      
+      // Calculate hotel component based on skip status
+      const hotelComponent = skipHotel
+        ? 0 // When skipping, the credit is applied via hotelPriceAddition
+        : (hotelPriceAddition + event.base_hotel_price) * totalGuests;
+      
       return Math.ceil(
         (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
           (flightPriceAddition + event.base_flight_price) *
             selectedFlight.numOfTravelers +
-          (hotelPriceAddition + event.base_hotel_price) * totalGuests
+          hotelComponent +
+          (skipHotel ? (hotelPriceAddition * numberOfEventTickets) : 0) // Apply hotel credit per person when skipping
       );
     },
     [
@@ -131,6 +143,7 @@ export function useOrderVars() {
       event,
       hotelPriceAddition,
       totalGuests,
+      skipHotel,
     ]
   );
   const finalPurchasePriceILSCalc = useCallback(async (USDprice: number) => {

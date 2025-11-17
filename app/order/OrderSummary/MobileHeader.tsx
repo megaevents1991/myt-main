@@ -4,10 +4,12 @@ import { LuAlarmClockCheck } from "react-icons/lu";
 import { TIMEOUT } from "../utils";
 export const MobileHeader = ({
   handleTimeout,
-  saving
+  saving,
+  skipHotel
 }: {
   handleTimeout: () => void;
   saving: number;
+  skipHotel: boolean;
 }) => {
   return (
     <>
@@ -22,7 +24,7 @@ export const MobileHeader = ({
         </span>
         דקות
       </div>
-      {saving > 0 && (
+      {saving > 0 && !skipHotel && (
         <div className="w-full bg-[#EBFFEE] mt-3 p-2 rounded-xl flex items-center justify-center">
           <span className="">וואו! חסכת <span className="font-bold">${saving}</span> עם החבילה הזאת</span>
           <img

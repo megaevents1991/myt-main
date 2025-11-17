@@ -64,6 +64,7 @@ export default function OrderReview() {
     setStep,
     passengers: passengersContext,
     setPassengers: setPassengersContext,
+    skipHotel,
   } = useContext(OrderContext);
   const router = useRouter();
   const { isMobile } = useIsMobile();
@@ -479,7 +480,8 @@ export default function OrderReview() {
     [passengers, validationErrors]
   );
 
-  if (!event || !selectedFlight || !selectedHotel) {
+  // Check if we have all required data (hotel is optional if skipHotel is true)
+  if (!event || !selectedFlight || (!selectedHotel && !skipHotel)) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
         <p className="text-red-600">
@@ -633,17 +635,6 @@ export default function OrderReview() {
       return;
     }
 
-    if (!termsAccepted) {
-      setIsSubmitting(false);
-      // Scroll to passenger details if terms not accepted as well
-      if (passengerDetailsRef.current) {
-        passengerDetailsRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }
-      return;
-    }
     setIsPayNow(payNow);
     setPaymentMethod(payNow ? "credit_card" : "phone_order");
     setIsSubmitting(true);
@@ -675,7 +666,7 @@ export default function OrderReview() {
         id: eventTicket.id,
       },
       flight_order_info: selectedFlight || {},
-      hotel_order_info: selectedHotel || {},
+      hotel_order_info: skipHotel ? {} : (selectedHotel || {}),
       user_shown_price: finalPurchasePrice,
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
       final_purchase_price_ils: finalPurchasePriceILS,
@@ -779,7 +770,7 @@ export default function OrderReview() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center">
-      {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} />}
+      {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} skipHotel={skipHotel} />}
 
       <div className="sr-only">
         <h1>סיכום הזמנה לאירוע {event?.name}</h1>
@@ -918,7 +909,7 @@ export default function OrderReview() {
                 <Review
                   event={event}
                   selectedFlight={selectedFlight}
-                  selectedHotel={selectedHotel}
+                  selectedHotel={selectedHotel!}
                   eventTicket={eventTicket}
                   numberOfEventTickets={numberOfEventTickets}
                   flightPriceAddition={flightPriceAddition}
@@ -927,6 +918,7 @@ export default function OrderReview() {
                   agentCommission={agentCommission}
                   airlineFullName={airlineFullName}
                   eventTicketPriceAddition={eventTicketPriceAddition}
+                  skipHotel={skipHotel}
                 />
               </Card>
 
@@ -1236,18 +1228,22 @@ export default function OrderReview() {
                             בנוסף לדמי הביטול של המוביל האווירי.
                           </p>
 
-                          <h3 className="font-bold mt-4 mb-2">מלון</h3>
-                          <p>
-                            החזר מלא או שינוי חינם עד לתאריך ה-{" "}
-                            {dayjs(
-                              selectedHotel.rate.payment_options
-                                ?.payment_types[0].cancellation_penalties
-                                .free_cancellation_before
-                            )
-                              .subtract(7, "day")
-                              .format("DD/MM/YYYY")}
-                            , לאחר מכן דמי ביטול מלאים.
-                          </p>
+                          {!skipHotel && selectedHotel && (
+                            <>
+                              <h3 className="font-bold mt-4 mb-2">מלון</h3>
+                              <p>
+                                החזר מלא או שינוי חינם עד לתאריך ה-{" "}
+                                {dayjs(
+                                  selectedHotel.rate.payment_options
+                                    ?.payment_types[0].cancellation_penalties
+                                    .free_cancellation_before
+                                )
+                                  .subtract(7, "day")
+                                  .format("DD/MM/YYYY")}
+                                , לאחר מכן דמי ביטול מלאים.
+                              </p>
+                            </>
+                          )}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -1698,18 +1694,22 @@ export default function OrderReview() {
                             עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
                             בנוסף לדמי הביטול של המוביל האווירי.
                           </p>
-                          <h3 className="font-bold mt-4">מלון</h3>
-                          <p>
-                            ביטול או שינוי חינם עד לתאריך ה-{" "}
-                            {dayjs(
-                              selectedHotel.rate.payment_options
-                                ?.payment_types[0].cancellation_penalties
-                                .free_cancellation_before
-                            )
-                              .subtract(7, "day")
-                              .format("DD/MM/YYYY")}
-                            , לאחר מכן דמי ביטול מלאים.
-                          </p>
+                          {!skipHotel && selectedHotel && (
+                            <>
+                              <h3 className="font-bold mt-4">מלון</h3>
+                              <p>
+                                ביטול או שינוי חינם עד לתאריך ה-{" "}
+                                {dayjs(
+                                  selectedHotel.rate.payment_options
+                                    ?.payment_types[0].cancellation_penalties
+                                    .free_cancellation_before
+                                )
+                                  .subtract(7, "day")
+                                  .format("DD/MM/YYYY")}
+                                , לאחר מכן דמי ביטול מלאים.
+                              </p>
+                            </>
+                          )}
                         </div>
                       </DialogContent>
                     </Dialog>

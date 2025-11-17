@@ -14,6 +14,7 @@ export const useHandleExistingOrder = () => {
     setGlobalLoader,
     setPassengers,
     event: currentEvent,
+    setSkipHotel,
   } = useContext(OrderContext);
 
   const searchParams = useSearchParams();
@@ -58,7 +59,7 @@ export const useHandleExistingOrder = () => {
 
       const data: {
         flight_order_info: Flight;
-        hotel_order_info: OrderHotel;
+        hotel_order_info: OrderHotel | Record<string, never>;
         main_contact_email: string;
         main_contact_first_name: string;
         main_contact_last_name: string;
@@ -102,7 +103,16 @@ export const useHandleExistingOrder = () => {
 
       setPassengers(passengers);
       setFlight(data.flight_order_info);
-      setHotel(data.hotel_order_info);
+      
+      // Check if hotel was skipped (hotel_order_info is empty object {})
+      if (!data.hotel_order_info || Object.keys(data.hotel_order_info).length === 0) {
+        setSkipHotel(true);
+        setHotel(undefined);
+      } else {
+        setSkipHotel(false);
+        setHotel(data.hotel_order_info as OrderHotel);
+      }
+      
       setNumberOfEventTickets(data.event_order_info.number_of_ticket);
       setEventTicket({
         category: data.event_order_info.category,

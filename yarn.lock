@@ -14,10 +14,10 @@
   dependencies:
     regenerator-runtime "^0.14.0"
 
-"@contentful/content-source-maps@^0.11.8":
-  version "0.11.30"
-  resolved "https://registry.npmjs.org/@contentful/content-source-maps/-/content-source-maps-0.11.30.tgz"
-  integrity sha512-pZ5FLK0owJldlVw+yomNijMTjkg++19uU3Rq3suYDsGQ4/liTJmnwu+7hf82WADGtk28BNbZWzl8hNisg2OZpQ==
+"@contentful/content-source-maps@^0.11.33":
+  version "0.11.42"
+  resolved "https://registry.npmjs.org/@contentful/content-source-maps/-/content-source-maps-0.11.42.tgz"
+  integrity sha512-dR0bysZJNYSu4NKwce5wY3r5iGS9Qhm7kZsc3JuszmR92AV4euXymV6wzZf67o3mhz5XcCPu7kxJhf4LuV+4Pw==
   dependencies:
     "@vercel/stega" "^0.1.2"
     json-pointer "^0.6.2"
@@ -1316,10 +1316,10 @@ axe-core@^4.10.0:
   resolved "https://registry.npmjs.org/axe-core/-/axe-core-4.10.3.tgz"
   integrity sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==
 
-axios@^1.11.0:
-  version "1.11.0"
-  resolved "https://registry.npmjs.org/axios/-/axios-1.11.0.tgz"
-  integrity sha512-1Lx3WLFQWm3ooKDYZD1eXmoGO9fxYQjrycfHFC8P0sCfQVXyROp0p9PFWBehewBOdCwHc+f/b8I0fMto5eSfwA==
+axios@^1.12.2:
+  version "1.13.2"
+  resolved "https://registry.npmjs.org/axios/-/axios-1.13.2.tgz"
+  integrity sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.4"
@@ -1542,12 +1542,12 @@ concat-map@0.0.1:
   resolved "https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz"
   integrity sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
 
-contentful-resolve-response@^1.9.0:
-  version "1.9.2"
-  resolved "https://registry.npmjs.org/contentful-resolve-response/-/contentful-resolve-response-1.9.2.tgz"
-  integrity sha512-VTY1hZGh29yspBeveJ62cuDf+cw9Iq/NcKWBdNHjTq8hvgxz+E19+Pej3LW/02o98+D0XcKfcPYXIpm4lHY+eg==
+contentful-resolve-response@^1.9.4:
+  version "1.9.4"
+  resolved "https://registry.npmjs.org/contentful-resolve-response/-/contentful-resolve-response-1.9.4.tgz"
+  integrity sha512-8qu2dM2IMoVQhBhp81BVGB9ISantPmPTZ3EELGxuM8e/t+jSe+xmsVk5yHE+a9AYMBKSwgupBnkjGZE4RzFowQ==
   dependencies:
-    fast-copy "^2.1.7"
+    fast-copy "^3.0.2"
 
 contentful-sdk-core@^9.0.1:
   version "9.0.1"
@@ -1562,15 +1562,15 @@ contentful-sdk-core@^9.0.1:
   optionalDependencies:
     "@rollup/rollup-linux-x64-gnu" "^4.18.0"
 
-contentful@^11.7.16:
-  version "11.7.16"
-  resolved "https://registry.npmjs.org/contentful/-/contentful-11.7.16.tgz"
-  integrity sha512-mfUTlcSinn+QIGBY2e6fn2/UJ37GRwBBaoun0cfblxQ3SSIKx549ksEGNZkSW0pUj8eDiwDTApisUNM9yAM33A==
+contentful@^11.8.13:
+  version "11.8.13"
+  resolved "https://registry.npmjs.org/contentful/-/contentful-11.8.13.tgz"
+  integrity sha512-rNTcjphgHY7buppIkXUHdwUpPg9Sz41IBYJgT7QjqRvSgDMn0+hZRpLXSIaw0zGCgtMXcWWAFOPVYGjLhA2uvg==
   dependencies:
-    "@contentful/content-source-maps" "^0.11.8"
+    "@contentful/content-source-maps" "^0.11.33"
     "@contentful/rich-text-types" "^16.6.1"
-    axios "^1.11.0"
-    contentful-resolve-response "^1.9.0"
+    axios "^1.12.2"
+    contentful-resolve-response "^1.9.4"
     contentful-sdk-core "^9.0.1"
     json-stringify-safe "^5.0.1"
     type-fest "^4.0.0"
@@ -2131,11 +2131,6 @@ execa@^7.0.0:
     signal-exit "^3.0.7"
     strip-final-newline "^3.0.0"
 
-fast-copy@^2.1.7:
-  version "2.1.7"
-  resolved "https://registry.npmjs.org/fast-copy/-/fast-copy-2.1.7.tgz"
-  integrity sha512-ozrGwyuCTAy7YgFCua8rmqmytECYk/JYAMXcswOcm0qvGoE3tPb7ivBeIHTOK2DiapBhDZgacIhzhQIKU5TCfA==
-
 fast-copy@^3.0.2:
   version "3.0.2"
   resolved "https://registry.npmjs.org/fast-copy/-/fast-copy-3.0.2.tgz"
@@ -2235,9 +2230,9 @@ flatted@^3.2.9:
   integrity sha512-AiwGJM8YcNOaobumgtng+6NHuOqC3A7MixFeDafM3X9cIUM+xUXoS5Vfgf+OihAYe20fxqNM9yPBXJzRtZ/4eA==
 
 follow-redirects@^1.15.6:
-  version "1.15.9"
-  resolved "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.9.tgz"
-  integrity sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==
+  version "1.15.11"
+  resolved "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.11.tgz"
+  integrity sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==
 
 for-each@^0.3.3:
   version "0.3.3"
@@ -3128,10 +3123,10 @@ node-fetch@^3.3.0:
     fetch-blob "^3.1.4"
     formdata-polyfill "^4.0.10"
 
-nodemailer@^6.9.16:
-  version "6.9.16"
-  resolved "https://registry.npmjs.org/nodemailer/-/nodemailer-6.9.16.tgz"
-  integrity sha512-psAuZdTIRN08HKVd/E8ObdV6NO7NTBY3KsC30F7M4H1OnmLCUNaS56FpYxyb26zWLSyYF9Ozch9KYHhHegsiOQ==
+nodemailer@^7.0.10:
+  version "7.0.10"
+  resolved "https://registry.npmjs.org/nodemailer/-/nodemailer-7.0.10.tgz"
+  integrity sha512-Us/Se1WtT0ylXgNFfyFSx4LElllVLJXQjWi2Xz17xWw7amDKO2MLtFnVp1WACy7GkVGs+oBlRopVNUzlrGSw1w==
 
 normalize-path@^3.0.0, normalize-path@~3.0.0:
   version "3.0.0"

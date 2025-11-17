@@ -43,6 +43,7 @@ export const HotelSelection = () => {
     flight,
     event = {} as Event,
     setSelectedHotelFilters,
+    setSkipHotel,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -103,6 +104,8 @@ export const HotelSelection = () => {
 
   useEffect(() => {
     setSelectedHotelFilters({});
+    // Reset skipHotel flag when entering hotel selection to allow user to change their mind
+    setSkipHotel(false);
   }, []);
   useEffect(() => {
     if (hotelsData.data.debug && !isFetching) {

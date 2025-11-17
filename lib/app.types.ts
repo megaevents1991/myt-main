@@ -255,7 +255,7 @@ export type OrderData = {
     id?: string;
   };
   flight_order_info: Flight; // You might need to define a specific interface here
-  hotel_order_info: OrderHotel; // You might need to define a specific interface here
+  hotel_order_info: OrderHotel | Record<string, never>; // empty object {} indicates hotel was skipped
   user_shown_price: number;
   event_id: number;
   aff_partner_tracking_code: string;

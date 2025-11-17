@@ -24,6 +24,18 @@ const buttonText: Record<number, string> = {
   4: "שלח הזמנה",
 } as const;
 
+const shortenTicketCategory = (category: string): string => {
+  // Return text up to the first comma if comma exists
+  const commaIndex = category.indexOf(",");
+  if (commaIndex !== -1) {
+    return category.substring(0, commaIndex);
+  }
+  
+  // Add more cases here in the future
+  
+  return category;
+};
+
 export const OrderForm = ({ event }: { event: Event }) => {
   const {
     step,
@@ -37,6 +49,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
     selectedPlaneTicketsFilters,
     selectedHotelFilters,
     paymentMethod,
+    skipHotel,
+    setSkipHotel,
+    setHotel,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -62,7 +77,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   const buttonDisabled =
     (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
     (!flight?.id && step === 2) || 
-    (!hotel?.id && step === 3);
+    (!hotel?.id && !skipHotel && step === 3); // Allow progression if hotel is skipped
 
   const airline = shortenAirlineName(flight?.metadata?.name);
 
@@ -83,7 +98,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       Number(process.env.NEXT_PUBLIC_MARKUP || "150")
   ).toLocaleString("en-US");
 
-  const nextStep = () =>
+  const nextStep = (skipHotel = false) =>
     setStep((prev) => {
       if (prev === 1) {
         orderStage("TICKET_SELECTED", {
@@ -125,6 +140,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
           });
         }
       } else if (prev === 3) {
+        // Handle both hotel selection AND skip
+        if (skipHotel) {
+          setSkipHotel(true);
+          setHotel(undefined);
+        }
+        
+        // Use skipHotel flag to determine if hotel data should be included
+        const isHotelSkipped = skipHotel || !hotel;
+        
+        // Common logic for step 3 completion (flight pricing, tracking, etc.)
         fetch(`/api/flights/pricing`, {
           method: "POST",
           body: JSON.stringify({
@@ -142,23 +167,23 @@ export const OrderForm = ({ event }: { event: Event }) => {
           }
         });
         orderStage("HOTEL_SELECTED", {
-          data: { hotel: hotel?.id },
+          data: { hotel: isHotelSkipped ? null : hotel?.id || null },
         });
-        if (hotel) {
-          trackEvent("hotelSelected", {
-            hotelId: hotel.id,
-            hotelName: hotel.name,
-            checkInDate: hotel.checkin,
-            checkOutDate: hotel.checkout,
-            numOfNights,
-            numOfRooms: hotel.guests.length,
-            numOfPeople: totalGuests,
-            isCorrespondingToFlight,
-            hotelInformation: hotel.hotelInformation,
-            hotelAddionalPrice: hotelPriceAddition,
-            selectedFilters: selectedHotelFilters,
-          });
-        }
+        // Centralized hotel tracking - handles both selected and skipped
+        trackEvent("hotelSelected", {
+          hotelId: isHotelSkipped ? null : hotel?.id || null,
+          hotelName: isHotelSkipped ? null : hotel?.name || null,
+          checkInDate: isHotelSkipped ? null : hotel?.checkin || null,
+          checkOutDate: isHotelSkipped ? null : hotel?.checkout || null,
+          numOfNights: isHotelSkipped ? null : numOfNights,
+          numOfRooms: isHotelSkipped ? null : hotel?.guests.length || null,
+          numOfPeople: isHotelSkipped ? null : totalGuests,
+          isCorrespondingToFlight: isHotelSkipped ? null : isCorrespondingToFlight,
+          hotelInformation: isHotelSkipped ? null : hotel?.hotelInformation || null,
+          hotelAddionalPrice: isHotelSkipped ? null : hotelPriceAddition,
+          selectedFilters: isHotelSkipped ? null : selectedHotelFilters,
+          skipped: isHotelSkipped,
+        });
       } else if (prev === 4) {
         orderStage("CONFIRMED", {
           // TO DO: NOT WORKING at the MOMENT - Check with Yakov
@@ -180,6 +205,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
       return prev + 1;
     });
 
+  const handleSkipHotel = () => {
+    nextStep(true);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-2 pt-3">
       {step === 1 && <TicketSelection />}
@@ -193,26 +222,54 @@ export const OrderForm = ({ event }: { event: Event }) => {
         </div>
       )}
       {/* Sticky Footer */}
-      <div className="flex w-full flex-col items-center bottom-0 sticky z-0">
+      <div className="flex w-full flex-col items-center bottom-0 sticky z-40">
         <div className="mt-4 w-screen bg-gray-200">
           <div className="w-full">
             {step < 4 && (
               <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
                 <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center">
-                  {/* Button Section */}
-                  <button
-                    disabled={buttonDisabled}
-                    onClick={nextStep}
-                    className={cn(
-                      "bg-main text-white tracking-wide rounded-lg p-2 font-bold",
-                      "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
-                      buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                    )}
-                    type="button"
-                    aria-label={buttonText[step]}
-                  >
-                    {buttonText[step]}
-                  </button>
+                  {/* Button Section - Split on step 3 (hotel selection) */}
+                  {step === 3 ? (
+                    // Hotel Selection Step: Show split buttons (desktop) or stacked (mobile)
+                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
+                      <button
+                        disabled={buttonDisabled}
+                        onClick={() => nextStep()}
+                        className={cn(
+                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
+                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        type="button"
+                        aria-label="בחר והמשך לסיכום"
+                        >
+                        <span className="min-[400px]:inline hidden">בחר והמשך לסיכום</span>
+                        <span className="min-[400px]:hidden">בחר והמשך</span>
+                      </button>
+                      <button
+                        onClick={handleSkipHotel}
+                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
+                        type="button"
+                        aria-label="המשך ללא מלון"
+                      >
+                        לא צריך מלון
+                      </button>
+                    </div>
+                  ) : (
+                    // Other steps: Show single button
+                    <button
+                      disabled={buttonDisabled}
+                      onClick={() => nextStep()}
+                      className={cn(
+                        "bg-main text-white tracking-wide rounded-lg p-2 font-bold",
+                        "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
+                        buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                      )}
+                      type="button"
+                      aria-label={buttonText[step]}
+                    >
+                      {buttonText[step]}
+                    </button>
+                  )}
 
                   {/* Order Summary Section */}
                   <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
@@ -250,7 +307,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         </span>
                         <div className="flex items-center justify-end">
                           <span className="text-right mr-2 lg:ml-2">
-                            {ticketCategory}
+                            <span className="lg:hidden">{shortenTicketCategory(ticketCategory)}</span>
+                            <span className="hidden lg:inline">{ticketCategory}</span>
                           </span>
                           <Image
                             alt="ticket icon"

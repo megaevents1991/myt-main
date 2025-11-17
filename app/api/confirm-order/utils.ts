@@ -44,7 +44,7 @@ export const validateOrderData = async (
         })
         .required(),
       flight_order_info: yup.object().required(),
-      hotel_order_info: yup.object().required(),
+      hotel_order_info: yup.object().nullable().required(), // Can be null if hotel is skipped
       user_shown_price: yup.number().required(),
       event_id: yup.number().required(),
       exchange_rate_usd_ils_100 : yup.number().required(),
@@ -63,7 +63,7 @@ export const validateOrderData = async (
 };
 
 export const userEmail = (
-  replacements: Record<string, string | number | undefined>
+  replacements: Record<string, string | number | boolean | undefined>
 ) => {
   const refer = (replacements.promoCode !== "dummy_code"  && replacements.promoCode !== undefined) ? `
       <!-- Refer Friend Component -->
@@ -78,7 +78,7 @@ export const userEmail = (
           </div>
           
           <!-- Referral Link (LTR content in RTL context) -->
-          <div style="background-color: #ffffff; border: 2px dashed rgba(255,255,255,0.6); border-radius: 12px; margin-bottom 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" dir="ltr">
+          <div style="background-color: #ffffff; border: 2px dashed rgba(255,255,255,0.6); border-radius: 12px; margin-bottom: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" dir="ltr">
               <p style="color: #ffffff; font-size: 14px; margin: 5px 0 5px 0;">הקישור האישי שלך:</p>
               
               <div style="background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,1) 100%); border-radius: 8px; padding: 12px; display: block; position: relative;">
@@ -223,8 +223,8 @@ export const userEmail = (
                                       <p style="color: #666666; font-size: 16px; margin: 0; direction: rtl; width: 100%; max-width: 400px; margin: 0 auto;" dir="rtl">${replacements.message}</p>
                                   </div>
   
-                                  ${replacements.orderId && replacements.eventId ? `
-                                  <!-- Order Recovery Section -->
+                                  ${(replacements.showRecoveryLink && replacements.orderId && replacements.eventId) ? `
+                                  <!-- Order Recovery Section (Only for 24h Hold) -->
                                   <div style="background-color: #f0f8f8; border: 1px solid #277e89; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
                                       <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; direction: rtl;" dir="rtl">
                                           <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: #277e89; stroke-width: 2; margin-left: 8px;">
@@ -283,11 +283,11 @@ export const userEmail = (
                                                   <br><strong style="color: #05203c;">טיסת חזור:</strong> <span style="unicode-bidi: embed;">${replacements.returnFlight}, ${replacements.returnFlightDate}</span>
                                               </td>
                                           </tr>
-                                          <tr>
+                                          ${replacements.hotel !== "ללא מלון" ? `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
                                                   <strong style="color: #05203c;">מלון:</strong> ${replacements.hotel}
                                               </td>
-                                          </tr>
+                                          </tr>` : ''}
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
                                                   <strong style="color: #05203c;">מחיר:</strong> ₪${(replacements.price || "").toLocaleString('he-IL')}

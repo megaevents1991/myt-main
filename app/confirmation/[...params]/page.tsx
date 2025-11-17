@@ -128,7 +128,7 @@ export default function ConfirmationPage() {
           ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
             orderData.flight_order_info.inbound.departureTime
           ).format("DD/MM/YYYY HH:MM")}`,
-          hotel: orderData.hotel_order_info.name,
+          hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
           isPaid,
           partnerTrackingCode: promoCode === "dummy_code" ? null : promoCode,
@@ -148,7 +148,7 @@ export default function ConfirmationPage() {
           ticketCategory: orderData.event_order_info.category,
           numberOfTickets: orderData.event_order_info.number_of_ticket,
           airline: orderData.flight_order_info.metadata.name,
-          hotel: orderData.hotel_order_info.name,
+          hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "SKIPPED" : orderData.hotel_order_info.name,
           paymentMethod:
             Object.keys(orderData.payment_info || {}).length === 0
               ? "Phone"
@@ -342,9 +342,11 @@ export default function ConfirmationPage() {
                 <p>
                   <strong>Flight Schedule-</strong> {dates}
                 </p>
-                <p>
-                  <strong>Hotel:</strong> {hotel}
-                </p>
+                {hotel !== "ללא מלון" && (
+                  <p>
+                    <strong>Hotel:</strong> {hotel}
+                  </p>
+                )}
               </div>
             </div>
             
@@ -408,9 +410,11 @@ export default function ConfirmationPage() {
                 <p>
                   <strong>Flight Schedule-</strong> {dates}
                 </p>
-                <p>
-                  <strong>Hotel:</strong> {hotel}
-                </p>
+                {hotel !== "ללא מלון" && (
+                  <p>
+                    <strong>Hotel:</strong> {hotel}
+                  </p>
+                )}
               </div>
             </div>
             

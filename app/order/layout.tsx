@@ -37,6 +37,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [passengers, setPassengers] = useState<
     { [key: string]: string }[] | undefined
   >(undefined);
+  const [skipHotel, setSkipHotel] = useState(false);
   
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
   
@@ -88,6 +89,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setGlobalLoader: setIsLoading,
           passengers,
           setPassengers,
+          skipHotel,
+          setSkipHotel,
         }}
       >
         <HotelFetchProvider>

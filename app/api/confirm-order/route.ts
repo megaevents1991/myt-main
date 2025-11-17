@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     );
   }
 
+  // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";
   if (!validatedData.is_agent_booking) {
     partnerTrackingCode =
@@ -111,8 +112,10 @@ export async function POST(req: Request) {
           Flight Inbound Date: ${(validatedData.flight_order_info.inbound.departureTime)}
 
           ******* Hotel Details *********
-          Hotel: ${(validatedData.hotel_order_info.name)}
-          Room Type: ${(validatedData.hotel_order_info.rate.room_name)}
+          ${(!validatedData.hotel_order_info || Object.keys(validatedData.hotel_order_info).length === 0)
+            ? 'Hotel: SKIPPED BY CUSTOMER' 
+            : `Hotel: ${validatedData.hotel_order_info.name}
+          Room Type: ${validatedData.hotel_order_info.rate.room_name}`}
 
           ******************
           Total Price USD: ${validatedData.user_shown_price}
