@@ -1709,72 +1709,64 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
   }, []);
 
   return (
-    <Link
-      href={computedSold ? "#no-op" : `/order/${event.id}`}
-      className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
-      key={event.id}
-      aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
-      aria-disabled={computedSold}
-      onClick={(e) => {
-        // Check if click originated from the strip
-        const target = e.target as HTMLElement;
-        const isStripClick = target.closest('[data-strip-click]');
-        
-        if (isStripClick) {
-          // Don't track or handle - let the strip handle it
-          return;
-        }
-        
-        trackEvent("eventSelected", {
-          eventId: event.id,
-          eventName: event.name,
-          eventDate: event.date,
-          eventType: event.type,
-          eventLocation: event.location.name,
-          eventTags: computedSold ? "Sold" : event.tags,
-          eventPrice: packagePrice,
-        });
-        if (computedSold) {
-          e.preventDefault();
-          return;
-        }
-        orderStage("EVENT_SELECTED", {
-          data: {
-            event: event.name,
+    <div className="flex flex-col">
+      <Link
+        href={computedSold ? "#no-op" : `/order/${event.id}`}
+        className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
+        key={event.id}
+        aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
+        aria-disabled={computedSold}
+        onClick={(e) => {
+          trackEvent("eventSelected", {
+            eventId: event.id,
+            eventName: event.name,
             eventDate: event.date,
+            eventType: event.type,
             eventLocation: event.location.name,
-          },
-        });
-        const gtmIdnts =
-          document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("gtmIdnts="))
-            ?.split("=")[1] || "";
-
-        fetch("/api/events-info", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            eventData: {
-              id: event.id,
-              name: event.name,
-              date: event.date,
-              category: event.type,
-              location: event.location.name,
-              tags: event.tags,
+            eventTags: computedSold ? "Sold" : event.tags,
+            eventPrice: packagePrice,
+          });
+          if (computedSold) {
+            e.preventDefault();
+            return;
+          }
+          orderStage("EVENT_SELECTED", {
+            data: {
+              event: event.name,
+              eventDate: event.date,
+              eventLocation: event.location.name,
             },
-            gtmIdnts,
-            eventType: "select_item",
-          }),
-        }).catch((error) => {
-          console.error("Analytics tracking failed:", error);
-        });
-      }}
-    >
-      {/* Accessibility: Enhanced event card with proper semantic structure */}
-      <article className={`rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main ${hasMultipleDates ? 'sm:rounded-b-lg' : ''}`}>
+          });
+          const gtmIdnts =
+            document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("gtmIdnts="))
+              ?.split("=")[1] || "";
+
+          fetch("/api/events-info", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              eventData: {
+                id: event.id,
+                name: event.name,
+                date: event.date,
+                category: event.type,
+                location: event.location.name,
+                tags: event.tags,
+              },
+              gtmIdnts,
+              eventType: "select_item",
+            }),
+          }).catch((error) => {
+            console.error("Analytics tracking failed:", error);
+          });
+        }}
+      >
+        {/* Accessibility: Enhanced event card with proper semantic structure */}
+        <article className={`rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
         <div className="flex flex-row sm:flex-col flex-1">
           <div
             className={`relative group overflow-hidden rounded-tl-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-bl-lg'}`}
@@ -1894,28 +1886,30 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
           </div>
         </div>
         </div>
-        {/* Strip for multiple dates */}
-        {hasMultipleDates && (
-          <div 
-            data-strip-click="true"
-            className="w-full bg-gradient-to-r from-secondary to-[#0a4d6e] text-white text-center py-2 px-3 rounded-b-lg cursor-pointer hover:from-[#0a4d6e] hover:to-secondary transition-all duration-200"
-            role="button"
-            aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
-            onClick={handleStripClick}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleStripClick(e as unknown as React.MouseEvent<HTMLDivElement>);
-              }
-            }}
-            tabIndex={0}
-          >
-            <span className="text-sm font-bold">
-              לכל האירועים של {event.name} לחצו כאן
-            </span>
-          </div>
-        )}
       </article>
     </Link>
+    {/* Strip for multiple dates - MOVED OUTSIDE Link to prevent navigation conflict */}
+    {hasMultipleDates && (
+      <div 
+        data-strip-click="true"
+        className="w-full bg-gradient-to-r from-secondary to-[#0a4d6e] text-white text-center py-2 px-3 rounded-b-lg cursor-pointer hover:from-[#0a4d6e] hover:to-secondary transition-all duration-200 shadow-lg"
+        role="button"
+        aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
+        onClick={handleStripClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleStripClick(e as unknown as React.MouseEvent<HTMLDivElement>);
+          }
+        }}
+        tabIndex={0}
+      >
+        <span className="text-sm font-bold">
+          לכל האירועים של {event.name} לחצו כאן
+        </span>
+      </div>
+    )}
+    </div>
   );
 }
+
