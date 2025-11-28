@@ -171,7 +171,7 @@ export async function GET(request: Request) {
     guests: [{ adults: 2, children: [] }], // Fixed: 2 adults
     longitude,
     latitude,
-    radius: 1000, // Fixed: 1 KM radius
+    radius: 1500, // Fixed: 1.5 KM radius
     currency: "USD",
   };
 
