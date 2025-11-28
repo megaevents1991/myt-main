@@ -171,7 +171,7 @@ export async function GET(request: Request) {
     guests: [{ adults: 2, children: [] }], // Fixed: 2 adults
     longitude,
     latitude,
-    radius: 2000, // Fixed: 2 KM radius
+    radius: 1000, // Fixed: 1 KM radius
     currency: "USD",
   };
 
@@ -205,7 +205,7 @@ export async function GET(request: Request) {
       .select("hid, star_rating, name")
       .in("hid", hotelIds)
       .eq("kind", "Hotel")
-      .eq("star_rating", 4);
+      .eq("star_rating", 3);
 
     if (error) {
       console.error("Database query error:", error);
@@ -218,19 +218,19 @@ export async function GET(request: Request) {
     if (!hotelsStaticData || hotelsStaticData.length === 0) {
       return NextResponse.json({
         cheapest_price: null,
-        message: "No 4-star hotels found within 2km radius",
+        message: "No 3-star hotels found within 1km radius",
         search_params: { latitude, longitude, checkin, checkout }
       });
     }
 
-    // Step 3: Find cheapest price among 4-star hotels
-    const fourStarHotelIds = new Set(hotelsStaticData.map(h => h.hid));
+    // Step 3: Find cheapest price among 3-star hotels
+    const threeStarHotelIds = new Set(hotelsStaticData.map(h => h.hid));
     let cheapestPrice = Infinity;
     let cheapestHotel = null;
 
     for (const hotel of hotelResponse.data.hotels) {
-      // Skip if not a 4-star hotel
-      if (!fourStarHotelIds.has(hotel.hid)) {
+      // Skip if not a 3-star hotel
+      if (!threeStarHotelIds.has(hotel.hid)) {
         continue;
       }
 
@@ -269,7 +269,7 @@ export async function GET(request: Request) {
     } else {
       return NextResponse.json({
         cheapest_price: null,
-        message: "No available rates found for 4-star hotels",
+        message: "No available rates found for 3-star hotels",
         search_params: { latitude, longitude, checkin, checkout },
         total_4star_hotels_found: hotelsStaticData.length
       });
