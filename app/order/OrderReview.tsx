@@ -124,6 +124,8 @@ export default function OrderReview() {
   const [specialOfferOpen, setSpecialOfferOpen] = useState(false);
   const hasInteractedRef = useRef(false);
   const inactivityTimeoutRef = useRef<number | null>(null);
+  // Track initial discount to differentiate text in special offer modal
+  const initialAffDiscountRef = useRef<number | null>(null);
 
   // Sticky footer state and refs
   const [showStickyFooter, setShowStickyFooter] = useState(false);
@@ -293,6 +295,8 @@ export default function OrderReview() {
     // Start one-shot inactivity timer (30s) from when the page is ready for interaction
     inactivityTimeoutRef.current = window.setTimeout(() => {
       if (!hasInteractedRef.current) {
+        // Capture the initial discount when opening the modal
+        initialAffDiscountRef.current = affDiscount;
         setSpecialOfferOpen(true);
       }
     }, 22000);
@@ -754,15 +758,25 @@ export default function OrderReview() {
     }
   };
 
+  // Calculate the special offer discount amount (per person)
+  const specialOfferDiscountPerPerson = useMemo(() => {
+    if (agentCommission > 0) return 0;
+    return affDiscount > 50 ? 80 : affDiscount > 10 ? affDiscount * 1.50 : 50;
+  }, [affDiscount, agentCommission]);
+
+  // Calculate total discount for all tickets
+  const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
+
+  // Check if there was an initial discount
+  const hadInitialDiscount = (initialAffDiscountRef.current ?? 0) > 0;
+
   const handleSpecialOfferAccept = () => {
     // Guard in case modal state changes mid-flight
     if (!isSpecialOfferAllowed) return;
 
     setSpecialOfferOpen(false);
     if (agentCommission <= 0) {
-      const newDiscount =
-        affDiscount > 50 ? 90 : affDiscount > 10 ? affDiscount * 1.75 : 50;
-      setAffDiscount(newDiscount);
+      setAffDiscount(specialOfferDiscountPerPerson);
     }
   };
 
@@ -808,9 +822,12 @@ export default function OrderReview() {
       />
       {/* Special offer modal - triggered by 20s of inactivity, non-agent only */}
       <Modal
-        title="מתחילים את השנה עם מתנה בלעדית!"
+        title="מה נתקעת?!"
         description={<>
-          היי, <br />אנחנו רואים שאתם עדיין מתלבטים<br />נשמח לעזור לכם בהחלטה ❤️
+        {hadInitialDiscount 
+          ? `עוד הנחה קטנה תעזור? קיבלתם $${specialOfferTotalDiscount} הנחה נוספת!`
+          : `הנחה קטנה תעזור? קיבלתם $${specialOfferTotalDiscount} הנחה!`
+        }
         </>
         }
         action={
