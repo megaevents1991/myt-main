@@ -73,28 +73,6 @@ const nextConfig: import("next").NextConfig = {
       },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'query',
-            key: 'aff',
-            value: '(?<affValue>.*)',
-          }
-        ],
-        missing: [
-          {
-            type: 'query',
-            key: 'utm_source',
-          }
-        ],
-        permanent: false,
-        destination: '/:path*?aff=:affValue&utm_source=:affValue',
-      }
-    ];
-  }
 };
 
 module.exports = nextConfig;

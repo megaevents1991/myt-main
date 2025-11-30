@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // Handle affiliate parameter: if 'aff' exists but 'utm_source' doesn't, add utm_source
+  const url = request.nextUrl.clone();
+  const affValue = url.searchParams.get('aff');
+  const utmSource = url.searchParams.get('utm_source');
+  
+  if (affValue && affValue.trim() !== '' && !utmSource) {
+    // Add utm_source while preserving all other query parameters
+    url.searchParams.set('utm_source', affValue);
+    return NextResponse.redirect(url);
+  }
+  
   const response = NextResponse.next();
   
   // Add cache control headers for HTML pages to ensure browsers respect revalidation
