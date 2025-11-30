@@ -34,7 +34,7 @@ export const ReferFriend = ({
   // Handle copy to clipboard
   const handleCopy = () => {
     navigator.clipboard.writeText(
-      "https://mega-events.co.il/?aff=" + promoCode
+      "https://mega-events.co.il/?utm_source=" + promoCode
     );
 
     setShowCopyNotification(true);
@@ -50,7 +50,7 @@ export const ReferFriend = ({
   //       .share({
   //         title: "הזמנת חברים לחופשה",
   //         text: "לנו הצטרפו אלי לחופשה והרוויחו $20 הנחה לנוסע!",
-  //         url: "https://mega-events.co.il/?aff=" + promoCode,
+  //         url: "https://mega-events.co.il/?utm_source=" + promoCode,
   //       })
   //       .catch((err) => console.error("Error sharing:", err));
   //   } else {
@@ -146,7 +146,7 @@ export const ReferFriend = ({
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="bg-gray-100 p-3 rounded-md text-sm truncate text-center">
-              {"https://mega-events.co.il/?aff=" + promoCode}
+              {"https://mega-events.co.il/?utm_source=" + promoCode}
             </div>
             <div className="flex justify-center gap-8 pt-2">
               <Button

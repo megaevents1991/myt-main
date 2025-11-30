@@ -82,7 +82,7 @@ export const userEmail = (
               <p style="color: #ffffff; font-size: 14px; margin: 5px 0 5px 0;">הקישור האישי שלך:</p>
               
               <div style="background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,1) 100%); border-radius: 8px; padding: 12px; display: block; position: relative;">
-                  <p style="margin: 0; font-size: 16px; color: #277e89; font-weight: bold; word-break: break-all; direction: ltr;">https://mega-events.co.il/?aff=${replacements.promoCode}</p>
+                  <p style="margin: 0; font-size: 16px; color: #277e89; font-weight: bold; word-break: break-all; direction: ltr;">https://mega-events.co.il/?utm_source=${replacements.promoCode}</p>
               </div>
           </div>                                      
           <div style="margin-bottom: 15px; margin-top: 15px; direction: rtl;" dir="rtl">

@@ -41,7 +41,7 @@ const visitor = async (
 export const orderStage = async (stage: TrackingStage, data: object) => {
   // Get affiliate data
   const affParam =
-    new URLSearchParams(window.location.search).get("aff") || null;
+    new URLSearchParams(window.location.search).get("utm_source") || null;
   let storedData;
   try {
     storedData = localStorage.getItem("mytData");
