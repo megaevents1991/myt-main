@@ -493,9 +493,6 @@ export default function OrderReview() {
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
 
-  // Check if there was an initial discount
-  const hadInitialDiscount = (initialAffDiscountRef.current ?? 0) > 0;
-
   // Check if we have all required data (hotel is optional if skipHotel is true)
   if (!event || !selectedFlight || (!selectedHotel && !skipHotel)) {
     return (
@@ -824,9 +821,8 @@ export default function OrderReview() {
       <Modal
         title="מה נתקעת?!"
         description={<>
-        {hadInitialDiscount 
-          ? `עוד הנחה קטנה תעזור? קיבלתם $${specialOfferTotalDiscount} הנחה נוספת!`
-          : `הנחה קטנה תעזור? קיבלתם $${specialOfferTotalDiscount} הנחה!`
+        { 
+         `הנחה קטנה תעזור? קיבלתם $${specialOfferTotalDiscount} הנחה!`
         }
         </>
         }
