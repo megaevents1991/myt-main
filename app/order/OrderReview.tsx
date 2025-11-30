@@ -484,6 +484,18 @@ export default function OrderReview() {
     [passengers, validationErrors]
   );
 
+  // Calculate the special offer discount amount (per person)
+  const specialOfferDiscountPerPerson = useMemo(() => {
+    if (agentCommission > 0) return 0;
+    return affDiscount > 50 ? 80 : affDiscount > 10 ? affDiscount * 1.50 : 50;
+  }, [affDiscount, agentCommission]);
+
+  // Calculate total discount for all tickets
+  const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
+
+  // Check if there was an initial discount
+  const hadInitialDiscount = (initialAffDiscountRef.current ?? 0) > 0;
+
   // Check if we have all required data (hotel is optional if skipHotel is true)
   if (!event || !selectedFlight || (!selectedHotel && !skipHotel)) {
     return (
@@ -757,18 +769,6 @@ export default function OrderReview() {
       setStep(1);
     }
   };
-
-  // Calculate the special offer discount amount (per person)
-  const specialOfferDiscountPerPerson = useMemo(() => {
-    if (agentCommission > 0) return 0;
-    return affDiscount > 50 ? 80 : affDiscount > 10 ? affDiscount * 1.50 : 50;
-  }, [affDiscount, agentCommission]);
-
-  // Calculate total discount for all tickets
-  const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
-
-  // Check if there was an initial discount
-  const hadInitialDiscount = (initialAffDiscountRef.current ?? 0) > 0;
 
   const handleSpecialOfferAccept = () => {
     // Guard in case modal state changes mid-flight
