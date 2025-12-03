@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
@@ -10,7 +11,7 @@ import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { Dispatch, RefObject, SetStateAction } from "react";
+import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
@@ -33,26 +34,24 @@ interface Props {
   artists: Artist[];
 }
 
-const SearchCombobox = ({
-  searchValue,
-  setSearchValue,
-  events,
-  footballTeams,
-  artists,
-  ref,
-  inline,
-  onOpenFeedbackModal,
-}: {
+const SearchCombobox = React.forwardRef<HTMLInputElement, {
   setSearchValue: Dispatch<SetStateAction<string>>;
   events: Event[];
   footballTeams: FootballTeam[];
   artists: Artist[];
   searchValue: string;
-  ref?: RefObject<HTMLInputElement>;
   inline?: boolean;
   onOpenFeedbackModal: () => void;
   mobile?: boolean;
-}) => {
+}>(({
+  searchValue,
+  setSearchValue,
+  events,
+  footballTeams,
+  artists,
+  inline,
+  onOpenFeedbackModal,
+}, ref) => {
   const router = useRouter();
   const combobox = useCombobox();
 
@@ -302,7 +301,9 @@ const SearchCombobox = ({
       </Combobox.Dropdown>
     </Combobox>
   );
-};
+});
+
+SearchCombobox.displayName = "SearchCombobox";
 
 const MobileCarousel = ({ events, allEvents, artists }: { events: Event[]; allEvents?: Event[]; artists?: Artist[] }) => {
   const [isMounted, setIsMounted] = useState(false);

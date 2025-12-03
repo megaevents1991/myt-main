@@ -10,7 +10,7 @@ export const ReferFriend = ({
   promoCode,
 }: {
   promoCode: string;
-}): JSX.Element => {
+}) => {
   // Steps data for the "How it works" section
   const howItWorksSteps = [
     "העתיקו את הקישור ושלחו לחברים",
