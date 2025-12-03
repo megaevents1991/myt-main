@@ -2,9 +2,9 @@
   "name": "my-event-booking-app",
   "version": "0.1.0",
   "private": true,
-  "overrides": {
-    "@radix-ui/react-primitive": "^2.0.1",
-    "@radix-ui/react-slot": "^1.2.4"
+  "resolutions": {
+    "@radix-ui/react-primitive": "2.0.1",
+    "@radix-ui/react-slot": "1.2.4"
   },
   "scripts": {
     "dev": "next dev",
