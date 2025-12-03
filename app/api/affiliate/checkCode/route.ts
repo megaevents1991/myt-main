@@ -17,10 +17,11 @@ export async function GET(request: Request) {
       .single();
     if (error) throw error;    
     
-    if (data && data?.user_discount)
+    // Return data if it has either discount OR commission (for agents)
+    if (data && (data?.user_discount || data?.commission))
       return NextResponse.json({
-        discount: data.user_discount,
-        commission: data.commission,
+        discount: data.user_discount || 0,
+        commission: data.commission || 0,
         type: data.type,
       });
     else
