@@ -260,6 +260,12 @@ export default function OrderReview() {
   // Restrict 24h hold for specific events by English name (case-insensitive)
   // Example: block Ariana Grande
   const isHoldAllowed = useMemo(() => {
+    // Check env var first (highest priority)
+    if (process.env.NEXT_PUBLIC_DISABLE_24H_HOLD === 'true') {
+      return false;
+    }
+    
+    // Fallback to event name blocklist
     const name = (event?.name_english || "").toLowerCase();
     const blockedSubstrings = [
       "123abc",
