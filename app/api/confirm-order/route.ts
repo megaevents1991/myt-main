@@ -53,9 +53,13 @@ export async function POST(req: Request) {
   let partnerTrackingCode = "dummy_code";
   if (!validatedData.is_agent_booking) {
     partnerTrackingCode =
-      validatedData.main_contact_first_name.toLocaleLowerCase() +
-      "_" +
-      id.toString();
+      validatedData.main_contact_first_name
+        .trim()
+        .toLocaleLowerCase()
+        .replace(/\s+/g, "_") +
+        "_" +
+        id.toString();
+
     const passcode = partnerTrackingCode + "_pass";
 
     const { error: error2 } = await supabase
