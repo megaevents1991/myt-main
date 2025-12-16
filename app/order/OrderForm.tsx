@@ -154,6 +154,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           method: "POST",
           body: JSON.stringify({
             flightOffer: flight?.offer,
+            virtual: flight?.virtualOfferType || false,
           }),
         }).then((res) => {
           if (res.ok) {

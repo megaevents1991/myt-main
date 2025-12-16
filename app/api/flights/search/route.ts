@@ -264,10 +264,11 @@ export async function POST(request: Request) {
       adults || 1
     );
 
+    const baseId = flights.length + 1;
+
     // Transform Amadeus response to match our flight data structure
     const moreFlights: Flight[] = response.result.data.reduce(
-      (acc, offer, index) => {
-        const adjustedIndex = index + flights.length + 1; // Adjust index to avoid conflicts with offline flights
+      (acc, offer) => {
         const { validatingAirlineCodes, price, itineraries, travelerPricings } =
           offer;
         const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
@@ -393,9 +394,10 @@ export async function POST(request: Request) {
             validatingAirlineCodes[0] + itineraries[1].segments[0].number,
         };
 
+        const currentFlightId = String(baseId + acc.length);
         acc.push({
           offer,
-          id: adjustedIndex.toString(),
+          id: currentFlightId,
           numOfTravelers: travelerPricings.length,
           price: parseFloat(price.grandTotal),
           duration: itineraries[0].duration,
@@ -435,6 +437,24 @@ export async function POST(request: Request) {
         }
         else if (currentFlight.metadata.iata === "U8") {
           currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
+        }
+
+        if (currentFlight.metadata.iata === "LY") {
+          const variantFlight: Flight = {
+            ...currentFlight,
+            id: String(baseId + acc.length),
+            price: currentFlight.price + 150 * currentFlight.numOfTravelers,
+            outbound: {
+              ...currentFlight.outbound,
+              checkBagsIncluded: true,
+            },
+            inbound: {
+              ...currentFlight.inbound,
+              checkBagsIncluded: true,
+            },
+            virtualOfferType: true,
+          };
+          acc.push(variantFlight);
         }
         
 
