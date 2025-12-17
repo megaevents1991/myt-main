@@ -52,7 +52,7 @@ export const HotelCardHeader = ({
                   zoom: 14,
                 }}
                 style={{ width: "100%", height: "100%" }}
-                mapStyle="mapbox://styles/mapbox/streets-v12"
+                mapStyle="mapbox://styles/mapbox/outdoors-v12"
                 mapboxAccessToken={mapboxToken}
               >
                 <Marker
