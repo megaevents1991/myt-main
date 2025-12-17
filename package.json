@@ -41,6 +41,7 @@
     "geolib": "^3.3.4",
     "lodash": "^4.17.21",
     "lucide-react": "^0.460.0",
+    "mapbox-gl": "^3.17.0",
     "mixpanel-browser": "^2.60.0",
     "next": "^15.5.7",
     "next-elfsight-widget": "^1.1.1",
@@ -50,6 +51,7 @@
     "react-device-detect": "^2.2.3",
     "react-dom": "^19.2.1",
     "react-icons": "^5.5.0",
+    "react-map-gl": "^8.1.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tinyduration": "^3.4.1",
@@ -61,6 +63,7 @@
   },
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",
+    "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.16",
     "@types/react": "^19.2.7",

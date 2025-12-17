@@ -182,6 +182,11 @@ export const HotelCard = memo(
                         meals={!!selectedRoom?.meal_data.has_breakfast}
                         rating={hotelInfo.metadata.rating}
                         roomName={selectedRoom?.room_data_trans.main_name || ""}
+                        address={hotelInfo.metadata.address}
+                        coordinates={{
+                          lat: hotelInfo.metadata.latitude,
+                          lng: hotelInfo.metadata.longitude,
+                        }}
                       />
                       <div className="hidden lg:block">
                         <br />
