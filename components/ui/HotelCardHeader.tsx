@@ -90,7 +90,7 @@ export const HotelCardHeader = ({
             </div>
             <Stars rating={rating} />
           </div>
-          <div className="text-[14px] flex items-center gap-1">
+          <div className="text-[14px] flex items-center">
             <span>
               {Math.floor(distanceFromCenter / 100) / 10} ק&quot;מ ממרכז העיר
             </span>
