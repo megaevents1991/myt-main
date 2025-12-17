@@ -26,6 +26,8 @@ export const fetchHotels = async (
   }: FetchHotelsParams,
   signal: AbortSignal
 ) => {
+  const effectiveRadius = location?.country_code === "US" ? 5000 : radius;
+
   const res = await fetch(`/api/hotels`, {
     signal,
     method: "POST",
@@ -34,7 +36,7 @@ export const fetchHotels = async (
       checkin: dayjs(dateRange[0]?.toDateString()).format("YYYY-MM-DD"),
       checkout: dayjs(dateRange[1]?.toDateString()).format("YYYY-MM-DD"),
       guests,
-      radius,
+      radius: effectiveRadius,
     }),
   });
   const data: HotelResponse = await res.json();
