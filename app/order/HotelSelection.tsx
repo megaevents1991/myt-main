@@ -134,11 +134,18 @@ export const HotelSelection = () => {
 
   const prepareHotelData = ({ hotelsInfo, data }: HotelsData) => {
     // Calculate all values first
-    const maxDistance = Math.max(
+    let maxDistance = Math.max(
       ...Object.values(hotelsInfo).map(
         (hotel) => hotel.metadata?.distanceFromCenter
       )
     );
+
+    let distanceRangeToSet: [number, number] = [0, maxDistance];
+
+    if (event?.location?.country_code === "US") {
+      maxDistance = 5000;
+      distanceRangeToSet = [0, 3500];
+    }
 
     const totalPersons = getTotalPersons(data.debug.request.guests);
 
@@ -167,7 +174,7 @@ export const HotelSelection = () => {
       meal,
       kind,
       freeCancellation,
-      distanceFromCenter: [0, maxDistance],
+      distanceFromCenter: distanceRangeToSet,
     });
 
     const hotelInformation = {
@@ -183,7 +190,7 @@ export const HotelSelection = () => {
 
     setBasePricePerPerson(basePricePerPerson);
     setMaxDistance(maxDistance);
-    setDistanceRange([0, maxDistance]);
+    setDistanceRange(distanceRangeToSet);
     setPriceRange([0, Math.ceil(maxPrice)]);
     setMaxPrice(maxPrice / totalPersons);
     setFilteredHotels(hotelsToSet.slice(0, 50));
