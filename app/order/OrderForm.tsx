@@ -60,6 +60,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   const {
     numberOfPersons,
     finalPurchasePriceCalc,
+    getAffiliateDiscountTotalUsd,
     recommendedPriceAllPax,
     eventTicketPriceAddition,
     flightPriceAddition,
@@ -234,7 +235,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           usrFinalPrice: finalPurchasePriceCalc(affDiscount),
           fullPackagePrice: recommendedPriceAllPax,
           paymentMethod,
-          affiliateDiscount: affDiscount * numberOfEventTickets,
+          affiliateDiscount: getAffiliateDiscountTotalUsd(affDiscount),
           affiliateId: affId,
           eventTags: event.tags,
         });

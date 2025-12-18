@@ -114,37 +114,77 @@ export function useOrderVars() {
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
+  const calculateBaseTotal = useCallback(() => {
+    if (!eventTicket || !event || !selectedFlight) {
+      return 0;
+    }
+
+    // Calculate hotel component based on skip status
+    const hotelComponent = skipHotel
+      ? 0 // When skipping, the credit is applied via hotelPriceAddition
+      : (hotelPriceAddition + event.base_hotel_price) * totalGuests;
+
+    return Math.ceil(
+      (eventTicket.price + maup || 0) * numberOfEventTickets +
+        (flightPriceAddition + event.base_flight_price) *
+          selectedFlight.numOfTravelers +
+        hotelComponent +
+        (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
+    );
+  }, [
+    eventTicket,
+    event,
+    selectedFlight,
+    skipHotel,
+    hotelPriceAddition,
+    totalGuests,
+    maup,
+    numberOfEventTickets,
+    flightPriceAddition,
+  ]);
+
   /* Calculation of final price for the customer after discounts and such */
   const finalPurchasePriceCalc = useCallback(
     (affDiscount: number) => {
-      if (!eventTicket || !event || !selectedFlight) {
+      const baseTotal = calculateBaseTotal();
+      if (baseTotal <= 0) {
         return 0;
       }
-      
-      // Calculate hotel component based on skip status
-      const hotelComponent = skipHotel
-        ? 0 // When skipping, the credit is applied via hotelPriceAddition
-        : (hotelPriceAddition + event.base_hotel_price) * totalGuests;
-      
-      return Math.ceil(
-        (eventTicket.price + maup - affDiscount || 0) * numberOfEventTickets +
-          (flightPriceAddition + event.base_flight_price) *
-            selectedFlight.numOfTravelers +
-          hotelComponent +
-          (skipHotel ? (hotelPriceAddition * numberOfEventTickets) : 0) // Apply hotel credit per person when skipping
-      );
+
+      // Affiliate discount normalization:
+      // - 1..10 => percentage discount from expected total price
+      // - 20+   => absolute amount (legacy behavior: per-ticket)
+      // - 11..19 (or any other positive value) => treat as absolute per-ticket for backward compatibility
+      if (affDiscount >= 1 && affDiscount <= 10) {
+        const percentageDiscount = (baseTotal * affDiscount) / 100;
+        return Math.max(0, Math.ceil(baseTotal - percentageDiscount));
+      }
+
+      const absoluteDiscountTotal = Math.max(0, affDiscount || 0) * numberOfEventTickets;
+      return Math.max(0, Math.ceil(baseTotal - absoluteDiscountTotal));
     },
     [
-      eventTicket,
-      maup,
       numberOfEventTickets,
-      selectedFlight,
-      flightPriceAddition,
-      event,
-      hotelPriceAddition,
-      totalGuests,
-      skipHotel,
+      calculateBaseTotal,
     ]
+  );
+
+  const getAffiliateDiscountTotalUsd = useCallback(
+    (affDiscount: number) => {
+      const baseTotal = calculateBaseTotal();
+      if (baseTotal <= 0) return 0;
+      const finalTotal = finalPurchasePriceCalc(affDiscount);
+      return Math.max(0, baseTotal - finalTotal);
+    },
+    [calculateBaseTotal, finalPurchasePriceCalc]
+  );
+
+  const getAffiliateDiscountPerTicketUsd = useCallback(
+    (affDiscount: number) => {
+      if (!numberOfEventTickets) return 0;
+      return getAffiliateDiscountTotalUsd(affDiscount) / numberOfEventTickets;
+    },
+    [getAffiliateDiscountTotalUsd, numberOfEventTickets]
   );
   const finalPurchasePriceILSCalc = useCallback(async (USDprice: number) => {
     try {
@@ -207,6 +247,8 @@ export function useOrderVars() {
     isCorrespondingToFlight,
     finalPurchasePriceILSCalc,
     finalPurchasePriceCalc,
+    getAffiliateDiscountTotalUsd,
+    getAffiliateDiscountPerTicketUsd,
     hotelPriceAddition,
     flightPriceAddition,
   };

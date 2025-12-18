@@ -108,6 +108,8 @@ export default function OrderReview() {
     airlineFullName,
     hotelPriceAddition,
     totalGuests,
+    getAffiliateDiscountTotalUsd,
+    getAffiliateDiscountPerTicketUsd,
   } = useOrderVars();
 
   useEffect(() => {
@@ -180,6 +182,21 @@ export default function OrderReview() {
   const finalPurchasePrice = useMemo(
     () => finalPurchasePriceCalc(affDiscount),
     [finalPurchasePriceCalc, affDiscount]
+  );
+
+  const affiliateDiscountTotalUsd = useMemo(
+    () => getAffiliateDiscountTotalUsd(affDiscount),
+    [getAffiliateDiscountTotalUsd, affDiscount]
+  );
+
+  const affiliateDiscountPerTicketUsd = useMemo(
+    () => getAffiliateDiscountPerTicketUsd(affDiscount),
+    [getAffiliateDiscountPerTicketUsd, affDiscount]
+  );
+
+  const isPercentageAffiliateDiscount = useMemo(
+    () => affDiscount >= 1 && affDiscount <= 10,
+    [affDiscount]
   );
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
   const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.5);
@@ -286,7 +303,13 @@ export default function OrderReview() {
   // Inactivity detection for special offer (desktop + mobile)
   useEffect(() => {
     // Only for non-agent bookings, only when initial info modal is closed, and if offer is allowed
-    if (agentCommission > 0 || openModal || !isSpecialOfferAllowed) return;
+    if (
+      agentCommission > 0 ||
+      openModal ||
+      !isSpecialOfferAllowed ||
+      isPercentageAffiliateDiscount
+    )
+      return;
 
     const handleUserInteraction = () => {
       if (!hasInteractedRef.current) {
@@ -302,7 +325,7 @@ export default function OrderReview() {
     inactivityTimeoutRef.current = window.setTimeout(() => {
       if (!hasInteractedRef.current) {
         // Capture the initial discount when opening the modal
-        initialAffDiscountRef.current = affDiscount;
+        initialAffDiscountRef.current = affiliateDiscountPerTicketUsd;
         setSpecialOfferOpen(true);
       }
     }, 22000);
@@ -322,7 +345,13 @@ export default function OrderReview() {
         window.clearTimeout(inactivityTimeoutRef.current);
       }
     };
-  }, [agentCommission, openModal, isSpecialOfferAllowed]);
+  }, [
+    agentCommission,
+    openModal,
+    isSpecialOfferAllowed,
+    affiliateDiscountPerTicketUsd,
+    isPercentageAffiliateDiscount,
+  ]);
 
   const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];
@@ -493,8 +522,12 @@ export default function OrderReview() {
   // Calculate the special offer discount amount (per person)
   const specialOfferDiscountPerPerson = useMemo(() => {
     if (agentCommission > 0) return 0;
-    return affDiscount > 50 ? 80 : affDiscount > 10 ? affDiscount * 1.50 : 50;
-  }, [affDiscount, agentCommission]);
+    return affiliateDiscountPerTicketUsd > 50
+      ? 80
+      : affiliateDiscountPerTicketUsd > 10
+        ? affiliateDiscountPerTicketUsd * 1.5
+        : 50;
+  }, [affiliateDiscountPerTicketUsd, agentCommission]);
 
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
@@ -712,7 +745,7 @@ export default function OrderReview() {
         userFinalPriceRate: usd_ils_rate,
         fullPacagePrice: recommendedPriceAllPax,
         paymentMethod: payNow ? "credit_card" : "phone_order",
-        affiliateDiscount: affDiscount * numberOfEventTickets,
+        affiliateDiscount: affiliateDiscountTotalUsd,
         affiliateId: affId,
         isAgentBooking: agentCommission > 0,
         eventTags: event.tags,
@@ -775,7 +808,7 @@ export default function OrderReview() {
 
   const handleSpecialOfferAccept = () => {
     // Guard in case modal state changes mid-flight
-    if (!isSpecialOfferAllowed) return;
+    if (!isSpecialOfferAllowed || isPercentageAffiliateDiscount) return;
 
     setSpecialOfferOpen(false);
     if (agentCommission <= 0) {
@@ -842,7 +875,12 @@ export default function OrderReview() {
             אשמח להנחה
           </Button>
         }
-        opened={agentCommission <= 0 && specialOfferOpen && isSpecialOfferAllowed}
+        opened={
+          agentCommission <= 0 &&
+          specialOfferOpen &&
+          isSpecialOfferAllowed &&
+          !isPercentageAffiliateDiscount
+        }
         iconType="Beer"
       />
       <LoaderWrapper
@@ -920,9 +958,8 @@ export default function OrderReview() {
                     recommendedPriceAllPax={recommendedPriceAllPax}
                     numberOfPersons={numberOfPersons}
                     agentCommission={agentCommission}
-                    affDiscount={affDiscount}
+                    affDiscount={affiliateDiscountTotalUsd}
                     isNumberOfPersonsEqual={isNumberOfPersonsEqual}
-                    numberOfEventTickets={numberOfEventTickets}
                   />
                 )}
                 <Review
@@ -1753,7 +1790,7 @@ export default function OrderReview() {
                   agentCommission={agentCommission}
                   isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                   isSticky={false}
-                  affDiscount={(affDiscount || 0) * numberOfEventTickets}
+                    affDiscount={affiliateDiscountTotalUsd}
                 />
               </Button>
 
@@ -1848,7 +1885,7 @@ export default function OrderReview() {
                 agentCommission={agentCommission}
                 isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                 isSticky
-                affDiscount={(affDiscount || 0) * numberOfEventTickets}
+                affDiscount={affiliateDiscountTotalUsd}
               />
             </Button>
           </div>

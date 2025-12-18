@@ -9,16 +9,15 @@ export const PriceSummary = ({
   agentCommission,
   affDiscount,
   isNumberOfPersonsEqual,
-  numberOfEventTickets,
 }: {
   finalPurchasePrice: number;
   finalPurchasePriceILS: number;
   recommendedPriceAllPax: number;
   numberOfPersons: number;
   agentCommission: number;
+  // Total affiliate discount in USD (already normalized for percentage discounts)
   affDiscount: number;
   isNumberOfPersonsEqual: boolean;
-  numberOfEventTickets: number;
 }) => {
   const {
     originalNoDiscount,
@@ -65,7 +64,7 @@ export const PriceSummary = ({
           affDiscount > 0 && (
             <span className="text-[14px]" style={{ color: "green" }}>
               כולל הנחת $
-              {(affDiscount * numberOfEventTickets).toLocaleString("en-US")}
+              {affDiscount.toLocaleString("en-US")}
             </span>
           )
         )}
