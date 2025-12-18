@@ -50,6 +50,8 @@ export default async function FootballPage({
   }
 
   const { name, nameDBenglish, bio } = team.fields;
+
+  const isMondial2026 = name === "מונדיאל 2026";
   
   // Defensive checks for required fields
   if (!name || !nameDBenglish) {
@@ -203,7 +205,9 @@ export default async function FootballPage({
                           className="text-[14px]"
                           style={{ lineHeight: "1.1" }}
                         >
-                          לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                          {isMondial2026
+                            ? "לנוסע, עבור טיסה וכרטיס לאירוע"
+                            : "לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)"}
                         </div>
                         {event.tags === "Sold" ? (
                           <div className="my-2 py-2 flex-shrink-0 h-[22px] sm:h-[40px]"></div>
