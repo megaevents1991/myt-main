@@ -74,6 +74,17 @@ export const OrderForm = ({ event }: { event: Event }) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
+  const isUS = event?.location?.country_code === "US";
+
+  useEffect(() => {
+    // US events are sold without hotel; if we ever land on step 3, skip to review.
+    if (isUS && step === 3) {
+      setSkipHotel(true);
+      setHotel(undefined);
+      setStep(4);
+    }
+  }, [isUS, step, setHotel, setSkipHotel, setStep]);
+
   const buttonDisabled =
     (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
     (!flight?.id && step === 2) || 
@@ -138,6 +149,31 @@ export const OrderForm = ({ event }: { event: Event }) => {
             selectedFilters: selectedPlaneTicketsFilters,
             flightAddionalPrice: flightPriceAddition,
           });
+        }
+
+        if (isUS) {
+          setSkipHotel(true);
+          setHotel(undefined);
+
+          orderStage("HOTEL_SELECTED", {
+            data: { hotel: null },
+          });
+          trackEvent("hotelSelected", {
+            hotelId: null,
+            hotelName: null,
+            checkInDate: null,
+            checkOutDate: null,
+            numOfNights: null,
+            numOfRooms: null,
+            numOfPeople: null,
+            isCorrespondingToFlight: null,
+            hotelInformation: null,
+            hotelAddionalPrice: null,
+            selectedFilters: null,
+            skipped: true,
+          });
+
+          return prev + 2;
         }
       } else if (prev === 3) {
         // Handle both hotel selection AND skip
@@ -266,9 +302,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                       )}
                       type="button"
-                      aria-label={buttonText[step]}
+                      aria-label={
+                        step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]
+                      }
                     >
-                      {buttonText[step]}
+                      {step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]}
                     </button>
                   )}
 

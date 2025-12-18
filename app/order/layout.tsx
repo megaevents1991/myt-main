@@ -40,10 +40,15 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [skipHotel, setSkipHotel] = useState(false);
   
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
+
+  const isUS = event?.location?.country_code === "US";
   
   const handleStepperClick = (index: number) => {
     if (index + 1 < step) {
-      setStep(index + 1);
+      // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
+      const targetStep = index + 1;
+      if (isUS && targetStep === 3) return;
+      setStep(targetStep);
     }
   };
 
@@ -61,7 +66,11 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   return (
     <div className="w-full">
       {step !== 4 && (
-        <Stepper currentStep={step} onStepperClick={handleStepperClick} />
+        <Stepper
+          currentStep={step}
+          onStepperClick={handleStepperClick}
+          steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
+        />
       )}
       <OrderContext.Provider
         value={{

@@ -111,6 +111,7 @@ export const FlightSelection = () => {
 
   // Fetch hotels when the orderFlight dates or number of adults change
   useEffect(() => {
+    if (event?.location?.country_code === "US") return;
     if (orderFlight?.id) {
       getHotels({
         dateRange: getDefaultDateRange(event, orderFlight),
@@ -126,6 +127,7 @@ export const FlightSelection = () => {
 
   // First time fetching hotels, only if no hotels are already fetched
   useEffect(() => {
+    if (event?.location?.country_code === "US") return;
     if (orderFlight?.id && !hotelsData?.data?.data?.hotels) {
       getHotels({
         dateRange: getDefaultDateRange(event, orderFlight),

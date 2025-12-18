@@ -1,11 +1,12 @@
 import { cn } from "@/lib/utils";
 import { Stepper as MantineStepper } from "@mantine/core";
 
-const steps = ["כרטיסים", "טיסה", "מלון", "סיום"];
+const defaultSteps = ["כרטיסים", "טיסה", "מלון", "סיום"];
 
 type StepperProps = {
   currentStep: number;
   onStepperClick: (step: number) => void;
+  steps?: string[];
 };
 
 const StepperLabel = ({
@@ -27,7 +28,11 @@ const StepperLabel = ({
   );
 };
 
-export const Stepper = ({ currentStep, onStepperClick }: StepperProps) => {
+export const Stepper = ({
+  currentStep,
+  onStepperClick,
+  steps = defaultSteps,
+}: StepperProps) => {
   const active = currentStep - 1;
   return (
     <div className="w-full max-w-2xl mx-auto my-6 px-10" dir="rtl">
