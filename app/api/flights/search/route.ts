@@ -439,7 +439,7 @@ export async function POST(request: Request) {
           currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
         }
 
-        if (currentFlight.metadata.iata === "LY") {
+        if (currentFlight.metadata.iata === "LY" && currentFlight.outbound.checkBagsIncluded === false && currentFlight.inbound.checkBagsIncluded === false) {
           const variantFlight: Flight = {
             ...currentFlight,
             id: String(baseId + acc.length),
