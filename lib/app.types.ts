@@ -242,20 +242,7 @@ export type OrderData = {
     first_name: string;
     last_name: string;
   }[];
-  event_order_info: {
-    event_id: number;
-    date: Date;
-    name: string;
-    event_type: EventType;
-    location_name: string;
-    number_of_ticket: number;
-    category: string;
-    event_tags?: string;
-    price_per_ticket: number;
-    total_tickets_price: number;
-    vendor?: string;
-    id?: string;
-  };
+  event_order_info: EventOrderInfo;
   flight_order_info: Flight; // You might need to define a specific interface here
   hotel_order_info: OrderHotel | Record<string, never>; // empty object {} indicates hotel was skipped
   user_shown_price: number;
@@ -267,6 +254,30 @@ export type OrderData = {
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
 };
+
+export type SingleEventOrderInfo = {
+  event_id: number;
+  date: Date;
+  vendor?: string;
+  name: string;
+  location_name: string;
+  id?: string;
+  number_of_ticket: number;
+  category: string;
+  event_type: EventType;
+  event_tags?: string;
+  price_per_ticket: number;
+  total_tickets_price: number;
+};
+
+// Mondial 2026: up to 3 events in one reservation.
+export type MultiEventOrderInfo = {
+  event1: SingleEventOrderInfo;
+  event2?: SingleEventOrderInfo;
+  event3?: SingleEventOrderInfo;
+};
+
+export type EventOrderInfo = SingleEventOrderInfo | MultiEventOrderInfo;
 
 export type ArtistFields = {
   contentTypeId: "artistTemplate";

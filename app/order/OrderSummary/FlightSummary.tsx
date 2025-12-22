@@ -31,18 +31,15 @@ export const FlightSummary = ({
               {airlineFullName}
             </div>
           </div>
-          <div className="flex text-[14px]" dir="rtl">
-            <div>מ-</div>
-            <div>
-              {dayjs(selectedFlight.outbound.departureTime).format(
-                "DD/MM/YYYY"
-              )}
-            </div>
-            <div className="w-1"></div>
-            <div>עד-</div>
-            <div>
+          <div className="text-[14px]" dir="rtl">
+            <span>מ-</span>
+            <span dir="ltr" className="mx-1 inline-block">
+              {dayjs(selectedFlight.outbound.departureTime).format("DD/MM/YYYY")}
+            </span>
+            <span>עד</span>
+            <span dir="ltr" className="mx-1 inline-block">
               {dayjs(selectedFlight.inbound.departureTime).format("DD/MM/YYYY")}
-            </div>
+            </span>
           </div>
         </div>
         {agentCommission <= 0 && (

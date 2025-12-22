@@ -1,8 +1,9 @@
 import { useContext, useLayoutEffect } from "react";
 import { OrderContext } from "../app.context";
-import { Flight, OrderHotel } from "@/lib/app.types";
+import { EventOrderInfo, Flight, OrderHotel } from "@/lib/app.types";
 import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { useOrderExpiry } from "./useOrderExpiry";
+import { getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
 
 export const useHandleExistingOrder = () => {
   const {
@@ -70,14 +71,8 @@ export const useHandleExistingOrder = () => {
             last_name: string;
           }
         ];
-        event_order_info: {
-          number_of_ticket: number;
-          category: string;
-          id: string;
-          price_per_ticket: number;
-          name: string;
-          event_id: number;
-        };
+        // Can be legacy single-event object or Mondial multi-event object
+        event_order_info: EventOrderInfo;
       } = await response.json();
 
       if (!data) {
@@ -113,13 +108,14 @@ export const useHandleExistingOrder = () => {
         setHotel(data.hotel_order_info as OrderHotel);
       }
       
-      setNumberOfEventTickets(data.event_order_info.number_of_ticket);
+      const primary = getPrimaryEventOrderInfo(data.event_order_info);
+      setNumberOfEventTickets(primary.number_of_ticket);
       setEventTicket({
-        category: data.event_order_info.category,
-        id: data.event_order_info.id,
-        price: data.event_order_info.price_per_ticket,
+        category: primary.category,
+        id: primary.id || "",
+        price: primary.price_per_ticket,
         description: "",
-        quantity: data.event_order_info.number_of_ticket,
+        quantity: primary.number_of_ticket,
       });
 
       setStep(4);

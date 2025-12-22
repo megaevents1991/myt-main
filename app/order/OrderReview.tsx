@@ -59,6 +59,8 @@ export default function OrderReview() {
     hotel: selectedHotel,
     eventTicket,
     event,
+    selectedEvents,
+    selectedEventTickets,
     setPaymentMethod,
     numberOfEventTickets,
     setStep,
@@ -703,20 +705,40 @@ export default function OrderReview() {
         first_name: passenger.firstName,
         last_name: passenger.lastName,
       })),
-      event_order_info: {
-        event_id: event?.id || 0,
-        date: event ? new Date(event.date) : new Date(),
-        name: event?.name || "",
-        location_name: event?.location.name || "",
-        number_of_ticket: numberOfEventTickets,
-        category: eventTicket.category,
-        event_type: event?.type || "",
-        event_tags: event?.tags || "",
-        price_per_ticket: eventTicket.price,
-        total_tickets_price: eventTicket.price * numberOfEventTickets,
-        vendor: eventTicket.vendor,
-        id: eventTicket.id,
-      },
+      event_order_info: (() => {
+        const effectiveEvents = (selectedEvents && selectedEvents.length > 0)
+          ? selectedEvents
+          : (event ? [event] : []);
+
+        const build = (evt: typeof event, ticket: typeof eventTicket) => ({
+          event_id: evt?.id || 0,
+          date: evt ? new Date(evt.date) : new Date(),
+          name: evt?.name || "",
+          location_name: evt?.location.name || "",
+          number_of_ticket: numberOfEventTickets,
+          category: ticket.category,
+          event_type: evt?.type || "",
+          event_tags: evt?.tags || "",
+          price_per_ticket: ticket.price,
+          total_tickets_price: ticket.price * numberOfEventTickets,
+          vendor: ticket.vendor,
+          id: ticket.id,
+        });
+
+        if (effectiveEvents.length <= 1) {
+          return build(event, eventTicket);
+        }
+
+        const t1 = selectedEventTickets?.[effectiveEvents[0].id] || eventTicket;
+        const t2 = effectiveEvents[1] ? (selectedEventTickets?.[effectiveEvents[1].id] || eventTicket) : undefined;
+        const t3 = effectiveEvents[2] ? (selectedEventTickets?.[effectiveEvents[2].id] || eventTicket) : undefined;
+
+        return {
+          event1: build(effectiveEvents[0], t1),
+          ...(effectiveEvents[1] ? { event2: build(effectiveEvents[1], t2!) } : {}),
+          ...(effectiveEvents[2] ? { event3: build(effectiveEvents[2], t3!) } : {}),
+        };
+      })(),
       flight_order_info: selectedFlight || {},
       hotel_order_info: skipHotel ? {} : (selectedHotel || {}),
       user_shown_price: finalPurchasePrice,
@@ -964,6 +986,8 @@ export default function OrderReview() {
                 )}
                 <Review
                   event={event}
+                  selectedEvents={selectedEvents}
+                  selectedEventTickets={selectedEventTickets}
                   selectedFlight={selectedFlight}
                   selectedHotel={selectedHotel!}
                   eventTicket={eventTicket}

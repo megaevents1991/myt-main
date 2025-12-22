@@ -11,6 +11,12 @@ import { createContext, Dispatch, SetStateAction } from "react";
 type AppContext = {
   flight?: Flight;
   event?: Event;
+  selectedEvents: Event[];
+  setSelectedEvents: Dispatch<SetStateAction<Event[]>>;
+  activeTicketEventIndex: number;
+  setActiveTicketEventIndex: Dispatch<SetStateAction<number>>;
+  selectedEventTickets: Record<number, OrderTicket>;
+  setSelectedEventTickets: Dispatch<SetStateAction<Record<number, OrderTicket>>>;
   hotel?: OrderHotel;
   eventTicket: OrderTicket;
   setEventTicket: (eventTicket: OrderTicket) => void;
@@ -44,6 +50,8 @@ type AppContext = {
   >;
   skipHotel: boolean;
   setSkipHotel: (skip: boolean) => void;
+  forceSkipHotel: boolean;
+  setForceSkipHotel: (skip: boolean) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

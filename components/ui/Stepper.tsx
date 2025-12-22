@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Stepper as MantineStepper } from "@mantine/core";
 
-const defaultSteps = ["כרטיסים", "טיסה", "מלון", "סיום"];
+const defaultSteps = ["כרטיס", "טיסה", "מלון", "סיום"];
 
 type StepperProps = {
   currentStep: number;

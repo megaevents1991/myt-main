@@ -38,6 +38,7 @@ import dayjs from "dayjs";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondial2026Title";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -46,6 +47,7 @@ export const FlightSelection = () => {
     setFlight,
     flight: orderFlight,
     event = {} as Event,
+    selectedEvents,
     numberOfEventTickets,
     setPlaneTickets,
     planeTickets,
@@ -81,10 +83,43 @@ export const FlightSelection = () => {
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(event.def_date_depart),
-    new Date(event.def_date_return),
-  ]);
+
+  const computeDefaultDateRange = () => {
+    const fallbackStart = new Date(event.def_date_depart);
+    const fallbackEnd = new Date(event.def_date_return);
+
+    const hasBundle = !!(selectedEvents && selectedEvents.length > 1);
+    if (!hasBundle) {
+      return [fallbackStart, fallbackEnd] as [Date | null, Date | null];
+    }
+
+    const events = selectedEvents;
+    const departTimes = events
+      .map((e) => dayjs(e.def_date_depart).valueOf())
+      .filter((t) => Number.isFinite(t));
+    const returnTimes = events
+      .map((e) => dayjs(e.def_date_return).valueOf())
+      .filter((t) => Number.isFinite(t));
+
+    const earliestDepart = departTimes.length > 0 ? Math.min(...departTimes) : NaN;
+    const latestReturn = returnTimes.length > 0 ? Math.max(...returnTimes) : NaN;
+
+    const start = Number.isFinite(earliestDepart)
+      ? new Date(earliestDepart)
+      : fallbackStart;
+    const end = Number.isFinite(latestReturn)
+      ? new Date(latestReturn)
+      : fallbackEnd;
+
+    // Mantine expects start <= end for range highlighting
+    return (start.getTime() <= end.getTime())
+      ? ([start, end] as [Date | null, Date | null])
+      : ([end, start] as [Date | null, Date | null]);
+  };
+
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
+    computeDefaultDateRange
+  );
   const [showFilters, setShowFilters] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(600);
@@ -94,7 +129,19 @@ export const FlightSelection = () => {
     returnDate: Date;
   }>({ departureDate: new Date(), returnDate: new Date() });
 
+  const mondialParsed = useMemo(
+    () => parseMondial2026EventName(event?.name),
+    [event?.name]
+  );
+
   const filterRef = useRef<HTMLDivElement>(null);
+
+  // If we arrive here with a bundle, ensure the defaults reflect all events.
+  useEffect(() => {
+    if (!selectedEvents || selectedEvents.length <= 1) return;
+    setDateRange(computeDefaultDateRange());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEvents?.map((e) => e.id).join(","), event?.id]);
 
   useLayoutEffect(() => {
     if (filterRef.current && matches) {
@@ -448,7 +495,13 @@ export const FlightSelection = () => {
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <EventDataHeader event={event} />
+            <EventDataHeader
+              event={event}
+              titleOverride={
+                mondialParsed.isMondial2026 ? MONDIAL_2026_MAIN_TITLE : undefined
+              }
+              hideDateLocation={!!(selectedEvents && selectedEvents.length > 1)}
+            />
             <div className="flex w-full lg:w-[60%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
               {matches && (
                 <span className="text-center text-xl">כמה טסים?</span>
@@ -474,6 +527,13 @@ export const FlightSelection = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
+                  highlightDays={
+                    selectedEvents && selectedEvents.length > 1
+                      ? selectedEvents
+                          .map((e) => e.date)
+                          .filter((d): d is string => typeof d === "string" && d.length > 0)
+                      : undefined
+                  }
                   onPopoverClose={handleDatePopoverClose}
                   showTooltip={true}
                   aria-label="בחר תאריכי יציאה וחזרה"

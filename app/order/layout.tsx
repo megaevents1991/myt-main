@@ -22,6 +22,11 @@ import OrderExpiredNotice from "@/components/OrderExpiredNotice";
 const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>(undefined);
+  const [selectedEvents, setSelectedEvents] = useState<Event[]>([]);
+  const [activeTicketEventIndex, setActiveTicketEventIndex] = useState(0);
+  const [selectedEventTickets, setSelectedEventTickets] = useState<
+    Record<number, OrderTicket>
+  >({});
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
@@ -38,16 +43,18 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
     { [key: string]: string }[] | undefined
   >(undefined);
   const [skipHotel, setSkipHotel] = useState(false);
+  const [forceSkipHotel, setForceSkipHotel] = useState(false);
   
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";
+  const isNoHotelFlow = isUS || forceSkipHotel;
   
   const handleStepperClick = (index: number) => {
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
-      if (isUS && targetStep === 3) return;
+      if (isNoHotelFlow && targetStep === 3) return;
       setStep(targetStep);
     }
   };
@@ -69,7 +76,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
         <Stepper
           currentStep={step}
           onStepperClick={handleStepperClick}
-          steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
+          steps={isNoHotelFlow ? ["כרטיס", "טיסה", "סיום"] : undefined}
         />
       )}
       <OrderContext.Provider
@@ -84,6 +91,12 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPaymentMethod,
           paymentMethod,
           event,
+          selectedEvents,
+          setSelectedEvents,
+          activeTicketEventIndex,
+          setActiveTicketEventIndex,
+          selectedEventTickets,
+          setSelectedEventTickets,
           flight,
           selectedPlaneTicketsFilters,
           setSelectedPlaneTicketsFilters,
@@ -100,6 +113,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPassengers,
           skipHotel,
           setSkipHotel,
+          forceSkipHotel,
+          setForceSkipHotel,
         }}
       >
         <HotelFetchProvider>

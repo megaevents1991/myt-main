@@ -8,9 +8,11 @@ import { trackEvent } from "@/lib/mixpanel";
 export default function EventButton({
   event,
   children,
+  eventPriceOverride,
 }: {
   event: Event;
   children: ReactNode;
+  eventPriceOverride?: number;
 }) {
   const tickets = event.tickets_and_rates || [];
   const hasAvailableTickets = tickets.some((t) => t?.available !== false);
@@ -29,10 +31,11 @@ export default function EventButton({
           eventLocation: event.location.name,
           eventTags: computedTags,
           eventPrice:
-            event.base_flight_price +
-            event.base_hotel_price +
-            minAvailablePrice +
-            Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
+            eventPriceOverride ??
+            (event.base_flight_price +
+              event.base_hotel_price +
+              minAvailablePrice +
+              Number(process.env.NEXT_PUBLIC_MARKUP || "150")),
         });
         if (computedTags === "Sold") {
           return;

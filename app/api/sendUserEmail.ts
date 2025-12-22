@@ -2,6 +2,10 @@ import nodemailer from "nodemailer";
 import dayjs from "dayjs";
 import { userEmail } from "./confirm-order/utils";
 import { OrderData } from "@/lib/app.types";
+import {
+  getPrimaryEventOrderInfo,
+  getEventOrderNameSummary,
+} from "@/lib/eventOrderInfo";
 
 const EMAIL_SERVER_USER = process.env.EMAIL_SERVER_USER || "";
 const EMAIL_SERVER_PASSWORD = process.env.EMAIL_SERVER_PASSWORD || "";
@@ -39,7 +43,7 @@ export const sendUserEmail = async ({
     },
     failedPurchase: {
       subject: `תודה שבחרת מגה איבנטס!`,
-      title: `לא הצלחנו להשלים את ההזמנה שלך ל- ${orderData.event_order_info.name}`,
+      title: `לא הצלחנו להשלים את ההזמנה שלך ל- ${getEventOrderNameSummary(orderData.event_order_info)}`,
       message: `נראה כי התשלום לא הושלם עקב בעיה טכנית או בפרטי האשראי.<br> נציג שירות ממגה איבנטס יפנה אליך במהלך יום העסקים הקרוב כדי לסייע בהשלמת העסקה.`,
     },
     phoneOrder: {
@@ -68,13 +72,16 @@ export const sendUserEmail = async ({
     bookingReference: orderData.booking_reference,
     title: emailTemplate.title,
     message : emailTemplate.message,
-    eventName: orderData.event_order_info.name,
-    eventDate: new Date(orderData.event_order_info.date).toLocaleDateString(
+    eventName: getPrimaryEventOrderInfo(orderData.event_order_info).name,
+    eventDate: new Date(
+      getPrimaryEventOrderInfo(orderData.event_order_info).date
+    ).toLocaleDateString(
       "he-IL"
     ),
-    eventLocation: orderData.event_order_info?.location_name || "",
-    ticketType: orderData.event_order_info.category,
-    quantity: orderData.event_order_info.number_of_ticket,
+    eventLocation:
+      getPrimaryEventOrderInfo(orderData.event_order_info)?.location_name || "",
+    ticketType: getPrimaryEventOrderInfo(orderData.event_order_info).category,
+    quantity: getPrimaryEventOrderInfo(orderData.event_order_info).number_of_ticket,
     airline: orderData.flight_order_info?.metadata?.name,
     departFlight: orderData.flight_order_info?.outbound.flightNumber,
     departFlightDate: dayjs(

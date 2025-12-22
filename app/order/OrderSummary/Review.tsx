@@ -1,4 +1,4 @@
-import { Event, Flight, OrderHotel } from "@/lib/app.types";
+import { Event, Flight, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { isMobile } from "react-device-detect";
 import { useMemo, useState } from "react";
 import { Accordion } from "@mantine/core";
@@ -8,6 +8,7 @@ import { FlightSummary } from "./FlightSummary";
 import dayjs from "dayjs";
 import { cn } from "@/lib/utils";
 import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
+import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondial2026Title";
 
 export const Review = ({
   agentCommission,
@@ -15,6 +16,8 @@ export const Review = ({
   totalGuests,
   numberOfEventTickets,
   eventTicket,
+  selectedEvents,
+  selectedEventTickets,
   selectedHotel,
   selectedFlight,
   airlineFullName,
@@ -32,6 +35,8 @@ export const Review = ({
     category: string;
     description?: string;
   };
+  selectedEvents?: Event[];
+  selectedEventTickets?: Record<number, OrderTicket>;
   selectedFlight: Flight;
   airlineFullName?: string;
   flightPriceAddition: number;
@@ -39,20 +44,99 @@ export const Review = ({
   event: Event;
   skipHotel?: boolean;
 }) => {
+  const mondialParsed = useMemo(() => parseMondial2026EventName(event?.name), [event?.name]);
+
+  const effectiveEvents = useMemo<Event[]>(
+    () => (selectedEvents && selectedEvents.length > 0 ? selectedEvents : [event]),
+    [selectedEvents, event]
+  );
+  const isBundle = effectiveEvents.length > 1;
+
+  const minTicketPriceForEvent = (evt: Event): number => {
+    const rates = (evt.tickets_and_rates || []).filter((t) => t?.available !== false);
+    if (rates.length === 0) return 0;
+    return Math.min(...rates.map((t) => t.price));
+  };
+
+  const ticketLines = useMemo(() => {
+    return effectiveEvents
+      .map((evt) => {
+        const parsed = parseMondial2026EventName(evt?.name);
+        const label = parsed.isMondial2026 ? (parsed.teamsTitle || evt.name) : evt.name;
+        const ticket = selectedEventTickets?.[evt.id];
+        const quantity = ticket?.quantity;
+        return {
+          eventId: evt.id,
+          label,
+          category: ticket?.category,
+          description: ticket?.description,
+          price: ticket?.price,
+          minPrice: minTicketPriceForEvent(evt),
+          quantity,
+        };
+      })
+      .filter((l) => typeof l.label === "string" && l.label.length > 0);
+  }, [effectiveEvents, selectedEventTickets]);
+
+  const totalTickets = useMemo(() => {
+    if (!isBundle) return numberOfEventTickets;
+    return ticketLines.reduce((sum, l) => sum + (l.quantity ?? numberOfEventTickets), 0);
+  }, [isBundle, ticketLines, numberOfEventTickets]);
+
+  // For bundles, compute combined TOTAL ticket addition across all events and quantities.
+  // For single event, keep the existing per-ticket addition passed from useOrderVars.
+  const ticketPriceAdditionTotal = useMemo(() => {
+    if (!isBundle) return eventTicketPriceAddition;
+    return ticketLines.reduce((sum, l) => {
+      const chosen = typeof l.price === "number" ? l.price : l.minPrice;
+      const qty = l.quantity ?? numberOfEventTickets;
+      return sum + (chosen - l.minPrice) * qty;
+    }, 0);
+  }, [isBundle, ticketLines, eventTicketPriceAddition, numberOfEventTickets]);
+
   const items = useMemo(
     () => [
       {
         id: "event-summary",
-        primary: `כרטיסים (${numberOfEventTickets})`,
-        secondary: `קטגוריה: ${eventTicket.category}`,
+        primary: `כרטיסים (${totalTickets} כרטיסים)`,
+        secondary: isBundle
+          ? (
+              <div className="text-[14px] text-[#5A6475] whitespace-pre-line" dir="rtl">
+                {ticketLines.map((l) => (
+                  <div key={l.eventId}>
+                    ({"x"}{l.quantity ?? numberOfEventTickets}) {l.label}
+                    {l.category ? ` — ${l.category}` : ""}
+                  </div>
+                ))}
+              </div>
+            )
+          : `קטגוריה: ${eventTicket.category}`,
         icon: <FaTicketAlt />,
         component: (
           <EventSummary
             key={"event-summary"}
+            eventTitle={
+              mondialParsed.isMondial2026 && !isBundle ? MONDIAL_2026_MAIN_TITLE : undefined
+            }
+            eventSubtitle={
+              mondialParsed.isMondial2026 && !isBundle ? mondialParsed.teamsTitle : undefined
+            }
             numberOfEventTickets={numberOfEventTickets}
+            totalTickets={totalTickets}
             eventTicket={eventTicket}
             agentCommission={agentCommission}
-            eventTicketPriceAddition={eventTicketPriceAddition}
+            eventTicketPriceAddition={ticketPriceAdditionTotal}
+            isBundle={isBundle}
+            bundleLines={
+              isBundle
+                ? ticketLines.map((l) => ({
+                    label: l.label,
+                    category: l.category,
+                    description: l.description,
+                    quantity: l.quantity ?? numberOfEventTickets,
+                  }))
+                : undefined
+            }
           />
         ),
       },
@@ -92,10 +176,12 @@ export const Review = ({
       },
     ],
     [
+      mondialParsed.isMondial2026,
+      mondialParsed.teamsTitle,
       numberOfEventTickets,
       eventTicket,
       agentCommission,
-      eventTicketPriceAddition,
+      ticketPriceAdditionTotal,
       selectedHotel,
       hotelPriceAddition,
       totalGuests,
@@ -103,6 +189,9 @@ export const Review = ({
       airlineFullName,
       selectedFlight,
       skipHotel,
+      isBundle,
+      ticketLines,
+      totalTickets,
     ]
   );
 
@@ -115,12 +204,23 @@ export const Review = ({
         <>
           <div className="flex flex-row items-center w-full gap-2" dir="rtl">
             <div className="flex-1 flex justify-center px-1">
-              <h2 className="text-2xl font-bold leading-tight text-center">{event.name}</h2>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold leading-tight">
+                  {mondialParsed.isMondial2026 ? MONDIAL_2026_MAIN_TITLE : event.name}
+                </h2>
+                {mondialParsed.isMondial2026 && mondialParsed.teamsTitle && !isBundle ? (
+                  <div className="text-sm font-semibold text-muted-foreground leading-tight">
+                    {mondialParsed.teamsTitle}
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div className="shrink-0 text-center">
-              <p className="text-md font-bold">{event.location.name}</p>
-              <p className="text-sm">{dayjs(event.date).format("DD/MM/YYYY")}</p>
-            </div>
+            {!isBundle ? (
+              <div className="shrink-0 text-center">
+                <p className="text-md font-bold">{event.location.name}</p>
+                <p className="text-sm">{dayjs(event.date).format("DD/MM/YYYY")}</p>
+              </div>
+            ) : null}
           </div>
           <div className="h-1 border-b w-full " />
           <Accordion
@@ -171,13 +271,22 @@ export const Review = ({
         <>
           <div className="text-center">
             <div>
-              <h2 className="text-2xl font-bold">{event.name}</h2>
+              <h2 className="text-2xl font-bold">
+                {mondialParsed.isMondial2026 ? MONDIAL_2026_MAIN_TITLE : event.name}
+              </h2>
+              {mondialParsed.isMondial2026 && mondialParsed.teamsTitle && !isBundle ? (
+                <div className="text-sm font-semibold text-muted-foreground mt-1">
+                  {mondialParsed.teamsTitle}
+                </div>
+              ) : null}
             </div>
-            <p className="text-lg">
-              {event.location.name +
-                " | " +
-                dayjs(event.date).format("DD/MM/YYYY")}
-            </p>
+            {!isBundle ? (
+              <p className="text-lg">
+                {event.location.name +
+                  " | " +
+                  dayjs(event.date).format("DD/MM/YYYY")}
+              </p>
+            ) : null}
           </div>
           {items.map((item) => item.component)}
         </>

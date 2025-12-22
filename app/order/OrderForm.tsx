@@ -16,6 +16,7 @@ import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
 import { shortenAirlineName } from "./order-review.utils";
+import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondial2026Title";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -44,6 +45,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
     flight,
     hotel,
     eventTicket,
+    selectedEvents,
+    activeTicketEventIndex,
+    setActiveTicketEventIndex,
+    selectedEventTickets,
+    setSelectedEventTickets,
     numberOfEventTickets,
     planeTickets,
     selectedPlaneTicketsFilters,
@@ -51,6 +57,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
     paymentMethod,
     skipHotel,
     setSkipHotel,
+    forceSkipHotel,
+    setForceSkipHotel,
     setHotel,
   } = useContext(OrderContext);
 
@@ -76,15 +84,33 @@ export const OrderForm = ({ event }: { event: Event }) => {
   }, [step]);
 
   const isUS = event?.location?.country_code === "US";
+  const isNoHotelFlow = isUS || forceSkipHotel;
+
+  const mondialParsed = parseMondial2026EventName(event?.name);
+  const isMondial2026 = mondialParsed.isMondial2026;
+  const hasBundleEvents = !!(selectedEvents && selectedEvents.length > 1);
+  const isTicketStepNotLastBundledEvent =
+    step === 1 &&
+    isMondial2026 &&
+    hasBundleEvents &&
+    activeTicketEventIndex < (selectedEvents?.length || 0) - 1;
+
+  const primaryCtaLabel =
+    step === 1 && isMondial2026
+      ? (isTicketStepNotLastBundledEvent ? "לאירוע הבא" : "בחר טיסה")
+      : step === 2 && isNoHotelFlow
+        ? "לסיכום הזמנה"
+        : buttonText[step];
 
   useEffect(() => {
     // US events are sold without hotel; if we ever land on step 3, skip to review.
-    if (isUS && step === 3) {
+    if (isNoHotelFlow && step === 3) {
       setSkipHotel(true);
       setHotel(undefined);
+      if (forceSkipHotel) setForceSkipHotel(true);
       setStep(4);
     }
-  }, [isUS, step, setHotel, setSkipHotel, setStep]);
+  }, [isNoHotelFlow, step, setHotel, setSkipHotel, setStep, forceSkipHotel, setForceSkipHotel]);
 
   const buttonDisabled =
     (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
@@ -93,34 +119,76 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const airline = shortenAirlineName(flight?.metadata?.name);
 
-  const ticketCategory = eventTicket.category;
+  const effectiveEvents: Event[] =
+    selectedEvents && selectedEvents.length > 0 ? selectedEvents : [event];
 
-  const minTicketPrice =
-    event.tickets_and_rates?.length > 0
-      ? Math.min(...event.tickets_and_rates
-          .filter(ticket => ticket.available !== false)
-          .map((ticket) => ticket.price)) : 0;
+  const minTicketPriceForEvent = (evt: Event): number => {
+    const rates = (evt.tickets_and_rates || []).filter((t) => t?.available !== false);
+    if (rates.length === 0) return 0;
+    return Math.min(...rates.map((t) => t.price));
+  };
 
-  const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
+  const ticketSummary = (() => {
+    const isBundle = effectiveEvents.length > 1;
+    const categories = effectiveEvents
+      .map((evt) => {
+        const selected = selectedEventTickets?.[evt.id];
+        const category = selected?.category || (isBundle ? "" : eventTicket.category);
+        return category;
+      })
+      .filter((c) => typeof c === "string" && c.length > 0);
+
+    const relativeSum = effectiveEvents.reduce((sum, evt) => {
+      const min = minTicketPriceForEvent(evt);
+      const selected = selectedEventTickets?.[evt.id];
+      const price =
+        selected?.price ?? (isBundle ? min : (eventTicket.price || 0));
+      const qty = selected?.quantity ?? numberOfEventTickets;
+      return sum + (price - min) * qty;
+    }, 0);
+
+    return {
+      relativeSum,
+      categoriesFull: categories.join(", "),
+      categoriesShort: categories.map(shortenTicketCategory).join(", "),
+    };
+  })();
 
   const basePrice = Math.ceil(
     event.base_flight_price +
       event.base_hotel_price +
-      minTicketPrice +
+      // Keep legacy base price logic here (single-event baseline)
+      minTicketPriceForEvent(event) +
       Number(process.env.NEXT_PUBLIC_MARKUP || "150")
   ).toLocaleString("en-US");
 
   const nextStep = (skipHotel = false) =>
     setStep((prev) => {
       if (prev === 1) {
+        const currentTicketEvent =
+          selectedEvents && selectedEvents.length > 0
+            ? selectedEvents[activeTicketEventIndex]
+            : event;
+
+        // Persist per-event ticket selection (for multi-event bundles)
+        if (currentTicketEvent?.id) {
+          setSelectedEventTickets((prevTickets) => ({
+            ...prevTickets,
+            [currentTicketEvent.id]: {
+              ...eventTicket,
+              quantity: numberOfEventTickets,
+            },
+          }));
+        }
+
         orderStage("TICKET_SELECTED", {
           data: {
-            event: event.name,
+            event: currentTicketEvent.name,
             ticketsType: eventTicket.category,
             numOfTicket: numberOfEventTickets,
           },
         });
-        const ticket = event.tickets_and_rates.find(
+        const ticket = currentTicketEvent.tickets_and_rates.find(
           (ticket) => ticket.id === eventTicket.id
         )!;
         trackEvent("ticketSelected", {
@@ -129,6 +197,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
           numOfTickets: numberOfEventTickets,
           addionalPricePerTicket: eventTicketPriceAddition,
         });
+
+        // Multi-event bundle: stay on step 1 until all events have ticket selections
+        if (selectedEvents && selectedEvents.length > 1) {
+          const nextIndex = activeTicketEventIndex + 1;
+          if (nextIndex < selectedEvents.length) {
+            setActiveTicketEventIndex(nextIndex);
+            return prev; // keep step = 1
+          }
+        }
       } else if (prev === 2) {
         orderStage("FLIGHT_SELECTED", {
           data: { flight: flight?.id },
@@ -152,9 +229,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
           });
         }
 
-        if (isUS) {
+        if (isNoHotelFlow) {
           setSkipHotel(true);
           setHotel(undefined);
+          if (forceSkipHotel) setForceSkipHotel(true);
 
           orderStage("HOTEL_SELECTED", {
             data: { hotel: null },
@@ -204,9 +282,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
             });
           }
         });
+
         orderStage("HOTEL_SELECTED", {
           data: { hotel: isHotelSkipped ? null : hotel?.id || null },
         });
+
         // Centralized hotel tracking - handles both selected and skipped
         trackEvent("hotelSelected", {
           hotelId: isHotelSkipped ? null : hotel?.id || null,
@@ -303,11 +383,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                       )}
                       type="button"
-                      aria-label={
-                        step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]
-                      }
+                      aria-label={primaryCtaLabel}
                     >
-                      {step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]}
+                      {primaryCtaLabel}
                     </button>
                   )}
 
@@ -341,14 +419,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
                     {step > 1 && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">
-                          {ticketRelativePrice > 0
-                            ? formatPrice(ticketRelativePrice)
+                          {ticketSummary.relativeSum > 0
+                            ? formatPrice(ticketSummary.relativeSum)
                             : "(כלול במחיר)"}
                         </span>
                         <div className="flex items-center justify-end">
                           <span className="text-right mr-2 lg:ml-2">
-                            <span className="lg:hidden">{shortenTicketCategory(ticketCategory)}</span>
-                            <span className="hidden lg:inline">{ticketCategory}</span>
+                            <span className="lg:hidden">{ticketSummary.categoriesShort}</span>
+                            <span className="hidden lg:inline">{ticketSummary.categoriesFull}</span>
                           </span>
                           <Image
                             alt="ticket icon"
@@ -368,7 +446,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         </span>
                         <div className="flex items-center justify-end lg:ml-2">
                           <span className="text-right font-bold">
-                            {event.name}
+                            {isMondial2026 ? MONDIAL_2026_MAIN_TITLE : event.name}
                           </span>
                         </div>
                       </div>

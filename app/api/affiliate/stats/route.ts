@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -89,7 +90,9 @@ export async function GET(request: Request) {
 
       const totalConfirmedTickets = Array.from(confirmedUsersMap.values()).reduce((sum, count) => sum + count, 0);
       const totalPaidTickets = reservationsData.reduce((sum, reservation) => {
-        const numOfTickets = reservation.event_order_info?.number_of_ticket || 0;
+        const numOfTickets = reservation.event_order_info
+          ? getPrimaryEventOrderInfo(reservation.event_order_info).number_of_ticket || 0
+          : 0;
         return sum + numOfTickets;
       }, 0);
 

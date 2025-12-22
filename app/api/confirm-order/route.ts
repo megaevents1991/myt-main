@@ -4,6 +4,11 @@ import { supabase } from "@/lib/supabase";
 import { OrderData } from "@/lib/app.types";
 import { validateOrderData } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
+import {
+  getEventOrderInfoList,
+  getPrimaryEventOrderInfo,
+  getEventOrderNameSummary,
+} from "@/lib/eventOrderInfo";
 import { 
   trackServerSideEvent, 
   extractIpFromRequest, 
@@ -94,6 +99,22 @@ export async function POST(req: Request) {
     },
   });
 
+  const eventInfos = getEventOrderInfoList(validatedData.event_order_info);
+  const primaryEvent = getPrimaryEventOrderInfo(validatedData.event_order_info);
+  const eventDetailsText = eventInfos
+    .map(
+      (e, idx) => `
+          ******** Event ${idx + 1} ********
+          Event: ${e.name}
+          Date: ${e.date}
+          Ticket Type: ${e.category}
+          Quantity: ${e.number_of_ticket}
+          Ticket ID: ${e.id || "N/A"}
+          Vendor: ${e.vendor || "N/A"}
+      `.trimEnd()
+    )
+    .join("\n\n");
+
   const repEmailContent = `
           New Order Details:
           Name: ${validatedData.main_contact_first_name} ${validatedData.main_contact_last_name}
@@ -101,13 +122,7 @@ export async function POST(req: Request) {
           Payment Method: ${onlySave ? "24Save" : (payNow ? "Credit Card" : "Phone Order")}
           More Pax: ${validatedData.more_pax_info.length}- ${validatedData.more_pax_info.map(pax => `${pax.first_name} ${pax.last_name}`).join('; ')}
 
-          ******** Event Details ********
-          Event: ${validatedData.event_order_info.name}
-          Date: ${validatedData.event_order_info.date}
-          Ticket Type: ${validatedData.event_order_info.category}
-          Quantity: ${validatedData.event_order_info.number_of_ticket}
-          Ticket ID: ${validatedData.event_order_info.id || 'N/A'}
-          Vendor: ${validatedData.event_order_info.vendor || 'N/A'}
+${eventDetailsText}
 
           ******** Flight Info **********
           Flight Outbound Number: ${(validatedData.flight_order_info.outbound.flightNumber)}
@@ -131,7 +146,7 @@ export async function POST(req: Request) {
     await transporter.sendMail({
       from: '"MegaEvents Reservations" <reservations@mega-events.co.il>',
       to: process.env.SALES_REP_EMAIL,
-      subject: `New Order Confirmation - ${validatedData.event_order_info.name}`,
+      subject: `New Order Confirmation - ${getEventOrderNameSummary(validatedData.event_order_info)}`,
       text: repEmailContent,
     });
 
@@ -152,12 +167,12 @@ export async function POST(req: Request) {
       await trackServerSideEvent({
         eventData: {
           id: validatedData.event_id,
-          name: validatedData.event_order_info.name,
+          name: primaryEvent.name,
           value: validatedData.user_shown_price,
           currency: "USD",
-          category: validatedData.event_order_info.event_type || "music_event",
+          category: primaryEvent.event_type || "music_event",
           brand: "Mega Events",
-          quantity: validatedData.event_order_info.number_of_ticket
+          quantity: primaryEvent.number_of_ticket
         },
         eventType: payNow ? "begin_checkout" : "generate_lead",
         gtmIdnts,

@@ -1,6 +1,6 @@
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields } from "@/lib/app.types";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Image from "next/image";
 import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
 import {
@@ -16,6 +16,27 @@ import EventButton from "../../../components/EventButton";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
+
+const MONDIAL2026_LEGACY_FOOTBALL_ID = "2LyfVQ6jREeMTm0ds66d1l";
+
+function buildRedirectUrl(
+  path: string,
+  searchParams?: Record<string, string | string[] | undefined>
+): string {
+  if (!searchParams) return path;
+
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (typeof value === "string") {
+      params.append(key, value);
+    } else if (Array.isArray(value)) {
+      for (const v of value) params.append(key, v);
+    }
+  }
+
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
 
 export async function generateStaticParams() {
   try {
@@ -34,10 +55,17 @@ export async function generateStaticParams() {
 
 export default async function FootballPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+
+  if (slug === MONDIAL2026_LEGACY_FOOTBALL_ID) {
+    permanentRedirect(buildRedirectUrl("/mondial2026", resolvedSearchParams));
+  }
   
   // Add timestamp for cache validation
   const timestamp = Date.now();
@@ -50,8 +78,6 @@ export default async function FootballPage({
   }
 
   const { name, nameDBenglish, bio } = team.fields;
-
-  const isMondial2026 = name === "מונדיאל 2026";
   
   // Defensive checks for required fields
   if (!name || !nameDBenglish) {
@@ -140,7 +166,7 @@ export default async function FootballPage({
                       )}
                       {event.tags === "VIPavailable" && !computedSold && (
                         <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אופציית VIP זמינה">
-                          אופציית VIP
+                          אופציית VIP זמינה
                         </div>
                       )}
                       {computedSold && (
@@ -205,9 +231,7 @@ export default async function FootballPage({
                           className="text-[14px]"
                           style={{ lineHeight: "1.1" }}
                         >
-                          {isMondial2026
-                            ? "לנוסע, עבור טיסה וכרטיס לאירוע"
-                            : "לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)"}
+                          לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
                         </div>
                         {event.tags === "Sold" ? (
                           <div className="my-2 py-2 flex-shrink-0 h-[22px] sm:h-[40px]"></div>

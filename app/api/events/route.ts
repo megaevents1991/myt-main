@@ -5,19 +5,36 @@ export async function GET(request: Request) {
   const startTime = Date.now();
   const url = new URL(request.url);
   const id = url.searchParams.get('id');
+  const idsParam = url.searchParams.get('ids');
   const userAgent = request.headers.get('user-agent') || 'Unknown';
   const ip = request.headers.get('x-forwarded-for') || 
            request.headers.get('x-real-ip') || 
            'Unknown';
 
   try {
-    console.log(`[Events API] Starting request - ID: ${id}, IP: ${ip}, UserAgent: ${userAgent}`);
-    
-    const { events } = await getEvents(id ? parseInt(id) : undefined);
+    const rawIds = (idsParam || id || '').trim();
+    const parsedIds = rawIds
+      ? rawIds
+          .split(',')
+          .map((s) => parseInt(s.trim()))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
+    console.log(
+      `[Events API] Starting request - ID(s): ${rawIds || 'ALL'}, IP: ${ip}, UserAgent: ${userAgent}`
+    );
+
+    // getEvents supports fetching a single id; for multiple ids, fetch all and filter.
+    const { events: allOrSingle } = await getEvents(
+      parsedIds.length === 1 ? parsedIds[0] : undefined
+    );
+    const events = parsedIds.length > 1
+      ? allOrSingle.filter((e) => parsedIds.includes(e.id))
+      : allOrSingle;
     const responseTime = Date.now() - startTime;
 
     if (!events.length) {
-      const error = `No events found - ID: ${id}, Query took: ${responseTime}ms`;
+      const error = `No events found - ID(s): ${rawIds || 'ALL'}, Query took: ${responseTime}ms`;
       console.error(`[Events API] ${error}`);
       
       // Log additional context for debugging
@@ -29,7 +46,7 @@ export async function GET(request: Request) {
           context: {
             requestId: `req_${Date.now()}`,
             timestamp: new Date().toISOString(),
-            searchId: id
+            searchId: rawIds || undefined
           }
         },
         { status: 404 }

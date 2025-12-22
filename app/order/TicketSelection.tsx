@@ -10,14 +10,28 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
 import type { EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
+import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondial2026Title";
 
 export const TicketSelection = () => {
-  const { setEventTicket, event } = useContext(OrderContext);
+  const {
+    setEventTicket,
+    event,
+    selectedEvents,
+    activeTicketEventIndex,
+    setActiveTicketEventIndex,
+    selectedEventTickets,
+    setSelectedEventTickets,
+  } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
   );
+
+  const effectiveEvents = selectedEvents && selectedEvents.length > 0
+    ? selectedEvents
+    : (event ? [event] : []);
+  const activeEvent = effectiveEvents[activeTicketEventIndex];
 
   const MAX_TICKETS = 9;
 
@@ -29,19 +43,32 @@ export const TicketSelection = () => {
   // Consider only tickets that are available (t.available !== false). If "available" is undefined, treat as available.
   const availableTickets: EventTicket[] = useMemo(
     () => {
-      const tickets = getAvailableTickets(event);
-      const filteredOut = (event?.tickets_and_rates || []).length - tickets.length;
+      const tickets = getAvailableTickets(activeEvent);
+      const filteredOut = (activeEvent?.tickets_and_rates || []).length - tickets.length;
       
       if (filteredOut > 0) {
-        console.log(`[TicketSelection] Filtered out ${filteredOut} unavailable ticket(s) for event ${event?.id}`);
+        console.log(`[TicketSelection] Filtered out ${filteredOut} unavailable ticket(s) for event ${activeEvent?.id}`);
       }
       
       return tickets;
     },
-    [event]
+    [activeEvent]
   );
 
   useEffect(() => {
+    if (!activeEvent) return;
+
+    const existingSelection = selectedEventTickets?.[activeEvent.id];
+    if (existingSelection?.id) {
+      setSelectedTicket(existingSelection.id);
+      setCheapestTicket(null);
+      setEventTicket({
+        ...existingSelection,
+        quantity: numberOfEventTickets,
+      });
+      return;
+    }
+
     if (!availableTickets || availableTickets.length === 0) {
       // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
       console.log('No available tickets found - clearing all ticket state');
@@ -72,15 +99,25 @@ export const TicketSelection = () => {
     
     setCheapestTicket(cheapt);
     setSelectedTicket(cheapt?.id);
-    setEventTicket({
+    const ticketPayload = {
       id: cheapt?.id || "",
       vendor: cheapt?.vendor || "",
       category: cheapt?.category || "",
       price: cheapt?.price || 0,
       description: cheapt?.description || "",
-      quantity: 2,
-    });
-  }, [availableTickets, setEventTicket]);
+      quantity: numberOfEventTickets,
+    };
+    setEventTicket(ticketPayload);
+    if (activeEvent?.id) {
+      setSelectedEventTickets((prev) => ({
+        ...prev,
+        [activeEvent.id]: {
+          ...ticketPayload,
+          quantity: numberOfEventTickets,
+        },
+      }));
+    }
+  }, [activeEvent, availableTickets, numberOfEventTickets, selectedEventTickets, setEventTicket, setSelectedEventTickets]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)
@@ -119,6 +156,16 @@ export const TicketSelection = () => {
       description: ticket.description || "",
       quantity: numberOfEventTickets,
     });
+    if (activeEvent?.id) {
+      setSelectedEventTickets((prev) => ({
+        ...prev,
+        [activeEvent.id]: {
+          ...ticket,
+          description: ticket.description || "",
+          quantity: numberOfEventTickets,
+        },
+      }));
+    }
     setSelectedTicket(ticket.id);
   };
 
@@ -134,13 +181,60 @@ export const TicketSelection = () => {
   return (
     <div>
       <div className="sr-only">
-        <h1>בחירת כרטיסים לאירוע {event?.name}</h1>
-        <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{event?.location?.name}</p>
+        <h1>בחירת כרטיסים לאירוע {activeEvent?.name || event?.name}</h1>
+        <p>
+          בחר כמות וקטגוריית כרטיסים עבור האירוע ב{activeEvent?.location?.name || event?.location?.name}
+        </p>
       </div>
+
+      {effectiveEvents.length > 1 && activeEvent && (
+        <div dir="rtl" className="mb-3">
+          <div className="text-sm font-semibold text-secondary">
+            בחירת כרטיסים: אירוע {activeTicketEventIndex + 1} מתוך {effectiveEvents.length}
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2" dir="rtl">
+            {effectiveEvents.map((e, idx) => {
+              const parsed = parseMondial2026EventName(e.name);
+              const buttonLabel = parsed.isMondial2026
+                ? (parsed.teamsTitle || e.name)
+                : e.name;
+
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => setActiveTicketEventIndex(idx)}
+                  className={
+                    idx === activeTicketEventIndex
+                      ? "bg-main text-white px-3 py-1 rounded-lg text-sm font-bold"
+                      : "bg-gray-200 text-secondary px-3 py-1 rounded-lg text-sm font-semibold"
+                  }
+                  aria-label={`בחירת אירוע ${e.name}`}
+                >
+                  {buttonLabel}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col items-center ">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <EventDataHeader event={event} />
+            {(() => {
+              const headerEvent = activeEvent || event;
+              const parsed = parseMondial2026EventName(headerEvent?.name);
+              return parsed.isMondial2026 ? (
+                <EventDataHeader
+                  event={headerEvent}
+                  titleOverride={MONDIAL_2026_MAIN_TITLE}
+                  subtitleOverride={parsed.teamsTitle}
+                />
+              ) : (
+                <EventDataHeader event={headerEvent} />
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -169,8 +263,8 @@ export const TicketSelection = () => {
               width={600}
               height={600}
               priority={true}
-              src={event?.map_image_url || ""}
-              alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה`}
+              src={activeEvent?.map_image_url || event?.map_image_url || ""}
+              alt={`מפת אירוע ${activeEvent?.name || event?.name || "לא ידוע"} - מיקומי הישיבה`}
             />
           </Spoiler>
           <div className="lg:w-[45%] hidden lg:block">
@@ -179,8 +273,8 @@ export const TicketSelection = () => {
               width={600}
               height={600}
               priority={true}
-              src={event?.map_image_url || ""}
-              alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה ובלוקים`}
+              src={activeEvent?.map_image_url || event?.map_image_url || ""}
+              alt={`מפת אירוע ${activeEvent?.name || event?.name || "לא ידוע"} - מיקומי הישיבה ובלוקים`}
             />
           </div>
           <div className="w-full lg:w-[55%]" dir="ltr">

@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useContext, useState, useEffect } from "react";
+import { Suspense, useContext, useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
 import { OrderContext } from "../app.context";
+import { useSearchParams } from "next/navigation";
 // Code-split heavy components
 const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
   // Keep SSR to preserve SSG/ISR HTML for SEO-critical content
@@ -31,8 +32,28 @@ interface OrderPageClientProps {
 }
 
 export default function OrderPageClient({ initialEvent, eventId }: OrderPageClientProps) {
-  const { event, setEvent, step } = useContext(OrderContext);
+  const {
+    event,
+    setEvent,
+    step,
+    setSelectedEvents,
+    setActiveTicketEventIndex,
+    setForceSkipHotel,
+    setSkipHotel,
+    setHotel,
+  } = useContext(OrderContext);
   const [showAboutSection, setShowAboutSection] = useState(false);
+  const searchParams = useSearchParams();
+
+  const bundleEventIds = useMemo(() => {
+    const raw = searchParams.get("bundleEventIds");
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => parseInt(s.trim()))
+      .filter((n) => Number.isFinite(n))
+      .slice(0, 3);
+  }, [searchParams]);
 
   // Set the event from props when component mounts, or fetch it if we have eventId but no event
   useEffect(() => {
@@ -55,6 +76,49 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
       fetchData();
     }
   }, [initialEvent, eventId, event, setEvent]); // More stable order
+
+  // Mondial multi-event bundle initialization (client-side)
+  useEffect(() => {
+    const initBundle = async () => {
+      if (!bundleEventIds || bundleEventIds.length <= 1) {
+        // Normal single-event flow
+        if (initialEvent) {
+          setSelectedEvents([initialEvent]);
+          setActiveTicketEventIndex(0);
+        }
+        return;
+      }
+
+      // Force no-hotel for bundles
+      setForceSkipHotel(true);
+      setSkipHotel(true);
+      setHotel(undefined);
+
+      try {
+        const response = await fetch(`/api/events?ids=${bundleEventIds.join(",")}`);
+        const data: { events: Event[] } = await response.json();
+
+        const byId = new Map<number, Event>();
+        (data.events || []).forEach((e) => byId.set(e.id, e));
+        if (initialEvent) byId.set(initialEvent.id, initialEvent);
+
+        const ordered = bundleEventIds
+          .map((id) => byId.get(id))
+          .filter((e): e is Event => Boolean(e));
+
+        if (ordered.length > 0) {
+          setSelectedEvents(ordered);
+          setActiveTicketEventIndex(0);
+          setEvent(ordered[0]);
+        }
+      } catch (error) {
+        console.error("Error initializing multi-event bundle:", error);
+      }
+    };
+
+    initBundle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundleEventIds.join(","), initialEvent]);
 
   // Delay rendering of MegaEventsSection until after main content
   // Don't show MegaEventsSection on OrderReview step (step 4)

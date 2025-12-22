@@ -6,6 +6,38 @@ export const validateOrderData = async (
   payNow = false
 ): Promise<OrderData> => {
   try {
+    const singleEventOrderInfoSchema = yup
+      .object()
+      .shape({
+        event_id: yup.number().required(),
+        date: yup.date().required(),
+        name: yup.string().required().min(1),
+        location_name: yup.string().required().min(1),
+        number_of_ticket: yup.number().required(),
+        vendor: yup.string(),
+        event_tags: yup.string(),
+        event_type: yup.string(),
+        id: yup.string(),
+        category: yup.string().required().min(1),
+        price_per_ticket: yup.number().required(),
+        total_tickets_price: yup.number().required(),
+      })
+      .required();
+
+    const multiEventOrderInfoSchema = yup
+      .object()
+      .shape({
+        event1: singleEventOrderInfoSchema.required(),
+        event2: singleEventOrderInfoSchema.optional(),
+        event3: singleEventOrderInfoSchema.optional(),
+      })
+      .test(
+        "at-least-one",
+        "event_order_info must include event1",
+        (value) => Boolean(value && typeof value === "object" && "event1" in value)
+      )
+      .required();
+
     // Create a dynamic schema based on payment type
     const dynamicOrderSchema = yup.object().shape({
       main_contact_first_name: yup.string().required().min(1),
@@ -27,22 +59,16 @@ export const validateOrderData = async (
               last_name: yup.string().optional(),
             })
           ),
-      event_order_info: yup
-        .object()
-        .shape({
-          event_id: yup.number().required(),
-          date: yup.date().required(),
-          name: yup.string().required().min(1),
-          number_of_ticket: yup.number().required(),
-          vendor: yup.string(),
-          event_tags: yup.string(),
-          event_type: yup.string(),
-          id: yup.string(),
-          category: yup.string().required().min(1),
-          price_per_ticket: yup.number().required(),
-          total_tickets_price: yup.number().required(),
-        })
-        .required(),
+      event_order_info: yup.lazy((value: unknown) => {
+        if (
+          value &&
+          typeof value === "object" &&
+          ("event1" in value || "event2" in value || "event3" in value)
+        ) {
+          return multiEventOrderInfoSchema;
+        }
+        return singleEventOrderInfoSchema;
+      }) as unknown as yup.Schema,
       flight_order_info: yup.object().required(),
       hotel_order_info: yup.object().nullable().required(), // Can be null if hotel is skipped
       user_shown_price: yup.number().required(),

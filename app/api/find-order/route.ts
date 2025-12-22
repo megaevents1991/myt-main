@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { NextRequest, NextResponse } from "next/server";
+import { getEventOrderIds, getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,14 +42,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate that the event ID matches the order's event ID if provided
-    if (eventIdFromPath && reservations.event_order_info?.event_id) {
-      const orderEventId = reservations.event_order_info.event_id.toString();
-      if (orderEventId !== eventIdFromPath) {
+    if (eventIdFromPath && reservations.event_order_info) {
+      const ids = getEventOrderIds(reservations.event_order_info);
+      if (ids.length > 0 && !ids.map(String).includes(eventIdFromPath)) {
         return NextResponse.json(
-          { 
+          {
             error: "This order does not belong to the specified event.",
-            orderEventId,
-            requestedEventId: eventIdFromPath
+            orderEventIds: ids,
+            requestedEventId: eventIdFromPath,
           },
           { status: 403 }
         );
@@ -63,13 +64,16 @@ export async function GET(request: NextRequest) {
     const timeDifference = now.getTime() - orderCreatedAt.getTime();
 
     if (timeDifference > twentyFiveHours) {
+      const primary = reservations.event_order_info
+        ? getPrimaryEventOrderInfo(reservations.event_order_info)
+        : undefined;
       return NextResponse.json(
         { 
           error: "Order access expired.",
           orderCreatedAt: orderCreatedAt.toISOString(),
           currentTime: now.toISOString(),
           hoursElapsed: Math.round(timeDifference / (60 * 60 * 1000) * 100) / 100,
-          eventName: reservations.event_order_info?.name // Include event name in error response
+          eventName: primary?.name // Include event name in error response
         },
         { status: 403 }
       );

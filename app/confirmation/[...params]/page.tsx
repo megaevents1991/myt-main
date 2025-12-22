@@ -9,6 +9,7 @@ import { OrderData } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
+import { getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
 
 type PaymentStatus = "success" | "error" | "pending";
 
@@ -78,6 +79,8 @@ export default function ConfirmationPage() {
           .find((row) => row.startsWith("gtmIdnts="))
           ?.split("=")[1] || "";
 
+      const primaryEvent = getPrimaryEventOrderInfo(orderData.event_order_info);
+
       fetch("/api/events-info", {
         method: "POST",
         headers: {
@@ -86,9 +89,9 @@ export default function ConfirmationPage() {
         body: JSON.stringify({
           eventData: {
             id: orderData.event_id,
-            name: orderData.event_order_info.name,
-            date: orderData.event_order_info.date,
-            category: orderData.event_order_info.event_type,
+            name: primaryEvent.name,
+            date: primaryEvent.date,
+            category: primaryEvent.event_type,
           },
           eventType: "purchase",
           gtmIdnts,
@@ -112,15 +115,16 @@ export default function ConfirmationPage() {
         isPaid = isSuccess ? "success" : "error";
       }
       if (orderData) {
+        const primaryEvent = getPrimaryEventOrderInfo(orderData.event_order_info);
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
         }
         const orderDataToShow: OrderConfirmationData = {
-          eventName: orderData.event_order_info.name,
-          eventDate: orderData.event_order_info.date.toString(),
-          eventLocation: orderData.event_order_info.location_name,
-          ticketType: orderData.event_order_info.category,
-          quantity: orderData.event_order_info.number_of_ticket.toString(),
+            eventName: primaryEvent.name,
+            eventDate: primaryEvent.date.toString(),
+            eventLocation: primaryEvent.location_name,
+            ticketType: primaryEvent.category,
+            quantity: primaryEvent.number_of_ticket.toString(),
           airline: orderData.flight_order_info.metadata.name,
           flights: `Outbound: ${orderData.flight_order_info.outbound.flightNumber}, Return: ${orderData.flight_order_info.inbound.flightNumber}`,
           dates: `Outbound: ${dayjs(
@@ -140,13 +144,13 @@ export default function ConfirmationPage() {
         trackEvent("eventPayment", {
           orderId: orderId,
           paymentStatus: isPaid,
-          eventName: orderData.event_order_info.name,
-          eventDate: orderData.event_order_info.date,
-          eventType: orderData.event_order_info.event_type,
-          eventTags: orderData.event_order_info.event_tags,
-          eventLocation: orderData.event_order_info.location_name,
-          ticketCategory: orderData.event_order_info.category,
-          numberOfTickets: orderData.event_order_info.number_of_ticket,
+          eventName: primaryEvent.name,
+          eventDate: primaryEvent.date,
+          eventType: primaryEvent.event_type,
+          eventTags: primaryEvent.event_tags,
+          eventLocation: primaryEvent.location_name,
+          ticketCategory: primaryEvent.category,
+          numberOfTickets: primaryEvent.number_of_ticket,
           airline: orderData.flight_order_info.metadata.name,
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "SKIPPED" : orderData.hotel_order_info.name,
           paymentMethod:

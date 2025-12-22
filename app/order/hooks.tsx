@@ -15,9 +15,20 @@ export function useOrderVars() {
     hotel: selectedHotel,
     eventTicket,
     event,
+    selectedEvents,
+    selectedEventTickets,
+    activeTicketEventIndex,
     numberOfEventTickets,
     skipHotel,
+    forceSkipHotel,
   } = useContext(OrderContext);
+
+  const effectiveEvents = useMemo(() => {
+    if (selectedEvents && selectedEvents.length > 0) return selectedEvents;
+    return event ? [event] : [];
+  }, [selectedEvents, event]);
+
+  const activeEvent = effectiveEvents[activeTicketEventIndex] || event;
 
   /* Calculate total guests */
   const totalGuests = useMemo(() => {
@@ -28,6 +39,10 @@ export function useOrderVars() {
   }, [selectedHotel]);
 
   const hotelPriceAddition = useMemo(() => {
+    if (forceSkipHotel) {
+      // Mondial bundle: hotel is not part of the product; no credit/profit logic.
+      return 0;
+    }
     if (skipHotel && event) {
       // When skipping hotel, add profit
       return event.base_flight_price < 550 ? 100 : 150;
@@ -42,7 +57,7 @@ export function useOrderVars() {
     )
       ? +selectedHotel.price / totalGuests - event.base_hotel_price
       : 0;
-  }, [skipHotel, selectedHotel, event, totalGuests]);
+  }, [forceSkipHotel, skipHotel, selectedHotel, event, totalGuests]);
 
   const airlineName = useMemo(
     () => shortenAirlineName(selectedFlight?.metadata?.name),
@@ -68,18 +83,21 @@ export function useOrderVars() {
       : 0;
   }, [selectedFlight, event]);
 
-  /* Fetch lowest available ticket price (exclude tickets with available === false) */
-  const minTicketPrice = useMemo(() => {
-    if (!event || !event.tickets_and_rates || event.tickets_and_rates.length === 0) {
-      return 0;
-    }
-    const available = event.tickets_and_rates.filter((t) => t?.available !== false);
+  const minTicketPriceForEvent = useCallback((evt?: typeof event) => {
+    if (!evt || !evt.tickets_and_rates || evt.tickets_and_rates.length === 0) return 0;
+    const available = evt.tickets_and_rates.filter((t) => t?.available !== false);
     if (available.length === 0) return 0;
-    return Math.min(...available.map((ticket) => ticket.price));
-  }, [event]);
+    return Math.min(...available.map((t) => t.price));
+  }, []);
 
-  /* Main variables to calculate price additions */
-  const eventTicketPriceAddition = (eventTicket.price || 0) - minTicketPrice;
+  const minTicketPriceTotalPerPerson = useMemo(() => {
+    return effectiveEvents.reduce((sum, evt) => sum + minTicketPriceForEvent(evt), 0);
+  }, [effectiveEvents, minTicketPriceForEvent]);
+
+  // Keep this metric aligned with the currently active event (used by analytics in-step)
+  const eventTicketPriceAddition = useMemo(() => {
+    return (eventTicket.price || 0) - minTicketPriceForEvent(activeEvent);
+  }, [eventTicket.price, activeEvent, minTicketPriceForEvent]);
 
   const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
 
@@ -108,16 +126,27 @@ export function useOrderVars() {
       return 0;
     }
     return Math.ceil(
-      event.base_flight_price + event.base_hotel_price + minTicketPrice + maup
+      event.base_flight_price +
+        (forceSkipHotel ? 0 : event.base_hotel_price) +
+        minTicketPriceTotalPerPerson +
+        maup
     );
-  }, [event, minTicketPrice, maup]);
+  }, [event, minTicketPriceTotalPerPerson, maup, forceSkipHotel]);
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
   const calculateBaseTotal = useCallback(() => {
-    if (!eventTicket || !event || !selectedFlight) {
+    if (!event || !selectedFlight) {
       return 0;
     }
+
+    const ticketTotal = effectiveEvents.reduce((sum, evt) => {
+      const selected = selectedEventTickets?.[evt.id];
+      const fallbackSingle =
+        effectiveEvents.length === 1 ? (eventTicket?.price || 0) : 0;
+      const pricePerTicket = selected?.price ?? fallbackSingle;
+      return sum + pricePerTicket * numberOfEventTickets;
+    }, 0);
 
     // Calculate hotel component based on skip status
     const hotelComponent = skipHotel
@@ -125,16 +154,18 @@ export function useOrderVars() {
       : (hotelPriceAddition + event.base_hotel_price) * totalGuests;
 
     return Math.ceil(
-      (eventTicket.price + maup || 0) * numberOfEventTickets +
+      ticketTotal + maup * numberOfEventTickets +
         (flightPriceAddition + event.base_flight_price) *
           selectedFlight.numOfTravelers +
         hotelComponent +
         (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
     );
   }, [
-    eventTicket,
     event,
     selectedFlight,
+    effectiveEvents,
+    selectedEventTickets,
+    eventTicket,
     skipHotel,
     hotelPriceAddition,
     totalGuests,
