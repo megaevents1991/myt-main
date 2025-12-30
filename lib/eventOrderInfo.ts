@@ -1,25 +1,15 @@
 import type { EventOrderInfo, MultiEventOrderInfo, SingleEventOrderInfo } from "@/lib/app.types";
 
 export function isMultiEventOrderInfo(value: EventOrderInfo): value is MultiEventOrderInfo {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      ("event1" in value || "event2" in value || "event3" in value)
-  );
+  return Boolean(value && typeof value === "object" && "events" in value);
 }
 
 export function getEventOrderInfoList(info: EventOrderInfo): SingleEventOrderInfo[] {
-  if (!isMultiEventOrderInfo(info)) return [info];
-
-  const list: SingleEventOrderInfo[] = [];
-  if (info.event1) list.push(info.event1);
-  if (info.event2) list.push(info.event2);
-  if (info.event3) list.push(info.event3);
-  return list;
+  return isMultiEventOrderInfo(info) ? info.events : [info];
 }
 
 export function getPrimaryEventOrderInfo(info: EventOrderInfo): SingleEventOrderInfo {
-  return isMultiEventOrderInfo(info) ? info.event1 : info;
+  return isMultiEventOrderInfo(info) ? info.events[0] : info;
 }
 
 export function getEventOrderIds(info: EventOrderInfo): number[] {

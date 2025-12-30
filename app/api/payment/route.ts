@@ -52,7 +52,16 @@ export async function POST(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = convert(body, { format: "object" }) as any;
 
+  const paymentUrl = result.ashrait.response.doDeal.mpiHostedPageUrl;
+
+  if (!paymentUrl) {
+    console.error(
+      "No URL found in payment gateway response:",
+      JSON.stringify(result)
+    );
+  }
+
   return NextResponse.json({
-    url: result.ashrait.response.doDeal.mpiHostedPageUrl,
+    url: paymentUrl,
   });
 }

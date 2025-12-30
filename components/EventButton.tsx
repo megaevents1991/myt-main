@@ -52,27 +52,26 @@ export default function EventButton({
             .split("; ")
             .find((row) => row.startsWith("gtmIdnts="))
             ?.split("=")[1] || "";
-          // Send event data to the server
-          fetch("/api/events-info", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
+        fetch("/api/events-info", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            eventData: {
+              id: event.id,
+              name: event.name,
+              date: event.date,
+              category: event.type,
+              location: event.location.name,
+              tags: computedTags,
             },
-            body: JSON.stringify({
-              eventData: {
-                id: event.id,
-                name: event.name,
-                date: event.date,
-                category: event.type,
-                location: event.location.name,
-                tags: computedTags,
-              },
-              gtmIdnts,
-              eventType: "select_item",
-            }),
-          }).catch((error) => {
-            console.error("Analytics tracking failed:", error);
-          });
+            gtmIdnts,
+            eventType: "select_item",
+          }),
+        }).catch((error) => {
+          console.error("Analytics tracking failed:", error);
+        });
       }}
     >
       {children}

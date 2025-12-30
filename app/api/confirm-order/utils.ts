@@ -27,15 +27,8 @@ export const validateOrderData = async (
     const multiEventOrderInfoSchema = yup
       .object()
       .shape({
-        event1: singleEventOrderInfoSchema.required(),
-        event2: singleEventOrderInfoSchema.optional(),
-        event3: singleEventOrderInfoSchema.optional(),
+        events: yup.array().of(singleEventOrderInfoSchema).min(1).required(),
       })
-      .test(
-        "at-least-one",
-        "event_order_info must include event1",
-        (value) => Boolean(value && typeof value === "object" && "event1" in value)
-      )
       .required();
 
     // Create a dynamic schema based on payment type
@@ -60,11 +53,7 @@ export const validateOrderData = async (
             })
           ),
       event_order_info: yup.lazy((value: unknown) => {
-        if (
-          value &&
-          typeof value === "object" &&
-          ("event1" in value || "event2" in value || "event3" in value)
-        ) {
+        if (value && typeof value === "object" && "events" in value) {
           return multiEventOrderInfoSchema;
         }
         return singleEventOrderInfoSchema;

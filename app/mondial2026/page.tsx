@@ -45,14 +45,15 @@ export default async function Mondial2026Page() {
         [MARKS.BOLD]: (text: ReactNode): ReactNode => <Bold>{text}</Bold>,
       },
       renderNode: {
-        [BLOCKS.PARAGRAPH]: (_node: unknown, children: ReactNode): ReactNode => (
-          <Text>{children}</Text>
-        ),
+        [BLOCKS.PARAGRAPH]: (
+          _node: unknown,
+          children: ReactNode
+        ): ReactNode => <Text>{children}</Text>,
       },
     };
 
     return (
-      <main dir="rtl" className="container mx-auto py-8 px-4">
+      <main dir="rtl" className="container mx-auto pt-8 px-4">
         <ClientTracker />
         <div
           id="page-timestamp"
@@ -70,7 +71,6 @@ export default async function Mondial2026Page() {
         </header>
 
         <section className="mt-12" aria-labelledby="upcoming-matches">
-
           {events.length > 0 ? (
             <Mondial2026MultiEventSelector events={events} />
           ) : (

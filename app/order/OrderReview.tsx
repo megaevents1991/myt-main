@@ -729,15 +729,12 @@ export default function OrderReview() {
           return build(event, eventTicket);
         }
 
-        const t1 = selectedEventTickets?.[effectiveEvents[0].id] || eventTicket;
-        const t2 = effectiveEvents[1] ? (selectedEventTickets?.[effectiveEvents[1].id] || eventTicket) : undefined;
-        const t3 = effectiveEvents[2] ? (selectedEventTickets?.[effectiveEvents[2].id] || eventTicket) : undefined;
+        const events = effectiveEvents.map((evt) => {
+          const ticket = selectedEventTickets?.[evt.id] || eventTicket;
+          return build(evt, ticket);
+        });
 
-        return {
-          event1: build(effectiveEvents[0], t1),
-          ...(effectiveEvents[1] ? { event2: build(effectiveEvents[1], t2!) } : {}),
-          ...(effectiveEvents[2] ? { event3: build(effectiveEvents[2], t3!) } : {}),
-        };
+        return { events };
       })(),
       flight_order_info: selectedFlight || {},
       hotel_order_info: skipHotel ? {} : (selectedHotel || {}),

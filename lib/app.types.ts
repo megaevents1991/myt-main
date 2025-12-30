@@ -270,11 +270,9 @@ export type SingleEventOrderInfo = {
   total_tickets_price: number;
 };
 
-// Mondial 2026: up to 3 events in one reservation.
+// Mondial 2026: multiple events in one reservation.
 export type MultiEventOrderInfo = {
-  event1: SingleEventOrderInfo;
-  event2?: SingleEventOrderInfo;
-  event3?: SingleEventOrderInfo;
+  events: SingleEventOrderInfo[];
 };
 
 export type EventOrderInfo = SingleEventOrderInfo | MultiEventOrderInfo;
