@@ -1,7 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const MONDIAL2026_LEGACY_FOOTBALL_ID = "2LyfVQ6jREeMTm0ds66d1l";
+const MONDIAL2026_EXTERNAL_URL = "https://mondial2026.mega-events.co.il/mondial2026";
+
 export function middleware(request: NextRequest) {
+  // Hard redirect legacy Mondial 2026 football team page to the dedicated site.
+  // Doing this in middleware avoids ISR/browser caching issues and works reliably on Vercel.
+  if (request.nextUrl.pathname === `/football/${MONDIAL2026_LEGACY_FOOTBALL_ID}`) {
+    const target = new URL(MONDIAL2026_EXTERNAL_URL);
+    // Preserve query string
+    target.search = request.nextUrl.search;
+
+    const redirectResponse = NextResponse.redirect(target, 308);
+    // Make sure intermediaries don't serve a stale cached destination
+    redirectResponse.headers.set('Cache-Control', 'no-store');
+    return redirectResponse;
+  }
+
   const response = NextResponse.next();
   
   // Add cache control headers for HTML pages to ensure browsers respect revalidation
