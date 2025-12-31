@@ -64,7 +64,7 @@ export default async function FootballPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   if (slug === MONDIAL2026_LEGACY_FOOTBALL_ID) {
-    permanentRedirect(buildRedirectUrl("/mondial2026", resolvedSearchParams));
+    permanentRedirect(buildRedirectUrl("https://mondial2026.mega-events.co.il/mondial2026", resolvedSearchParams));
   }
   
   // Add timestamp for cache validation
