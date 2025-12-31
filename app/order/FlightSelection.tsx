@@ -117,6 +117,31 @@ export const FlightSelection = () => {
       : ([end, start] as [Date | null, Date | null]);
   };
 
+  // For bundle events: compute first and last event by date to determine outbound/return locations
+  const computeBundleFlightLocations = useMemo(() => {
+    const hasBundle = !!(selectedEvents && selectedEvents.length > 1);
+    if (!hasBundle) {
+      return null;
+    }
+
+    // Sort events by departure date to find first and last
+    const sortedEvents = [...selectedEvents].sort(
+      (a, b) => dayjs(a.def_date_depart).valueOf() - dayjs(b.def_date_depart).valueOf()
+    );
+
+    const firstEvent = sortedEvents[0];
+    const lastEvent = sortedEvents[sortedEvents.length - 1];
+
+    return {
+      // Outbound destination: fly into the city of the first event
+      outboundDestination: firstEvent.location.city_iata,
+      // Return origin: fly out from the city of the last event
+      returnOrigin: lastEvent.location.city_iata,
+      firstEvent,
+      lastEvent,
+    };
+  }, [selectedEvents]);
+
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
     computeDefaultDateRange
   );
@@ -221,9 +246,19 @@ export const FlightSelection = () => {
           .split("; ")
           .find((row) => row.startsWith("gtmIdnts="))
           ?.split("=")[1] || "";
+      
+      // For bundle events, include outbound destination and return origin based on first/last event locations
+      const bundleLocationParams = computeBundleFlightLocations
+        ? {
+            outboundDestination: computeBundleFlightLocations.outboundDestination,
+            returnOrigin: computeBundleFlightLocations.returnOrigin,
+          }
+        : {};
+
       const res = await fetch(`/api/flights/search?eventId=${event?.id}`, {
         body: JSON.stringify({
           ...options,
+          ...bundleLocationParams,
           adults,
           departureDate: dateRange[0]?.toDateString(),
           returnDate: dateRange[1]?.toDateString(),

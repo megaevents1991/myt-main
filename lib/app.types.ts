@@ -101,6 +101,10 @@ export type FlightSearchOptions = {
   destination: string;
   nonStop: boolean;
   gtmIdnts?: string;
+  // For bundle events (e.g., mondial): outbound destination based on first event location
+  outboundDestination?: string;
+  // For bundle events (e.g., mondial): return origin based on last event location
+  returnOrigin?: string;
 };
 
 export type TimeRange = [

@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import dayjs from "dayjs";
 import type { Event } from "@/lib/app.types";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@mantine/core";
+import { Modal } from "@/components/ui/Modal";
 import { getMarkup, isEventSoldOut } from "@/lib/events/price";
 import { Mondial2026EventCard } from "@/components/mondial/Mondial2026EventCard";
+import { parseMondial2026EventName } from "@/lib/mondial2026Title";
 
 type Mode = "single" | "multi";
 
@@ -33,6 +35,29 @@ export default function Mondial2026MultiEventSelector({
     const uniq = Array.from(new Set(selectedIds));
     return uniq.slice(0, 3);
   }, [selectedIds]);
+
+  const selectedEventsInfo = useMemo(() => {
+    return selectedIdsDeduped.map((id) => {
+      const evt = events.find((e) => e.id === id);
+      if (!evt) return null;
+      const parsed = parseMondial2026EventName(evt.name);
+      return {
+        name: parsed.teamsTitle || evt.name,
+        date: evt.date ? dayjs(evt.date).format("DD/MM/YYYY") : "",
+        location: evt.location?.name || "",
+      };
+    }).filter(Boolean) as { name: string; date: string; location: string }[];
+  }, [selectedIdsDeduped, events]);
+
+  // Get dates of selected events to disable same-date events in multi mode
+  const selectedDates = useMemo(() => {
+    return selectedIdsDeduped
+      .map((id) => {
+        const evt = events.find((e) => e.id === id);
+        return evt?.date ? dayjs(evt.date).format("YYYY-MM-DD") : null;
+      })
+      .filter(Boolean) as string[];
+  }, [selectedIdsDeduped, events]);
 
   const canContinue = selectedIdsDeduped.length > 0;
 
@@ -76,34 +101,33 @@ export default function Mondial2026MultiEventSelector({
     <>
       <Modal
         opened={showPrompt && mode === "single"}
-        onClose={() => {}}
-        closeOnClickOutside={false}
-        closeOnEscape={false}
-        withCloseButton={false}
-        centered
-        dir="rtl"
-        overlayProps={{ backgroundOpacity: 0.7 }}
-        title={
-          <span className="text-secondary font-semibold">
-            רוצים להוזיל את המחיר וליהנות משני אירועים?
-          </span>
+        title="אם כבר טסים, אז אולי תסגור כמה משחקים?"
+        description="תרצה להוסיף עוד משחק?"
+        iconType="Plane"
+        action={
+          <div className="flex flex-col gap-3 w-full">
+            <Button
+              type="button"
+              variant="secondary"
+              className="font-bold text-lg py-5 w-full"
+              onClick={() => {
+                setMode("multi");
+                setShowPrompt(false);
+              }}
+            >
+              כן, לבחור עד 3 אירועים
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="font-bold text-lg py-5 w-full"
+              onClick={continueSingle}
+            >
+              לא, המשך להזמנה
+            </Button>
+          </div>
         }
-      >
-        <div className="flex flex-row-reverse gap-3 mt-4">
-          <Button
-            type="button"
-            onClick={() => {
-              setMode("multi");
-              setShowPrompt(false);
-            }}
-          >
-            כן, לבחור עד 3 אירועים
-          </Button>
-          <Button type="button" variant="outline" onClick={continueSingle}>
-            לא, להמשיך להזמנה
-          </Button>
-        </div>
-      </Modal>
+      />
 
       <div
         className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
@@ -114,6 +138,11 @@ export default function Mondial2026MultiEventSelector({
           const isSoldOut = isEventSoldOut(evt);
           const isSelected = selectedIdsDeduped.includes(evt.id);
           const displayedPrice = computeMondialPrice(evt);
+          
+          // In multi mode, disable events on the same date as already selected events
+          const evtDateKey = evt.date ? dayjs(evt.date).format("YYYY-MM-DD") : null;
+          const isSameDateAsSelected = mode === "multi" && !isSelected && !!evtDateKey && selectedDates.includes(evtDateKey);
+          const isDisabled = isSoldOut || isSameDateAsSelected;
 
           return (
             <Mondial2026EventCard
@@ -121,29 +150,47 @@ export default function Mondial2026MultiEventSelector({
               event={evt}
               isSelected={isSelected}
               isSoldOut={isSoldOut}
+              isSameDateDisabled={isSameDateAsSelected}
               displayedPrice={displayedPrice}
-              onClick={() => handleCardClick(evt.id, isSoldOut)}
+              onClick={() => handleCardClick(evt.id, !!isDisabled)}
             />
           );
         })}
       </div>
 
       {mode === "multi" && (
-        <div className="flex w-full flex-col items-center bottom-0 sticky z-40">
-          <div className="mt-4 w-screen bg-white border-t border-gray-200">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
             <div
-              className="flex p-4 m-auto max-w-7xl justify-between items-center gap-4"
+              className="flex flex-col sm:flex-row items-center justify-between gap-4"
               dir="rtl"
             >
-              <div className="text-secondary font-semibold">
-                בחרו עד 3 אירועים (ניתן לבחור/לבטל בחירה)
+              <div className="text-center sm:text-right">
+                {selectedEventsInfo.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {selectedEventsInfo.map((info, idx) => (
+                      <div key={idx} className="flex flex-col">
+                        <span className="text-black font-bold text-lg">
+                          {info.name}
+                        </span>
+                        <span className="text-primary text-md">
+                          {info.date} | {info.location}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-gray-500">בחרו עד 3 אירועים</span>
+                )}
               </div>
               <Button
                 type="button"
+                variant="secondary"
+                className="font-bold text-lg px-8 py-6 whitespace-nowrap"
                 disabled={!canContinue}
                 onClick={continueMulti}
               >
-                המשך להזמנה
+                יאללה אני מוכן לטוס!
               </Button>
             </div>
           </div>

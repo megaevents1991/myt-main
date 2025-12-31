@@ -43,6 +43,8 @@ declare module "amadeus" {
           maxPrice?: number; // Optional, maximum price for the flight
           max?: number; // Optional, maximum number of results to return
         }): Promise<AmadeusResponse>;
+        // POST method for multi-city/advanced searches
+        post(body: string): Promise<AmadeusResponse>;
       };
       flightOffers: {
         pricing: {

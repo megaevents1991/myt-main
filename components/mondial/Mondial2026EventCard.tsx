@@ -12,6 +12,7 @@ type Mondial2026EventCardProps = {
   event: Event;
   isSelected: boolean;
   isSoldOut: boolean;
+  isSameDateDisabled?: boolean;
   displayedPrice: number;
   onClick: () => void;
 };
@@ -20,12 +21,15 @@ export function Mondial2026EventCard({
   event,
   isSelected,
   isSoldOut,
+  isSameDateDisabled = false,
   displayedPrice,
   onClick,
 }: Mondial2026EventCardProps) {
   const prefix = getMondial2026MatchPrefix(event.name);
   const parsed = parseMondial2026EventName(event.name);
   const title = parsed.isMondial2026 ? (parsed.teamsTitle || event.name) : event.name;
+
+  const isDisabled = isSoldOut || isSameDateDisabled;
 
   const tagToShow = isSoldOut
     ? "Sold"
@@ -38,13 +42,17 @@ export function Mondial2026EventCard({
       <EventButton event={event} eventPriceOverride={displayedPrice}>
         <button
           type="button"
-          disabled={isSoldOut}
+          disabled={isDisabled}
           onClick={onClick}
-          className={isSoldOut ? "cursor-default w-full text-left" : "cursor-pointer w-full text-left"}
+          className={isDisabled ? "cursor-default w-full text-left" : "cursor-pointer w-full text-left"}
         >
           <div
-            className={`rounded-lg shadow-lg flex flex-row-reverse sm:flex-col hover:shadow-xl outline outline-2 transition-[outline-color] duration-150 ${
-              isSelected ? "outline-main" : "outline-transparent hover:outline-main"
+            className={`rounded-lg shadow-lg flex flex-row-reverse sm:flex-col transition-all duration-200 ${
+              isSelected 
+                ? "outline outline-4 outline-secondary ring-4 ring-secondary/20 shadow-xl scale-[1.02]" 
+                : isDisabled
+                  ? "opacity-50 grayscale"
+                  : "outline outline-2 outline-transparent hover:outline-secondary hover:shadow-xl"
             }`}
           >
             <div

@@ -213,7 +213,14 @@ export async function POST(request: Request) {
       adults,
       nonStop,
       gtmIdnts,
+      outboundDestination,
+      returnOrigin,
     }: FlightSearchOptions = await request.json();
+
+  // For bundle events: use provided locations, otherwise use event location
+  const effectiveOutboundDestination = outboundDestination || event.location.city_iata;
+  const effectiveReturnOrigin = returnOrigin || event.location.city_iata;
+  const isMultiCity = effectiveOutboundDestination !== effectiveReturnOrigin;
 
   // Track flight search analytics
   try {
@@ -243,21 +250,58 @@ export async function POST(request: Request) {
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 
-    const response = await retryAmadeusCall(() => 
-      amadeus.shopping.flightOffersSearch.get({
-        originLocationCode,
-        destinationLocationCode: event.location.city_iata,
-        departureDate,
-        returnDate,
-        adults: adults || 1,
-        max: 250,
-        nonStop,
-        currencyCode,
-      })
-    );
+    let response;
+    
+    // For multi-city bundle events (different outbound destination and return origin),
+    // use POST endpoint with originDestinations array
+    if (isMultiCity) {
+      response = await retryAmadeusCall(() =>
+        amadeus.shopping.flightOffersSearch.post(
+          JSON.stringify({
+            currencyCode,
+            originDestinations: [
+              {
+                id: "1",
+                originLocationCode,
+                destinationLocationCode: effectiveOutboundDestination,
+                departureDateTimeRange: { date: departureDate },
+              },
+              {
+                id: "2",
+                originLocationCode: effectiveReturnOrigin,
+                destinationLocationCode: originLocationCode,
+                departureDateTimeRange: { date: returnDate },
+              },
+            ],
+            travelers: Array.from({ length: adults || 1 }, (_, i) => ({
+              id: String(i + 1),
+              travelerType: "ADULT",
+            })),
+            sources: ["GDS"],
+            searchCriteria: {
+              maxFlightOffers: 250,
+              ...(nonStop ? { flightFilters: { connectionRestriction: { maxNumberOfConnections: 0 } } } : {}),
+            },
+          })
+        )
+      );
+    } else {
+      response = await retryAmadeusCall(() =>
+        amadeus.shopping.flightOffersSearch.get({
+          originLocationCode,
+          destinationLocationCode: effectiveOutboundDestination,
+          departureDate,
+          returnDate,
+          adults: adults || 1,
+          max: 250,
+          nonStop,
+          currencyCode,
+        })
+      );
+    }
 
     const flights = await getOfflineFlightsFromDB(
-      event.location.city_iata,
+      effectiveOutboundDestination,
       departureDate,
       returnDate,
       0,

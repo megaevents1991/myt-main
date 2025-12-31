@@ -71,8 +71,8 @@ export const Modal = ({
         className="flex flex-col items-center justify-center gap-3 text-center"
         dir="rtl"
       >
-        <h1 className="font-bold text-lg">{title}</h1>
-  <div className="text-md mb-4">{description}</div>
+        <h1 className="font-bold text-xl">{title}</h1>
+        <div className="text-lg mb-4">{description}</div>
         {action}
       </div>
     </MantineModal>
