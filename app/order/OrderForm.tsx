@@ -89,6 +89,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   const mondialParsed = parseMondial2026EventName(event?.name);
   const isMondial2026 = mondialParsed.isMondial2026;
   const hasBundleEvents = !!(selectedEvents && selectedEvents.length > 1);
+  const hideMobileAdditionalPrice = isMondial2026 && hasBundleEvents;
   const isTicketStepNotLastBundledEvent =
     step === 1 &&
     isMondial2026 &&
@@ -413,7 +414,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
                     {step > 2 && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
+                        <span
+                          className={cn(
+                            "text-left lg:ml-2",
+                            hideMobileAdditionalPrice && "hidden lg:inline"
+                          )}
+                        >
                           {formatPrice(
                             Math.ceil(
                               (flight?.price || 0) / planeTickets.adults -
@@ -438,14 +444,23 @@ export const OrderForm = ({ event }: { event: Event }) => {
                     )}
                     {step > 1 && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
+                        <span
+                          className={cn(
+                            "text-left lg:ml-2",
+                            hideMobileAdditionalPrice && "hidden lg:inline"
+                          )}
+                        >
                           {ticketSummary.relativeSum > 0
                             ? formatPrice(ticketSummary.relativeSum)
                             : "(כלול במחיר)"}
                         </span>
                         <div className="flex items-center justify-end">
                           <span className="text-right mr-2 lg:ml-2">
-                            <span className="lg:hidden">{ticketSummary.categoriesShort}</span>
+                            <span className="lg:hidden">
+                              {hideMobileAdditionalPrice
+                                ? ticketSummary.categoriesFull
+                                : ticketSummary.categoriesShort}
+                            </span>
                             <span className="hidden lg:inline">{ticketSummary.categoriesFull}</span>
                           </span>
                           <Image

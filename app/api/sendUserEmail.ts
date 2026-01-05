@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import { userEmail } from "./confirm-order/utils";
 import { OrderData } from "@/lib/app.types";
 import {
+  getEventOrderInfoList,
   getPrimaryEventOrderInfo,
   getEventOrderNameSummary,
 } from "@/lib/eventOrderInfo";
@@ -25,6 +26,18 @@ export const sendUserEmail = async ({
   partnerTrackingCode?: string | null;
   orderId?: number;
 }) => {
+  const escapeHtml = (value: string): string =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  const eventNamesHtml = getEventOrderInfoList(orderData.event_order_info)
+    .map((e) => escapeHtml(e.name))
+    .join("<br>");
+
   const transporter = nodemailer.createTransport({
     host: "smtp.zeptomail.com",
     port: 587,
@@ -72,6 +85,7 @@ export const sendUserEmail = async ({
     bookingReference: orderData.booking_reference,
     title: emailTemplate.title,
     message : emailTemplate.message,
+    eventNamesHtml,
     eventName: getPrimaryEventOrderInfo(orderData.event_order_info).name,
     eventDate: new Date(
       getPrimaryEventOrderInfo(orderData.event_order_info).date

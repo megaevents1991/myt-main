@@ -9,13 +9,13 @@ import { OrderData } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
-import { getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
+import { getEventOrderInfoList, getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
 
 type PaymentStatus = "success" | "error" | "pending";
 
 type OrderConfirmationData = {
   bookingReference: string;
-  eventName: string;
+  eventNames: string[];
   eventDate: string;
   eventLocation: string;
   ticketType: string;
@@ -116,11 +116,12 @@ export default function ConfirmationPage() {
       }
       if (orderData) {
         const primaryEvent = getPrimaryEventOrderInfo(orderData.event_order_info);
+        const events = getEventOrderInfoList(orderData.event_order_info);
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
         }
         const orderDataToShow: OrderConfirmationData = {
-            eventName: primaryEvent.name,
+            eventNames: events.map((e) => e.name),
             eventDate: primaryEvent.date.toString(),
             eventLocation: primaryEvent.location_name,
             ticketType: primaryEvent.category,
@@ -260,7 +261,7 @@ export default function ConfirmationPage() {
     dates,
     eventDate,
     eventLocation,
-    eventName,
+    eventNames,
     flights,
     hotel,
     quantity,
@@ -323,7 +324,19 @@ export default function ConfirmationPage() {
                   <strong>Booking Reference:</strong> {bookingReference}
                 </p>
                 <p>
-                  <strong>Event:</strong> {eventName}
+                  <strong>Event:</strong>{" "}
+                  {eventNames && eventNames.length > 0 ? (
+                    <span>
+                      {eventNames.map((name, idx) => (
+                        <span key={`${name}-${idx}`}>
+                          {name}
+                          {idx < eventNames.length - 1 ? <br /> : null}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    "N/A"
+                  )}
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}
@@ -391,7 +404,19 @@ export default function ConfirmationPage() {
                   <strong>Booking Reference:</strong> {bookingReference}
                 </p>
                 <p>
-                  <strong>Event:</strong> {eventName}
+                  <strong>Event:</strong>{" "}
+                  {eventNames && eventNames.length > 0 ? (
+                    <span>
+                      {eventNames.map((name, idx) => (
+                        <span key={`${name}-${idx}`}>
+                          {name}
+                          {idx < eventNames.length - 1 ? <br /> : null}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    "N/A"
+                  )}
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}

@@ -269,7 +269,7 @@ export const userEmail = (
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">אירוע:</strong> ${replacements.eventName}
+                                                <strong style="color: #05203c;">אירוע:</strong> ${(replacements.eventNamesHtml || replacements.eventName) as string}
                                               </td>
                                           </tr>
                                           <tr>
