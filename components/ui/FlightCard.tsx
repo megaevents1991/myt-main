@@ -11,6 +11,13 @@ import { airports } from "@nwpr/airport-codes";
 import { cn } from "@/lib/utils";
 //import { InfoIcon } from "../icons/InfoIcon";
 
+const airportCityCountry = (iata?: string): string => {
+  if (!iata) return "";
+  const airport = airports.find((a) => a.iata === iata);
+  if (!airport) return iata;
+  return `${airport.city}, ${airport.country}`;
+};
+
 type FlightTicketCardProps = {
   selectedFlightId?: string;
   onClick: (flightId: string) => void;
@@ -180,6 +187,13 @@ export const FlightTicketCard = memo(
     const isSelected = selectedFlightId === flightId;
     const priceToShow = formatPrice(price - minPrice);
 
+    const outboundArrival = outbound?.arrivalAirport;
+    const inboundDeparture = inbound?.departureAirport;
+    const hasDifferentAirports =
+      !!outboundArrival &&
+      !!inboundDeparture &&
+      String(outboundArrival).trim() !== String(inboundDeparture).trim();
+
     const priceOutsidePackBoundries =
       Math.abs(price - minPrice) > 4 ? true : false;
 
@@ -188,9 +202,23 @@ export const FlightTicketCard = memo(
         <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
           <div className="flex items-center lg:flex-row w-full py-2 pl-12 lg:pl-0">
             <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
-              <FlightCard {...outbound} metadata={metadata} />
+              <FlightCard
+                {...outbound}
+                metadata={metadata}
+                highlightArrivalAirport={hasDifferentAirports}
+                arrivalAirportTooltip={
+                  hasDifferentAirports ? airportCityCountry(outboundArrival) : undefined
+                }
+              />
               <div className="border w-full my-2"></div>
-              <FlightCard {...inbound} metadata={metadata} />
+              <FlightCard
+                {...inbound}
+                metadata={metadata}
+                highlightDepartureAirport={hasDifferentAirports}
+                departureAirportTooltip={
+                  hasDifferentAirports ? airportCityCountry(inboundDeparture) : undefined
+                }
+              />
             </div>
             <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
             {/* Desktop pricing element */}
@@ -265,13 +293,22 @@ FlightTicketCard.displayName = "FlightTicketCard";
 export const MemoizedFlightCard = memo(FlightTicketCard);
 
 type FlightCardProps = {} & Pick<FlightTicketCardProps, "metadata"> &
-  FlightSegment;
+  FlightSegment & {
+    highlightDepartureAirport?: boolean;
+    highlightArrivalAirport?: boolean;
+    departureAirportTooltip?: string;
+    arrivalAirportTooltip?: string;
+  };
 
 const FlightCard = ({
   metadata,
   checkBagsIncluded,
   cabinBagsIncluded,
   flightNumber,
+  highlightDepartureAirport,
+  highlightArrivalAirport,
+  departureAirportTooltip,
+  arrivalAirportTooltip,
   ...flightMeta
 }: FlightCardProps) => {
   const [tooltipCabinOpened, setTooltipCabinOpened] = useState(false);
@@ -291,7 +328,13 @@ const FlightCard = ({
         <div className="text-sm hidden lg:block">{flightNumber}</div>
       </div>
       <div className="w-full lg:w-[50%] flex justify-center">
-        <FlightMeta {...flightMeta} />
+        <FlightMeta
+          {...flightMeta}
+          highlightDepartureAirport={highlightDepartureAirport}
+          highlightArrivalAirport={highlightArrivalAirport}
+          departureAirportTooltip={departureAirportTooltip}
+          arrivalAirportTooltip={arrivalAirportTooltip}
+        />
       </div>
       <div className="hidden lg:block lg:w-[20%] pr-2 text-center flex flex-col lg:items-start gap-2">
         {checkBagsIncluded && (
@@ -361,6 +404,10 @@ export const FlightMeta = ({
   departureTime,
   duration,
   stops,
+  highlightDepartureAirport,
+  highlightArrivalAirport,
+  departureAirportTooltip,
+  arrivalAirportTooltip,
 }: Pick<
   FlightCardProps,
   | "arrivalAirport"
@@ -369,9 +416,20 @@ export const FlightMeta = ({
   | "departureTime"
   | "duration"
   | "stops"
+  | "highlightDepartureAirport"
+  | "highlightArrivalAirport"
+  | "departureAirportTooltip"
+  | "arrivalAirportTooltip"
 >) => {
-  const [tooltipOpened, setTooltipOpened] = useState(false);
-  const ref = useClickOutside(() => isMobile && setTooltipOpened(false));
+  const [tooltipStopsOpened, setTooltipStopsOpened] = useState(false);
+  const [tooltipDepartureOpened, setTooltipDepartureOpened] = useState(false);
+  const [tooltipArrivalOpened, setTooltipArrivalOpened] = useState(false);
+  const ref = useClickOutside(() => {
+    if (!isMobile) return;
+    setTooltipStopsOpened(false);
+    setTooltipDepartureOpened(false);
+    setTooltipArrivalOpened(false);
+  });
   const plusOne =
     new Date(departureTime).getDay() !== new Date(arrivalTime).getDay();
 
@@ -382,7 +440,27 @@ export const FlightMeta = ({
           {String(new Date(departureTime).getHours()).padStart(2, "0")}:
           {String(new Date(departureTime).getMinutes()).padStart(2, "0")}{" "}
         </div>
-        <div className="text-sm lg:text-lg">{departureAirport}</div>
+        <Tooltip
+          label={departureAirportTooltip}
+          position="top"
+          disabled={!highlightDepartureAirport || !departureAirportTooltip}
+          opened={
+            highlightDepartureAirport && isMobile ? tooltipDepartureOpened : undefined
+          }
+        >
+          <div
+            className={cn(
+              "text-sm lg:text-lg",
+              highlightDepartureAirport && "font-bold"
+            )}
+            onTouchStart={() => {
+              if (!highlightDepartureAirport) return;
+              setTooltipDepartureOpened((curr) => !curr);
+            }}
+          >
+            {departureAirport}
+          </div>
+        </Tooltip>
       </div>
       <div className="flex flex-col items-center relative w-full">
         <div className="text-xs pb-1">{convertDuration(duration)}</div>
@@ -399,7 +477,7 @@ export const FlightMeta = ({
           />
         )}
         <div
-          onTouchStart={() => setTooltipOpened((curr) => !curr)}
+          onTouchStart={() => setTooltipStopsOpened((curr) => !curr)}
           className="text-xs font-bold flex flex-row gap-2 items-center justify-center whitespace-nowrap border-t-2 border-main mx-4 pt-1 w-[90%]"
           dir="rtl"
         >
@@ -422,7 +500,7 @@ export const FlightMeta = ({
             }
             position="top"
             opened={
-              !!(stops.length - 1) && (isMobile ? tooltipOpened : undefined)
+              !!(stops.length - 1) && (isMobile ? tooltipStopsOpened : undefined)
             }
           >
             {StopsString(stops)}
@@ -439,7 +517,25 @@ export const FlightMeta = ({
             </span>
           </Tooltip>
         </div>
-        <div className="text-sm lg:text-lg">{arrivalAirport}</div>
+        <Tooltip
+          label={arrivalAirportTooltip}
+          position="top"
+          disabled={!highlightArrivalAirport || !arrivalAirportTooltip}
+          opened={highlightArrivalAirport && isMobile ? tooltipArrivalOpened : undefined}
+        >
+          <div
+            className={cn(
+              "text-sm lg:text-lg",
+              highlightArrivalAirport && "font-bold"
+            )}
+            onTouchStart={() => {
+              if (!highlightArrivalAirport) return;
+              setTooltipArrivalOpened((curr) => !curr);
+            }}
+          >
+            {arrivalAirport}
+          </div>
+        </Tooltip>
       </div>
     </div>
   );

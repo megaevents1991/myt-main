@@ -138,13 +138,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
       })
       .filter((c) => typeof c === "string" && c.length > 0);
 
+    // Sticky footer shows PER-PERSON deltas (flight delta is per-person),
+    // so ticket delta must also be per-person.
     const relativeSum = effectiveEvents.reduce((sum, evt) => {
       const min = minTicketPriceForEvent(evt);
       const selected = selectedEventTickets?.[evt.id];
-      const price =
-        selected?.price ?? (isBundle ? min : (eventTicket.price || 0));
-      const qty = selected?.quantity ?? numberOfEventTickets;
-      return sum + (price - min) * qty;
+      const price = selected?.price ?? (isBundle ? min : (eventTicket.price || 0));
+      return sum + (price - min);
     }, 0);
 
     return {
@@ -154,13 +154,33 @@ export const OrderForm = ({ event }: { event: Event }) => {
     };
   })();
 
-  const basePrice = Math.ceil(
-    event.base_flight_price +
-      event.base_hotel_price +
-      // Keep legacy base price logic here (single-event baseline)
-      minTicketPriceForEvent(event) +
-      Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-  ).toLocaleString("en-US");
+  const basePrice = (() => {
+    const markup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
+    const isBundle = effectiveEvents.length > 1;
+
+    if (isBundle) {
+      const maxBaseFlightPrice = Math.max(
+        0,
+        ...effectiveEvents.map((evt) => evt.base_flight_price || 0)
+      );
+      const sumMinTicketPrices = effectiveEvents.reduce(
+        (sum, evt) => sum + minTicketPriceForEvent(evt),
+        0
+      );
+
+      return Math.ceil(maxBaseFlightPrice + sumMinTicketPrices + markup).toLocaleString(
+        "en-US"
+      );
+    }
+
+    // Keep legacy base price logic here (single-event baseline)
+    return Math.ceil(
+      event.base_flight_price +
+        event.base_hotel_price +
+        minTicketPriceForEvent(event) +
+        markup
+    ).toLocaleString("en-US");
+  })();
 
   const nextStep = (skipHotel = false) =>
     setStep((prev) => {

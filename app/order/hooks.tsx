@@ -28,6 +28,19 @@ export function useOrderVars() {
     return event ? [event] : [];
   }, [selectedEvents, event]);
 
+  const hasBundle = useMemo(
+    () => !!(effectiveEvents && effectiveEvents.length > 1),
+    [effectiveEvents]
+  );
+
+  // In bundle flows, treat the baseline flight price as the most expensive base flight among selected events.
+  // This keeps the "additional/subtract" flight price consistent across selection and review.
+  const baseFlightPricePerPerson = useMemo(() => {
+    if (!event) return 0;
+    if (!hasBundle) return event.base_flight_price;
+    return Math.max(0, ...effectiveEvents.map((e) => e.base_flight_price || 0));
+  }, [event, hasBundle, effectiveEvents]);
+
   const activeEvent = effectiveEvents[activeTicketEventIndex] || event;
 
   /* Calculate total guests */
@@ -75,13 +88,13 @@ export function useOrderVars() {
     }
     return priceOutsidePackBoundaries(
       selectedFlight.price,
-      event.base_flight_price,
+      baseFlightPricePerPerson,
       selectedFlight.numOfTravelers
     )
       ? selectedFlight.price / selectedFlight.numOfTravelers -
-          event.base_flight_price
+          baseFlightPricePerPerson
       : 0;
-  }, [selectedFlight, event]);
+  }, [selectedFlight, event, baseFlightPricePerPerson]);
 
   const minTicketPriceForEvent = useCallback((evt?: typeof event) => {
     if (!evt || !evt.tickets_and_rates || evt.tickets_and_rates.length === 0) return 0;
@@ -126,12 +139,12 @@ export function useOrderVars() {
       return 0;
     }
     return Math.ceil(
-      event.base_flight_price +
+      baseFlightPricePerPerson +
         (forceSkipHotel ? 0 : event.base_hotel_price) +
         minTicketPriceTotalPerPerson +
         maup
     );
-  }, [event, minTicketPriceTotalPerPerson, maup, forceSkipHotel]);
+  }, [event, baseFlightPricePerPerson, minTicketPriceTotalPerPerson, maup, forceSkipHotel]);
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
@@ -155,7 +168,7 @@ export function useOrderVars() {
 
     return Math.ceil(
       ticketTotal + maup * numberOfEventTickets +
-        (flightPriceAddition + event.base_flight_price) *
+        (flightPriceAddition + baseFlightPricePerPerson) *
           selectedFlight.numOfTravelers +
         hotelComponent +
         (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
@@ -172,6 +185,7 @@ export function useOrderVars() {
     maup,
     numberOfEventTickets,
     flightPriceAddition,
+    baseFlightPricePerPerson,
   ]);
 
   /* Calculation of final price for the customer after discounts and such */

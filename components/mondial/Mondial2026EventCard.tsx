@@ -14,6 +14,7 @@ type Mondial2026EventCardProps = {
   isSoldOut: boolean;
   isSameDateDisabled?: boolean;
   displayedPrice: number;
+  hidePrice?: boolean;
   onClick: () => void;
 };
 
@@ -23,6 +24,7 @@ export function Mondial2026EventCard({
   isSoldOut,
   isSameDateDisabled = false,
   displayedPrice,
+  hidePrice = false,
   onClick,
 }: Mondial2026EventCardProps) {
   const prefix = getMondial2026MatchPrefix(event.name);
@@ -71,8 +73,15 @@ export function Mondial2026EventCard({
               />
             </div>
             <div className="flex flex-col text-center w-[52%] sm:w-auto">
-              <div className="p-2" style={{ lineHeight: "1.1" }}>
-                {prefix ? (
+              <div
+                className={
+                  hidePrice
+                    ? "p-2 min-h-[72px] flex flex-col justify-center"
+                    : "p-2"
+                }
+                style={{ lineHeight: "1.1" }}
+              >
+                {!hidePrice && prefix ? (
                   <>
                     <div className="text-sm font-medium text-muted-foreground">{prefix}</div>
                     <div className="text-2xl font-bold">{title}</div>
@@ -88,25 +97,46 @@ export function Mondial2026EventCard({
                 <span className="sm:inline hidden mx-2">|</span>
                 <span className="w-full sm:w-auto whitespace-nowrap">{event.location.name}</span>
               </div>
-              <div className="p-2 text-center flex flex-col flex-grow">
-                <div className="text-sm sm:text-base">מחיר חבילה ממוצע לאדם</div>
-                <div className="text-2xl font-extrabold">
-                  ${displayedPrice.toLocaleString("en-US")}
-                </div>
-                <div className="flex-grow min-h-[4px]"></div>
-                <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
-                  לנוסע, עבור טיסה וכרטיס לאירוע
-                </div>
+              <div
+                className={
+                  hidePrice
+                    ? "p-2 text-center flex flex-col min-h-[72px] justify-center"
+                    : "p-2 text-center flex flex-col flex-grow"
+                }
+              >
+                {!hidePrice && (
+                  <>
+                    <div className="text-sm sm:text-base">מחיר חבילה ממוצע לאדם</div>
+                    <div className="text-2xl font-extrabold">
+                      ${displayedPrice.toLocaleString("en-US")}
+                    </div>
+                    <div className="flex-grow min-h-[4px]"></div>
+                    <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
+                      לנוסע, עבור טיסה וכרטיס לאירוע
+                    </div>
+                  </>
+                )}
                 {isSoldOut ? (
                   <div className="my-2 py-2 flex-shrink-0 h-[22px] sm:h-[40px]"></div>
                 ) : (
                   <>
-                    <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center sm:hidden">
-                      הוזילו או שדרגו כאן {"  >"}
-                    </div>
-                    <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold hidden sm:flex">
-                      הוזילו או שדרגו כאן {"  >"}
-                    </u>
+                    {!hidePrice ? (
+                      <>
+                        <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center sm:hidden">
+                          הוזילו או שדרגו כאן {"  >"}
+                        </div>
+                        <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold hidden sm:flex">
+                          הוזילו או שדרגו כאן {"  >"}
+                        </u>
+                      </>
+                    ) : 
+                    (
+                      prefix ? (
+                        <div className="text-xl text-center font-bold text-muted-foreground">
+                          {prefix}
+                        </div>
+                      ) : null
+                    )}
                   </>
                 )}
               </div>

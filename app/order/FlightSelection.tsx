@@ -84,11 +84,20 @@ export const FlightSelection = () => {
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
 
+  const hasBundle = !!(selectedEvents && selectedEvents.length > 1);
+
+  // In bundle flows, the flight-card relative price should be against the most expensive
+  // base flight price among the selected events (not just the primary event).
+  const bundleBaseFlightPrice = useMemo(() => {
+    if (!hasBundle) return event.base_flight_price;
+    return Math.max(0, ...selectedEvents.map((e) => e.base_flight_price || 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasBundle, event.base_flight_price, selectedEvents?.map((e) => e.id).join(",")]);
+
   const computeDefaultDateRange = () => {
     const fallbackStart = new Date(event.def_date_depart);
     const fallbackEnd = new Date(event.def_date_return);
 
-    const hasBundle = !!(selectedEvents && selectedEvents.length > 1);
     if (!hasBundle) {
       return [fallbackStart, fallbackEnd] as [Date | null, Date | null];
     }
@@ -431,7 +440,7 @@ export const FlightSelection = () => {
       filteredFlights.map((flight) => {
         return (
           <MemoizedFlightCard
-            minPrice={event.base_flight_price}
+            minPrice={bundleBaseFlightPrice}
             isLoading={false} // We handle loading at the container level now
             key={flight.id}
             {...flight}
@@ -444,7 +453,7 @@ export const FlightSelection = () => {
       }),
     [
       filteredFlights,
-      event.base_flight_price,
+      bundleBaseFlightPrice,
       flightsMeta.numOfPassengers,
       orderFlight?.id,
       handleFlightChange,
@@ -509,7 +518,7 @@ export const FlightSelection = () => {
                 value={selectedFlightPrice}
                 maxValue={flightsMeta.maxPrice}
                 minValue={flightsMeta.minPrice}
-                basePrice={event.base_flight_price}
+                basePrice={bundleBaseFlightPrice}
                 numOfPassengers={flightsMeta.numOfPassengers}
               />
             }
@@ -670,7 +679,7 @@ export const FlightSelection = () => {
                     value={selectedFlightPrice}
                     maxValue={flightsMeta.maxPrice}
                     minValue={flightsMeta.minPrice}
-                    basePrice={event.base_flight_price}
+                    basePrice={bundleBaseFlightPrice}
                     numOfPassengers={flightsMeta.numOfPassengers}
                   />
                 }

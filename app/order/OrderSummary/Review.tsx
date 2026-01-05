@@ -63,11 +63,17 @@ export const Review = ({
       .map((evt) => {
         const parsed = parseMondial2026EventName(evt?.name);
         const label = parsed.isMondial2026 ? (parsed.teamsTitle || evt.name) : evt.name;
+
+        const locationText = evt?.location?.name || "";
+        const dateText = evt?.date ? dayjs(evt.date).format("DD/MM/YYYY") : "";
+
         const ticket = selectedEventTickets?.[evt.id];
         const quantity = ticket?.quantity;
         return {
           eventId: evt.id,
           label,
+          dateText,
+          locationText,
           category: ticket?.category,
           description: ticket?.description,
           price: ticket?.price,
@@ -104,13 +110,14 @@ export const Review = ({
               <div className="text-[14px] text-[#5A6475] whitespace-pre-line" dir="rtl">
                 {ticketLines.map((l) => (
                   <div key={l.eventId}>
-                    ({"x"}{l.quantity ?? numberOfEventTickets}) {l.label}
-                    {l.category ? ` — ${l.category}` : ""}
+                    {l.label}
                   </div>
                 ))}
               </div>
             )
-          : `קטגוריה: ${eventTicket.category}`,
+          : mondialParsed.isMondial2026
+            ? mondialParsed.teamsTitle || MONDIAL_2026_MAIN_TITLE
+            : event.name,
         icon: <FaTicketAlt />,
         component: (
           <EventSummary
@@ -132,7 +139,8 @@ export const Review = ({
                 ? ticketLines.map((l) => ({
                     label: l.label,
                     category: l.category,
-                    description: l.description,
+                    locationText: l.locationText,
+                    dateText: l.dateText,
                     quantity: l.quantity ?? numberOfEventTickets,
                   }))
                 : undefined
@@ -178,6 +186,7 @@ export const Review = ({
     [
       mondialParsed.isMondial2026,
       mondialParsed.teamsTitle,
+      event.name,
       numberOfEventTickets,
       eventTicket,
       agentCommission,

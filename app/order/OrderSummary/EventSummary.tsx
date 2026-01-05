@@ -1,4 +1,5 @@
 import { formatPrice } from "@/lib/price.utils";
+import { isMobile } from "react-device-detect";
 
 export const EventSummary = ({
   eventTitle,
@@ -25,7 +26,8 @@ export const EventSummary = ({
   bundleLines?: Array<{
     label: string;
     category?: string;
-    description?: string;
+    locationText?: string;
+    dateText?: string;
     quantity?: number;
   }>;
 }) => {
@@ -54,11 +56,24 @@ export const EventSummary = ({
         <div className="mb-2 space-y-1" dir="rtl">
           {bundleLines.map((l) => (
             <div key={l.label} className="text-[14px]">
-              <span className="font-semibold">{l.label}</span>
-              {l.category ? <span className="mr-2">— {l.category}</span> : null}
-              {typeof l.quantity === "number" ? (
-                <span className="mr-2 text-muted-foreground">(x{l.quantity})</span>
-              ) : null}
+              <div className="font-semibold">{l.label}</div>
+              {isMobile ? (
+                <div className="text-[13px] text-muted-foreground" dir="rtl">
+                  {l.dateText ? <span dir="ltr">,{l.dateText}</span> : null}
+                  {l.category ? <span className="mr-2">{l.category}</span> : null}
+                  {typeof l.quantity === "number" ? <span className="mr-0.5">({l.quantity}x)</span> : null}
+                  {l.locationText ? <span className="mr-1">- {l.locationText}</span> : null}
+                </div>
+              ) : (
+                <div dir="rtl">
+                  {l.dateText ? (<span dir="ltr">,{l.dateText}</span>) : null}
+                  {l.category ? <span className="mr-2">{l.category}</span> : null}
+                  {typeof l.quantity === "number" ? (
+                    <span className="mr-1 text-muted-foreground">({l.quantity}x)</span>
+                  ) : null}
+                  {l.locationText ? <span className="mr-1">- {l.locationText}</span> : null}
+                </div>
+              )}
             </div>
           ))}
         </div>

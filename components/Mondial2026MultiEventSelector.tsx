@@ -101,8 +101,8 @@ export default function Mondial2026MultiEventSelector({
     <>
       <Modal
         opened={showPrompt && mode === "single"}
-        title="אם כבר טסים, אז אולי תסגור כמה משחקים?"
-        description="תרצה להוסיף עוד משחק?"
+        title="יש לכם עוד משחקים על הכוונת?"
+        description="למה לבחור רק אחד?"
         iconType="Plane"
         action={
           <div className="flex flex-col gap-3 w-full">
@@ -115,7 +115,7 @@ export default function Mondial2026MultiEventSelector({
                 setShowPrompt(false);
               }}
             >
-              כן, לבחור עד 3 אירועים
+              כן, לבחור עד 3 אירועים ולחסוך
             </Button>
             <Button
               type="button"
@@ -123,7 +123,7 @@ export default function Mondial2026MultiEventSelector({
               className="font-bold text-lg py-5 w-full"
               onClick={continueSingle}
             >
-              לא, המשך להזמנה
+              המשך להזמנה
             </Button>
           </div>
         }
@@ -138,6 +138,7 @@ export default function Mondial2026MultiEventSelector({
           const isSoldOut = isEventSoldOut(evt);
           const isSelected = selectedIdsDeduped.includes(evt.id);
           const displayedPrice = computeMondialPrice(evt);
+          const hidePrice = mode === "multi";
           
           // In multi mode, disable events on the same date as already selected events
           const evtDateKey = evt.date ? dayjs(evt.date).format("YYYY-MM-DD") : null;
@@ -152,6 +153,7 @@ export default function Mondial2026MultiEventSelector({
               isSoldOut={isSoldOut}
               isSameDateDisabled={isSameDateAsSelected}
               displayedPrice={displayedPrice}
+              hidePrice={hidePrice}
               onClick={() => handleCardClick(evt.id, !!isDisabled)}
             />
           );
@@ -190,7 +192,7 @@ export default function Mondial2026MultiEventSelector({
                 disabled={!canContinue}
                 onClick={continueMulti}
               >
-                יאללה אני מוכן לטוס!
+                קחו אותי לשם
               </Button>
             </div>
           </div>

@@ -23,7 +23,6 @@ export const TicketSelection = () => {
     setSelectedEventTickets,
   } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
-  const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
   );
@@ -55,13 +54,22 @@ export const TicketSelection = () => {
     [activeEvent]
   );
 
+  // Always compute base ticket price from the CURRENT active event.
+  // This prevents stale or cross-event basePrice when switching between bundled events.
+  const baseTicketPrice = useMemo(() => {
+    if (!availableTickets || availableTickets.length === 0) return 0;
+    return availableTickets.reduce(
+      (min, ticket) => (ticket.price < min ? ticket.price : min),
+      availableTickets[0].price
+    );
+  }, [availableTickets]);
+
   useEffect(() => {
     if (!activeEvent) return;
 
     const existingSelection = selectedEventTickets?.[activeEvent.id];
     if (existingSelection?.id) {
       setSelectedTicket(existingSelection.id);
-      setCheapestTicket(null);
       setEventTicket({
         ...existingSelection,
         quantity: numberOfEventTickets,
@@ -72,7 +80,6 @@ export const TicketSelection = () => {
     if (!availableTickets || availableTickets.length === 0) {
       // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
       console.log('No available tickets found - clearing all ticket state');
-      setCheapestTicket(null);
       setSelectedTicket(undefined);
       // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
       setEventTicket({
@@ -97,7 +104,6 @@ export const TicketSelection = () => {
     
     console.log(`Auto-selecting cheapest ticket: ${cheapt.category} (ID: ${cheapt.id}, available: ${cheapt.available})`);
     
-    setCheapestTicket(cheapt);
     setSelectedTicket(cheapt?.id);
     const ticketPayload = {
       id: cheapt?.id || "",
@@ -335,7 +341,7 @@ export const TicketSelection = () => {
                         colorOnTheMap={ticket.colorOnTheMap || ""}
                         isSelected={selectedTicket === ticket.id}
                         price={ticket.price}
-                        basePrice={cheapestTicket?.price ?? 0}
+                        basePrice={baseTicketPrice}
                         vip={ticket.vip}
                       />
                     ))
