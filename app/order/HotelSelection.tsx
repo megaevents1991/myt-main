@@ -133,6 +133,13 @@ export const HotelSelection = () => {
   }, [matches]);
 
   const prepareHotelData = ({ hotelsInfo, data }: HotelsData) => {
+    const DEFAULT_RATING: boolean[] = [false, false, true, true, true];
+    const DEFAULT_KIND: HotelKind[] = ["Hotel"];
+    const MIN_DEFAULT_MATCHES_BEFORE_RELAX = 5;
+
+    const arraysEqual = <T,>(a: T[], b: T[]) =>
+      a.length === b.length && a.every((value, index) => value === b[index]);
+
     // Calculate all values first
     let maxDistance = Math.max(
       ...Object.values(hotelsInfo).map(
@@ -166,7 +173,7 @@ export const HotelSelection = () => {
 
     const basePricePerPerson = event.base_hotel_price;
 
-    const hotelsToSet = applyFiltersAndSorting({
+    const defaultFilteredHotels = applyFiltersAndSorting({
       hotels: data.data.hotels,
       priceRange: [0, maxPrice],
       rating,
@@ -176,6 +183,41 @@ export const HotelSelection = () => {
       freeCancellation,
       distanceFromCenter: distanceRangeToSet,
     });
+
+    // If default filters are too restrictive (e.g. < 5 hotels), relax ONLY the
+    // default star rating + hospitality kind to show more options.
+    let hotelsToSet = defaultFilteredHotels;
+    let ratingToSet = rating;
+    let kindToSet = kind;
+
+    const shouldRelaxDefaults =
+      hotelsToSet.length < MIN_DEFAULT_MATCHES_BEFORE_RELAX &&
+      arraysEqual(rating, DEFAULT_RATING) &&
+      arraysEqual(kind, DEFAULT_KIND);
+
+    if (shouldRelaxDefaults) {
+      const allKinds = Array.from(
+        new Set(
+          Object.values(hotelsInfo)
+            .map((hotel) => hotel.metadata?.kind)
+            .filter(Boolean)
+        )
+      ) as HotelKind[];
+
+      ratingToSet = [true, true, true, true, true];
+      kindToSet = allKinds.length ? allKinds : kind;
+
+      hotelsToSet = applyFiltersAndSorting({
+        hotels: data.data.hotels,
+        priceRange: [0, maxPrice],
+        rating: ratingToSet,
+        hotelsInfo,
+        meal,
+        kind: kindToSet,
+        freeCancellation,
+        distanceFromCenter: distanceRangeToSet,
+      });
+    }
 
     const hotelInformation = {
       hotelName: hotelsInfo[0]?.metadata?.hotelName,
@@ -196,6 +238,16 @@ export const HotelSelection = () => {
     setFilteredHotels(hotelsToSet.slice(0, 50));
     setSelectedHotelId(selectedHotelId);
     setMinPrice(Math.floor(minPrice / totalPersons));
+
+    if (shouldRelaxDefaults) {
+      setRating(ratingToSet);
+      setKind(kindToSet);
+      setSelectedHotelFilters((prev) => ({
+        ...prev,
+        rating: ratingToSet,
+        kind: kindToSet,
+      }));
+    }
 
     // Set hotel last as it depends on the selectedHotelId
     setHotel({
@@ -229,16 +281,7 @@ export const HotelSelection = () => {
         new Set(
           Object.values(hotelsData.hotelsInfo)
             .map((hotel: HotelInfoClient) => hotel.metadata?.kind)
-            .filter(
-              (kind) =>
-                ![
-                  "Glamping",
-                  "Farm",
-                  "Castle",
-                  "Sanatorium",
-                  "Guesthouse",
-                ].includes(kind)
-            )
+            .filter(Boolean)
         )
       ),
     [hotelsData.hotelsInfo]
