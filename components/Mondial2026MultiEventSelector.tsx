@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import type { Event } from "@/lib/app.types";
@@ -9,8 +9,43 @@ import { Modal } from "@/components/ui/Modal";
 import { getMarkup, isEventSoldOut } from "@/lib/events/price";
 import { Mondial2026EventCard } from "@/components/mondial/Mondial2026EventCard";
 import { parseMondial2026EventName } from "@/lib/mondial2026Title";
+import { ChevronDown } from "lucide-react";
 
 type Mode = "single" | "multi";
+
+const LOCATION_FILTER_ALL = "__all__";
+const LOCATION_FILTER_GROUP_1 = "__group_1__";
+const LOCATION_FILTER_GROUP_2 = "__group_2__";
+
+// Leave empty for now; user can populate later.
+// Map from group option value -> list of location names to include.
+const LOCATION_FILTER_GROUPS: Record<string, string[]> = {
+  [LOCATION_FILTER_GROUP_1]: [
+    "אטלנטה, ארה\"ב",
+    "בוסטון, ארה\"ב",
+    "מיאמי, ארה\"ב",
+    "ניו יורק, ארה\"ב",
+    "פילדלפיה, ארה\"ב",
+    // Shared (also in group 2)
+    "ארלינגטון, ארה\"ב",
+    "דאלאס, ארה\"ב",
+    "יוסטון, ארה\"ב",
+    // Some feeds combine Arlington + Dallas
+    "ארלינגטון-דאלאס, ארה\"ב",
+    "ארלינגטון–דאלאס, ארה\"ב",
+  ],
+  [LOCATION_FILTER_GROUP_2]: [
+    "לוס אנג'לס, ארה\"ב",
+    "לוס אנגלס, ארה\"ב",
+    "לוס אנג׳לס, ארה\"ב",
+    // Shared (also in group 1)
+    "ארלינגטון, ארה\"ב",
+    "דאלאס, ארה\"ב",
+    "יוסטון, ארה\"ב",
+    "ארלינגטון-דאלאס, ארה\"ב",
+    "ארלינגטון–דאלאס, ארה\"ב",
+  ],
+};
 
 function computeMondialPrice(event: Event): number {
   const available = (event.tickets_and_rates || []).filter(
@@ -30,6 +65,45 @@ export default function Mondial2026MultiEventSelector({
   const [mode, setMode] = useState<Mode>("single");
   const [showPrompt, setShowPrompt] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [locationFilter, setLocationFilter] = useState<string>(
+    LOCATION_FILTER_ALL
+  );
+
+  const locationOptions = useMemo(() => {
+    const uniq = new Set<string>();
+    for (const evt of events) {
+      const loc = evt.location?.name;
+      if (loc) uniq.add(loc);
+    }
+    return Array.from(uniq).sort((a, b) => a.localeCompare(b));
+  }, [events]);
+
+  const filteredEvents = useMemo(() => {
+    if (!locationFilter || locationFilter === LOCATION_FILTER_ALL) {
+      return events;
+    }
+
+    if (
+      locationFilter === LOCATION_FILTER_GROUP_1 ||
+      locationFilter === LOCATION_FILTER_GROUP_2
+    ) {
+      const groupLocations = LOCATION_FILTER_GROUPS[locationFilter] || [];
+      if (groupLocations.length === 0) return events;
+      const groupSet = new Set(groupLocations);
+      return events.filter((evt) => {
+        const loc = evt.location?.name;
+        return !!loc && groupSet.has(loc);
+      });
+    }
+
+    return events.filter((evt) => (evt.location?.name || "") === locationFilter);
+  }, [events, locationFilter]);
+
+  useEffect(() => {
+    // Avoid keeping selections that might not be visible after filtering.
+    setSelectedIds([]);
+    setShowPrompt(false);
+  }, [locationFilter]);
 
   const selectedIdsDeduped = useMemo(() => {
     const uniq = Array.from(new Set(selectedIds));
@@ -129,12 +203,45 @@ export default function Mondial2026MultiEventSelector({
         }
       />
 
+      <div className="mb-4 sm:mb-6 flex justify-start" dir="ltr">
+        <label
+          htmlFor="mondial-2026-location-filter"
+          className="flex items-center gap-3 sm:gap-4"
+        >
+          <span className="relative w-[220px] sm:w-[260px] max-w-full">
+            <select
+              id="mondial-2026-location-filter"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              dir="rtl"
+              className="block w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 text-base sm:text-lg font-semibold text-gray-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value={LOCATION_FILTER_ALL}>כל המיקומים</option>
+              <option value={LOCATION_FILTER_GROUP_1}>חוף מזרחי</option>
+              <option value={LOCATION_FILTER_GROUP_2}>חוף מערבי</option>
+              {locationOptions.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute left-3 sm:left-4 top-1/2 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 text-gray-500" />
+          </span>
+          <span
+            className="text-base sm:text-lg font-semibold text-gray-700"
+            dir="rtl"
+          >
+            סינון לפי מיקום
+          </span>
+        </label>
+      </div>
+
       <div
         className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
         role="list"
         aria-label="רשימת משחקים קרובים"
       >
-        {events.map((evt) => {
+        {filteredEvents.map((evt) => {
           const isSoldOut = isEventSoldOut(evt);
           const isSelected = selectedIdsDeduped.includes(evt.id);
           const displayedPrice = computeMondialPrice(evt);

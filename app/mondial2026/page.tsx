@@ -60,7 +60,7 @@ export default async function Mondial2026Page() {
           data-timestamp={timestamp}
           style={{ display: "none" }}
         />
-        <header className="mb-8">
+        <header className="mb-2">
           <h1 className="text-4xl font-bold mb-4">{name}</h1>
           <section className="prose max-w-none" aria-labelledby="team-bio">
             <h2 id="team-bio" className="sr-only">
@@ -70,7 +70,7 @@ export default async function Mondial2026Page() {
           </section>
         </header>
 
-        <section className="mt-12" aria-labelledby="upcoming-matches">
+        <section className="mt-6" aria-labelledby="upcoming-matches">
           {events.length > 0 ? (
             <Mondial2026MultiEventSelector events={events} />
           ) : (
