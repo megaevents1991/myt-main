@@ -70,7 +70,7 @@ export default async function Mondial2026Page() {
           </section>
         </header>
 
-        <section className="mt-6" aria-labelledby="upcoming-matches">
+        <section className="my-6" aria-labelledby="upcoming-matches">
           {events.length > 0 ? (
             <Mondial2026MultiEventSelector events={events} />
           ) : (

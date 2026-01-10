@@ -16,6 +16,7 @@ type Mode = "single" | "multi";
 const LOCATION_FILTER_ALL = "__all__";
 const LOCATION_FILTER_GROUP_1 = "__group_1__";
 const LOCATION_FILTER_GROUP_2 = "__group_2__";
+const TEAM_FILTER_ALL = "__all_teams__";
 
 // Leave empty for now; user can populate later.
 // Map from group option value -> list of location names to include.
@@ -56,6 +57,30 @@ function computeMondialPrice(event: Event): number {
   return event.base_flight_price + minTicketPrice + getMarkup();
 }
 
+function normalizeTeamName(name: string): string {
+  return name
+    .normalize("NFKC")
+    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTeamsFromMondialEventName(
+  eventName?: string
+): { team1: string; team2: string } | null {
+  const parsed = parseMondial2026EventName(eventName);
+  if (!parsed.isMondial2026 || !parsed.teamsTitle) return null;
+
+  const parts = parsed.teamsTitle
+    // Only split on the match separator (dash with surrounding whitespace)
+    .split(/\s+[-–—]\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  if (parts.length < 2) return null;
+  return { team1: parts[0], team2: parts[1] };
+}
+
 export default function Mondial2026MultiEventSelector({
   events,
 }: {
@@ -68,6 +93,7 @@ export default function Mondial2026MultiEventSelector({
   const [locationFilter, setLocationFilter] = useState<string>(
     LOCATION_FILTER_ALL
   );
+  const [teamFilter, setTeamFilter] = useState<string>(TEAM_FILTER_ALL);
 
   const locationOptions = useMemo(() => {
     const uniq = new Set<string>();
@@ -78,32 +104,74 @@ export default function Mondial2026MultiEventSelector({
     return Array.from(uniq).sort((a, b) => a.localeCompare(b));
   }, [events]);
 
-  const filteredEvents = useMemo(() => {
-    if (!locationFilter || locationFilter === LOCATION_FILTER_ALL) {
-      return events;
+  const teamOptions = useMemo(() => {
+    const byNormalized = new Map<string, string>();
+    for (const evt of events) {
+      const teams = extractTeamsFromMondialEventName(evt.name);
+      if (!teams) continue;
+
+      const t1 = normalizeTeamName(teams.team1);
+      const t2 = normalizeTeamName(teams.team2);
+
+      const isUndecided = (t: string) => t === "טרם נקבע";
+
+      if (t1 && !isUndecided(t1) && !byNormalized.has(t1)) {
+        byNormalized.set(t1, teams.team1.trim());
+      }
+      if (t2 && !isUndecided(t2) && !byNormalized.has(t2)) {
+        byNormalized.set(t2, teams.team2.trim());
+      }
     }
 
-    if (
-      locationFilter === LOCATION_FILTER_GROUP_1 ||
-      locationFilter === LOCATION_FILTER_GROUP_2
-    ) {
-      const groupLocations = LOCATION_FILTER_GROUPS[locationFilter] || [];
-      if (groupLocations.length === 0) return events;
-      const groupSet = new Set(groupLocations);
-      return events.filter((evt) => {
-        const loc = evt.location?.name;
-        return !!loc && groupSet.has(loc);
+    return Array.from(byNormalized.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, "he", { sensitivity: "base" })
+      );
+  }, [events]);
+
+  const filteredEvents = useMemo(() => {
+    let result = events;
+
+    if (locationFilter && locationFilter !== LOCATION_FILTER_ALL) {
+      if (
+        locationFilter === LOCATION_FILTER_GROUP_1 ||
+        locationFilter === LOCATION_FILTER_GROUP_2
+      ) {
+        const groupLocations = LOCATION_FILTER_GROUPS[locationFilter] || [];
+        if (groupLocations.length > 0) {
+          const groupSet = new Set(groupLocations);
+          result = result.filter((evt) => {
+            const loc = evt.location?.name;
+            return !!loc && groupSet.has(loc);
+          });
+        }
+      } else {
+        result = result.filter(
+          (evt) => (evt.location?.name || "") === locationFilter
+        );
+      }
+    }
+
+    if (teamFilter && teamFilter !== TEAM_FILTER_ALL) {
+      result = result.filter((evt) => {
+        const teams = extractTeamsFromMondialEventName(evt.name);
+        if (!teams) return false;
+
+        const t1 = normalizeTeamName(teams.team1);
+        const t2 = normalizeTeamName(teams.team2);
+        return t1 === teamFilter || t2 === teamFilter;
       });
     }
 
-    return events.filter((evt) => (evt.location?.name || "") === locationFilter);
-  }, [events, locationFilter]);
+    return result;
+  }, [events, locationFilter, teamFilter]);
 
   useEffect(() => {
     // Avoid keeping selections that might not be visible after filtering.
     setSelectedIds([]);
     setShowPrompt(false);
-  }, [locationFilter]);
+  }, [locationFilter, teamFilter]);
 
   const selectedIdsDeduped = useMemo(() => {
     const uniq = Array.from(new Set(selectedIds));
@@ -203,7 +271,10 @@ export default function Mondial2026MultiEventSelector({
         }
       />
 
-      <div className="mb-4 sm:mb-6 flex justify-start" dir="ltr">
+      <div
+        className="mb-4 sm:mb-6 flex flex-wrap gap-4 justify-start"
+        dir="ltr"
+      >
         <label
           htmlFor="mondial-2026-location-filter"
           className="flex items-center gap-3 sm:gap-4"
@@ -231,7 +302,36 @@ export default function Mondial2026MultiEventSelector({
             className="text-base sm:text-lg font-semibold text-gray-700"
             dir="rtl"
           >
-            סינון לפי מיקום
+            סננו לפי מיקום
+          </span>
+        </label>
+
+        <label
+          htmlFor="mondial-2026-team-filter"
+          className="flex items-center gap-3 sm:gap-4"
+        >
+          <span className="relative w-[220px] sm:w-[260px] max-w-full">
+            <select
+              id="mondial-2026-team-filter"
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              dir="rtl"
+              className="block w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 text-base sm:text-lg font-semibold text-gray-900 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value={TEAM_FILTER_ALL}>כל הנבחרות</option>
+              {teamOptions.map((team) => (
+                <option key={team.value} value={team.value}>
+                  {team.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute left-3 sm:left-4 top-1/2 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 text-gray-500" />
+          </span>
+          <span
+            className="text-base sm:text-lg font-semibold text-gray-700"
+            dir="rtl"
+          >
+            סננו לפי נבחרת
           </span>
         </label>
       </div>
