@@ -24,19 +24,19 @@ function getRotation(index: number, currentIndex: number, total: number) {
   const prev3 = (currentIndex - 3 + total) % total;
   const next3 = (currentIndex + 3) % total;
 
-  if (index === prev1) return "rotate(2deg)";
-  if (index === next1) return "rotate(-2deg)";
-  if (index === prev2) return "rotate(4deg)";
-  if (index === next2) return "rotate(-4deg)";
-  if (index === prev3) return "rotate(7deg)";
-  if (index === next3) return "rotate(-7deg)";
+  if (index === prev1) return "rotate(4deg)";
+  if (index === next1) return "rotate(-4deg)";
+  if (index === prev2) return "rotate(7deg)";
+  if (index === next2) return "rotate(-7deg)";
+  if (index === prev3) return "rotate(10deg)";
+  if (index === next3) return "rotate(-10deg)";
   return "rotate(0deg)";
 }
 
 export function HeroCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const autoScroll = useRef(
-    AutoScroll({ speed: 1, stopOnInteraction: false, stopOnFocusIn: false })
+    AutoScroll({ speed: 2, stopOnInteraction: false, stopOnFocusIn: false })
   );
 
   const handleEmblaApi = useCallback((embla: EmblaCarouselType) => {
@@ -50,13 +50,14 @@ export function HeroCarousel() {
   return (
     <Carousel
       slideSize="auto"
-      height={300}
+      height={320}
       slideGap={-30}
       withIndicators={false}
       withControls={false}
       loop
       plugins={[autoScroll.current]}
       getEmblaApi={handleEmblaApi}
+      dir="ltr"
     >
       {images.map((src, index) => (
         <Carousel.Slide
@@ -65,6 +66,8 @@ export function HeroCarousel() {
             marginRight: "-30px",
             zIndex: currentIndex === index ? 10 : 1,
             position: "relative",
+            display: "flex",
+            alignItems: "center",
           }}
         >
           <Image
@@ -77,7 +80,7 @@ export function HeroCarousel() {
               height: "300px",
               objectFit: "contain",
               transform: getRotation(index, currentIndex, images.length),
-              transition: "transform 0.3s ease",
+              transition: "transform 0.8s ease",
             }}
           />
         </Carousel.Slide>
