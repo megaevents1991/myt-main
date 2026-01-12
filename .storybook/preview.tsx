@@ -3,6 +3,7 @@ import { INITIAL_VIEWPORTS } from "storybook/viewport";
 import React from "react";
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
+import "@mantine/carousel/styles.css";
 
 const preview: Preview = {
   parameters: {
