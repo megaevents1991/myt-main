@@ -1,4 +1,5 @@
-import { Group, Stack, Text } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
+import { Text } from "../Text/Text";
 import Image from "next/image";
 import PlaneIcon from "./icons/plane.svg";
 import HotelIcon from "./icons/hotel.svg";

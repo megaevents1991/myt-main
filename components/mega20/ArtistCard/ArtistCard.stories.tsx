@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Stack } from "@mantine/core";
 
 import { ArtistCard } from "./ArtistCard";
+import { MobileArtistCard } from "./MobileArtistCard";
 import { ImageCard } from "./ImageCard";
 
 const meta = {
@@ -92,5 +93,29 @@ export const LastChance: Story = {
     price: "200.99",
     badgeText: "Last Chance",
     badgeVariant: "yellow",
+  },
+};
+
+export const Mobile: Story = {
+  render: (args) => <MobileArtistCard {...args} />,
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ padding: 10 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    eventDate: "March 15, 2026",
+    eventPlace: "לונדון, בריטניה",
+    price: "1250.99",
+    badgeText: "Hot Sale",
+    badgeVariant: "red",
   },
 };

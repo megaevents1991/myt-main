@@ -1,4 +1,5 @@
-import { Card, Text, Stack } from "@mantine/core";
+import { Card, Stack } from "@mantine/core";
+import { Text } from "../Text/Text";
 
 export interface ImageCardProps {
   title: string;

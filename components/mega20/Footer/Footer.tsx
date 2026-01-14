@@ -1,6 +1,7 @@
 "use client";
 
-import { Text, Anchor, Flex, em } from "@mantine/core";
+import { Anchor, Flex, em } from "@mantine/core";
+import { Text } from "../Text/Text";
 import logo from "./mega.svg";
 import Image from "next/image";
 import { useMediaQuery } from "@mantine/hooks";
@@ -59,12 +60,12 @@ export function Footer({ description, links, copyright }: FooterProps) {
       <LogoMarquee />
       <Flex
         component="footer"
-        bg={"#0A1A14"}
+        bg="#0A1A14"
         justify="center"
         align={isMobile ? "flex-start" : "center"}
-        direction={"column"}
-        gap={"xl"}
-        p={"xl"}
+        direction="column"
+        gap="xl"
+        p="xl"
         ta={isMobile ? "right" : "center"}
         style={{ overflow: "hidden", maxWidth: "100vw" }}
       >

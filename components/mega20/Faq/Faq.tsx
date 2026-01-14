@@ -1,4 +1,5 @@
-import { Accordion, Text, Title, Group } from "@mantine/core";
+import { Accordion, Title, Group } from "@mantine/core";
+import { Text } from "../Text/Text";
 import Image from "next/image";
 import Icon1 from "./icons/1.svg";
 import Icon2 from "./icons/2.svg";

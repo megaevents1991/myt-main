@@ -35,7 +35,7 @@ export function ArtistCard({
         </Text>
       </Group>
 
-      <Group justify="space-between" align="center">
+      <Group justify="space-between" align="center" gap={0}>
         <Text size="22px">{eventPlace}</Text>
         {badgeText && (
           <Badge radius="null" color={badgeVariant}>
