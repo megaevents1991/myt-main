@@ -426,6 +426,10 @@ export async function POST(request: Request) {
               "https://upload.wikimedia.org/wikipedia/fr/c/c2/Bluebird_Airways_logo.png";
               currentFlight.metadata.name = "Bluebird Airways";
               currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
+          } else if (currentFlight.offer.itineraries[0].segments[0].operating?.carrierCode === "LY") {
+            currentFlight.metadata.logo =
+              "https://www.avcodes.co.uk/images/logos/ELY.png";
+              currentFlight.metadata.name = "El Al";
           }
         }
         // Special Handling: For low-cost carriers
