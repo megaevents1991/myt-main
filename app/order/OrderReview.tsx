@@ -636,7 +636,8 @@ export default function OrderReview() {
   const handleSubmit = async (
     e: React.FormEvent,
     payNow = false,
-    onlySave = false
+    onlySave = false,
+    splitPayment = false
   ) => {
     e.preventDefault();
     // Safety: if hold is not allowed for this event, force onlySave off
@@ -755,11 +756,15 @@ export default function OrderReview() {
       });
 
       if (payNow) {
-        const { url } = await getPaymentUrl(result.id, result.newPromoterCode);
-        if (!url) {
-          throw new Error("Failed to get payment URL");
+        if (splitPayment) {
+          router.push(`/split-payment/${result.id}?promoCode=${result.newPromoterCode}`);
+        } else {
+          const { url } = await getPaymentUrl(result.id, result.newPromoterCode);
+          if (!url) {
+            throw new Error("Failed to get payment URL");
+          }
+          window.location.replace(url);
         }
-        window.location.replace(url);
       } else {
         // Redirect to the order confirmation page.
         // If this was a 24h hold (onlySave), append a query param so the confirmation screen can show hold-specific messaging.
@@ -1355,15 +1360,15 @@ export default function OrderReview() {
 
               <div className="hidden md:flex gap-2 mt-0">
                 <Button
-                  onClick={handleSubmit}
+                  onClick={(e) => handleSubmit(e, true, false, true)}
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
-                  aria-label="צור קשר עם נציג"
+                  aria-label="פצל תשלום"
                 >
-                  ?רוצים לפצל תשלום
+                  פצל תשלום
                   <br />
-                  דברו עם נציג
+                  לניהול תשלומים
                 </Button>
                 {isHoldAllowed && (
                   <Button
@@ -1796,15 +1801,15 @@ export default function OrderReview() {
 
               <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
                 <Button
-                  onClick={handleSubmit}
+                  onClick={(e) => handleSubmit(e, true, false, true)}
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}
-                  aria-label="צור קשר עם נציג"
+                  aria-label="פצל תשלום"
                 >
-                  ?רוצים לפצל תשלום
+                  פצל תשלום
                   <br />
-                  דברו עם נציג
+                  לניהול תשלומים
                 </Button>
                 {isHoldAllowed && (
                   <Button
@@ -1835,15 +1840,15 @@ export default function OrderReview() {
           {showStickyOptions && (
             <div className="mb-4 flex gap-2">
               <Button
-                onClick={handleSubmit}
+                onClick={(e) => handleSubmit(e, true, false, true)}
                 variant={"link"}
                 className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                 disabled={isSubmitting}
-                aria-label="צור קשר עם נציג"
+                aria-label="פצל תשלום"
               >
-                ?רוצים לפצל תשלום
+                פצל תשלום
                 <br />
-                דברו עם נציג
+                לניהול תשלומים
               </Button>
               {isHoldAllowed && (
                 <Button
