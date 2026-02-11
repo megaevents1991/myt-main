@@ -128,6 +128,11 @@ export default function OrderReview() {
   const inactivityTimeoutRef = useRef<number | null>(null);
   // Track initial discount to differentiate text in special offer modal
   const initialAffDiscountRef = useRef<number | null>(null);
+  // One-time guard for form_start analytics event
+  const hasTrackedFormStartRef = useRef(false);
+  // One-time guards for begin_checkout / generate_lead server-side events
+  const hasTrackedBeginCheckoutRef = useRef(false);
+  const hasTrackedGenerateLeadRef = useRef(false);
 
   // Sticky footer state and refs
   const [showStickyFooter, setShowStickyFooter] = useState(false);
@@ -183,6 +188,40 @@ export default function OrderReview() {
     () => finalPurchasePriceCalc(affDiscount),
     [finalPurchasePriceCalc, affDiscount]
   );
+
+  const trackFormStart = useCallback(() => {
+    if (hasTrackedFormStartRef.current || !event) return;
+    hasTrackedFormStartRef.current = true;
+    try {
+      const gtmIdnts =
+        document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("gtmIdnts="))
+          ?.split("=")[1] || "";
+
+      fetch("/api/events-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventData: {
+            id: event?.id,
+            name: event?.name,
+            value: finalPurchasePrice,
+            currency: "USD",
+            category: event?.type || "music_event",
+            brand: "Mega Events",
+            quantity: numberOfEventTickets,
+          },
+          eventType: "form_start",
+          gtmIdnts,
+        }),
+      });
+    } catch (error) {
+      console.warn("form_start analytics tracking failed:", error);
+    }
+  }, [event, finalPurchasePrice, numberOfEventTickets]);
 
   const affiliateDiscountTotalUsd = useMemo(
     () => getAffiliateDiscountTotalUsd(affDiscount),
@@ -594,6 +633,10 @@ export default function OrderReview() {
         .find((row) => row.startsWith("gtmIdnts="))
         ?.split("=")[1] || "";
 
+    // Determine if server-side analytics should be skipped (already sent this session)
+    const analyticsRef = payNow ? hasTrackedBeginCheckoutRef : hasTrackedGenerateLeadRef;
+    const skipAnalytics = analyticsRef.current;
+
     const response = await fetch("/api/confirm-order", {
       method: "POST",
       headers: {
@@ -604,8 +647,14 @@ export default function OrderReview() {
         payNow,
         gtmIdnts,
         onlySave,
+        skipAnalytics,
       }),
     });
+
+    // Mark as tracked only after a successful response
+    if (response.ok) {
+      analyticsRef.current = true;
+    }
 
     if (!response.ok) {
       throw new Error("Failed to submit order");
@@ -1463,6 +1512,7 @@ export default function OrderReview() {
                                   )
                                 }
                                 onBlur={() => handleBlur(index, "firstName")}
+                                onFocus={index === 0 ? trackFormStart : undefined}
                               />
                               {touched[index]?.firstName &&
                                 validationErrors[index]?.firstName && (
