@@ -11,289 +11,224 @@ interface CurrencyRates {
   eurUsd: ExchangeRateData | null;
 }
 
-// FloatRates API response shape
-interface FloatRateEntry {
-  code: string;
-  alphaCode: string;
-  rate: number;
-  inverseRate: number;
-  date: string;
-}
+type RateKey = keyof CurrencyRates;
+
+const CURRENCY_CONFIG: Record<
+  RateKey,
+  {
+    pair: string;
+    floatBase: string;
+    floatTarget: string;
+    min: number;
+    max: number;
+  }
+> = {
+  usdIls: {
+    pair: "USD/ILS",
+    floatBase: "usd",
+    floatTarget: "ils",
+    min: 2.9,
+    max: 4.0,
+  },
+  eurUsd: {
+    pair: "EUR/USD",
+    floatBase: "eur",
+    floatTarget: "usd",
+    min: 1,
+    max: 1.4,
+  },
+};
 
 class ExchangeRateService {
-  private currentRates: CurrencyRates = {
-    usdIls: null,
-    eurUsd: null,
-  };
+  private currentRates: CurrencyRates = { usdIls: null, eurUsd: null };
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly API_BASE_URL = "https://api.twelvedata.com/exchange_rate";
-  private readonly API_KEY = "43c9bbfbf1cb4a1990c01a1a6d9ddf2f";
-  private readonly FLOAT_RATES_BASE_URL = "https://www.floatrates.com/daily";
-  private readonly RATE_LIMITS = {
-    usdIls: { min: 3.1, max: 4.0 },
-    eurUsd: { min: 1, max: 1.4 },
-  };
-  private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
-  private readonly CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+
+  private readonly TWELVE_DATA_URL = "https://api.twelvedata.com/exchange_rate";
+  private readonly TWELVE_DATA_KEY = "43c9bbfbf1cb4a1990c01a1a6d9ddf2f";
+  private readonly FLOAT_RATES_URL = "https://www.floatrates.com/daily";
+  private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour
+  private readonly CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 hours
   private readonly MAX_RETRIES = 4;
-  private readonly RETRY_DELAY = 1500; // 1.5 seconds
+  private readonly RETRY_DELAY = 1500; // 1.5s
 
   constructor() {
-    // Initialize on startup
-    this.updateAllExchangeRates();
+    this.updateAllRates();
     this.startPeriodicUpdates();
   }
 
-  private isValidRate(rate: number, rateKey: "usdIls" | "eurUsd"): boolean {
-    const limits = this.RATE_LIMITS[rateKey];
-    return rate >= limits.min && rate <= limits.max;
+  // --- Helpers ---
+
+  private roundUp(rate: number): number {
+    return Math.ceil(rate * 100) / 100;
   }
 
-  private async fetchWithTimeout(
-    url: string,
-    timeoutMs: number = 10000,
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
-    }
-  }
-
-  private isCacheValid(rateKey: "usdIls" | "eurUsd"): boolean {
-    const cached = this.currentRates[rateKey];
-    if (!cached) return false;
-    const age = Date.now() - cached.lastUpdated.getTime();
-    return age < this.CACHE_MAX_AGE;
-  }
-
-  /**
-   * Fetch rate from FloatRates API (secondary fallback).
-   * For USD/ILS: fetches /daily/usd.json → ils.rate
-   * For EUR/USD: fetches /daily/eur.json → usd.rate
-   */
-  private async fetchFromFloatRates(
-    currencyPair: "USD/ILS" | "EUR/USD",
-  ): Promise<number | null> {
-    try {
-      const baseCurrency = currencyPair === "USD/ILS" ? "usd" : "eur";
-      const targetCurrency = currencyPair === "USD/ILS" ? "ils" : "usd";
-      const url = `${this.FLOAT_RATES_BASE_URL}/${baseCurrency}.json`;
-
-      logger.info(
-        `Fetching ${currencyPair} from FloatRates fallback API: ${url}`,
-      );
-
-      const response = await this.fetchWithTimeout(url, 10000);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: Record<string, FloatRateEntry> = await response.json();
-      const entry = data[targetCurrency];
-
-      if (!entry || typeof entry.rate !== "number") {
-        throw new Error(
-          `FloatRates: missing or invalid "${targetCurrency}" entry in response`,
-        );
-      }
-
-      const rate = Math.ceil(entry.rate * 100) / 100;
-      const rateKey = currencyPair === "USD/ILS" ? "usdIls" : "eurUsd";
-
-      if (this.isValidRate(rate, rateKey)) {
-        logger.info(
-          `Successfully fetched ${currencyPair} from FloatRates: ${rate}`,
-        );
-        return rate;
-      } else {
-        throw new Error(
-          `FloatRates rate ${rate} for ${currencyPair} is outside valid range (${this.RATE_LIMITS[rateKey].min}-${this.RATE_LIMITS[rateKey].max})`,
-        );
-      }
-    } catch (error) {
-      logger.error(
-        `FloatRates fallback failed for ${currencyPair}:`,
-        error instanceof Error ? error.message : "Unknown error",
-      );
-      return null;
-    }
-  }
-
-  private async fetchExchangeRateWithRetry(
-    currencyPair: "USD/ILS" | "EUR/USD",
-    retries = this.MAX_RETRIES,
-  ): Promise<number | null> {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        logger.debug(
-          `Fetching ${currencyPair} exchange rate - attempt ${attempt}/${retries}`,
-        );
-
-        const url = `${this.API_BASE_URL}?symbol=${currencyPair}&apikey=${this.API_KEY}`;
-        const response = await this.fetchWithTimeout(url, 10000);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (data && data.rate && typeof data.rate === "number") {
-          const rate = Math.ceil(data.rate * 100) / 100;
-          const rateKey = currencyPair === "USD/ILS" ? "usdIls" : "eurUsd";
-
-          // Validate the rate is within reasonable limits
-          if (this.isValidRate(rate, rateKey)) {
-            logger.debug(
-              `Successfully fetched ${currencyPair} exchange rate: ${rate}`,
-            );
-            return rate;
-          } else {
-            throw new Error(
-              `Exchange rate ${rate} for ${currencyPair} is outside valid range (${this.RATE_LIMITS[rateKey].min}-${this.RATE_LIMITS[rateKey].max})`,
-            );
-          }
-        } else {
-          throw new Error(
-            `Invalid exchange rate data structure for ${currencyPair}`,
-          );
-        }
-      } catch (error) {
-        if (attempt === retries) {
-          logger.error(
-            `Failed to fetch ${currencyPair} exchange rate after ${attempt} attempts:`,
-            error instanceof Error ? error.message : "Unknown error",
-          );
-        } else {
-          logger.warn(
-            `${currencyPair} exchange rate fetch attempt ${attempt} failed:`,
-            error instanceof Error ? error.message : "Unknown error",
-          );
-        }
-
-        if (attempt < retries) {
-          logger.debug(`Retrying in ${this.RETRY_DELAY}ms...`);
-          await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY));
-        }
-      }
-    }
-
-    logger.error(
-      `All ${retries} attempts to fetch ${currencyPair} exchange rate failed`,
+  private validateRate(rate: number, key: RateKey): number | null {
+    const rounded = this.roundUp(rate);
+    const { min, max } = CURRENCY_CONFIG[key];
+    if (rounded >= min && rounded <= max) return rounded;
+    logger.warn(
+      `Rate ${rounded} for ${key} outside valid range [${min}, ${max}]`,
     );
     return null;
   }
 
-  private async updateSingleExchangeRate(
-    currencyPair: "USD/ILS" | "EUR/USD",
-  ): Promise<void> {
-    const rateKey = currencyPair === "USD/ILS" ? "usdIls" : "eurUsd";
+  private isCacheValid(key: RateKey): boolean {
+    const cached = this.currentRates[key];
+    return (
+      !!cached && Date.now() - cached.lastUpdated.getTime() < this.CACHE_MAX_AGE
+    );
+  }
 
+  private async fetchJson(url: string, timeoutMs = 10_000): Promise<unknown> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      // Layer 1: Try the primary API (TwelveData)
-      const rate = await this.fetchExchangeRateWithRetry(currencyPair);
-
-      if (rate !== null) {
-        this.currentRates[rateKey] = {
-          rate,
-          lastUpdated: new Date(),
-          source: "api",
-        };
-        logger.info(
-          `${currencyPair} exchange rate updated successfully: ${rate} (from API)`,
-        );
-        return;
-      }
-
-      // Primary API failed — check if in-process cache is still valid (< 12 hours)
-      if (this.isCacheValid(rateKey)) {
-        const cached = this.currentRates[rateKey]!;
-        const ageMinutes = Math.round(
-          (Date.now() - cached.lastUpdated.getTime()) / 60000,
-        );
-        logger.warn(
-          `Primary API failed for ${currencyPair}. Using in-process cached rate: ${cached.rate} (${ageMinutes}min old, from ${cached.source}). Cache valid for up to 12h.`,
-        );
-        return;
-      }
-
-      // Layer 2: Cache is stale or empty — try FloatRates API
-      logger.warn(
-        `Primary API failed and cache expired/empty for ${currencyPair}. Falling back to FloatRates API.`,
-      );
-      const floatRate = await this.fetchFromFloatRates(currencyPair);
-
-      if (floatRate !== null) {
-        this.currentRates[rateKey] = {
-          rate: floatRate,
-          lastUpdated: new Date(),
-          source: "floatrates",
-        };
-        logger.info(
-          `${currencyPair} exchange rate updated from FloatRates: ${floatRate}`,
-        );
-        return;
-      }
-
-      // Both APIs failed and cache is stale/empty
-      const existing = this.currentRates[rateKey];
-      if (existing) {
-        logger.error(
-          `All sources failed for ${currencyPair}. Keeping stale cached rate: ${existing.rate} (from ${existing.source}, last updated: ${existing.lastUpdated.toISOString()})`,
-        );
-      } else {
-        logger.error(
-          `All sources failed for ${currencyPair} and no cached rate exists. Rate is unavailable.`,
-        );
-      }
-    } catch (error) {
-      logger.error(
-        `Unexpected error during ${currencyPair} exchange rate update: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(id);
     }
   }
 
-  private async updateAllExchangeRates(): Promise<void> {
-    logger.info("Starting exchange rates update for all currency pairs");
+  private errMsg(err: unknown): string {
+    return err instanceof Error ? err.message : "Unknown error";
+  }
 
-    // Update both currency pairs concurrently
-    await Promise.allSettled([
-      this.updateSingleExchangeRate("USD/ILS"),
-      this.updateSingleExchangeRate("EUR/USD"),
-    ]);
+  // --- Fetch strategies ---
 
-    logger.info("Completed exchange rates update for all currency pairs");
+  private async fetchFromTwelveData(key: RateKey): Promise<number | null> {
+    const { pair } = CURRENCY_CONFIG[key];
+    const url = `${this.TWELVE_DATA_URL}?symbol=${pair}&apikey=${this.TWELVE_DATA_KEY}`;
+
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        const data = (await this.fetchJson(url)) as { rate?: number };
+        if (typeof data?.rate !== "number")
+          throw new Error("Invalid response structure");
+
+        const rate = this.validateRate(data.rate, key);
+        if (rate !== null) {
+          logger.debug(`TwelveData ${pair}: ${rate} (attempt ${attempt})`);
+          return rate;
+        }
+        throw new Error("Rate outside valid range");
+      } catch (err) {
+        if (attempt === this.MAX_RETRIES) {
+          logger.error(
+            `TwelveData ${pair} failed after ${attempt} attempts: ${this.errMsg(err)}`,
+          );
+        } else {
+          logger.warn(
+            `TwelveData ${pair} attempt ${attempt} failed: ${this.errMsg(err)}`,
+          );
+          await new Promise((r) => setTimeout(r, this.RETRY_DELAY));
+        }
+      }
+    }
+    return null;
+  }
+
+  private async fetchFromFloatRates(key: RateKey): Promise<number | null> {
+    const { pair, floatBase, floatTarget } = CURRENCY_CONFIG[key];
+    const url = `${this.FLOAT_RATES_URL}/${floatBase}.json`;
+
+    try {
+      const data = (await this.fetchJson(url)) as Record<
+        string,
+        { rate?: number }
+      >;
+      const rawRate = data?.[floatTarget]?.rate;
+      if (typeof rawRate !== "number")
+        throw new Error(`Missing "${floatTarget}" entry`);
+
+      const rate = this.validateRate(rawRate, key);
+      if (rate !== null) {
+        logger.info(`FloatRates ${pair}: ${rate}`);
+        return rate;
+      }
+      throw new Error("Rate outside valid range");
+    } catch (err) {
+      logger.error(`FloatRates ${pair} failed: ${this.errMsg(err)}`);
+      return null;
+    }
+  }
+
+  // --- Update logic ---
+
+  private storeRate(
+    key: RateKey,
+    rate: number,
+    source: ExchangeRateData["source"],
+  ): void {
+    this.currentRates[key] = { rate, lastUpdated: new Date(), source };
+    logger.info(`${CURRENCY_CONFIG[key].pair} updated: ${rate} (${source})`);
+  }
+
+  private async updateRate(key: RateKey): Promise<void> {
+    const { pair } = CURRENCY_CONFIG[key];
+
+    try {
+      // Layer 1: Primary API (TwelveData)
+      const apiRate = await this.fetchFromTwelveData(key);
+      if (apiRate !== null) return this.storeRate(key, apiRate, "api");
+
+      // Use cached rate if still valid (< 12h)
+      if (this.isCacheValid(key)) {
+        const cached = this.currentRates[key]!;
+        const ageMin = Math.round(
+          (Date.now() - cached.lastUpdated.getTime()) / 60_000,
+        );
+        logger.warn(
+          `${pair}: API failed, using cached rate ${cached.rate} (${cached.source}, ${ageMin}min old)`,
+        );
+        return;
+      }
+
+      // Layer 2: FloatRates fallback
+      const floatRate = await this.fetchFromFloatRates(key);
+      if (floatRate !== null)
+        return this.storeRate(key, floatRate, "floatrates");
+
+      // All sources failed
+      const existing = this.currentRates[key];
+      logger.error(
+        existing
+          ? `${pair}: all sources failed, keeping stale rate ${existing.rate} from ${existing.lastUpdated.toISOString()}`
+          : `${pair}: all sources failed, no cached rate available`,
+      );
+    } catch (err) {
+      logger.error(`${pair} update error: ${this.errMsg(err)}`);
+    }
+  }
+
+  private async updateAllRates(): Promise<void> {
+    logger.info("Updating all exchange rates");
+    await Promise.allSettled(
+      (Object.keys(CURRENCY_CONFIG) as RateKey[]).map((key) =>
+        this.updateRate(key),
+      ),
+    );
+    logger.info("Exchange rates update complete");
   }
 
   private startPeriodicUpdates(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
-
-    this.intervalId = setInterval(() => {
-      logger.info("Starting scheduled exchange rate update");
-      this.updateAllExchangeRates();
-    }, this.UPDATE_INTERVAL);
-
+    if (this.intervalId) clearInterval(this.intervalId);
+    this.intervalId = setInterval(
+      () => this.updateAllRates(),
+      this.UPDATE_INTERVAL,
+    );
     logger.info(
-      `Exchange rate service started - will update every ${this.UPDATE_INTERVAL / 1000 / 60} minutes. Cache max age: ${this.CACHE_MAX_AGE / 1000 / 60 / 60}h`,
+      `Exchange rate service started (interval: ${this.UPDATE_INTERVAL / 60_000}min, cache TTL: ${this.CACHE_MAX_AGE / 3_600_000}h)`,
     );
   }
+
+  // --- Public API ---
 
   public getTravelRate(): number | null {
     const usdIls = this.currentRates.usdIls;
     if (!usdIls) return null;
-    return Math.ceil(usdIls.rate * 1.015 * 100) / 100; // Adding 1.5% for travel expenses
+    return this.roundUp(usdIls.rate * 1.015); // +1.5% for travel expenses
   }
 
   public getUsdIlsRate(): ExchangeRateData | null {
@@ -308,22 +243,15 @@ class ExchangeRateService {
     const usdIls = this.currentRates.usdIls;
     const travelRate = this.getTravelRate();
     if (!usdIls || travelRate === null) return null;
-    return {
-      ...usdIls,
-      travelRate,
-    };
+    return { ...usdIls, travelRate };
   }
 
   public getAllRates(): CurrencyRates & { travelRate: number | null } {
-    return {
-      ...this.currentRates,
-      travelRate: this.getTravelRate(),
-    };
+    return { ...this.currentRates, travelRate: this.getTravelRate() };
   }
 
   public async forceUpdate(): Promise<void> {
-    logger.info("Forcing exchange rate update");
-    await this.updateAllExchangeRates();
+    await this.updateAllRates();
   }
 
   public stop(): void {
@@ -335,14 +263,7 @@ class ExchangeRateService {
   }
 }
 
-// Create a singleton instance
 export const exchangeRateService = new ExchangeRateService();
 
-// Graceful shutdown handler
-process.on("SIGTERM", () => {
-  exchangeRateService.stop();
-});
-
-process.on("SIGINT", () => {
-  exchangeRateService.stop();
-});
+process.on("SIGTERM", () => exchangeRateService.stop());
+process.on("SIGINT", () => exchangeRateService.stop());
