@@ -47,10 +47,10 @@ export async function trackServerSideEvent(
     } = options;
 
     // Parse gtmIdnts cookie value safely
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let parsedGtmIdnts: {
       ga_fpid?: string;
       ga_session_id?: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       [key: string]: any;
     } = {};
     if (gtmIdnts) {
