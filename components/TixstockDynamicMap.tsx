@@ -4,7 +4,6 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -35,11 +34,8 @@ type Props = {
   hoveredTicket: TixStockListing | null;
   /** The currently-selected ticket (from the ticket list) */
   selectedTicketId: string | null;
-  /** Callback when the user clicks a section on the map */
-  onSectionFilterChange?: (filter: {
-    section: string | null;
-    category: string | null;
-  }) => void;
+  /** Callback when the user clicks a section — receives the best matching ticket ID */
+  onTicketSelect?: (ticketId: string) => void;
   /** Called with the set of ticket IDs that have a map match */
   onMatchedTicketIds?: (ids: Set<string>) => void;
 };
@@ -53,14 +49,12 @@ export function TixstockDynamicMap({
   tickets,
   hoveredTicket,
   selectedTicketId,
-  onSectionFilterChange,
+  onTicketSelect,
   onMatchedTicketIds,
 }: Props) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   // Monotonically increasing counter – bumped every time the ref callback
   // fires (container div is mounted).  Used as a dependency in effects
@@ -111,21 +105,6 @@ export function TixstockDynamicMap({
       cancelled = true;
     };
   }, [mapUrl]);
-
-  // Reset selection when the map URL changes (new venue)
-  useEffect(() => {
-    setSelectedSection(null);
-    setSelectedCategory(null);
-  }, [mapUrl]);
-
-  /* ---------- 5. Section/category filtering callback ------------------- */
-
-  useEffect(() => {
-    onSectionFilterChange?.({
-      section: selectedSection,
-      category: selectedCategory,
-    });
-  }, [selectedSection, selectedCategory, onSectionFilterChange]);
 
   /* ---------- 2 + 3 + 4. Painting & match reporting ------------------- */
 
@@ -182,22 +161,7 @@ export function TixstockDynamicMap({
       }
     }
 
-    // 4b. Click-selected map section highlight (overrides ticket selection)
-    if (selectedCategory) {
-      sectionEls.forEach((el) => {
-        const cat = getCategoryIdFromSectionEl(el);
-        if (cat?.toLowerCase() === selectedCategory.toLowerCase()) {
-          paintSection(el, "selected");
-        }
-      });
-    } else if (selectedSection) {
-      sectionEls.forEach((el) => {
-        const sec = el.getAttribute("data-section") || "";
-        if (sec === selectedSection) paintSection(el, "selected");
-      });
-    }
-
-    // 4. Hover highlight (overrides selection)
+    // Hover highlight (overrides selection)
     if (hoveredTicket) {
       sectionEls.forEach((el) => {
         const sec = el.getAttribute("data-section") || "";
@@ -210,7 +174,7 @@ export function TixstockDynamicMap({
         if (match) paintSection(el, "hover");
       });
     }
-  }, [svgContent, hoveredTicket, selectedSection, selectedCategory, selectedTicketId, tickets]);
+  }, [svgContent, hoveredTicket, selectedTicketId, tickets]);
 
   // Paint synchronously before the browser renders the frame so the
   // user never sees the raw/unstyled SVG.  `useLayoutEffect` blocks
@@ -238,7 +202,7 @@ export function TixstockDynamicMap({
     }
   }, [svgContent, tickets, onMatchedTicketIds, domReady]);
 
-  /* ---------- 4. Click handler ---------------------------------------- */
+  /* ---------- Click handler: select the best matching ticket ----------- */
 
   useEffect(() => {
     const root = containerRef.current;
@@ -249,35 +213,39 @@ export function TixstockDynamicMap({
       const sectionEl = target?.closest("[data-section]");
       if (!sectionEl) return;
 
-      const sectionId = sectionEl.getAttribute("data-section");
-      if (!sectionId) return;
-
+      const sectionId = sectionEl.getAttribute("data-section") || "";
       const categoryId = getCategoryIdFromSectionEl(sectionEl);
 
-      // Does the clicked section have category-only tickets?
-      const hasCategoryOnlyTickets =
-        !!categoryId &&
-        tickets.some(
-          (t) =>
-            isCategoryOnlyTicket(t) && isTicketMatchingCategory(t, categoryId),
-        );
+      // Find the best matching ticket:
+      // 1st priority: ticket with matching section (+ category if available)
+      // 2nd priority: category-only ticket matching the category
+      let bestMatch: TixStockListing | null = null;
 
-      if (hasCategoryOnlyTickets && categoryId) {
-        setSelectedCategory((prev) =>
-          prev === categoryId ? null : categoryId,
-        );
-        setSelectedSection(null);
-      } else {
-        setSelectedSection((prev) =>
-          prev === sectionId ? null : sectionId,
-        );
-        setSelectedCategory(null);
+      for (const t of tickets) {
+        if (!isCategoryOnlyTicket(t) && isTicketMatchingSection(t, sectionId, categoryId)) {
+          // Section match — pick it (prefer cheapest)
+          if (!bestMatch || isCategoryOnlyTicket(bestMatch) ||
+              (t.proceed_price ?? Infinity) < (bestMatch.proceed_price ?? Infinity)) {
+            bestMatch = t;
+          }
+        } else if (
+          isCategoryOnlyTicket(t) &&
+          categoryId &&
+          isTicketMatchingCategory(t, categoryId) &&
+          !bestMatch // only use category-only as fallback
+        ) {
+          bestMatch = t;
+        }
+      }
+
+      if (bestMatch && onTicketSelect) {
+        onTicketSelect(bestMatch.id);
       }
     };
 
     root.addEventListener("click", onClick);
     return () => root.removeEventListener("click", onClick);
-  }, [tickets, svgContent]);
+  }, [tickets, svgContent, onTicketSelect]);
 
   /* ---------- Pointer-hover on the SVG map itself ---------------------- */
 
@@ -312,11 +280,15 @@ export function TixstockDynamicMap({
       const secId = sectionEl.getAttribute("data-section") || "";
       const catId = getCategoryIdFromSectionEl(sectionEl);
 
-      // Determine whether this section is currently selected
-      const isSelected =
-        (selectedSection && secId === selectedSection) ||
-        (selectedCategory &&
-          catId?.toLowerCase() === selectedCategory.toLowerCase());
+      // Determine whether this section belongs to the currently selected ticket
+      const selTicket = selectedTicketId
+        ? tickets.find((t) => t.id === selectedTicketId)
+        : null;
+      const isSelected = selTicket
+        ? isCategoryOnlyTicket(selTicket)
+          ? !!catId && isTicketMatchingCategory(selTicket, catId)
+          : isTicketMatchingSection(selTicket, secId, catId)
+        : false;
 
       if (isSelected) {
         paintSection(sectionEl, "selected");
@@ -341,7 +313,7 @@ export function TixstockDynamicMap({
       root.removeEventListener("mouseover", onMouseOver);
       root.removeEventListener("mouseout", onMouseOut);
     };
-  }, [tickets, svgContent, selectedSection, selectedCategory]);
+  }, [tickets, svgContent, selectedTicketId]);
 
   /* ---------- Render --------------------------------------------------- */
 
@@ -368,21 +340,6 @@ export function TixstockDynamicMap({
 
   return (
     <div className="w-full">
-      {/* Reset filter button */}
-      {(selectedSection || selectedCategory) && (
-        <div className="mb-2 flex justify-end" dir="rtl">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedSection(null);
-              setSelectedCategory(null);
-            }}
-            className="rounded-md bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300 transition-colors"
-          >
-            הצג הכל
-          </button>
-        </div>
-      )}
       <div
         ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: svgContent }}
@@ -391,27 +348,4 @@ export function TixstockDynamicMap({
       />
     </div>
   );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Hook: filter tickets by the selected section / category            */
-/* ------------------------------------------------------------------ */
-
-export function useFilteredSourceTickets(
-  tickets: TixStockListing[],
-  selected: { section: string | null; category: string | null },
-): TixStockListing[] {
-  return useMemo(() => {
-    if (selected.category) {
-      return tickets.filter((t) =>
-        isTicketMatchingCategory(t, selected.category!),
-      );
-    }
-    if (selected.section) {
-      return tickets.filter((t) =>
-        isTicketMatchingSection(t, selected.section!),
-      );
-    }
-    return tickets;
-  }, [tickets, selected]);
 }

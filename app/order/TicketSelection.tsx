@@ -10,7 +10,7 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
 import type { EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
-import { TixstockDynamicMap, useFilteredSourceTickets } from "@/components/TixstockDynamicMap";
+import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import { eventTicketToListing, type TixStockListing } from "@/lib/tixstock-map";
 
 export const TicketSelection = () => {
@@ -21,10 +21,6 @@ export const TicketSelection = () => {
     undefined
   );
   const [hoveredTicket, setHoveredTicket] = useState<TixStockListing | null>(null);
-  const [sectionFilter, setSectionFilter] = useState<{
-    section: string | null;
-    category: string | null;
-  }>({ section: null, category: null });
   /** IDs of tickets whose category+section match something on the SVG map */
   const [matchedTicketIds, setMatchedTicketIds] = useState<Set<string> | null>(null);
 
@@ -106,7 +102,7 @@ export const TicketSelection = () => {
     return () => clearTimeout(timer); // Cleanup timeout if component unmounts
   }, [matches]); // Add matches as dependency
 
-  const handleTicketSelect = (ticket: {
+  const handleTicketSelect = useCallback((ticket: {
     id: string;
     category: string;
     price: number;
@@ -132,7 +128,7 @@ export const TicketSelection = () => {
       quantity: numberOfEventTickets,
     });
     setSelectedTicket(ticket.id);
-  };
+  }, [availableTickets, numberOfEventTickets, setEventTicket]);
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
@@ -151,12 +147,22 @@ export const TicketSelection = () => {
     [availableTickets],
   );
 
-  /** Stable callback for TixstockDynamicMap */
-  const handleSectionFilterChange = useCallback(
-    (filter: { section: string | null; category: string | null }) => {
-      setSectionFilter(filter);
+  /** Stable callback for TixstockDynamicMap — clicking a section selects
+   *  the best matching ticket, just like clicking it in the list. */
+  const handleMapTicketSelect = useCallback(
+    (ticketId: string) => {
+      const ticket = availableTickets.find((t) => t.id === ticketId);
+      if (ticket) {
+        handleTicketSelect({
+          id: ticket.id,
+          price: ticket.price,
+          category: ticket.category,
+          vendor: ticket.vendor,
+          description: ticket.description,
+        });
+      }
     },
-    [],
+    [availableTickets, handleTicketSelect],
   );
 
   /** Stable callback — receives the set of ticket IDs that match the map.
@@ -173,30 +179,17 @@ export const TicketSelection = () => {
     [],
   );
 
-  /** Tickets filtered by the currently-selected map section */
-  const filteredListings = useFilteredSourceTickets(
-    tixStockListings,
-    sectionFilter,
-  );
-
   /** Map the filtered TixStock listings back to EventTickets */
   const displayedTickets: EventTicket[] = useMemo(() => {
     if (!isTxEvent) return availableTickets;
 
-    // 1. Remove tickets that don't match any section/category on the map
-    let tickets = availableTickets;
+    // Remove tickets that don't match any section/category on the map
     if (matchedTicketIds) {
-      tickets = tickets.filter((t) => matchedTicketIds.has(t.id));
+      return availableTickets.filter((t) => matchedTicketIds.has(t.id));
     }
 
-    // Apply section/category filter from map click
-    if (sectionFilter.section || sectionFilter.category) {
-      const filteredIds = new Set(filteredListings.map((l) => l.id));
-      tickets = tickets.filter((t) => filteredIds.has(t.id));
-    }
-
-    return tickets;
-  }, [isTxEvent, availableTickets, matchedTicketIds, filteredListings, sectionFilter]);
+    return availableTickets;
+  }, [isTxEvent, availableTickets, matchedTicketIds]);
 
   return (
     <div>
@@ -226,7 +219,7 @@ export const TicketSelection = () => {
                   tickets={tixStockListings}
                   hoveredTicket={hoveredTicket}
                   selectedTicketId={selectedTicket ?? null}
-                  onSectionFilterChange={handleSectionFilterChange}
+                  onTicketSelect={handleMapTicketSelect}
                   onMatchedTicketIds={handleMatchedTicketIds}
                 />
               </div>
@@ -236,7 +229,7 @@ export const TicketSelection = () => {
                   tickets={tixStockListings}
                   hoveredTicket={hoveredTicket}
                   selectedTicketId={selectedTicket ?? null}
-                  onSectionFilterChange={handleSectionFilterChange}
+                  onTicketSelect={handleMapTicketSelect}
                   onMatchedTicketIds={handleMatchedTicketIds}
                 />
               </div>
