@@ -230,6 +230,61 @@ export const centerSectionLabels = (container: HTMLElement): void => {
 };
 
 /* ------------------------------------------------------------------ */
+/*  SVG pre-painting                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pre-paint the SVG string so sections have correct fill/stroke from
+ * the moment they are injected into the DOM via `dangerouslySetInnerHTML`.
+ *
+ * This eliminates the flash of unstyled content that occurs when painting
+ * relies on effects / layout effects, which may not fire reliably in all
+ * environments (e.g. SSG pages on Vercel).
+ *
+ * Only applies the static "available" / "inactive" styles.
+ * Dynamic states (hover, selected) are handled by the component's
+ * runtime effects.
+ */
+export const prePaintSvg = (
+  svgHtml: string,
+  tickets: TixStockListing[],
+): string => {
+  if (!svgHtml || typeof DOMParser === "undefined") return svgHtml;
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgHtml, "image/svg+xml");
+    const svg = doc.querySelector("svg");
+    if (!svg) return svgHtml;
+
+    const sectionEls = Array.from(svg.querySelectorAll("[data-section]"));
+
+    for (const el of sectionEls) {
+      const secId = el.getAttribute("data-section") || "";
+      const catId = getCategoryIdFromSectionEl(el);
+
+      const hasMatchingTicket = tickets.some((t) => {
+        if (isCategoryOnlyTicket(t)) {
+          return !!catId && isTicketMatchingCategory(t, catId);
+        }
+        return isTicketMatchingSection(t, secId, catId);
+      });
+
+      if (hasMatchingTicket) {
+        paintSection(el, "available");
+      } else {
+        paintSection(el, "inactive");
+      }
+    }
+
+    return svg.outerHTML;
+  } catch (e) {
+    console.error("[prePaintSvg] Failed to pre-paint SVG:", e);
+    return svgHtml;
+  }
+};
+
+/* ------------------------------------------------------------------ */
 /*  Duplicate section cleanup                                          */
 /* ------------------------------------------------------------------ */
 

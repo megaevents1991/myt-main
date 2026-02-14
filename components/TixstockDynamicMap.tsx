@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -17,6 +18,7 @@ import {
   isTicketMatchingCategory,
   isTicketMatchingSection,
   paintSection,
+  prePaintSvg,
   sanitizeAndPrepareSvg,
 } from "@/lib/tixstock-map";
 import { Loader2 } from "lucide-react";
@@ -106,6 +108,16 @@ export function TixstockDynamicMap({
     };
   }, [mapUrl]);
 
+  /* ---------- Pre-paint SVG string before injection -------------------- */
+
+  // Pre-paint the SVG string with ticket availability so the map is
+  // correctly styled from the moment it enters the DOM.  This runs as
+  // a pure computation (useMemo) — no dependency on effects or refs.
+  const paintedSvg = useMemo(
+    () => (svgContent ? prePaintSvg(svgContent, tickets) : null),
+    [svgContent, tickets],
+  );
+
   /* ---------- 2 + 3 + 4. Painting & match reporting ------------------- */
 
   /** Extracted painting logic so it can be called from effects */
@@ -113,81 +125,78 @@ export function TixstockDynamicMap({
     const root = containerRef.current;
     if (!root || !svgContent) return;
 
-    // 2. Duplicate section cleanup (idempotent)
-    cleanupDuplicateSections(root);
+    try {
+      // Duplicate section cleanup (idempotent)
+      cleanupDuplicateSections(root);
 
-    // Centre section labels on their parent shapes (idempotent).
-    // Must run after DOM mount so getBBox() works.
-    centerSectionLabels(root);
+      // Centre section labels on their parent shapes (idempotent).
+      // Must run after DOM mount so getBBox() works.
+      centerSectionLabels(root);
 
-    const sectionEls = Array.from(root.querySelectorAll("[data-section]"));
+      const sectionEls = Array.from(root.querySelectorAll("[data-section]"));
 
-    // Reset all sections to their base colours
-    sectionEls.forEach((el) => paintSection(el, "base"));
+      // Reset all sections to their base colours
+      sectionEls.forEach((el) => paintSection(el, "base"));
 
-    // 7. Colour sections: available (has tickets) or inactive (light border only)
-    sectionEls.forEach((el) => {
-      const secId = el.getAttribute("data-section") || "";
-      const catId = getCategoryIdFromSectionEl(el);
+      // Colour sections: available (has tickets) or inactive (light border only)
+      sectionEls.forEach((el) => {
+        const secId = el.getAttribute("data-section") || "";
+        const catId = getCategoryIdFromSectionEl(el);
 
-      const hasMatchingTicket = tickets.some((t) => {
-        if (isCategoryOnlyTicket(t)) {
-          return !!catId && isTicketMatchingCategory(t, catId);
+        const hasMatchingTicket = tickets.some((t) => {
+          if (isCategoryOnlyTicket(t)) {
+            return !!catId && isTicketMatchingCategory(t, catId);
+          }
+          return isTicketMatchingSection(t, secId, catId);
+        });
+
+        if (hasMatchingTicket) {
+          paintSection(el, "available");
+        } else {
+          paintSection(el, "inactive");
         }
-        return isTicketMatchingSection(t, secId, catId);
       });
 
-      if (hasMatchingTicket) {
-        paintSection(el, "available");
-      } else {
-        paintSection(el, "inactive");
-      }
-    });
+      // Highlight the section of the currently selected ticket
+      if (selectedTicketId) {
+        const selTicket = tickets.find((t) => t.id === selectedTicketId);
+        if (selTicket) {
+          sectionEls.forEach((el) => {
+            const sec = el.getAttribute("data-section") || "";
+            const cat = getCategoryIdFromSectionEl(el);
 
-    // 4. Highlight the section of the currently selected ticket
-    if (selectedTicketId) {
-      const selTicket = tickets.find((t) => t.id === selectedTicketId);
-      if (selTicket) {
+            const match = isCategoryOnlyTicket(selTicket)
+              ? !!cat && isTicketMatchingCategory(selTicket, cat)
+              : isTicketMatchingSection(selTicket, sec, cat);
+
+            if (match) paintSection(el, "selected");
+          });
+        }
+      }
+
+      // Hover highlight (overrides selection)
+      if (hoveredTicket) {
         sectionEls.forEach((el) => {
           const sec = el.getAttribute("data-section") || "";
           const cat = getCategoryIdFromSectionEl(el);
 
-          const match = isCategoryOnlyTicket(selTicket)
-            ? !!cat && isTicketMatchingCategory(selTicket, cat)
-            : isTicketMatchingSection(selTicket, sec, cat);
+          const match = isCategoryOnlyTicket(hoveredTicket)
+            ? !!cat && isTicketMatchingCategory(hoveredTicket, cat)
+            : isTicketMatchingSection(hoveredTicket, sec, cat);
 
-          if (match) paintSection(el, "selected");
+          if (match) paintSection(el, "hover");
         });
       }
-    }
-
-    // Hover highlight (overrides selection)
-    if (hoveredTicket) {
-      sectionEls.forEach((el) => {
-        const sec = el.getAttribute("data-section") || "";
-        const cat = getCategoryIdFromSectionEl(el);
-
-        const match = isCategoryOnlyTicket(hoveredTicket)
-          ? !!cat && isTicketMatchingCategory(hoveredTicket, cat)
-          : isTicketMatchingSection(hoveredTicket, sec, cat);
-
-        if (match) paintSection(el, "hover");
-      });
+    } catch (e) {
+      console.error("[TixstockDynamicMap] repaint error:", e);
     }
   }, [svgContent, hoveredTicket, selectedTicketId, tickets]);
 
-  // Paint synchronously before the browser renders the frame so the
-  // user never sees the raw/unstyled SVG.  `useLayoutEffect` blocks
-  // the browser paint until it finishes; combined with the callback
-  // ref `containerRef.current` is guaranteed to be set by now.
+  // Run repaint for dynamic changes (selection, hover, label centering).
+  // The initial available/inactive painting is already baked into
+  // `paintedSvg`, so even if this effect is delayed the map looks correct.
   useLayoutEffect(() => {
     repaint();
-
-    // After the first successful paint, make the container visible.
-    const root = containerRef.current;
-    if (root && svgContent) {
-      root.style.visibility = "visible";
-    }
   }, [repaint, domReady]);
 
   // Report which tickets have a map match
@@ -336,14 +345,13 @@ export function TixstockDynamicMap({
     );
   }
 
-  if (!svgContent) return null;
+  if (!paintedSvg) return null;
 
   return (
     <div className="w-full">
       <div
         ref={setContainerRef}
-        dangerouslySetInnerHTML={{ __html: svgContent }}
-        style={{ visibility: "hidden" }}
+        dangerouslySetInnerHTML={{ __html: paintedSvg }}
         className="rounded-lg overflow-hidden [&_svg]:w-full [&_svg]:h-auto"
       />
     </div>
