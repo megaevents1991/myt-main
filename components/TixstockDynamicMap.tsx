@@ -3,12 +3,14 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import {
   type TixStockListing,
+  centerSectionLabels,
   cleanupDuplicateSections,
   doesTicketMatchAnyMapSection,
   getCategoryIdFromSectionEl,
@@ -135,6 +137,10 @@ export function TixstockDynamicMap({
     // 2. Duplicate section cleanup (idempotent)
     cleanupDuplicateSections(root);
 
+    // Centre section labels on their parent shapes (idempotent).
+    // Must run after DOM mount so getBBox() works.
+    centerSectionLabels(root);
+
     const sectionEls = Array.from(root.querySelectorAll("[data-section]"));
 
     // Reset all sections to their base colours
@@ -206,10 +212,18 @@ export function TixstockDynamicMap({
     }
   }, [svgContent, hoveredTicket, selectedSection, selectedCategory, selectedTicketId, tickets]);
 
-  // Repaint whenever the DOM is ready or any paint-relevant state changes.
-  // `domReady` ensures the effect runs after the container div mounts.
-  useEffect(() => {
+  // Paint synchronously before the browser renders the frame so the
+  // user never sees the raw/unstyled SVG.  `useLayoutEffect` blocks
+  // the browser paint until it finishes; combined with the callback
+  // ref `containerRef.current` is guaranteed to be set by now.
+  useLayoutEffect(() => {
     repaint();
+
+    // After the first successful paint, make the container visible.
+    const root = containerRef.current;
+    if (root && svgContent) {
+      root.style.visibility = "visible";
+    }
   }, [repaint, domReady]);
 
   // Report which tickets have a map match
@@ -372,6 +386,7 @@ export function TixstockDynamicMap({
       <div
         ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: svgContent }}
+        style={{ visibility: "hidden" }}
         className="rounded-lg overflow-hidden [&_svg]:w-full [&_svg]:h-auto"
       />
     </div>

@@ -174,7 +174,59 @@ export const sanitizeAndPrepareSvg = (rawSvg: string): string | null => {
   svg.setAttribute("height", "100%");
   svg.removeAttribute("style");
 
+  // Override SVG font-families to a system sans-serif (the original
+  // SVG typically references fonts like DMSans-Medium / DMSans-Bold
+  // which aren't loaded on the page, causing fallback metrics to
+  // shift labels.)  Also set text-anchor: middle on section labels so
+  // the runtime re-centering in `centerSectionLabels` works correctly.
+  const styleEl = svg.querySelector("style");
+  if (styleEl) {
+    styleEl.textContent =
+      (styleEl.textContent || "").replace(
+        /font-family:\s*'[^']+'/g,
+        "font-family: Arial, Helvetica, sans-serif",
+      ) +
+      "\n.section-label { text-anchor: middle; dominant-baseline: central; }";
+  }
+
   return svg.outerHTML;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Section-label centering                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Re-centre every `.section-label` text element on its parent
+ * section's `.block` shape.  Must be called **after** the SVG is
+ * mounted in the live DOM so `getBBox()` returns real geometry.
+ *
+ * Works in tandem with the CSS rule
+ *   `.section-label { text-anchor: middle; dominant-baseline: central; }`
+ * injected during sanitisation.
+ */
+export const centerSectionLabels = (container: HTMLElement): void => {
+  const sectionEls = container.querySelectorAll("[data-section]");
+
+  for (const sec of Array.from(sectionEls)) {
+    const block = sec.querySelector(".block") as SVGGraphicsElement | null;
+    const label = sec.querySelector(".section-label") as SVGTextElement | null;
+    if (!block || !label) continue;
+
+    try {
+      const bbox = block.getBBox();
+      const cx = bbox.x + bbox.width / 2;
+      const cy = bbox.y + bbox.height / 2;
+
+      // Position the text at the shape's centre.
+      // Remove the matrix transform and set x/y directly.
+      label.removeAttribute("transform");
+      label.setAttribute("x", String(cx));
+      label.setAttribute("y", String(cy));
+    } catch {
+      // getBBox can throw if the element isn't rendered (e.g. display:none)
+    }
+  }
 };
 
 /* ------------------------------------------------------------------ */
