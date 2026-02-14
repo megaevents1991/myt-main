@@ -6,7 +6,8 @@ export type EventType =
   | "sports_event"
   | "music_event"
   | "sports_event_dynamic"
-  | "music_live_event_dynamic";
+  | "music_live_event_dynamic"
+  | "tx_event";
 
 export type Event = {
   id: number;
@@ -111,7 +112,7 @@ export type TimeRange = [
   {
     hours: number;
     minutes: number;
-  }
+  },
 ];
 
 export type AffiliateTracking = {
@@ -165,7 +166,7 @@ export type HotelSearchCriteria =
         "Hostel",
         "BNB",
         "Glamping",
-        "Apart-hotel"
+        "Apart-hotel",
       ];
     }
   | {
@@ -212,21 +213,21 @@ export type FlightSearchCriteria =
     };
 
 export type VipConfig = {
-  enabled: boolean
-  details: string
-}
+  enabled: boolean;
+  details: string;
+};
 
 export type EventTicket = {
-  category: string
-  price: number
-  id: string
-  description: string
-  colorOnTheMap: string
-  vendor?: string
-  eid?: string
-  available?: boolean
-  vip?: VipConfig
-}
+  category: string;
+  price: number;
+  id: string;
+  description: string;
+  colorOnTheMap: string;
+  vendor?: string;
+  eid?: string;
+  available?: boolean;
+  vip?: VipConfig;
+};
 
 export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   quantity: number;

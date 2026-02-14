@@ -1,7 +1,7 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
@@ -10,6 +10,8 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
 import type { EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
+import { TixstockDynamicMap, useFilteredSourceTickets } from "@/components/TixstockDynamicMap";
+import { eventTicketToListing, type TixStockListing } from "@/lib/tixstock-map";
 
 export const TicketSelection = () => {
   const { setEventTicket, event } = useContext(OrderContext);
@@ -18,8 +20,16 @@ export const TicketSelection = () => {
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
   );
+  const [hoveredTicket, setHoveredTicket] = useState<TixStockListing | null>(null);
+  const [sectionFilter, setSectionFilter] = useState<{
+    section: string | null;
+    category: string | null;
+  }>({ section: null, category: null });
 
   const MAX_TICKETS = 9;
+
+  /** Is this a TixStock dynamic-map event? */
+  const isTxEvent = event?.type === "tx_event";
 
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
@@ -131,6 +141,37 @@ export const TicketSelection = () => {
     setNumberOfEventTickets(+value);
   };
 
+  // ── TixStock helpers ──────────────────────────────────────────
+
+  /** Convert EventTickets → TixStockListings for map consumption */
+  const tixStockListings: TixStockListing[] = useMemo(
+    () => availableTickets.map(eventTicketToListing),
+    [availableTickets],
+  );
+
+  /** Stable callback for TixstockDynamicMap */
+  const handleSectionFilterChange = useCallback(
+    (filter: { section: string | null; category: string | null }) => {
+      setSectionFilter(filter);
+    },
+    [],
+  );
+
+  /** Tickets filtered by the currently-selected map section */
+  const filteredListings = useFilteredSourceTickets(
+    tixStockListings,
+    sectionFilter,
+  );
+
+  /** Map the filtered TixStock listings back to EventTickets */
+  const displayedTickets: EventTicket[] = useMemo(() => {
+    if (!isTxEvent) return availableTickets;
+    if (!sectionFilter.section && !sectionFilter.category)
+      return availableTickets;
+    const filteredIds = new Set(filteredListings.map((l) => l.id));
+    return availableTickets.filter((t) => filteredIds.has(t.id));
+  }, [isTxEvent, availableTickets, filteredListings, sectionFilter]);
+
   return (
     <div>
       <div className="sr-only">
@@ -150,39 +191,64 @@ export const TicketSelection = () => {
           <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
         </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-4">
-          <Spoiler
-            className="w-full lg:hidden flex justify-center"
-            style={{ margin: 0 }}
-            maxHeight={90}
-            showLabel={<ChevronDownCircle fill="black" width={"100%"} aria-label="הרחב מפת האירוע" />}
-            controlRef={(ref) => {
-              ref?.setAttribute(
-                "style",
-                "left: 50%; transform: translate(-50%, -120%); color: white;"
-              );
-              ref?.setAttribute("aria-label", "הרחב מפת האירוע");
-            }}
-            hideLabel={<ChevronUpCircle fill="black" width={"100%"} aria-label="כווץ מפת האירוע" />}
-          >
-            <Image
-              className="rounded-lg"
-              width={600}
-              height={600}
-              priority={true}
-              src={event?.map_image_url || ""}
-              alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה`}
-            />
-          </Spoiler>
-          <div className="lg:w-[45%] hidden lg:block">
-            <Image
-              className="rounded-lg w-auto h-auto w-full"
-              width={600}
-              height={600}
-              priority={true}
-              src={event?.map_image_url || ""}
-              alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה ובלוקים`}
-            />
-          </div>
+          {isTxEvent ? (
+            /* ── TixStock dynamic SVG map ──────────────────────── */
+            <>
+              <div className="w-full lg:hidden">
+                <TixstockDynamicMap
+                  mapUrl={event?.map_image_url || ""}
+                  tickets={tixStockListings}
+                  hoveredTicket={hoveredTicket}
+                  onSectionFilterChange={handleSectionFilterChange}
+                />
+              </div>
+              <div className="lg:w-[45%] hidden lg:block">
+                <TixstockDynamicMap
+                  mapUrl={event?.map_image_url || ""}
+                  tickets={tixStockListings}
+                  hoveredTicket={hoveredTicket}
+                  onSectionFilterChange={handleSectionFilterChange}
+                />
+              </div>
+            </>
+          ) : (
+            /* ── Legacy static image map ──────────────────────── */
+            <>
+              <Spoiler
+                className="w-full lg:hidden flex justify-center"
+                style={{ margin: 0 }}
+                maxHeight={90}
+                showLabel={<ChevronDownCircle fill="black" width={"100%"} aria-label="הרחב מפת האירוע" />}
+                controlRef={(ref) => {
+                  ref?.setAttribute(
+                    "style",
+                    "left: 50%; transform: translate(-50%, -120%); color: white;"
+                  );
+                  ref?.setAttribute("aria-label", "הרחב מפת האירוע");
+                }}
+                hideLabel={<ChevronUpCircle fill="black" width={"100%"} aria-label="כווץ מפת האירוע" />}
+              >
+                <Image
+                  className="rounded-lg"
+                  width={600}
+                  height={600}
+                  priority={true}
+                  src={event?.map_image_url || ""}
+                  alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה`}
+                />
+              </Spoiler>
+              <div className="lg:w-[45%] hidden lg:block">
+                <Image
+                  className="rounded-lg w-auto h-auto w-full"
+                  width={600}
+                  height={600}
+                  priority={true}
+                  src={event?.map_image_url || ""}
+                  alt={`מפת אירוע ${event?.name || "לא ידוע"} - מיקומי הישיבה ובלוקים`}
+                />
+              </div>
+            </>
+          )}
           <div className="w-full lg:w-[55%]" dir="ltr">
             <ScrollArea h={"60vh"}>
               {errorMessage && (
@@ -211,7 +277,7 @@ export const TicketSelection = () => {
                     </Text>
                   </div>
                 ) : (
-                  [...availableTickets]
+                  [...displayedTickets]
                     .sort((a: EventTicket, b: EventTicket) => a.price - b.price)
                     .filter((ticket: EventTicket) => {
                       // Double-check: ensure ticket is still available before rendering
@@ -243,6 +309,19 @@ export const TicketSelection = () => {
                         price={ticket.price}
                         basePrice={cheapestTicket?.price ?? 0}
                         vip={ticket.vip}
+                        onMouseEnter={
+                          isTxEvent
+                            ? () =>
+                                setHoveredTicket(
+                                  eventTicketToListing(ticket)
+                                )
+                            : undefined
+                        }
+                        onMouseLeave={
+                          isTxEvent
+                            ? () => setHoveredTicket(null)
+                            : undefined
+                        }
                       />
                     ))
                 )}
