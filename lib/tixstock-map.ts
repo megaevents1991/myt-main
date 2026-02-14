@@ -26,7 +26,9 @@ export type TixStockListing = {
 /* ------------------------------------------------------------------ */
 
 export const TX_TICKET_COLOR = "rgb(5, 32, 60)";
-/** Base/available section fill — secondary DEFAULT */
+/** Light solid fill for sections with available tickets (opaque equivalent of ~20 % teal on white – avoids stacking artefacts from overlapping shapes) */
+export const TX_SECTION_FILL_LIGHT = "#D4E5E7";
+/** Base/available section stroke — secondary DEFAULT */
 export const TX_SECTION_FILL = "#277E89";
 /** Hover/highlighted stroke & text — secondary foreground */
 export const TX_HOVER_STROKE = "#F0F0F2";
@@ -34,8 +36,8 @@ export const TX_HOVER_STROKE = "#F0F0F2";
 export const TX_TEXT_SHADOW = "#000000";
 /** Slightly brighter teal for hover feedback */
 export const TX_HOVER_FILL = "#2F97A3";
-/** Darker teal for selected state */
-export const TX_SELECTED_FILL = "#1F6670";
+/** Stronger teal for selected state */
+export const TX_SELECTED_FILL = "#277E89";
 
 /* ------------------------------------------------------------------ */
 /*  String helpers                                                     */
@@ -157,42 +159,14 @@ export const sanitizeAndPrepareSvg = (rawSvg: string): string | null => {
     });
   });
 
-  // Enlarge tier-label font-size by 2 px
-  svg.querySelectorAll(".tier-label").forEach((label) => {
-    const svgLabel = label as SVGElement;
-    // Try inline style first
-    const inlineSize = parseFloat(svgLabel.style.fontSize || "");
-    if (!isNaN(inlineSize)) {
-      svgLabel.style.fontSize = `${inlineSize + 2}px`;
-      return;
-    }
-    // Try font-size attribute
-    const attrSize = parseFloat(label.getAttribute("font-size") || "");
-    if (!isNaN(attrSize)) {
-      label.setAttribute("font-size", `${attrSize + 2}`);
-      return;
-    }
-    // Font-size is likely set via CSS class (e.g. .st5 { font-size: 15px }).
-    // Use getComputedStyle when available, otherwise parse class rules from
-    // the embedded <style>.  Since we're in DOMParser (no computed styles),
-    // look for the class-based size in the <style> block.
-    const classes = Array.from(label.classList);
-    const styleEl = svg.querySelector("style");
-    if (styleEl && classes.length) {
-      const cssText = styleEl.textContent || "";
-      for (const cls of classes) {
-        const re = new RegExp(
-          `\\.${cls}\\s*\\{[^}]*font-size\\s*:\\s*([\\d.]+)px`,
-          "i",
-        );
-        const m = cssText.match(re);
-        if (m) {
-          const size = parseFloat(m[1]);
-          svgLabel.style.fontSize = `${size + 2}px`;
-          return;
-        }
-      }
-    }
+  // Remove tier-label elements (visual clutter on venue maps)
+  svg.querySelectorAll(".tier-label").forEach((el) => el.remove());
+
+  // Also remove standalone data-tier label elements that are NOT
+  // ancestor groups containing sections (i.e. only remove if the
+  // element has no [data-section] descendants).
+  svg.querySelectorAll("[data-tier]").forEach((el) => {
+    if (!el.querySelector("[data-section]")) el.remove();
   });
 
   // Make the SVG responsive
@@ -240,73 +214,116 @@ export const cleanupDuplicateSections = (container: HTMLElement): void => {
 /* ------------------------------------------------------------------ */
 
 /**
- * Paint a `[data-section]` group's `.block` children.
+ * Paint a `[data-section]` group.
  *
- * TixStock SVGs structure each section as:
- *   <g data-section="...">
- *     <polygon class="st6 block" />   ← the shape to colour
- *     <text class="section-label" />
- *   </g>
- *
- * The CSS class `.st6` sets `fill: none`, so we must use **inline
- * style** (`style.fill`) to override it.
+ * Fill is applied to `.block` children (or all shapes as fallback).
+ * Stroke is applied to **every** shape element inside the section so
+ * that border colour is always consistent (fixes sections whose
+ * outlines live in non-`.block` paths).
  *
  * mode:
- *  - "base"     → restore original fill (transparent)
- *  - "hover"    → brighter teal + light stroke (#F0F0F2)
- *  - "selected" → darker teal + light stroke
- *  - "available" → secondary teal (#277E89) at 70 % opacity
+ *  - "base"      → restore original styles
+ *  - "available"  → light solid teal fill + secondary stroke
+ *  - "hover"      → brighter teal + light stroke
+ *  - "selected"   → darker teal + light stroke
+ *  - "inactive"   → no fill change, subtle secondary-colour border
  */
+
+const SVG_SHAPE_SEL = "polygon, path, rect, circle, ellipse, polyline, line";
+
 export const paintSection = (
   el: Element,
-  mode: "base" | "hover" | "selected" | "available",
+  mode: "base" | "hover" | "selected" | "available" | "inactive",
 ): void => {
-  // Find the actual shape elements inside the section group
   const blocks = el.querySelectorAll(".block");
-  const targets = blocks.length > 0 ? Array.from(blocks) : [el];
+  const allShapes = Array.from(el.querySelectorAll(SVG_SHAPE_SEL));
 
-  for (const target of targets) {
+  // Fill targets: .block elements if present, otherwise all shapes
+  const fillTargets =
+    blocks.length > 0
+      ? Array.from(blocks)
+      : allShapes.length > 0
+        ? allShapes
+        : [el];
+
+  // Stroke targets: ALL shapes so borders are always overridden
+  const strokeTargets = allShapes.length > 0 ? allShapes : [el];
+
+  // Deduplicate for persisting originals
+  const allTargets = [...new Set<Element>([...fillTargets, ...strokeTargets])];
+
+  // Persist original inline styles the first time we touch an element
+  for (const target of allTargets) {
     const node = target as HTMLElement;
     const svgEl = target as unknown as SVGElement;
-
-    // Persist the original inline fill the first time we touch the element
     if (!node.dataset.origFill) {
       node.dataset.origFill = svgEl.style.fill || "";
     }
     if (!node.dataset.origStroke) {
       node.dataset.origStroke = svgEl.style.stroke || "";
     }
-
-    if (mode === "base") {
-      const orig = node.dataset.origFill || "";
-      svgEl.style.fill = orig;
-      svgEl.style.stroke = node.dataset.origStroke || "";
-      svgEl.style.opacity = "1";
-      svgEl.style.cursor = "";
-      continue;
+    if (!node.dataset.origStrokeOpacity) {
+      node.dataset.origStrokeOpacity = svgEl.style.strokeOpacity || "";
     }
+  }
 
-    if (mode === "available") {
-      svgEl.style.fill = TX_SECTION_FILL;
-      svgEl.style.stroke = TX_SECTION_FILL;
-      svgEl.style.opacity = "0.7";
-      svgEl.style.cursor = "pointer";
-      continue;
+  /* ---- fill ---- */
+  for (const target of fillTargets) {
+    const node = target as HTMLElement;
+    const svgEl = target as unknown as SVGElement;
+
+    switch (mode) {
+      case "base":
+      case "inactive":
+        svgEl.style.fill = node.dataset.origFill || "";
+        svgEl.style.opacity = "1";
+        svgEl.style.cursor = "";
+        break;
+      case "available":
+        svgEl.style.fill = TX_SECTION_FILL_LIGHT;
+        svgEl.style.opacity = "1";
+        svgEl.style.cursor = "pointer";
+        break;
+      case "hover":
+        svgEl.style.fill = TX_HOVER_FILL;
+        svgEl.style.opacity = "1";
+        svgEl.style.cursor = "pointer";
+        break;
+      case "selected":
+        svgEl.style.fill = TX_SELECTED_FILL;
+        svgEl.style.opacity = "1";
+        svgEl.style.cursor = "pointer";
+        break;
     }
+  }
 
-    if (mode === "hover") {
-      svgEl.style.fill = TX_HOVER_FILL;
-      svgEl.style.stroke = TX_HOVER_STROKE;
-      svgEl.style.opacity = "1";
-      svgEl.style.cursor = "pointer";
-      continue;
+  /* ---- stroke ---- */
+  for (const target of strokeTargets) {
+    const node = target as HTMLElement;
+    const svgEl = target as unknown as SVGElement;
+
+    switch (mode) {
+      case "base":
+        svgEl.style.stroke = node.dataset.origStroke || "";
+        svgEl.style.strokeOpacity = node.dataset.origStrokeOpacity || "";
+        break;
+      case "available":
+        svgEl.style.stroke = TX_SECTION_FILL;
+        svgEl.style.strokeOpacity = "";
+        break;
+      case "hover":
+        svgEl.style.stroke = TX_HOVER_STROKE;
+        svgEl.style.strokeOpacity = "";
+        break;
+      case "selected":
+        svgEl.style.stroke = TX_HOVER_STROKE;
+        svgEl.style.strokeOpacity = "";
+        break;
+      case "inactive":
+        svgEl.style.stroke = TX_SECTION_FILL;
+        svgEl.style.strokeOpacity = "0.35";
+        break;
     }
-
-    // selected
-    svgEl.style.fill = TX_SELECTED_FILL;
-    svgEl.style.stroke = TX_HOVER_STROKE;
-    svgEl.style.opacity = "1";
-    svgEl.style.cursor = "pointer";
   }
 
   // Style the section-label text on hover/selected
@@ -348,3 +365,29 @@ export const eventTicketToListing = (ticket: {
     section: ticket.description,
   },
 });
+
+/* ------------------------------------------------------------------ */
+/*  Map-match validation                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Check whether a ticket can be matched to *any* section/category on
+ * the loaded SVG map.  Used to filter out tickets that have no
+ * corresponding visual representation.
+ */
+export const doesTicketMatchAnyMapSection = (
+  ticket: TixStockListing,
+  container: HTMLElement,
+): boolean => {
+  const sectionEls = Array.from(container.querySelectorAll("[data-section]"));
+
+  return sectionEls.some((el) => {
+    const secId = el.getAttribute("data-section") || "";
+    const catId = getCategoryIdFromSectionEl(el);
+
+    if (isCategoryOnlyTicket(ticket)) {
+      return !!catId && isTicketMatchingCategory(ticket, catId);
+    }
+    return isTicketMatchingSection(ticket, secId, catId);
+  });
+};

@@ -3,7 +3,6 @@
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +10,7 @@ import React, {
 import {
   type TixStockListing,
   cleanupDuplicateSections,
+  doesTicketMatchAnyMapSection,
   getCategoryIdFromSectionEl,
   isCategoryOnlyTicket,
   isTicketMatchingCategory,
@@ -31,11 +31,15 @@ type Props = {
   tickets: TixStockListing[];
   /** Ticket the user is currently hovering over in the list */
   hoveredTicket: TixStockListing | null;
+  /** The currently-selected ticket (from the ticket list) */
+  selectedTicketId: string | null;
   /** Callback when the user clicks a section on the map */
   onSectionFilterChange?: (filter: {
     section: string | null;
     category: string | null;
   }) => void;
+  /** Called with the set of ticket IDs that have a map match */
+  onMatchedTicketIds?: (ids: Set<string>) => void;
 };
 
 /* ------------------------------------------------------------------ */
@@ -46,7 +50,9 @@ export function TixstockDynamicMap({
   mapUrl,
   tickets,
   hoveredTicket,
+  selectedTicketId,
   onSectionFilterChange,
+  onMatchedTicketIds,
 }: Props) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +60,16 @@ export function TixstockDynamicMap({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Monotonically increasing counter – bumped every time the ref callback
+  // fires (container div is mounted).  Used as a dependency in effects
+  // that need to know "the DOM node is ready".
+  const [domReady, setDomReady] = useState(0);
+
+  /** Callback ref: fires synchronously when React attaches the div. */
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node;
+    if (node) setDomReady((n) => n + 1);
+  }, []);
 
   /* ---------- 1. SVG parsing from URL --------------------------------- */
 
@@ -109,13 +125,14 @@ export function TixstockDynamicMap({
     });
   }, [selectedSection, selectedCategory, onSectionFilterChange]);
 
-  /* ---------- 2 + 3 + 4. Cleanup, font enlarge, highlighting ---------- */
+  /* ---------- 2 + 3 + 4. Painting & match reporting ------------------- */
 
-  useLayoutEffect(() => {
+  /** Extracted painting logic so it can be called from effects */
+  const repaint = useCallback(() => {
     const root = containerRef.current;
     if (!root || !svgContent) return;
 
-    // 2. Duplicate section cleanup
+    // 2. Duplicate section cleanup (idempotent)
     cleanupDuplicateSections(root);
 
     const sectionEls = Array.from(root.querySelectorAll("[data-section]"));
@@ -123,7 +140,7 @@ export function TixstockDynamicMap({
     // Reset all sections to their base colours
     sectionEls.forEach((el) => paintSection(el, "base"));
 
-    // 7. Colour available sections with the ticket colour
+    // 7. Colour sections: available (has tickets) or inactive (light border only)
     sectionEls.forEach((el) => {
       const secId = el.getAttribute("data-section") || "";
       const catId = getCategoryIdFromSectionEl(el);
@@ -137,10 +154,29 @@ export function TixstockDynamicMap({
 
       if (hasMatchingTicket) {
         paintSection(el, "available");
+      } else {
+        paintSection(el, "inactive");
       }
     });
 
-    // 4. Click-selected highlight (overrides base colouring)
+    // 4. Highlight the section of the currently selected ticket
+    if (selectedTicketId) {
+      const selTicket = tickets.find((t) => t.id === selectedTicketId);
+      if (selTicket) {
+        sectionEls.forEach((el) => {
+          const sec = el.getAttribute("data-section") || "";
+          const cat = getCategoryIdFromSectionEl(el);
+
+          const match = isCategoryOnlyTicket(selTicket)
+            ? !!cat && isTicketMatchingCategory(selTicket, cat)
+            : isTicketMatchingSection(selTicket, sec, cat);
+
+          if (match) paintSection(el, "selected");
+        });
+      }
+    }
+
+    // 4b. Click-selected map section highlight (overrides ticket selection)
     if (selectedCategory) {
       sectionEls.forEach((el) => {
         const cat = getCategoryIdFromSectionEl(el);
@@ -168,7 +204,25 @@ export function TixstockDynamicMap({
         if (match) paintSection(el, "hover");
       });
     }
-  }, [svgContent, hoveredTicket, selectedSection, selectedCategory, tickets]);
+  }, [svgContent, hoveredTicket, selectedSection, selectedCategory, selectedTicketId, tickets]);
+
+  // Repaint whenever the DOM is ready or any paint-relevant state changes.
+  // `domReady` ensures the effect runs after the container div mounts.
+  useEffect(() => {
+    repaint();
+  }, [repaint, domReady]);
+
+  // Report which tickets have a map match
+  useEffect(() => {
+    const root = containerRef.current;
+    if (root && svgContent && onMatchedTicketIds) {
+      const matched = new Set<string>();
+      for (const t of tickets) {
+        if (doesTicketMatchAnyMapSection(t, root)) matched.add(t.id);
+      }
+      onMatchedTicketIds(matched);
+    }
+  }, [svgContent, tickets, onMatchedTicketIds, domReady]);
 
   /* ---------- 4. Click handler ---------------------------------------- */
 
@@ -209,7 +263,7 @@ export function TixstockDynamicMap({
 
     root.addEventListener("click", onClick);
     return () => root.removeEventListener("click", onClick);
-  }, [tickets]);
+  }, [tickets, svgContent]);
 
   /* ---------- Pointer-hover on the SVG map itself ---------------------- */
 
@@ -273,7 +327,7 @@ export function TixstockDynamicMap({
       root.removeEventListener("mouseover", onMouseOver);
       root.removeEventListener("mouseout", onMouseOut);
     };
-  }, [tickets, selectedSection, selectedCategory]);
+  }, [tickets, svgContent, selectedSection, selectedCategory]);
 
   /* ---------- Render --------------------------------------------------- */
 
@@ -316,7 +370,7 @@ export function TixstockDynamicMap({
         </div>
       )}
       <div
-        ref={containerRef}
+        ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: svgContent }}
         className="rounded-lg overflow-hidden [&_svg]:w-full [&_svg]:h-auto"
       />

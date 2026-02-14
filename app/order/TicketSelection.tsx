@@ -25,6 +25,8 @@ export const TicketSelection = () => {
     section: string | null;
     category: string | null;
   }>({ section: null, category: null });
+  /** IDs of tickets whose category+section match something on the SVG map */
+  const [matchedTicketIds, setMatchedTicketIds] = useState<Set<string> | null>(null);
 
   const MAX_TICKETS = 9;
 
@@ -157,6 +159,20 @@ export const TicketSelection = () => {
     [],
   );
 
+  /** Stable callback — receives the set of ticket IDs that match the map.
+   *  Only triggers a state update if the actual IDs changed. */
+  const handleMatchedTicketIds = useCallback(
+    (ids: Set<string>) => {
+      setMatchedTicketIds((prev) => {
+        if (prev && prev.size === ids.size && [...ids].every((id) => prev.has(id))) {
+          return prev; // identical content → keep old reference, skip re-render
+        }
+        return ids;
+      });
+    },
+    [],
+  );
+
   /** Tickets filtered by the currently-selected map section */
   const filteredListings = useFilteredSourceTickets(
     tixStockListings,
@@ -166,11 +182,21 @@ export const TicketSelection = () => {
   /** Map the filtered TixStock listings back to EventTickets */
   const displayedTickets: EventTicket[] = useMemo(() => {
     if (!isTxEvent) return availableTickets;
-    if (!sectionFilter.section && !sectionFilter.category)
-      return availableTickets;
-    const filteredIds = new Set(filteredListings.map((l) => l.id));
-    return availableTickets.filter((t) => filteredIds.has(t.id));
-  }, [isTxEvent, availableTickets, filteredListings, sectionFilter]);
+
+    // 1. Remove tickets that don't match any section/category on the map
+    let tickets = availableTickets;
+    if (matchedTicketIds) {
+      tickets = tickets.filter((t) => matchedTicketIds.has(t.id));
+    }
+
+    // Apply section/category filter from map click
+    if (sectionFilter.section || sectionFilter.category) {
+      const filteredIds = new Set(filteredListings.map((l) => l.id));
+      tickets = tickets.filter((t) => filteredIds.has(t.id));
+    }
+
+    return tickets;
+  }, [isTxEvent, availableTickets, matchedTicketIds, filteredListings, sectionFilter]);
 
   return (
     <div>
@@ -199,7 +225,9 @@ export const TicketSelection = () => {
                   mapUrl={event?.map_image_url || ""}
                   tickets={tixStockListings}
                   hoveredTicket={hoveredTicket}
+                  selectedTicketId={selectedTicket ?? null}
                   onSectionFilterChange={handleSectionFilterChange}
+                  onMatchedTicketIds={handleMatchedTicketIds}
                 />
               </div>
               <div className="lg:w-[45%] hidden lg:block">
@@ -207,7 +235,9 @@ export const TicketSelection = () => {
                   mapUrl={event?.map_image_url || ""}
                   tickets={tixStockListings}
                   hoveredTicket={hoveredTicket}
+                  selectedTicketId={selectedTicket ?? null}
                   onSectionFilterChange={handleSectionFilterChange}
+                  onMatchedTicketIds={handleMatchedTicketIds}
                 />
               </div>
             </>
