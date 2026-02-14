@@ -95,5 +95,5 @@ export function useAffiliate() {
 
   useEffect(() => {
     orderStage("VISIT", { path: pathname });
-  }, [searchParams]);
+  }, [searchParams, pathname]);
 }

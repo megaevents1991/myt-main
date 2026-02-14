@@ -117,6 +117,7 @@ export default function OrderReview() {
       // Cleanup on unmount, clear passengers in context to avoid stale data
       setPassengersContext(undefined);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [openModal, setOpenModal] = useState(true);
@@ -256,7 +257,7 @@ export default function OrderReview() {
     return () => {
       isMounted = false;
     };
-  }, [finalPurchasePrice, finalPurchasePriceILSCalc]);
+  }, [finalPurchasePrice, finalPurchasePriceILSCalc, event]);
 
   // Scroll listener for sticky footer
   useEffect(() => {
@@ -508,6 +509,7 @@ export default function OrderReview() {
       email: !!passenger.email,
     }));
     setTouched(newTouched);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passengers]);
 
   const handleTimeout = useCallback(() => {

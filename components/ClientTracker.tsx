@@ -14,7 +14,7 @@ export default function ClientTracker() {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   return null; // No DOM output
 }

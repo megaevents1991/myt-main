@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Timer } from "@/components/ui/Timer";
 import { LuAlarmClockCheck } from "react-icons/lu";
 
@@ -27,11 +28,13 @@ export const MobileHeader = ({
       {saving > 0 && !skipHotel && (
         <div className="w-full bg-[#EBFFEE] mt-3 p-2 rounded-xl flex items-center justify-center">
           <span className="">וואו! חסכת <span className="font-bold">${saving}</span> עם החבילה הזאת</span>
-          <img
-        src="/Union.svg"
-        alt="Package Deal Icon"
-        className="w-6 h-6 ml-2"
-          />
+        <Image
+          src="/Union.svg"
+          alt="Package Deal Icon"
+          width={24}
+          height={24}
+          className="ml-2"
+        />
         </div>
       )}
     </>

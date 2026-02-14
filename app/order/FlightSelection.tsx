@@ -107,9 +107,13 @@ export const FlightSelection = () => {
   useEffect(() => {
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
     fetchFlights({ adults: numberOfEventTickets });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch hotels when the orderFlight dates or number of adults change
+  const departureDateKey = dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD");
+  const returnDateKey = dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD");
+
   useEffect(() => {
     if (event?.location?.country_code === "US") return;
     if (orderFlight?.id) {
@@ -119,11 +123,8 @@ export const FlightSelection = () => {
         location: event.location,
       });
     }
-  }, [
-    dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD"),
-    dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD"),
-    planeTickets.adults,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departureDateKey, returnDateKey, planeTickets.adults]);
 
   // First time fetching hotels, only if no hotels are already fetched
   useEffect(() => {
@@ -135,10 +136,12 @@ export const FlightSelection = () => {
         location: event.location,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderFlight?.id]);
 
   useEffect(() => {
     setSelectedPlaneTicketsFilters({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -293,7 +296,7 @@ export const FlightSelection = () => {
     (value: string) => {
       setFlight(filteredFlights.find((f) => f.id === value));
     },
-    [filteredFlights]
+    [filteredFlights, setFlight]
   );
 
   const handleFlightSearchCriteriaChange = ({

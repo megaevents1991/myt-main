@@ -62,6 +62,7 @@ export default function RoomsAndGuestsInput({
 
   useEffect(() => {
     onChange({ adults, children });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children, adults]);
 
   const incrementChildren = () => setChildren((prev) => [...prev, 1]);

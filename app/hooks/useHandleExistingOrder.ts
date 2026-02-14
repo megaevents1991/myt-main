@@ -21,7 +21,7 @@ export const useHandleExistingOrder = () => {
   const params = useParams();
   const router = useRouter();
   const { setOrderExpired } = useOrderExpiry();
-  
+
   // Get event ID from URL params if available
   const eventId = params?.eventId as string;
 
@@ -30,15 +30,19 @@ export const useHandleExistingOrder = () => {
 
     try {
       const response = await fetch(`/api/find-order?orderId=${orderId}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        
+
         if (response.status === 403) {
           // Check if it's an event ID mismatch or time expiry
-          if (errorData.error?.includes("This order does not belong to the specified event")) {
+          if (
+            errorData.error?.includes(
+              "This order does not belong to the specified event",
+            )
+          ) {
             console.error(errorData.error);
-            router.push('/');
+            router.push("/");
             return;
           } else {
             console.error(errorData.error);
@@ -51,8 +55,11 @@ export const useHandleExistingOrder = () => {
           }
         } else {
           // Other errors (404, 400, etc.) - redirect to homepage
-          console.error("API error:", errorData.error || `HTTP ${response.status}`);
-          router.push('/');
+          console.error(
+            "API error:",
+            errorData.error || `HTTP ${response.status}`,
+          );
+          router.push("/");
           return;
         }
       }
@@ -68,7 +75,7 @@ export const useHandleExistingOrder = () => {
           {
             first_name: string;
             last_name: string;
-          }
+          },
         ];
         event_order_info: {
           number_of_ticket: number;
@@ -103,16 +110,19 @@ export const useHandleExistingOrder = () => {
 
       setPassengers(passengers);
       setFlight(data.flight_order_info);
-      
+
       // Check if hotel was skipped (hotel_order_info is empty object {})
-      if (!data.hotel_order_info || Object.keys(data.hotel_order_info).length === 0) {
+      if (
+        !data.hotel_order_info ||
+        Object.keys(data.hotel_order_info).length === 0
+      ) {
         setSkipHotel(true);
         setHotel(undefined);
       } else {
         setSkipHotel(false);
         setHotel(data.hotel_order_info as OrderHotel);
       }
-      
+
       setNumberOfEventTickets(data.event_order_info.number_of_ticket);
       setEventTicket({
         category: data.event_order_info.category,
@@ -135,5 +145,6 @@ export const useHandleExistingOrder = () => {
     if (orderId) {
       fetchOrder(orderId);
     }
-  }, []); // Just to suppress the warning
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 };

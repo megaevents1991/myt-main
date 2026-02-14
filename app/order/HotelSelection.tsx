@@ -106,6 +106,7 @@ export const HotelSelection = () => {
     setSelectedHotelFilters({});
     // Reset skipHotel flag when entering hotel selection to allow user to change their mind
     setSkipHotel(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (hotelsData.data.debug && !isFetching) {
@@ -118,6 +119,7 @@ export const HotelSelection = () => {
       // Reset processing state if no data
       setIsProcessingHotels(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetching]);
 
   useEffect(() => {
