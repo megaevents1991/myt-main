@@ -172,7 +172,7 @@ export default async function AccessibilityPage() {
               </h2>
               <div className="bg-blue-50 border-r-4 border-blue-400 p-6">
                 <p className="text-gray-700 mb-4">
-                  <strong>ניתן לפנות בטלפון:</strong> <a href="tel:054-200-2722" className="text-blue-600 hover:underline font-bold">054-200-2722</a>
+                  <strong>ניתן לפנות בטלפון:</strong> <a href="tel:03-768-4800" className="text-blue-600 hover:underline font-bold">03-768-4800</a>
                 </p>
                 <p className="text-gray-700">
                   <strong>דוא״ל:</strong> <a href="mailto:accessibility@mega-events.co.il" className="text-blue-600 hover:underline">accessibility@mega-events.co.il</a>
@@ -197,11 +197,11 @@ export default async function AccessibilityPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <a
-              href="tel:054-200-2722"
+              href="tel:03-768-4800"
               className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
-              aria-label="התקשרו לרכז הנגישות: 054-200-2722"
+              aria-label="התקשרו לרכז הנגישות: 03-768-4800"
             >
-              התקשרו: 054-200-2722
+              התקשרו: 03-768-4800
             </a>
             <a
               href="mailto:accessibility@mega-events.co.il"

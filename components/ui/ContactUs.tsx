@@ -25,7 +25,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
     >
       <div className="text-white font-bold hidden sm:flex">
         <a href={`tel:${PHONE_NUMBER}`}>
-          {text} {"054-200-2722"}
+          {text} {"03-768-4800"}
         </a>
       </div>{" "}
       <div
