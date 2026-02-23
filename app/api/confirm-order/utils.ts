@@ -316,7 +316,7 @@ export const userEmail = (
                                   <div style="text-align: center; color: #666666; font-size: 14px; direction: rtl;" dir="rtl">
                                       <p style="margin: 0 0 10px 0; direction: rtl;" dir="rtl">לשאלות ובירורים:</p>
                                       <p style="margin: 0; direction: rtl;" dir="rtl">
-                                          טלפון: <a href="tel:+972-54-200-2722" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
+                                          טלפון: <a href="tel:+972-3-768-4800" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
                                           אימייל: <a href="mailto:reservations@mega-events.co.il" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl">reservations@mega-events.co.il</a>
                                       </p>
                                   </div>

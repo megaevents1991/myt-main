@@ -8,7 +8,7 @@ import phone from "@/public/phone.svg";
 import { useMediaQuery } from "@mantine/hooks";
 import { cn } from "@/lib/utils";
 
-const PHONE_NUMBER = "+972542002722";
+const PHONE_NUMBER = "+97237684800";
 const text = "דברו איתנו";
 
 export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
