@@ -169,6 +169,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           `}
           </Script>
         )}
+        <meta name="google-site-verification" content="fMs3lMOpEKejbkM0B1uDbcQJf0bdo-OfRl0wUoWfJAM" />
       </head>
       <body className={`${inter.className} text-black`}>
         {GTM_TAG && (
