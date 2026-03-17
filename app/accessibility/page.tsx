@@ -197,11 +197,11 @@ export default async function AccessibilityPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <a
-              href="tel:054-200-2722"
+              href="tel:03-768-4800"
               className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
-              aria-label="התקשרו לרכז הנגישות: 054-200-2722"
+              aria-label="התקשרו לרכז הנגישות: 03-768-4800"
             >
-              התקשרו: 054-200-2722
+              התקשרו: 03-768-4800
             </a>
             <a
               href="mailto:accessibility@mega-events.co.il"

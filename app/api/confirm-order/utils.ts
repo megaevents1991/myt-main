@@ -3,7 +3,7 @@ import * as yup from "yup";
 
 export const validateOrderData = async (
   data: OrderData,
-  payNow = false
+  payNow = false,
 ): Promise<OrderData> => {
   try {
     const singleEventOrderInfoSchema = yup
@@ -37,20 +37,20 @@ export const validateOrderData = async (
       main_contact_last_name: yup.string().required().min(1),
       main_contact_phone_number: yup.string().required().min(1),
       main_contact_email: yup.string().required().min(1),
-      more_pax_info: payNow 
+      more_pax_info: payNow
         ? // For credit card orders (payNow=true): require all passenger details
           yup.array().of(
             yup.object().shape({
               first_name: yup.string().required().min(1),
               last_name: yup.string().required().min(1),
-            })
+            }),
           )
         : // For phone/hold orders (payNow=false): allow empty passenger details
           yup.array().of(
             yup.object().shape({
               first_name: yup.string().optional(),
               last_name: yup.string().optional(),
-            })
+            }),
           ),
       event_order_info: yup.lazy((value: unknown) => {
         if (value && typeof value === "object" && "events" in value) {
@@ -62,7 +62,7 @@ export const validateOrderData = async (
       hotel_order_info: yup.object().nullable().required(), // Can be null if hotel is skipped
       user_shown_price: yup.number().required(),
       event_id: yup.number().required(),
-      exchange_rate_usd_ils_100 : yup.number().required(),
+      exchange_rate_usd_ils_100: yup.number().required(),
       final_purchase_price_ils: yup.number().required(),
       aff_partner_tracking_code: yup.string(),
       is_agent_booking: yup.boolean(),
@@ -78,9 +78,12 @@ export const validateOrderData = async (
 };
 
 export const userEmail = (
-  replacements: Record<string, string | number | boolean | undefined>
+  replacements: Record<string, string | number | boolean | undefined>,
 ) => {
-  const refer = (replacements.promoCode !== "dummy_code"  && replacements.promoCode !== undefined) ? `
+  const refer =
+    replacements.promoCode !== "dummy_code" &&
+    replacements.promoCode !== undefined
+      ? `
       <!-- Refer Friend Component -->
       <div style="background: linear-gradient(180deg, rgba(0,172,194,1) 31%, rgba(39,126,137,1) 100%); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
           <div style="margin-bottom: 15px; direction: rtl;" dir="rtl">
@@ -127,7 +130,8 @@ export const userEmail = (
           <div style="direction: rtl;" dir="rtl">
               <p style="font-size: 13px; color: #ffffff; margin: 0; opacity: 0.9; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">$40</span> החזר למשלם ההזמנה, על כל נוסע בהזמנה שתשולם! ועוד <span style="unicode-bidi: embed;">$20</span> הנחה לכל נוסע שישלם הזמנה. הקישור תקף ל-28 יום, ניתן לקבל החזר של עד <span style="unicode-bidi: embed;">$800</span>.</p>
           </div>
-      </div>` : "";
+      </div>`
+      : "";
 
   return `
       <!DOCTYPE html>
@@ -238,7 +242,11 @@ export const userEmail = (
                                       <p style="color: #666666; font-size: 16px; margin: 0; direction: rtl; width: 100%; max-width: 400px; margin: 0 auto;" dir="rtl">${replacements.message}</p>
                                   </div>
   
-                                  ${(replacements.showRecoveryLink && replacements.orderId && replacements.eventId) ? `
+                                  ${
+                                    replacements.showRecoveryLink &&
+                                    replacements.orderId &&
+                                    replacements.eventId
+                                      ? `
                                   <!-- Order Recovery Section (Only for 24h Hold) -->
                                   <div style="background-color: #f0f8f8; border: 1px solid #277e89; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
                                       <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; direction: rtl;" dir="rtl">
@@ -256,7 +264,9 @@ export const userEmail = (
                                           </a>
                                       </div>
                                   </div>
-                                  ` : ''}
+                                  `
+                                      : ""
+                                  }
   
                                   <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
                                       <h2 style="color: #05203c; font-size: 20px; margin: 0 0 20px 0; text-align: center; direction: rtl;" dir="rtl">פרטי ההזמנה</h2>
@@ -298,14 +308,18 @@ export const userEmail = (
                                                   <br><strong style="color: #05203c;">טיסת חזור:</strong> <span style="unicode-bidi: embed;">${replacements.returnFlight}, ${replacements.returnFlightDate}</span>
                                               </td>
                                           </tr>
-                                          ${replacements.hotel !== "ללא מלון" ? `<tr>
+                                          ${
+                                            replacements.hotel !== "ללא מלון"
+                                              ? `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
                                                   <strong style="color: #05203c;">מלון:</strong> ${replacements.hotel}
                                               </td>
-                                          </tr>` : ''}
+                                          </tr>`
+                                              : ""
+                                          }
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">מחיר:</strong> ₪${(replacements.price || "").toLocaleString('he-IL')}
+                                                  <strong style="color: #05203c;">מחיר:</strong> ₪${(replacements.price || "").toLocaleString("he-IL")}
                                               </td>
                                           </tr>
                                       </table>
@@ -317,7 +331,7 @@ export const userEmail = (
                                   <div style="text-align: center; color: #666666; font-size: 14px; direction: rtl;" dir="rtl">
                                       <p style="margin: 0 0 10px 0; direction: rtl;" dir="rtl">לשאלות ובירורים:</p>
                                       <p style="margin: 0; direction: rtl;" dir="rtl">
-                                          טלפון: <a href="tel:+972-54-200-2722" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">054-200-2722</span></a><br>
+                                          טלפון: <a href="tel:+972-3-768-4800" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
                                           אימייל: <a href="mailto:reservations@mega-events.co.il" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl">reservations@mega-events.co.il</a>
                                       </p>
                                   </div>
