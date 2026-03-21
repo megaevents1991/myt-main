@@ -1,5 +1,8 @@
+import { Metadata } from "next";
+
 export const dynamic = "force-static"; // This is optional, but good for fully static pages
 export const revalidate = 3600; // Optional: revalidate every hour
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function CancelPage() {
   return (

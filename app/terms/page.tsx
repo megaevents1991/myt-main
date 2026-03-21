@@ -1,7 +1,9 @@
+import { Metadata } from "next";
 import Link from "next/link";
 
 export const dynamic = "force-static"; // This is optional, but good for fully static pages
 export const revalidate = 3600; // Optional: revalidate every hour
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function TermsOfUse() {
   return (

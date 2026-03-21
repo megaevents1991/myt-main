@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields } from "@/lib/app.types";
 import { notFound } from "next/navigation";
@@ -12,6 +13,7 @@ import ClientTracker from "@/components/ClientTracker";
 import Mondial2026MultiEventSelector from "@/components/Mondial2026MultiEventSelector";
 
 export const revalidate = 3600;
+export const metadata: Metadata = { robots: { index: true, follow: false } };
 
 export default async function Mondial2026Page() {
   const timestamp = Date.now();

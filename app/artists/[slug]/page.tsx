@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields } from "@/lib/app.types";
 import { notFound } from "next/navigation";
@@ -16,6 +17,7 @@ import ClientTracker from "../../../components/ClientTracker";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new artists on-demand
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export async function generateStaticParams() {
   try {

@@ -1,4 +1,7 @@
+import { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 // Redirect old query-param URLs to new route-param URLs
 export default async function OrderPageRedirect({

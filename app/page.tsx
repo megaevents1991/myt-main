@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
 import { FAQ } from "@/components/ui/FAQ";
 import MegaEventsSection from "@/components/ui/aboutUsMega";
@@ -9,6 +10,7 @@ import { FootballFields, ArtistFields, Artist, CarouselFields, FootballTeam } fr
 // Force static generation with ISR
 export const dynamic = "force-static";
 export const revalidate = 3600; // Revalidate every hour (reduced from 24h for fresher content)
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 async function getEventsForPage() {
   try {

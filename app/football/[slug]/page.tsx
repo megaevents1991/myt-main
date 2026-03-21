@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields } from "@/lib/app.types";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -16,6 +17,7 @@ import EventButton from "../../../components/EventButton";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 const MONDIAL2026_LEGACY_FOOTBALL_ID = "2LyfVQ6jREeMTm0ds66d1l";
 
