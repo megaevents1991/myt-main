@@ -194,7 +194,6 @@ export const TicketSelection = () => {
   return (
     <div>
       <div className="sr-only">
-        <h1>בחירת כרטיסים לאירוע {event?.name}</h1>
         <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{event?.location?.name}</p>
       </div>
       <div className="flex flex-col items-center ">

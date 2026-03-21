@@ -5,7 +5,7 @@ import { ArtistFields, FootballFields } from "@/lib/app.types";
 export async function GET() {
   try {
     const events = await getCachedEvents();
-    const baseUrl = "https://mega-events.co.il";
+    const baseUrl = "https://www.mega-events.co.il";
     const staticPages = [
       {
         url: baseUrl,
@@ -58,11 +58,17 @@ export async function GET() {
     }));
 
     // Fetch artists from Contentful with error handling
-    let artistPages: Array<{url: string, lastModified: string, changeFrequency: string, priority: number}> = [];
+    let artistPages: Array<{
+      url: string;
+      lastModified: string;
+      changeFrequency: string;
+      priority: number;
+    }> = [];
     try {
-      const { items: artists } = await contentfulClient.getEntries<ArtistFields>({
-        content_type: "artistTemplate",
-      });
+      const { items: artists } =
+        await contentfulClient.getEntries<ArtistFields>({
+          content_type: "artistTemplate",
+        });
 
       artistPages = artists.map((artist) => ({
         url: `${baseUrl}/artists/${artist.sys.id}`,
@@ -71,15 +77,21 @@ export async function GET() {
         priority: 0.8,
       }));
     } catch (error) {
-      console.error('Error fetching artists for sitemap:', error);
+      console.error("Error fetching artists for sitemap:", error);
     }
 
     // Fetch football teams from Contentful with error handling
-    let footballPages: Array<{url: string, lastModified: string, changeFrequency: string, priority: number}> = [];
+    let footballPages: Array<{
+      url: string;
+      lastModified: string;
+      changeFrequency: string;
+      priority: number;
+    }> = [];
     try {
-      const { items: footballTeams } = await contentfulClient.getEntries<FootballFields>({
-        content_type: "footballTeamTemplate",
-      });
+      const { items: footballTeams } =
+        await contentfulClient.getEntries<FootballFields>({
+          content_type: "footballTeamTemplate",
+        });
 
       footballPages = footballTeams.map((team) => ({
         url: `${baseUrl}/football/${team.sys.id}`,
@@ -88,10 +100,15 @@ export async function GET() {
         priority: 0.8,
       }));
     } catch (error) {
-      console.error('Error fetching football teams for sitemap:', error);
+      console.error("Error fetching football teams for sitemap:", error);
     }
 
-    const allPages = [...staticPages, ...eventPages, ...artistPages, ...footballPages];
+    const allPages = [
+      ...staticPages,
+      ...eventPages,
+      ...artistPages,
+      ...footballPages,
+    ];
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -103,7 +120,7 @@ ${allPages
     <lastmod>${page.lastModified}</lastmod>
     <changefreq>${page.changeFrequency}</changefreq>
     <priority>${page.priority}</priority>
-  </url>`
+  </url>`,
   )
   .join("")}
 </urlset>`;
@@ -115,8 +132,8 @@ ${allPages
       },
     });
   } catch (error) {
-    console.error('Error generating sitemap:', error);
-    
+    console.error("Error generating sitemap:", error);
+
     // Return basic sitemap with static pages only
     const baseUrl = "https://mega-events.co.il";
     const basicSitemap = `<?xml version="1.0" encoding="UTF-8"?>
