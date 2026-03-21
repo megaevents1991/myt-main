@@ -62,7 +62,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
         </a>
         <a
           aria-label="Chat on WhatsApp"
-          href={`https://wa.me/${PHONE_NUMBER}`}
+          href={`https://wa.me/972542002722`}
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
