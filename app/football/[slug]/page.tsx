@@ -1,5 +1,6 @@
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields } from "@/lib/app.types";
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
@@ -16,6 +17,44 @@ import EventButton from "../../../components/EventButton";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  try {
+    const team = await contentfulClient.getEntry<FootballFields>(slug);
+    if (!team?.fields?.name) {
+      return { title: "Team Not Found - MYT" };
+    }
+
+    const { name, previewText, seoTitle, metaDescription, metaTags, heroBanner } = team.fields;
+    const title = String(seoTitle || "") || `${name} - כרטיסים וחבילות | MYT`;
+    const description = String(metaDescription || previewText || "") || `הזמינו כרטיסים וחבילות טיסה + מלון למשחקים של ${name}`;
+    const keywords = metaTags || `${name}, כרטיסים, כדורגל, MYT`;
+    const imageUrl = heroBanner?.fields?.file?.url
+      ? `https:${heroBanner.fields.file.url}`
+      : undefined;
+
+    return {
+      title,
+      description,
+      keywords,
+      openGraph: {
+        title,
+        description,
+        ...(imageUrl && {
+          images: [{ url: imageUrl, width: 800, height: 600, alt: String(name) }],
+        }),
+      },
+    };
+  } catch {
+    return { title: "Team Not Found - MYT" };
+  }
+}
 
 export async function generateStaticParams() {
   try {

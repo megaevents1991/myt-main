@@ -1,5 +1,6 @@
 import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields } from "@/lib/app.types";
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
@@ -16,6 +17,44 @@ import ClientTracker from "../../../components/ClientTracker";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new artists on-demand
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  try {
+    const artist = await contentfulClient.getEntry<ArtistFields>(slug);
+    if (!artist?.fields?.name) {
+      return { title: "Artist Not Found - MYT" };
+    }
+
+    const { name, previewText, seoTitle, metaDescription, metaTags, heroBanner } = artist.fields;
+    const title = String(seoTitle || "") || `${name} - כרטיסים וחבילות | MYT`;
+    const description = String(metaDescription || previewText || "") || `הזמינו כרטיסים וחבילות טיסה + מלון לאירועים של ${name}`;
+    const keywords = metaTags || `${name}, כרטיסים, אירועים, MYT`;
+    const imageUrl = heroBanner?.fields?.file?.url
+      ? `https:${heroBanner.fields.file.url}`
+      : undefined;
+
+    return {
+      title,
+      description,
+      keywords,
+      openGraph: {
+        title,
+        description,
+        ...(imageUrl && {
+          images: [{ url: imageUrl, width: 800, height: 600, alt: String(name) }],
+        }),
+      },
+    };
+  } catch {
+    return { title: "Artist Not Found - MYT" };
+  }
+}
 
 export async function generateStaticParams() {
   try {
