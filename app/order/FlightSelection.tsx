@@ -1,0 +1,627 @@
+"use client";
+
+import { DateRange } from "@/components/ui/dateInput";
+import { CustomSlider } from "@/components/ui/CustomSlider";
+import {
+  Event,
+  Flight,
+  FlightSearchCriteria,
+  FlightSearchOptions,
+  TimeRange,
+} from "@/lib/app.types";
+import { applyFiltersAndSorting } from "@/lib/flightFilter";
+import { flightSort, SortOptions } from "@/lib/flightSort";
+import { Button, ScrollArea } from "@mantine/core";
+import { Settings2Icon, Search } from "lucide-react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { OrderContext } from "../app.context";
+import { MemoizedFlightCard } from "@/components/ui/FlightCard";
+import { SelectWithIcon } from "@/components/ui/inputWithIcon";
+import { FlightFilters } from "@/components/ui/FlightFilters";
+import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
+import { useMediaQuery } from "@mantine/hooks";
+import { FiltersModal } from "@/components/ui/FiltersModal";
+import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
+import { prepareFlightsData } from "@/lib/prepareFlightsData";
+import { cn } from "@/lib/utils";
+import { EventDataHeader } from "@/components/ui/EventDataHeader";
+import dayjs from "dayjs";
+import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
+import { getRoomParams } from "@/lib/getRoomParams";
+import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+
+const MAX_FLIGHT_DURATION = 30;
+
+export const FlightSelection = () => {
+  const {
+    setFlight,
+    flight: orderFlight,
+    event = {} as Event,
+    numberOfEventTickets,
+    setPlaneTickets,
+    planeTickets,
+    setSelectedPlaneTicketsFilters,
+  } = useContext(OrderContext);
+  const { getHotels, hotelsData } = useContext(HotelFetchContext);
+  const [flights, setFlights] = useState<Flight[]>([]);
+  const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
+  const [filters, setFilters] = useState<{
+    numOfStops: string[];
+    airline: string[];
+    maxPrice: string;
+    luggage: string[];
+  }>({
+    numOfStops: ["0", "1"],
+    maxPrice: "",
+    airline: [],
+    luggage: ["withCheckedBags", "withCabinBags"],
+  });
+  const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFlightDuration, setSelectedFlightDuration] =
+    useState(MAX_FLIGHT_DURATION);
+  const [flightsMeta, setFlightsMeta] = useState({
+    maxDuration: MAX_FLIGHT_DURATION,
+    minDuration: MAX_FLIGHT_DURATION,
+    maxPrice: 0,
+    minPrice: 0,
+    numOfPassengers: numberOfEventTickets,
+  });
+  const [selectedFlightPrice, setSelectedFlightPrice] = useState(0);
+  const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
+  const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
+  const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    new Date(event.def_date_depart),
+    new Date(event.def_date_return),
+  ]);
+  const [showFilters, setShowFilters] = useState(false);
+  const matches = useMediaQuery("(min-width: 1024px)");
+  const [scrollerHeight, setScrollerHeight] = useState(600);
+  const [, startTransition] = useTransition();
+  const [debug, setDebug] = useState<{
+    departureDate: Date;
+    returnDate: Date;
+  }>({ departureDate: new Date(), returnDate: new Date() });
+
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (filterRef.current && matches) {
+      setScrollerHeight(filterRef.current.offsetHeight);
+    } else if (!matches) {
+      setScrollerHeight(600);
+    }
+  }, [matches, flights]);
+
+  useEffect(() => {
+    setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
+    fetchFlights({ adults: numberOfEventTickets });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch hotels when the orderFlight dates or number of adults change
+  const departureDateKey = dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD");
+  const returnDateKey = dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD");
+
+  useEffect(() => {
+    if (event?.location?.country_code === "US") return;
+    if (orderFlight?.id) {
+      getHotels({
+        dateRange: getDefaultDateRange(event, orderFlight),
+        guests: getRoomParams(planeTickets.adults),
+        location: event.location,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departureDateKey, returnDateKey, planeTickets.adults]);
+
+  // First time fetching hotels, only if no hotels are already fetched
+  useEffect(() => {
+    if (event?.location?.country_code === "US") return;
+    if (orderFlight?.id && !hotelsData?.data?.data?.hotels) {
+      getHotels({
+        dateRange: getDefaultDateRange(event, orderFlight),
+        guests: getRoomParams(planeTickets.adults),
+        location: event.location,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderFlight?.id]);
+
+  useEffect(() => {
+    setSelectedPlaneTicketsFilters({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (matches) return; // Don't scroll on desktop (1024px+)
+    const timer = setTimeout(() => {
+      window.scrollTo({
+        top: 90,
+        behavior: "smooth",
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [matches]); // Add matches as dependency
+
+  const fetchFlights = async (options: Partial<FlightSearchOptions> = {}) => {
+    const directOnly = !!options.nonStop;
+
+    setIsLoading(true);
+    setError(null);
+    setFilters((prev) => ({
+      ...prev,
+      airline: [],
+      directOnly,
+    }));
+    setDepartureRanges([]);
+    setArrivalRanges([]);
+    setFlight(undefined);
+
+    try {
+      const adults = options.adults || planeTickets.adults;
+      const gtmIdnts =
+        document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("gtmIdnts="))
+          ?.split("=")[1] || "";
+      const res = await fetch(`/api/flights/search?eventId=${event?.id}`, {
+        body: JSON.stringify({
+          ...options,
+          adults,
+          departureDate: dateRange[0]?.toDateString(),
+          returnDate: dateRange[1]?.toDateString(),
+          gtmIdnts,
+        }),
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to fetch flights");
+      }
+      const {
+        flights,
+        debug,
+      }: {
+        flights: Flight[];
+        debug: { departureDate: string; returnDate: string };
+      } = await res.json();
+
+      const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
+        prepareFlightsData(flights);
+
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: airlines,
+        sortOption,
+        flightDuration: maxDuration,
+        departureRanges: [],
+        arrivalRanges: [],
+        maxPrice,
+        numOfStops: filters.numOfStops,
+        luggage: filters.luggage,
+      });
+
+      setFilteredFlights(filteredFlights.slice(0, 50));
+      setSelectedFlightDuration(Math.ceil(maxDuration / 60));
+      setSelectedFlightPrice(Math.ceil(maxPrice));
+      setDebug({
+        departureDate: new Date(debug.departureDate),
+        returnDate: new Date(debug.returnDate),
+      });
+      setFlightsMeta({
+        maxDuration: Math.ceil(maxDuration / 60),
+        minDuration: Math.ceil(minDuration / 60),
+        maxPrice,
+        minPrice,
+        numOfPassengers: adults,
+      });
+      setFilters((prev) => ({
+        ...prev,
+        airline: airlines,
+        directOnly,
+      }));
+      setFlights(flights);
+      setFlight(filteredFlights[0]);
+      return flights;
+    } catch (err) {
+      console.error(err);
+      setError(
+        "היי חברים, סליחה, יש לנו תקלה ואנחנו על זה. נסו אותנו יותר מאוחר בבקשה."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFlightSearch = async () => {
+    await fetchFlights();
+  };
+  const handleSortChange = (selectedSortOption: SortOptions) => {
+    setSortOption(selectedSortOption);
+
+    startTransition(() => {
+      const sortedData = flightSort(filteredFlights, selectedSortOption);
+      const slicedData = sortedData.slice(0, 50);
+      setFilteredFlights(slicedData);
+      // Update selected flight to maintain visual consistency
+      if (
+        slicedData.length > 0 &&
+        (!orderFlight || !slicedData.find((f) => f.id === orderFlight.id))
+      ) {
+        setFlight(slicedData[0]);
+      }
+    });
+  };
+
+  const handleIsraeliFilter = () => {
+    const newIsraeliFilter = !isIsraeliFilter;
+    setIsIsraeliFilter(newIsraeliFilter);
+
+    const israeliAirlines = ["LY", "6H", "IZ", "BZ", "U8"];
+    const airlineFilter = newIsraeliFilter
+      ? israeliAirlines
+      : airlines.map((a) => a.value);
+
+    handleFlightSearchCriteriaChange({
+      type: "airline",
+      value: airlineFilter,
+    });
+  };
+
+  const airlines = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          flights.map((flight) => [
+            flight.airline, // Use airline as the key
+            { value: flight.airline, label: flight.metadata.name }, // Object as the value
+          ])
+        ).values() // Extract the unique values
+      ),
+    [flights]
+  );
+
+  const handleFlightChange = useCallback(
+    (value: string) => {
+      setFlight(filteredFlights.find((f) => f.id === value));
+    },
+    [filteredFlights, setFlight]
+  );
+
+  const handleFlightSearchCriteriaChange = ({
+    value,
+    type,
+  }: FlightSearchCriteria) => {
+    setSelectedPlaneTicketsFilters((prev) => ({
+      ...prev,
+      [type]: value,
+    }));
+    switch (type) {
+      case "arrivalRanges":
+        setArrivalRanges(value);
+        break;
+      case "departureRanges":
+        setDepartureRanges(value);
+        break;
+      case "maxPrice":
+        setSelectedFlightPrice(value);
+        break;
+      case "flightDuration":
+        setSelectedFlightDuration(value);
+        break;
+      case "airline":
+      case "numOfStops":
+      case "luggage":
+        setFilters((prev) => ({ ...prev, [type]: value }));
+        break;
+    }
+
+    startTransition(() => {
+      setFlight(undefined);
+
+      const filteredFlights = applyFiltersAndSorting(flights, {
+        airline: filters.airline,
+        sortOption,
+        flightDuration: selectedFlightDuration,
+        departureRanges,
+        arrivalRanges,
+        maxPrice: selectedFlightPrice,
+        numOfStops: filters.numOfStops,
+        luggage: filters.luggage,
+        ...{ [type]: value },
+      });
+      if (filteredFlights.length !== 0) {
+        setFlight(filteredFlights[0]);
+      }
+      setFilteredFlights(filteredFlights.slice(0, 50));
+    });
+  };
+  const flightTicketCards = useMemo(
+    () =>
+      filteredFlights.map((flight) => {
+        return (
+          <MemoizedFlightCard
+            minPrice={event.base_flight_price}
+            isLoading={false} // We handle loading at the container level now
+            key={flight.id}
+            {...flight}
+            price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
+            flightId={flight.id}
+            selectedFlightId={orderFlight?.id}
+            onClick={handleFlightChange}
+          />
+        );
+      }),
+    [
+      filteredFlights,
+      event.base_flight_price,
+      flightsMeta.numOfPassengers,
+      orderFlight?.id,
+      handleFlightChange,
+    ]
+  );
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500">
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4" aria-label="נסה שוב לטעון טיסות">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
+  const handleDatePopoverClose = () => {
+    if (!dateRange[0] || !dateRange[1]) {
+      const defaultDates: [Date, Date] = [
+        new Date(event.def_date_depart),
+        new Date(event.def_date_return),
+      ];
+      setDateRange(defaultDates);
+      return;
+    }
+
+    if (
+      dayjs(dateRange[0]).isSame(dayjs(debug.departureDate), "day") &&
+      dayjs(dateRange[1]).isSame(dayjs(debug.returnDate), "day")
+    ) {
+      return;
+    }
+
+    fetchFlights();
+  };
+
+  return (
+    <div className="space-y-2 lg:space-y-6">
+      <div className="sr-only">
+        <h1>בחירת טיסה לאירוע {event.name}</h1>
+        <p>בחר טיסה, כמות נוסעים ותאריכי נסיעה עבור האירוע ב{event.location?.name}</p>
+      </div>
+      {!matches && (
+        <FiltersModal 
+          show={showFilters} 
+          onClose={() => setShowFilters(false)}
+          aria-labelledby="flight-filters-title"
+          aria-describedby="flight-filters-description"
+        >
+          <div id="flight-filters-title" className="sr-only">מסנני טיסות</div>
+          <div id="flight-filters-description" className="sr-only">
+            השתמש במסננים כדי לחפש טיסות לפי מחיר, משך טיסה, חברת תעופה ועוד
+          </div>
+          <FlightFilters
+            handleFlightSearchCriteriaChange={handleFlightSearchCriteriaChange}
+            priceComponent={
+              <CustomSlider
+                onChange={setSelectedFlightPrice}
+                variant="maxPrice"
+                onChangeEnd={handleFlightSearchCriteriaChange}
+                value={selectedFlightPrice}
+                maxValue={flightsMeta.maxPrice}
+                minValue={flightsMeta.minPrice}
+                basePrice={event.base_flight_price}
+                numOfPassengers={flightsMeta.numOfPassengers}
+              />
+            }
+            flightDurationComponent={
+              <CustomSlider
+                onChangeEnd={handleFlightSearchCriteriaChange}
+                value={selectedFlightDuration}
+                onChange={setSelectedFlightDuration}
+                maxValue={flightsMeta.maxDuration}
+                minValue={flightsMeta.minDuration}
+              />
+            }
+            airlines={airlines}
+            filters={filters}
+          />
+        </FiltersModal>
+      )}
+      <div className="flex flex-col items-center">
+        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
+          <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
+            <EventDataHeader event={event} />
+            <div className="flex w-full lg:w-[60%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
+              {matches && (
+                <span className="text-center text-xl">כמה טסים?</span>
+              )}
+              <div className="w-fit">
+                <SelectWithIcon
+                  value={planeTickets.adults}
+                  onChange={(value) =>
+                    setPlaneTickets({ adults: +(value || 0), children: 0 })
+                  }
+                  icon={null}
+                  aria-label="בחר כמות נוסעים"
+                />
+              </div>
+              {matches && (
+                <span className="mr-6 text-center text-xl">
+                  ובאיזה תאריכים?
+                </span>
+              )}
+              <div className="flex flex-row w-min items-center">
+                <DateRange
+                  disabled={isLoading}
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  eventDay={event?.date}
+                  onPopoverClose={handleDatePopoverClose}
+                  showTooltip={true}
+                  aria-label="בחר תאריכי יציאה וחזרה"
+                />
+                <button
+                  onClick={handleFlightSearch}
+                  disabled={isLoading}
+                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
+                  type="button"
+                  aria-label={isLoading ? "מחפש טיסות..." : "חפש טיסות"}
+                >
+                  <Search size={24} />
+                </button>
+              </div>
+            </div>
+            <div className="w-[15%]"></div>
+          </div>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "flex lg:gap-4 flex-row-reverse justify-between items-start w-full",
+          !matches && "flex-col gap-2"
+        )}
+      >
+        <div
+          className={cn("w-1/4 space-y-4", !matches && "w-full")}
+          ref={filterRef}
+        >
+          <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
+            <SortOptionsContainer
+              settings={
+                <button 
+                  className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
+                  type="button"
+                  aria-label="פתח הגדרות מסננים"
+                  aria-expanded={showFilters}
+                  onClick={() => setShowFilters(true)}
+                >
+                  <Settings2Icon aria-hidden="true" />
+                </button>
+              }
+              sortOptions={
+                <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
+                  <button
+                    className={cn(
+                      "font-bold text-md px-3 py-1 rounded-r-md",
+                      sortOption === "price_asc" && "text-white bg-main"
+                    )}
+                    onClick={() => handleSortChange("price_asc")}
+                    type="button"
+                    aria-label="מיין לפי מחיר"
+                    aria-pressed={sortOption === "price_asc"}
+                    disabled={isLoading}
+                  >
+                    מחיר
+                  </button>
+                  <button
+                    className={cn(
+                      "font-bold text-md px-3 py-1 whitespace-nowrap",
+                      sortOption === "duration" && "text-white bg-main"
+                    )}
+                    onClick={() => handleSortChange("duration")}
+                    type="button"
+                    aria-label="מיין לפי משך טיסה"
+                    aria-pressed={sortOption === "duration"}
+                    disabled={isLoading}
+                  >
+                    משך טיסה
+                  </button>
+                  <button
+                    className={cn(
+                      "font-bold text-md px-3 py-1 rounded-l-md bg-[#e6cc00] whitespace-nowrap",
+                      isIsraeliFilter && "text-white bg-secondary"
+                    )}
+                    onClick={handleIsraeliFilter}
+                    type="button"
+                    aria-label="הצג רק חברות תעופה ישראליות"
+                    aria-pressed={isIsraeliFilter}
+                    disabled={isLoading}
+                  >
+                    ישראלי
+                  </button>
+                </div>
+              }
+            />
+          </div>
+          {matches && (
+            <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
+              <FlightFilters
+                handleFlightSearchCriteriaChange={
+                  handleFlightSearchCriteriaChange
+                }
+                priceComponent={
+                  <CustomSlider
+                    onChange={setSelectedFlightPrice}
+                    variant="maxPrice"
+                    onChangeEnd={handleFlightSearchCriteriaChange}
+                    value={selectedFlightPrice}
+                    maxValue={flightsMeta.maxPrice}
+                    minValue={flightsMeta.minPrice}
+                    basePrice={event.base_flight_price}
+                    numOfPassengers={flightsMeta.numOfPassengers}
+                  />
+                }
+                flightDurationComponent={
+                  <CustomSlider
+                    onChange={setSelectedFlightDuration}
+                    onChangeEnd={handleFlightSearchCriteriaChange}
+                    value={selectedFlightDuration}
+                    maxValue={flightsMeta.maxDuration}
+                    minValue={flightsMeta.minDuration}
+                  />
+                }
+                airlines={airlines}
+                filters={filters}
+              />
+            </div>
+          )}
+        </div>
+        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
+          {isLoading ? (
+            <FlightLoadingTransition />
+          ) : (
+            <div 
+              className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start"
+              role="region"
+              aria-label="רשימת טיסות זמינות"
+              aria-live="polite"
+              aria-relevant="additions removals"
+            >
+              {flightTicketCards}
+              {filteredFlights.length === 0 && (
+                <div 
+                  className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex"
+                  role="status"
+                  aria-live="polite"
+                >
+                  לא נמצאו טיסות התואמות לקריטריונים שלכם. אנא התאימו את המסננים.
+                </div>
+              )}
+            </div>
+          )}
+        </ScrollArea.Autosize>
+      </div>
+    </div>
+  );
+};

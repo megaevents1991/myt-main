@@ -1,0 +1,84 @@
+import { NextResponse, NextRequest } from "next/server";
+import {
+  trackServerSideEvent,
+  extractIpFromRequest,
+  extractUserAgentFromRequest,
+  type EventType,
+} from "@/lib/gtmAnalytics";
+import { exchangeRateService } from "@/lib/exchangeRateService";
+
+// GTM server-side event tracking route
+// This route handles POST requests to track events server-side using Google Tag Manager (GTM).
+export async function POST(request: Request) {
+  try {
+    const {
+      eventData,
+      gtmIdnts,
+      eventType = "select_item",
+    }: {
+      eventData: {
+        id: number;
+        name: string;
+      };
+      gtmIdnts?: string;
+      eventType?: EventType;
+    } = await request.json();
+
+    const ip = extractIpFromRequest(request);
+    const userAgent = extractUserAgentFromRequest(request);
+
+    const success = await trackServerSideEvent({
+      eventData,
+      eventType,
+      gtmIdnts,
+      userAgent,
+      ip,
+    });
+
+    if (!success) {
+      return NextResponse.json(
+        { error: "Analytics tracking failed" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error in analytics tracking:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// This route returns the current USD to ILS exchange rate from our cached service
+// The rate is updated hourly in the background with retry logic
+// Falls back to FloatRates API if primary source is unavailable for 12h+
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function GET(request: NextRequest) {
+  try {
+    const rateInfo = exchangeRateService.getRateInfo();
+
+    if (!rateInfo) {
+      return NextResponse.json(
+        { success: false, error: "Exchange rate not yet available" },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      travelRate: rateInfo.travelRate,
+      lastUpdated: rateInfo.lastUpdated,
+      source: rateInfo.source,
+    });
+  } catch (error) {
+    console.error("Error getting exchange rate:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}

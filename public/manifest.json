@@ -1,0 +1,27 @@
+{
+  "name": "מגה איבנטס - כל האירועים השווים בחו״ל במקום אחד",
+  "short_name": "מגה איבנטס",
+  "description": "מגה איבנטס מבית מגה תיירות - האתר היחיד בישראל לחבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#277E89",
+  "orientation": "portrait-primary",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["travel", "entertainment", "lifestyle"],
+  "scope": "/",
+  "screenshots": []
+}
