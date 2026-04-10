@@ -86,6 +86,7 @@ export const FlightSelection = () => {
     new Date(event.def_date_return),
   ]);
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState<"best" | "cheapest" | null>(null);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(600);
   const [, startTransition] = useTransition();
@@ -161,6 +162,7 @@ export const FlightSelection = () => {
 
     setIsLoading(true);
     setError(null);
+    setActiveTab(null);
     setFilters((prev) => ({
       ...prev,
       airline: [],
@@ -292,6 +294,28 @@ export const FlightSelection = () => {
     [flights]
   );
 
+  const offlineFlights = useMemo(
+    () => flights.filter((f) => f.isOffline),
+    [flights]
+  );
+
+  const bestFlightId = useMemo(() => {
+    if (!offlineFlights.length) return null;
+    const score = (f: Flight) =>
+      f.price / f.numOfTravelers +
+      f.stops * 100 -
+      (f.outbound.checkBagsIncluded ? 50 : 0) -
+      (f.outbound.cabinBagsIncluded ? 10 : 0);
+    return offlineFlights.reduce((best, f) =>
+      score(f) < score(best) ? f : best
+    ).id;
+  }, [offlineFlights]);
+
+  const cheapestFlightId = useMemo(() => {
+    if (!flights.length) return null;
+    return flights.reduce((min, f) => (f.price < min.price ? f : min)).id;
+  }, [flights]);
+
   const handleFlightChange = useCallback(
     (value: string) => {
       setFlight(filteredFlights.find((f) => f.id === value));
@@ -347,28 +371,48 @@ export const FlightSelection = () => {
       setFilteredFlights(filteredFlights.slice(0, 50));
     });
   };
+  const displayFlights = useMemo(() => {
+    const pinnedId =
+      activeTab === "best"
+        ? bestFlightId
+        : activeTab === "cheapest"
+        ? cheapestFlightId
+        : null;
+    if (!pinnedId) return filteredFlights;
+    const idx = filteredFlights.findIndex((f) => f.id === pinnedId);
+    if (idx <= 0) return filteredFlights;
+    const copy = [...filteredFlights];
+    const [pinned] = copy.splice(idx, 1);
+    copy.unshift(pinned);
+    return copy;
+  }, [filteredFlights, activeTab, bestFlightId, cheapestFlightId]);
+
   const flightTicketCards = useMemo(
     () =>
-      filteredFlights.map((flight) => {
+      displayFlights.map((flight) => {
         return (
           <MemoizedFlightCard
             minPrice={event.base_flight_price}
-            isLoading={false} // We handle loading at the container level now
+            isLoading={false}
             key={flight.id}
             {...flight}
             price={Math.ceil(flight.price / flightsMeta.numOfPassengers)}
             flightId={flight.id}
             selectedFlightId={orderFlight?.id}
             onClick={handleFlightChange}
+            isBest={flight.id === bestFlightId}
+            isCheapest={flight.id === cheapestFlightId}
           />
         );
       }),
     [
-      filteredFlights,
+      displayFlights,
       event.base_flight_price,
       flightsMeta.numOfPassengers,
       orderFlight?.id,
       handleFlightChange,
+      bestFlightId,
+      cheapestFlightId,
     ]
   );
 
@@ -496,6 +540,44 @@ export const FlightSelection = () => {
           </div>
         </div>
       </div>
+      {!isLoading && (bestFlightId || cheapestFlightId) && (
+        <div dir="rtl" className="flex gap-2 px-4 lg:px-6">
+          {bestFlightId && (
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab((prev) => (prev === "best" ? null : "best"))
+              }
+              className={cn(
+                "flex items-center gap-1 px-4 py-2 rounded-full border-2 font-bold text-sm transition-colors",
+                activeTab === "best"
+                  ? "bg-amber-400 border-amber-500 text-white"
+                  : "bg-white border-amber-400 text-amber-600 hover:bg-amber-50"
+              )}
+              aria-pressed={activeTab === "best"}
+            >
+              ⭐ הטוב ביותר
+            </button>
+          )}
+          {cheapestFlightId && (
+            <button
+              type="button"
+              onClick={() =>
+                setActiveTab((prev) => (prev === "cheapest" ? null : "cheapest"))
+              }
+              className={cn(
+                "flex items-center gap-1 px-4 py-2 rounded-full border-2 font-bold text-sm transition-colors",
+                activeTab === "cheapest"
+                  ? "bg-blue-500 border-blue-600 text-white"
+                  : "bg-white border-blue-400 text-blue-600 hover:bg-blue-50"
+              )}
+              aria-pressed={activeTab === "cheapest"}
+            >
+              💰 הזול ביותר
+            </button>
+          )}
+        </div>
+      )}
       <div
         className={cn(
           "flex lg:gap-4 flex-row-reverse justify-between items-start w-full",

@@ -17,6 +17,8 @@ type FlightTicketCardProps = {
   flightId: string;
   isLoading: boolean;
   minPrice: number;
+  isBest?: boolean;
+  isCheapest?: boolean;
 } & Flight;
 
 const stopsMap: { [key: number]: string } = {
@@ -176,6 +178,8 @@ export const FlightTicketCard = memo(
     price,
     isLoading,
     minPrice,
+    isBest,
+    isCheapest,
   }: FlightTicketCardProps) => {
     const isSelected = selectedFlightId === flightId;
     const priceToShow = formatPrice(price - minPrice);
@@ -186,6 +190,16 @@ export const FlightTicketCard = memo(
     return (
       <Skeleton visible={isLoading}>
         <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
+          {isBest && (
+            <div className="bg-amber-400 text-white text-xs font-bold px-3 py-1 rounded-t-lg" dir="rtl">
+              ⭐ הטוב ביותר — טיסה מהמלאי שלנו
+            </div>
+          )}
+          {isCheapest && (
+            <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-t-lg" dir="rtl">
+              💰 הזול ביותר
+            </div>
+          )}
           <div className="flex items-center lg:flex-row w-full py-2 pl-12 lg:pl-0">
             <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
               <FlightCard {...outbound} metadata={metadata} />
@@ -255,7 +269,9 @@ export const FlightTicketCard = memo(
       prevSelected === nextSelected &&
       prevProps.isLoading === nextProps.isLoading &&
       prevProps.price === nextProps.price &&
-      prevProps.flightId === nextProps.flightId
+      prevProps.flightId === nextProps.flightId &&
+      prevProps.isBest === nextProps.isBest &&
+      prevProps.isCheapest === nextProps.isCheapest
     );
   }
 );

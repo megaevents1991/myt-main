@@ -51,6 +51,7 @@ export type Flight = {
   penalties?: string;
   bags?: object;
   virtualOfferType?: boolean;
+  isOffline?: boolean;
 };
 
 export type FlightSegment = {
