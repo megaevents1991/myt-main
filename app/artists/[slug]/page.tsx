@@ -43,6 +43,9 @@ export async function generateMetadata({
       title,
       description,
       keywords,
+      alternates: {
+        canonical: `https://www.mega-events.co.il/artists/${slug}`,
+      },
       openGraph: {
         title,
         description,
