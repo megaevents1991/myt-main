@@ -146,7 +146,7 @@ export const ReferFriend = ({
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="bg-gray-100 p-3 rounded-md text-sm truncate text-center">
-              {"https://mega-events.co.il/?utm_source=" + promoCode}
+              {"https://www.mega-events.co.il/?utm_source=" + promoCode}
             </div>
             <div className="flex justify-center gap-8 pt-2">
               <Button
