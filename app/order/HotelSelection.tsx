@@ -35,6 +35,7 @@ import { HotelFetchContext, HotelsData } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
+import dayjs from "dayjs";
 
 export const HotelSelection = () => {
   const {
@@ -89,6 +90,61 @@ export const HotelSelection = () => {
   >(getDefaultDateRange(event, flight));
   const [, startTransition] = useTransition();
   const [isProcessingHotels, setIsProcessingHotels] = useState(false);
+
+  // Offline hotels — fetched from /api/offline-hotels and merged into the main
+  // WorldOTA-style list so they render through the exact same <HotelCard>.
+  type OfflineMeta = {
+    offlineId: number;
+    offlineIds: number[];
+    checkin: string;
+    checkout: string;
+    numRooms: number;
+    consumed: number;
+    available: number;
+    mealPlan: string | null;
+    rawPrice: number;
+    notes: string | null;
+  };
+  const [offlineHotels, setOfflineHotels] = useState<Hotel[]>([]);
+  const [offlineHotelsInfo, setOfflineHotelsInfo] = useState<
+    Record<string, HotelInfoClient>
+  >({});
+  const [offlineMeta, setOfflineMeta] = useState<Record<string, OfflineMeta>>({});
+  const [offlineLoading, setOfflineLoading] = useState(true);
+
+  // Serialize roomParams so the effect re-runs when the customer changes their
+  // room/guest config — needed because the API now filters by room capacity.
+  const roomParamsKey = useMemo(
+    () => JSON.stringify(roomParams),
+    [roomParams]
+  );
+
+  useEffect(() => {
+    if (!event?.id) return;
+    if (!dateRange[0] || !dateRange[1]) return;
+    const checkin = dayjs(dateRange[0]).format("YYYY-MM-DD");
+    const checkout = dayjs(dateRange[1]).format("YYYY-MM-DD");
+    setOfflineLoading(true);
+    fetch(
+      `/api/offline-hotels?eventId=${event.id}&checkin=${checkin}&checkout=${checkout}&rooms=${encodeURIComponent(
+        roomParamsKey
+      )}`
+    )
+      .then((res) => res.json())
+      .then(
+        (data: {
+          hotels: Hotel[];
+          hotelsInfo: Record<string, HotelInfoClient>;
+          meta: Record<string, OfflineMeta>;
+        }) => {
+          setOfflineHotels(data.hotels || []);
+          setOfflineHotelsInfo(data.hotelsInfo || {});
+          setOfflineMeta(data.meta || {});
+        }
+      )
+      .catch(console.error)
+      .finally(() => setOfflineLoading(false));
+  }, [event?.id, dateRange, roomParamsKey]);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -274,6 +330,7 @@ export const HotelSelection = () => {
       location: event.location,
       guests: roomParams,
       radius: parameters?.radius || distanceRange[1] || 2000,
+      eventId: event.id,
     });
   };
 
@@ -368,23 +425,50 @@ export const HotelSelection = () => {
   };
   const handleSelectedRate = useCallback(
     (orderHotel: Omit<OrderHotel, "guests" | "checkin" | "checkout">) => {
+      const isOffline = orderHotel.id.startsWith("offline-");
+      const info = isOffline
+        ? offlineHotelsInfo[orderHotel.id]
+        : hotelsData.hotelsInfo[orderHotel?.id];
+
       const hotelInformation = {
-        hotelName: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.hotelName,
-        roomName: hotelsData.hotelsInfo[orderHotel?.id]?.rooms[0]?.name,
-        stars: hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.rating,
-        amenities: hotelsData.hotelsInfo[orderHotel?.id]?.general?.amenities,
-        distance:
-          hotelsData.hotelsInfo[orderHotel?.id]?.metadata?.distanceFromCenter,
+        hotelName: info?.metadata?.hotelName,
+        roomName: info?.rooms[Object.keys(info?.rooms || {})[0]]?.name || "",
+        stars: info?.metadata?.rating,
+        amenities: info?.general?.amenities,
+        distance: info?.metadata?.distanceFromCenter,
       };
+
+      const meta = isOffline ? offlineMeta[orderHotel.id] : null;
+
+      // Offline hotels must ride the flight-aligned dateRange, not the static
+      // check_in/check_out stored on the offline_hotels row. Online hotels
+      // already get flight-aligned dates via the WorldOTA search request.
+      const offlineCheckin = dateRange[0]
+        ? dayjs(dateRange[0]).format("YYYY-MM-DD")
+        : hotelsData?.data?.debug?.request?.checkin ?? "";
+      const offlineCheckout = dateRange[1]
+        ? dayjs(dateRange[1]).format("YYYY-MM-DD")
+        : hotelsData?.data?.debug?.request?.checkout ?? "";
+
       setHotel({
         ...orderHotel,
         hotelInformation,
-        guests: hotelsData?.data?.debug?.request?.guests,
-        checkin: hotelsData?.data?.debug?.request?.checkin,
-        checkout: hotelsData?.data?.debug?.request?.checkout,
+        guests: meta ? roomParams : hotelsData?.data?.debug?.request?.guests,
+        checkin: isOffline
+          ? offlineCheckin
+          : hotelsData?.data?.debug?.request?.checkin,
+        checkout: isOffline
+          ? offlineCheckout
+          : hotelsData?.data?.debug?.request?.checkout,
+        ...(isOffline && meta && {
+          isOffline: true,
+          offlineId: meta.offlineId,
+          offlineIds: meta.offlineIds,
+          offlineRawPrice: meta.rawPrice,
+        }),
       });
     },
-    [hotelsData, setHotel]
+    [hotelsData, offlineHotelsInfo, offlineMeta, roomParams, setHotel, dateRange]
   );
 
   const handleSetRooms = (room: {
@@ -430,31 +514,88 @@ export const HotelSelection = () => {
     }
   };
 
+  // Total pax across requested rooms — used as the HotelCard `persons` divisor
+  // for offline hotels so the supplement math matches the online pipeline:
+  //   perPerson = show_amount / persons
+  //   supplement = perPerson - event.base_hotel_price
+  const totalPersons = useMemo(
+    () =>
+      roomParams.reduce(
+        (sum, r) => sum + r.adults + r.children.length,
+        0
+      ) || 1,
+    [roomParams]
+  );
+
+  const displayHotels = useMemo(() => {
+    const online = filteredHotels.filter((h) => !h.isOffline);
+    return [...offlineHotels, ...online];
+  }, [offlineHotels, filteredHotels]);
+
+  const mergedHotelsInfo = useMemo(
+    () => ({ ...hotelsData.hotelsInfo, ...offlineHotelsInfo }),
+    [hotelsData.hotelsInfo, offlineHotelsInfo]
+  );
+
+  // Default-select the cheapest offline hotel once it loads (and nothing is selected yet)
+  useEffect(() => {
+    if (
+      offlineHotels.length > 0 &&
+      (!selectedHotelId || !mergedHotelsInfo[selectedHotelId])
+    ) {
+      const first = offlineHotels[0];
+      setSelectedHotelId(first.id);
+      handleSelectedRate({
+        rate: first.rates[0],
+        hotelInformation: {
+          hotelName:
+            offlineHotelsInfo[first.id]?.metadata?.hotelName || "",
+          roomName: first.rates[0].room_data_trans.main_name,
+          stars: offlineHotelsInfo[first.id]?.metadata?.rating || 0,
+          amenities:
+            offlineHotelsInfo[first.id]?.general?.amenities || [],
+          distance:
+            offlineHotelsInfo[first.id]?.metadata?.distanceFromCenter || 0,
+        },
+        address: offlineHotelsInfo[first.id]?.metadata?.address || "",
+        name: offlineHotelsInfo[first.id]?.metadata?.hotelName || "",
+        id: first.id,
+        price: first.rates[0].payment_options.payment_types[0].show_amount,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offlineHotels]);
+
   const hotelCards = useMemo(
     () =>
-      filteredHotels.map(
+      displayHotels.map(
         (hotel) =>
-          hotelsData.hotelsInfo[hotel.id] && (
+          mergedHotelsInfo[hotel.id] && (
             <HotelCard
-              persons={getTotalPersons(
-                hotelsData?.data?.debug?.request?.guests || []
-              )}
+              persons={
+                hotel.isOffline
+                  ? totalPersons
+                  : getTotalPersons(
+                      hotelsData?.data?.debug?.request?.guests || []
+                    )
+              }
               minPrice={basePricePerPerson}
               isLoading={isFetching}
               selectedHotelId={selectedHotelId}
               hotelId={hotel.id}
               key={hotel.id}
               hotelRates={hotel.rates}
-              hotelInfo={hotelsData.hotelsInfo[hotel.id]}
+              hotelInfo={mergedHotelsInfo[hotel.id]}
               handleSelect={() => setSelectedHotelId(hotel.id)}
               handleSelectedRate={handleSelectedRate}
             />
           )
       ),
     [
-      filteredHotels,
-      hotelsData.hotelsInfo,
+      displayHotels,
+      mergedHotelsInfo,
       hotelsData?.data?.debug?.request?.guests,
+      totalPersons,
       basePricePerPerson,
       isFetching,
       selectedHotelId,
@@ -637,7 +778,7 @@ export const HotelSelection = () => {
                 </div>
               }
               settings={
-                <button 
+                <button
                   className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
                   type="button"
                   aria-label="הגדרות מסננים"
@@ -667,14 +808,14 @@ export const HotelSelection = () => {
         </div>{" "}
         <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
-            {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) ? (
+            {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) && offlineHotels.length === 0 ? (
               <FlightLoadingTransition
                 title="!?כבר הספקתם לבחור טיסות"
                 subtitle="ממש עוד רגע יופיעו גם המלונות"
                 showHotelOnly
                 className="py-12"
               />
-            ) : isProcessingHotels || isFetching ? (
+            ) : (isProcessingHotels || isFetching) && offlineHotels.length === 0 ? (
               Array.from({ length: 4 }, (_, i) => (
                 <div key={i} className="flex justify-center">
                   <Skeleton className="p-28" />
@@ -684,6 +825,8 @@ export const HotelSelection = () => {
               hotelCards
             )}
             {!hotelsData.data?.data?.hotels?.length &&
+              !offlineLoading &&
+              offlineHotels.length === 0 &&
               !isProcessingHotels &&
               !isFetching && (
                 <div className="text-center w-full items-center text-gray-500 min-h-64 flex">

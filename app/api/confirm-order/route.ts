@@ -19,7 +19,16 @@ export async function POST(req: Request) {
     payNow,
   );
 
-  const { data, error } = await supabase
+  // Surface offline inventory linkage as top-level columns so the backoffice
+  // can query / JOIN without unpacking the order JSON blobs.
+  const flightInfoForLink = validatedData.flight_order_info as
+    | { offlineId?: number; offlineRawPrice?: number }
+    | undefined;
+  const hotelInfoForLink = validatedData.hotel_order_info as
+    | { offlineId?: number; offlineRawPrice?: number }
+    | undefined;
+
+  const { data, error } = await (supabase as any)
     .from("reservations")
     .insert({
       main_contact_first_name: validatedData.main_contact_first_name,
@@ -38,6 +47,10 @@ export async function POST(req: Request) {
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
       gtmIdnts: gtmIdnts || null,
       status: onlySave ? "24Save" : "Pending",
+      offline_flight_id: flightInfoForLink?.offlineId ?? null,
+      offline_flight_cost: flightInfoForLink?.offlineRawPrice ?? null,
+      offline_hotel_id: hotelInfoForLink?.offlineId ?? null,
+      offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
     })
     .select()
     .single();
@@ -57,6 +70,70 @@ export async function POST(req: Request) {
       { error: "Failed to confirm order" },
       { status: 500 },
     );
+  }
+
+  // Best-effort: decrement offline inventory when the reservation consumed
+  // rows from our in-house offline_hotels / flights tables. We never fail the
+  // reservation if this step errors — the row already exists and ops can
+  // reconcile from the reservation payload if needed.
+  //
+  // TODO: Once the RPCs in docs/offline-inventory-rpcs.sql are deployed to
+  // Supabase, switch to atomic decrement_flight_stock / decrement_offline_hotel_stock
+  // for stock-out protection.
+  try {
+    const flightInfo = validatedData.flight_order_info as
+      | { offlineId?: number; numOfTravelers?: number }
+      | undefined;
+    if (flightInfo?.offlineId) {
+      const { data: flightRow } = await supabase
+        .from("flights")
+        .select("consumed_quantity")
+        .eq("id", flightInfo.offlineId)
+        .single();
+      if (flightRow) {
+        await supabase
+          .from("flights")
+          .update({
+            consumed_quantity:
+              (flightRow.consumed_quantity || 0) +
+              (flightInfo.numOfTravelers || 0),
+          })
+          .eq("id", flightInfo.offlineId);
+      }
+    }
+
+    const hotelInfo = validatedData.hotel_order_info as
+      | { offlineId?: number; offlineIds?: number[] }
+      | undefined;
+    const offlineHotelIds: number[] =
+      hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
+        ? hotelInfo.offlineIds
+        : hotelInfo?.offlineId
+        ? [hotelInfo.offlineId]
+        : [];
+    if (offlineHotelIds.length > 0) {
+      const counts = new Map<number, number>();
+      for (const rowId of offlineHotelIds) {
+        counts.set(rowId, (counts.get(rowId) || 0) + 1);
+      }
+      for (const [rowId, count] of counts) {
+        const { data: hotelRow } = await (supabase as any)
+          .from("offline_hotels")
+          .select("consumed_rooms")
+          .eq("id", rowId)
+          .single();
+        if (hotelRow) {
+          await (supabase as any)
+            .from("offline_hotels")
+            .update({
+              consumed_rooms: (hotelRow.consumed_rooms || 0) + count,
+            })
+            .eq("id", rowId);
+        }
+      }
+    }
+  } catch (decrementError) {
+    console.error("Failed to decrement offline inventory:", decrementError);
   }
 
   // Generate referral tracking code only for non-agent bookings

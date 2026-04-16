@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **⚠ IMPORTANT: This project is part of a two-project platform.**
+> The sibling project `../myt---backoffice` is the admin dashboard that manages the data this app displays.
+> See `../CLAUDE.md` for the full system architecture and shared database schema.
+> **Any change to events, types, API routes, or database tables may require changes in the backoffice too.**
+
 ## Project Overview
 
 **Mega Events** (מגה איבנטס) — an Israeli event booking platform by Mega Tourism. Users build custom packages for international music and sports events: tickets + flights + hotels. The site is Hebrew/RTL with `lang="he"`.
@@ -98,3 +103,37 @@ Prices are in USD internally. The frontend converts to ILS using the exchange ra
 ### CMS (Contentful)
 
 Artist and football team detail pages (`/app/artists/[id]`, `/app/football/[id]`) are CMS-driven via Contentful. Types are defined in `lib/app.types.ts` (`ArtistFields`, `FootballFields`). The Contentful client is in `lib/contentful.ts`.
+
+---
+
+## Connection to Backoffice (`../myt---backoffice`)
+
+### How They're Connected
+Both projects share the **same Supabase database**. The backoffice syncs external event providers and writes event data; this app reads it and serves it to customers. The backoffice also calls this app's API routes directly.
+
+### API Routes the Backoffice Calls (Do NOT Change Without Updating Backoffice)
+1. `GET /api/hotels` — Hotel search (params: `lat`, `lon`, `checkin`, `checkout`, `secret`)
+2. `GET /api/revalidate` — ISR cache invalidation (param: `secret=secretAlonOnDemand`)
+3. `GET /api/flights/search` — Flight search for backoffice admin preview
+
+### Shared Database Tables
+| Table | This App | Backoffice |
+|-------|----------|------------|
+| `events` | Reads | Creates, updates, soft-deletes |
+| `reservations` | Creates (on booking) | Reads (dashboard) |
+| `partners` | Reads (affiliate auth) | Creates, manages |
+| `hotels` | Writes (search cache) | Reads |
+| `flights` | Reads | Manages (offline inventory) |
+
+### Shared Types — Keep In Sync!
+Types in `lib/app.types.ts` are duplicated in `../myt---backoffice/types/app.types.ts`. These types MUST match:
+`Event`, `EventType`, `Flight`, `FlightSegment`, `Order`, `OrderHotel`, `OrderTicket`, `FlightSearchOptions`, `TimeRange`, `AffiliateTracking`, `VipConfig`, `EventTicket`
+
+**Known intentional differences:**
+- Backoffice `EventType` has extra value `sports_live_event_dynamic`
+- Backoffice `Flight` uses simplified airline metadata
+
+### Price Logic Chain (Spans Both Projects)
+1. **Backoffice** sets: `base_flight_price`, `base_hotel_price`, and ticket prices on events (applies currency markups: USD +$40, EUR +€40, GBP +£35, ILS +₪150)
+2. **This app** calculates final package: `base_flight_price + base_hotel_price + min_ticket_price + NEXT_PUBLIC_MARKUP (175)`
+3. Changing price logic in either project affects what customers pay

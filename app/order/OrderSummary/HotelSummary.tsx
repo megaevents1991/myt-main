@@ -31,7 +31,11 @@ export const HotelSummary = ({
           <p className="font-bold hidden md:block" dir="ltr">
             {selectedHotel.name}
           </p>
-          <p dir="ltr">{selectedHotel.rate.room_data_trans.main_name}</p>
+          <p dir="ltr">
+          {selectedHotel.isOffline
+            ? selectedHotel.hotelInformation.roomName
+            : selectedHotel.rate?.room_data_trans?.main_name}
+        </p>
         </div>
         {agentCommission <= 0 && (
           <div>

@@ -1,4 +1,5 @@
 export const parseDuration = (duration: string) => {
+  if (!duration) return 0;
   const regex = /PT(?:(\d+)H)?(?:(\d+)M)?/;
   const matches = duration.match(regex);
 
