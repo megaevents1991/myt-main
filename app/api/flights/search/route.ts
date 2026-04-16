@@ -140,6 +140,8 @@ const transformDbFlightToFlight = (
       logo: dbFlight.metadata_logo,
     },
     isOffline: true,
+    offlineId: dbFlight.id,
+    offlineRawPrice: parseFloat(dbFlight.price),
   };
 };
 

@@ -122,6 +122,7 @@ export const FlightSelection = () => {
         dateRange: getDefaultDateRange(event, orderFlight),
         guests: getRoomParams(planeTickets.adults),
         location: event.location,
+        eventId: event.id,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,6 +136,7 @@ export const FlightSelection = () => {
         dateRange: getDefaultDateRange(event, orderFlight),
         guests: getRoomParams(planeTickets.adults),
         location: event.location,
+        eventId: event.id,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,21 +302,29 @@ export const FlightSelection = () => {
   );
 
   const bestFlightId = useMemo(() => {
-    if (!offlineFlights.length) return null;
+    const pool = offlineFlights.length ? offlineFlights : flights;
+    if (!pool.length) return null;
+    const stopPenalty = Number(process.env.NEXT_PUBLIC_BEST_FLIGHT_STOP_PENALTY) || 300;
     const score = (f: Flight) =>
       f.price / f.numOfTravelers +
-      f.stops * 100 -
+      f.stops * stopPenalty -
       (f.outbound.checkBagsIncluded ? 50 : 0) -
       (f.outbound.cabinBagsIncluded ? 10 : 0);
-    return offlineFlights.reduce((best, f) =>
+    return pool.reduce((best, f) =>
       score(f) < score(best) ? f : best
     ).id;
-  }, [offlineFlights]);
+  }, [offlineFlights, flights]);
 
   const cheapestFlightId = useMemo(() => {
-    if (!flights.length) return null;
-    return flights.reduce((min, f) => (f.price < min.price ? f : min)).id;
-  }, [flights]);
+    // Use filteredFlights so the badge always lands on a visible card
+    if (!filteredFlights.length) return null;
+    const offlineBoost = Number(process.env.NEXT_PUBLIC_OFFLINE_FLIGHT_BOOST) || 60;
+    const effectivePrice = (f: Flight) =>
+      f.price / f.numOfTravelers - (f.isOffline ? offlineBoost : 0);
+    return filteredFlights.reduce((min, f) =>
+      effectivePrice(f) < effectivePrice(min) ? f : min
+    ).id;
+  }, [filteredFlights]);
 
   const handleFlightChange = useCallback(
     (value: string) => {
@@ -378,7 +388,15 @@ export const FlightSelection = () => {
         : activeTab === "cheapest"
         ? cheapestFlightId
         : null;
-    if (!pinnedId) return filteredFlights;
+
+    // No tab active: offline flights first, then online in sort order
+    if (!pinnedId) {
+      const offline = filteredFlights.filter((f) => f.isOffline);
+      const online = filteredFlights.filter((f) => !f.isOffline);
+      return [...offline, ...online];
+    }
+
+    // Tab active: pin the selected flight to position 0, rest stay in price order
     const idx = filteredFlights.findIndex((f) => f.id === pinnedId);
     if (idx <= 0) return filteredFlights;
     const copy = [...filteredFlights];
@@ -541,41 +559,58 @@ export const FlightSelection = () => {
         </div>
       </div>
       {!isLoading && (bestFlightId || cheapestFlightId) && (
-        <div dir="rtl" className="flex gap-2 px-4 lg:px-6">
-          {bestFlightId && (
+        <div dir="rtl" className="px-4 lg:px-6">
+          <div className="flex gap-3">
+
+            {/* Best */}
             <button
               type="button"
-              onClick={() =>
-                setActiveTab((prev) => (prev === "best" ? null : "best"))
-              }
-              className={cn(
-                "flex items-center gap-1 px-4 py-2 rounded-full border-2 font-bold text-sm transition-colors",
-                activeTab === "best"
-                  ? "bg-amber-400 border-amber-500 text-white"
-                  : "bg-white border-amber-400 text-amber-600 hover:bg-amber-50"
-              )}
+              onClick={() => setActiveTab((prev) => (prev === "best" ? null : "best"))}
               aria-pressed={activeTab === "best"}
+              className={cn(
+                "flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-right transition-all duration-200 outline-none",
+                activeTab === "best"
+                  ? "border-main bg-main text-white shadow-md"
+                  : "border-gray-200 bg-white text-gray-800 hover:border-main hover:shadow-sm"
+              )}
             >
-              ⭐ הטוב ביותר
+              <span className="text-lg leading-none select-none">⭐</span>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm leading-tight">
+                  הטוב ביותר
+                </span>
+                <span className={cn("text-[11px]", activeTab === "best" ? "text-blue-200" : "text-gray-400")}>ערך מיטבי לכסף</span>
+              </div>
+              {activeTab === "best" && (
+                <span className="mr-auto text-[10px] font-bold text-white">✓</span>
+              )}
             </button>
-          )}
-          {cheapestFlightId && (
+
+            {/* Cheapest */}
             <button
               type="button"
-              onClick={() =>
-                setActiveTab((prev) => (prev === "cheapest" ? null : "cheapest"))
-              }
-              className={cn(
-                "flex items-center gap-1 px-4 py-2 rounded-full border-2 font-bold text-sm transition-colors",
-                activeTab === "cheapest"
-                  ? "bg-blue-500 border-blue-600 text-white"
-                  : "bg-white border-blue-400 text-blue-600 hover:bg-blue-50"
-              )}
+              onClick={() => setActiveTab((prev) => (prev === "cheapest" ? null : "cheapest"))}
               aria-pressed={activeTab === "cheapest"}
+              className={cn(
+                "flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-right transition-all duration-200 outline-none",
+                activeTab === "cheapest"
+                  ? "border-secondary bg-secondary text-white shadow-md"
+                  : "border-gray-200 bg-white text-gray-800 hover:border-secondary hover:shadow-sm"
+              )}
             >
-              💰 הזול ביותר
+              <span className="text-lg leading-none select-none">💰</span>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm leading-tight">
+                  הזול ביותר
+                </span>
+                <span className={cn("text-[11px]", activeTab === "cheapest" ? "text-teal-100" : "text-gray-400")}>המחיר הנמוך ביותר</span>
+              </div>
+              {activeTab === "cheapest" && (
+                <span className="mr-auto text-[10px] font-bold text-white">✓</span>
+              )}
             </button>
-          )}
+
+          </div>
         </div>
       )}
       <div

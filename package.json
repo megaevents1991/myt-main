@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@contentful/rich-text-react-renderer": "^16.0.1",
@@ -64,6 +69,7 @@
     "fast-xml-parser": "^5.3.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@shadcn/ui": "^0.0.4",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",

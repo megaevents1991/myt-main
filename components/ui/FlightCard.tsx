@@ -190,16 +190,6 @@ export const FlightTicketCard = memo(
     return (
       <Skeleton visible={isLoading}>
         <CardWrapper isSelected={isSelected} onClick={() => onClick(flightId)}>
-          {isBest && (
-            <div className="bg-amber-400 text-white text-xs font-bold px-3 py-1 rounded-t-lg" dir="rtl">
-              ⭐ הטוב ביותר — טיסה מהמלאי שלנו
-            </div>
-          )}
-          {isCheapest && (
-            <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-t-lg" dir="rtl">
-              💰 הזול ביותר
-            </div>
-          )}
           <div className="flex items-center lg:flex-row w-full py-2 pl-12 lg:pl-0">
             <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
               <FlightCard {...outbound} metadata={metadata} />
@@ -208,7 +198,7 @@ export const FlightTicketCard = memo(
             </div>
             <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
             {/* Desktop pricing element */}
-            <div className="hidden lg:block font-bold w-1/6 mt-2 text-center pt-2 border-none">
+            <div className="hidden lg:flex flex-col items-center gap-1.5 font-bold w-1/6 mt-2 text-center pt-2 border-none">
               {priceOutsidePackBoundries ? (
                 <>
                   <span className="text-lg lg:text-2xl">{priceToShow}</span>
@@ -224,6 +214,20 @@ export const FlightTicketCard = memo(
                 </>
               ) : (
                 <span className="text-xl">כלול במחיר</span>
+              )}
+              {(isBest || isCheapest) && (
+                <div className="flex flex-row gap-1 justify-center">
+                  {isBest && (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                      ★ הטוב ביותר
+                    </span>
+                  )}
+                  {isCheapest && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                      ↓ הזול ביותר
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             {/* Mobile pricing element */}
@@ -297,12 +301,16 @@ const FlightCard = ({
     <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
       <div className="w-[20%] lg:w-[20%] flex flex-col items-center">
         <div className="mb-2">
-          <Image
-            src={metadata.logo || ""}
-            alt={`${metadata.name} logo`}
-            width={100}
-            height={100}
-          />
+          {metadata.logo ? (
+            <Image
+              src={metadata.logo}
+              alt={`${metadata.name} logo`}
+              width={100}
+              height={100}
+            />
+          ) : (
+            <Plane size={40} className="text-gray-400" />
+          )}
         </div>
         <div className="text-sm hidden lg:block">{flightNumber}</div>
       </div>
