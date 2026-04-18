@@ -2,11 +2,9 @@ const nextConfig: import("next").NextConfig = {
   reactStrictMode: false,
   experimental: {
     optimizePackageImports: ["@mantine/core", "@mantine/hooks"],
-    serverActions: { 
-      allowedOrigins: 
-        ['www.mega-events.co.il', 
-          'pps.creditguard.co.il']
-      },
+    serverActions: {
+      allowedOrigins: ["www.mega-events.co.il", "pps.creditguard.co.il"],
+    },
   },
   images: {
     minimumCacheTTL: 86400,
@@ -70,6 +68,12 @@ const nextConfig: import("next").NextConfig = {
         hostname: "upload.wikimedia.org",
         port: "",
         pathname: "/wikipedia/**",
+      },
+      {
+        protocol: "https",
+        hostname: "tixstock.s3.eu-west-2.amazonaws.com",
+        port: "",
+        pathname: "/**",
       },
     ],
   },
