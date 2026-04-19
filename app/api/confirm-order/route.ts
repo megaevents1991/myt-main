@@ -19,7 +19,27 @@ export async function POST(req: Request) {
     payNow,
   );
 
-  const { data, error } = await supabase
+  // Surface offline inventory linkage as top-level columns so the backoffice
+  // can query / JOIN without unpacking the order JSON blobs.
+  const flightInfoForLink = validatedData.flight_order_info as
+    | { offlineId?: number; offlineRawPrice?: number }
+    | undefined;
+  const hotelInfoForLink = validatedData.hotel_order_info as
+    | {
+        offlineId?: number;
+        offlineIds?: number[];
+        offlineRawPrice?: number;
+      }
+    | undefined;
+
+  const offlineHotelIdsForLink: number[] | null =
+    hotelInfoForLink?.offlineIds && hotelInfoForLink.offlineIds.length > 0
+      ? hotelInfoForLink.offlineIds
+      : hotelInfoForLink?.offlineId != null
+      ? [hotelInfoForLink.offlineId]
+      : null;
+
+  const { data, error } = await (supabase as any)
     .from("reservations")
     .insert({
       main_contact_first_name: validatedData.main_contact_first_name,
@@ -38,6 +58,11 @@ export async function POST(req: Request) {
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
       gtmIdnts: gtmIdnts || null,
       status: onlySave ? "24Save" : "Pending",
+      offline_flight_id: flightInfoForLink?.offlineId ?? null,
+      offline_flight_cost: flightInfoForLink?.offlineRawPrice ?? null,
+      offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
+      offline_hotel_ids: offlineHotelIdsForLink,
+      offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
     })
     .select()
     .single();
