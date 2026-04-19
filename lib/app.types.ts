@@ -282,6 +282,7 @@ export type OrderData = {
   exchange_rate_usd_ils_100: number;
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
+  status?: string;
 };
 
 export type ArtistFields = {
