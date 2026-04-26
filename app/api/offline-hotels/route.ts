@@ -27,6 +27,7 @@ type OfflineRow = {
   consumed_rooms: number;
   meal_plan: string | null;
   notes: string | null;
+  last_cancellation_date: string | null;
 };
 
 type OfflineMeta = {
@@ -107,7 +108,7 @@ export async function GET(request: Request) {
   let query = (supabase as any)
     .from("offline_hotels")
     .select(
-      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes"
+      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date"
     )
     .contains("event_ids", [eventId])
     .eq("is_deleted", false);
@@ -254,6 +255,13 @@ export async function GET(request: Request) {
       (anchor.room_type as string | undefined) ||
       "Standard Room";
 
+    // Earliest cancellation deadline across matched rows — worst case for the customer
+    const matchedCancDates = match.rowIds
+      .map((id) => rowsInGroup.find((r) => r.id === id)?.last_cancellation_date)
+      .filter((d): d is string => !!d);
+    const freeCancellationBefore =
+      matchedCancDates.length > 0 ? [...matchedCancDates].sort()[0] : "";
+
     const totalPriceStr = String(match.totalPrice);
     const rate: any = {
       match_hash: `offline-${id}`,
@@ -273,7 +281,7 @@ export async function GET(request: Request) {
             tax_data: { taxes: [] },
             cancellation_penalties: {
               policies: [],
-              free_cancellation_before: "",
+              free_cancellation_before: freeCancellationBefore,
             },
           },
         ],
