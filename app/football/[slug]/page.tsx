@@ -190,6 +190,15 @@ export default async function FootballPage({
                           אזלו הכרטיסים
                         </div>
                       )}
+                      {event.skip_flight && !computedSold && (
+                        <div
+                          className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 text-main border border-main/30 rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm"
+                          aria-label="אירוע זה מוצע ללא טיסה"
+                          role="status"
+                        >
+                          🎟️ כרטיס בלבד
+                        </div>
+                      )}
                       <Image
                         src={event.card_image_url}
                         alt={name}

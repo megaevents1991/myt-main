@@ -38,16 +38,20 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
     { [key: string]: string }[] | undefined
   >(undefined);
   const [skipHotel, setSkipHotel] = useState(false);
-  
+  const [skipFlight, setSkipFlight] = useState(false);
+  const [flightSkipped, setFlightSkipped] = useState(false);
+
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";
-  
+
   const handleStepperClick = (index: number) => {
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
       if (isUS && targetStep === 3) return;
+      // Prevent navigating back to flight step if the client already skipped it.
+      if (flightSkipped && targetStep === 2) return;
       setStep(targetStep);
     }
   };
@@ -100,6 +104,10 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPassengers,
           skipHotel,
           setSkipHotel,
+          skipFlight,
+          setSkipFlight,
+          flightSkipped,
+          setFlightSkipped,
         }}
       >
         <HotelFetchProvider>

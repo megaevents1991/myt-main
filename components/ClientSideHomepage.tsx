@@ -494,12 +494,21 @@ function CompactEventCard({ event }: { event: Event }) {
             </div>
           )}
           {event.tags === "Sold" && (
-            <div 
+            <div
               className="absolute top-0 left-0 w-32 h-6 bg-[#d63a59] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
               aria-label="אזלו הכרטיסים לאירוע זה"
               role="status"
             >
               אזלו הכרטיסים
+            </div>
+          )}
+          {event.skip_flight && event.tags !== "Sold" && (
+            <div
+              className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 text-main border border-main/30 rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm"
+              aria-label="אירוע זה מוצע ללא טיסה"
+              role="status"
+            >
+              🎟️ כרטיס בלבד
             </div>
           )}
           {/* Accessibility: Enhanced alt text with descriptive event information */}
@@ -1802,6 +1811,15 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
           {computedSold && (
             <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
               אזלו הכרטיסים
+            </div>
+          )}
+          {event.skip_flight && !computedSold && (
+            <div
+              className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 text-main border border-main/30 rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm"
+              aria-label="אירוע זה מוצע ללא טיסה"
+              role="status"
+            >
+              🎟️ כרטיס בלבד
             </div>
           )}
           {/* Accessibility: Enhanced image with descriptive alt text */}

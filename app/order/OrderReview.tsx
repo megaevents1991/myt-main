@@ -65,18 +65,22 @@ export default function OrderReview() {
     passengers: passengersContext,
     setPassengers: setPassengersContext,
     skipHotel,
+    flightSkipped,
   } = useContext(OrderContext);
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { affId, affDiscount, agentCommission, setAffDiscount } =
     useFetchAffiliate();
+  const passengerCount = flightSkipped
+    ? numberOfEventTickets
+    : selectedFlight?.numOfTravelers || 1;
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
-  >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
+  >(Array.from({ length: passengerCount }, () => ({})));
   const [passengers, setPassengers] = useState(
     passengersContext ||
-      Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+      Array.from({ length: passengerCount }, () => ({
         firstName: "",
         lastName: "",
         phone: "",
@@ -84,7 +88,7 @@ export default function OrderReview() {
       }))
   );
   const [touched, setTouched] = useState(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+    Array.from({ length: passengerCount }, () => ({
       firstName: false,
       lastName: false,
       phone: false,
@@ -573,8 +577,8 @@ export default function OrderReview() {
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
 
-  // Check if we have all required data (hotel is optional if skipHotel is true)
-  if (!event || !selectedFlight || (!selectedHotel && !skipHotel)) {
+  // Check if we have all required data (hotel optional if skipHotel; flight optional if flightSkipped)
+  if (!event || (!selectedFlight && !flightSkipped) || (!selectedHotel && !skipHotel)) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
         <p className="text-red-600">
@@ -1026,6 +1030,7 @@ export default function OrderReview() {
                   airlineFullName={airlineFullName}
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
+                  flightSkipped={flightSkipped}
                 />
               </Card>
 

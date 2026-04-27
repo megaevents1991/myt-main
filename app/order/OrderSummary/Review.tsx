@@ -22,6 +22,7 @@ export const Review = ({
   eventTicketPriceAddition,
   event,
   skipHotel,
+  flightSkipped,
 }: {
   agentCommission: number;
   hotelPriceAddition: number;
@@ -38,6 +39,7 @@ export const Review = ({
   eventTicketPriceAddition: number;
   event: Event;
   skipHotel?: boolean;
+  flightSkipped?: boolean;
 }) => {
   const items = useMemo(
     () => [
@@ -75,9 +77,10 @@ export const Review = ({
           />
         ),
       }] : []),
-      {
+      // Conditionally include flight only if not skipped
+      ...(!flightSkipped && selectedFlight ? [{
         id: "flight-summary",
-        primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)` ,
+        primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)`,
         secondary: airlineFullName || selectedFlight.airline,
         icon: <FaPlane />,
         component: (
@@ -89,7 +92,7 @@ export const Review = ({
             selectedFlight={selectedFlight}
           />
         ),
-      },
+      }] : []),
     ],
     [
       numberOfEventTickets,
@@ -103,6 +106,7 @@ export const Review = ({
       airlineFullName,
       selectedFlight,
       skipHotel,
+      flightSkipped,
     ]
   );
 
