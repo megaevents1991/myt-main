@@ -17,6 +17,7 @@ export function useOrderVars() {
     event,
     numberOfEventTickets,
     skipHotel,
+    flightSkipped,
   } = useContext(OrderContext);
 
   /* Calculate total guests */
@@ -94,13 +95,16 @@ export function useOrderVars() {
   }, [totalGuests, numberOfEventTickets, selectedFlight]);
 
   const numberOfPersons = useMemo(() => {
-    if (!selectedFlight) {
+    if (!selectedFlight && !flightSkipped) {
       return 0;
     }
-    return selectedFlight.numOfTravelers > numberOfEventTickets
-      ? selectedFlight.numOfTravelers
+    if (flightSkipped) {
+      return numberOfEventTickets;
+    }
+    return selectedFlight!.numOfTravelers > numberOfEventTickets
+      ? selectedFlight!.numOfTravelers
       : numberOfEventTickets;
-  }, [selectedFlight, numberOfEventTickets]);
+  }, [selectedFlight, numberOfEventTickets, flightSkipped]);
 
   /* Fetch Pack recommended price */
   const packRecommendedPrice = useMemo(() => {
@@ -115,7 +119,7 @@ export function useOrderVars() {
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
   const calculateBaseTotal = useCallback(() => {
-    if (!eventTicket || !event || !selectedFlight) {
+    if (!eventTicket || !event || (!selectedFlight && !flightSkipped)) {
       return 0;
     }
 
@@ -124,10 +128,15 @@ export function useOrderVars() {
       ? 0 // When skipping, the credit is applied via hotelPriceAddition
       : (hotelPriceAddition + event.base_hotel_price) * totalGuests;
 
+    // When flight is skipped, no flight cost is added
+    const numTravelers = selectedFlight?.numOfTravelers ?? numberOfEventTickets;
+    const flightComponent = flightSkipped
+      ? 0
+      : (flightPriceAddition + event.base_flight_price) * numTravelers;
+
     return Math.ceil(
       (eventTicket.price + maup || 0) * numberOfEventTickets +
-        (flightPriceAddition + event.base_flight_price) *
-          selectedFlight.numOfTravelers +
+        flightComponent +
         hotelComponent +
         (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
     );
@@ -135,6 +144,7 @@ export function useOrderVars() {
     eventTicket,
     event,
     selectedFlight,
+    flightSkipped,
     skipHotel,
     hotelPriceAddition,
     totalGuests,
