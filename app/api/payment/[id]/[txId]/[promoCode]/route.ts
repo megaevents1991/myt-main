@@ -73,21 +73,12 @@ export async function GET(
     updateObj["confirmation_email_sent"] = true;
   }
 
-  // Idempotency guard: only decrement on the first Pending -> Paid flip. If
-  // the reservation is already Paid we are replaying a callback and must not
-  // consume stock again.
-  const shouldDecrement = isSuccess && orderData.status !== "Paid";
-
   await supabase
     .from("reservations")
     .update(updateObj)
     .eq("id", id)
     .select()
     .single();
-
-  if (shouldDecrement) {
-    await decrementOfflineInventory(orderData);
-  }
 
   console.log(JSON.stringify(result));
 
@@ -96,62 +87,3 @@ export async function GET(
   });
 }
 
-async function decrementOfflineInventory(orderData: OrderData) {
-  try {
-    const flightInfo = orderData.flight_order_info as
-      | { offlineId?: number; numOfTravelers?: number }
-      | undefined;
-    if (flightInfo?.offlineId) {
-      const { data: flightRow } = await supabase
-        .from("flights")
-        .select("consumed_quantity")
-        .eq("id", flightInfo.offlineId)
-        .single();
-      if (flightRow) {
-        await supabase
-          .from("flights")
-          .update({
-            consumed_quantity:
-              (flightRow.consumed_quantity || 0) +
-              (flightInfo.numOfTravelers || 0),
-          })
-          .eq("id", flightInfo.offlineId);
-      }
-    }
-
-    const hotelInfo = orderData.hotel_order_info as
-      | { offlineId?: number; offlineIds?: number[] }
-      | undefined;
-    const offlineHotelIds: number[] =
-      hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
-        ? hotelInfo.offlineIds
-        : hotelInfo?.offlineId
-        ? [hotelInfo.offlineId]
-        : [];
-    if (offlineHotelIds.length > 0) {
-      const counts = new Map<number, number>();
-      for (const rowId of offlineHotelIds) {
-        counts.set(rowId, (counts.get(rowId) || 0) + 1);
-      }
-      for (const [rowId, count] of counts) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: hotelRow } = await (supabase as any)
-          .from("offline_hotels")
-          .select("consumed_rooms")
-          .eq("id", rowId)
-          .single();
-        if (hotelRow) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
-            .from("offline_hotels")
-            .update({
-              consumed_rooms: (hotelRow.consumed_rooms || 0) + count,
-            })
-            .eq("id", rowId);
-        }
-      }
-    }
-  } catch (decrementError) {
-    console.error("Failed to decrement offline inventory:", decrementError);
-  }
-}

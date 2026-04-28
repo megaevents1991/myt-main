@@ -84,6 +84,9 @@ export async function POST(req: Request) {
     );
   }
 
+  // Hold offline inventory immediately — released only on cancellation.
+  await holdOfflineInventory(validatedData);
+
   // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";
   if (!validatedData.is_agent_booking) {
@@ -252,5 +255,60 @@ export async function POST(req: Request) {
       { error: "Failed to confirm order" },
       { status: 500 },
     );
+  }
+}
+
+async function holdOfflineInventory(orderData: OrderData) {
+  try {
+    const flightInfo = orderData.flight_order_info as
+      | { offlineId?: number; numOfTravelers?: number }
+      | undefined;
+    if (flightInfo?.offlineId) {
+      const { data: flightRow } = await supabase
+        .from("flights")
+        .select("consumed_quantity")
+        .eq("id", flightInfo.offlineId)
+        .single();
+      if (flightRow) {
+        await supabase
+          .from("flights")
+          .update({
+            consumed_quantity:
+              (flightRow.consumed_quantity || 0) + (flightInfo.numOfTravelers || 0),
+          })
+          .eq("id", flightInfo.offlineId);
+      }
+    }
+
+    const hotelInfo = orderData.hotel_order_info as
+      | { offlineId?: number; offlineIds?: number[] }
+      | undefined;
+    const offlineHotelIds: number[] =
+      hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
+        ? hotelInfo.offlineIds
+        : hotelInfo?.offlineId
+        ? [hotelInfo.offlineId]
+        : [];
+    if (offlineHotelIds.length > 0) {
+      const counts = new Map<number, number>();
+      for (const rowId of offlineHotelIds) {
+        counts.set(rowId, (counts.get(rowId) || 0) + 1);
+      }
+      for (const [rowId, count] of counts) {
+        const { data: hotelRow } = await (supabase as any)
+          .from("offline_hotels")
+          .select("consumed_rooms")
+          .eq("id", rowId)
+          .single();
+        if (hotelRow) {
+          await (supabase as any)
+            .from("offline_hotels")
+            .update({ consumed_rooms: (hotelRow.consumed_rooms || 0) + count })
+            .eq("id", rowId);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to hold offline inventory:", e);
   }
 }
