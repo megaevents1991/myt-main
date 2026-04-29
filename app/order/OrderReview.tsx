@@ -987,17 +987,21 @@ export default function OrderReview() {
                     <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
                   ) : (
                     <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
-                      <div>
-                        {dayjs(selectedFlight.outbound.departureTime).format(
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
-                      <div>-</div>
-                      <div>
-                        {dayjs(selectedFlight.inbound.departureTime).format(
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
+                      {selectedFlight && (
+                        <>
+                          <div>
+                            {dayjs(selectedFlight.outbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                          <div>-</div>
+                          <div>
+                            {dayjs(selectedFlight.inbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -1019,7 +1023,7 @@ export default function OrderReview() {
                 )}
                 <Review
                   event={event}
-                  selectedFlight={selectedFlight}
+                  selectedFlight={selectedFlight!}
                   selectedHotel={selectedHotel!}
                   eventTicket={eventTicket}
                   numberOfEventTickets={numberOfEventTickets}
