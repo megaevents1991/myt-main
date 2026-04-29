@@ -259,7 +259,7 @@ export type OrderData = {
     vendor?: string;
     id?: string;
   };
-  flight_order_info: Flight; // You might need to define a specific interface here
+  flight_order_info: Flight | Record<string, never>; // empty object {} indicates flight was skipped
   hotel_order_info: OrderHotel | Record<string, never>; // empty object {} indicates hotel was skipped
   user_shown_price: number;
   event_id: number;
