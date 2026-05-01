@@ -1,3 +1,4 @@
+import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields } from "@/lib/app.types";
 import { Metadata } from "next";
@@ -184,6 +185,9 @@ export default async function ArtistPage({
                         <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
                           אזלו הכרטיסים
                         </div>
+                      )}
+                      {event.skip_flight && !computedSold && (
+                        <TicketOnlyBadge />
                       )}
                       <Image
                         src={event.card_image_url}

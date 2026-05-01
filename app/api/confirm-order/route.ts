@@ -119,10 +119,15 @@ export async function POST(req: Request) {
           Vendor: ${validatedData.event_order_info.vendor || "N/A"}
 
           ******** Flight Info **********
-          Flight Outbound Number: ${validatedData.flight_order_info.outbound.flightNumber}
+          ${
+            !validatedData.flight_order_info ||
+            !validatedData.flight_order_info.outbound
+              ? "Flight: SKIPPED BY CUSTOMER"
+              : `Flight Outbound Number: ${validatedData.flight_order_info.outbound.flightNumber}
           Flight Outbound Date: ${validatedData.flight_order_info.outbound.departureTime}
           Flight Inbound Number: ${validatedData.flight_order_info.inbound.flightNumber}
-          Flight Inbound Date: ${validatedData.flight_order_info.inbound.departureTime}
+          Flight Inbound Date: ${validatedData.flight_order_info.inbound.departureTime}`
+          }
 
           ******* Hotel Details *********
           ${
@@ -140,12 +145,16 @@ export async function POST(req: Request) {
         `;
 
   try {
-    await transporter.sendMail({
-      from: '"MegaEvents Reservations" <reservations@mega-events.co.il>',
-      to: process.env.SALES_REP_EMAIL,
-      subject: `New Order Confirmation - ${validatedData.event_order_info.name}`,
-      text: repEmailContent,
-    });
+    try {
+      await transporter.sendMail({
+        from: '"MegaEvents Reservations" <reservations@mega-events.co.il>',
+        to: process.env.SALES_REP_EMAIL,
+        subject: `New Order Confirmation - ${validatedData.event_order_info.name}`,
+        text: repEmailContent,
+      });
+    } catch (emailError) {
+      console.warn("Sales rep email failed (non-fatal):", JSON.stringify(emailError));
+    }
 
     const bookingReference = `ME${new Date().getDate()}${id}`;
 
@@ -189,20 +198,24 @@ export async function POST(req: Request) {
 
     if (!payNow) {
       // confirmation email to user when ask for phone order
-      await sendUserEmail({
-        orderData: { ...validatedData, booking_reference: bookingReference },
-        payNow,
-        onlySave,
-        partnerTrackingCode,
-        orderId: id,
-      });
+      try {
+        await sendUserEmail({
+          orderData: { ...validatedData, booking_reference: bookingReference },
+          payNow,
+          onlySave,
+          partnerTrackingCode,
+          orderId: id,
+        });
 
-      await supabase
-        .from("reservations")
-        .update({
-          confirmation_email_sent: true,
-        })
-        .eq("id", id);
+        await supabase
+          .from("reservations")
+          .update({
+            confirmation_email_sent: true,
+          })
+          .eq("id", id);
+      } catch (userEmailError) {
+        console.warn("User confirmation email failed (non-fatal):", JSON.stringify(userEmailError));
+      }
     }
 
     return NextResponse.json(

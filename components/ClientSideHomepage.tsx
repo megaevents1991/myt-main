@@ -11,6 +11,7 @@ import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -503,13 +504,7 @@ function CompactEventCard({ event }: { event: Event }) {
             </div>
           )}
           {event.skip_flight && event.tags !== "Sold" && (
-            <div
-              className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 text-main border border-main/30 rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm"
-              aria-label="אירוע זה מוצע ללא טיסה"
-              role="status"
-            >
-              🎟️ כרטיס בלבד
-            </div>
+            <TicketOnlyBadge />
           )}
           {/* Accessibility: Enhanced alt text with descriptive event information */}
           <Image
@@ -1814,13 +1809,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
             </div>
           )}
           {event.skip_flight && !computedSold && (
-            <div
-              className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/90 text-main border border-main/30 rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm"
-              aria-label="אירוע זה מוצע ללא טיסה"
-              role="status"
-            >
-              🎟️ כרטיס בלבד
-            </div>
+            <TicketOnlyBadge />
           )}
           {/* Accessibility: Enhanced image with descriptive alt text */}
           <Image

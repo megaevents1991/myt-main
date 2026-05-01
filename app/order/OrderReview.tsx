@@ -871,7 +871,7 @@ export default function OrderReview() {
     }
   };
 
-  const penText = getPenText(selectedFlight);
+  const penText = selectedFlight ? getPenText(selectedFlight) : "";
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center">
@@ -1314,35 +1314,39 @@ export default function OrderReview() {
                             כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.
                           </p>
 
-                          <h3 className="font-bold mt-4 mb-2">טיסות</h3>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <a className="text-blue-600 hover:underline cursor-pointer">
-                                תנאי הכרטיס עפ&quot;י המוביל האווירי.
-                              </a>
-                            </DialogTrigger>
-                            <DialogContent
-                              className="max-w-md max-h-[80vh] overflow-y-auto"
-                              dir="rtl"
-                            >
-                              <DialogHeader>
-                                <DialogTitle className="text-center text-xl font-bold">
-                                  Penalties
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div
-                                dir="ltr"
-                                className="text-left"
-                                dangerouslySetInnerHTML={{
-                                  __html: penText,
-                                }}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <p>
-                            עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
-                            בנוסף לדמי הביטול של המוביל האווירי.
-                          </p>
+                          {!flightSkipped && (
+                            <>
+                              <h3 className="font-bold mt-4 mb-2">טיסות</h3>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <a className="text-blue-600 hover:underline cursor-pointer">
+                                    תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                                  </a>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-md max-h-[80vh] overflow-y-auto"
+                                  dir="rtl"
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle className="text-center text-xl font-bold">
+                                      Penalties
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div
+                                    dir="ltr"
+                                    className="text-left"
+                                    dangerouslySetInnerHTML={{
+                                      __html: penText,
+                                    }}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <p>
+                                עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
+                                בנוסף לדמי הביטול של המוביל האווירי.
+                              </p>
+                            </>
+                          )}
 
                           {!skipHotel && selectedHotel && (
                             <>
@@ -1782,35 +1786,39 @@ export default function OrderReview() {
                           <p>
                             כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.
                           </p>
-                          <h3 className="font-bold mt-4">טיסות</h3>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <a className="text-blue-600 hover:underline cursor-pointer">
-                                תנאי הכרטיס עפ&quot;י המוביל האווירי.
-                              </a>
-                            </DialogTrigger>
-                            <DialogContent
-                              className="max-w-md max-h-[80vh] overflow-y-auto"
-                              dir="rtl"
-                            >
-                              <DialogHeader>
-                                <DialogTitle className="text-center text-xl font-bold">
-                                  Penalties
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div
-                                dir="ltr"
-                                className="text-left"
-                                dangerouslySetInnerHTML={{
-                                  __html: penText,
-                                }}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <p>
-                            עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
-                            בנוסף לדמי הביטול של המוביל האווירי.
-                          </p>
+                          {!flightSkipped && (
+                            <>
+                              <h3 className="font-bold mt-4">טיסות</h3>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <a className="text-blue-600 hover:underline cursor-pointer">
+                                    תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                                  </a>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-md max-h-[80vh] overflow-y-auto"
+                                  dir="rtl"
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle className="text-center text-xl font-bold">
+                                      Penalties
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div
+                                    dir="ltr"
+                                    className="text-left"
+                                    dangerouslySetInnerHTML={{
+                                      __html: penText,
+                                    }}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <p>
+                                עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
+                                בנוסף לדמי הביטול של המוביל האווירי.
+                              </p>
+                            </>
+                          )}
                           {!skipHotel && selectedHotel && (
                             <>
                               <h3 className="font-bold mt-4">מלון</h3>
