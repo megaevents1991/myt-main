@@ -606,7 +606,7 @@ export const TicketSelection = () => {
       </div>
       <main className="flex flex-col" dir="rtl" role="main">
         {/* ── DEBUG PANEL (remove when done) ── */}
-        {false && (
+        {isTxEvent && (
           <details className="my-2 border border-yellow-400 rounded-lg bg-yellow-50 text-xs" dir="ltr" open>
             <summary className="cursor-pointer px-3 py-2 font-bold text-yellow-800 select-none">
               🐛 DEBUG — Live TixStock listings: {isLoadingLiveTickets ? 'loading…' : `${liveListings.length} fetched`}
