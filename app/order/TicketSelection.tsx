@@ -164,9 +164,25 @@ const isCategoryOnlyTicket = (ticket: EventTicket): boolean => {
 /** Check if a ticket's section matches a specific SVG data-section ID */
 const isTicketMatchingSection = (ticket: EventTicket, mapSectionId: string): boolean => {
   const section = getTicketSection(ticket);
+  if (!section) return false;
   const norm = slugify(section);
   const mapId = mapSectionId.toLowerCase();
-  return mapId === norm || mapId.endsWith(`_${norm}`) || mapId.endsWith(`-${norm}`);
+  if (mapId === norm || mapId.endsWith(`_${norm}`) || mapId.endsWith(`-${norm}`)) return true;
+
+  // Handle SVGs where the category word is embedded in the section slug.
+  // e.g. mapId "pit_vip-pit-and-garden" should match norm "vip-and-garden".
+  const underscoreIdx = mapId.indexOf('_');
+  if (underscoreIdx !== -1) {
+    const categoryTokens = new Set(mapId.substring(0, underscoreIdx).split('-'));
+    const sectionPart = mapId.substring(underscoreIdx + 1);
+    const cleaned = sectionPart
+      .split('-')
+      .filter((token) => !categoryTokens.has(token))
+      .join('-');
+    if (cleaned === norm || cleaned.endsWith(`-${norm}`) || cleaned.endsWith(`_${norm}`)) return true;
+  }
+
+  return false;
 };
 
 /** Check if a category-only ticket matches an SVG data-category ID */
@@ -465,14 +481,21 @@ export const TicketSelection = () => {
       if (!allSections) return;
 
       allSections.forEach((el) => {
+        const hasMatchingTicket = ticketsWithLivePrices.some((t) =>
+          isTicketMatchingSectionOrCategory(t, el)
+        );
+
+        if (hasMatchingTicket) el.classList.remove('svg-disabled');
+        else el.classList.add('svg-disabled');
+
         let shouldHighlight = false;
 
         // Selected ticket highlighting
-        if (selectedTicketObj) {
+        if (selectedTicketObj && hasMatchingTicket) {
           shouldHighlight = isTicketMatchingSectionOrCategory(selectedTicketObj, el);
         }
         // Hovered ticket highlighting
-        if (!shouldHighlight && hoveredTicket) {
+        if (!shouldHighlight && hoveredTicket && hasMatchingTicket) {
           shouldHighlight = isTicketMatchingSectionOrCategory(hoveredTicket, el);
         }
 
@@ -537,7 +560,7 @@ export const TicketSelection = () => {
       const sectionEl = el.closest('[data-section]');
       const dataSection = sectionEl?.getAttribute('data-section');
 
-      if (dataSection && sectionEl) {
+      if (dataSection && sectionEl && !sectionEl.classList.contains('svg-disabled')) {
         // Exact section match first
         const sectionMatch = ticketsWithLivePrices.find(
           (t) => !isCategoryOnlyTicket(t) && isTicketMatchingSection(t, dataSection)
@@ -656,6 +679,18 @@ export const TicketSelection = () => {
                     stroke-opacity: 1 !important;
                     stroke-width: 2px !important;
                     opacity: 1 !important;
+                  }
+                  .venue-map-container [data-section].svg-disabled,
+                  .venue-map-container [data-section].svg-disabled * {
+                    cursor: default !important;
+                    pointer-events: none !important;
+                  }
+                  .venue-map-container [data-section].svg-disabled .block,
+                  .venue-map-container [data-section].svg-disabled.block {
+                    fill: #9ca3af !important;
+                    fill-opacity: 0.15 !important;
+                    stroke: #9ca3af !important;
+                    stroke-opacity: 0.25 !important;
                   }
                 `}</style>
                 {isLoadingMap ? (
