@@ -303,17 +303,21 @@ export const TicketSelection = () => {
         const json = await res.json();
         if (!cancelled) {
           const allListings: TixStockListing[] = json?.data?.data ?? [];
+          const excludedSections = new Set((event?.tx_excluded_sections ?? []).map(s => s.toLowerCase()));
           const listings = allListings.filter((l) => {
+            // Filter out limited-view tickets
             const options = l.restrictions_benefits?.options;
-            if (!Array.isArray(options)) return true;
-            return !options.some(
-              (opt) =>
-                typeof opt === 'string' &&
-                /limited/i.test(opt) &&
-                /view/i.test(opt)
-            );
+            if (Array.isArray(options) && options.some(
+              (opt) => typeof opt === 'string' && /limited/i.test(opt) && /view/i.test(opt)
+            )) return false;
+            // Filter out explicitly excluded sections
+            if (excludedSections.size > 0) {
+              const section = l.seat_details?.section?.toLowerCase();
+              if (section && excludedSections.has(section)) return false;
+            }
+            return true;
           });
-          console.log(`[TixStock] Fetched ${allListings.length} live listings for event ${tixEventId}, ${allListings.length - listings.length} filtered out (limited view)`);
+          console.log(`[TixStock] Fetched ${allListings.length} live listings for event ${tixEventId}, ${allListings.length - listings.length} filtered out (limited view / excluded sections)`);
           setLiveListings(listings);
         }
       } catch (err) {
@@ -503,13 +507,17 @@ export const TicketSelection = () => {
     if (!svgContent || !mapContainerRef.current) return;
 
     const selectedTicketObj = ticketsWithLivePrices.find((t) => t.id === selectedTicket);
+    const excludedSections = new Set((event?.tx_excluded_sections ?? []).map(s => s.toLowerCase()));
 
     const applyHighlights = () => {
       const allSections = mapContainerRef.current?.querySelectorAll('[data-section]');
       if (!allSections) return;
 
       allSections.forEach((el) => {
-        const hasMatchingTicket = ticketsWithLivePrices.some((t) =>
+        const sectionId = el.getAttribute('data-section')?.toLowerCase();
+        const isExcluded = !!sectionId && excludedSections.has(sectionId);
+
+        const hasMatchingTicket = !isExcluded && ticketsWithLivePrices.some((t) =>
           isTicketMatchingSectionOrCategory(t, el)
         );
 

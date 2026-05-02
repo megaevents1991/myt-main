@@ -34,6 +34,7 @@ export type Event = {
   is_prioritized: boolean;
   is_deleted: string;
   tags: string;
+  tx_excluded_sections?: string[];
 };
 
 export type Flight = {
