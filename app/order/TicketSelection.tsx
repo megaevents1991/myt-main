@@ -434,6 +434,17 @@ export const TicketSelection = () => {
 // Remove venue-specific tier label texts
         svgEl.querySelectorAll('.tier-label').forEach((el) => el.remove());
 
+        // Normalise SVG sizing so it renders correctly on all browsers, including
+        // iOS Safari which collapses width:auto SVGs inside flex containers to 0×0.
+        // Strip any hard-coded width/height and let CSS + viewBox drive the size.
+        svgEl.removeAttribute('width');
+        svgEl.removeAttribute('height');
+        svgEl.setAttribute('width', '100%');
+        svgEl.setAttribute('height', '100%');
+        if (!svgEl.getAttribute('preserveAspectRatio')) {
+          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        }
+
         if (!cancelled) setSvgContent(svgEl.outerHTML);
       } catch (error) {
         console.error('Failed to load SVG map:', error);
@@ -685,7 +696,7 @@ export const TicketSelection = () => {
                 ) : svgContent ? (
                   <div
                     ref={mapContainerRef}
-                    className="w-full h-full flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-[600px] [&>svg]:w-auto [&>svg]:h-auto"
+                    className="w-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-auto [&>svg]:max-h-[600px] [&>svg]:block"
                     dangerouslySetInnerHTML={{ __html: svgContent }}
                     onClick={handleSvgClick}
                   />
