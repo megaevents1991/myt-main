@@ -302,8 +302,18 @@ export const TicketSelection = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (!cancelled) {
-          const listings: TixStockListing[] = json?.data?.data ?? [];
-          console.log(`[TixStock] Fetched ${listings.length} live listings for event ${tixEventId}`);
+          const allListings: TixStockListing[] = json?.data?.data ?? [];
+          const listings = allListings.filter((l) => {
+            const options = l.restrictions_benefits?.options;
+            if (!Array.isArray(options)) return true;
+            return !options.some(
+              (opt) =>
+                typeof opt === 'string' &&
+                /limited/i.test(opt) &&
+                /view/i.test(opt)
+            );
+          });
+          console.log(`[TixStock] Fetched ${allListings.length} live listings for event ${tixEventId}, ${allListings.length - listings.length} filtered out (limited view)`);
           setLiveListings(listings);
         }
       } catch (err) {
