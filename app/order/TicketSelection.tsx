@@ -517,12 +517,22 @@ export const TicketSelection = () => {
             <div className="w-full lg:w-[45%]">
               <div className="venue-map-container flex items-center justify-center min-h-[250px] lg:min-h-[400px] p-4 rounded-lg border bg-[#0f172a]">
                 <style>{`
+                  .venue-map-container,
+                  .venue-map-container svg {
+                    direction: ltr !important;
+                    font-family: initial !important;
+                    font-size: initial !important;
+                    line-height: normal !important;
+                  }
                   .venue-map-container text,
                   .venue-map-container tspan {
+                    direction: ltr !important;
+                    unicode-bidi: normal !important;
                     pointer-events: none !important;
                     user-select: none !important;
                     fill: #F0F0F2 !important;
                     font-weight: 600 !important;
+                    line-height: normal !important;
                     text-shadow: 0px 0px 3px #000000;
                     font-family: Arial, Helvetica, sans-serif !important;
                   }

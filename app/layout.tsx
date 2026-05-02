@@ -306,16 +306,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                         © 2025 מגה איבנטס מבית מגה תיירות. כל הזכויות שמורות.
                       </p>
                       </div>
-                      <div className="text-xs sm:text-sm font-normal">
-                        <a
-                          className="hover:underline underline-offset-4 whitespace-nowrap"
-                          href="https://www.lovedby.ai/"
-                          rel="nofollow noopener noreferrer"
-                          target="_blank"
-                        >
-                          Powered by LovedByAI
-                        </a>
-                      </div>
                     </div>
                   </div>
                 </footer>
