@@ -630,7 +630,7 @@ export const TicketSelection = () => {
           {isSvgMap ? (
             /* ── SVG Dynamic Map ── */
             <div className="w-full lg:w-[45%]">
-              <div className="venue-map-container flex items-center justify-center min-h-[250px] lg:min-h-[400px] p-4 rounded-lg border bg-[#0f172a]">
+              <div className="venue-map-container flex items-center justify-center min-h-[250px] lg:min-h-[400px] p-4 rounded-lg border bg-white">
                 <style>{`
                   .venue-map-container,
                   .venue-map-container svg {
@@ -645,10 +645,10 @@ export const TicketSelection = () => {
                     unicode-bidi: normal !important;
                     pointer-events: none !important;
                     user-select: none !important;
-                    fill: #F0F0F2 !important;
+                    fill: #0f172a !important;
                     font-weight: 600 !important;
                     line-height: normal !important;
-                    text-shadow: 0px 0px 3px #000000;
+                    text-shadow: 0px 0px 3px #ffffff;
                     font-family: Arial, Helvetica, sans-serif !important;
                   }
                   .venue-map-container .section-label { font-size: 10px !important; }
