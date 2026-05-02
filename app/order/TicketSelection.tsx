@@ -37,7 +37,7 @@ export interface TixStockCategory {
   id: string;
   name: string;
   upcoming_events: number;
-  parent: any[];
+  parent: unknown[];
   children?: TixStockCategory[];
 }
 
@@ -46,7 +46,7 @@ export interface TixStockTicketInfo {
   type: string;
   allow_last_minute_sales: string;
   split_type: string;
-  etickets: any[];
+  etickets: unknown[];
   upload_later: string;
   instant_download: string;
 }
@@ -93,7 +93,7 @@ export interface TixStockListing {
   face_value: TixStockPrice;
   display_price?: TixStockPrice;
   proceed_price: TixStockPrice;
-  restrictions_benefits: { options: any[]; other: string };
+  restrictions_benefits: { options: unknown[]; other: string };
   delivery: TixStockDelivery;
   face_value_percentage?: string;
 }
@@ -289,7 +289,7 @@ export const TicketSelection = () => {
    * Returns the listing's proceed_price amount (as a number), or null if none qualify.
    */
   const getLivePriceForCategory = useMemo(() => {
-    if (!isTxEvent || liveListings.length === 0) return (_cat: string, _qty: number) => null;
+    if (!isTxEvent || liveListings.length === 0) return () => null;
     return (category: string, qty: number): number | null => {
       const categoryNorm = category.trim().toLowerCase();
       const qualifying = liveListings.filter((l) => {
@@ -614,7 +614,7 @@ export const TicketSelection = () => {
             </summary>
             {liveListings.length === 0 && !isLoadingLiveTickets && (
               <p className="px-3 py-2 text-red-600 font-semibold">
-                ⚠️ No listings returned from API. Check event eid: "{availableTickets.find(t => t.eid)?.eid ?? 'none'}"
+                ⚠️ No listings returned from API. Check event eid: &quot;{availableTickets.find(t => t.eid)?.eid ?? 'none'}&quot;
               </p>
             )}
             {liveListings.length > 0 && (
