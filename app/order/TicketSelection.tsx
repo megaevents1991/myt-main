@@ -576,26 +576,16 @@ export const TicketSelection = () => {
     for (const el of elements) {
       if (!mapContainerRef.current?.contains(el)) continue;
       const sectionEl = el.closest('[data-section]');
-      const dataSection = sectionEl?.getAttribute('data-section');
+      if (!sectionEl) continue;
+      if (sectionEl.classList.contains('svg-disabled')) continue;
 
-      if (dataSection && sectionEl && !sectionEl.classList.contains('svg-disabled')) {
-        // Exact section match first
-        const sectionMatch = ticketsWithLivePrices.find(
-          (t) => !isCategoryOnlyTicket(t) && isTicketMatchingSection(t, dataSection)
-        );
-        if (sectionMatch) {
-          matchedTicket = sectionMatch;
-          break;
-        }
-
-        // Category-only ticket match
-        const parentCategory = sectionEl.closest('[data-category]')?.getAttribute('data-category');
-        if (parentCategory && !matchedTicket) {
-          const categoryMatch = ticketsWithLivePrices.find((t) =>
-            isTicketMatchingCategory(t, parentCategory)
-          );
-          if (categoryMatch) matchedTicket = categoryMatch;
-        }
+      // Use the unified matcher so all three fallback layers are covered
+      const match = ticketsWithLivePrices.find((t) =>
+        isTicketMatchingSectionOrCategory(t, sectionEl)
+      );
+      if (match) {
+        matchedTicket = match;
+        break;
       }
     }
 
