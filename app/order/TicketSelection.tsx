@@ -208,9 +208,8 @@ export const TicketSelection = () => {
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
   const [hoveredTicket, setHoveredTicket] = useState<EventTicket | null>(null);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const ticketCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // ── TixStock live pricing (tx_event only) ──
   const isTxEvent = event?.type === 'tx_event';
@@ -394,10 +393,6 @@ export const TicketSelection = () => {
       return;
     }
 
-    // Reset map selection when event changes
-    setSelectedSection(null);
-    setSelectedCategory(null);
-
     let cancelled = false;
     const fetchSvg = async () => {
       setIsLoadingMap(true);
@@ -463,21 +458,20 @@ export const TicketSelection = () => {
   useLayoutEffect(() => {
     if (!svgContent || !mapContainerRef.current) return;
 
+    const selectedTicketObj = ticketsWithLivePrices.find((t) => t.id === selectedTicket);
+
     const applyHighlights = () => {
       const allSections = mapContainerRef.current?.querySelectorAll('[data-section]');
       if (!allSections) return;
 
       allSections.forEach((el) => {
-        const sectionId = el.getAttribute('data-section');
-        const parentCategory = el.closest('[data-category]')?.getAttribute('data-category');
         let shouldHighlight = false;
 
-        // Selected section
-        if (selectedSection && sectionId === selectedSection) shouldHighlight = true;
-        // Selected category
-        if (!shouldHighlight && selectedCategory && parentCategory === selectedCategory)
-          shouldHighlight = true;
-        // Hovered ticket
+        // Selected ticket highlighting
+        if (selectedTicketObj) {
+          shouldHighlight = isTicketMatchingSectionOrCategory(selectedTicketObj, el);
+        }
+        // Hovered ticket highlighting
         if (!shouldHighlight && hoveredTicket) {
           shouldHighlight = isTicketMatchingSectionOrCategory(hoveredTicket, el);
         }
@@ -536,13 +530,7 @@ export const TicketSelection = () => {
   const handleSvgClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const elements = document.elementsFromPoint(e.clientX, e.clientY);
 
-    let bestMatch: {
-      section: string;
-      category: string | null;
-      hasTickets: boolean;
-      isCategoryMatch: boolean;
-    } | null = null;
-    let firstSectionFound: string | null = null;
+    let matchedTicket: EventTicket | null = null;
 
     for (const el of elements) {
       if (!mapContainerRef.current?.contains(el)) continue;
@@ -550,63 +538,42 @@ export const TicketSelection = () => {
       const dataSection = sectionEl?.getAttribute('data-section');
 
       if (dataSection && sectionEl) {
-        if (!firstSectionFound) firstSectionFound = dataSection;
-
-        // Exact section match
-        const sectionMatch = availableTickets.some(
+        // Exact section match first
+        const sectionMatch = ticketsWithLivePrices.find(
           (t) => !isCategoryOnlyTicket(t) && isTicketMatchingSection(t, dataSection)
         );
         if (sectionMatch) {
-          bestMatch = { section: dataSection, category: null, hasTickets: true, isCategoryMatch: false };
+          matchedTicket = sectionMatch;
           break;
         }
 
         // Category-only ticket match
         const parentCategory = sectionEl.closest('[data-category]')?.getAttribute('data-category');
-        if (parentCategory) {
-          const categoryMatch = availableTickets.some((t) =>
+        if (parentCategory && !matchedTicket) {
+          const categoryMatch = ticketsWithLivePrices.find((t) =>
             isTicketMatchingCategory(t, parentCategory)
           );
-          if (categoryMatch && !bestMatch) {
-            bestMatch = {
-              section: dataSection,
-              category: parentCategory,
-              hasTickets: true,
-              isCategoryMatch: true,
-            };
-          }
+          if (categoryMatch) matchedTicket = categoryMatch;
         }
       }
     }
 
-    const finalSection = bestMatch ? bestMatch.section : firstSectionFound;
-
-    if (finalSection && bestMatch) {
-      if (bestMatch.isCategoryMatch && bestMatch.category) {
-        const newCategory = selectedCategory === bestMatch.category ? null : bestMatch.category;
-        setSelectedCategory(newCategory);
-        setSelectedSection(null);
-      } else {
-        const newSelection = selectedSection === finalSection ? null : finalSection;
-        setSelectedSection(newSelection);
-        setSelectedCategory(null);
-      }
-    } else {
-      setSelectedSection(null);
-      setSelectedCategory(null);
+    if (matchedTicket) {
+      handleTicketSelect({
+        id: matchedTicket.id,
+        price: matchedTicket.price,
+        category: matchedTicket.category,
+        vendor: matchedTicket.vendor,
+        description: matchedTicket.description,
+      });
+      // Scroll to the matching ticket card
+      const cardEl = ticketCardRefs.current.get(matchedTicket.id);
+      cardEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   };
 
-  /** Tickets filtered by current SVG map selection, with live prices applied for tx_event */
-  const displayedTickets = useMemo(() => {
-    const source = ticketsWithLivePrices;
-    if (!isSvgMap) return source;
-    if (selectedSection)
-      return source.filter((t) => isTicketMatchingSection(t, selectedSection));
-    if (selectedCategory)
-      return source.filter((t) => isTicketMatchingCategory(t, selectedCategory));
-    return source;
-  }, [ticketsWithLivePrices, isSvgMap, selectedSection, selectedCategory]);
+  /** All tickets with live prices applied; map selection highlights cards instead of filtering */
+  const displayedTickets = useMemo(() => ticketsWithLivePrices, [ticketsWithLivePrices]);
 
   return (
     <div>
@@ -757,17 +724,6 @@ export const TicketSelection = () => {
                 <div id="ticket-selection-heading" className="sr-only">
                   קטגוריות כרטיסים זמינות
                 </div>
-                {isSvgMap && (selectedSection || selectedCategory) && (
-                  <div className="flex items-center justify-between mb-2 px-1" dir="rtl">
-                    <Text size="sm" c="dimmed">מסנן לפי בחירה במפה</Text>
-                    <button
-                      onClick={() => { setSelectedSection(null); setSelectedCategory(null); }}
-                      className="text-sm text-blue-600 underline hover:text-blue-800"
-                    >
-                      הצג הכל
-                    </button>
-                  </div>
-                )}
                 {isLoadingLiveTickets ? (
                   <div className="flex items-center justify-center p-8 gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
@@ -785,18 +741,6 @@ export const TicketSelection = () => {
                       אנא נסו אירוע אחר או צרו קשר עם שירות הלקוחות לקבלת עזרה.
                     </Text>
                   </div>
-                ) : displayedTickets.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-6 text-center gap-3">
-                    <Text size="md" c="dimmed" aria-live="polite">
-                      אין כרטיסים זמינים באזור זה במפה
-                    </Text>
-                    <button
-                      onClick={() => { setSelectedSection(null); setSelectedCategory(null); }}
-                      className="text-sm text-blue-600 underline hover:text-blue-800"
-                    >
-                      הצג את כל הכרטיסים
-                    </button>
-                  </div>
                 ) : (
                   [...displayedTickets]
                     .sort((a: EventTicket, b: EventTicket) => a.price - b.price)
@@ -811,6 +755,10 @@ export const TicketSelection = () => {
                     .map((ticket: EventTicket, index: number) => (
                       <div
                         key={ticket.id}
+                        ref={(el) => {
+                          if (el) ticketCardRefs.current.set(ticket.id, el);
+                          else ticketCardRefs.current.delete(ticket.id);
+                        }}
                         onMouseEnter={() => isSvgMap && setHoveredTicket(ticket)}
                         onMouseLeave={() => isSvgMap && setHoveredTicket(null)}
                       >
