@@ -611,58 +611,6 @@ export const TicketSelection = () => {
         </div>
       </div>
       <main className="flex flex-col" dir="rtl" role="main">
-        {/* ── DEBUG PANEL (remove when done) ── */}
-        {isTxEvent && (
-          <details className="my-2 border border-yellow-400 rounded-lg bg-yellow-50 text-xs" dir="ltr" open>
-            <summary className="cursor-pointer px-3 py-2 font-bold text-yellow-800 select-none">
-              🐛 DEBUG — Live TixStock listings: {isLoadingLiveTickets ? 'loading…' : `${liveListings.length} fetched`}
-              {' | '}DB categories: {availableTickets.map(t => `"${t.category}"`).join(', ')}
-            </summary>
-            {liveListings.length === 0 && !isLoadingLiveTickets && (
-              <p className="px-3 py-2 text-red-600 font-semibold">
-                ⚠️ No listings returned from API. Check event eid: &quot;{availableTickets.find(t => t.eid)?.eid ?? 'none'}&quot;
-              </p>
-            )}
-            {liveListings.length > 0 && (
-              <div className="overflow-auto max-h-[400px]">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-yellow-100 sticky top-0">
-                    <tr>
-                      <th className="p-1 border border-yellow-300">ID</th>
-                      <th className="p-1 border border-yellow-300">Category (TixStock)</th>
-                      <th className="p-1 border border-yellow-300">Section</th>
-                      <th className="p-1 border border-yellow-300">Qty avail</th>
-                      <th className="p-1 border border-yellow-300">Split qty</th>
-                      <th className="p-1 border border-yellow-300">Price</th>
-                      <th className="p-1 border border-yellow-300">Currency</th>
-                      <th className="p-1 border border-yellow-300">DB match?</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {liveListings.map((l) => {
-                      const dbMatch = availableTickets.find(
-                        t => t.category.trim().toLowerCase() === l.seat_details?.category?.trim().toLowerCase()
-                      );
-                      return (
-                        <tr key={l.id} className={dbMatch ? 'bg-green-50' : 'bg-white'}>
-                          <td className="p-1 border border-yellow-200 font-mono">{l.id}</td>
-                          <td className="p-1 border border-yellow-200 font-semibold">{l.seat_details?.category}</td>
-                          <td className="p-1 border border-yellow-200">{l.seat_details?.section}</td>
-                          <td className="p-1 border border-yellow-200">{l.number_of_tickets_for_sale?.quantity_available}</td>
-                          <td className="p-1 border border-yellow-200">{l.number_of_tickets_for_sale?.split_quantity}</td>
-                          <td className="p-1 border border-yellow-200 font-semibold">{l.proceed_price?.amount}</td>
-                          <td className="p-1 border border-yellow-200">{l.proceed_price?.currency}</td>
-                          <td className="p-1 border border-yellow-200">{dbMatch ? `✅ "${dbMatch.category}"` : '❌'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </details>
-        )}
-        {/* ── END DEBUG PANEL ── */}
         <div className="mt-4 text-lg">
           בחרו כמות כרטיסים וקטגוריה מועדפת,
           <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
