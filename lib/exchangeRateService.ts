@@ -9,17 +9,23 @@ interface ExchangeRateData {
 interface CurrencyRates {
   usdIls: ExchangeRateData;
   eurUsd: ExchangeRateData;
+  gbpUsd: ExchangeRateData;
 }
 
 class ExchangeRateService {
   private currentRates: CurrencyRates = {
     usdIls: {
-      rate: 3.5, // fallback rate
+      rate: 3.1, // fallback rate
       lastUpdated: new Date(),
       source: "fallback",
     },
     eurUsd: {
       rate: 1.2, // fallback rate
+      lastUpdated: new Date(),
+      source: "fallback",
+    },
+    gbpUsd: {
+      rate: 1.35, // fallback rate
       lastUpdated: new Date(),
       source: "fallback",
     },
@@ -30,6 +36,7 @@ class ExchangeRateService {
   private readonly RATE_LIMITS = {
     usdIls: { min: 2.5, max: 4.0 },
     eurUsd: { min: 1, max: 1.4 },
+    gbpUsd: { min: 1.0, max: 1.6 },
   };
   private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
   private readonly MAX_RETRIES = 4;
@@ -41,7 +48,10 @@ class ExchangeRateService {
     this.startPeriodicUpdates();
   }
 
-  private isValidRate(rate: number, rateKey: "usdIls" | "eurUsd"): boolean {
+  private isValidRate(
+    rate: number,
+    rateKey: "usdIls" | "eurUsd" | "gbpUsd",
+  ): boolean {
     const limits = this.RATE_LIMITS[rateKey];
     return rate >= limits.min && rate <= limits.max;
   }
@@ -66,7 +76,7 @@ class ExchangeRateService {
   }
 
   private async fetchExchangeRateWithRetry(
-    currencyPair: "USD/ILS" | "EUR/USD",
+    currencyPair: "USD/ILS" | "EUR/USD" | "GBP/USD",
     retries = this.MAX_RETRIES,
   ): Promise<number | null> {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -86,7 +96,12 @@ class ExchangeRateService {
 
         if (data && data.rate && typeof data.rate === "number") {
           const rate = Math.ceil(data.rate * 100) / 100;
-          const rateKey = currencyPair === "USD/ILS" ? "usdIls" : "eurUsd";
+          const rateKey =
+            currencyPair === "USD/ILS"
+              ? "usdIls"
+              : currencyPair === "EUR/USD"
+                ? "eurUsd"
+                : "gbpUsd";
 
           // Validate the rate is within reasonable limits
           if (this.isValidRate(rate, rateKey)) {
@@ -131,11 +146,16 @@ class ExchangeRateService {
   }
 
   private async updateSingleExchangeRate(
-    currencyPair: "USD/ILS" | "EUR/USD",
+    currencyPair: "USD/ILS" | "EUR/USD" | "GBP/USD",
   ): Promise<void> {
     try {
       const rate = await this.fetchExchangeRateWithRetry(currencyPair);
-      const rateKey = currencyPair === "USD/ILS" ? "usdIls" : "eurUsd";
+      const rateKey =
+        currencyPair === "USD/ILS"
+          ? "usdIls"
+          : currencyPair === "EUR/USD"
+            ? "eurUsd"
+            : "gbpUsd";
 
       if (rate !== null) {
         this.currentRates[rateKey] = {
@@ -167,6 +187,7 @@ class ExchangeRateService {
     await Promise.allSettled([
       this.updateSingleExchangeRate("USD/ILS"),
       this.updateSingleExchangeRate("EUR/USD"),
+      this.updateSingleExchangeRate("GBP/USD"),
     ]);
 
     logger.info("Completed exchange rates update for all currency pairs");
@@ -198,6 +219,10 @@ class ExchangeRateService {
 
   public getEurUsdRate(): ExchangeRateData {
     return this.currentRates.eurUsd;
+  }
+
+  public getGbpUsdRate(): ExchangeRateData {
+    return this.currentRates.gbpUsd;
   }
 
   public getRateInfo(): ExchangeRateData & { travelRate: number } {

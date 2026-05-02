@@ -190,7 +190,7 @@ const isTicketMatchingSectionOrCategory = (ticket: EventTicket, sectionEl: Eleme
 };
 
 export const TicketSelection = () => {
-  const { setEventTicket, event } = useContext(OrderContext);
+  const { setEventTicket, event, eventTicket } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
@@ -211,6 +211,11 @@ export const TicketSelection = () => {
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  // ── TixStock live pricing (tx_event only) ──
+  const isTxEvent = event?.type === 'tx_event';
+  const [liveListings, setLiveListings] = useState<TixStockListing[]>([]);
+  const [isLoadingLiveTickets, setIsLoadingLiveTickets] = useState(false);
 
   /** Determine if the event uses an SVG dynamic map */
   const isSvgMap = useMemo(() => {
@@ -237,13 +242,97 @@ export const TicketSelection = () => {
     [event]
   );
 
+  // ── Fetch live TixStock listings for tx_event ──
+  // Uses the first ticket's eid as the TixStock event ID (all tickets on the same event share it).
   useEffect(() => {
-    if (!availableTickets || availableTickets.length === 0) {
+    if (!isTxEvent) {
+      setLiveListings([]);
+      return;
+    }
+    const tixEventId = availableTickets.find(t => t.eid)?.eid;
+    if (!tixEventId) return;
+
+    let cancelled = false;
+    const fetchListings = async () => {
+      setIsLoadingLiveTickets(true);
+      try {
+        const res = await fetch(
+          `/api/tixstock/tickets?event_id=${encodeURIComponent(tixEventId)}&_=${Date.now()}`,
+          {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' },
+          }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!cancelled) {
+          const listings: TixStockListing[] = json?.data?.data ?? [];
+          console.log(`[TixStock] Fetched ${listings.length} live listings for event ${tixEventId}`);
+          setLiveListings(listings);
+        }
+      } catch (err) {
+        console.error('[TixStock] Failed to fetch live listings:', err);
+        if (!cancelled) setLiveListings([]);
+      } finally {
+        if (!cancelled) setIsLoadingLiveTickets(false);
+      }
+    };
+
+    fetchListings();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTxEvent, availableTickets.find(t => t.eid)?.eid]);
+
+  /**
+   * For a given EventTicket category and desired quantity, find the cheapest TixStock
+   * listing that satisfies: quantity_available >= qty OR split_quantity >= qty.
+   * Returns the listing's proceed_price amount (as a number), or null if none qualify.
+   */
+  const getLivePriceForCategory = useMemo(() => {
+    if (!isTxEvent || liveListings.length === 0) return (_cat: string, _qty: number) => null;
+    return (category: string, qty: number): number | null => {
+      const categoryNorm = category.trim().toLowerCase();
+      const qualifying = liveListings.filter((l) => {
+        const listingCat = l.seat_details?.category?.trim().toLowerCase();
+        if (listingCat !== categoryNorm) return false;
+        const quantityAvailable = l.number_of_tickets_for_sale?.quantity_available ?? 0;
+        const splitQty = l.number_of_tickets_for_sale?.split_quantity ?? 0;
+        // A listing qualifies if it can provide at least `qty` tickets together
+        return quantityAvailable >= qty || splitQty >= qty;
+      });
+      if (qualifying.length === 0) return null;
+      const cheapest = qualifying.reduce((min, l) =>
+        parseFloat(l.proceed_price.amount) < parseFloat(min.proceed_price.amount) ? l : min,
+        qualifying[0]
+      );
+      return Math.ceil(parseFloat(cheapest.proceed_price.amount));
+    };
+  }, [isTxEvent, liveListings]);
+
+  /**
+   * availableTickets with prices overridden by live TixStock data for the current quantity.
+   * Categories where no live listing can satisfy the quantity are filtered out.
+   */
+  const ticketsWithLivePrices: EventTicket[] = useMemo(() => {
+    if (!isTxEvent || liveListings.length === 0) return availableTickets;
+    return availableTickets.reduce<EventTicket[]>((acc, ticket) => {
+      const livePrice = getLivePriceForCategory(ticket.category, numberOfEventTickets);
+      if (livePrice === null) {
+        // No listing can satisfy the requested quantity – hide this category
+        return acc;
+      }
+      acc.push({ ...ticket, price: livePrice });
+      return acc;
+    }, []);
+  }, [isTxEvent, liveListings, availableTickets, numberOfEventTickets, getLivePriceForCategory]);
+
+  useEffect(() => {
+    const tickets = ticketsWithLivePrices;
+    if (!tickets || tickets.length === 0) {
       // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
       console.log('No available tickets found - clearing all ticket state');
       setCheapestTicket(null);
       setSelectedTicket(undefined);
-      // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
       setEventTicket({
         id: "",
         vendor: "",
@@ -255,28 +344,36 @@ export const TicketSelection = () => {
       return;
     }
 
-    console.log(`Found ${availableTickets.length} available tickets:`, 
-      availableTickets.map(t => ({ id: t.id, category: t.category, available: t.available }))
+    const cheapt = tickets.reduce<EventTicket>((min, ticket) =>
+      ticket.price < min.price ? ticket : min,
+      tickets[0]
     );
 
-    const cheapt = availableTickets.reduce<EventTicket>((min, ticket) =>
-      ticket.price < min.price ? ticket : min,
-      availableTickets[0]
-    );
-    
-    console.log(`Auto-selecting cheapest ticket: ${cheapt.category} (ID: ${cheapt.id}, available: ${cheapt.available})`);
-    
     setCheapestTicket(cheapt);
-    setSelectedTicket(cheapt?.id);
-    setEventTicket({
-      id: cheapt?.id || "",
-      vendor: cheapt?.vendor || "",
-      category: cheapt?.category || "",
-      price: cheapt?.price || 0,
-      description: cheapt?.description || "",
-      quantity: 2,
-    });
-  }, [availableTickets, setEventTicket]);
+
+    // Only auto-select if no ticket is currently selected, or if the selected ticket
+    // is no longer in the live-priced list (e.g. quantity changed and it dropped out)
+    const currentlySelected = tickets.find(t => t.id === selectedTicket);
+    if (!currentlySelected) {
+      setSelectedTicket(cheapt?.id);
+      setEventTicket({
+        id: cheapt?.id || "",
+        vendor: cheapt?.vendor || "",
+        category: cheapt?.category || "",
+        price: cheapt?.price || 0,
+        description: cheapt?.description || "",
+        quantity: numberOfEventTickets,
+      });
+    } else {
+      // Update price in context if live price changed
+      setEventTicket({
+        ...eventTicket,
+        price: currentlySelected.price,
+        quantity: numberOfEventTickets,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketsWithLivePrices, setEventTicket, numberOfEventTickets]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)
@@ -305,7 +402,7 @@ export const TicketSelection = () => {
     const fetchSvg = async () => {
       setIsLoadingMap(true);
       try {
-        const response = await fetch(event.map_image_url);
+        const response = await fetch(`/api/map-proxy?url=${encodeURIComponent(event.map_image_url)}`);
         const text = await response.text();
 
         const parser = new DOMParser();
@@ -483,15 +580,16 @@ export const TicketSelection = () => {
     }
   };
 
-  /** Tickets filtered by current SVG map selection */
+  /** Tickets filtered by current SVG map selection, with live prices applied for tx_event */
   const displayedTickets = useMemo(() => {
-    if (!isSvgMap) return availableTickets;
+    const source = ticketsWithLivePrices;
+    if (!isSvgMap) return source;
     if (selectedSection)
-      return availableTickets.filter((t) => isTicketMatchingSection(t, selectedSection));
+      return source.filter((t) => isTicketMatchingSection(t, selectedSection));
     if (selectedCategory)
-      return availableTickets.filter((t) => isTicketMatchingCategory(t, selectedCategory));
-    return availableTickets;
-  }, [availableTickets, isSvgMap, selectedSection, selectedCategory]);
+      return source.filter((t) => isTicketMatchingCategory(t, selectedCategory));
+    return source;
+  }, [ticketsWithLivePrices, isSvgMap, selectedSection, selectedCategory]);
 
   return (
     <div>
@@ -507,6 +605,58 @@ export const TicketSelection = () => {
         </div>
       </div>
       <main className="flex flex-col" dir="rtl" role="main">
+        {/* ── DEBUG PANEL (remove when done) ── */}
+        {false && (
+          <details className="my-2 border border-yellow-400 rounded-lg bg-yellow-50 text-xs" dir="ltr" open>
+            <summary className="cursor-pointer px-3 py-2 font-bold text-yellow-800 select-none">
+              🐛 DEBUG — Live TixStock listings: {isLoadingLiveTickets ? 'loading…' : `${liveListings.length} fetched`}
+              {' | '}DB categories: {availableTickets.map(t => `"${t.category}"`).join(', ')}
+            </summary>
+            {liveListings.length === 0 && !isLoadingLiveTickets && (
+              <p className="px-3 py-2 text-red-600 font-semibold">
+                ⚠️ No listings returned from API. Check event eid: "{availableTickets.find(t => t.eid)?.eid ?? 'none'}"
+              </p>
+            )}
+            {liveListings.length > 0 && (
+              <div className="overflow-auto max-h-[400px]">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-yellow-100 sticky top-0">
+                    <tr>
+                      <th className="p-1 border border-yellow-300">ID</th>
+                      <th className="p-1 border border-yellow-300">Category (TixStock)</th>
+                      <th className="p-1 border border-yellow-300">Section</th>
+                      <th className="p-1 border border-yellow-300">Qty avail</th>
+                      <th className="p-1 border border-yellow-300">Split qty</th>
+                      <th className="p-1 border border-yellow-300">Price</th>
+                      <th className="p-1 border border-yellow-300">Currency</th>
+                      <th className="p-1 border border-yellow-300">DB match?</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveListings.map((l) => {
+                      const dbMatch = availableTickets.find(
+                        t => t.category.trim().toLowerCase() === l.seat_details?.category?.trim().toLowerCase()
+                      );
+                      return (
+                        <tr key={l.id} className={dbMatch ? 'bg-green-50' : 'bg-white'}>
+                          <td className="p-1 border border-yellow-200 font-mono">{l.id}</td>
+                          <td className="p-1 border border-yellow-200 font-semibold">{l.seat_details?.category}</td>
+                          <td className="p-1 border border-yellow-200">{l.seat_details?.section}</td>
+                          <td className="p-1 border border-yellow-200">{l.number_of_tickets_for_sale?.quantity_available}</td>
+                          <td className="p-1 border border-yellow-200">{l.number_of_tickets_for_sale?.split_quantity}</td>
+                          <td className="p-1 border border-yellow-200 font-semibold">{l.proceed_price?.amount}</td>
+                          <td className="p-1 border border-yellow-200">{l.proceed_price?.currency}</td>
+                          <td className="p-1 border border-yellow-200">{dbMatch ? `✅ "${dbMatch.category}"` : '❌'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </details>
+        )}
+        {/* ── END DEBUG PANEL ── */}
         <div className="mt-4 text-lg">
           בחרו כמות כרטיסים וקטגוריה מועדפת,
           <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
@@ -653,7 +803,12 @@ export const TicketSelection = () => {
                     </button>
                   </div>
                 )}
-                {availableTickets.length === 0 ? (
+                {isLoadingLiveTickets ? (
+                  <div className="flex items-center justify-center p-8 gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    <Text size="sm" c="dimmed">טוען מחירים עדכניים...</Text>
+                  </div>
+                ) : ticketsWithLivePrices.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Text size="xl" fw={700} c="red" aria-live="polite">
                       אין כרטיסים זמינים כרגע

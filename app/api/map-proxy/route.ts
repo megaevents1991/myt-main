@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ALLOWED_HOSTNAME = "tixstock.s3.eu-west-2.amazonaws.com";
+const ALLOWED_HOSTNAMES = new Set([
+  "tixstock.s3.eu-west-2.amazonaws.com",
+  "cdn.xs2event.com",
+]);
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
@@ -22,7 +25,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (parsed.hostname !== ALLOWED_HOSTNAME) {
+  if (!ALLOWED_HOSTNAMES.has(parsed.hostname)) {
     return NextResponse.json({ error: "URL not allowed" }, { status: 403 });
   }
 
