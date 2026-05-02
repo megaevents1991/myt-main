@@ -200,9 +200,30 @@ const isTicketMatchingSectionOrCategory = (ticket: EventTicket, sectionEl: Eleme
     return isTicketMatchingSection(ticket, sectionId);
   }
 
+  // 1. Try matching via an explicit [data-category] ancestor
   const categoryEl = sectionEl.closest('[data-category]');
   const categoryId = categoryEl?.getAttribute('data-category');
-  return categoryId ? isTicketMatchingCategory(ticket, categoryId) : false;
+  if (categoryId && isTicketMatchingCategory(ticket, categoryId)) return true;
+
+  // 2. Fallback: the section slug itself encodes the category
+  //    e.g. data-section="garda" for a ticket whose category is "Garda"
+  const categorySlug = slugify(ticket.category);
+  const mapId = sectionId.toLowerCase();
+  if (mapId === categorySlug || mapId.endsWith(`_${categorySlug}`) || mapId.endsWith(`-${categorySlug}`)) return true;
+
+  // 3. Same category-token-stripping logic as isTicketMatchingSection
+  const underscoreIdx = mapId.indexOf('_');
+  if (underscoreIdx !== -1) {
+    const prefixTokens = new Set(mapId.substring(0, underscoreIdx).split('-'));
+    const sectionPart = mapId.substring(underscoreIdx + 1);
+    const cleaned = sectionPart
+      .split('-')
+      .filter((token) => !prefixTokens.has(token))
+      .join('-');
+    if (cleaned === categorySlug || cleaned.endsWith(`-${categorySlug}`) || cleaned.endsWith(`_${categorySlug}`)) return true;
+  }
+
+  return false;
 };
 
 export const TicketSelection = () => {
@@ -330,15 +351,12 @@ export const TicketSelection = () => {
    */
   const ticketsWithLivePrices: EventTicket[] = useMemo(() => {
     if (!isTxEvent || liveListings.length === 0) return availableTickets;
-    return availableTickets.reduce<EventTicket[]>((acc, ticket) => {
+    // Only update prices for existing categories — never add or remove categories.
+    // If no live listing can satisfy the requested quantity, keep the original price.
+    return availableTickets.map((ticket) => {
       const livePrice = getLivePriceForCategory(ticket.category, numberOfEventTickets);
-      if (livePrice === null) {
-        // No listing can satisfy the requested quantity – hide this category
-        return acc;
-      }
-      acc.push({ ...ticket, price: livePrice });
-      return acc;
-    }, []);
+      return livePrice !== null ? { ...ticket, price: livePrice } : ticket;
+    });
   }, [isTxEvent, liveListings, availableTickets, numberOfEventTickets, getLivePriceForCategory]);
 
   useEffect(() => {
