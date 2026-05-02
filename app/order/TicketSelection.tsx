@@ -406,10 +406,16 @@ export const TicketSelection = () => {
         const text = await response.text();
 
         const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'image/svg+xml');
+        // Parse as text/html — more forgiving (no strict XML mode) and works
+        // identically on all browsers including iOS Safari / WebKit.
+        // image/svg+xml strict XML parsing fails silently on iOS when the SVG
+        // source has any XML quirk, returning an invisible parsererror document.
+        const doc = parser.parseFromString(text, 'text/html');
+        const svgEl = doc.querySelector('svg');
+        if (!svgEl) throw new Error('No SVG element found in response');
 
         // Deduplicate overlapping sections (some SVGs contain duplicate groups)
-        const sections = Array.from(doc.querySelectorAll('[data-section]'));
+        const sections = Array.from(svgEl.querySelectorAll('[data-section]'));
         const geometryMap = new Map<string, Element>();
         sections.forEach((section) => {
           const block = section.querySelector('.block');
@@ -425,10 +431,10 @@ export const TicketSelection = () => {
           }
         });
 
-        // Remove venue-specific tier label texts
-        doc.querySelectorAll('.tier-label').forEach((el) => el.remove());
+// Remove venue-specific tier label texts
+        svgEl.querySelectorAll('.tier-label').forEach((el) => el.remove());
 
-        if (!cancelled) setSvgContent(doc.documentElement.outerHTML);
+        if (!cancelled) setSvgContent(svgEl.outerHTML);
       } catch (error) {
         console.error('Failed to load SVG map:', error);
         if (!cancelled) setSvgContent(null);
