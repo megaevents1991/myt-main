@@ -14,10 +14,16 @@ export async function POST(req: Request) {
   const { payNow, onlySave, gtmIdnts, skipAnalytics, ...orderDetails } =
     await req.json();
 
-  const validatedData: OrderData = await validateOrderData(
-    orderDetails,
-    payNow,
-  );
+  let validatedData: OrderData;
+  try {
+    validatedData = await validateOrderData(orderDetails, payNow);
+  } catch (validationError) {
+    console.error("Order validation failed:", validationError);
+    return NextResponse.json(
+      { error: validationError instanceof Error ? validationError.message : "Invalid order data" },
+      { status: 400 },
+    );
+  }
 
   const { data, error } = await supabase
     .from("reservations")
@@ -45,14 +51,7 @@ export async function POST(req: Request) {
   const id = data?.id;
 
   if (error) {
-    console.error(
-      "Error inserting into reservations table:",
-      JSON.stringify(error),
-    );
-    console.error(
-      "Error inserting into reservations table:",
-      JSON.stringify(data),
-    );
+    console.error("Error inserting into reservations table:", error);
     return NextResponse.json(
       { error: "Failed to confirm order" },
       { status: 500 },
@@ -87,12 +86,16 @@ export async function POST(req: Request) {
       .single();
 
     if (error2) {
-      console.error(
-        "Error inserting into partners table:",
-        JSON.stringify(error2),
-      );
+      console.error("Error inserting into partners table:", error2);
     }
   }
+
+  // Set booking reference immediately — always, before any email attempt
+  const bookingReference = `ME${new Date().getDate()}${id}`;
+  await supabase
+    .from("reservations")
+    .update({ booking_reference: bookingReference })
+    .eq("id", id);
 
   const transporter = nodemailer.createTransport({
     host: "smtp.zeptomail.com",
@@ -102,6 +105,9 @@ export async function POST(req: Request) {
       pass: process.env.EMAIL_SERVER_PASSWORD,
     },
   });
+
+  const out = validatedData.flight_order_info?.outbound;
+  const inb = validatedData.flight_order_info?.inbound;
 
   const repEmailContent = `
           New Order Details:
@@ -119,10 +125,10 @@ export async function POST(req: Request) {
           Vendor: ${validatedData.event_order_info.vendor || "N/A"}
 
           ******** Flight Info **********
-          Flight Outbound Number: ${validatedData.flight_order_info.outbound.flightNumber}
-          Flight Outbound Date: ${validatedData.flight_order_info.outbound.departureTime}
-          Flight Inbound Number: ${validatedData.flight_order_info.inbound.flightNumber}
-          Flight Inbound Date: ${validatedData.flight_order_info.inbound.departureTime}
+          Flight Outbound Number: ${out?.flightNumber ?? "N/A"}
+          Flight Outbound Date: ${out?.departureTime ?? "N/A"}
+          Flight Inbound Number: ${inb?.flightNumber ?? "N/A"}
+          Flight Inbound Date: ${inb?.departureTime ?? "N/A"}
 
           ******* Hotel Details *********
           ${
@@ -139,6 +145,8 @@ export async function POST(req: Request) {
           Exchange Rate: ${validatedData.exchange_rate_usd_ils_100}
         `;
 
+  // Send rep email — non-fatal: order is already saved
+  let repEmailSent = false;
   try {
     await transporter.sendMail({
       from: '"MegaEvents Reservations" <reservations@mega-events.co.il>',
@@ -146,49 +154,43 @@ export async function POST(req: Request) {
       subject: `New Order Confirmation - ${validatedData.event_order_info.name}`,
       text: repEmailContent,
     });
+    repEmailSent = true;
+  } catch (repEmailError) {
+    console.error("Failed to send rep email (order still saved):", repEmailError);
+  }
 
-    const bookingReference = `ME${new Date().getDate()}${id}`;
+  // Analytics — non-fatal
+  if (!skipAnalytics) {
+    try {
+      const ip = extractIpFromRequest(req);
+      const userAgent = extractUserAgentFromRequest(req);
 
-    await supabase
-      .from("reservations")
-      .update({
-        booking_reference: bookingReference,
-      })
-      .eq("id", id);
+      await trackServerSideEvent({
+        eventData: {
+          id: validatedData.event_id,
+          name: validatedData.event_order_info.name,
+          value: validatedData.user_shown_price,
+          currency: "USD",
+          category:
+            validatedData.event_order_info.event_type || "music_event",
+          brand: "Mega Events",
+          quantity: validatedData.event_order_info.number_of_ticket,
+        },
+        eventType: payNow ? "begin_checkout" : "generate_lead",
+        gtmIdnts,
+        userAgent,
+        ip,
+      });
+    } catch (analyticsError) {
+      console.warn("Analytics tracking failed for order confirmation:", analyticsError);
+    }
+  }
 
-    // Track analytics event - begin_checkout for immediate payment, generate_lead for phone orders
-    // skipAnalytics is sent by the client when the event was already fired this session
-    if (!skipAnalytics)
-      try {
-        const ip = extractIpFromRequest(req);
-        const userAgent = extractUserAgentFromRequest(req);
-
-        await trackServerSideEvent({
-          eventData: {
-            id: validatedData.event_id,
-            name: validatedData.event_order_info.name,
-            value: validatedData.user_shown_price,
-            currency: "USD",
-            category:
-              validatedData.event_order_info.event_type || "music_event",
-            brand: "Mega Events",
-            quantity: validatedData.event_order_info.number_of_ticket,
-          },
-          eventType: payNow ? "begin_checkout" : "generate_lead",
-          gtmIdnts,
-          userAgent,
-          ip,
-        });
-      } catch (analyticsError) {
-        // Don't fail the main request if analytics fails
-        console.warn(
-          "Analytics tracking failed for order confirmation:",
-          analyticsError,
-        );
-      }
-
-    if (!payNow) {
-      // confirmation email to user when ask for phone order
+  // Send user confirmation email — non-fatal
+  let userEmailSent = false;
+  if (!payNow) {
+    console.log(`[confirm-order] Sending user email to: ${validatedData.main_contact_email}`);
+    try {
       await sendUserEmail({
         orderData: { ...validatedData, booking_reference: bookingReference },
         payNow,
@@ -196,36 +198,25 @@ export async function POST(req: Request) {
         partnerTrackingCode,
         orderId: id,
       });
+      userEmailSent = true;
 
       await supabase
         .from("reservations")
-        .update({
-          confirmation_email_sent: true,
-        })
+        .update({ confirmation_email_sent: true })
         .eq("id", id);
+    } catch (userEmailError) {
+      console.error("Failed to send user confirmation email (order still saved):", userEmailError);
     }
-
-    return NextResponse.json(
-      {
-        message: "Order confirmed and email sent to sales rep",
-        bookingReference,
-        newPromoterCode: partnerTrackingCode,
-        id,
-      },
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error(
-      "Error sending email into reservations table:",
-      JSON.stringify(error),
-    );
-    console.error(
-      "Error sending email into reservations table:",
-      JSON.stringify(data),
-    );
-    return NextResponse.json(
-      { error: "Failed to confirm order" },
-      { status: 500 },
-    );
   }
+
+  return NextResponse.json(
+    {
+      message: "Order confirmed",
+      bookingReference,
+      newPromoterCode: partnerTrackingCode,
+      id,
+      emailSent: payNow ? repEmailSent : userEmailSent,
+    },
+    { status: 200 },
+  );
 }

@@ -123,6 +123,7 @@ export default function OrderReview() {
   const [openModal, setOpenModal] = useState(true);
   const [isTimeout, setIsTimeout] = useState(false);
   const [isPayNow, setIsPayNow] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; description: string }>({ open: false, title: "", description: "" });
   // Special offer (inactivity) modal state
   const [specialOfferOpen, setSpecialOfferOpen] = useState(false);
   const hasInteractedRef = useRef(false);
@@ -716,11 +717,19 @@ export default function OrderReview() {
     // For credit card and phone order, requireAllPassengers = true
     const isValidForAction = isFormValidForAction(!onlySave);
     if (!isValidForAction || isSubmitting) {
-      // If validation fails, scroll to passenger details section
-      if (!isValidForAction && passengerDetailsRef.current) {
-        passengerDetailsRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
+      if (!isValidForAction) {
+        if (passengerDetailsRef.current) {
+          passengerDetailsRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+        setErrorModal({
+          open: true,
+          title: "שגיאה בטופס",
+          description: !termsAccepted
+            ? "יש לאשר את תנאי השימוש לפני המשך ההזמנה"
+            : "נא למלא את שם פרטי ושם משפחה של כל הנוסעים כדי להמשיך",
         });
       }
       return;
@@ -806,11 +815,32 @@ export default function OrderReview() {
       });
 
       if (payNow) {
-        const { url } = await getPaymentUrl(result.id, result.newPromoterCode);
-        if (!url) {
-          throw new Error("Failed to get payment URL");
+        let paymentUrl: string | undefined;
+        try {
+          const { url } = await getPaymentUrl(result.id, result.newPromoterCode);
+          paymentUrl = url;
+        } catch {
+          // Order saved but payment URL failed — tell user rep will follow up
+          setIsSubmitting(false);
+          setErrorModal({
+            open: true,
+            title: "ההזמנה נשמרה",
+            description:
+              "לא הצלחנו להעביר אותך לעמוד התשלום. ההזמנה שלך נשמרה במערכת ונציג ייצור איתך קשר להשלמת התשלום.\nלפניות דחופות: 03-768-4800",
+          });
+          return;
         }
-        window.location.replace(url);
+        if (!paymentUrl) {
+          setIsSubmitting(false);
+          setErrorModal({
+            open: true,
+            title: "שגיאה בהעברה לתשלום",
+            description:
+              "אירעה שגיאה בעיבוד התשלום. ניתן לנסות שוב או לפנות אלינו בטלפון 03-768-4800",
+          });
+          return;
+        }
+        window.location.replace(paymentUrl);
       } else {
         // Redirect to the order confirmation page.
         // If this was a 24h hold (onlySave), append a query param so the confirmation screen can show hold-specific messaging.
@@ -819,10 +849,23 @@ export default function OrderReview() {
         router.push(targetPath);
       }
     } catch (error) {
-      // TO DO: Handle error (e.g., show error message)
       console.error("Order submission failed:", error);
-
       setIsSubmitting(false);
+      if (payNow) {
+        setErrorModal({
+          open: true,
+          title: "שגיאה בעיבוד ההזמנה",
+          description:
+            "אירעה שגיאה בעיבוד התשלום. ניתן לנסות שוב או לפנות אלינו בטלפון 03-768-4800",
+        });
+      } else {
+        setErrorModal({
+          open: true,
+          title: "פרטיך נשמרו",
+          description:
+            "קיבלנו את פנייתך! נציג ממגה איבנטס ייצור איתך קשר ביום העסקים הקרוב לתיאום התשלום.\nלפניות דחופות: 03-768-4800",
+        });
+      }
     }
   };
 
@@ -933,6 +976,22 @@ export default function OrderReview() {
           !isPercentageAffiliateDiscount
         }
         iconType="Beer"
+      />
+      <Modal
+        title={errorModal.title}
+        description={errorModal.description}
+        action={
+          <Button
+            variant="secondary"
+            className="font-bold w-full"
+            onClick={() => setErrorModal({ open: false, title: "", description: "" })}
+            aria-label="סגור הודעת שגיאה"
+          >
+            הבנתי
+          </Button>
+        }
+        opened={errorModal.open}
+        iconType="Info"
       />
       <LoaderWrapper
         isLoading={isSubmitting}
@@ -1406,7 +1465,7 @@ export default function OrderReview() {
 
               <div className="hidden md:flex gap-2 mt-0">
                 <Button
-                  onClick={handleSubmit}
+                  onClick={(e) => handleSubmit(e, false, false)}
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md hover:bg-gray-50 transition-colors"
                   disabled={isSubmitting}
@@ -1848,7 +1907,7 @@ export default function OrderReview() {
 
               <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
                 <Button
-                  onClick={handleSubmit}
+                  onClick={(e) => handleSubmit(e, false, false)}
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                   disabled={isSubmitting}
@@ -1887,7 +1946,7 @@ export default function OrderReview() {
           {showStickyOptions && (
             <div className="mb-4 flex gap-2">
               <Button
-                onClick={handleSubmit}
+                onClick={(e) => handleSubmit(e, false, false)}
                 variant={"link"}
                 className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-primary rounded-md transition-colors"
                 disabled={isSubmitting}

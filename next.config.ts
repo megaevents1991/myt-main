@@ -1,5 +1,12 @@
 const nextConfig: import("next").NextConfig = {
   reactStrictMode: false,
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // OneDrive locks files and breaks webpack atomic renames
+      config.cache = false;
+    }
+    return config;
+  },
   experimental: {
     optimizePackageImports: ["@mantine/core", "@mantine/hooks"],
     serverActions: {

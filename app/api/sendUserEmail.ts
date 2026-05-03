@@ -64,6 +64,9 @@ export const sendUserEmail = async ({
         : emailtemplates.failedPurchase
       : emailtemplates.phoneOrder;
 
+  const flightOut = orderData.flight_order_info?.outbound;
+  const flightInb = orderData.flight_order_info?.inbound;
+
   const replacements = {
     bookingReference: orderData.booking_reference,
     title: emailTemplate.title,
@@ -75,15 +78,15 @@ export const sendUserEmail = async ({
     eventLocation: orderData.event_order_info?.location_name || "",
     ticketType: orderData.event_order_info.category,
     quantity: orderData.event_order_info.number_of_ticket,
-    airline: orderData.flight_order_info?.metadata?.name,
-    departFlight: orderData.flight_order_info?.outbound.flightNumber,
-    departFlightDate: dayjs(
-      orderData.flight_order_info?.outbound.departureTime,
-    ).format("DD/MM/YYYY HH:MM"),
-    returnFlight: orderData.flight_order_info?.inbound.flightNumber,
-    returnFlightDate: dayjs(
-      orderData.flight_order_info?.inbound.departureTime,
-    ).format("DD/MM/YYYY HH:MM"),
+    airline: orderData.flight_order_info?.metadata?.name ?? "N/A",
+    departFlight: flightOut?.flightNumber ?? "N/A",
+    departFlightDate: flightOut?.departureTime
+      ? dayjs(flightOut.departureTime).format("DD/MM/YYYY HH:mm")
+      : "N/A",
+    returnFlight: flightInb?.flightNumber ?? "N/A",
+    returnFlightDate: flightInb?.departureTime
+      ? dayjs(flightInb.departureTime).format("DD/MM/YYYY HH:mm")
+      : "N/A",
     hotel:
       orderData.hotel_order_info &&
       Object.keys(orderData.hotel_order_info).length > 0
