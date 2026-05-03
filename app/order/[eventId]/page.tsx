@@ -71,7 +71,7 @@ export async function generateMetadata({
       openGraph: {
         title: `${event.name} - Order Tickets`,
         description: `Order tickets for ${event.name} with flights and hotels included.`,
-        url: `https://www.mega-events.co.il/order/${eventId}`,
+        url: `https://mega-events.co.il/order/${eventId}`,
         siteName: "Mega Events",
         images: event.card_image_url ? [
           {
@@ -83,7 +83,7 @@ export async function generateMetadata({
         ] : [],
       },
       alternates: {
-        canonical: `https://www.mega-events.co.il/order/${eventId}`,
+        canonical: `https://mega-events.co.il/order/${eventId}`,
       },
     };
   } catch (error) {

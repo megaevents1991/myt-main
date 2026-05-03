@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: "הצהרת נגישות - MegaEvents",
     description:
       "הצהרת הנגישות של MegaEvents - מחויבות לנגישות דיגיטלית ועמידה בתקנות הנגישות הישראליות.",
-    url: "https://www.mega-events.co.il/accessibility",
+    url: "https://mega-events.co.il/accessibility",
     siteName: "מגה איבנטס",
     locale: "he_IL",
     type: "website",
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://www.mega-events.co.il/accessibility",
+    canonical: "https://mega-events.co.il/accessibility",
   },
 };
 

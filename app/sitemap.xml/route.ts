@@ -135,7 +135,7 @@ ${allPages
     console.error("Error generating sitemap:", error);
 
     // Return basic sitemap with static pages only
-    const baseUrl = "https://www.mega-events.co.il";
+    const baseUrl = "https://mega-events.co.il";
     const basicSitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>

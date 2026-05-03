@@ -53,18 +53,18 @@ export const metadata: Metadata = {
   generator: "Next.js",
   category: "Travel & Events",
   classification: "Travel Agency, Event Tickets, Tourism",
-  metadataBase: new URL("https://www.mega-events.co.il"),
+  metadataBase: new URL("https://mega-events.co.il"),
   alternates: {
-    canonical: "https://www.mega-events.co.il",
+    canonical: "https://mega-events.co.il",
     languages: {
-      "he-IL": "https://www.mega-events.co.il",
+      "he-IL": "https://mega-events.co.il",
     },
   },
   openGraph: {
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
       "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם. 32 שנות ניסיון, כרטיסים רשמיים בלבד.",
-    url: "https://www.mega-events.co.il",
+    url: "https://mega-events.co.il",
     siteName: "Mega Events",
     type: "website",
     locale: "he_IL",

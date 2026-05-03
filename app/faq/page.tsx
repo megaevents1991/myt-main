@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     title: "שאלות נפוצות - מגה איבנטס",
     description:
       "מענה לכל השאלות שלכם על הזמנת אירועים, טיסות ומלונות. תנאי ביטול, מידע על כרטיסים ועוד.",
-    url: "https://www.mega-events.co.il/faq",
+    url: "https://mega-events.co.il/faq",
     siteName: "מגה איבנטס",
     locale: "he_IL",
     type: "website",
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://www.mega-events.co.il/faq",
+    canonical: "https://mega-events.co.il/faq",
   },
 };
 

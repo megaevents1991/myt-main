@@ -12,7 +12,7 @@ export function StructuredData({ events }: StructuredDataProps) {
     alternateName: "Mega Events",
     description:
       "מגה איבנטס מבית מגה תיירות - האתר היחיד בישראל לחבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם",
-    url: "https://www.mega-events.co.il",
+    url: "https://mega-events.co.il",
     logo: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
     foundingDate: "1993",
     founder: {
@@ -121,7 +121,7 @@ export function StructuredData({ events }: StructuredDataProps) {
         "@type": "ListItem",
         position: 1,
         name: "בית",
-        item: "https://www.mega-events.co.il",
+        item: "https://mega-events.co.il",
       },
     ],
   };
@@ -130,13 +130,13 @@ export function StructuredData({ events }: StructuredDataProps) {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "מגה איבנטס",
-    url: "https://www.mega-events.co.il",
+    url: "https://mega-events.co.il",
     description:
       "האתר היחיד בישראל לחבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם",
     inLanguage: "he-IL",
     potentialAction: {
       "@type": "SearchAction",
-      target: "https://www.mega-events.co.il/search?q={search_term_string}",
+      target: "https://mega-events.co.il/search?q={search_term_string}",
       "query-input": "required name=search_term_string",
     },
   };

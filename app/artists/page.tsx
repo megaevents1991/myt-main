@@ -2,16 +2,8 @@ import { contentfulClient } from "@/lib/contentful";
 import { ArtistFields } from "@/lib/app.types";
 import Link from "next/link";
 import Image from "next/image";
-import type { Metadata } from "next";
 
 export const revalidate = 3600;
-
-export const metadata: Metadata = {
-  title: "האומנים שלנו - מגה איבנטס",
-  alternates: {
-    canonical: "https://www.mega-events.co.il/artists",
-  },
-};
 
 export default async function ArtistsPage() {
   // Add timestamp for cache validation

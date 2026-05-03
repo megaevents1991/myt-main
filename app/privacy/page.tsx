@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: "מדיניות פרטיות - MegaEvents",
     description:
       "מדיניות הפרטיות של MegaEvents - הגנת המידע האישי, זכויות המשתמשים, ועמידה בחוק הגנת הפרטיות הישראלי.",
-    url: "https://www.mega-events.co.il/privacy",
+    url: "https://mega-events.co.il/privacy",
     siteName: "מגה איבנטס",
     locale: "he_IL",
     type: "website",
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://www.mega-events.co.il/privacy",
+    canonical: "https://mega-events.co.il/privacy",
   },
 };
 
