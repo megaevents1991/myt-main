@@ -4,19 +4,19 @@ import { exchangeRateService } from "@/lib/exchangeRateService";
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
 
-/** Convert an amount string in any supported currency to USD */
+/** Convert an amount string in any supported currency to USD, with per-currency markup */
 function toUsd(amount: string, currency: string): string {
   const value = parseFloat(amount);
   if (isNaN(value)) return amount;
   const cur = currency.toUpperCase();
-  if (cur === "USD") return amount;
+  if (cur === "USD") return (value + 40).toFixed(2);
   if (cur === "GBP") {
     const rate = exchangeRateService.getGbpUsdRate().rate;
-    return (value * rate).toFixed(2);
+    return ((value + 35) * rate).toFixed(2);
   }
   if (cur === "EUR") {
     const rate = exchangeRateService.getEurUsdRate().rate;
-    return (value * rate).toFixed(2);
+    return ((value + 40) * rate).toFixed(2);
   }
   // Unknown currency — return as-is and log
   console.warn(
@@ -25,8 +25,44 @@ function toUsd(amount: string, currency: string): string {
   return amount;
 }
 
+/** Slugify a name the same way the SVG map IDs are built */
+function slugify(name: string): string {
+  return (name || "").trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/**
+ * Return true when a listing's seat_details match one of the excluded
+ * section IDs (format: "{category-slug}_{section-number}").
+ */
+function isExcludedSection(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  listing: any,
+  excludedSections: string[],
+): boolean {
+  if (excludedSections.length === 0) return false;
+  const listingCatSlug = slugify(listing.seat_details?.category ?? "");
+  const listingSection = (listing.seat_details?.section ?? "")
+    .trim()
+    .toLowerCase();
+  return excludedSections.some((excl) => {
+    const lastUnderscore = excl.lastIndexOf("_");
+    if (lastUnderscore === -1) return false;
+    const catSlug = excl.substring(0, lastUnderscore);
+    const sectionId = excl.substring(lastUnderscore + 1).toLowerCase();
+    return listingCatSlug === catSlug && listingSection === sectionId;
+  });
+}
+
 export async function GET(req: NextRequest) {
   const eventId = req.nextUrl.searchParams.get("event_id");
+  const excludedSectionsParam =
+    req.nextUrl.searchParams.get("excluded_sections") ?? "";
+  const excludedSections = excludedSectionsParam
+    ? excludedSectionsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
 
   if (!eventId) {
     return NextResponse.json({ error: "Missing event_id" }, { status: 400 });
@@ -89,10 +125,21 @@ export async function GET(req: NextRequest) {
       },
     }));
 
+    // Filter out listings for excluded/disabled sections before returning
+    const filtered = excludedSections.length
+      ? normalised.filter((l: any) => !isExcludedSection(l, excludedSections))
+      : normalised;
+
+    if (excludedSections.length) {
+      console.log(
+        `[TixStock Tickets] Excluded ${normalised.length - filtered.length} listing(s) from ${excludedSections.length} excluded section(s)`,
+      );
+    }
+
     // Return in the same shape the client expects: { success, data: { data: [...] } }
     return NextResponse.json({
       success: true,
-      data: { ...firstPage, data: normalised },
+      data: { ...firstPage, data: filtered },
     });
   } catch (error) {
     console.error(

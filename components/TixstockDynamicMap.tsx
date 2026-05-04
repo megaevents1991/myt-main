@@ -9,13 +9,13 @@ import React, {
   useState,
 } from "react";
 import {
-  type TixStockListing,
+  type TixStockMatchableListing,
+  categoryOnlyMatchesEl,
   centerSectionLabels,
   cleanupDuplicateSections,
   doesTicketMatchAnyMapSection,
   getCategoryIdFromSectionEl,
   isCategoryOnlyTicket,
-  isTicketMatchingCategory,
   isTicketMatchingSection,
   paintSection,
   prePaintSvg,
@@ -31,15 +31,17 @@ type Props = {
   /** URL to the SVG venue map (e.g. tixstock S3 URL) */
   mapUrl: string;
   /** All available TixStock-shaped tickets */
-  tickets: TixStockListing[];
+  tickets: TixStockMatchableListing[];
   /** Ticket the user is currently hovering over in the list */
-  hoveredTicket: TixStockListing | null;
+  hoveredTicket: TixStockMatchableListing | null;
   /** The currently-selected ticket (from the ticket list) */
   selectedTicketId: string | null;
   /** Callback when the user clicks a section — receives the best matching ticket ID */
   onTicketSelect?: (ticketId: string) => void;
   /** Called with the set of ticket IDs that have a map match */
   onMatchedTicketIds?: (ids: Set<string>) => void;
+  /** Section IDs (data-section values) to render as disabled/excluded */
+  excludedSections?: string[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -53,6 +55,7 @@ export function TixstockDynamicMap({
   selectedTicketId,
   onTicketSelect,
   onMatchedTicketIds,
+  excludedSections,
 }: Props) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,7 +87,8 @@ export function TixstockDynamicMap({
       setError(null);
 
       try {
-        const res = await fetch(mapUrl);
+        const proxiedUrl = `/api/map-proxy?url=${encodeURIComponent(mapUrl)}`;
+        const res = await fetch(proxiedUrl);
         if (!res.ok) throw new Error(`Failed to load map (${res.status})`);
         const raw = await res.text();
         const prepared = sanitizeAndPrepareSvg(raw);
@@ -114,8 +118,8 @@ export function TixstockDynamicMap({
   // correctly styled from the moment it enters the DOM.  This runs as
   // a pure computation (useMemo) — no dependency on effects or refs.
   const paintedSvg = useMemo(
-    () => (svgContent ? prePaintSvg(svgContent, tickets) : null),
-    [svgContent, tickets],
+    () => (svgContent ? prePaintSvg(svgContent, tickets, excludedSections) : null),
+    [svgContent, tickets, excludedSections],
   );
 
   /* ---------- 2 + 3 + 4. Painting & match reporting ------------------- */
@@ -130,22 +134,33 @@ export function TixstockDynamicMap({
       cleanupDuplicateSections(root);
 
       // Centre section labels on their parent shapes (idempotent).
-      // Must run after DOM mount so getBBox() works.
-      centerSectionLabels(root);
+      // Defer to next animation frame so layout is committed and
+      // getBBox() returns real geometry — otherwise on first mount
+      // labels collapse to (0,0) and appear corrupted/missing.
+      requestAnimationFrame(() => {
+        if (containerRef.current) centerSectionLabels(containerRef.current);
+      });
 
       const sectionEls = Array.from(root.querySelectorAll("[data-section]"));
 
       // Reset all sections to their base colours
       sectionEls.forEach((el) => paintSection(el, "base"));
 
-      // Colour sections: available (has tickets) or inactive (light border only)
+      // Colour sections: disabled, available (has tickets), or inactive
       sectionEls.forEach((el) => {
         const secId = el.getAttribute("data-section") || "";
+
+        // Excluded sections are always rendered as disabled
+        if (excludedSections?.includes(secId)) {
+          paintSection(el, "disabled");
+          return;
+        }
+
         const catId = getCategoryIdFromSectionEl(el);
 
         const hasMatchingTicket = tickets.some((t) => {
           if (isCategoryOnlyTicket(t)) {
-            return !!catId && isTicketMatchingCategory(t, catId);
+            return categoryOnlyMatchesEl(t, secId, catId);
           }
           return isTicketMatchingSection(t, secId, catId);
         });
@@ -163,10 +178,11 @@ export function TixstockDynamicMap({
         if (selTicket) {
           sectionEls.forEach((el) => {
             const sec = el.getAttribute("data-section") || "";
+            if (excludedSections?.includes(sec)) return; // never highlight disabled
             const cat = getCategoryIdFromSectionEl(el);
 
             const match = isCategoryOnlyTicket(selTicket)
-              ? !!cat && isTicketMatchingCategory(selTicket, cat)
+              ? categoryOnlyMatchesEl(selTicket, sec, cat)
               : isTicketMatchingSection(selTicket, sec, cat);
 
             if (match) paintSection(el, "selected");
@@ -178,10 +194,11 @@ export function TixstockDynamicMap({
       if (hoveredTicket) {
         sectionEls.forEach((el) => {
           const sec = el.getAttribute("data-section") || "";
+          if (excludedSections?.includes(sec)) return; // never highlight disabled
           const cat = getCategoryIdFromSectionEl(el);
 
           const match = isCategoryOnlyTicket(hoveredTicket)
-            ? !!cat && isTicketMatchingCategory(hoveredTicket, cat)
+            ? categoryOnlyMatchesEl(hoveredTicket, sec, cat)
             : isTicketMatchingSection(hoveredTicket, sec, cat);
 
           if (match) paintSection(el, "hover");
@@ -190,14 +207,17 @@ export function TixstockDynamicMap({
     } catch (e) {
       console.error("[TixstockDynamicMap] repaint error:", e);
     }
-  }, [svgContent, hoveredTicket, selectedTicketId, tickets]);
+  }, [svgContent, hoveredTicket, selectedTicketId, tickets, excludedSections]);
 
   // Run repaint for dynamic changes (selection, hover, label centering).
   // The initial available/inactive painting is already baked into
   // `paintedSvg`, so even if this effect is delayed the map looks correct.
+  // `paintedSvg` is included so that when innerHTML is replaced (which
+  // does NOT re-fire the ref callback), we still re-center labels and
+  // re-apply runtime styles on the fresh nodes.
   useLayoutEffect(() => {
     repaint();
-  }, [repaint, domReady]);
+  }, [repaint, domReady, paintedSvg]);
 
   // Report which tickets have a map match
   useEffect(() => {
@@ -223,12 +243,14 @@ export function TixstockDynamicMap({
       if (!sectionEl) return;
 
       const sectionId = sectionEl.getAttribute("data-section") || "";
+      // Ignore clicks on excluded/disabled sections
+      if (excludedSections?.includes(sectionId)) return;
       const categoryId = getCategoryIdFromSectionEl(sectionEl);
 
       // Find the best matching ticket:
       // 1st priority: ticket with matching section (+ category if available)
       // 2nd priority: category-only ticket matching the category
-      let bestMatch: TixStockListing | null = null;
+      let bestMatch: TixStockMatchableListing | null = null;
 
       for (const t of tickets) {
         if (!isCategoryOnlyTicket(t) && isTicketMatchingSection(t, sectionId, categoryId)) {
@@ -239,8 +261,7 @@ export function TixstockDynamicMap({
           }
         } else if (
           isCategoryOnlyTicket(t) &&
-          categoryId &&
-          isTicketMatchingCategory(t, categoryId) &&
+          categoryOnlyMatchesEl(t, sectionId, categoryId) &&
           !bestMatch // only use category-only as fallback
         ) {
           bestMatch = t;
@@ -254,7 +275,7 @@ export function TixstockDynamicMap({
 
     root.addEventListener("click", onClick);
     return () => root.removeEventListener("click", onClick);
-  }, [tickets, svgContent, onTicketSelect]);
+  }, [tickets, svgContent, onTicketSelect, excludedSections]);
 
   /* ---------- Pointer-hover on the SVG map itself ---------------------- */
 
@@ -268,11 +289,13 @@ export function TixstockDynamicMap({
       if (!sectionEl) return;
 
       const secId = sectionEl.getAttribute("data-section") || "";
+      // Don't hover-highlight excluded sections
+      if (excludedSections?.includes(secId)) return;
       const catId = getCategoryIdFromSectionEl(sectionEl);
 
       const hasTicket = tickets.some((t) => {
         if (isCategoryOnlyTicket(t))
-          return !!catId && isTicketMatchingCategory(t, catId);
+          return categoryOnlyMatchesEl(t, secId, catId);
         return isTicketMatchingSection(t, secId, catId);
       });
 
@@ -287,6 +310,8 @@ export function TixstockDynamicMap({
       if (!sectionEl) return;
 
       const secId = sectionEl.getAttribute("data-section") || "";
+      // Nothing to restore on excluded sections (they stay disabled)
+      if (excludedSections?.includes(secId)) return;
       const catId = getCategoryIdFromSectionEl(sectionEl);
 
       // Determine whether this section belongs to the currently selected ticket
@@ -295,7 +320,7 @@ export function TixstockDynamicMap({
         : null;
       const isSelected = selTicket
         ? isCategoryOnlyTicket(selTicket)
-          ? !!catId && isTicketMatchingCategory(selTicket, catId)
+          ? categoryOnlyMatchesEl(selTicket, secId, catId)
           : isTicketMatchingSection(selTicket, secId, catId)
         : false;
 
@@ -305,7 +330,7 @@ export function TixstockDynamicMap({
         // Check if it has tickets → show available colour, otherwise base
         const hasTicket = tickets.some((t) => {
           if (isCategoryOnlyTicket(t))
-            return !!catId && isTicketMatchingCategory(t, catId);
+            return categoryOnlyMatchesEl(t, secId, catId);
           return isTicketMatchingSection(t, secId, catId);
         });
         if (hasTicket) {
@@ -322,7 +347,7 @@ export function TixstockDynamicMap({
       root.removeEventListener("mouseover", onMouseOver);
       root.removeEventListener("mouseout", onMouseOut);
     };
-  }, [tickets, svgContent, selectedTicketId]);
+  }, [tickets, svgContent, selectedTicketId, excludedSections]);
 
   /* ---------- Render --------------------------------------------------- */
 
@@ -348,7 +373,7 @@ export function TixstockDynamicMap({
   if (!paintedSvg) return null;
 
   return (
-    <div className="w-full">
+    <div className="w-full" dir="ltr">
       <div
         ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: paintedSvg }}
