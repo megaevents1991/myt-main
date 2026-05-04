@@ -13,6 +13,7 @@ import { getAvailableTickets } from "@/lib/utils";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import { eventTicketToListing, type TixStockListing } from "@/lib/tixstock-map";
 
+
 export const TicketSelection = () => {
   const { setEventTicket, event } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");

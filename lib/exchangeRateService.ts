@@ -48,7 +48,11 @@ const CURRENCY_CONFIG: Record<
 };
 
 class ExchangeRateService {
-  private currentRates: CurrencyRates = { usdIls: null, eurUsd: null, gbpUsd: null };
+  private currentRates: CurrencyRates = {
+    usdIls: null,
+    eurUsd: null,
+    gbpUsd: null,
+  };
   private intervalId: NodeJS.Timeout | null = null;
 
   private readonly TWELVE_DATA_URL = "https://api.twelvedata.com/exchange_rate";
