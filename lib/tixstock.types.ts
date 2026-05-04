@@ -136,23 +136,23 @@ export interface TixStockEventDB {
   event_name: string;
   show_date: string; // ISO string
   event_status: string;
-  
+
   // Venue & Location
   venue_name: string;
   city_name: string;
   country_code: string;
   venue_data: TixStockVenue; // Store full venue object for reference
-  
+
   // Classification
   category_name: string; // Top level category name
   sub_categories: TixStockCategory; // Full category object
-  
+
   // Metadata
   performers: TixStockPerformer[];
   venue_map_url?: string;
   last_synced: string;
   is_active: boolean;
-  
+
   created_at?: string;
   updated_at?: string;
 }

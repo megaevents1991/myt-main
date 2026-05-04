@@ -31,7 +31,7 @@ export const EventSummary = ({
         >
           <div className="flex gap-[2px]">
             <div className="ml-1">
-              {eventTicket.description}
+              {eventTicket.category || eventTicket.description}
             </div>
             {agentCommission <= 0 && (
               <div>

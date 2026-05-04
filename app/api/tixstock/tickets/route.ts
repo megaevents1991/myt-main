@@ -128,7 +128,9 @@ export async function GET(req: NextRequest) {
 
     // Filter out listings for excluded/disabled sections before returning
     const filtered = excludedSections.length
-      ? normalised.filter((l: TixStockListing) => !isExcludedSection(l, excludedSections))
+      ? normalised.filter(
+          (l: TixStockListing) => !isExcludedSection(l, excludedSections),
+        )
       : normalised;
 
     if (excludedSections.length) {
