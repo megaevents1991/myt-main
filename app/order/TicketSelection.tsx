@@ -5,22 +5,28 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
-import { ChevronDownCircle, ChevronUpCircle } from "lucide-react";
+import { ChevronDownCircle, ChevronUpCircle, Loader2 } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
 import type { EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
-import { eventTicketToListing, type TixStockListing } from "@/lib/tixstock-map";
+import {
+  eventTicketToListing,
+  hasLimitedViewRestriction,
+  type TixStockListing,
+  type TixStockMatchableListing,
+} from "@/lib/tixstock-map";
+
 
 export const TicketSelection = () => {
-  const { setEventTicket, event } = useContext(OrderContext);
+  const { setEventTicket, event, eventTicket } = useContext(OrderContext);
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
   );
-  const [hoveredTicket, setHoveredTicket] = useState<TixStockListing | null>(null);
+  const [hoveredTicket, setHoveredTicket] = useState<TixStockMatchableListing | null>(null);
   /** IDs of tickets whose category+section match something on the SVG map */
   const [matchedTicketIds, setMatchedTicketIds] = useState<Set<string> | null>(null);
 
@@ -49,8 +55,125 @@ export const TicketSelection = () => {
     [event]
   );
 
+  /* ── TixStock live pricing (tx_event only) ────────────────── */
+  const [liveListings, setLiveListings] = useState<TixStockListing[]>([]);
+  const [isLoadingLiveTickets, setIsLoadingLiveTickets] = useState(false);
+
+  // Resolve the TixStock event id from the first ticket carrying an `eid`.
+  const tixEventId = useMemo(
+    () => availableTickets.find((t) => t.eid)?.eid ?? null,
+    [availableTickets],
+  );
+
+  // Fetch live listings once we know the TixStock event id.
   useEffect(() => {
-    if (!availableTickets || availableTickets.length === 0) {
+    if (!isTxEvent || !tixEventId) {
+      setLiveListings([]);
+      return;
+    }
+    let cancelled = false;
+    const run = async () => {
+      setIsLoadingLiveTickets(true);
+      try {
+        const params = new URLSearchParams({
+          event_id: tixEventId,
+          _: String(Date.now()),
+        });
+        if (event?.tx_excluded_sections?.length) {
+          params.set("excluded_sections", event.tx_excluded_sections.join(","));
+        }
+        const res = await fetch(`/api/tixstock/tickets?${params.toString()}`, {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
+          },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const raw: TixStockListing[] = json?.data?.data ?? [];
+        // Drop tickets flagged with a limited / partial view restriction.
+        const listings = raw.filter((l) => !hasLimitedViewRestriction(l));
+        if (!cancelled) {
+          console.log(
+            `[TixStock] Fetched ${raw.length} live listings (${listings.length} after limited-view filter) for event ${tixEventId}`,
+          );
+          setLiveListings(listings);
+        }
+      } catch (err) {
+        console.error("[TixStock] Failed to fetch live listings:", err);
+        if (!cancelled) setLiveListings([]);
+      } finally {
+        if (!cancelled) setIsLoadingLiveTickets(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTxEvent, tixEventId, event?.tx_excluded_sections]);
+
+  /**
+   * Find the cheapest live listing in `category` that can satisfy `qty`
+   * (either `quantity_available >= qty` OR `split_quantity >= qty`).
+   * Returns the rounded-up USD price, or null when no listing qualifies.
+   */
+  const getLivePriceForCategory = useMemo(() => {
+    if (!isTxEvent || liveListings.length === 0) {
+      return (): number | null => null;
+    }
+    return (category: string, qty: number): number | null => {
+      const norm = category.trim().toLowerCase();
+      const qualifying = liveListings.filter((l) => {
+        const listingCat = l.seat_details?.category?.trim().toLowerCase();
+        if (listingCat !== norm) return false;
+        const qtyAvail = l.number_of_tickets_for_sale?.quantity_available ?? 0;
+        const splitQty = l.number_of_tickets_for_sale?.split_quantity ?? 0;
+        return qtyAvail >= qty || splitQty >= qty;
+      });
+      if (qualifying.length === 0) return null;
+      const cheapest = qualifying.reduce((min, l) => {
+        const a = parseFloat(l.proceed_price?.amount ?? "Infinity");
+        const b = parseFloat(min.proceed_price?.amount ?? "Infinity");
+        return a < b ? l : min;
+      }, qualifying[0]);
+      const amount = parseFloat(cheapest.proceed_price?.amount ?? "NaN");
+      return Number.isFinite(amount) ? Math.ceil(amount) : null;
+    };
+  }, [isTxEvent, liveListings]);
+
+  /**
+   * `availableTickets` with prices overridden by the live API for the
+   * current quantity.  Categories that cannot satisfy the requested
+   * quantity are filtered out entirely.
+   */
+  const ticketsWithLivePrices: EventTicket[] = useMemo(() => {
+    if (!isTxEvent || liveListings.length === 0) return availableTickets;
+    return availableTickets.reduce<EventTicket[]>((acc, ticket) => {
+      const livePrice = getLivePriceForCategory(
+        ticket.category,
+        numberOfEventTickets,
+      );
+      if (livePrice === null) return acc; // hide categories that can't fulfil qty
+      acc.push({ ...ticket, price: livePrice });
+      return acc;
+    }, []);
+  }, [
+    isTxEvent,
+    liveListings,
+    availableTickets,
+    numberOfEventTickets,
+    getLivePriceForCategory,
+  ]);
+
+  /** Effective ticket list: live-priced for tx_event, raw otherwise. */
+  const effectiveTickets: EventTicket[] = isTxEvent
+    ? ticketsWithLivePrices
+    : availableTickets;
+
+  useEffect(() => {
+    if (!effectiveTickets || effectiveTickets.length === 0) {
       // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
       console.log('No available tickets found - clearing all ticket state');
       setCheapestTicket(null);
@@ -67,28 +190,40 @@ export const TicketSelection = () => {
       return;
     }
 
-    console.log(`Found ${availableTickets.length} available tickets:`, 
-      availableTickets.map(t => ({ id: t.id, category: t.category, available: t.available }))
+    const cheapt = effectiveTickets.reduce<EventTicket>((min, ticket) =>
+      ticket.price < min.price ? ticket : min,
+      effectiveTickets[0]
     );
 
-    const cheapt = availableTickets.reduce<EventTicket>((min, ticket) =>
-      ticket.price < min.price ? ticket : min,
-      availableTickets[0]
-    );
-    
-    console.log(`Auto-selecting cheapest ticket: ${cheapt.category} (ID: ${cheapt.id}, available: ${cheapt.available})`);
-    
     setCheapestTicket(cheapt);
-    setSelectedTicket(cheapt?.id);
-    setEventTicket({
-      id: cheapt?.id || "",
-      vendor: cheapt?.vendor || "",
-      category: cheapt?.category || "",
-      price: cheapt?.price || 0,
-      description: cheapt?.description || "",
-      quantity: 2,
-    });
-  }, [availableTickets, setEventTicket]);
+
+    // If the currently-selected ticket is still in the live-priced list,
+    // keep it selected and just refresh its price (& quantity) in context.
+    // Otherwise auto-select the cheapest available category.
+    const stillSelected = effectiveTickets.find((t) => t.id === selectedTicket);
+    if (stillSelected) {
+      setEventTicket({
+        ...eventTicket,
+        id: stillSelected.id,
+        category: stillSelected.category,
+        price: stillSelected.price,
+        description: stillSelected.description,
+        vendor: stillSelected.vendor,
+        quantity: numberOfEventTickets,
+      });
+    } else {
+      setSelectedTicket(cheapt?.id);
+      setEventTicket({
+        id: cheapt?.id || "",
+        vendor: cheapt?.vendor || "",
+        category: cheapt?.category || "",
+        price: cheapt?.price || 0,
+        description: cheapt?.description || "",
+        quantity: numberOfEventTickets,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTickets, numberOfEventTickets, setEventTicket]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)
@@ -109,26 +244,29 @@ export const TicketSelection = () => {
     vendor?: string;
     description?: string;
   }) => {
-    // Defensive: ensure the selected ticket is still available
-    const ticketInAvailableList = availableTickets.find((t) => t.id === ticket.id);
-    if (!ticketInAvailableList) {
+    // Defensive: ensure the selected ticket is still in the effective list
+    // (i.e. available AND, for tx_events, satisfies the current quantity).
+    const ticketInList = effectiveTickets.find((t) => t.id === ticket.id);
+    if (!ticketInList) {
       console.warn(`Attempted to select unavailable ticket: ${ticket.category} (ID: ${ticket.id})`);
       return;
     }
-    
-    // Additional check: verify the ticket is not explicitly marked as unavailable
-    if (ticketInAvailableList.available === false) {
+
+    if (ticketInList.available === false) {
       console.warn(`Ticket is marked as unavailable: ${ticket.category} (ID: ${ticket.id})`);
       return;
     }
-    
+
     setEventTicket({
       ...ticket,
+      // Always use the live-resolved price from the effective list, not the
+      // (possibly stale) price the caller passed in.
+      price: ticketInList.price,
       description: ticket.description || "",
       quantity: numberOfEventTickets,
     });
     setSelectedTicket(ticket.id);
-  }, [availableTickets, numberOfEventTickets, setEventTicket]);
+  }, [effectiveTickets, numberOfEventTickets, setEventTicket]);
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
@@ -142,16 +280,16 @@ export const TicketSelection = () => {
   // ── TixStock helpers ──────────────────────────────────────────
 
   /** Convert EventTickets → TixStockListings for map consumption */
-  const tixStockListings: TixStockListing[] = useMemo(
-    () => availableTickets.map(eventTicketToListing),
-    [availableTickets],
+  const tixStockListings: TixStockMatchableListing[] = useMemo(
+    () => effectiveTickets.map(eventTicketToListing),
+    [effectiveTickets],
   );
 
   /** Stable callback for TixstockDynamicMap — clicking a section selects
    *  the best matching ticket, just like clicking it in the list. */
   const handleMapTicketSelect = useCallback(
     (ticketId: string) => {
-      const ticket = availableTickets.find((t) => t.id === ticketId);
+      const ticket = effectiveTickets.find((t) => t.id === ticketId);
       if (ticket) {
         handleTicketSelect({
           id: ticket.id,
@@ -162,7 +300,7 @@ export const TicketSelection = () => {
         });
       }
     },
-    [availableTickets, handleTicketSelect],
+    [effectiveTickets, handleTicketSelect],
   );
 
   /** Stable callback — receives the set of ticket IDs that match the map.
@@ -181,15 +319,15 @@ export const TicketSelection = () => {
 
   /** Map the filtered TixStock listings back to EventTickets */
   const displayedTickets: EventTicket[] = useMemo(() => {
-    if (!isTxEvent) return availableTickets;
+    if (!isTxEvent) return effectiveTickets;
 
     // Remove tickets that don't match any section/category on the map
     if (matchedTicketIds) {
-      return availableTickets.filter((t) => matchedTicketIds.has(t.id));
+      return effectiveTickets.filter((t) => matchedTicketIds.has(t.id));
     }
 
-    return availableTickets;
-  }, [isTxEvent, availableTickets, matchedTicketIds]);
+    return effectiveTickets;
+  }, [isTxEvent, effectiveTickets, matchedTicketIds]);
 
   return (
     <div>
@@ -220,6 +358,7 @@ export const TicketSelection = () => {
                   selectedTicketId={selectedTicket ?? null}
                   onTicketSelect={handleMapTicketSelect}
                   onMatchedTicketIds={handleMatchedTicketIds}
+                  excludedSections={event?.tx_excluded_sections}
                 />
               </div>
               <div className="lg:w-[45%] hidden lg:block">
@@ -230,6 +369,7 @@ export const TicketSelection = () => {
                   selectedTicketId={selectedTicket ?? null}
                   onTicketSelect={handleMapTicketSelect}
                   onMatchedTicketIds={handleMatchedTicketIds}
+                  excludedSections={event?.tx_excluded_sections}
                 />
               </div>
             </>
@@ -286,13 +426,22 @@ export const TicketSelection = () => {
                 <div id="ticket-selection-heading" className="sr-only">
                   קטגוריות כרטיסים זמינות
                 </div>
-                {availableTickets.length === 0 ? (
+                {isTxEvent && isLoadingLiveTickets ? (
+                  <div className="flex items-center justify-center p-8 gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    <Text size="sm" c="dimmed">
+                      טוען מחירים עדכניים...
+                    </Text>
+                  </div>
+                ) : effectiveTickets.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Text size="xl" fw={700} c="red" aria-live="polite">
                       אין כרטיסים זמינים כרגע
                     </Text>
                     <Text size="md" c="dimmed">
-                      כל הכרטיסים לאירוע זה אזלו או אינם זמינים למכירה.
+                      {isTxEvent && availableTickets.length > 0
+                        ? `אין קטגוריות שיכולות לספק ${numberOfEventTickets} כרטיסים יחד. נסו להפחית את הכמות.`
+                        : "כל הכרטיסים לאירוע זה אזלו או אינם זמינים למכירה."}
                     </Text>
                     <Text size="sm" c="dimmed">
                       אנא נסו אירוע אחר או צרו קשר עם שירות הלקוחות לקבלת עזרה.

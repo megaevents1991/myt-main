@@ -5,20 +5,30 @@
  * and visual highlighting for tx_event venue maps.
  */
 
+import type { TixStockListing } from "./tixstock.types";
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type TixStockListing = {
+/** Re-export the canonical full listing type for callers that need it. */
+export type { TixStockListing } from "./tixstock.types";
+
+/**
+ * Narrow shape used by the matching/painting helpers in this file.
+ * Both the EventTicket adapter output and full canonical listings are
+ * assignable to it (see `eventTicketToListing` and the live-pricing
+ * fetch in `TicketSelection`).
+ */
+export type TixStockMatchableListing = {
   id: string;
-  ticket_group_id?: string | null;
-  proceed_price?: number | null;
-  face_value?: number | null;
   seat_details: {
     category?: string | null;
     section?: string | null;
     row?: string | null;
   };
+  /** Optional numeric price used by the click-handler tie-breaker. */
+  proceed_price?: number | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -38,6 +48,10 @@ export const TX_TEXT_SHADOW = "#000000";
 export const TX_HOVER_FILL = "#2F97A3";
 /** Stronger teal for selected state */
 export const TX_SELECTED_FILL = "#277E89";
+/** Fill for explicitly disabled/excluded sections */
+export const TX_DISABLED_FILL = "#D8D8D8";
+/** Stroke for explicitly disabled/excluded sections */
+export const TX_DISABLED_STROKE = "#999999";
 
 /* ------------------------------------------------------------------ */
 /*  String helpers                                                     */
@@ -60,7 +74,9 @@ export const normalizeSection = (section: string): string =>
  * are identical (case-insensitive), meaning the listing has no
  * specific section — just a category.
  */
-export const isCategoryOnlyTicket = (ticket: TixStockListing): boolean => {
+export const isCategoryOnlyTicket = (
+  ticket: TixStockMatchableListing,
+): boolean => {
   const c = ticket.seat_details.category?.trim().toLowerCase();
   const s = ticket.seat_details.section?.trim().toLowerCase();
   return !!c && !!s && c === s;
@@ -76,7 +92,7 @@ export const isCategoryOnlyTicket = (ticket: TixStockListing): boolean => {
  * `longside-upper-tier_92`, not `longside-upper-tier-central_92`.
  */
 export const isTicketMatchingSection = (
-  ticket: TixStockListing,
+  ticket: TixStockMatchableListing,
   mapSectionId: string,
   /** Optional: the data-category of the map section's parent group */
   mapCategoryId?: string | null,
@@ -84,7 +100,7 @@ export const isTicketMatchingSection = (
   const section = ticket.seat_details.section;
   if (!section || !mapSectionId) return false;
 
-  const norm = normalizeSection(section);
+  const norm = slugify(section);
   const mapNorm = mapSectionId.toLowerCase();
 
   // Check suffix/infix match on the section id
@@ -113,7 +129,7 @@ export const isTicketMatchingSection = (
  * on the SVG map.
  */
 export const isTicketMatchingCategory = (
-  ticket: TixStockListing,
+  ticket: TixStockMatchableListing,
   mapCategoryId: string,
 ): boolean => {
   if (!isCategoryOnlyTicket(ticket)) return false;
@@ -121,6 +137,25 @@ export const isTicketMatchingCategory = (
   return (
     !!ticketCategory && ticketCategory === (mapCategoryId || "").toLowerCase()
   );
+};
+
+/**
+ * Check whether a category-only ticket matches a map section element.
+ * Tries an explicit [data-category] group first, then falls back to
+ * matching the [data-section] id directly against the category slug.
+ * This handles SVGs that don't wrap sections in a data-category group.
+ */
+export const categoryOnlyMatchesEl = (
+  ticket: TixStockMatchableListing,
+  mapSectionId: string,
+  mapCategoryId: string | null,
+): boolean => {
+  if (!isCategoryOnlyTicket(ticket)) return false;
+  const ticketCatSlug = slugify(ticket.seat_details.category || "");
+  if (!ticketCatSlug) return false;
+  if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug)
+    return true;
+  return mapSectionId.toLowerCase() === ticketCatSlug;
 };
 
 /**
@@ -173,6 +208,8 @@ export const sanitizeAndPrepareSvg = (rawSvg: string): string | null => {
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
   svg.removeAttribute("style");
+  // Ensure LTR text direction inside the SVG regardless of surrounding page direction
+  svg.setAttribute("direction", "ltr");
 
   // Override SVG font-families to a system sans-serif (the original
   // SVG typically references fonts like DMSans-Medium / DMSans-Bold
@@ -186,7 +223,7 @@ export const sanitizeAndPrepareSvg = (rawSvg: string): string | null => {
         /font-family:\s*'[^']+'/g,
         "font-family: Arial, Helvetica, sans-serif",
       ) +
-      "\n.section-label { text-anchor: middle; dominant-baseline: central; }";
+      "\n.section-label { text-anchor: middle; dominant-baseline: central; direction: ltr; unicode-bidi: isolate; }";
   }
 
   return svg.outerHTML;
@@ -213,18 +250,53 @@ export const centerSectionLabels = (container: HTMLElement): void => {
     const label = sec.querySelector(".section-label") as SVGTextElement | null;
     if (!block || !label) continue;
 
-    try {
-      const bbox = block.getBBox();
-      const cx = bbox.x + bbox.width / 2;
-      const cy = bbox.y + bbox.height / 2;
+    // Persist the SVG-authored transform once so we can always restore it.
+    const labelEl = label as SVGTextElement & {
+      dataset: DOMStringMap;
+    };
+    if (labelEl.dataset.origTransform === undefined) {
+      labelEl.dataset.origTransform = label.getAttribute("transform") || "";
+    }
 
-      // Position the text at the shape's centre.
-      // Remove the matrix transform and set x/y directly.
-      label.removeAttribute("transform");
-      label.setAttribute("x", String(cx));
-      label.setAttribute("y", String(cy));
+    try {
+      const blockRect = block.getBoundingClientRect();
+      const labelRect = label.getBoundingClientRect();
+
+      // SVG not laid out yet (or hidden) — leave the original
+      // author-provided transform in place. DO NOT strip it: doing so
+      // collapses every label to (0,0) and produces a single black
+      // blob at the SVG origin.
+      if (
+        blockRect.width === 0 ||
+        blockRect.height === 0 ||
+        labelRect.width === 0
+      ) {
+        continue;
+      }
+
+      const ctm = label.getScreenCTM();
+      if (!ctm || ctm.a === 0 || ctm.d === 0) continue;
+
+      // Pixel delta needed to centre the label on the block (screen space)
+      const dxPx =
+        blockRect.left +
+        blockRect.width / 2 -
+        (labelRect.left + labelRect.width / 2);
+      const dyPx =
+        blockRect.top +
+        blockRect.height / 2 -
+        (labelRect.top + labelRect.height / 2);
+
+      // Convert pixel delta → SVG user-space delta (parent coords)
+      const dx = dxPx / ctm.a;
+      const dy = dyPx / ctm.d;
+
+      // Prepend a translate to the original transform so the label
+      // ends up centred without disturbing its authored orientation.
+      const orig = labelEl.dataset.origTransform || "";
+      label.setAttribute("transform", `translate(${dx} ${dy}) ${orig}`.trim());
     } catch {
-      // getBBox can throw if the element isn't rendered (e.g. display:none)
+      // getBBox/getBoundingClientRect can throw on unrendered nodes
     }
   }
 };
@@ -247,7 +319,8 @@ export const centerSectionLabels = (container: HTMLElement): void => {
  */
 export const prePaintSvg = (
   svgHtml: string,
-  tickets: TixStockListing[],
+  tickets: TixStockMatchableListing[],
+  excludedSections?: string[],
 ): string => {
   if (!svgHtml || typeof DOMParser === "undefined") return svgHtml;
 
@@ -263,9 +336,14 @@ export const prePaintSvg = (
       const secId = el.getAttribute("data-section") || "";
       const catId = getCategoryIdFromSectionEl(el);
 
+      if (excludedSections?.includes(secId)) {
+        paintSection(el, "disabled");
+        continue;
+      }
+
       const hasMatchingTicket = tickets.some((t) => {
         if (isCategoryOnlyTicket(t)) {
-          return !!catId && isTicketMatchingCategory(t, catId);
+          return categoryOnlyMatchesEl(t, secId, catId);
         }
         return isTicketMatchingSection(t, secId, catId);
       });
@@ -334,13 +412,14 @@ export const cleanupDuplicateSections = (container: HTMLElement): void => {
  *  - "hover"      → brighter teal + light stroke
  *  - "selected"   → darker teal + light stroke
  *  - "inactive"   → no fill change, subtle secondary-colour border
+ *  - "disabled"   → gray fill + gray stroke, not-allowed cursor
  */
 
 const SVG_SHAPE_SEL = "polygon, path, rect, circle, ellipse, polyline, line";
 
 export const paintSection = (
   el: Element,
-  mode: "base" | "hover" | "selected" | "available" | "inactive",
+  mode: "base" | "hover" | "selected" | "available" | "inactive" | "disabled",
 ): void => {
   const blocks = el.querySelectorAll(".block");
   const allShapes = Array.from(el.querySelectorAll(SVG_SHAPE_SEL));
@@ -401,6 +480,11 @@ export const paintSection = (
         svgEl.style.opacity = "1";
         svgEl.style.cursor = "pointer";
         break;
+      case "disabled":
+        svgEl.style.fill = TX_DISABLED_FILL;
+        svgEl.style.opacity = "0.6";
+        svgEl.style.cursor = "not-allowed";
+        break;
     }
   }
 
@@ -430,6 +514,10 @@ export const paintSection = (
         svgEl.style.stroke = TX_SECTION_FILL;
         svgEl.style.strokeOpacity = "0.35";
         break;
+      case "disabled":
+        svgEl.style.stroke = TX_DISABLED_STROKE;
+        svgEl.style.strokeOpacity = "0.6";
+        break;
     }
   }
 
@@ -455,21 +543,21 @@ export const paintSection = (
  * Convert our internal `EventTicket` shape (category + description)
  * into the `TixStockListing` shape expected by the map utilities.
  *
- * ticket.category  → seat_details.category
- * ticket.description → seat_details.section
+ * ticket.category → seat_details.category  (the TixStock category name)
+ * ticket.category → seat_details.section   (same value: EventTicket has no section field,
+ *                                           so we treat every ticket as category-only)
  */
 export const eventTicketToListing = (ticket: {
   id: string;
   category: string;
   description: string;
   price: number;
-}): TixStockListing => ({
+}): TixStockMatchableListing => ({
   id: ticket.id,
   proceed_price: ticket.price,
-  face_value: ticket.price,
   seat_details: {
     category: ticket.category,
-    section: ticket.description,
+    section: ticket.category, // category-only: no per-section data in EventTicket
   },
 });
 
@@ -478,12 +566,35 @@ export const eventTicketToListing = (ticket: {
 /* ------------------------------------------------------------------ */
 
 /**
+ * True when a TixStock listing carries a "limited view" / "partial view"
+ * restriction in `restrictions_benefits.options`.  Used to filter out
+ * obstructed-view tickets from the live-pricing pool.
+ */
+export const hasLimitedViewRestriction = (
+  ticket: Pick<TixStockListing, "restrictions_benefits">,
+): boolean => {
+  const options = ticket.restrictions_benefits?.options;
+  if (!Array.isArray(options) || options.length === 0) return false;
+  return options.some((opt) => {
+    // Options can be plain strings or { name, value } objects depending on the feed.
+    const text =
+      typeof opt === "string"
+        ? opt
+        : `${(opt as { name?: string })?.name ?? ""} ${(opt as { value?: string })?.value ?? ""}`;
+    const lower = text.toLowerCase();
+    return (
+      (lower.includes("limited") || lower.includes("partial")) &&
+      lower.includes("view")
+    );
+  });
+};
+/**
  * Check whether a ticket can be matched to *any* section/category on
  * the loaded SVG map.  Used to filter out tickets that have no
  * corresponding visual representation.
  */
 export const doesTicketMatchAnyMapSection = (
-  ticket: TixStockListing,
+  ticket: TixStockMatchableListing,
   container: HTMLElement,
 ): boolean => {
   const sectionEls = Array.from(container.querySelectorAll("[data-section]"));
@@ -493,7 +604,7 @@ export const doesTicketMatchAnyMapSection = (
     const catId = getCategoryIdFromSectionEl(el);
 
     if (isCategoryOnlyTicket(ticket)) {
-      return !!catId && isTicketMatchingCategory(ticket, catId);
+      return categoryOnlyMatchesEl(ticket, secId, catId);
     }
     return isTicketMatchingSection(ticket, secId, catId);
   });

@@ -3,12 +3,13 @@ import { logger } from "./logger";
 interface ExchangeRateData {
   rate: number;
   lastUpdated: Date;
-  source: "api" | "floatrates";
+  source: "api" | "floatrates" | "jsdelivr" | "hardcoded";
 }
 
 interface CurrencyRates {
-  usdIls: ExchangeRateData | null;
-  eurUsd: ExchangeRateData | null;
+  usdIls: ExchangeRateData;
+  eurUsd: ExchangeRateData;
+  gbpUsd: ExchangeRateData;
 }
 
 type RateKey = keyof CurrencyRates;
@@ -21,14 +22,16 @@ const CURRENCY_CONFIG: Record<
     floatTarget: string;
     min: number;
     max: number;
+    fallback: number;
   }
 > = {
   usdIls: {
     pair: "USD/ILS",
     floatBase: "usd",
     floatTarget: "ils",
-    min: 2.9,
-    max: 4.0,
+    min: 2.7,
+    max: 3.65,
+    fallback: 3.05,
   },
   eurUsd: {
     pair: "EUR/USD",
@@ -36,16 +39,37 @@ const CURRENCY_CONFIG: Record<
     floatTarget: "usd",
     min: 1,
     max: 1.4,
+    fallback: 1.09,
+  },
+  gbpUsd: {
+    pair: "GBP/USD",
+    floatBase: "gbp",
+    floatTarget: "usd",
+    min: 0.8,
+    max: 1.6,
+    fallback: 1.27,
   },
 };
 
+const makeHardcoded = (key: RateKey): ExchangeRateData => ({
+  rate: CURRENCY_CONFIG[key].fallback,
+  lastUpdated: new Date(),
+  source: "hardcoded",
+});
+
 class ExchangeRateService {
-  private currentRates: CurrencyRates = { usdIls: null, eurUsd: null };
+  private currentRates: CurrencyRates = {
+    usdIls: makeHardcoded("usdIls"),
+    eurUsd: makeHardcoded("eurUsd"),
+    gbpUsd: makeHardcoded("gbpUsd"),
+  };
   private intervalId: NodeJS.Timeout | null = null;
 
   private readonly TWELVE_DATA_URL = "https://api.twelvedata.com/exchange_rate";
   private readonly TWELVE_DATA_KEY = "43c9bbfbf1cb4a1990c01a1a6d9ddf2f";
   private readonly FLOAT_RATES_URL = "https://www.floatrates.com/daily";
+  private readonly JSDELIVR_URL =
+    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
   private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour
   private readonly CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 hours
   private readonly MAX_RETRIES = 4;
@@ -75,7 +99,8 @@ class ExchangeRateService {
   private isCacheValid(key: RateKey): boolean {
     const cached = this.currentRates[key];
     return (
-      !!cached && Date.now() - cached.lastUpdated.getTime() < this.CACHE_MAX_AGE
+      cached.source !== "hardcoded" &&
+      Date.now() - cached.lastUpdated.getTime() < this.CACHE_MAX_AGE
     );
   }
 
@@ -154,6 +179,31 @@ class ExchangeRateService {
     }
   }
 
+  private async fetchFromJsdelivr(key: RateKey): Promise<number | null> {
+    const { pair, floatBase, floatTarget } = CURRENCY_CONFIG[key];
+    const url = `${this.JSDELIVR_URL}/${floatBase}.json`;
+
+    try {
+      const data = (await this.fetchJson(url)) as Record<
+        string,
+        Record<string, number>
+      >;
+      const rawRate = data?.[floatBase]?.[floatTarget];
+      if (typeof rawRate !== "number")
+        throw new Error(`Missing "${floatTarget}" in "${floatBase}" entry`);
+
+      const rate = this.validateRate(rawRate, key);
+      if (rate !== null) {
+        logger.info(`jsDelivr ${pair}: ${rate}`);
+        return rate;
+      }
+      throw new Error("Rate outside valid range");
+    } catch (err) {
+      logger.error(`jsDelivr ${pair} failed: ${this.errMsg(err)}`);
+      return null;
+    }
+  }
+
   // --- Update logic ---
 
   private storeRate(
@@ -190,13 +240,23 @@ class ExchangeRateService {
       if (floatRate !== null)
         return this.storeRate(key, floatRate, "floatrates");
 
-      // All sources failed
+      // Layer 3: jsDelivr (fawazahmed0) daily fallback
+      const jsdelivrRate = await this.fetchFromJsdelivr(key);
+      if (jsdelivrRate !== null)
+        return this.storeRate(key, jsdelivrRate, "jsdelivr");
+
+      // Layer 4: Hardcoded fallback — rate is never null
       const existing = this.currentRates[key];
-      logger.error(
-        existing
-          ? `${pair}: all sources failed, keeping stale rate ${existing.rate} from ${existing.lastUpdated.toISOString()}`
-          : `${pair}: all sources failed, no cached rate available`,
-      );
+      if (existing.source !== "hardcoded") {
+        logger.error(
+          `${pair}: all sources failed, keeping stale rate ${existing.rate} from ${existing.lastUpdated.toISOString()}`,
+        );
+      } else {
+        logger.error(
+          `${pair}: all sources failed, using hardcoded fallback rate ${existing.rate}`,
+        );
+        this.currentRates[key] = makeHardcoded(key);
+      }
     } catch (err) {
       logger.error(`${pair} update error: ${this.errMsg(err)}`);
     }
@@ -225,28 +285,28 @@ class ExchangeRateService {
 
   // --- Public API ---
 
-  public getTravelRate(): number | null {
-    const usdIls = this.currentRates.usdIls;
-    if (!usdIls) return null;
-    return this.roundUp(usdIls.rate * 1.015); // +1.5% for travel expenses
+  public getTravelRate(): number {
+    return this.roundUp(this.currentRates.usdIls.rate * 1.015); // +1.5% for travel expenses
   }
 
-  public getUsdIlsRate(): ExchangeRateData | null {
+  public getUsdIlsRate(): ExchangeRateData {
     return this.currentRates.usdIls;
   }
 
-  public getEurUsdRate(): ExchangeRateData | null {
+  public getEurUsdRate(): ExchangeRateData {
     return this.currentRates.eurUsd;
   }
 
-  public getRateInfo(): (ExchangeRateData & { travelRate: number }) | null {
-    const usdIls = this.currentRates.usdIls;
-    const travelRate = this.getTravelRate();
-    if (!usdIls || travelRate === null) return null;
-    return { ...usdIls, travelRate };
+  public getGbpUsdRate(): ExchangeRateData {
+    return this.currentRates.gbpUsd;
   }
 
-  public getAllRates(): CurrencyRates & { travelRate: number | null } {
+  public getRateInfo(): ExchangeRateData & { travelRate: number } {
+    const usdIls = this.currentRates.usdIls;
+    return { ...usdIls, travelRate: this.getTravelRate() };
+  }
+
+  public getAllRates(): CurrencyRates & { travelRate: number } {
     return { ...this.currentRates, travelRate: this.getTravelRate() };
   }
 

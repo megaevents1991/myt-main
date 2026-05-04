@@ -201,7 +201,7 @@ export function useOrderVars() {
     } catch (error) {
       console.error("General error fetching exchange rate:", error);
       // Fallback to a hardcoded rate
-      const fallbackRate = 3.7;
+      const fallbackRate = 3.1;
       return {
         ils: Math.ceil(USDprice * fallbackRate),
         travelRate: fallbackRate,
