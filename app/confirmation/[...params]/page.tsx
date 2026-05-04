@@ -165,6 +165,7 @@ export default function ConfirmationPage() {
 
   useEffect(() => {
     handlePageOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copyToClipboard = async (text: string) => {

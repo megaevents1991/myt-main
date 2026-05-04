@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../hooks/AuthContext";
 import { useRouter } from "next/navigation";
 import {
@@ -39,15 +39,7 @@ export default function PartnerDashboard() {
     commission: 0,
   });
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/partner/login");
-      return;
-    }
-    fetchTrackingData();
-  }, [isAuthenticated, router]);
-
-  const fetchTrackingData = async () => {
+  const fetchTrackingData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(
@@ -62,7 +54,15 @@ export default function PartnerDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [affiliateId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/partner/login");
+      return;
+    }
+    fetchTrackingData();
+  }, [isAuthenticated, router, fetchTrackingData]);
 
   if (loading) return <div>Loading...</div>;
 

@@ -45,13 +45,13 @@ export const sendUserEmail = async ({
     phoneOrder: {
       subject: `תודה שבחרת מגה איבנטס!`,
       title: "הזמנתך נתקבלה בהצלחה",
-      message: "נציג ממגה איבנטס ייצור איתך קשר ביום העסקים הקרוב לקבלת תשלום ומתן מענה לכל שאלה נוספת.",
+      message:
+        "נציג ממגה איבנטס ייצור איתך קשר ביום העסקים הקרוב לקבלת תשלום ומתן מענה לכל שאלה נוספת.",
     },
     savedOrder: {
       subject: `שמירת ההזמנה ל-24 שעות | מגה איבנטס`,
       title: "ההזמנה נשמרה ל-24 שעות",
-      message:
-        `שמחנו לשמור עבורך את ההזמנה למשך 24 שעות הקרובות.<br>להשלמת הרכישה ותשלום עכשיו ניתן ליצור איתנו קשר בטלפון <strong>054-200-2722</strong> או להשיב למייל זה.<br>שימי/שימו לב: המחירים והמלאי אינם מובטחים לאחר תום תקופת ההחזקה ועלולים להשתנות.<br>נשמח לעמוד לרשותך בכל שאלה.`,
+      message: `שמחנו לשמור עבורך את ההזמנה למשך 24 שעות הקרובות.<br>להשלמת הרכישה ותשלום עכשיו ניתן ליצור איתנו קשר בטלפון <strong>03-768-4800</strong> או להשיב למייל זה.<br>שימי/שימו לב: המחירים והמלאי אינם מובטחים לאחר תום תקופת ההחזקה ועלולים להשתנות.<br>נשמח לעמוד לרשותך בכל שאלה.`,
     },
   };
 
@@ -59,18 +59,18 @@ export const sendUserEmail = async ({
   const emailTemplate = onlySave
     ? emailtemplates.savedOrder
     : payNow
-    ? isPaymentSuccess
-      ? emailtemplates.successfulPurchase
-      : emailtemplates.failedPurchase
-    : emailtemplates.phoneOrder;
+      ? isPaymentSuccess
+        ? emailtemplates.successfulPurchase
+        : emailtemplates.failedPurchase
+      : emailtemplates.phoneOrder;
 
   const replacements = {
     bookingReference: orderData.booking_reference,
     title: emailTemplate.title,
-    message : emailTemplate.message,
+    message: emailTemplate.message,
     eventName: orderData.event_order_info.name,
     eventDate: new Date(orderData.event_order_info.date).toLocaleDateString(
-      "he-IL"
+      "he-IL",
     ),
     eventLocation: orderData.event_order_info?.location_name || "",
     ticketType: orderData.event_order_info.category,
@@ -78,15 +78,17 @@ export const sendUserEmail = async ({
     airline: orderData.flight_order_info?.metadata?.name,
     departFlight: orderData.flight_order_info?.outbound.flightNumber,
     departFlightDate: dayjs(
-      orderData.flight_order_info?.outbound.departureTime
+      orderData.flight_order_info?.outbound.departureTime,
     ).format("DD/MM/YYYY HH:MM"),
     returnFlight: orderData.flight_order_info?.inbound.flightNumber,
     returnFlightDate: dayjs(
-      orderData.flight_order_info?.inbound.departureTime
+      orderData.flight_order_info?.inbound.departureTime,
     ).format("DD/MM/YYYY HH:MM"),
-    hotel: (orderData.hotel_order_info && Object.keys(orderData.hotel_order_info).length > 0) 
-      ? orderData.hotel_order_info.name 
-      : "ללא מלון",
+    hotel:
+      orderData.hotel_order_info &&
+      Object.keys(orderData.hotel_order_info).length > 0
+        ? orderData.hotel_order_info.name
+        : "ללא מלון",
     price: orderData.final_purchase_price_ils,
     promoCode: partnerTrackingCode || undefined,
     orderId: orderId,

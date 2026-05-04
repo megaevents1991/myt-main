@@ -10,6 +10,8 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
 import type { EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
+import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
+import { eventTicketToListing, type TixStockListing } from "@/lib/tixstock-map";
 
 // ─────────────────────────────────────────────────────────────────
 // TixStock types — TEMP: kept here until tickets are fully integrated
@@ -233,8 +235,14 @@ export const TicketSelection = () => {
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
   );
+  const [hoveredTicket, setHoveredTicket] = useState<TixStockListing | null>(null);
+  /** IDs of tickets whose category+section match something on the SVG map */
+  const [matchedTicketIds, setMatchedTicketIds] = useState<Set<string> | null>(null);
 
   const MAX_TICKETS = 9;
+
+  /** Is this a TixStock dynamic-map event? */
+  const isTxEvent = event?.type === "tx_event";
 
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
@@ -574,7 +582,7 @@ export const TicketSelection = () => {
       quantity: numberOfEventTickets,
     });
     setSelectedTicket(ticket.id);
-  };
+  }, [availableTickets, numberOfEventTickets, setEventTicket]);
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
@@ -627,7 +635,6 @@ export const TicketSelection = () => {
   return (
     <div>
       <div className="sr-only">
-        <h1>בחירת כרטיסים לאירוע {event?.name}</h1>
         <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{event?.location?.name}</p>
       </div>
       <div className="flex flex-col items-center ">

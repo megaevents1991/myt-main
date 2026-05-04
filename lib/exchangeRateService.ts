@@ -12,6 +12,34 @@ interface CurrencyRates {
   gbpUsd: ExchangeRateData;
 }
 
+type RateKey = keyof CurrencyRates;
+
+const CURRENCY_CONFIG: Record<
+  RateKey,
+  {
+    pair: string;
+    floatBase: string;
+    floatTarget: string;
+    min: number;
+    max: number;
+  }
+> = {
+  usdIls: {
+    pair: "USD/ILS",
+    floatBase: "usd",
+    floatTarget: "ils",
+    min: 2.9,
+    max: 4.0,
+  },
+  eurUsd: {
+    pair: "EUR/USD",
+    floatBase: "eur",
+    floatTarget: "usd",
+    min: 1,
+    max: 1.4,
+  },
+};
+
 class ExchangeRateService {
   private currentRates: CurrencyRates = {
     usdIls: {
@@ -40,11 +68,10 @@ class ExchangeRateService {
   };
   private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
   private readonly MAX_RETRIES = 4;
-  private readonly RETRY_DELAY = 1500; // 1.5 seconds
+  private readonly RETRY_DELAY = 1500; // 1.5s
 
   constructor() {
-    // Initialize on startup
-    this.updateAllExchangeRates();
+    this.updateAllRates();
     this.startPeriodicUpdates();
   }
 
@@ -64,14 +91,11 @@ class ExchangeRateService {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      throw error;
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(id);
     }
   }
 
@@ -88,8 +112,10 @@ class ExchangeRateService {
         const url = `${this.API_BASE_URL}?symbol=${currencyPair}&apikey=${this.API_KEY}`;
         const response = await this.fetchWithTimeout(url, 10000);
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const rate = this.validateRate(data.rate, key);
+        if (rate !== null) {
+          logger.debug(`TwelveData ${pair}: ${rate} (attempt ${attempt})`);
+          return rate;
         }
 
         const data = await response.json();
@@ -193,10 +219,42 @@ class ExchangeRateService {
     logger.info("Completed exchange rates update for all currency pairs");
   }
 
-  private startPeriodicUpdates(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
+  private async updateRate(key: RateKey): Promise<void> {
+    const { pair } = CURRENCY_CONFIG[key];
+
+    try {
+      // Layer 1: Primary API (TwelveData)
+      const apiRate = await this.fetchFromTwelveData(key);
+      if (apiRate !== null) return this.storeRate(key, apiRate, "api");
+
+      // Use cached rate if still valid (< 12h)
+      if (this.isCacheValid(key)) {
+        const cached = this.currentRates[key]!;
+        const ageMin = Math.round(
+          (Date.now() - cached.lastUpdated.getTime()) / 60_000,
+        );
+        logger.warn(
+          `${pair}: API failed, using cached rate ${cached.rate} (${cached.source}, ${ageMin}min old)`,
+        );
+        return;
+      }
+
+      // Layer 2: FloatRates fallback
+      const floatRate = await this.fetchFromFloatRates(key);
+      if (floatRate !== null)
+        return this.storeRate(key, floatRate, "floatrates");
+
+      // All sources failed
+      const existing = this.currentRates[key];
+      logger.error(
+        existing
+          ? `${pair}: all sources failed, keeping stale rate ${existing.rate} from ${existing.lastUpdated.toISOString()}`
+          : `${pair}: all sources failed, no cached rate available`,
+      );
+    } catch (err) {
+      logger.error(`${pair} update error: ${this.errMsg(err)}`);
     }
+  }
 
     this.intervalId = setInterval(() => {
       logger.info("Starting scheduled exchange rate update");
@@ -208,16 +266,19 @@ class ExchangeRateService {
     );
   }
 
-  public getTravelRate(): number {
-    const baseRate = this.currentRates.usdIls.rate;
-    return Math.ceil(baseRate * 1.015 * 100) / 100; // Adding 1.5% for travel expenses
+  // --- Public API ---
+
+  public getTravelRate(): number | null {
+    const usdIls = this.currentRates.usdIls;
+    if (!usdIls) return null;
+    return this.roundUp(usdIls.rate * 1.015); // +1.5% for travel expenses
   }
 
-  public getUsdIlsRate(): ExchangeRateData {
+  public getUsdIlsRate(): ExchangeRateData | null {
     return this.currentRates.usdIls;
   }
 
-  public getEurUsdRate(): ExchangeRateData {
+  public getEurUsdRate(): ExchangeRateData | null {
     return this.currentRates.eurUsd;
   }
 
@@ -253,7 +314,6 @@ class ExchangeRateService {
   }
 }
 
-// Create a singleton instance
 export const exchangeRateService = new ExchangeRateService();
 
 // Graceful shutdown handler

@@ -8,7 +8,7 @@ import phone from "@/public/phone.svg";
 import { useMediaQuery } from "@mantine/hooks";
 import { cn } from "@/lib/utils";
 
-const PHONE_NUMBER = "+972542002722";
+const PHONE_NUMBER = "+97237684800";
 const text = "דברו איתנו";
 
 export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
@@ -25,7 +25,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
     >
       <div className="text-white font-bold hidden sm:flex">
         <a href={`tel:${PHONE_NUMBER}`}>
-          {text} {"054-200-2722"}
+          {text} {"03-768-4800"}
         </a>
       </div>{" "}
       <div
@@ -62,7 +62,7 @@ export const ContactUs = ({ inHeader = true }: { inHeader?: boolean }) => {
         </a>
         <a
           aria-label="Chat on WhatsApp"
-          href={`https://wa.me/${PHONE_NUMBER}`}
+          href={`https://wa.me/972542002722`}
           target="_blank"
           rel="noopener noreferrer"
           className={cn(

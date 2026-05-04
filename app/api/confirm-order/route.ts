@@ -4,16 +4,20 @@ import { supabase } from "@/lib/supabase";
 import { OrderData } from "@/lib/app.types";
 import { validateOrderData } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
-import { 
-  trackServerSideEvent, 
-  extractIpFromRequest, 
-  extractUserAgentFromRequest 
+import {
+  trackServerSideEvent,
+  extractIpFromRequest,
+  extractUserAgentFromRequest,
 } from "@/lib/gtmAnalytics";
 
 export async function POST(req: Request) {
-  const { payNow, onlySave, gtmIdnts, ...orderDetails } = await req.json();
+  const { payNow, onlySave, gtmIdnts, skipAnalytics, ...orderDetails } =
+    await req.json();
 
-  const validatedData: OrderData = await validateOrderData(orderDetails, payNow);
+  const validatedData: OrderData = await validateOrderData(
+    orderDetails,
+    payNow,
+  );
 
   const { data, error } = await supabase
     .from("reservations")
@@ -41,11 +45,17 @@ export async function POST(req: Request) {
   const id = data?.id;
 
   if (error) {
-    console.error("Error inserting into reservations table:", JSON.stringify(error));
-    console.error("Error inserting into reservations table:", JSON.stringify(data));
+    console.error(
+      "Error inserting into reservations table:",
+      JSON.stringify(error),
+    );
+    console.error(
+      "Error inserting into reservations table:",
+      JSON.stringify(data),
+    );
     return NextResponse.json(
       { error: "Failed to confirm order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -57,8 +67,8 @@ export async function POST(req: Request) {
         .trim()
         .toLocaleLowerCase()
         .replace(/\s+/g, "_") +
-        "_" +
-        id.toString();
+      "_" +
+      id.toString();
 
     const passcode = partnerTrackingCode + "_pass";
 
@@ -66,8 +76,7 @@ export async function POST(req: Request) {
       .from("partners")
       .insert({
         partner_tracking_code: partnerTrackingCode,
-        name_hebrew:
-          "החזר ללקוח ניתן להתעלם",
+        name_hebrew: "החזר ללקוח ניתן להתעלם",
         email: "support@mega-events.co.il",
         password: passcode,
         commission: 40,
@@ -80,7 +89,7 @@ export async function POST(req: Request) {
     if (error2) {
       console.error(
         "Error inserting into partners table:",
-        JSON.stringify(error2)
+        JSON.stringify(error2),
       );
     }
   }
@@ -98,28 +107,31 @@ export async function POST(req: Request) {
           New Order Details:
           Name: ${validatedData.main_contact_first_name} ${validatedData.main_contact_last_name}
           Contact Details: ${validatedData.main_contact_phone_number}, ${validatedData.main_contact_email}
-          Payment Method: ${onlySave ? "24Save" : (payNow ? "Credit Card" : "Phone Order")}
-          More Pax: ${validatedData.more_pax_info.length}- ${validatedData.more_pax_info.map(pax => `${pax.first_name} ${pax.last_name}`).join('; ')}
+          Payment Method: ${onlySave ? "24Save" : payNow ? "Credit Card" : "Phone Order"}
+          More Pax: ${validatedData.more_pax_info.length}- ${validatedData.more_pax_info.map((pax) => `${pax.first_name} ${pax.last_name}`).join("; ")}
 
           ******** Event Details ********
           Event: ${validatedData.event_order_info.name}
           Date: ${validatedData.event_order_info.date}
           Ticket Type: ${validatedData.event_order_info.category}
           Quantity: ${validatedData.event_order_info.number_of_ticket}
-          Ticket ID: ${validatedData.event_order_info.id || 'N/A'}
-          Vendor: ${validatedData.event_order_info.vendor || 'N/A'}
+          Ticket ID: ${validatedData.event_order_info.id || "N/A"}
+          Vendor: ${validatedData.event_order_info.vendor || "N/A"}
 
           ******** Flight Info **********
-          Flight Outbound Number: ${(validatedData.flight_order_info.outbound.flightNumber)}
-          Flight Outbound Date: ${(validatedData.flight_order_info.outbound.departureTime)}
-          Flight Inbound Number: ${(validatedData.flight_order_info.inbound.flightNumber)}
-          Flight Inbound Date: ${(validatedData.flight_order_info.inbound.departureTime)}
+          Flight Outbound Number: ${validatedData.flight_order_info.outbound.flightNumber}
+          Flight Outbound Date: ${validatedData.flight_order_info.outbound.departureTime}
+          Flight Inbound Number: ${validatedData.flight_order_info.inbound.flightNumber}
+          Flight Inbound Date: ${validatedData.flight_order_info.inbound.departureTime}
 
           ******* Hotel Details *********
-          ${(!validatedData.hotel_order_info || Object.keys(validatedData.hotel_order_info).length === 0)
-            ? 'Hotel: SKIPPED BY CUSTOMER' 
-            : `Hotel: ${validatedData.hotel_order_info.name}
-          Room Type: ${validatedData.hotel_order_info.rate.room_name}`}
+          ${
+            !validatedData.hotel_order_info ||
+            Object.keys(validatedData.hotel_order_info).length === 0
+              ? "Hotel: SKIPPED BY CUSTOMER"
+              : `Hotel: ${validatedData.hotel_order_info.name}
+          Room Type: ${validatedData.hotel_order_info.rate.room_name}`
+          }
 
           ******************
           Total Price USD: ${validatedData.user_shown_price}
@@ -136,7 +148,7 @@ export async function POST(req: Request) {
     });
 
     const bookingReference = `ME${new Date().getDate()}${id}`;
-    
+
     await supabase
       .from("reservations")
       .update({
@@ -144,32 +156,39 @@ export async function POST(req: Request) {
       })
       .eq("id", id);
 
-    // Track analytics event - purchase for immediate payment, begin_checkout for phone orders
-    try {
-      const ip = extractIpFromRequest(req);
-      const userAgent = extractUserAgentFromRequest(req);
-      
-      await trackServerSideEvent({
-        eventData: {
-          id: validatedData.event_id,
-          name: validatedData.event_order_info.name,
-          value: validatedData.user_shown_price,
-          currency: "USD",
-          category: validatedData.event_order_info.event_type || "music_event",
-          brand: "Mega Events",
-          quantity: validatedData.event_order_info.number_of_ticket
-        },
-        eventType: payNow ? "begin_checkout" : "generate_lead",
-        gtmIdnts,
-        userAgent,
-        ip,
-      });
-    } catch (analyticsError) {
-      // Don't fail the main request if analytics fails
-      console.warn("Analytics tracking failed for order confirmation:", analyticsError);
-    }
+    // Track analytics event - begin_checkout for immediate payment, generate_lead for phone orders
+    // skipAnalytics is sent by the client when the event was already fired this session
+    if (!skipAnalytics)
+      try {
+        const ip = extractIpFromRequest(req);
+        const userAgent = extractUserAgentFromRequest(req);
 
-    if (!payNow) { // confirmation email to user when ask for phone order
+        await trackServerSideEvent({
+          eventData: {
+            id: validatedData.event_id,
+            name: validatedData.event_order_info.name,
+            value: validatedData.user_shown_price,
+            currency: "USD",
+            category:
+              validatedData.event_order_info.event_type || "music_event",
+            brand: "Mega Events",
+            quantity: validatedData.event_order_info.number_of_ticket,
+          },
+          eventType: payNow ? "begin_checkout" : "generate_lead",
+          gtmIdnts,
+          userAgent,
+          ip,
+        });
+      } catch (analyticsError) {
+        // Don't fail the main request if analytics fails
+        console.warn(
+          "Analytics tracking failed for order confirmation:",
+          analyticsError,
+        );
+      }
+
+    if (!payNow) {
+      // confirmation email to user when ask for phone order
       await sendUserEmail({
         orderData: { ...validatedData, booking_reference: bookingReference },
         payNow,
@@ -193,14 +212,20 @@ export async function POST(req: Request) {
         newPromoterCode: partnerTrackingCode,
         id,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
-    console.error("Error sending email into reservations table:", JSON.stringify(error));
-    console.error("Error sending email into reservations table:", JSON.stringify(data));
+    console.error(
+      "Error sending email into reservations table:",
+      JSON.stringify(error),
+    );
+    console.error(
+      "Error sending email into reservations table:",
+      JSON.stringify(data),
+    );
     return NextResponse.json(
       { error: "Failed to confirm order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

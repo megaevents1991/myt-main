@@ -117,6 +117,13 @@ export default async function Home() {
     <main>
       {/* Add invisible element with timestamp for client checking */}
       <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
+      <noscript>
+        <div className="w-full py-6 px-4 text-white bg-main text-center">
+          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
+            האירועים הכי שווים בעולם במקום אחד, בחרו, הרכיבו וטוסו ליהנות
+          </h1>
+        </div>
+      </noscript>
       <StructuredData events={events.events} />
       <ClientSideHomepage
         initialEvents={events.events}

@@ -45,9 +45,7 @@ export const HotelFetchProvider = ({
       }
 
       return new Promise((resolve) => {
-        if (!isFetching) {
-          setIsFetching(true);
-        }
+        setIsFetching(true);
 
         debounceTimeoutRef.current = setTimeout(async () => {
           // Abort previous fetch

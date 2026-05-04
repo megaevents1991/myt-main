@@ -298,6 +298,9 @@ export type ArtistFields = {
     }>;
     name: string;
     nameDBenglish: string;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
     sys: EntryFieldTypes.Object<{
       id: string;
     }>;
@@ -340,6 +343,9 @@ export type FootballFields = {
     }>;
     name: string;
     nameDBenglish: string;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
     sys: EntryFieldTypes.Object<{
       id: string;
     }>;
@@ -376,6 +382,9 @@ export type FootballTeam = {
         }[];
       }[];
     };
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
   };
 };
 
@@ -409,6 +418,9 @@ export type Artist = {
         }[];
       }[];
     };
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
   };
 };
 
