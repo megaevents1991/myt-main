@@ -121,7 +121,7 @@ export const TicketSelection = () => {
    */
   const getLivePriceForCategory = useMemo(() => {
     if (!isTxEvent || liveListings.length === 0) {
-      return (_cat: string, _qty: number): number | null => null;
+      return (): number | null => null;
     }
     return (category: string, qty: number): number | null => {
       const norm = category.trim().toLowerCase();

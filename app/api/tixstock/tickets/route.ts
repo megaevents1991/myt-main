@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeRateService } from "@/lib/exchangeRateService";
+import type { TixStockListing } from "@/lib/tixstock.types";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
@@ -127,7 +128,7 @@ export async function GET(req: NextRequest) {
 
     // Filter out listings for excluded/disabled sections before returning
     const filtered = excludedSections.length
-      ? normalised.filter((l: any) => !isExcludedSection(l, excludedSections))
+      ? normalised.filter((l: TixStockListing) => !isExcludedSection(l, excludedSections))
       : normalised;
 
     if (excludedSections.length) {

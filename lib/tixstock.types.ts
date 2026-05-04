@@ -24,7 +24,7 @@ export interface TixStockCategory {
   id: string;
   name: string;
   upcoming_events: number;
-  parent: any[]; // Often empty array in docs
+  parent: TixStockCategory[]; // Often empty array in docs
   children?: TixStockCategory[];
 }
 
@@ -47,7 +47,7 @@ export interface TixStockTicketInfo {
   type: string; // "Paper", "E-Ticket", "Mobile"
   allow_last_minute_sales: string;
   split_type: string; // "No Preferences", "Avoid Leaving One Ticket"
-  etickets: any[];
+  etickets: unknown[];
   upload_later: string;
   instant_download: string;
 }
@@ -95,7 +95,7 @@ export interface TixStockListing {
   display_price?: TixStockPrice;
   proceed_price: TixStockPrice; // This is the cost price to the partner
   restrictions_benefits: {
-    options: any[];
+    options: unknown[];
     other: string;
   };
   delivery: TixStockDelivery;
