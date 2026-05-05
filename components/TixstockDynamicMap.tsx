@@ -229,8 +229,12 @@ export function TixstockDynamicMap({
         }
       });
 
-      // Highlight the section of the currently selected ticket
-      if (selectedTicketId) {
+      const activeHoverTicket = hoveredTicket ?? hoveredMapTicket;
+
+      // Highlight the selected ticket only when no ticket/card hover is active.
+      // During hover, the hovered category should be the only emphasized group;
+      // when hover clears, the selected state is restored by this same repaint.
+      if (selectedTicketId && !activeHoverTicket) {
         const selTicket = tickets.find((t) => t.id === selectedTicketId);
         if (selTicket) {
           sectionEls.forEach((el) => {
@@ -246,7 +250,6 @@ export function TixstockDynamicMap({
       }
 
       // Hover highlight (overrides selection)
-      const activeHoverTicket = hoveredTicket ?? hoveredMapTicket;
       if (activeHoverTicket) {
         sectionEls.forEach((el) => {
           const sec = el.getAttribute("data-section") || "";
