@@ -155,7 +155,35 @@ export const categoryOnlyMatchesEl = (
   if (!ticketCatSlug) return false;
   if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug)
     return true;
-  return mapSectionId.toLowerCase() === ticketCatSlug;
+  const sectionSlug = mapSectionId.toLowerCase();
+  return (
+    sectionSlug === ticketCatSlug ||
+    sectionSlug.startsWith(`${ticketCatSlug}_`) ||
+    sectionSlug.startsWith(`${ticketCatSlug}-`)
+  );
+};
+
+/**
+ * Check whether a map section belongs to a ticket's category, regardless
+ * of whether the ticket also has a specific section value.
+ */
+export const ticketCategoryMatchesEl = (
+  ticket: TixStockMatchableListing,
+  mapSectionId: string,
+  mapCategoryId: string | null,
+): boolean => {
+  const ticketCatSlug = slugify(ticket.seat_details.category || "");
+  if (!ticketCatSlug) return false;
+  if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug) {
+    return true;
+  }
+
+  const sectionSlug = mapSectionId.toLowerCase();
+  return (
+    sectionSlug === ticketCatSlug ||
+    sectionSlug.startsWith(`${ticketCatSlug}_`) ||
+    sectionSlug.startsWith(`${ticketCatSlug}-`)
+  );
 };
 
 /**

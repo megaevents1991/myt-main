@@ -20,6 +20,7 @@ import {
   paintSection,
   prePaintSvg,
   sanitizeAndPrepareSvg,
+  ticketCategoryMatchesEl,
 } from "@/lib/tixstock-map";
 import { Loader2 } from "lucide-react";
 
@@ -60,6 +61,8 @@ export function TixstockDynamicMap({
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hoveredMapTicket, setHoveredMapTicket] =
+    useState<TixStockMatchableListing | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   // Monotonically increasing counter – bumped every time the ref callback
   // fires (container div is mounted).  Used as a dependency in effects
@@ -71,6 +74,60 @@ export function TixstockDynamicMap({
     containerRef.current = node;
     if (node) setDomReady((n) => n + 1);
   }, []);
+
+  const ticketMatchesSection = useCallback(
+    (
+      ticket: TixStockMatchableListing,
+      sectionId: string,
+      categoryId: string | null,
+    ) => {
+      if (isCategoryOnlyTicket(ticket)) {
+        return categoryOnlyMatchesEl(ticket, sectionId, categoryId);
+      }
+      return isTicketMatchingSection(ticket, sectionId, categoryId);
+    },
+    [],
+  );
+
+  const ticketCategoryOrSectionMatches = useCallback(
+    (
+      ticket: TixStockMatchableListing,
+      sectionId: string,
+      categoryId: string | null,
+    ) =>
+      ticketCategoryMatchesEl(ticket, sectionId, categoryId) ||
+      ticketMatchesSection(ticket, sectionId, categoryId),
+    [ticketMatchesSection],
+  );
+
+  const findBestTicketForSection = useCallback(
+    (sectionId: string, categoryId: string | null) => {
+      const categoryMatches = tickets.filter((ticket) =>
+        ticketCategoryMatchesEl(ticket, sectionId, categoryId),
+      );
+
+      if (categoryMatches.length > 0) {
+        return categoryMatches.reduce((best, ticket) =>
+          (ticket.proceed_price ?? Infinity) < (best.proceed_price ?? Infinity)
+            ? ticket
+            : best,
+        );
+      }
+
+      const sectionMatches = tickets.filter((ticket) =>
+        ticketMatchesSection(ticket, sectionId, categoryId),
+      );
+
+      if (sectionMatches.length === 0) return null;
+
+      return sectionMatches.reduce((best, ticket) =>
+        (ticket.proceed_price ?? Infinity) < (best.proceed_price ?? Infinity)
+          ? ticket
+          : best,
+      );
+    },
+    [tickets, ticketMatchesSection],
+  );
 
   /* ---------- 1. SVG parsing from URL --------------------------------- */
 
@@ -181,9 +238,7 @@ export function TixstockDynamicMap({
             if (excludedSections?.includes(sec)) return; // never highlight disabled
             const cat = getCategoryIdFromSectionEl(el);
 
-            const match = isCategoryOnlyTicket(selTicket)
-              ? categoryOnlyMatchesEl(selTicket, sec, cat)
-              : isTicketMatchingSection(selTicket, sec, cat);
+            const match = ticketCategoryOrSectionMatches(selTicket, sec, cat);
 
             if (match) paintSection(el, "selected");
           });
@@ -191,15 +246,14 @@ export function TixstockDynamicMap({
       }
 
       // Hover highlight (overrides selection)
-      if (hoveredTicket) {
+      const activeHoverTicket = hoveredTicket ?? hoveredMapTicket;
+      if (activeHoverTicket) {
         sectionEls.forEach((el) => {
           const sec = el.getAttribute("data-section") || "";
           if (excludedSections?.includes(sec)) return; // never highlight disabled
           const cat = getCategoryIdFromSectionEl(el);
 
-          const match = isCategoryOnlyTicket(hoveredTicket)
-            ? categoryOnlyMatchesEl(hoveredTicket, sec, cat)
-            : isTicketMatchingSection(hoveredTicket, sec, cat);
+          const match = ticketCategoryOrSectionMatches(activeHoverTicket, sec, cat);
 
           if (match) paintSection(el, "hover");
         });
@@ -207,7 +261,15 @@ export function TixstockDynamicMap({
     } catch (e) {
       console.error("[TixstockDynamicMap] repaint error:", e);
     }
-  }, [svgContent, hoveredTicket, selectedTicketId, tickets, excludedSections]);
+  }, [
+    svgContent,
+    hoveredTicket,
+    hoveredMapTicket,
+    selectedTicketId,
+    tickets,
+    excludedSections,
+    ticketCategoryOrSectionMatches,
+  ]);
 
   // Run repaint for dynamic changes (selection, hover, label centering).
   // The initial available/inactive painting is already baked into
@@ -247,26 +309,7 @@ export function TixstockDynamicMap({
       if (excludedSections?.includes(sectionId)) return;
       const categoryId = getCategoryIdFromSectionEl(sectionEl);
 
-      // Find the best matching ticket:
-      // 1st priority: ticket with matching section (+ category if available)
-      // 2nd priority: category-only ticket matching the category
-      let bestMatch: TixStockMatchableListing | null = null;
-
-      for (const t of tickets) {
-        if (!isCategoryOnlyTicket(t) && isTicketMatchingSection(t, sectionId, categoryId)) {
-          // Section match — pick it (prefer cheapest)
-          if (!bestMatch || isCategoryOnlyTicket(bestMatch) ||
-              (t.proceed_price ?? Infinity) < (bestMatch.proceed_price ?? Infinity)) {
-            bestMatch = t;
-          }
-        } else if (
-          isCategoryOnlyTicket(t) &&
-          categoryOnlyMatchesEl(t, sectionId, categoryId) &&
-          !bestMatch // only use category-only as fallback
-        ) {
-          bestMatch = t;
-        }
-      }
+      const bestMatch = findBestTicketForSection(sectionId, categoryId);
 
       if (bestMatch && onTicketSelect) {
         onTicketSelect(bestMatch.id);
@@ -275,7 +318,7 @@ export function TixstockDynamicMap({
 
     root.addEventListener("click", onClick);
     return () => root.removeEventListener("click", onClick);
-  }, [tickets, svgContent, onTicketSelect, excludedSections]);
+  }, [svgContent, onTicketSelect, excludedSections, findBestTicketForSection]);
 
   /* ---------- Pointer-hover on the SVG map itself ---------------------- */
 
@@ -286,22 +329,20 @@ export function TixstockDynamicMap({
     const onMouseOver = (ev: MouseEvent) => {
       const target = ev.target as Element | null;
       const sectionEl = target?.closest("[data-section]");
-      if (!sectionEl) return;
+      if (!sectionEl) {
+        setHoveredMapTicket(null);
+        return;
+      }
 
       const secId = sectionEl.getAttribute("data-section") || "";
       // Don't hover-highlight excluded sections
-      if (excludedSections?.includes(secId)) return;
+      if (excludedSections?.includes(secId)) {
+        setHoveredMapTicket(null);
+        return;
+      }
       const catId = getCategoryIdFromSectionEl(sectionEl);
 
-      const hasTicket = tickets.some((t) => {
-        if (isCategoryOnlyTicket(t))
-          return categoryOnlyMatchesEl(t, secId, catId);
-        return isTicketMatchingSection(t, secId, catId);
-      });
-
-      if (hasTicket) {
-        paintSection(sectionEl, "hover");
-      }
+      setHoveredMapTicket(findBestTicketForSection(secId, catId));
     };
 
     const onMouseOut = (ev: MouseEvent) => {
@@ -309,36 +350,11 @@ export function TixstockDynamicMap({
       const sectionEl = target?.closest("[data-section]");
       if (!sectionEl) return;
 
-      const secId = sectionEl.getAttribute("data-section") || "";
-      // Nothing to restore on excluded sections (they stay disabled)
-      if (excludedSections?.includes(secId)) return;
-      const catId = getCategoryIdFromSectionEl(sectionEl);
-
-      // Determine whether this section belongs to the currently selected ticket
-      const selTicket = selectedTicketId
-        ? tickets.find((t) => t.id === selectedTicketId)
-        : null;
-      const isSelected = selTicket
-        ? isCategoryOnlyTicket(selTicket)
-          ? categoryOnlyMatchesEl(selTicket, secId, catId)
-          : isTicketMatchingSection(selTicket, secId, catId)
-        : false;
-
-      if (isSelected) {
-        paintSection(sectionEl, "selected");
-      } else {
-        // Check if it has tickets → show available colour, otherwise base
-        const hasTicket = tickets.some((t) => {
-          if (isCategoryOnlyTicket(t))
-            return categoryOnlyMatchesEl(t, secId, catId);
-          return isTicketMatchingSection(t, secId, catId);
-        });
-        if (hasTicket) {
-          paintSection(sectionEl, "available");
-        } else {
-          paintSection(sectionEl, "base");
-        }
-      }
+      const relatedTarget = ev.relatedTarget as Element | null;
+      const nextSectionEl = relatedTarget?.closest("[data-section]");
+      if (nextSectionEl === sectionEl) return;
+      if (nextSectionEl) return;
+      setHoveredMapTicket(null);
     };
 
     root.addEventListener("mouseover", onMouseOver);
@@ -347,7 +363,7 @@ export function TixstockDynamicMap({
       root.removeEventListener("mouseover", onMouseOver);
       root.removeEventListener("mouseout", onMouseOut);
     };
-  }, [tickets, svgContent, selectedTicketId, excludedSections]);
+  }, [svgContent, excludedSections, findBestTicketForSection]);
 
   /* ---------- Render --------------------------------------------------- */
 

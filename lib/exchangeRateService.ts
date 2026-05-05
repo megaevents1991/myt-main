@@ -31,23 +31,23 @@ const CURRENCY_CONFIG: Record<
     floatTarget: "ils",
     min: 2.7,
     max: 3.65,
-    fallback: 3.05,
+    fallback: 3.0,
   },
   eurUsd: {
     pair: "EUR/USD",
     floatBase: "eur",
     floatTarget: "usd",
     min: 1,
-    max: 1.4,
-    fallback: 1.09,
+    max: 1.7,
+    fallback: 1.17,
   },
   gbpUsd: {
     pair: "GBP/USD",
     floatBase: "gbp",
     floatTarget: "usd",
     min: 0.8,
-    max: 1.6,
-    fallback: 1.27,
+    max: 1.8,
+    fallback: 1.36,
   },
 };
 
