@@ -52,6 +52,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
     skipHotel,
     setSkipHotel,
     setHotel,
+    skipFlight,
+    setSkipFlight,
+    flightSkipped,
+    setFlightSkipped,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -85,6 +89,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
       setStep(4);
     }
   }, [isUS, step, setHotel, setSkipHotel, setStep]);
+
+  useEffect(() => {
+    // Initialize skipFlight from event setting when event loads.
+    if (event?.skip_flight) setSkipFlight(true);
+  }, [event?.skip_flight, setSkipFlight]);
 
   const buttonDisabled =
     (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
@@ -129,7 +138,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           numOfTickets: numberOfEventTickets,
           addionalPricePerTicket: eventTicketPriceAddition,
         });
-      } else if (prev === 2) {
+      } else if (prev === 2 && !flightSkipped) {
         orderStage("FLIGHT_SELECTED", {
           data: { flight: flight?.id },
         });
@@ -186,24 +195,25 @@ export const OrderForm = ({ event }: { event: Event }) => {
         // Use skipHotel flag to determine if hotel data should be included
         const isHotelSkipped = skipHotel || !hotel;
         
-        // Common logic for step 3 completion (flight pricing, tracking, etc.)
-        fetch(`/api/flights/pricing`, {
-          method: "POST",
-          body: JSON.stringify({
-            flightOffer: flight?.offer,
-            virtual: flight?.virtualOfferType || false,
-          }),
-        }).then((res) => {
-          if (res.ok) {
-            res.json().then((data) => {
-              setFlight((prev = {} as Flight) => ({
-                ...prev,
-                penalties: data?.penalties,
-                bags: data?.bags,
-              }));
-            });
-          }
-        });
+        if (!flightSkipped) {
+          fetch(`/api/flights/pricing`, {
+            method: "POST",
+            body: JSON.stringify({
+              flightOffer: flight?.offer,
+              virtual: flight?.virtualOfferType || false,
+            }),
+          }).then((res) => {
+            if (res.ok) {
+              res.json().then((data) => {
+                setFlight((prev = {} as Flight) => ({
+                  ...prev,
+                  penalties: data?.penalties,
+                  bags: data?.bags,
+                }));
+              });
+            }
+          });
+        }
         orderStage("HOTEL_SELECTED", {
           data: { hotel: isHotelSkipped ? null : hotel?.id || null },
         });
@@ -247,6 +257,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
     nextStep(true);
   };
 
+  const handleSkipFlight = () => {
+    setFlightSkipped(true);
+    setFlight(undefined);
+    orderStage("FLIGHT_SELECTED", { data: { flight: null } });
+    trackEvent("flightSelected", { skipped: true, numOfPeople: numberOfPersons });
+    setStep((prev) => prev + 1);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-2 pt-3">
       {step === 1 && <TicketSelection />}
@@ -266,7 +284,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
             {step < 4 && (
               <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
                 <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center">
-                  {/* Button Section - Split on step 3 (hotel selection) */}
+                  {/* Button Section - Split on step 3 (hotel) and step 2 when skipFlight enabled */}
                   {step === 3 ? (
                     // Hotel Selection Step: Show split buttons (desktop) or stacked (mobile)
                     <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
@@ -292,6 +310,31 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         לא צריך מלון
                       </button>
                     </div>
+                  ) : step === 2 && skipFlight ? (
+                    // Flight Selection Step with skip enabled: Show split buttons
+                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
+                      <button
+                        disabled={buttonDisabled}
+                        onClick={() => nextStep()}
+                        className={cn(
+                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
+                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        type="button"
+                        aria-label="בחר והמשך לבחירת מלון"
+                      >
+                        <span className="min-[400px]:inline hidden">בחר והמשך לבחירת מלון</span>
+                        <span className="min-[400px]:hidden">בחר והמשך</span>
+                      </button>
+                      <button
+                        onClick={handleSkipFlight}
+                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
+                        type="button"
+                        aria-label="המשך ללא טיסה"
+                      >
+                        לא צריך טיסה
+                      </button>
+                    </div>
                   ) : (
                     // Other steps: Show single button
                     <button
@@ -313,7 +356,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
                   {/* Order Summary Section */}
                   <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
-                    {step > 2 && (
+                    {step > 2 && !flightSkipped && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">
                           {formatPrice(
