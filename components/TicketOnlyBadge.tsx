@@ -34,7 +34,7 @@ export function TicketOnlyBadge() {
   /* ── Desktop: click (mouse) ── */
   const handleClick = (e: React.MouseEvent) => {
     // only handle real mouse clicks — touch is handled by onTouchEnd
-    if (e.nativeEvent instanceof MouseEvent && e.nativeEvent.pointerType === "touch") return;
+    if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType === "touch") return;
     e.preventDefault();
     e.stopPropagation();
   };
