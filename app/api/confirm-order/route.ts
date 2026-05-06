@@ -19,7 +19,29 @@ export async function POST(req: Request) {
     payNow,
   );
 
-  const { data, error } = await supabase
+  // Surface offline inventory linkage as top-level columns so the backoffice
+  // can query / JOIN without unpacking the order JSON blobs.
+  const flightInfoForLink = validatedData.flight_order_info as
+    | { offlineId?: number; offlineRawPrice?: number }
+    | undefined;
+  const hotelInfoForLink = validatedData.hotel_order_info as
+    | {
+        offlineId?: number;
+        offlineIds?: number[];
+        offlineRawPrice?: number;
+      }
+    | undefined;
+
+  const offlineHotelIdsForLink: number[] | null =
+    hotelInfoForLink?.offlineIds && hotelInfoForLink.offlineIds.length > 0
+      ? hotelInfoForLink.offlineIds
+      : hotelInfoForLink?.offlineId != null
+      ? [hotelInfoForLink.offlineId]
+      : null;
+
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("reservations")
     .insert({
       main_contact_first_name: validatedData.main_contact_first_name,
@@ -38,6 +60,11 @@ export async function POST(req: Request) {
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
       gtmIdnts: gtmIdnts || null,
       status: onlySave ? "24Save" : "Pending",
+      offline_flight_id: flightInfoForLink?.offlineId ?? null,
+      offline_flight_cost: flightInfoForLink?.offlineRawPrice ?? null,
+      offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
+      offline_hotel_ids: offlineHotelIdsForLink,
+      offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
     })
     .select()
     .single();
@@ -58,6 +85,9 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+
+  // Hold offline inventory immediately — released only on cancellation.
+  await holdOfflineInventory(validatedData);
 
   // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";
@@ -227,5 +257,62 @@ export async function POST(req: Request) {
       { error: "Failed to confirm order" },
       { status: 500 },
     );
+  }
+}
+
+async function holdOfflineInventory(orderData: OrderData) {
+  try {
+    const flightInfo = orderData.flight_order_info as
+      | { offlineId?: number; numOfTravelers?: number }
+      | undefined;
+    if (flightInfo?.offlineId) {
+      const { data: flightRow } = await supabase
+        .from("flights")
+        .select("consumed_quantity")
+        .eq("id", flightInfo.offlineId)
+        .single();
+      if (flightRow) {
+        await supabase
+          .from("flights")
+          .update({
+            consumed_quantity:
+              (flightRow.consumed_quantity || 0) + (flightInfo.numOfTravelers || 0),
+          })
+          .eq("id", flightInfo.offlineId);
+      }
+    }
+
+    const hotelInfo = orderData.hotel_order_info as
+      | { offlineId?: number; offlineIds?: number[] }
+      | undefined;
+    const offlineHotelIds: number[] =
+      hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
+        ? hotelInfo.offlineIds
+        : hotelInfo?.offlineId
+        ? [hotelInfo.offlineId]
+        : [];
+    if (offlineHotelIds.length > 0) {
+      const counts = new Map<number, number>();
+      for (const rowId of offlineHotelIds) {
+        counts.set(rowId, (counts.get(rowId) || 0) + 1);
+      }
+      for (const [rowId, count] of counts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: hotelRow } = await (supabase as any)
+          .from("offline_hotels")
+          .select("consumed_rooms")
+          .eq("id", rowId)
+          .single();
+        if (hotelRow) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from("offline_hotels")
+            .update({ consumed_rooms: (hotelRow.consumed_rooms || 0) + count })
+            .eq("id", rowId);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to hold offline inventory:", e);
   }
 }

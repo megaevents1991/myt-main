@@ -41,6 +41,7 @@ export type Hotel = {
   hid: number;
   id: string;
   rates: Rate[];
+  isOffline?: boolean;
 };
 
 export type Rate = {

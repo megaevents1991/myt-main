@@ -22,8 +22,15 @@ const fetchHotels = async (hotelSearchRequest: HotelSearchRequest) => {
   return response;
 };
 
+// offline_hotels has no hid column — it is a standalone inventory not linked to Ratehawk.
+// Returns empty set until offline hotels are shown separately (like offline flights).
+const getOfflineHotelHids = async (eventId: number): Promise<Set<number>> => {
+  void eventId;
+  return new Set();
+};
+
 export async function POST(request: Request) {
-  const { location, checkin, checkout, guests, radius } = await request.json();
+  const { location, checkin, checkout, guests, radius, eventId } = await request.json();
 
   if (!location || !checkin || !checkout || !guests?.length) {
     console.log("Invalid request body:", {
@@ -56,18 +63,21 @@ export async function POST(request: Request) {
   };
 
   try {
-    const data: HotelResponse = await fetchHotels(hotelSearchRequest)
-      .then((res) => res.json())
-      .then(async (data: HotelResponse) => {
-        if (!data.data.total_hotels) {
-          console.log("No hotels found, retrying in 1 second");
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          return (await fetchHotels(hotelSearchRequest)).json();
-        }
-        return data;
-      });
+    const [data, offlineHids] = await Promise.all([
+      fetchHotels(hotelSearchRequest)
+        .then((res) => res.json())
+        .then(async (data: HotelResponse) => {
+          if (!data.data.total_hotels) {
+            console.log("No hotels found, retrying in 1 second");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            return (await fetchHotels(hotelSearchRequest)).json();
+          }
+          return data;
+        }),
+      eventId ? getOfflineHotelHids(eventId) : Promise.resolve(new Set<number>()),
+    ]);
 
-    const fixedHotels: Hotel[] = data.data.hotels.reduce((acc, hotel) => {
+    const fixedHotels: Hotel[] = data.data.hotels.reduce((acc: Hotel[], hotel: Hotel) => {
       if (!hotel.rates || !Array.isArray(hotel.rates) || hotel.rates.length === 0) {
         return acc;
       }
@@ -110,11 +120,12 @@ export async function POST(request: Request) {
       acc.push({
         ...hotel,
         rates: fixedRates,
+        ...(offlineHids.has(hotel.hid) && { isOffline: true }),
       });
 
       return acc;
     }, [] as Hotel[]);
-    
+
     return NextResponse.json<HotelResponse>({
       ...data,
       data: {

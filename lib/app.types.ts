@@ -51,6 +51,13 @@ export type Flight = {
   penalties?: string;
   bags?: object;
   virtualOfferType?: boolean;
+  isOffline?: boolean;
+  // When isOffline is true, these reference the source row in the `flights`
+  // inventory table so the backoffice can attribute the reservation and
+  // decrement stock. offlineRawPrice is the true per-traveler inventory cost
+  // (before customer-facing normalization).
+  offlineId?: number;
+  offlineRawPrice?: number;
 };
 
 export type FlightSegment = {
@@ -74,6 +81,14 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
+  isOffline?: boolean;
+  // When isOffline is true: the offline_hotels.id values consumed by this
+  // booking (one entry per room unit, so a triple+double combo yields two
+  // ids). `offlineRawPrice` is the summed inventory cost across those rows.
+  // `offlineId` is kept as the first id for legacy backoffice code paths.
+  offlineId?: number;
+  offlineIds?: number[];
+  offlineRawPrice?: number;
   hotelInformation: {
     hotelName: string;
     roomName: string;
@@ -268,6 +283,7 @@ export type OrderData = {
   exchange_rate_usd_ils_100: number;
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
+  status?: string;
 };
 
 export type ArtistFields = {
