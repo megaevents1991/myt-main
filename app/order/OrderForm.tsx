@@ -195,24 +195,25 @@ export const OrderForm = ({ event }: { event: Event }) => {
         // Use skipHotel flag to determine if hotel data should be included
         const isHotelSkipped = skipHotel || !hotel;
         
-        // Common logic for step 3 completion (flight pricing, tracking, etc.)
-        fetch(`/api/flights/pricing`, {
-          method: "POST",
-          body: JSON.stringify({
-            flightOffer: flight?.offer,
-            virtual: flight?.virtualOfferType || false,
-          }),
-        }).then((res) => {
-          if (res.ok) {
-            res.json().then((data) => {
-              setFlight((prev = {} as Flight) => ({
-                ...prev,
-                penalties: data?.penalties,
-                bags: data?.bags,
-              }));
-            });
-          }
-        });
+        if (!flightSkipped) {
+          fetch(`/api/flights/pricing`, {
+            method: "POST",
+            body: JSON.stringify({
+              flightOffer: flight?.offer,
+              virtual: flight?.virtualOfferType || false,
+            }),
+          }).then((res) => {
+            if (res.ok) {
+              res.json().then((data) => {
+                setFlight((prev = {} as Flight) => ({
+                  ...prev,
+                  penalties: data?.penalties,
+                  bags: data?.bags,
+                }));
+              });
+            }
+          });
+        }
         orderStage("HOTEL_SELECTED", {
           data: { hotel: isHotelSkipped ? null : hotel?.id || null },
         });

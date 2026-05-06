@@ -33,7 +33,7 @@ export const Review = ({
     category: string;
     description?: string;
   };
-  selectedFlight: Flight;
+  selectedFlight?: Flight;
   airlineFullName?: string;
   flightPriceAddition: number;
   eventTicketPriceAddition: number;
