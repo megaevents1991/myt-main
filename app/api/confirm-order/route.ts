@@ -85,74 +85,8 @@ export async function POST(req: Request) {
     );
   }
 
-<<<<<<< HEAD
   // Hold offline inventory immediately — released only on cancellation.
   await holdOfflineInventory(validatedData);
-=======
-  // Best-effort: decrement offline inventory when the reservation consumed
-  // rows from our in-house offline_hotels / flights tables. We never fail the
-  // reservation if this step errors — the row already exists and ops can
-  // reconcile from the reservation payload if needed.
-  //
-  // TODO: Once the RPCs in docs/offline-inventory-rpcs.sql are deployed to
-  // Supabase, switch to atomic decrement_flight_stock / decrement_offline_hotel_stock
-  // for stock-out protection.
-  try {
-    const flightInfo = validatedData.flight_order_info as
-      | { offlineId?: number; numOfTravelers?: number }
-      | undefined;
-    if (flightInfo?.offlineId) {
-      const { data: flightRow } = await supabase
-        .from("flights")
-        .select("consumed_quantity")
-        .eq("id", flightInfo.offlineId)
-        .single();
-      if (flightRow) {
-        await supabase
-          .from("flights")
-          .update({
-            consumed_quantity:
-              (flightRow.consumed_quantity || 0) +
-              (flightInfo.numOfTravelers || 0),
-          })
-          .eq("id", flightInfo.offlineId);
-      }
-    }
-
-    const hotelInfo = validatedData.hotel_order_info as
-      | { offlineId?: number; offlineIds?: number[] }
-      | undefined;
-    const offlineHotelIds: number[] =
-      hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
-        ? hotelInfo.offlineIds
-        : hotelInfo?.offlineId
-        ? [hotelInfo.offlineId]
-        : [];
-    if (offlineHotelIds.length > 0) {
-      const counts = new Map<number, number>();
-      for (const rowId of offlineHotelIds) {
-        counts.set(rowId, (counts.get(rowId) || 0) + 1);
-      }
-      for (const [rowId, count] of counts) {
-        const { data: hotelRow } = await (supabase as any)
-          .from("offline_hotels")
-          .select("consumed_rooms")
-          .eq("id", rowId)
-          .single();
-        if (hotelRow) {
-          await (supabase as any)
-            .from("offline_hotels")
-            .update({
-              consumed_rooms: (hotelRow.consumed_rooms || 0) + count,
-            })
-            .eq("id", rowId);
-        }
-      }
-    }
-  } catch (decrementError) {
-    console.error("Failed to decrement offline inventory:", decrementError);
-  }
->>>>>>> 1917b82 (add all the feature for offline flight and offline hotels)
 
   // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";

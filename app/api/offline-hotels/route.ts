@@ -108,11 +108,7 @@ export async function GET(request: Request) {
   let query = (supabase as any)
     .from("offline_hotels")
     .select(
-<<<<<<< HEAD
       "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date"
-=======
-      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes"
->>>>>>> 1917b82 (add all the feature for offline flight and offline hotels)
     )
     .contains("event_ids", [eventId])
     .eq("is_deleted", false);
@@ -259,7 +255,6 @@ export async function GET(request: Request) {
       (anchor.room_type as string | undefined) ||
       "Standard Room";
 
-<<<<<<< HEAD
     // Earliest cancellation deadline across matched rows — worst case for the customer
     const matchedCancDates = match.rowIds
       .map((id) => rowsInGroup.find((r) => r.id === id)?.last_cancellation_date)
@@ -267,8 +262,6 @@ export async function GET(request: Request) {
     const freeCancellationBefore =
       matchedCancDates.length > 0 ? [...matchedCancDates].sort()[0] : "";
 
-=======
->>>>>>> 1917b82 (add all the feature for offline flight and offline hotels)
     const totalPriceStr = String(match.totalPrice);
     const rate: any = {
       match_hash: `offline-${id}`,
@@ -288,11 +281,7 @@ export async function GET(request: Request) {
             tax_data: { taxes: [] },
             cancellation_penalties: {
               policies: [],
-<<<<<<< HEAD
               free_cancellation_before: freeCancellationBefore,
-=======
-              free_cancellation_before: "",
->>>>>>> 1917b82 (add all the feature for offline flight and offline hotels)
             },
           },
         ],
