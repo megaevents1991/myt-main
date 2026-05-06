@@ -1348,22 +1348,23 @@ export default function OrderReview() {
                             </>
                           )}
 
-                          {!skipHotel && selectedHotel && (
-                            <>
-                              <h3 className="font-bold mt-4 mb-2">מלון</h3>
-                              <p>
-                                החזר מלא או שינוי חינם עד לתאריך ה-{" "}
-                                {dayjs(
-                                  selectedHotel.rate.payment_options
-                                    ?.payment_types[0].cancellation_penalties
-                                    .free_cancellation_before
-                                )
-                                  .subtract(7, "day")
-                                  .format("DD/MM/YYYY")}
-                                , לאחר מכן דמי ביטול מלאים.
-                              </p>
-                            </>
-                          )}
+                          {!skipHotel && selectedHotel && (() => {
+                            const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                            if (!rawDate) return null;
+                            const formattedDate = selectedHotel.isOffline
+                              ? dayjs(rawDate).format("DD/MM/YYYY")
+                              : dayjs(rawDate).subtract(7, "day").format("DD/MM/YYYY");
+                            return (
+                              <>
+                                <h3 className="font-bold mt-4 mb-2">מלון</h3>
+                                <p>
+                                  החזר מלא או שינוי חינם עד לתאריך ה-{" "}
+                                  {formattedDate}
+                                  , לאחר מכן דמי ביטול מלאים.
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -1817,22 +1818,23 @@ export default function OrderReview() {
                                 עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
                                 בנוסף לדמי הביטול של המוביל האווירי.
                               </p>
-                            </>
-                          )}
-                          {!skipHotel && selectedHotel && (
-                            <>
-                              <h3 className="font-bold mt-4">מלון</h3>
-                              <p>
-                                ביטול או שינוי חינם עד לתאריך ה-{" "}
-                                {dayjs(
-                                  selectedHotel.rate.payment_options
-                                    ?.payment_types[0].cancellation_penalties
-                                    .free_cancellation_before
-                                )
-                                  .subtract(7, "day")
-                                  .format("DD/MM/YYYY")}
-                                , לאחר מכן דמי ביטול מלאים.
-                              </p>
+                              {!skipHotel && selectedHotel && (() => {
+                                const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                                if (!rawDate) return null;
+                                const formattedDate = selectedHotel.isOffline
+                                  ? dayjs(rawDate).format("DD/MM/YYYY")
+                                  : dayjs(rawDate).subtract(7, "day").format("DD/MM/YYYY");
+                                return (
+                                  <>
+                                    <h3 className="font-bold mt-4">מלון</h3>
+                                    <p>
+                                      ביטול או שינוי חינם עד לתאריך ה-{" "}
+                                      {formattedDate}
+                                      , לאחר מכן דמי ביטול מלאים.
+                                    </p>
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                         </div>

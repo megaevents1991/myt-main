@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest"
   },
   "dependencies": {
     "@contentful/rich-text-react-renderer": "^16.0.1",
@@ -64,7 +65,7 @@
     "fast-xml-parser": "^5.3.4"
   },
   "devDependencies": {
-    "@shadcn/ui": "^0.0.4",
+"@shadcn/ui": "^0.0.4",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.16",
