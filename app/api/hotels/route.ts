@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       eventId ? getOfflineHotelHids(eventId) : Promise.resolve(new Set<number>()),
     ]);
 
-    const fixedHotels: Hotel[] = data.data.hotels.reduce((acc, hotel) => {
+    const fixedHotels: Hotel[] = data.data.hotels.reduce((acc: Hotel[], hotel: Hotel) => {
       if (!hotel.rates || !Array.isArray(hotel.rates) || hotel.rates.length === 0) {
         return acc;
       }
