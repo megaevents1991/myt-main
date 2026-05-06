@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { Hotel, HotelInfoClient, HotelsInfoClient } from "@/lib/hotel.type";
+import { Hotel, HotelInfoClient, HotelsInfoClient, HotelKind, Rate } from "@/lib/hotel.type";
 import { getDistance } from "geolib";
 import { getOfflineRoomCapacity } from "@/lib/offlineRoomCapacity";
 
@@ -105,6 +105,7 @@ export async function GET(request: Request) {
   // 1) Offline inventory rows for this event, filtered by the flight-aligned
   // window: only rows whose inventory [check_in, check_out] fully covers the
   // requested [checkin, checkout] are eligible.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("offline_hotels")
     .select(
@@ -147,7 +148,20 @@ export async function GET(request: Request) {
     .filter((h) => h.hid != null)
     .map((h) => h.hid);
 
-  let hotelsMetaRows: any[] = [];
+  type HotelMetaRow = {
+    hid: number;
+    _id: string;
+    name: string;
+    star_rating: number;
+    kind: HotelKind;
+    images_ext: { category_slug: string; url: string }[];
+    amenity_groups: AmenityGroup[];
+    room_groups: RoomGroup[];
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
+  let hotelsMetaRows: HotelMetaRow[] = [];
   if (hids.length > 0) {
     const { data: meta } = await supabase
       .from("hotels")
@@ -180,7 +194,7 @@ export async function GET(request: Request) {
     // same hotel/hid).
     const anchor = rowsInGroup[0];
     const id = `offline-${anchor.hid ?? anchor.id}`;
-    const meta = hotelsMetaRows.find((m: any) => m.hid === anchor.hid);
+    const meta = hotelsMetaRows.find((m) => m.hid === anchor.hid);
 
     const allImages = (meta?.images_ext ?? []) as {
       category_slug: string;
@@ -263,7 +277,7 @@ export async function GET(request: Request) {
       matchedCancDates.length > 0 ? [...matchedCancDates].sort()[0] : "";
 
     const totalPriceStr = String(match.totalPrice);
-    const rate: any = {
+    const rate: Rate = {
       match_hash: `offline-${id}`,
       daily_prices: [],
       meal: anchor.meal_plan || "nomeal",

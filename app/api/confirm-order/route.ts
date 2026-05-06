@@ -40,6 +40,7 @@ export async function POST(req: Request) {
       : null;
 
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("reservations")
     .insert({
@@ -296,12 +297,14 @@ async function holdOfflineInventory(orderData: OrderData) {
         counts.set(rowId, (counts.get(rowId) || 0) + 1);
       }
       for (const [rowId, count] of counts) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: hotelRow } = await (supabase as any)
           .from("offline_hotels")
           .select("consumed_rooms")
           .eq("id", rowId)
           .single();
         if (hotelRow) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase as any)
             .from("offline_hotels")
             .update({ consumed_rooms: (hotelRow.consumed_rooms || 0) + count })

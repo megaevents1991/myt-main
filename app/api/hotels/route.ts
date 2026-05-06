@@ -24,7 +24,8 @@ const fetchHotels = async (hotelSearchRequest: HotelSearchRequest) => {
 
 // offline_hotels has no hid column — it is a standalone inventory not linked to Ratehawk.
 // Returns empty set until offline hotels are shown separately (like offline flights).
-const getOfflineHotelHids = async (_eventId: number): Promise<Set<number>> => {
+const getOfflineHotelHids = async (eventId: number): Promise<Set<number>> => {
+  void eventId;
   return new Set();
 };
 
