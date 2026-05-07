@@ -269,7 +269,9 @@ export const FlightSelection = () => {
   );
 
   const bestFlightId = useMemo(() => {
-    const pool = offlineFlights.length ? offlineFlights : flights;
+    // Prefer offline pool when available; otherwise pick from visible filtered
+    // flights so the "best" badge always lands on a card the user can see.
+    const pool = offlineFlights.length ? offlineFlights : filteredFlights;
     if (!pool.length) return null;
     const stopPenalty = Number(process.env.NEXT_PUBLIC_BEST_FLIGHT_STOP_PENALTY) || 300;
     const score = (f: Flight) =>
@@ -280,7 +282,7 @@ export const FlightSelection = () => {
     return pool.reduce((best, f) =>
       score(f) < score(best) ? f : best
     ).id;
-  }, [offlineFlights, flights]);
+  }, [offlineFlights, filteredFlights]);
 
   const cheapestFlightId = useMemo(() => {
     // Use filteredFlights so the badge always lands on a visible card
