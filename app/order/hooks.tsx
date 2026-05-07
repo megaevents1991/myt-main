@@ -111,10 +111,13 @@ export function useOrderVars() {
     if (!event) {
       return 0;
     }
+    // When customer skips flight, exclude base flight price from the
+    // strikethrough/recommended total so the price reflects "no flight" mode.
+    const flightComponent = flightSkipped ? 0 : event.base_flight_price;
     return Math.ceil(
-      event.base_flight_price + event.base_hotel_price + minTicketPrice + maup
+      flightComponent + event.base_hotel_price + minTicketPrice + maup
     );
-  }, [event, minTicketPrice, maup]);
+  }, [event, minTicketPrice, maup, flightSkipped]);
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 

@@ -16,6 +16,9 @@ import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
 import { shortenAirlineName } from "./order-review.utils";
+import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
+import { getRoomParams } from "@/lib/getRoomParams";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -80,6 +83,21 @@ export const OrderForm = ({ event }: { event: Event }) => {
   }, [step]);
 
   const isUS = event?.location?.country_code === "US";
+
+  // Preload hotels as soon as the order flow starts so they're ready
+  // by the time the customer reaches step 3 (especially after skip flight).
+  useEffect(() => {
+    if (isUS) return;
+    if (!event?.id) return;
+    if (hotelsData?.data?.data?.hotels) return;
+    getHotels({
+      dateRange: getDefaultDateRange(event, undefined),
+      guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
+      location: event.location,
+      eventId: event.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id]);
 
   useEffect(() => {
     // US events are sold without hotel; if we ever land on step 3, skip to review.
@@ -257,11 +275,22 @@ export const OrderForm = ({ event }: { event: Event }) => {
     nextStep(true);
   };
 
+  const { getHotels, hotelsData } = useContext(HotelFetchContext);
+
   const handleSkipFlight = () => {
     setFlightSkipped(true);
     setFlight(undefined);
     orderStage("FLIGHT_SELECTED", { data: { flight: null } });
     trackEvent("flightSelected", { skipped: true, numOfPeople: numberOfPersons });
+    // No flight selected → fetch hotels with event default dates
+    if (!isUS && !hotelsData?.data?.data?.hotels) {
+      getHotels({
+        dateRange: getDefaultDateRange(event, undefined),
+        guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
+        location: event.location,
+        eventId: event.id,
+      });
+    }
     setStep((prev) => prev + 1);
   };
 
