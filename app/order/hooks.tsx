@@ -134,10 +134,16 @@ export function useOrderVars() {
       ? 0
       : (flightPriceAddition + event.base_flight_price) * numTravelers;
 
+    // When skipping flight, add admin-set per-ticket markup to keep margin
+    const skipFlightMarkup = flightSkipped
+      ? Math.max(0, Number(event.skip_flight_markup ?? 0)) * numberOfEventTickets
+      : 0;
+
     return Math.ceil(
       (eventTicket.price + maup || 0) * numberOfEventTickets +
         flightComponent +
         hotelComponent +
+        skipFlightMarkup +
         (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
     );
   }, [
