@@ -5,8 +5,6 @@
  * and visual highlighting for tx_event venue maps.
  */
 
-import type { TixStockListing } from "./tixstock.types";
-
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */

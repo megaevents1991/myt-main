@@ -169,9 +169,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Filter out obstructed/restricted-view listings
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filtered = afterSections.filter(
-      (l: any) => !hasObstructedViewRestriction(l),
+      (l: TixStockListing) => !hasObstructedViewRestriction(l),
     );
     const obstructedCount = afterSections.length - filtered.length;
     if (obstructedCount > 0) {
