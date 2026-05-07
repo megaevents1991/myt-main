@@ -594,29 +594,6 @@ export const eventTicketToListing = (ticket: {
 /* ------------------------------------------------------------------ */
 
 /**
- * True when a TixStock listing carries a "limited view" / "partial view"
- * restriction in `restrictions_benefits.options`.  Used to filter out
- * obstructed-view tickets from the live-pricing pool.
- */
-export const hasLimitedViewRestriction = (
-  ticket: Pick<TixStockListing, "restrictions_benefits">,
-): boolean => {
-  const options = ticket.restrictions_benefits?.options;
-  if (!Array.isArray(options) || options.length === 0) return false;
-  return options.some((opt) => {
-    // Options can be plain strings or { name, value } objects depending on the feed.
-    const text =
-      typeof opt === "string"
-        ? opt
-        : `${(opt as { name?: string })?.name ?? ""} ${(opt as { value?: string })?.value ?? ""}`;
-    const lower = text.toLowerCase();
-    return (
-      (lower.includes("limited") || lower.includes("partial")) &&
-      lower.includes("view")
-    );
-  });
-};
-/**
  * Check whether a ticket can be matched to *any* section/category on
  * the loaded SVG map.  Used to filter out tickets that have no
  * corresponding visual representation.

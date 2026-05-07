@@ -10,14 +10,14 @@ function toUsd(amount: string, currency: string): string {
   const value = parseFloat(amount);
   if (isNaN(value)) return amount;
   const cur = currency.toUpperCase();
-  if (cur === "USD") return (value + 40).toFixed(2);
+  if (cur === "USD") return ((value + 40) * 1.035).toFixed(2);
   if (cur === "GBP") {
     const rate = exchangeRateService.getGbpUsdRate().rate;
-    return ((value + 35) * rate).toFixed(2);
+    return ((value + 35) * rate * 1.035).toFixed(2);
   }
   if (cur === "EUR") {
     const rate = exchangeRateService.getEurUsdRate().rate;
-    return ((value + 40) * rate).toFixed(2);
+    return ((value + 40) * rate * 1.035).toFixed(2);
   }
   // Unknown currency — return as-is and log
   console.warn(
@@ -29,6 +29,35 @@ function toUsd(amount: string, currency: string): string {
 /** Slugify a name the same way the SVG map IDs are built */
 function slugify(name: string): string {
   return (name || "").trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/** Return true if a restriction text signals any kind of obstructed / degraded view. */
+function isObstructedViewText(text: string): boolean {
+  const lower = text.toLowerCase();
+  if (
+    (lower.includes("limited") || lower.includes("partial")) &&
+    lower.includes("view")
+  )
+    return true;
+  if (lower.includes("restricted") && lower.includes("view")) return true;
+  if (/\brestr?\.?\s*view\b/.test(lower)) return true;
+  if (/\br[\.\/]?v\.?\b/.test(lower)) return true;
+  return false;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasObstructedViewRestriction(listing: any): boolean {
+  const rb = listing.restrictions_benefits;
+  if (!rb) return false;
+  if (rb.other && isObstructedViewText(String(rb.other))) return true;
+  const options: unknown[] = Array.isArray(rb.options) ? rb.options : [];
+  return options.some((opt) => {
+    const text =
+      typeof opt === "string"
+        ? opt
+        : `${(opt as { name?: string })?.name ?? ""} ${(opt as { value?: string })?.value ?? ""}`;
+    return isObstructedViewText(text);
+  });
 }
 
 /**
@@ -127,7 +156,7 @@ export async function GET(req: NextRequest) {
     }));
 
     // Filter out listings for excluded/disabled sections before returning
-    const filtered = excludedSections.length
+    const afterSections = excludedSections.length
       ? normalised.filter(
           (l: TixStockListing) => !isExcludedSection(l, excludedSections),
         )
@@ -135,7 +164,19 @@ export async function GET(req: NextRequest) {
 
     if (excludedSections.length) {
       console.log(
-        `[TixStock Tickets] Excluded ${normalised.length - filtered.length} listing(s) from ${excludedSections.length} excluded section(s)`,
+        `[TixStock Tickets] Excluded ${normalised.length - afterSections.length} listing(s) from ${excludedSections.length} excluded section(s)`,
+      );
+    }
+
+    // Filter out obstructed/restricted-view listings
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filtered = afterSections.filter(
+      (l: any) => !hasObstructedViewRestriction(l),
+    );
+    const obstructedCount = afterSections.length - filtered.length;
+    if (obstructedCount > 0) {
+      console.log(
+        `[TixStock Tickets] Filtered out ${obstructedCount} obstructed/restricted-view listing(s)`,
       );
     }
 

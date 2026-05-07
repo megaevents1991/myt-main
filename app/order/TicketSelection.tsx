@@ -2,6 +2,7 @@
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
@@ -13,7 +14,6 @@ import { getAvailableTickets } from "@/lib/utils";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import {
   eventTicketToListing,
-  hasLimitedViewRestriction,
   type TixStockListing,
   type TixStockMatchableListing,
 } from "@/lib/tixstock-map";
@@ -21,6 +21,8 @@ import {
 
 export const TicketSelection = () => {
   const { setEventTicket, event, eventTicket } = useContext(OrderContext);
+  const searchParams = useSearchParams();
+  const isDebugMode = searchParams.get("debug") === "1";
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
@@ -92,12 +94,10 @@ export const TicketSelection = () => {
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        const raw: TixStockListing[] = json?.data?.data ?? [];
-        // Drop tickets flagged with a limited / partial view restriction.
-        const listings = raw.filter((l) => !hasLimitedViewRestriction(l));
+        const listings: TixStockListing[] = json?.data?.data ?? [];
         if (!cancelled) {
           console.log(
-            `[TixStock] Fetched ${raw.length} live listings (${listings.length} after limited-view filter) for event ${tixEventId}`,
+            `[TixStock] Fetched ${listings.length} live listings for event ${tixEventId}`,
           );
           setLiveListings(listings);
         }
@@ -329,6 +329,74 @@ export const TicketSelection = () => {
     return effectiveTickets;
   }, [isTxEvent, effectiveTickets, matchedTicketIds]);
 
+  /* ── Debug panel ──────────────────────────────────────────────── */
+  const debugPanel = isDebugMode && isTxEvent && (
+    <details
+      open
+      className="mt-4 rounded-lg border border-yellow-400 bg-yellow-50 p-3 text-xs font-mono"
+      dir="ltr"
+    >
+      <summary className="cursor-pointer font-bold text-yellow-800 text-sm mb-2">
+        🐛 Debug: Live TixStock listings ({liveListings.length})
+      </summary>
+      {isLoadingLiveTickets ? (
+        <p className="text-yellow-700">Loading…</p>
+      ) : liveListings.length === 0 ? (
+        <p className="text-yellow-700">No live listings fetched.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-yellow-300 text-yellow-900">
+                <th className="pr-3 py-1">ID</th>
+                <th className="pr-3 py-1">Category</th>
+                <th className="pr-3 py-1">Section</th>
+                <th className="pr-3 py-1">Row</th>
+                <th className="pr-3 py-1">Qty avail</th>
+                <th className="pr-3 py-1">Split qty</th>
+                <th className="pr-3 py-1">Price ({liveListings[0]?.proceed_price?.currency ?? "?"})</th>
+                <th className="pr-3 py-1">Restrictions / benefits</th>
+              </tr>
+            </thead>
+            <tbody>
+              {liveListings.map((l) => {
+                const restrictionOptions = l.restrictions_benefits?.options ?? [];
+                const restrictionText =
+                  restrictionOptions.length > 0
+                    ? restrictionOptions
+                        .map((opt) =>
+                          typeof opt === "string"
+                            ? opt
+                            : `${(opt as { name?: string })?.name ?? ""}: ${(opt as { value?: string })?.value ?? ""}`
+                        )
+                        .join(", ")
+                    : l.restrictions_benefits?.other || "—";
+                return (
+                  <tr key={l.id} className="border-b border-yellow-200 even:bg-yellow-100">
+                    <td className="pr-3 py-1 text-yellow-700">{l.id}</td>
+                    <td className="pr-3 py-1">{l.seat_details?.category ?? "—"}</td>
+                    <td className="pr-3 py-1">{l.seat_details?.section ?? "—"}</td>
+                    <td className="pr-3 py-1">{l.seat_details?.row ?? "—"}</td>
+                    <td className="pr-3 py-1 text-center">
+                      {l.number_of_tickets_for_sale?.quantity_available ?? "—"}
+                    </td>
+                    <td className="pr-3 py-1 text-center">
+                      {l.number_of_tickets_for_sale?.split_quantity ?? "—"}
+                    </td>
+                    <td className="pr-3 py-1 font-semibold">
+                      {l.proceed_price?.amount ?? "—"}
+                    </td>
+                    <td className="pr-3 py-1 max-w-[220px] break-words">{restrictionText}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </details>
+  );
+
   return (
     <div>
       <div className="sr-only">
@@ -341,10 +409,11 @@ export const TicketSelection = () => {
           </div>
         </div>
       </div>
+      {debugPanel}
       <main className="flex flex-col" dir="rtl" role="main">
         <div className="mt-4 text-lg">
           בחרו כמות כרטיסים וקטגוריה מועדפת,
-          <span className="font-bold"> ישיבה בזוגות מובטחת.</span>
+          {isTxEvent ? <span className="font-bold"> ישיבה בזוגות/שלשות מובטחת.</span> : <span className="font-bold"> ישיבה בזוגות מובטחת.</span>}
         </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-4">
           {isTxEvent ? (
