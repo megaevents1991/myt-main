@@ -10,9 +10,9 @@ import {
   TimeRange,
 } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
-import { flightSort, SortOptions } from "@/lib/flightSort";
+import { SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea } from "@mantine/core";
-import { Settings2Icon, Search } from "lucide-react";
+import { Settings2Icon, Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   useCallback,
   useContext,
@@ -30,7 +30,6 @@ import { FlightFilters } from "@/components/ui/FlightFilters";
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
-import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
@@ -65,7 +64,7 @@ export const FlightSelection = () => {
     airline: [],
     luggage: ["withCheckedBags", "withCabinBags"],
   });
-  const [sortOption, setSortOption] = useState<SortOptions>("price_asc");
+  const [sortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFlightDuration, setSelectedFlightDuration] =
@@ -86,7 +85,7 @@ export const FlightSelection = () => {
     new Date(event.def_date_return),
   ]);
   const [showFilters, setShowFilters] = useState(false);
-  const [activeTab, setActiveTab] = useState<"best" | "cheapest" | null>(null);
+  const [activeTab, setActiveTab] = useState<"best" | "cheapest" | "israeli">("best");
   const matches = useMediaQuery("(min-width: 1024px)");
   const [scrollerHeight, setScrollerHeight] = useState(600);
   const [, startTransition] = useTransition();
@@ -164,7 +163,7 @@ export const FlightSelection = () => {
 
     setIsLoading(true);
     setError(null);
-    setActiveTab(null);
+    setActiveTab("best");
     setFilters((prev) => ({
       ...prev,
       airline: [],
@@ -251,38 +250,6 @@ export const FlightSelection = () => {
   const handleFlightSearch = async () => {
     await fetchFlights();
   };
-  const handleSortChange = (selectedSortOption: SortOptions) => {
-    setSortOption(selectedSortOption);
-
-    startTransition(() => {
-      const sortedData = flightSort(filteredFlights, selectedSortOption);
-      const slicedData = sortedData.slice(0, 50);
-      setFilteredFlights(slicedData);
-      // Update selected flight to maintain visual consistency
-      if (
-        slicedData.length > 0 &&
-        (!orderFlight || !slicedData.find((f) => f.id === orderFlight.id))
-      ) {
-        setFlight(slicedData[0]);
-      }
-    });
-  };
-
-  const handleIsraeliFilter = () => {
-    const newIsraeliFilter = !isIsraeliFilter;
-    setIsIsraeliFilter(newIsraeliFilter);
-
-    const israeliAirlines = ["LY", "6H", "IZ", "BZ", "U8"];
-    const airlineFilter = newIsraeliFilter
-      ? israeliAirlines
-      : airlines.map((a) => a.value);
-
-    handleFlightSearchCriteriaChange({
-      type: "airline",
-      value: airlineFilter,
-    });
-  };
-
   const airlines = useMemo(
     () =>
       Array.from(
@@ -389,14 +356,14 @@ export const FlightSelection = () => {
         ? cheapestFlightId
         : null;
 
-    // No tab active: offline flights first, then online in sort order
+    // Israeli tab (or no pin): offline flights first, then rest in current sort order
     if (!pinnedId) {
       const offline = filteredFlights.filter((f) => f.isOffline);
       const online = filteredFlights.filter((f) => !f.isOffline);
       return [...offline, ...online];
     }
 
-    // Tab active: pin the selected flight to position 0, rest stay in price order
+    // Best/Cheapest: pin the selected flight to position 0, rest stay in price order
     const idx = filteredFlights.findIndex((f) => f.id === pinnedId);
     if (idx <= 0) return filteredFlights;
     const copy = [...filteredFlights];
@@ -404,6 +371,24 @@ export const FlightSelection = () => {
     copy.unshift(pinned);
     return copy;
   }, [filteredFlights, activeTab, bestFlightId, cheapestFlightId]);
+
+  // Switch sort tab + sync israeli filter as needed
+  const handleSortTabChange = useCallback(
+    (next: "best" | "cheapest" | "israeli") => {
+      setActiveTab(next);
+      const wantIsraeli = next === "israeli";
+      if (wantIsraeli !== isIsraeliFilter) {
+        setIsIsraeliFilter(wantIsraeli);
+        const israeliAirlines = ["LY", "6H", "IZ", "BZ", "U8"];
+        handleFlightSearchCriteriaChange({
+          type: "airline",
+          value: wantIsraeli ? israeliAirlines : airlines.map((a) => a.value),
+        });
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isIsraeliFilter, airlines]
+  );
 
   const flightTicketCards = useMemo(
     () =>
@@ -560,56 +545,109 @@ export const FlightSelection = () => {
       </div>
       {!isLoading && (bestFlightId || cheapestFlightId) && (
         <div dir="rtl" className="px-4 lg:px-6">
-          <div className="flex gap-3">
+          {/* Desktop: 3 cards in a row */}
+          <div
+            className="hidden lg:grid lg:grid-cols-3 gap-3"
+            role="tablist"
+            aria-label="מיון טיסות"
+          >
+            {([
+              { key: "best", title: "הטוב ביותר", sub: "ערך מיטבי לכסף", Icon: Star },
+              { key: "cheapest", title: "הזול ביותר", sub: "המחיר הנמוך ביותר", Icon: DollarSign },
+              { key: "israeli", title: "ישראלי", sub: "חברות תעופה ישראליות", Icon: ShieldCheck },
+            ] as const).map(({ key, title, sub, Icon }) => {
+              const isActive = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => handleSortTabChange(key)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
+                    isActive
+                      ? "border-secondary bg-secondary/10"
+                      : "border-gray-200 bg-white hover:border-secondary"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
+                      isActive ? "bg-secondary" : "bg-gray-100"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-[18px] h-[18px] transition-colors",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span className="flex flex-col items-end flex-1 min-w-0">
+                    <span className="font-bold text-sm text-gray-900">{title}</span>
+                    <span className="text-[11px] text-gray-500 mt-0.5">{sub}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Best */}
+          {/* Mobile: filter icon + 3 sort pills in one row */}
+          <div className="flex lg:hidden items-stretch gap-1.5 w-full">
             <button
               type="button"
-              onClick={() => setActiveTab((prev) => (prev === "best" ? null : "best"))}
-              aria-pressed={activeTab === "best"}
-              className={cn(
-                "flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-right transition-all duration-200 outline-none",
-                activeTab === "best"
-                  ? "border-main bg-main text-white shadow-md"
-                  : "border-gray-200 bg-white text-gray-800 hover:border-main hover:shadow-sm"
-              )}
+              aria-label="פתח פילטרים"
+              onClick={() => setShowFilters(true)}
+              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-secondary hover:bg-secondary/10 transition-colors"
             >
-              <span className="text-lg leading-none select-none">⭐</span>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm leading-tight">
-                  הטוב ביותר
-                </span>
-                <span className={cn("text-[11px]", activeTab === "best" ? "text-blue-200" : "text-gray-400")}>ערך מיטבי לכסף</span>
-              </div>
-              {activeTab === "best" && (
-                <span className="mr-auto text-[10px] font-bold text-white">✓</span>
-              )}
+              <SlidersHorizontal className="w-4 h-4 text-gray-900" strokeWidth={1.8} aria-hidden="true" />
             </button>
-
-            {/* Cheapest */}
-            <button
-              type="button"
-              onClick={() => setActiveTab((prev) => (prev === "cheapest" ? null : "cheapest"))}
-              aria-pressed={activeTab === "cheapest"}
-              className={cn(
-                "flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-right transition-all duration-200 outline-none",
-                activeTab === "cheapest"
-                  ? "border-secondary bg-secondary text-white shadow-md"
-                  : "border-gray-200 bg-white text-gray-800 hover:border-secondary hover:shadow-sm"
-              )}
+            <div
+              role="tablist"
+              aria-label="מיון טיסות"
+              className="flex-1 flex bg-white border border-gray-200 rounded-md p-[3px] gap-[2px] min-w-0"
             >
-              <span className="text-lg leading-none select-none">💰</span>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm leading-tight">
-                  הזול ביותר
-                </span>
-                <span className={cn("text-[11px]", activeTab === "cheapest" ? "text-teal-100" : "text-gray-400")}>המחיר הנמוך ביותר</span>
-              </div>
-              {activeTab === "cheapest" && (
-                <span className="mr-auto text-[10px] font-bold text-white">✓</span>
-              )}
-            </button>
-
+              {([
+                { key: "best", label: "הטוב ביותר", Icon: Star },
+                { key: "cheapest", label: "הזול ביותר", Icon: DollarSign },
+                { key: "israeli", label: "ישראלי", Icon: ShieldCheck },
+              ] as const).map(({ key, label, Icon }) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleSortTabChange(key)}
+                    className={cn(
+                      "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
+                      isActive ? "bg-secondary" : "hover:bg-gray-50"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-3.5 h-3.5 flex-shrink-0",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold whitespace-nowrap",
+                        isActive ? "text-white" : "text-gray-900"
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -623,64 +661,20 @@ export const FlightSelection = () => {
           className={cn("w-1/4 space-y-4", !matches && "w-full")}
           ref={filterRef}
         >
-          <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
-            <SortOptionsContainer
-              settings={
-                <button 
-                  className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
-                  type="button"
-                  aria-label="פתח הגדרות מסננים"
-                  aria-expanded={showFilters}
-                  onClick={() => setShowFilters(true)}
-                >
-                  <Settings2Icon aria-hidden="true" />
-                </button>
-              }
-              sortOptions={
-                <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
-                  <button
-                    className={cn(
-                      "font-bold text-md px-3 py-1 rounded-r-md",
-                      sortOption === "price_asc" && "text-white bg-main"
-                    )}
-                    onClick={() => handleSortChange("price_asc")}
-                    type="button"
-                    aria-label="מיין לפי מחיר"
-                    aria-pressed={sortOption === "price_asc"}
-                    disabled={isLoading}
-                  >
-                    מחיר
-                  </button>
-                  <button
-                    className={cn(
-                      "font-bold text-md px-3 py-1 whitespace-nowrap",
-                      sortOption === "duration" && "text-white bg-main"
-                    )}
-                    onClick={() => handleSortChange("duration")}
-                    type="button"
-                    aria-label="מיין לפי משך טיסה"
-                    aria-pressed={sortOption === "duration"}
-                    disabled={isLoading}
-                  >
-                    משך טיסה
-                  </button>
-                  <button
-                    className={cn(
-                      "font-bold text-md px-3 py-1 rounded-l-md bg-[#e6cc00] whitespace-nowrap",
-                      isIsraeliFilter && "text-white bg-secondary"
-                    )}
-                    onClick={handleIsraeliFilter}
-                    type="button"
-                    aria-label="הצג רק חברות תעופה ישראליות"
-                    aria-pressed={isIsraeliFilter}
-                    disabled={isLoading}
-                  >
-                    ישראלי
-                  </button>
-                </div>
-              }
-            />
-          </div>
+          {/* Desktop-only: filter settings button (sort moved to top 3-card bar) */}
+          {matches && (
+            <div className={cn("flex justify-end", isLoading && "opacity-50 pointer-events-none")}>
+              <button
+                className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
+                type="button"
+                aria-label="פתח הגדרות מסננים"
+                aria-expanded={showFilters}
+                onClick={() => setShowFilters(true)}
+              >
+                <Settings2Icon aria-hidden="true" />
+              </button>
+            </div>
+          )}
           {matches && (
             <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
               <FlightFilters
