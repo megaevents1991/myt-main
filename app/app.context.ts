@@ -44,6 +44,10 @@ type AppContext = {
   >;
   skipHotel: boolean;
   setSkipHotel: (skip: boolean) => void;
+  skipFlight: boolean;
+  setSkipFlight: (skip: boolean) => void;
+  flightSkipped: boolean;
+  setFlightSkipped: (skip: boolean) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

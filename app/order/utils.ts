@@ -16,8 +16,8 @@ export const formatPhoneNumber = (value: string) => {
   return formatted.slice(0, 12); // Limit length
 };
 
-export const getPenText = (selectedFlight: Flight) => {
-  if (!selectedFlight.penalties) return "";
+export const getPenText = (selectedFlight: Flight | undefined) => {
+  if (!selectedFlight?.penalties) return "";
 
   return (
     selectedFlight.penalties

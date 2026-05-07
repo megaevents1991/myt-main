@@ -65,18 +65,22 @@ export default function OrderReview() {
     passengers: passengersContext,
     setPassengers: setPassengersContext,
     skipHotel,
+    flightSkipped,
   } = useContext(OrderContext);
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { affId, affDiscount, agentCommission, setAffDiscount } =
     useFetchAffiliate();
+  const passengerCount = flightSkipped
+    ? numberOfEventTickets
+    : selectedFlight?.numOfTravelers || 1;
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
-  >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
+  >(Array.from({ length: passengerCount }, () => ({})));
   const [passengers, setPassengers] = useState(
     passengersContext ||
-      Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+      Array.from({ length: passengerCount }, () => ({
         firstName: "",
         lastName: "",
         phone: "",
@@ -84,7 +88,7 @@ export default function OrderReview() {
       }))
   );
   const [touched, setTouched] = useState(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+    Array.from({ length: passengerCount }, () => ({
       firstName: false,
       lastName: false,
       phone: false,
@@ -573,8 +577,8 @@ export default function OrderReview() {
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
 
-  // Check if we have all required data (hotel is optional if skipHotel is true)
-  if (!event || !selectedFlight || (!selectedHotel && !skipHotel)) {
+  // Check if we have all required data (hotel optional if skipHotel; flight optional if flightSkipped)
+  if (!event || (!selectedFlight && !flightSkipped) || (!selectedHotel && !skipHotel)) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
         <p className="text-red-600">
@@ -867,7 +871,7 @@ export default function OrderReview() {
     }
   };
 
-  const penText = getPenText(selectedFlight);
+  const penText = selectedFlight ? getPenText(selectedFlight) : "";
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center">
@@ -983,17 +987,21 @@ export default function OrderReview() {
                     <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
                   ) : (
                     <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
-                      <div>
-                        {dayjs(selectedFlight.outbound.departureTime).format(
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
-                      <div>-</div>
-                      <div>
-                        {dayjs(selectedFlight.inbound.departureTime).format(
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
+                      {selectedFlight && (
+                        <>
+                          <div>
+                            {dayjs(selectedFlight.outbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                          <div>-</div>
+                          <div>
+                            {dayjs(selectedFlight.inbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -1015,7 +1023,7 @@ export default function OrderReview() {
                 )}
                 <Review
                   event={event}
-                  selectedFlight={selectedFlight}
+                  selectedFlight={selectedFlight!}
                   selectedHotel={selectedHotel!}
                   eventTicket={eventTicket}
                   numberOfEventTickets={numberOfEventTickets}
@@ -1026,6 +1034,7 @@ export default function OrderReview() {
                   airlineFullName={airlineFullName}
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
+                  flightSkipped={flightSkipped}
                 />
               </Card>
 
@@ -1305,35 +1314,39 @@ export default function OrderReview() {
                             כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.
                           </p>
 
-                          <h3 className="font-bold mt-4 mb-2">טיסות</h3>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <a className="text-blue-600 hover:underline cursor-pointer">
-                                תנאי הכרטיס עפ&quot;י המוביל האווירי.
-                              </a>
-                            </DialogTrigger>
-                            <DialogContent
-                              className="max-w-md max-h-[80vh] overflow-y-auto"
-                              dir="rtl"
-                            >
-                              <DialogHeader>
-                                <DialogTitle className="text-center text-xl font-bold">
-                                  Penalties
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div
-                                dir="ltr"
-                                className="text-left"
-                                dangerouslySetInnerHTML={{
-                                  __html: penText,
-                                }}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <p>
-                            עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
-                            בנוסף לדמי הביטול של המוביל האווירי.
-                          </p>
+                          {!flightSkipped && (
+                            <>
+                              <h3 className="font-bold mt-4 mb-2">טיסות</h3>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <a className="text-blue-600 hover:underline cursor-pointer">
+                                    תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                                  </a>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-md max-h-[80vh] overflow-y-auto"
+                                  dir="rtl"
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle className="text-center text-xl font-bold">
+                                      Penalties
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div
+                                    dir="ltr"
+                                    className="text-left"
+                                    dangerouslySetInnerHTML={{
+                                      __html: penText,
+                                    }}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <p>
+                                עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
+                                בנוסף לדמי הביטול של המוביל האווירי.
+                              </p>
+                            </>
+                          )}
 
                           {!skipHotel && selectedHotel && (() => {
                             const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
@@ -1774,52 +1787,56 @@ export default function OrderReview() {
                           <p>
                             כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.
                           </p>
-                          <h3 className="font-bold mt-4">טיסות</h3>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <a className="text-blue-600 hover:underline cursor-pointer">
-                                תנאי הכרטיס עפ&quot;י המוביל האווירי.
-                              </a>
-                            </DialogTrigger>
-                            <DialogContent
-                              className="max-w-md max-h-[80vh] overflow-y-auto"
-                              dir="rtl"
-                            >
-                              <DialogHeader>
-                                <DialogTitle className="text-center text-xl font-bold">
-                                  Penalties
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div
-                                dir="ltr"
-                                className="text-left"
-                                dangerouslySetInnerHTML={{
-                                  __html: penText,
-                                }}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <p>
-                            עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
-                            בנוסף לדמי הביטול של המוביל האווירי.
-                          </p>
-                          {!skipHotel && selectedHotel && (() => {
-                            const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
-                            if (!rawDate) return null;
-                            const formattedDate = selectedHotel.isOffline
-                              ? dayjs(rawDate).format("DD/MM/YYYY")
-                              : dayjs(rawDate).subtract(7, "day").format("DD/MM/YYYY");
-                            return (
-                              <>
-                                <h3 className="font-bold mt-4">מלון</h3>
-                                <p>
-                                  ביטול או שינוי חינם עד לתאריך ה-{" "}
-                                  {formattedDate}
-                                  , לאחר מכן דמי ביטול מלאים.
-                                </p>
-                              </>
-                            );
-                          })()}
+                          {!flightSkipped && (
+                            <>
+                              <h3 className="font-bold mt-4">טיסות</h3>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <a className="text-blue-600 hover:underline cursor-pointer">
+                                    תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                                  </a>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-md max-h-[80vh] overflow-y-auto"
+                                  dir="rtl"
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle className="text-center text-xl font-bold">
+                                      Penalties
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div
+                                    dir="ltr"
+                                    className="text-left"
+                                    dangerouslySetInnerHTML={{
+                                      __html: penText,
+                                    }}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <p>
+                                עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
+                                בנוסף לדמי הביטול של המוביל האווירי.
+                              </p>
+                              {!skipHotel && selectedHotel && (() => {
+                                const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                                if (!rawDate) return null;
+                                const formattedDate = selectedHotel.isOffline
+                                  ? dayjs(rawDate).format("DD/MM/YYYY")
+                                  : dayjs(rawDate).subtract(7, "day").format("DD/MM/YYYY");
+                                return (
+                                  <>
+                                    <h3 className="font-bold mt-4">מלון</h3>
+                                    <p>
+                                      ביטול או שינוי חינם עד לתאריך ה-{" "}
+                                      {formattedDate}
+                                      , לאחר מכן דמי ביטול מלאים.
+                                    </p>
+                                  </>
+                                );
+                              })()}
+                            </>
+                          )}
                         </div>
                       </DialogContent>
                     </Dialog>
