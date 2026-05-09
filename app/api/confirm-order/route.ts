@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   // Surface offline inventory linkage as top-level columns so the backoffice
   // can query / JOIN without unpacking the order JSON blobs.
   const flightInfoForLink = validatedData.flight_order_info as
-    | { offlineId?: number; offlineRawPrice?: number }
+    | { offlineId?: number; offlineRawPrice?: number; numOfTravelers?: number }
     | undefined;
   const hotelInfoForLink = validatedData.hotel_order_info as
     | {
@@ -61,7 +61,12 @@ export async function POST(req: Request) {
       gtmIdnts: gtmIdnts || null,
       status: onlySave ? "24Save" : "Pending",
       offline_flight_id: flightInfoForLink?.offlineId ?? null,
-      offline_flight_cost: flightInfoForLink?.offlineRawPrice ?? null,
+      // offlineRawPrice on flights is per-traveler; multiply to match hotel
+      // semantics (already a booking-level total) so profit calc is correct.
+      offline_flight_cost:
+        flightInfoForLink?.offlineRawPrice != null
+          ? flightInfoForLink.offlineRawPrice * (flightInfoForLink.numOfTravelers ?? 1)
+          : null,
       offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
       offline_hotel_ids: offlineHotelIdsForLink,
       offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,

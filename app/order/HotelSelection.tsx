@@ -45,6 +45,7 @@ export const HotelSelection = () => {
     event = {} as Event,
     setSelectedHotelFilters,
     setSkipHotel,
+    flightSkipped,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -810,8 +811,8 @@ export const HotelSelection = () => {
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
             {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) && offlineHotels.length === 0 ? (
               <FlightLoadingTransition
-                title="!?כבר הספקתם לבחור טיסות"
-                subtitle="ממש עוד רגע יופיעו גם המלונות"
+                title={flightSkipped ? "מחפשים לכם את המלונות הטובים ביותר" : "!?כבר הספקתם לבחור טיסות"}
+                subtitle={flightSkipped ? "ממש עוד רגע יופיעו המלונות" : "ממש עוד רגע יופיעו גם המלונות"}
                 showHotelOnly
                 className="py-12"
               />
