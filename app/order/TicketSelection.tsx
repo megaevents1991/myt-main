@@ -21,8 +21,8 @@ import {
 
 export const TicketSelection = () => {
   const { setEventTicket, event, eventTicket } = useContext(OrderContext);
-  const searchParams = useSearchParams();
-  const isDebugMode = searchParams.get("debug") === "1";
+  //const searchParams = useSearchParams();
+  const isDebugMode = false; //searchParams.get("debug") === "1";
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
