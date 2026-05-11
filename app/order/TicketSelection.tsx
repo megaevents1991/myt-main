@@ -115,8 +115,8 @@ export const TicketSelection = () => {
   }, [isTxEvent, tixEventId, event?.tx_excluded_sections]);
 
   /**
-   * Find the cheapest live listing in `category` that can satisfy `qty`
-   * (either `quantity_available >= qty` OR `split_quantity >= qty`).
+  * Find the cheapest live listing in `category` that can satisfy `qty`.
+  * For a single ticket, allow only true singles or fully splittable listings.
    * Returns the rounded-up USD price, or null when no listing qualifies.
    */
   const getLivePriceForCategory = useMemo(() => {
@@ -130,6 +130,7 @@ export const TicketSelection = () => {
         if (listingCat !== norm) return false;
         const qtyAvail = l.number_of_tickets_for_sale?.quantity_available ?? 0;
         const splitQty = l.number_of_tickets_for_sale?.split_quantity ?? 0;
+        if (qty === 1) return qtyAvail === 1 || qtyAvail === splitQty;
         return qtyAvail >= qty || splitQty >= qty;
       });
       if (qualifying.length === 0) return null;
@@ -354,7 +355,7 @@ export const TicketSelection = () => {
                 <th className="pr-3 py-1">Row</th>
                 <th className="pr-3 py-1">Qty avail</th>
                 <th className="pr-3 py-1">Split qty</th>
-                <th className="pr-3 py-1">Price ({liveListings[0]?.proceed_price?.currency ?? "?"})</th>
+                <th className="pr-3 py-1">Price</th>
                 <th className="pr-3 py-1">Restrictions / benefits</th>
               </tr>
             </thead>
@@ -384,7 +385,7 @@ export const TicketSelection = () => {
                       {l.number_of_tickets_for_sale?.split_quantity ?? "—"}
                     </td>
                     <td className="pr-3 py-1 font-semibold">
-                      {l.proceed_price?.amount ?? "—"}
+                      {l.proceed_price?.amount ?? "—"} {l.proceed_price?.currency ?? ""}
                     </td>
                     <td className="pr-3 py-1 max-w-[220px] break-words">{restrictionText}</td>
                   </tr>

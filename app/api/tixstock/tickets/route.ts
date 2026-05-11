@@ -35,13 +35,13 @@ function slugify(name: string): string {
 function isObstructedViewText(text: string): boolean {
   const lower = text.toLowerCase();
   if (
-    (lower.includes("limited") || lower.includes("partial")) &&
+    (lower.includes("limited") ||
+      lower.includes("side") ||
+      lower.includes("restricted") ||
+      lower.includes("partial")) &&
     lower.includes("view")
   )
     return true;
-  if (lower.includes("restricted") && lower.includes("view")) return true;
-  if (/\brestr?\.?\s*view\b/.test(lower)) return true;
-  if (/\br[\.\/]?v\.?\b/.test(lower)) return true;
   return false;
 }
 
@@ -74,11 +74,15 @@ function isExcludedSection(
   const listingSection = (listing.seat_details?.section ?? "")
     .trim()
     .toLowerCase();
+  const listingSectionSlug = slugify(listingSection);
   return excludedSections.some((excl) => {
     const lastUnderscore = excl.lastIndexOf("_");
     if (lastUnderscore === -1) return false;
     const catSlug = excl.substring(0, lastUnderscore);
     const sectionId = excl.substring(lastUnderscore + 1).toLowerCase();
+    if (listingCatSlug === catSlug && listingSectionSlug === listingCatSlug) {
+      return true;
+    }
     return listingCatSlug === catSlug && listingSection === sectionId;
   });
 }
@@ -147,11 +151,8 @@ export async function GET(req: NextRequest) {
     const normalised = allListings.map((l: any) => ({
       ...l,
       proceed_price: {
-        currency: "USD",
-        amount: toUsd(
-          l.proceed_price?.amount ?? "0",
-          l.proceed_price?.currency ?? "USD",
-        ),
+        amount: l.proceed_price?.amount ?? "0",
+        currency: l.proceed_price?.currency ?? "USD",
       },
     }));
 
@@ -169,6 +170,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Filter out obstructed/restricted-view listings
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filtered = afterSections.filter(
       (l: any) => !hasObstructedViewRestriction(l),
