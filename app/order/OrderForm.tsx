@@ -99,12 +99,6 @@ export const OrderForm = ({ event }: { event: Event }) => {
     hasBundleEvents &&
     activeTicketEventIndex < (selectedEvents?.length || 0) - 1;
 
-  console.log("[skip-flight] OrderForm render", {
-    step,
-    skipFlight,
-    flightSkipped,
-    isNoHotelFlow,
-  });
   // When all selected events allow ticket-only AND user is at the flight step,
   // the primary CTA on step 1 shouldn't promise a flight selection next.
   const willEnterTicketOnly = skipFlight && flightSkipped;

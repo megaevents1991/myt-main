@@ -88,10 +88,6 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
       if (!bundleEventIds || bundleEventIds.length <= 1) {
         // Normal single-event flow
         if (initialEvent) {
-          console.log("[skip-flight] single-event init", {
-            id: initialEvent.id,
-            skip_flight: initialEvent.skip_flight,
-          });
           setSelectedEvents([initialEvent]);
           setActiveTicketEventIndex(0);
           setSkipFlight(initialEvent.skip_flight === true);
