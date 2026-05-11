@@ -21,6 +21,7 @@ export function useOrderVars() {
     numberOfEventTickets,
     skipHotel,
     forceSkipHotel,
+    flightSkipped,
   } = useContext(OrderContext);
 
   const effectiveEvents = useMemo(() => {
@@ -37,9 +38,10 @@ export function useOrderVars() {
   // This keeps the "additional/subtract" flight price consistent across selection and review.
   const baseFlightPricePerPerson = useMemo(() => {
     if (!event) return 0;
+    if (flightSkipped) return 0;
     if (!hasBundle) return event.base_flight_price;
     return Math.max(0, ...effectiveEvents.map((e) => e.base_flight_price || 0));
-  }, [event, hasBundle, effectiveEvents]);
+  }, [event, hasBundle, effectiveEvents, flightSkipped]);
 
   const activeEvent = effectiveEvents[activeTicketEventIndex] || event;
 
@@ -83,6 +85,7 @@ export function useOrderVars() {
   );
 
   const flightPriceAddition = useMemo(() => {
+    if (flightSkipped) return 0;
     if (!selectedFlight || !event) {
       return 0;
     }
@@ -94,7 +97,7 @@ export function useOrderVars() {
       ? selectedFlight.price / selectedFlight.numOfTravelers -
           baseFlightPricePerPerson
       : 0;
-  }, [selectedFlight, event, baseFlightPricePerPerson]);
+  }, [selectedFlight, event, baseFlightPricePerPerson, flightSkipped]);
 
   const minTicketPriceForEvent = useCallback((evt?: typeof event) => {
     if (!evt || !evt.tickets_and_rates || evt.tickets_and_rates.length === 0) return 0;
@@ -115,6 +118,9 @@ export function useOrderVars() {
   const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
 
   const isNumberOfPersonsEqual = useMemo(() => {
+    if (flightSkipped) {
+      return totalGuests === numberOfEventTickets;
+    }
     if (!selectedFlight) {
       return false;
     }
@@ -122,16 +128,19 @@ export function useOrderVars() {
       totalGuests === numberOfEventTickets &&
       totalGuests === selectedFlight.numOfTravelers
     );
-  }, [totalGuests, numberOfEventTickets, selectedFlight]);
+  }, [totalGuests, numberOfEventTickets, selectedFlight, flightSkipped]);
 
   const numberOfPersons = useMemo(() => {
+    if (flightSkipped) {
+      return numberOfEventTickets;
+    }
     if (!selectedFlight) {
       return 0;
     }
     return selectedFlight.numOfTravelers > numberOfEventTickets
       ? selectedFlight.numOfTravelers
       : numberOfEventTickets;
-  }, [selectedFlight, numberOfEventTickets]);
+  }, [selectedFlight, numberOfEventTickets, flightSkipped]);
 
   /* Fetch Pack recommended price */
   const packRecommendedPrice = useMemo(() => {
@@ -149,7 +158,8 @@ export function useOrderVars() {
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
   const calculateBaseTotal = useCallback(() => {
-    if (!event || !selectedFlight) {
+    if (!event) return 0;
+    if (!flightSkipped && !selectedFlight) {
       return 0;
     }
 
@@ -166,10 +176,17 @@ export function useOrderVars() {
       ? 0 // When skipping, the credit is applied via hotelPriceAddition
       : (hotelPriceAddition + event.base_hotel_price) * totalGuests;
 
+    // Flight component: zero when user skipped flight; else use chosen flight + base.
+    const flightTravelers = flightSkipped
+      ? 0
+      : selectedFlight?.numOfTravelers || 0;
+    const flightComponent = flightSkipped
+      ? 0
+      : (flightPriceAddition + baseFlightPricePerPerson) * flightTravelers;
+
     return Math.ceil(
       ticketTotal + maup * numberOfEventTickets +
-        (flightPriceAddition + baseFlightPricePerPerson) *
-          selectedFlight.numOfTravelers +
+        flightComponent +
         hotelComponent +
         (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
     );
@@ -186,6 +203,7 @@ export function useOrderVars() {
     numberOfEventTickets,
     flightPriceAddition,
     baseFlightPricePerPerson,
+    flightSkipped,
   ]);
 
   /* Calculation of final price for the customer after discounts and such */

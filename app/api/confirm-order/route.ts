@@ -125,10 +125,12 @@ export async function POST(req: Request) {
 ${eventDetailsText}
 
           ******** Flight Info **********
-          Flight Outbound Number: ${(validatedData.flight_order_info.outbound.flightNumber)}
-          Flight Outbound Date: ${(validatedData.flight_order_info.outbound.departureTime)}
-          Flight Inbound Number: ${(validatedData.flight_order_info.inbound.flightNumber)}
-          Flight Inbound Date: ${(validatedData.flight_order_info.inbound.departureTime)}
+          ${(!validatedData.flight_order_info || Object.keys(validatedData.flight_order_info).length === 0)
+            ? "Flight: SKIPPED BY CUSTOMER (ticket-only order)"
+            : `Flight Outbound Number: ${validatedData.flight_order_info.outbound?.flightNumber}
+          Flight Outbound Date: ${validatedData.flight_order_info.outbound?.departureTime}
+          Flight Inbound Number: ${validatedData.flight_order_info.inbound?.flightNumber}
+          Flight Inbound Date: ${validatedData.flight_order_info.inbound?.departureTime}`}
 
           ******* Hotel Details *********
           ${(!validatedData.hotel_order_info || Object.keys(validatedData.hotel_order_info).length === 0)

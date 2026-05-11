@@ -60,6 +60,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
     forceSkipHotel,
     setForceSkipHotel,
     setHotel,
+    skipFlight,
+    flightSkipped,
+    setFlightSkipped,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -96,10 +99,23 @@ export const OrderForm = ({ event }: { event: Event }) => {
     hasBundleEvents &&
     activeTicketEventIndex < (selectedEvents?.length || 0) - 1;
 
+  console.log("[skip-flight] OrderForm render", {
+    step,
+    skipFlight,
+    flightSkipped,
+    isNoHotelFlow,
+  });
+  // When all selected events allow ticket-only AND user is at the flight step,
+  // the primary CTA on step 1 shouldn't promise a flight selection next.
+  const willEnterTicketOnly = skipFlight && flightSkipped;
   const primaryCtaLabel =
     step === 1 && isMondial2026
-      ? (isTicketStepNotLastBundledEvent ? "לאירוע הבא" : "בחר טיסה")
-      : step === 2 && isNoHotelFlow
+      ? (isTicketStepNotLastBundledEvent
+          ? "לאירוע הבא"
+          : skipFlight
+            ? "המשך"
+            : "בחר טיסה")
+      : step === 2 && (isNoHotelFlow || willEnterTicketOnly)
         ? "לסיכום הזמנה"
         : buttonText[step];
 
@@ -115,7 +131,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const buttonDisabled =
     (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
-    (!flight?.id && step === 2) || 
+    (!flight?.id && !flightSkipped && step === 2) || // Allow progression if flight is skipped
     (!hotel?.id && !skipHotel && step === 3); // Allow progression if hotel is skipped
 
   const airline = shortenAirlineName(flight?.metadata?.name);
@@ -160,10 +176,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
     const isBundle = effectiveEvents.length > 1;
 
     if (isBundle) {
-      const maxBaseFlightPrice = Math.max(
-        0,
-        ...effectiveEvents.map((evt) => evt.base_flight_price || 0)
-      );
+      const maxBaseFlightPrice = flightSkipped
+        ? 0
+        : Math.max(
+            0,
+            ...effectiveEvents.map((evt) => evt.base_flight_price || 0)
+          );
       const sumMinTicketPrices = effectiveEvents.reduce(
         (sum, evt) => sum + minTicketPriceForEvent(evt),
         0
@@ -176,15 +194,18 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
     // Keep legacy base price logic here (single-event baseline)
     return Math.ceil(
-      event.base_flight_price +
+      (flightSkipped ? 0 : event.base_flight_price) +
         event.base_hotel_price +
         minTicketPriceForEvent(event) +
         markup
     ).toLocaleString("en-US");
   })();
 
-  const nextStep = (skipHotel = false) =>
+  const nextStep = (skipHotel = false, skipFlightArg = false) =>
     setStep((prev) => {
+      // Effective skip-flight: either persisted state OR an immediate override
+      // (used by handleSkipFlight, where context state hasn't propagated yet).
+      const effectiveFlightSkipped = flightSkipped || skipFlightArg;
       if (prev === 1) {
         const currentTicketEvent =
           selectedEvents && selectedEvents.length > 0
@@ -229,9 +250,14 @@ export const OrderForm = ({ event }: { event: Event }) => {
         }
       } else if (prev === 2) {
         orderStage("FLIGHT_SELECTED", {
-          data: { flight: flight?.id },
+          data: { flight: effectiveFlightSkipped ? null : flight?.id },
         });
-        if (flight) {
+        if (effectiveFlightSkipped) {
+          trackEvent("flightSelected", {
+            skipped: true,
+            numOfPeople: numberOfPersons,
+          });
+        } else if (flight) {
           trackEvent("flightSelected", {
             selectedAirline: airlineName,
             numOfPeople: numberOfPersons,
@@ -286,23 +312,25 @@ export const OrderForm = ({ event }: { event: Event }) => {
         const isHotelSkipped = skipHotel || !hotel;
         
         // Common logic for step 3 completion (flight pricing, tracking, etc.)
-        fetch(`/api/flights/pricing`, {
-          method: "POST",
-          body: JSON.stringify({
-            flightOffer: flight?.offer,
-            virtual: flight?.virtualOfferType || false,
-          }),
-        }).then((res) => {
-          if (res.ok) {
-            res.json().then((data) => {
-              setFlight((prev = {} as Flight) => ({
-                ...prev,
-                penalties: data?.penalties,
-                bags: data?.bags,
-              }));
-            });
-          }
-        });
+        if (!flightSkipped && flight?.offer) {
+          fetch(`/api/flights/pricing`, {
+            method: "POST",
+            body: JSON.stringify({
+              flightOffer: flight?.offer,
+              virtual: flight?.virtualOfferType || false,
+            }),
+          }).then((res) => {
+            if (res.ok) {
+              res.json().then((data) => {
+                setFlight((prev = {} as Flight) => ({
+                  ...prev,
+                  penalties: data?.penalties,
+                  bags: data?.bags,
+                }));
+              });
+            }
+          });
+        }
 
         orderStage("HOTEL_SELECTED", {
           data: { hotel: isHotelSkipped ? null : hotel?.id || null },
@@ -348,6 +376,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
     nextStep(true);
   };
 
+  const handleSkipFlight = () => {
+    setFlightSkipped(true);
+    setFlight(undefined);
+    // Pass skipFlightArg so step-2 logic doesn't depend on state propagation.
+    nextStep(false, true);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-2 pt-3">
       {step === 1 && <TicketSelection />}
@@ -367,8 +402,31 @@ export const OrderForm = ({ event }: { event: Event }) => {
             {step < 4 && (
               <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
                 <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center">
-                  {/* Button Section - Split on step 3 (hotel selection) */}
-                  {step === 3 ? (
+                  {/* Button Section - Split on step 3 (hotel selection) and on step 2 when skip-flight is allowed */}
+                  {step === 2 && skipFlight && !flightSkipped ? (
+                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
+                      <button
+                        disabled={buttonDisabled}
+                        onClick={() => nextStep()}
+                        className={cn(
+                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
+                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        type="button"
+                        aria-label={primaryCtaLabel}
+                      >
+                        {primaryCtaLabel}
+                      </button>
+                      <button
+                        onClick={handleSkipFlight}
+                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
+                        type="button"
+                        aria-label="המשך ללא טיסה"
+                      >
+                        ללא טיסה
+                      </button>
+                    </div>
+                  ) : step === 3 ? (
                     // Hotel Selection Step: Show split buttons (desktop) or stacked (mobile)
                     <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
                       <button
@@ -412,7 +470,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
                   {/* Order Summary Section */}
                   <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
-                    {step > 2 && (
+                    {step > 2 && !flightSkipped && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span
                           className={cn(

@@ -41,6 +41,8 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
     setForceSkipHotel,
     setSkipHotel,
     setHotel,
+    setSkipFlight,
+    setFlightSkipped,
   } = useContext(OrderContext);
   const [showAboutSection, setShowAboutSection] = useState(false);
   const searchParams = useSearchParams();
@@ -80,11 +82,19 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
   // Mondial multi-event bundle initialization (client-side)
   useEffect(() => {
     const initBundle = async () => {
+      // Reset choice flag on (re)init; keep capability flag set per event(s) below.
+      setFlightSkipped(false);
+
       if (!bundleEventIds || bundleEventIds.length <= 1) {
         // Normal single-event flow
         if (initialEvent) {
+          console.log("[skip-flight] single-event init", {
+            id: initialEvent.id,
+            skip_flight: initialEvent.skip_flight,
+          });
           setSelectedEvents([initialEvent]);
           setActiveTicketEventIndex(0);
+          setSkipFlight(initialEvent.skip_flight === true);
         }
         return;
       }
@@ -110,6 +120,8 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
           setSelectedEvents(ordered);
           setActiveTicketEventIndex(0);
           setEvent(ordered[0]);
+          // Bundle-level capability: enable skip-flight only when EVERY event opts in.
+          setSkipFlight(ordered.every((e) => e.skip_flight === true));
         }
       } catch (error) {
         console.error("Error initializing multi-event bundle:", error);

@@ -25,6 +25,7 @@ export const Review = ({
   eventTicketPriceAddition,
   event,
   skipHotel,
+  flightSkipped,
 }: {
   agentCommission: number;
   hotelPriceAddition: number;
@@ -37,12 +38,13 @@ export const Review = ({
   };
   selectedEvents?: Event[];
   selectedEventTickets?: Record<number, OrderTicket>;
-  selectedFlight: Flight;
+  selectedFlight?: Flight;
   airlineFullName?: string;
   flightPriceAddition: number;
   eventTicketPriceAddition: number;
   event: Event;
   skipHotel?: boolean;
+  flightSkipped?: boolean;
 }) => {
   const mondialParsed = useMemo(() => parseMondial2026EventName(event?.name), [event?.name]);
 
@@ -167,7 +169,7 @@ export const Review = ({
           />
         ),
       }] : []),
-      {
+      ...(!flightSkipped && selectedFlight ? [{
         id: "flight-summary",
         primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)` ,
         secondary: airlineFullName || selectedFlight.airline,
@@ -181,7 +183,7 @@ export const Review = ({
             selectedFlight={selectedFlight}
           />
         ),
-      },
+      }] : []),
     ],
     [
       mondialParsed.isMondial2026,
@@ -201,6 +203,7 @@ export const Review = ({
       isBundle,
       ticketLines,
       totalTickets,
+      flightSkipped,
     ]
   );
 

@@ -58,7 +58,7 @@ export const validateOrderData = async (
         }
         return singleEventOrderInfoSchema;
       }) as unknown as yup.Schema,
-      flight_order_info: yup.object().required(),
+      flight_order_info: yup.object().nullable().notRequired(), // null/undefined when ticket-only (skip-flight)
       hotel_order_info: yup.object().nullable().required(), // Can be null if hotel is skipped
       user_shown_price: yup.number().required(),
       event_id: yup.number().required(),
@@ -297,7 +297,14 @@ export const userEmail = (
                                                   <strong style="color: #05203c;">כרטיסים:</strong> ${replacements.ticketType}, (<span style="unicode-bidi: embed;">${replacements.quantity}</span>)
                                               </td>
                                           </tr>
-                                          <tr>
+                                          ${
+                                            replacements.flightSkipped
+                                              ? `<tr>
+                                              <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
+                                                  <strong style="color: #05203c;">טיסה:</strong> לא נכלל בהזמנה (כרטיסים בלבד)
+                                              </td>
+                                          </tr>`
+                                              : `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
                                                   <strong style="color: #05203c;">חברת תעופה:</strong> ${replacements.airline}
                                               </td>
@@ -307,7 +314,8 @@ export const userEmail = (
                                                   <strong style="color: #05203c;">טיסת הלוך:</strong> <span style="unicode-bidi: embed;">${replacements.departFlight}, ${replacements.departFlightDate}</span>
                                                   <br><strong style="color: #05203c;">טיסת חזור:</strong> <span style="unicode-bidi: embed;">${replacements.returnFlight}, ${replacements.returnFlightDate}</span>
                                               </td>
-                                          </tr>
+                                          </tr>`
+                                          }
                                           ${
                                             replacements.hotel !== "ללא מלון"
                                               ? `<tr>

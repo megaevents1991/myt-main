@@ -16,7 +16,9 @@ type AppContext = {
   activeTicketEventIndex: number;
   setActiveTicketEventIndex: Dispatch<SetStateAction<number>>;
   selectedEventTickets: Record<number, OrderTicket>;
-  setSelectedEventTickets: Dispatch<SetStateAction<Record<number, OrderTicket>>>;
+  setSelectedEventTickets: Dispatch<
+    SetStateAction<Record<number, OrderTicket>>
+  >;
   hotel?: OrderHotel;
   eventTicket: OrderTicket;
   setEventTicket: (eventTicket: OrderTicket) => void;
@@ -52,6 +54,11 @@ type AppContext = {
   setSkipHotel: (skip: boolean) => void;
   forceSkipHotel: boolean;
   setForceSkipHotel: (skip: boolean) => void;
+  // Skip-flight (ticket-only): skipFlight = capability (event-level), flightSkipped = user choice.
+  skipFlight: boolean;
+  setSkipFlight: (skip: boolean) => void;
+  flightSkipped: boolean;
+  setFlightSkipped: (skipped: boolean) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

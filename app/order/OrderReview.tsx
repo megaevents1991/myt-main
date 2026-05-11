@@ -67,7 +67,19 @@ export default function OrderReview() {
     passengers: passengersContext,
     setPassengers: setPassengersContext,
     skipHotel,
+    flightSkipped,
   } = useContext(OrderContext);
+
+  // Total tickets across (possibly multi-event) selection — used as passenger count
+  // when flight is skipped (no flight to dictate numOfTravelers).
+  const totalTicketsForPassengerCount =
+    Object.values(selectedEventTickets || {}).reduce(
+      (sum, t) => sum + (t?.quantity || 0),
+      0
+    ) || numberOfEventTickets || 1;
+  const passengerSlots = flightSkipped
+    ? totalTicketsForPassengerCount
+    : selectedFlight?.numOfTravelers || 1;
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,10 +87,10 @@ export default function OrderReview() {
     useFetchAffiliate();
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
-  >(Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({})));
+  >(Array.from({ length: passengerSlots }, () => ({})));
   const [passengers, setPassengers] = useState(
     passengersContext ||
-      Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+      Array.from({ length: passengerSlots }, () => ({
         firstName: "",
         lastName: "",
         phone: "",
@@ -86,7 +98,7 @@ export default function OrderReview() {
       }))
   );
   const [touched, setTouched] = useState(
-    Array.from({ length: selectedFlight?.numOfTravelers || 1 }, () => ({
+    Array.from({ length: passengerSlots }, () => ({
       firstName: false,
       lastName: false,
       phone: false,
@@ -534,8 +546,9 @@ export default function OrderReview() {
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
 
-  // Check if we have all required data (hotel is optional if skipHotel is true)
-  if (!event || !selectedFlight || (!selectedHotel && !skipHotel)) {
+  // Check if we have all required data (hotel is optional if skipHotel is true,
+  // flight is optional if flightSkipped is true)
+  if (!event || (!selectedFlight && !flightSkipped) || (!selectedHotel && !skipHotel)) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
         <p className="text-red-600">
@@ -736,7 +749,9 @@ export default function OrderReview() {
 
         return { events };
       })(),
-      flight_order_info: selectedFlight || {},
+      // Use empty object as sentinel for "skipped" — mirrors hotel_order_info convention,
+      // and matches the DB column (NOT NULL JSON).
+      flight_order_info: flightSkipped ? {} : (selectedFlight || {}),
       hotel_order_info: skipHotel ? {} : (selectedHotel || {}),
       user_shown_price: finalPurchasePrice,
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
@@ -949,7 +964,7 @@ export default function OrderReview() {
                 >
                   {!isMobile ? (
                     <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
-                  ) : (
+                  ) : selectedFlight && !flightSkipped ? (
                     <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
                       <div>
                         {dayjs(selectedFlight.outbound.departureTime).format(
@@ -961,6 +976,12 @@ export default function OrderReview() {
                         {dayjs(selectedFlight.inbound.departureTime).format(
                           "DD/MM/YYYY"
                         )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex text-sm gap-1 items-center mt-[4px]" dir="rtl">
+                      <div>
+                        {dayjs(event?.date).format("DD/MM/YYYY")}
                       </div>
                     </div>
                   )}
@@ -996,6 +1017,7 @@ export default function OrderReview() {
                   airlineFullName={airlineFullName}
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
+                  flightSkipped={flightSkipped}
                 />
               </Card>
 
@@ -1275,35 +1297,39 @@ export default function OrderReview() {
                             כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.
                           </p>
 
-                          <h3 className="font-bold mt-4 mb-2">טיסות</h3>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <a className="text-blue-600 hover:underline cursor-pointer">
-                                תנאי הכרטיס עפ&quot;י המוביל האווירי.
-                              </a>
-                            </DialogTrigger>
-                            <DialogContent
-                              className="max-w-md max-h-[80vh] overflow-y-auto"
-                              dir="rtl"
-                            >
-                              <DialogHeader>
-                                <DialogTitle className="text-center text-xl font-bold">
-                                  Penalties
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div
-                                dir="ltr"
-                                className="text-left"
-                                dangerouslySetInnerHTML={{
-                                  __html: penText,
-                                }}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <p>
-                            עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
-                            בנוסף לדמי הביטול של המוביל האווירי.
-                          </p>
+                          {!flightSkipped && selectedFlight && (
+                            <>
+                              <h3 className="font-bold mt-4 mb-2">טיסות</h3>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <a className="text-blue-600 hover:underline cursor-pointer">
+                                    תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                                  </a>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-md max-h-[80vh] overflow-y-auto"
+                                  dir="rtl"
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle className="text-center text-xl font-bold">
+                                      Penalties
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div
+                                    dir="ltr"
+                                    className="text-left"
+                                    dangerouslySetInnerHTML={{
+                                      __html: penText,
+                                    }}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <p>
+                                עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
+                                בנוסף לדמי הביטול של המוביל האווירי.
+                              </p>
+                            </>
+                          )}
 
                           {!skipHotel && selectedHotel && (
                             <>
@@ -1742,35 +1768,39 @@ export default function OrderReview() {
                           <p>
                             כרטיסי האירוע בדמי ביטול מלאים מרגע ביצוע ההזמנה.
                           </p>
-                          <h3 className="font-bold mt-4">טיסות</h3>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <a className="text-blue-600 hover:underline cursor-pointer">
-                                תנאי הכרטיס עפ&quot;י המוביל האווירי.
-                              </a>
-                            </DialogTrigger>
-                            <DialogContent
-                              className="max-w-md max-h-[80vh] overflow-y-auto"
-                              dir="rtl"
-                            >
-                              <DialogHeader>
-                                <DialogTitle className="text-center text-xl font-bold">
-                                  Penalties
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div
-                                dir="ltr"
-                                className="text-left"
-                                dangerouslySetInnerHTML={{
-                                  __html: penText,
-                                }}
-                              />
-                            </DialogContent>
-                          </Dialog>
-                          <p>
-                            עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
-                            בנוסף לדמי הביטול של המוביל האווירי.
-                          </p>
+                          {!flightSkipped && selectedFlight && (
+                            <>
+                              <h3 className="font-bold mt-4">טיסות</h3>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <a className="text-blue-600 hover:underline cursor-pointer">
+                                    תנאי הכרטיס עפ&quot;י המוביל האווירי.
+                                  </a>
+                                </DialogTrigger>
+                                <DialogContent
+                                  className="max-w-md max-h-[80vh] overflow-y-auto"
+                                  dir="rtl"
+                                >
+                                  <DialogHeader>
+                                    <DialogTitle className="text-center text-xl font-bold">
+                                      Penalties
+                                    </DialogTitle>
+                                  </DialogHeader>
+                                  <div
+                                    dir="ltr"
+                                    className="text-left"
+                                    dangerouslySetInnerHTML={{
+                                      __html: penText,
+                                    }}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                              <p>
+                                עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
+                                בנוסף לדמי הביטול של המוביל האווירי.
+                              </p>
+                            </>
+                          )}
                           {!skipHotel && selectedHotel && (
                             <>
                               <h3 className="font-bold mt-4">מלון</h3>

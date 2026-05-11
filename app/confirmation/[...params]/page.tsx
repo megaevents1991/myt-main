@@ -126,13 +126,17 @@ export default function ConfirmationPage() {
             eventLocation: primaryEvent.location_name,
             ticketType: primaryEvent.category,
             quantity: primaryEvent.number_of_ticket.toString(),
-          airline: orderData.flight_order_info.metadata.name,
-          flights: `Outbound: ${orderData.flight_order_info.outbound.flightNumber}, Return: ${orderData.flight_order_info.inbound.flightNumber}`,
-          dates: `Outbound: ${dayjs(
-            orderData.flight_order_info.outbound.departureTime
-          ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
-            orderData.flight_order_info.inbound.departureTime
-          ).format("DD/MM/YYYY HH:MM")}`,
+          airline: orderData.flight_order_info?.metadata?.name ?? "",
+          flights: orderData.flight_order_info
+            ? `Outbound: ${orderData.flight_order_info.outbound?.flightNumber}, Return: ${orderData.flight_order_info.inbound?.flightNumber}`
+            : "",
+          dates: orderData.flight_order_info
+            ? `Outbound: ${dayjs(
+                orderData.flight_order_info.outbound?.departureTime
+              ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
+                orderData.flight_order_info.inbound?.departureTime
+              ).format("DD/MM/YYYY HH:MM")}`
+            : "",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
           isPaid,
@@ -152,7 +156,7 @@ export default function ConfirmationPage() {
           eventLocation: primaryEvent.location_name,
           ticketCategory: primaryEvent.category,
           numberOfTickets: primaryEvent.number_of_ticket,
-          airline: orderData.flight_order_info.metadata.name,
+          airline: orderData.flight_order_info?.metadata?.name ?? "SKIPPED",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "SKIPPED" : orderData.hotel_order_info.name,
           paymentMethod:
             Object.keys(orderData.payment_info || {}).length === 0

@@ -7,6 +7,7 @@ import {
   parseMondial2026EventName,
 } from "@/lib/mondial2026Title";
 import { EventTagBadge, isValidEventTag, type EventTagType } from "./EventTagBadge";
+import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 
 type Mondial2026EventCardProps = {
   event: Event;
@@ -62,6 +63,7 @@ export function Mondial2026EventCard({
               dir="rtl"
             >
               {tagToShow && <EventTagBadge tag={tagToShow as EventTagType} />}
+              {event.skip_flight === true && <TicketOnlyBadge />}
               <Image
                 src={event.card_image_url}
                 alt={event.name}

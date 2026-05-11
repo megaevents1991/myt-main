@@ -33,6 +33,7 @@ export type Event = {
   is_prioritized: boolean;
   is_deleted: string;
   tags: string;
+  skip_flight?: boolean;
 };
 
 export type Flight = {
@@ -247,7 +248,7 @@ export type OrderData = {
     last_name: string;
   }[];
   event_order_info: EventOrderInfo;
-  flight_order_info: Flight; // You might need to define a specific interface here
+  flight_order_info: Partial<Flight>; // {} (empty object) indicates flight was skipped (ticket-only); otherwise full Flight
   hotel_order_info: OrderHotel | Record<string, never>; // empty object {} indicates hotel was skipped
   user_shown_price: number;
   event_id: number;

@@ -96,15 +96,22 @@ export const sendUserEmail = async ({
       getPrimaryEventOrderInfo(orderData.event_order_info)?.location_name || "",
     ticketType: getPrimaryEventOrderInfo(orderData.event_order_info).category,
     quantity: getPrimaryEventOrderInfo(orderData.event_order_info).number_of_ticket,
+    flightSkipped:
+      !orderData.flight_order_info ||
+      Object.keys(orderData.flight_order_info).length === 0,
     airline: orderData.flight_order_info?.metadata?.name,
-    departFlight: orderData.flight_order_info?.outbound.flightNumber,
-    departFlightDate: dayjs(
-      orderData.flight_order_info?.outbound.departureTime
-    ).format("DD/MM/YYYY HH:MM"),
-    returnFlight: orderData.flight_order_info?.inbound.flightNumber,
-    returnFlightDate: dayjs(
-      orderData.flight_order_info?.inbound.departureTime
-    ).format("DD/MM/YYYY HH:MM"),
+    departFlight: orderData.flight_order_info?.outbound?.flightNumber,
+    departFlightDate: orderData.flight_order_info
+      ? dayjs(orderData.flight_order_info.outbound?.departureTime).format(
+          "DD/MM/YYYY HH:MM"
+        )
+      : "",
+    returnFlight: orderData.flight_order_info?.inbound?.flightNumber,
+    returnFlightDate: orderData.flight_order_info
+      ? dayjs(orderData.flight_order_info.inbound?.departureTime).format(
+          "DD/MM/YYYY HH:MM"
+        )
+      : "",
     hotel: (orderData.hotel_order_info && Object.keys(orderData.hotel_order_info).length > 0) 
       ? orderData.hotel_order_info.name 
       : "ללא מלון",

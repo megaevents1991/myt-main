@@ -44,17 +44,22 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   >(undefined);
   const [skipHotel, setSkipHotel] = useState(false);
   const [forceSkipHotel, setForceSkipHotel] = useState(false);
+  const [skipFlight, setSkipFlight] = useState(false);
+  const [flightSkipped, setFlightSkipped] = useState(false);
   
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";
   const isNoHotelFlow = isUS || forceSkipHotel;
-  
+  const isTicketOnlyNoHotel = flightSkipped && isNoHotelFlow;
+
   const handleStepperClick = (index: number) => {
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
       if (isNoHotelFlow && targetStep === 3) return;
+      // Ticket-only: prevent navigating back to the (skipped) flight step.
+      if (isTicketOnlyNoHotel && targetStep === 2) return;
       setStep(targetStep);
     }
   };
@@ -76,7 +81,15 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
         <Stepper
           currentStep={step}
           onStepperClick={handleStepperClick}
-          steps={isNoHotelFlow ? ["כרטיס", "טיסה", "סיום"] : undefined}
+          steps={
+            isTicketOnlyNoHotel
+              ? ["כרטיס", "סיום"]
+              : flightSkipped
+                ? ["כרטיס", "מלון", "סיום"]
+                : isNoHotelFlow
+                  ? ["כרטיס", "טיסה", "סיום"]
+                  : undefined
+          }
         />
       )}
       <OrderContext.Provider
@@ -115,6 +128,10 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setSkipHotel,
           forceSkipHotel,
           setForceSkipHotel,
+          skipFlight,
+          setSkipFlight,
+          flightSkipped,
+          setFlightSkipped,
         }}
       >
         <HotelFetchProvider>
