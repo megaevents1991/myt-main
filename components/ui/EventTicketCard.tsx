@@ -18,6 +18,7 @@ export type TicketCardProps = {
   vip?: VipConfig;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  disabled?: boolean;
 };
 
 export const EventTicketCard = ({
@@ -34,6 +35,7 @@ export const EventTicketCard = ({
   vip,
   onMouseEnter,
   onMouseLeave,
+  disabled = false,
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
   const isVip = vip?.enabled === true;
@@ -47,6 +49,7 @@ export const EventTicketCard = ({
       className={cn("p-2 pr-8 relative overflow-visible")}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      disabled={disabled}
     >
       {/* VIP Ribbon */}
       {isVip && (
@@ -70,9 +73,10 @@ export const EventTicketCard = ({
           <div className="w-2/3 lg:w-5/9 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
-              checked={isSelected}
+              checked={!disabled && isSelected}
               color="#05203C"
               style={{ pointerEvents: "none" }}
+              disabled={disabled}
             />
             <div>
               <div className="text-xl font-bold flex items-center gap-2">
@@ -98,7 +102,7 @@ export const EventTicketCard = ({
           </div>
           <div
             className="w-1/3 hidden lg:block"
-            style={{ visibility: isSelected ? "visible" : "hidden" }}
+            style={{ visibility: isSelected && !disabled ? "visible" : "hidden" }}
           >
             <CounterInput
               value={numberOfTickets}
@@ -132,7 +136,7 @@ export const EventTicketCard = ({
             )}
           </div>
         </div>
-        {isSelected && (
+        {isSelected && !disabled && (
           <div className="w-full block lg:hidden border-t-2 pt-2 border-white mt-2">
             <CounterInput
               value={numberOfTickets}

@@ -347,6 +347,7 @@ export const prePaintSvg = (
   svgHtml: string,
   tickets: TixStockMatchableListing[],
   excludedSections?: string[],
+  disabledTicketIds?: Set<string>,
 ): string => {
   if (!svgHtml || typeof DOMParser === "undefined") return svgHtml;
 
@@ -367,15 +368,24 @@ export const prePaintSvg = (
         continue;
       }
 
-      const hasMatchingTicket = tickets.some((t) => {
+      const matchingTickets = tickets.filter((t) => {
         if (isCategoryOnlyTicket(t)) {
           return categoryOnlyMatchesEl(t, secId, catId);
         }
         return isTicketMatchingSection(t, secId, catId);
       });
 
-      if (hasMatchingTicket) {
+      const hasEnabledTicket = matchingTickets.some(
+        (t) => !disabledTicketIds?.has(t.id),
+      );
+      const hasDisabledTicket = matchingTickets.some((t) =>
+        disabledTicketIds?.has(t.id),
+      );
+
+      if (hasEnabledTicket) {
         paintSection(el, "available");
+      } else if (hasDisabledTicket) {
+        paintSection(el, "disabled");
       } else {
         paintSection(el, "inactive");
       }
