@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { IBM_Plex_Sans_Hebrew } from "next/font/google";
 import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
@@ -135,7 +136,12 @@ const theme = createTheme({
 const GTM_TAG = process.env.NEXT_PUBLIC_GTM || undefined;
 const GTM_URL = `https://www.googletagmanager.com/ns.html?id=${GTM_TAG}`;
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // On the mondial2026.* subdomain, the logo should return to the main site,
+  // not the mondial home (which is the same page user is already on).
+  const host = (await headers()).get("host") || "";
+  const isMondialHost = host.startsWith("mondial2026.");
+  const logoHref = isMondialHost ? "https://www.mega-events.co.il/" : "/";
   return (
     <html lang="he" className="bg-white text-black" suppressHydrationWarning>
       <head>
@@ -191,7 +197,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                     <div className="flex">
                       <ContactUs />
                     </div>
-                    <Link href="/">
+                    <Link href={logoHref}>
                       <MYT className="scale-[0.85] md:scale-100" />
                     </Link>
                   </div>
