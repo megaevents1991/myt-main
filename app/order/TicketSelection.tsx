@@ -1,8 +1,7 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
@@ -22,14 +21,19 @@ import {
 export const TicketSelection = () => {
   const {
     setEventTicket,
+    setEvent,
     event,
     eventTicket,
     selectedEvents,
+    setSelectedEvents,
     activeTicketEventIndex,
     setActiveTicketEventIndex,
     selectedEventTickets,
     setSelectedEventTickets,
   } = useContext(OrderContext);
+  const eventRef = useRef(event);
+  const selectedEventsRef = useRef(selectedEvents);
+  const activeEventRef = useRef<typeof event>(undefined);
   //const searchParams = useSearchParams();
   const isDebugMode = false; //searchParams.get("debug") === "1";
   const [errorMessage, setErrorMessage] = useState("");
@@ -44,16 +48,29 @@ export const TicketSelection = () => {
     ? selectedEvents
     : (event ? [event] : []);
   const activeEvent = effectiveEvents[activeTicketEventIndex];
+  const activeEventId = activeEvent?.id;
 
   const MAX_TICKETS = 9;
 
   /** Is this a TixStock dynamic-map event? */
-  const isTxEvent = event?.type === "tx_event";
+  const isTxEvent = activeEvent?.type === "tx_event";
 
   const { numberOfEventTickets, setNumberOfEventTickets } =
     useContext(OrderContext);
 
   const matches = useMediaQuery("(min-width: 1024px)");
+
+  useEffect(() => {
+    eventRef.current = event;
+  }, [event]);
+
+  useEffect(() => {
+    selectedEventsRef.current = selectedEvents;
+  }, [selectedEvents]);
+
+  useEffect(() => {
+    activeEventRef.current = activeEvent;
+  }, [activeEvent]);
 
   // Consider only tickets that are available (t.available !== false). If "available" is undefined, treat as available.
   const availableTickets: EventTicket[] = useMemo(
@@ -100,12 +117,16 @@ export const TicketSelection = () => {
     const run = async () => {
       setIsLoadingLiveTickets(true);
       try {
+        const currentActiveEvent = activeEventRef.current;
         const params = new URLSearchParams({
           event_id: tixEventId,
           _: String(Date.now()),
         });
-        if (event?.tx_excluded_sections?.length) {
-          params.set("excluded_sections", event.tx_excluded_sections.join(","));
+        if (currentActiveEvent?.id) {
+          params.set("db_event_id", String(currentActiveEvent.id));
+        }
+        if (currentActiveEvent?.tx_excluded_sections?.length) {
+          params.set("excluded_sections", currentActiveEvent.tx_excluded_sections.join(","));
         }
         const res = await fetch(`/api/tixstock/tickets?${params.toString()}`, {
             cache: "no-store",
@@ -118,11 +139,36 @@ export const TicketSelection = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const listings: TixStockListing[] = json?.data?.data ?? [];
+        const updatedTicketsAndRates: EventTicket[] | null =
+          json?.tickets_and_rates ?? null;
         if (!cancelled) {
           console.log(
             `[TixStock] Fetched ${listings.length} live listings for event ${tixEventId}`,
           );
           setLiveListings(listings);
+          if (currentActiveEvent && updatedTicketsAndRates?.length) {
+            const updatedEvent = {
+              ...currentActiveEvent,
+              tickets_and_rates: updatedTicketsAndRates,
+            };
+
+            if (eventRef.current?.id === currentActiveEvent.id) {
+              setEvent({
+                ...eventRef.current,
+                tickets_and_rates: updatedTicketsAndRates,
+              });
+            }
+
+            if (selectedEventsRef.current?.length) {
+              setSelectedEvents((prev) =>
+                prev.map((selectedEvent) =>
+                  selectedEvent.id === currentActiveEvent.id
+                    ? updatedEvent
+                    : selectedEvent,
+                ),
+              );
+            }
+          }
         }
       } catch (err) {
         console.error("[TixStock] Failed to fetch live listings:", err);
@@ -135,7 +181,7 @@ export const TicketSelection = () => {
     return () => {
       cancelled = true;
     };
-  }, [isTxEvent, tixEventId, event?.tx_excluded_sections]);
+  }, [isTxEvent, tixEventId, activeEventId, setEvent, setSelectedEvents]);
 
   /**
    * Find the cheapest live listing in `category` that can satisfy `qty`.
@@ -201,11 +247,34 @@ export const TicketSelection = () => {
 
     const existingSelection = selectedEventTickets?.[activeEvent.id];
     if (existingSelection?.id) {
-      setSelectedTicket(existingSelection.id);
+      const refreshedTicket = effectiveTickets.find(
+        (ticket) => ticket.id === existingSelection.id,
+      );
+      const updatedSelection = refreshedTicket
+        ? {
+            ...existingSelection,
+            vendor: refreshedTicket.vendor,
+            category: refreshedTicket.category,
+            price: refreshedTicket.price,
+            description: refreshedTicket.description,
+          }
+        : existingSelection;
+
+      setSelectedTicket(updatedSelection.id);
       setEventTicket({
-        ...existingSelection,
+        ...updatedSelection,
         quantity: numberOfEventTickets,
       });
+
+      if (refreshedTicket && refreshedTicket.price !== existingSelection.price) {
+        setSelectedEventTickets((prev) => ({
+          ...prev,
+          [activeEvent.id]: {
+            ...updatedSelection,
+            quantity: numberOfEventTickets,
+          },
+        }));
+      }
       return;
     }
 
@@ -307,13 +376,14 @@ export const TicketSelection = () => {
         ...prev,
         [activeEvent.id]: {
           ...ticket,
+          price: ticketInList.price,
           description: ticket.description || "",
           quantity: numberOfEventTickets,
         },
       }));
     }
     setSelectedTicket(ticket.id);
-  }, [effectiveTickets, numberOfEventTickets, setEventTicket]);
+  }, [activeEvent?.id, effectiveTickets, numberOfEventTickets, setEventTicket, setSelectedEventTickets]);
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {

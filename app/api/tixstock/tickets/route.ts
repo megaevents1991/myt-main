@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { exchangeRateService } from "@/lib/exchangeRateService";
+import { supabase } from "@/lib/supabase";
+import type { EventTicket } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
@@ -29,6 +32,122 @@ function toUsd(amount: string, currency: string): string {
 /** Slugify a name the same way the SVG map IDs are built */
 function slugify(name: string): string {
   return (name || "").trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+function normalizeCategory(category: string | undefined | null): string {
+  return (category || "").trim().toLowerCase();
+}
+
+function getCheapestCategoryPrices(listings: TixStockListing[]) {
+  const prices = new Map<string, number>();
+
+  for (const listing of listings) {
+    const category = normalizeCategory(listing.seat_details?.category);
+    const amount = Math.ceil(
+      parseFloat(listing.proceed_price?.amount ?? "NaN"),
+    );
+    if (!category || !Number.isFinite(amount)) continue;
+
+    const current = prices.get(category);
+    if (current === undefined || amount < current) {
+      prices.set(category, amount);
+    }
+  }
+
+  return prices;
+}
+
+async function updateLowerDbTicketPrices(
+  dbEventId: string | null,
+  listings: TixStockListing[],
+) {
+  if (!dbEventId) {
+    return { priceUpdates: [], ticketsAndRates: null };
+  }
+
+  const numericDbEventId = Number(dbEventId);
+  if (!Number.isFinite(numericDbEventId)) {
+    console.warn(
+      `[TixStock Tickets] Invalid db_event_id for price sync: ${dbEventId}`,
+    );
+    return { priceUpdates: [], ticketsAndRates: null };
+  }
+
+  const { data: eventRow, error: fetchError } = await supabase
+    .from("events")
+    .select("id,type,tickets_and_rates")
+    .eq("id", numericDbEventId)
+    .single();
+
+  if (fetchError || !eventRow) {
+    console.error(
+      "[TixStock Tickets] Failed to fetch DB event for price sync:",
+      fetchError,
+    );
+    return { priceUpdates: [], ticketsAndRates: null };
+  }
+
+  if (eventRow.type !== "tx_event") {
+    return {
+      priceUpdates: [],
+      ticketsAndRates: eventRow.tickets_and_rates as EventTicket[] | null,
+    };
+  }
+
+  const categoryPrices = getCheapestCategoryPrices(listings);
+  const ticketsAndRates = (eventRow.tickets_and_rates || []) as EventTicket[];
+  const priceUpdates: Array<{
+    ticket_id: string;
+    category: string;
+    previous_price: number;
+    new_price: number;
+  }> = [];
+
+  const nextTicketsAndRates = ticketsAndRates.map((ticket) => {
+    const livePrice = categoryPrices.get(normalizeCategory(ticket.category));
+    if (
+      livePrice === undefined ||
+      !Number.isFinite(ticket.price) ||
+      livePrice >= ticket.price
+    ) {
+      return ticket;
+    }
+
+    priceUpdates.push({
+      ticket_id: ticket.id,
+      category: ticket.category,
+      previous_price: ticket.price,
+      new_price: livePrice,
+    });
+
+    return { ...ticket, price: livePrice };
+  });
+
+  if (priceUpdates.length === 0) {
+    return { priceUpdates, ticketsAndRates };
+  }
+
+  const { error: updateError } = await supabase
+    .from("events")
+    .update({ tickets_and_rates: nextTicketsAndRates })
+    .eq("id", numericDbEventId);
+
+  if (updateError) {
+    console.error(
+      "[TixStock Tickets] Failed to update DB ticket prices:",
+      updateError,
+    );
+    return { priceUpdates: [], ticketsAndRates };
+  }
+
+  revalidateTag("events");
+
+  console.log(
+    `[TixStock Tickets] Lowered ${priceUpdates.length} DB ticket price(s) for event ${dbEventId}`,
+    priceUpdates,
+  );
+
+  return { priceUpdates, ticketsAndRates: nextTicketsAndRates };
 }
 
 /** Return true if a restriction text signals any kind of obstructed / degraded view. */
@@ -89,6 +208,7 @@ function isExcludedSection(
 
 export async function GET(req: NextRequest) {
   const eventId = req.nextUrl.searchParams.get("event_id");
+  const dbEventId = req.nextUrl.searchParams.get("db_event_id");
   const excludedSectionsParam =
     req.nextUrl.searchParams.get("excluded_sections") ?? "";
   const excludedSections = excludedSectionsParam
@@ -151,8 +271,11 @@ export async function GET(req: NextRequest) {
     const normalised = allListings.map((l: any) => ({
       ...l,
       proceed_price: {
-        amount: l.proceed_price?.amount ?? "0",
-        currency: l.proceed_price?.currency ?? "USD",
+        amount: toUsd(
+          l.proceed_price?.amount ?? "0",
+          l.proceed_price?.currency ?? "USD",
+        ),
+        currency: "USD",
       },
     }));
 
@@ -182,10 +305,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const { priceUpdates, ticketsAndRates } = await updateLowerDbTicketPrices(
+      dbEventId,
+      filtered,
+    );
+
     // Return in the same shape the client expects: { success, data: { data: [...] } }
     return NextResponse.json({
       success: true,
       data: { ...firstPage, data: filtered },
+      price_updates: priceUpdates,
+      tickets_and_rates: ticketsAndRates,
     });
   } catch (error) {
     console.error(
