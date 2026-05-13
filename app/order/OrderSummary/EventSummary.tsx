@@ -35,14 +35,6 @@ export const EventSummary = ({
 
   return (
     <div className="">
-      {eventTitle ? (
-        <div className="mb-2" dir="rtl">
-          <div className="font-bold text-lg">{eventTitle}</div>
-          {eventSubtitle ? (
-            <div className="text-sm font-semibold text-muted-foreground">{eventSubtitle}</div>
-          ) : null}
-        </div>
-      ) : null}
       <h3 className="font-bold text-lg hidden md:block">
         כרטיסים{" "}
         <span>
@@ -102,9 +94,6 @@ export const EventSummary = ({
               </div>
             )}
           </div>
-            <p className="text-[14px]" dir="rtl">
-              {eventTicket.description}
-            </p>
           </div>
           {agentCommission <= 0 && (
             <div>
