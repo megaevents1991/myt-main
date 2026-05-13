@@ -1,7 +1,7 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
@@ -20,7 +20,8 @@ import {
 
 
 export const TicketSelection = () => {
-  const { setEventTicket, event, eventTicket } = useContext(OrderContext);
+  const { setEventTicket, event, eventTicket, setEvent } = useContext(OrderContext);
+  const eventRef = useRef(event);
   const isDebugMode = useSearchParams().get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
@@ -40,6 +41,10 @@ export const TicketSelection = () => {
     useContext(OrderContext);
 
   const matches = useMediaQuery("(min-width: 1024px)");
+
+  useEffect(() => {
+    eventRef.current = event;
+  }, [event]);
 
   // Consider only tickets that are available (t.available !== false). If "available" is undefined, treat as available.
   const availableTickets: EventTicket[] = useMemo(
@@ -76,10 +81,14 @@ export const TicketSelection = () => {
     const run = async () => {
       setIsLoadingLiveTickets(true);
       try {
+        const currentEvent = eventRef.current;
         const params = new URLSearchParams({
           event_id: tixEventId,
           _: String(Date.now()),
         });
+        if (currentEvent?.id) {
+          params.set("db_event_id", String(currentEvent.id));
+        }
         if (event?.tx_excluded_sections?.length) {
           params.set("excluded_sections", event.tx_excluded_sections.join(","));
         }
@@ -94,11 +103,19 @@ export const TicketSelection = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const listings: TixStockListing[] = json?.data?.data ?? [];
+        const updatedTicketsAndRates: EventTicket[] | null =
+          json?.tickets_and_rates ?? null;
         if (!cancelled) {
           console.log(
             `[TixStock] Fetched ${listings.length} live listings for event ${tixEventId}`,
           );
           setLiveListings(listings);
+          if (currentEvent && updatedTicketsAndRates?.length) {
+            setEvent({
+              ...currentEvent,
+              tickets_and_rates: updatedTicketsAndRates,
+            });
+          }
         }
       } catch (err) {
         console.error("[TixStock] Failed to fetch live listings:", err);
@@ -111,7 +128,7 @@ export const TicketSelection = () => {
     return () => {
       cancelled = true;
     };
-  }, [isTxEvent, tixEventId, event?.tx_excluded_sections]);
+  }, [isTxEvent, tixEventId, event?.tx_excluded_sections, setEvent]);
 
   /**
   * Find the cheapest live listing in `category` that can satisfy `qty`.
