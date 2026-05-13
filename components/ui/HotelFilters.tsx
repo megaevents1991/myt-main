@@ -59,6 +59,10 @@ export const HotelFilters = ({
   >([0, maxDistance]);
   const [stars, setStars] = useState<boolean[]>(selectedRating);
 
+  useEffect(() => {
+    setStars(selectedRating);
+  }, [selectedRating]);
+
   const handleDistanceFromCenterChange = (value: [number, number]) => {
     setDistanceFromCenter(value);
   };

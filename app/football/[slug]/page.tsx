@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields } from "@/lib/app.types";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -17,7 +18,9 @@ import EventButton from "../../../components/EventButton";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+// Mondial deployment: noindex all pages on this branch (mondial subdomain).
+const MONDIAL_NOINDEX = { robots: { index: false, follow: false } } as const;
 
 const MONDIAL2026_LEGACY_FOOTBALL_ID = "2LyfVQ6jREeMTm0ds66d1l";
 
@@ -38,6 +41,48 @@ function buildRedirectUrl(
 
   const query = params.toString();
   return query ? `${path}?${query}` : path;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  try {
+    const team = await contentfulClient.getEntry<FootballFields>(slug);
+    if (!team?.fields?.name) {
+      return { title: "Team Not Found - MYT", ...MONDIAL_NOINDEX };
+    }
+
+    const { name, previewText, seoTitle, metaDescription, metaTags, heroBanner } = team.fields;
+    const title = String(seoTitle || "") || `${name} - כרטיסים וחבילות | MYT`;
+    const description = String(metaDescription || previewText || "") || `הזמינו כרטיסים וחבילות טיסה + מלון למשחקים של ${name}`;
+    const keywords = metaTags || `${name}, כרטיסים, כדורגל, MYT`;
+    const imageUrl = heroBanner?.fields?.file?.url
+      ? `https:${heroBanner.fields.file.url}`
+      : undefined;
+
+    return {
+      title,
+      description,
+      keywords,
+      alternates: {
+        canonical: `https://www.mega-events.co.il/football/${slug}`,
+      },
+      openGraph: {
+        title,
+        description,
+        ...(imageUrl && {
+          images: [{ url: imageUrl, width: 800, height: 600, alt: String(name) }],
+        }),
+      },
+      ...MONDIAL_NOINDEX,
+    };
+  } catch {
+    return { title: "Team Not Found - MYT", ...MONDIAL_NOINDEX };
+  }
 }
 
 export async function generateStaticParams() {
@@ -175,6 +220,9 @@ export default async function FootballPage({
                         <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
                           אזלו הכרטיסים
                         </div>
+                      )}
+                      {event.skip_flight && !computedSold && (
+                        <TicketOnlyBadge />
                       )}
                       <Image
                         src={event.card_image_url}

@@ -301,7 +301,7 @@ export const userEmail = (
                                             replacements.flightSkipped
                                               ? `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">טיסה:</strong> לא נכלל בהזמנה (כרטיסים בלבד)
+                                                  <strong style="color: #05203c;">טיסה:</strong> ללא טיסה
                                               </td>
                                           </tr>`
                                               : `<tr>

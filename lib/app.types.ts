@@ -6,7 +6,8 @@ export type EventType =
   | "sports_event"
   | "music_event"
   | "sports_event_dynamic"
-  | "music_live_event_dynamic";
+  | "music_live_event_dynamic"
+  | "tx_event";
 
 export type Event = {
   id: number;
@@ -31,9 +32,13 @@ export type Event = {
   base_flight_price: number;
   base_hotel_price: number;
   is_prioritized: boolean;
+  skip_flight?: boolean;
+  // Extra per-ticket markup (USD) added when skip_flight is true.
+  // Compensates for the markup normally embedded in base_flight_price.
+  skip_flight_markup?: number | null;
   is_deleted: string;
   tags: string;
-  skip_flight?: boolean;
+  tx_excluded_sections?: string[];
 };
 
 export type Flight = {
@@ -50,6 +55,13 @@ export type Flight = {
   penalties?: string;
   bags?: object;
   virtualOfferType?: boolean;
+  isOffline?: boolean;
+  // When isOffline is true, these reference the source row in the `flights`
+  // inventory table so the backoffice can attribute the reservation and
+  // decrement stock. offlineRawPrice is the true per-traveler inventory cost
+  // (before customer-facing normalization).
+  offlineId?: number;
+  offlineRawPrice?: number;
 };
 
 export type FlightSegment = {
@@ -73,6 +85,14 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
+  isOffline?: boolean;
+  // When isOffline is true: the offline_hotels.id values consumed by this
+  // booking (one entry per room unit, so a triple+double combo yields two
+  // ids). `offlineRawPrice` is the summed inventory cost across those rows.
+  // `offlineId` is kept as the first id for legacy backoffice code paths.
+  offlineId?: number;
+  offlineIds?: number[];
+  offlineRawPrice?: number;
   hotelInformation: {
     hotelName: string;
     roomName: string;
@@ -116,7 +136,7 @@ export type TimeRange = [
   {
     hours: number;
     minutes: number;
-  }
+  },
 ];
 
 export type AffiliateTracking = {
@@ -170,7 +190,7 @@ export type HotelSearchCriteria =
         "Hostel",
         "BNB",
         "Glamping",
-        "Apart-hotel"
+        "Apart-hotel",
       ];
     }
   | {
@@ -217,21 +237,21 @@ export type FlightSearchCriteria =
     };
 
 export type VipConfig = {
-  enabled: boolean
-  details: string
-}
+  enabled: boolean;
+  details: string;
+};
 
 export type EventTicket = {
-  category: string
-  price: number
-  id: string
-  description: string
-  colorOnTheMap: string
-  vendor?: string
-  eid?: string
-  available?: boolean
-  vip?: VipConfig
-}
+  category: string;
+  price: number;
+  id: string;
+  description: string;
+  colorOnTheMap: string;
+  vendor?: string;
+  eid?: string;
+  available?: boolean;
+  vip?: VipConfig;
+};
 
 export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   quantity: number;
@@ -258,6 +278,7 @@ export type OrderData = {
   exchange_rate_usd_ils_100: number;
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
+  status?: string;
 };
 
 export type SingleEventOrderInfo = {
@@ -310,6 +331,9 @@ export type ArtistFields = {
     }>;
     name: string;
     nameDBenglish: string;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
     sys: EntryFieldTypes.Object<{
       id: string;
     }>;
@@ -352,6 +376,9 @@ export type FootballFields = {
     }>;
     name: string;
     nameDBenglish: string;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
     sys: EntryFieldTypes.Object<{
       id: string;
     }>;
@@ -388,6 +415,9 @@ export type FootballTeam = {
         }[];
       }[];
     };
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
   };
 };
 
@@ -421,6 +451,9 @@ export type Artist = {
         }[];
       }[];
     };
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
   };
 };
 

@@ -53,28 +53,32 @@ export async function POST(request: Request) {
 }
 
 // This route returns the current USD to ILS exchange rate from our cached service
-// The rate is updated hourly in the background with retry logic and fallback
+// The rate is updated hourly in the background with retry logic
+// Falls back to FloatRates API if primary source is unavailable for 12h+
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: NextRequest) {
   try {
     const rateInfo = exchangeRateService.getRateInfo();
-    
+
+    if (!rateInfo) {
+      return NextResponse.json(
+        { success: false, error: "Exchange rate not yet available" },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({
       success: true,
       travelRate: rateInfo.travelRate,
       lastUpdated: rateInfo.lastUpdated,
-      source: rateInfo.source
+      source: rateInfo.source,
     });
   } catch (error) {
     console.error("Error getting exchange rate:", error);
-
-    // Return fallback rate if service fails
-    const fallbackRate = 3.5;
-    return NextResponse.json({
-      success: false,
-      travelRate: fallbackRate,
-      source: 'fallback'
-    });
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

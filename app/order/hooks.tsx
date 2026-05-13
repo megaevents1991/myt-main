@@ -147,6 +147,9 @@ export function useOrderVars() {
     if (!event) {
       return 0;
     }
+    // When customer skips flight, exclude base flight price from the
+    // strikethrough/recommended total so the price reflects "no flight" mode.
+    // baseFlightPricePerPerson already returns 0 when flightSkipped is true
     return Math.ceil(
       baseFlightPricePerPerson +
         (forceSkipHotel ? 0 : event.base_hotel_price) +
@@ -184,10 +187,16 @@ export function useOrderVars() {
       ? 0
       : (flightPriceAddition + baseFlightPricePerPerson) * flightTravelers;
 
+    // When skipping flight, add admin-set per-ticket markup to keep margin
+    const skipFlightMarkup = flightSkipped
+      ? Math.max(0, Number(event.skip_flight_markup ?? 0)) * numberOfEventTickets
+      : 0;
+
     return Math.ceil(
       ticketTotal + maup * numberOfEventTickets +
         flightComponent +
         hotelComponent +
+        skipFlightMarkup +
         (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
     );
   }, [

@@ -1,11 +1,18 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { contentfulClient } from "@/lib/contentful";
 import { FootballFields } from "@/lib/app.types";
 import Link from "next/link";
 import Image from "next/image";
 
 export const revalidate = 3600;
-export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+export const metadata: Metadata = {
+  title: "הקבוצות שלנו - מגה איבנטס",
+  alternates: {
+    canonical: "https://www.mega-events.co.il/football",
+  },
+  robots: { index: false, follow: false },
+};
 
 export default async function FootballsPage() {
   // Add timestamp for cache validation

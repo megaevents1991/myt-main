@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
 import { getEventOrderInfoList, getPrimaryEventOrderInfo } from "@/lib/eventOrderInfo";
+import { getClientHomeHref } from "@/lib/homeHref";
 
 type PaymentStatus = "success" | "error" | "pending";
 
@@ -126,17 +127,25 @@ export default function ConfirmationPage() {
             eventLocation: primaryEvent.location_name,
             ticketType: primaryEvent.category,
             quantity: primaryEvent.number_of_ticket.toString(),
-          airline: orderData.flight_order_info?.metadata?.name ?? "",
-          flights: orderData.flight_order_info
-            ? `Outbound: ${orderData.flight_order_info.outbound?.flightNumber}, Return: ${orderData.flight_order_info.inbound?.flightNumber}`
-            : "",
-          dates: orderData.flight_order_info
-            ? `Outbound: ${dayjs(
-                orderData.flight_order_info.outbound?.departureTime
-              ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
-                orderData.flight_order_info.inbound?.departureTime
-              ).format("DD/MM/YYYY HH:MM")}`
-            : "",
+          airline: (() => {
+            const f = orderData.flight_order_info;
+            if (!f || Object.keys(f).length === 0 || !f.outbound) return "ללא טיסה";
+            return f.metadata?.name ?? "";
+          })(),
+          flights: (() => {
+            const f = orderData.flight_order_info;
+            if (!f || Object.keys(f).length === 0 || !f.outbound) return "ללא טיסה";
+            return `Outbound: ${f.outbound?.flightNumber}, Return: ${f.inbound?.flightNumber}`;
+          })(),
+          dates: (() => {
+            const f = orderData.flight_order_info;
+            if (!f || Object.keys(f).length === 0 || !f.outbound) return "ללא טיסה";
+            return `Outbound: ${dayjs(f.outbound?.departureTime).format(
+              "DD/MM/YYYY HH:MM"
+            )}, Return: ${dayjs(f.inbound?.departureTime).format(
+              "DD/MM/YYYY HH:MM"
+            )}`;
+          })(),
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
           isPaid,
@@ -174,6 +183,7 @@ export default function ConfirmationPage() {
 
   useEffect(() => {
     handlePageOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copyToClipboard = async (text: string) => {
@@ -354,15 +364,23 @@ export default function ConfirmationPage() {
                 <p>
                   <strong>Tickets:</strong> (x{quantity}) {ticketType}
                 </p>
-                <p>
-                  <strong>Airline:</strong> {airline}
-                </p>
-                <p>
-                  <strong>Flight Numbers-</strong> {flights}
-                </p>
-                <p>
-                  <strong>Flight Schedule-</strong> {dates}
-                </p>
+                {airline === "ללא טיסה" ? (
+                  <p>
+                    <strong>Flight:</strong> ללא טיסה
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      <strong>Airline:</strong> {airline}
+                    </p>
+                    <p>
+                      <strong>Flight Numbers-</strong> {flights}
+                    </p>
+                    <p>
+                      <strong>Flight Schedule-</strong> {dates}
+                    </p>
+                  </>
+                )}
                 {hotel !== "ללא מלון" && (
                   <p>
                     <strong>Hotel:</strong> {hotel}
@@ -371,7 +389,7 @@ export default function ConfirmationPage() {
               </div>
             </div>
             
-            <Link href="/" className="mt-6">
+            <Link href={getClientHomeHref()} className="mt-6">
               <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
             </Link>
           </div>
@@ -434,15 +452,23 @@ export default function ConfirmationPage() {
                 <p>
                   <strong>Tickets:</strong> (x{quantity}) {ticketType}
                 </p>
-                <p>
-                  <strong>Airline:</strong> {airline}
-                </p>
-                <p>
-                  <strong>Flight Numbers-</strong> {flights}
-                </p>
-                <p>
-                  <strong>Flight Schedule-</strong> {dates}
-                </p>
+                {airline === "ללא טיסה" ? (
+                  <p>
+                    <strong>Flight:</strong> ללא טיסה
+                  </p>
+                ) : (
+                  <>
+                    <p>
+                      <strong>Airline:</strong> {airline}
+                    </p>
+                    <p>
+                      <strong>Flight Numbers-</strong> {flights}
+                    </p>
+                    <p>
+                      <strong>Flight Schedule-</strong> {dates}
+                    </p>
+                  </>
+                )}
                 {hotel !== "ללא מלון" && (
                   <p>
                     <strong>Hotel:</strong> {hotel}
@@ -451,7 +477,7 @@ export default function ConfirmationPage() {
               </div>
             </div>
             
-            <Link href="/" className="mt-6">
+            <Link href={getClientHomeHref()} className="mt-6">
               <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
             </Link>
           </div>

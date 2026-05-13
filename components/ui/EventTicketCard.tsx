@@ -16,6 +16,8 @@ export type TicketCardProps = {
   numberOfTickets: number;
   onChangeNumberOfTickets: (value: number) => void;
   vip?: VipConfig;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 };
 
 export const EventTicketCard = ({
@@ -30,6 +32,8 @@ export const EventTicketCard = ({
   numberOfTickets = 1,
   onChangeNumberOfTickets,
   vip,
+  onMouseEnter,
+  onMouseLeave,
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
   const isVip = vip?.enabled === true;
@@ -41,6 +45,8 @@ export const EventTicketCard = ({
       onClick={onClick}
       hasBorderColor={colorOnTheMap}
       className={cn("p-2 pr-8 relative overflow-visible")}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {/* VIP Ribbon */}
       {isVip && (

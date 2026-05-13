@@ -81,11 +81,11 @@ export const HotelCard = memo(
 
     useEffect(() => {
       embla?.scrollTo(0);
-    }, [selectedRoom]);
+    }, [selectedRoom, embla]);
 
     useEffect(() => {
       handleRoomSelect(hotelRates[0], isSelected);
-    }, [isSelected, hotelRates]);
+    }, [isSelected, hotelRates, handleRoomSelect]);
 
     const selectedPrice =
       +(selectedRoom || hotelRates[0]).payment_options?.payment_types[0]

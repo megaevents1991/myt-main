@@ -10,6 +10,7 @@ export type FetchHotelsParams = {
     adults: number;
     children: number[];
   }[];
+  eventId?: number;
 };
 
 export const fetchHotels = async (
@@ -23,6 +24,7 @@ export const fetchHotels = async (
         children: [],
       },
     ],
+    eventId,
   }: FetchHotelsParams,
   signal: AbortSignal
 ) => {
@@ -37,6 +39,7 @@ export const fetchHotels = async (
       checkout: dayjs(dateRange[1]?.toDateString()).format("YYYY-MM-DD"),
       guests,
       radius: effectiveRadius,
+      eventId,
     }),
   });
   const data: HotelResponse = await res.json();

@@ -7,6 +7,8 @@ type CardWrapperProps = {
   children: ReactNode;
   hasBorderColor?: string;
   className?: string;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 };
 
 export const CardWrapper = ({
@@ -14,10 +16,14 @@ export const CardWrapper = ({
   onClick,
   children,
   className,
+  onMouseEnter,
+  onMouseLeave,
 }: CardWrapperProps) => {
   return (
     <div
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       dir="rtl"
       tabIndex={-1}
       style={{ WebkitTapHighlightColor: "transparent" }}

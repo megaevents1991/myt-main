@@ -139,6 +139,9 @@ const transformDbFlightToFlight = (
       name: dbFlight.metadata_name,
       logo: dbFlight.metadata_logo,
     },
+    isOffline: true,
+    offlineId: dbFlight.id,
+    offlineRawPrice: parseFloat(dbFlight.price),
   };
 };
 

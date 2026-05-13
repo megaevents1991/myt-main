@@ -11,6 +11,7 @@ import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ interface Props {
   initialEvents: Event[];
   footballTeams: FootballTeam[];
   artists: Artist[];
+  carouselArtists?: Artist[];
 }
 
 const SearchCombobox = React.forwardRef<HTMLInputElement, {
@@ -493,13 +495,16 @@ function CompactEventCard({ event }: { event: Event }) {
             </div>
           )}
           {event.tags === "Sold" && (
-            <div 
+            <div
               className="absolute top-0 left-0 w-32 h-6 bg-[#d63a59] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
               aria-label="אזלו הכרטיסים לאירוע זה"
               role="status"
             >
               אזלו הכרטיסים
             </div>
+          )}
+          {event.skip_flight && event.tags !== "Sold" && (
+            <TicketOnlyBadge />
           )}
           {/* Accessibility: Enhanced alt text with descriptive event information */}
           <Image
@@ -756,7 +761,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, artists, carouselArtists }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
@@ -934,13 +939,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
   // Separate VIP events
   // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
-  // Function to filter events from artists that appear in the carousel
-  // Keep only one event per artist (preferably with a tag)
-  const filterEventsFromCarouselArtists = (events: Event[]) => {
+  // Filter events for artists that have an artist page (Contentful artist entries).
+  // Keep only one event per artist (preferably with a tag).
+  const filterEventsFromArtistsWithPages = (events: Event[]) => {
     if (!artists || artists.length === 0) return events;
 
-    // Get list of artist names that appear in the carousel
-    const carouselArtistNames = new Set(
+    // Build list of artist identifiers that have pages
+    const artistIdentifiersWithPages = new Set(
       artists
         .map(artist => artist.fields.nameDBenglish)
         .filter(Boolean)
@@ -956,7 +961,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
       if (isEventSoldOut(event)) return;
       
       const eventArtistName = event.name_english?.trim().toLowerCase(); // Trim whitespaces before lowercasing
-      if (eventArtistName && carouselArtistNames.has(eventArtistName)) {
+      if (eventArtistName && artistIdentifiersWithPages.has(eventArtistName)) {
         if (!eventsByArtist.has(eventArtistName)) {
           eventsByArtist.set(eventArtistName, []);
         }
@@ -1010,8 +1015,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       });
     } else {
-      // Filter out events from carousel artists before using them to fill slots
-      const filteredNonPrioritizedEvents = filterEventsFromCarouselArtists(nonPrioritizedEvents);
+      // Filter out duplicate events for artists with pages before using them to fill slots
+      const filteredNonPrioritizedEvents = filterEventsFromArtistsWithPages(nonPrioritizedEvents);
       
       // Fill remaining slots with filtered non-prioritized non-VIP non-sports events
       const combined = [
@@ -1033,13 +1038,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
     const remainingEvents = initialEvents.filter(
       (event) =>
         !isEventSoldOut(event) && // Exclude sold-out events
-        (event.type === 'music_live_event_dynamic' || event.type === "music_event") &&
+        (event.type === 'music_live_event_dynamic' || event.type === "music_event" || event.type === "tx_event") &&
         event.tags !== "VIPevent" &&
         !usedEventIds.has(event.id)
     );
 
-    // Filter out events from carousel artists (keeping only one per artist)
-    const filteredEvents = filterEventsFromCarouselArtists(remainingEvents);
+    // Filter out duplicate events for artists with pages (keeping only one per artist)
+    const filteredEvents = filterEventsFromArtistsWithPages(remainingEvents);
 
     return filteredEvents.sort((a, b) => {
       // Sort events with tags first (except "Sold"), then by date
@@ -1512,7 +1517,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
           )}
 
           {/* Artists Section */}
-          {artists && artists.length > 0 && (
+          {carouselArtists && carouselArtists.length > 0 && (
             <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
@@ -1538,11 +1543,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists }: Pr
               </div>
               {/* Mobile carousel for Artists */}
               <div className="block sm:hidden mb-8">
-                <UniversalCarousel artists={artists} variant="compact" />
+                <UniversalCarousel artists={carouselArtists} variant="compact" />
               </div>
               {/* Desktop carousel for Artists */}
               <div className="hidden sm:block mb-8">
-                <UniversalCarousel artists={artists} variant="compact" />
+                <UniversalCarousel artists={carouselArtists} variant="compact" />
               </div>
             </section>
           )}
@@ -1802,6 +1807,9 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
             <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
               אזלו הכרטיסים
             </div>
+          )}
+          {event.skip_flight && !computedSold && (
+            <TicketOnlyBadge />
           )}
           {/* Accessibility: Enhanced image with descriptive alt text */}
           <Image

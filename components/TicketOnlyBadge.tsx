@@ -27,17 +27,23 @@ export function TicketOnlyBadge() {
     });
   }, []);
 
+  /* ── Desktop: hover ── */
   const handleMouseEnter = () => { calcPos(); setOpen(true); };
   const handleMouseLeave = () => setOpen(false);
 
+  /* ── Desktop: click (mouse) ── */
   const handleClick = (e: React.MouseEvent) => {
+    // only handle real mouse clicks — touch is handled by onTouchEnd
     if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType === "touch") return;
     e.preventDefault();
     e.stopPropagation();
   };
 
+  /* ── Mobile: touchEnd is the authoritative handler ──
+     Calling e.preventDefault() here stops the browser from synthesising
+     a 'click' event, so the parent <Link> is never triggered.          */
   const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
+    e.preventDefault();          // ← prevents click synthesis → no Link navigation
     e.stopPropagation();
     if (!open) {
       calcPos();
@@ -48,9 +54,11 @@ export function TicketOnlyBadge() {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.stopPropagation();
+    e.stopPropagation();         // stop Link from seeing the touch
   };
 
+  /* close on outside tap — only register 200ms after open to avoid
+     the opening touch event from immediately closing the tooltip     */
   useEffect(() => {
     if (!open) return;
     let closeHandler: ((e: Event) => void) | null = null;
@@ -73,6 +81,7 @@ export function TicketOnlyBadge() {
     };
   }, [open]);
 
+  /* reposition on scroll / resize */
   useEffect(() => {
     if (!open) return;
     const update = () => calcPos();
@@ -143,12 +152,10 @@ export function TicketOnlyBadge() {
       >
         <div
           ref={btnRef}
-          className="flex items-center justify-center rounded-full cursor-pointer transition-transform duration-150 hover:scale-110 active:scale-95"
+          className="flex items-center justify-center rounded-full cursor-pointer transition-transform duration-150 hover:scale-110 active:scale-95 w-8 h-8 lg:w-11 lg:h-11"
           style={{
             background: "#277E89",
             boxShadow: "0 2px 10px rgba(39,126,137,.45)",
-            width: 32,
-            height: 32,
             WebkitTapHighlightColor: "transparent",
             userSelect: "none",
           }}
@@ -161,17 +168,17 @@ export function TicketOnlyBadge() {
           aria-label="ניתן להזמין כרטיס בלבד לאירוע זה"
         >
           <svg
-            width="15"
-            height="15"
+            className="w-[15px] h-[15px] lg:w-[22px] lg:h-[22px]"
             viewBox="0 0 24 24"
             fill="none"
             stroke="white"
-            strokeWidth="1.75"
+            strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            shapeRendering="geometricPrecision"
           >
             <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z" />
-            <line x1="9" y1="4.5" x2="9" y2="19.5" strokeDasharray="2.5 2" />
+            <line x1="9" y1="5" x2="9" y2="19" strokeDasharray="2 2" />
           </svg>
         </div>
       </div>

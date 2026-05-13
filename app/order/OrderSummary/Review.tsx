@@ -169,9 +169,10 @@ export const Review = ({
           />
         ),
       }] : []),
+      // Conditionally include flight only if not skipped
       ...(!flightSkipped && selectedFlight ? [{
         id: "flight-summary",
-        primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)` ,
+        primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)`,
         secondary: airlineFullName || selectedFlight.airline,
         icon: <FaPlane />,
         component: (

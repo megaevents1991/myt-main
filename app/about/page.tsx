@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: "אודותינו - מגה איבנטס",
     description:
       "הכירו את מגה איבנטס מבית מגה תיירות - 30 שנות ניסיון בתחום התיירות והאירועים. חבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם.",
-    url: "https://mega-events.co.il/about",
+    url: "https://www.mega-events.co.il/about",
     siteName: "מגה איבנטס",
     locale: "he_IL",
     type: "website",
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://mega-events.co.il/about",
+    canonical: "https://www.mega-events.co.il/about",
   },
 };
 

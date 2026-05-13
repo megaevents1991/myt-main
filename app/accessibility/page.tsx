@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: "הצהרת נגישות - MegaEvents",
     description:
       "הצהרת הנגישות של MegaEvents - מחויבות לנגישות דיגיטלית ועמידה בתקנות הנגישות הישראליות.",
-    url: "https://mega-events.co.il/accessibility",
+    url: "https://www.mega-events.co.il/accessibility",
     siteName: "מגה איבנטס",
     locale: "he_IL",
     type: "website",
@@ -65,7 +65,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://mega-events.co.il/accessibility",
+    canonical: "https://www.mega-events.co.il/accessibility",
   },
 };
 
@@ -172,7 +172,7 @@ export default async function AccessibilityPage() {
               </h2>
               <div className="bg-blue-50 border-r-4 border-blue-400 p-6">
                 <p className="text-gray-700 mb-4">
-                  <strong>ניתן לפנות בטלפון:</strong> <a href="tel:054-200-2722" className="text-blue-600 hover:underline font-bold">054-200-2722</a>
+                  <strong>ניתן לפנות בטלפון:</strong> <a href="tel:03-768-4800" className="text-blue-600 hover:underline font-bold">03-768-4800</a>
                 </p>
                 <p className="text-gray-700">
                   <strong>דוא״ל:</strong> <a href="mailto:accessibility@mega-events.co.il" className="text-blue-600 hover:underline">accessibility@mega-events.co.il</a>

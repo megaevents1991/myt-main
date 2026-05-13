@@ -6,6 +6,7 @@ import { OrderErrorBoundary } from "../OrderErrorBoundary";
 import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
 import Link from "next/link";
+import { getServerHomeHref } from "@/lib/homeHref";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
@@ -71,7 +72,7 @@ export async function generateMetadata({
       openGraph: {
         title: `${event.name} - Order Tickets`,
         description: `Order tickets for ${event.name} with flights and hotels included.`,
-        url: `https://mega-events.co.il/order/${eventId}`,
+        url: `https://www.mega-events.co.il/order/${eventId}`,
         siteName: "Mega Events",
         images: event.card_image_url ? [
           {
@@ -83,7 +84,7 @@ export async function generateMetadata({
         ] : [],
       },
       alternates: {
-        canonical: `https://mega-events.co.il/order/${eventId}`,
+        canonical: `https://www.mega-events.co.il/order/${eventId}`,
       },
     };
   } catch (error) {
@@ -123,6 +124,7 @@ export default async function OrderPageWithId({
   // Check if event has any available tickets
   if (!hasAvailableTickets(event)) {
     console.warn(`[OrderPage] Event ${eventId} (${event.name}) has no available tickets`);
+    const homeHref = await getServerHomeHref();
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-4">
         <div className="max-w-2xl text-center">
@@ -136,7 +138,7 @@ export default async function OrderPageWithId({
             אנא בדקו אירועים אחרים או צרו קשר עם שירות הלקוחות לקבלת מידע נוסף.
           </p>
           <Link
-            href="/"
+            href={homeHref}
             className="inline-block bg-main text-white px-6 py-3 rounded-lg font-bold hover:opacity-90 transition-opacity"
           >
             חזרה לדף הבית

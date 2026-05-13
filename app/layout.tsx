@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
+import { getServerHomeHref } from "@/lib/homeHref";
 import { IBM_Plex_Sans_Hebrew } from "next/font/google";
 import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
@@ -54,18 +54,18 @@ export const metadata: Metadata = {
   generator: "Next.js",
   category: "Travel & Events",
   classification: "Travel Agency, Event Tickets, Tourism",
-  metadataBase: new URL("https://mega-events.co.il"),
+  metadataBase: new URL("https://www.mega-events.co.il"),
   alternates: {
-    canonical: "https://mega-events.co.il",
+    canonical: "https://www.mega-events.co.il",
     languages: {
-      "he-IL": "https://mega-events.co.il",
+      "he-IL": "https://www.mega-events.co.il",
     },
   },
   openGraph: {
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
       "מגה איבנטס מבית מגה תיירות, האתר היחיד בישראל בו אתם בונים לעצמכם את החבילה המשתלמת ביותר לכל אירועי המוזיקה והספורט השווים בעולם. 32 שנות ניסיון, כרטיסים רשמיים בלבד.",
-    url: "https://mega-events.co.il",
+    url: "https://www.mega-events.co.il",
     siteName: "Mega Events",
     type: "website",
     locale: "he_IL",
@@ -139,9 +139,7 @@ const GTM_URL = `https://www.googletagmanager.com/ns.html?id=${GTM_TAG}`;
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // On the mondial2026.* subdomain, the logo should return to the main site,
   // not the mondial home (which is the same page user is already on).
-  const host = (await headers()).get("host") || "";
-  const isMondialHost = host.startsWith("mondial2026.");
-  const logoHref = isMondialHost ? "https://www.mega-events.co.il/" : "/";
+  const logoHref = await getServerHomeHref();
   return (
     <html lang="he" className="bg-white text-black" suppressHydrationWarning>
       <head>
@@ -175,6 +173,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           `}
           </Script>
         )}
+        <meta name="google-site-verification" content="fMs3lMOpEKejbkM0B1uDbcQJf0bdo-OfRl0wUoWfJAM" />
       </head>
       <body className={`${inter.className} text-black`}>
         {GTM_TAG && (

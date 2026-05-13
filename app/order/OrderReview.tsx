@@ -131,6 +131,7 @@ export default function OrderReview() {
       // Cleanup on unmount, clear passengers in context to avoid stale data
       setPassengersContext(undefined);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [openModal, setOpenModal] = useState(true);
@@ -142,6 +143,11 @@ export default function OrderReview() {
   const inactivityTimeoutRef = useRef<number | null>(null);
   // Track initial discount to differentiate text in special offer modal
   const initialAffDiscountRef = useRef<number | null>(null);
+  // One-time guard for form_start analytics event
+  const hasTrackedFormStartRef = useRef(false);
+  // One-time guards for begin_checkout / generate_lead server-side events
+  const hasTrackedBeginCheckoutRef = useRef(false);
+  const hasTrackedGenerateLeadRef = useRef(false);
 
   // Sticky footer state and refs
   const [showStickyFooter, setShowStickyFooter] = useState(false);
@@ -198,6 +204,40 @@ export default function OrderReview() {
     [finalPurchasePriceCalc, affDiscount]
   );
 
+  const trackFormStart = useCallback(() => {
+    if (hasTrackedFormStartRef.current || !event) return;
+    hasTrackedFormStartRef.current = true;
+    try {
+      const gtmIdnts =
+        document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("gtmIdnts="))
+          ?.split("=")[1] || "";
+
+      fetch("/api/events-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventData: {
+            id: event?.id,
+            name: event?.name,
+            value: finalPurchasePrice,
+            currency: "USD",
+            category: event?.type || "music_event",
+            brand: "Mega Events",
+            quantity: numberOfEventTickets,
+          },
+          eventType: "form_start",
+          gtmIdnts,
+        }),
+      });
+    } catch (error) {
+      console.warn("form_start analytics tracking failed:", error);
+    }
+  }, [event, finalPurchasePrice, numberOfEventTickets]);
+
   const affiliateDiscountTotalUsd = useMemo(
     () => getAffiliateDiscountTotalUsd(affDiscount),
     [getAffiliateDiscountTotalUsd, affDiscount]
@@ -231,7 +271,7 @@ export default function OrderReview() {
     return () => {
       isMounted = false;
     };
-  }, [finalPurchasePrice, finalPurchasePriceILSCalc]);
+  }, [finalPurchasePrice, finalPurchasePriceILSCalc, event]);
 
   // Scroll listener for sticky footer
   useEffect(() => {
@@ -483,6 +523,7 @@ export default function OrderReview() {
       email: !!passenger.email,
     }));
     setTouched(newTouched);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passengers]);
 
   const handleTimeout = useCallback(() => {
@@ -546,8 +587,7 @@ export default function OrderReview() {
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
 
-  // Check if we have all required data (hotel is optional if skipHotel is true,
-  // flight is optional if flightSkipped is true)
+  // Check if we have all required data (hotel optional if skipHotel; flight optional if flightSkipped)
   if (!event || (!selectedFlight && !flightSkipped) || (!selectedHotel && !skipHotel)) {
     return (
       <div className="text-center p-3 bg-red-50 rounded-lg">
@@ -609,6 +649,10 @@ export default function OrderReview() {
         .find((row) => row.startsWith("gtmIdnts="))
         ?.split("=")[1] || "";
 
+    // Determine if server-side analytics should be skipped (already sent this session)
+    const analyticsRef = payNow ? hasTrackedBeginCheckoutRef : hasTrackedGenerateLeadRef;
+    const skipAnalytics = analyticsRef.current;
+
     const response = await fetch("/api/confirm-order", {
       method: "POST",
       headers: {
@@ -619,8 +663,14 @@ export default function OrderReview() {
         payNow,
         gtmIdnts,
         onlySave,
+        skipAnalytics,
       }),
     });
+
+    // Mark as tracked only after a successful response
+    if (response.ok) {
+      analyticsRef.current = true;
+    }
 
     if (!response.ok) {
       throw new Error("Failed to submit order");
@@ -850,7 +900,7 @@ export default function OrderReview() {
     }
   };
 
-  const penText = getPenText(selectedFlight);
+  const penText = selectedFlight ? getPenText(selectedFlight) : "";
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center">
@@ -966,17 +1016,21 @@ export default function OrderReview() {
                     <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
                   ) : selectedFlight && !flightSkipped ? (
                     <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
-                      <div>
-                        {dayjs(selectedFlight.outbound.departureTime).format(
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
-                      <div>-</div>
-                      <div>
-                        {dayjs(selectedFlight.inbound.departureTime).format(
-                          "DD/MM/YYYY"
-                        )}
-                      </div>
+                      {selectedFlight && (
+                        <>
+                          <div>
+                            {dayjs(selectedFlight.outbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                          <div>-</div>
+                          <div>
+                            {dayjs(selectedFlight.inbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="flex text-sm gap-1 items-center mt-[4px]" dir="rtl">
@@ -1200,7 +1254,7 @@ export default function OrderReview() {
                     {
                       title: "שירות אישי ואנושי",
                       description:
-                        "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בווטסאפ!)",
+                        "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 03-768-4800 (גם בווטסאפ!)",
                     },
                   ];
 
@@ -1331,22 +1385,23 @@ export default function OrderReview() {
                             </>
                           )}
 
-                          {!skipHotel && selectedHotel && (
-                            <>
-                              <h3 className="font-bold mt-4 mb-2">מלון</h3>
-                              <p>
-                                החזר מלא או שינוי חינם עד לתאריך ה-{" "}
-                                {dayjs(
-                                  selectedHotel.rate.payment_options
-                                    ?.payment_types[0].cancellation_penalties
-                                    .free_cancellation_before
-                                )
-                                  .subtract(7, "day")
-                                  .format("DD/MM/YYYY")}
-                                , לאחר מכן דמי ביטול מלאים.
-                              </p>
-                            </>
-                          )}
+                          {!skipHotel && selectedHotel && (() => {
+                            const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                            if (!rawDate) return null;
+                            const formattedDate = selectedHotel.isOffline
+                              ? dayjs(rawDate).format("DD/MM/YYYY")
+                              : dayjs(rawDate).subtract(7, "day").format("DD/MM/YYYY");
+                            return (
+                              <>
+                                <h3 className="font-bold mt-4 mb-2">מלון</h3>
+                                <p>
+                                  החזר מלא או שינוי חינם עד לתאריך ה-{" "}
+                                  {formattedDate}
+                                  , לאחר מכן דמי ביטול מלאים.
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -1510,6 +1565,7 @@ export default function OrderReview() {
                                   )
                                 }
                                 onBlur={() => handleBlur(index, "firstName")}
+                                onFocus={index === 0 ? trackFormStart : undefined}
                               />
                               {touched[index]?.firstName &&
                                 validationErrors[index]?.firstName && (
@@ -1673,7 +1729,7 @@ export default function OrderReview() {
                       {
                         title: "שירות אישי ואנושי",
                         description:
-                          "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 054-200-2722 (גם בווטסאפ!)",
+                          "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 03-768-4800 (גם בווטסאפ!)",
                       },
                     ];
 
@@ -1799,22 +1855,23 @@ export default function OrderReview() {
                                 עלות הטיפול בביטול הטיסה הינה $50 לכל כרטיס טיסה
                                 בנוסף לדמי הביטול של המוביל האווירי.
                               </p>
-                            </>
-                          )}
-                          {!skipHotel && selectedHotel && (
-                            <>
-                              <h3 className="font-bold mt-4">מלון</h3>
-                              <p>
-                                ביטול או שינוי חינם עד לתאריך ה-{" "}
-                                {dayjs(
-                                  selectedHotel.rate.payment_options
-                                    ?.payment_types[0].cancellation_penalties
-                                    .free_cancellation_before
-                                )
-                                  .subtract(7, "day")
-                                  .format("DD/MM/YYYY")}
-                                , לאחר מכן דמי ביטול מלאים.
-                              </p>
+                              {!skipHotel && selectedHotel && (() => {
+                                const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                                if (!rawDate) return null;
+                                const formattedDate = selectedHotel.isOffline
+                                  ? dayjs(rawDate).format("DD/MM/YYYY")
+                                  : dayjs(rawDate).subtract(7, "day").format("DD/MM/YYYY");
+                                return (
+                                  <>
+                                    <h3 className="font-bold mt-4">מלון</h3>
+                                    <p>
+                                      ביטול או שינוי חינם עד לתאריך ה-{" "}
+                                      {formattedDate}
+                                      , לאחר מכן דמי ביטול מלאים.
+                                    </p>
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                         </div>

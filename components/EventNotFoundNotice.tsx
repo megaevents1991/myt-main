@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Home } from "lucide-react";
+import { getClientHomeHref } from "@/lib/homeHref";
 
 interface EventNotFoundNoticeProps {
   eventId?: string;
@@ -18,7 +19,9 @@ export default function EventNotFoundNotice({
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          router.push('/');
+          const href = getClientHomeHref();
+          if (href.startsWith("http")) window.location.href = href;
+          else router.push(href);
           return 0;
         }
         return prev - 1;
@@ -29,7 +32,9 @@ export default function EventNotFoundNotice({
   }, [router]);
 
   const handleRedirectNow = () => {
-    router.push('/');
+    const href = getClientHomeHref();
+    if (href.startsWith("http")) window.location.href = href;
+    else router.push(href);
   };
 
   return (

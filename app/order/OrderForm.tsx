@@ -17,6 +17,9 @@ import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
 import { shortenAirlineName } from "./order-review.utils";
 import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondial2026Title";
+import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
+import { getRoomParams } from "@/lib/getRoomParams";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -61,6 +64,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     setForceSkipHotel,
     setHotel,
     skipFlight,
+    setSkipFlight,
     flightSkipped,
     setFlightSkipped,
   } = useContext(OrderContext);
@@ -113,6 +117,21 @@ export const OrderForm = ({ event }: { event: Event }) => {
         ? "לסיכום הזמנה"
         : buttonText[step];
 
+  // Preload hotels as soon as the order flow starts so they're ready
+  // by the time the customer reaches step 3 (especially after skip flight).
+  useEffect(() => {
+    if (isUS) return;
+    if (!event?.id) return;
+    if (hotelsData?.data?.data?.hotels) return;
+    getHotels({
+      dateRange: getDefaultDateRange(event, undefined),
+      guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
+      location: event.location,
+      eventId: event.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id]);
+
   useEffect(() => {
     // US events are sold without hotel; if we ever land on step 3, skip to review.
     if (isNoHotelFlow && step === 3) {
@@ -122,6 +141,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
       setStep(4);
     }
   }, [isNoHotelFlow, step, setHotel, setSkipHotel, setStep, forceSkipHotel, setForceSkipHotel]);
+
+  useEffect(() => {
+    // Initialize skipFlight from event setting when event loads.
+    if (event?.skip_flight) setSkipFlight(true);
+  }, [event?.skip_flight, setSkipFlight]);
 
   const buttonDisabled =
     (!eventTicket.id && step === 1) || // Disable if no ticket selected on step 1
@@ -370,10 +394,22 @@ export const OrderForm = ({ event }: { event: Event }) => {
     nextStep(true);
   };
 
+  const { getHotels, hotelsData } = useContext(HotelFetchContext);
+
   const handleSkipFlight = () => {
     setFlightSkipped(true);
     setFlight(undefined);
-    // Pass skipFlightArg so step-2 logic doesn't depend on state propagation.
+    // No flight selected → fetch hotels with event default dates
+    if (!isUS && !hotelsData?.data?.data?.hotels) {
+      getHotels({
+        dateRange: getDefaultDateRange(event, undefined),
+        guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
+        location: event.location,
+        eventId: event.id,
+      });
+    }
+    // Pass skipFlightArg so step-2 logic (tracking, isNoHotelFlow handling) fires with the new value
+    // instead of depending on state propagation.
     nextStep(false, true);
   };
 
@@ -443,6 +479,31 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         aria-label="המשך ללא מלון"
                       >
                         לא צריך מלון
+                      </button>
+                    </div>
+                  ) : step === 2 && skipFlight ? (
+                    // Flight Selection Step with skip enabled: Show split buttons
+                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
+                      <button
+                        disabled={buttonDisabled}
+                        onClick={() => nextStep()}
+                        className={cn(
+                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
+                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        type="button"
+                        aria-label="בחר והמשך לבחירת מלון"
+                      >
+                        <span className="min-[400px]:inline hidden">בחר והמשך לבחירת מלון</span>
+                        <span className="min-[400px]:hidden">בחר והמשך</span>
+                      </button>
+                      <button
+                        onClick={handleSkipFlight}
+                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
+                        type="button"
+                        aria-label="המשך ללא טיסה"
+                      >
+                        לא צריך טיסה
                       </button>
                     </div>
                   ) : (

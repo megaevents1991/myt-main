@@ -84,7 +84,8 @@ export const EventSummary = ({
           className="flex w-full justify-between gap-1"
           dir="rtl"
         >
-          <div className="flex gap-[2px]">
+          <div>
+            <div className="flex gap-[2px]">
             <div className="ml-1">
               {!isBundle ? eventTicket.description : null}
             </div>
@@ -100,6 +101,10 @@ export const EventSummary = ({
                 )}
               </div>
             )}
+          </div>
+            <p className="text-[14px]" dir="rtl">
+              {eventTicket.description}
+            </p>
           </div>
           {agentCommission <= 0 && (
             <div>

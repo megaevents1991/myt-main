@@ -46,7 +46,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [forceSkipHotel, setForceSkipHotel] = useState(false);
   const [skipFlight, setSkipFlight] = useState(false);
   const [flightSkipped, setFlightSkipped] = useState(false);
-  
+
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";

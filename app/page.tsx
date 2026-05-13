@@ -57,7 +57,29 @@ async function getFootballTeams(): Promise<FootballTeam[]> {
   }
 }
 
-async function getOrderedArtists(): Promise<Artist[]> {
+async function getAllArtists(): Promise<Artist[]> {
+  try {
+    const { items } = await contentfulClient.getEntries<ArtistFields>({
+      content_type: "artistTemplate",
+    });
+
+    return items.map((item) => ({
+      sys: { id: item.sys.id },
+      fields: {
+        name: item.fields.name,
+        nameDBenglish: item.fields.nameDBenglish,
+        previewText: item.fields.previewText,
+        heroBanner: item.fields.heroBanner,
+        bio: item.fields.bio,
+      },
+    }));
+  } catch (error) {
+    console.error("Page: Failed to get all artists:", error);
+    return [];
+  }
+}
+
+async function getCarouselArtists(): Promise<Artist[]> {
   try {
     // Fetch the specific carousel entry with its linked artists
     const carouselEntry = await contentfulClient.getEntry<CarouselFields>("3RxzAgWZi26FSbBYhgMmVO", {
@@ -76,44 +98,41 @@ async function getOrderedArtists(): Promise<Artist[]> {
     return orderedArtists;
   } catch (error) {
     console.error("Page: Failed to get ordered artists from carousel:", error);
-    
-    // Fallback: get all artists if carousel fetch fails
-    try {
-      const { items } = await contentfulClient.getEntries<ArtistFields>({
-        content_type: "artistTemplate",
-      });
-      
-      return items.map((item) => ({
-        sys: { id: item.sys.id },
-        fields: {
-          name: item.fields.name,
-          nameDBenglish: item.fields.nameDBenglish,
-          previewText: item.fields.previewText,
-          heroBanner: item.fields.heroBanner,
-          bio: item.fields.bio,
-        },
-      }));
-    } catch (fallbackError) {
-      console.error("Page: Failed to get artists fallback:", fallbackError);
-      return [];
-    }
+
+    // Fallback: if carousel fetch fails, just return all artists
+    return getAllArtists();
   }
 }
 
 export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
-  
-  const events = await getEventsForPage();
-  const footballTeams = await getFootballTeams();
-  const artists = await getOrderedArtists();
+
+  const [events, footballTeams, carouselArtists, artists] = await Promise.all([
+    getEventsForPage(),
+    getFootballTeams(),
+    getCarouselArtists(),
+    getAllArtists(),
+  ]);
 
   return (
     <main>
       {/* Add invisible element with timestamp for client checking */}
       <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
+      <noscript>
+        <div className="w-full py-6 px-4 text-white bg-main text-center">
+          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
+            האירועים הכי שווים בעולם במקום אחד, בחרו, הרכיבו וטוסו ליהנות
+          </h1>
+        </div>
+      </noscript>
       <StructuredData events={events.events} />
-      <ClientSideHomepage initialEvents={events.events} footballTeams={footballTeams} artists={artists} />
+      <ClientSideHomepage
+        initialEvents={events.events}
+        footballTeams={footballTeams}
+        artists={artists}
+        carouselArtists={carouselArtists}
+      />
       <MegaEventsSection />
       <FAQ />
     </main>
