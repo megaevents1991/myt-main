@@ -663,20 +663,6 @@ export const FlightSelection = () => {
           className={cn("w-1/4 space-y-4", !matches && "w-full")}
           ref={filterRef}
         >
-          {/* Desktop-only: filter settings button (sort moved to top 3-card bar) */}
-          {matches && (
-            <div className={cn("flex justify-end", isLoading && "opacity-50 pointer-events-none")}>
-              <button
-                className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
-                type="button"
-                aria-label="פתח הגדרות מסננים"
-                aria-expanded={showFilters}
-                onClick={() => setShowFilters(true)}
-              >
-                <Settings2Icon aria-hidden="true" />
-              </button>
-            </div>
-          )}
           {matches && (
             <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
               <FlightFilters
