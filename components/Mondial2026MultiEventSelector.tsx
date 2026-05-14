@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import type { Event } from "@/lib/app.types";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/Modal";
-import { getMarkup, isEventSoldOut } from "@/lib/events/price";
+import { getTotalMarkup, isEventSoldOut } from "@/lib/events/price";
 import { Mondial2026EventCard } from "@/components/mondial/Mondial2026EventCard";
 import { parseMondial2026EventName } from "@/lib/mondial2026Title";
 import { ChevronDown } from "lucide-react";
@@ -54,7 +54,7 @@ function computeMondialPrice(event: Event): number {
   );
   const minTicketPrice =
     available.length > 0 ? Math.min(...available.map((t) => t.price)) : 0;
-  return event.base_flight_price + minTicketPrice + getMarkup();
+  return event.base_flight_price + minTicketPrice + getTotalMarkup(event);
 }
 
 function normalizeTeamName(name: string): string {

@@ -39,6 +39,7 @@ export type Event = {
   is_deleted: string;
   tags: string;
   tx_excluded_sections?: string[];
+  event_additional_markup?: number | null;
 };
 
 export type Flight = {
@@ -292,6 +293,7 @@ export type SingleEventOrderInfo = {
   category: string;
   event_type: EventType;
   event_tags?: string;
+  event_additional_markup?: number | null;
   price_per_ticket: number;
   total_tickets_price: number;
 };

@@ -8,6 +8,7 @@ import {
   shortenAirlineName,
 } from "./order-review.utils";
 import { superTrack } from "@/lib/mixpanel";
+import { getTotalMarkupForEvents } from "@/lib/events/price";
 
 export function useOrderVars() {
   const {
@@ -115,7 +116,10 @@ export function useOrderVars() {
     return (eventTicket.price || 0) - minTicketPriceForEvent(activeEvent);
   }, [eventTicket.price, activeEvent, minTicketPriceForEvent]);
 
-  const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
+  const markup = useMemo(
+    () => getTotalMarkupForEvents(effectiveEvents),
+    [effectiveEvents]
+  );
 
   const isNumberOfPersonsEqual = useMemo(() => {
     if (flightSkipped) {
@@ -154,9 +158,9 @@ export function useOrderVars() {
       baseFlightPricePerPerson +
         (forceSkipHotel ? 0 : event.base_hotel_price) +
         minTicketPriceTotalPerPerson +
-        maup
+        markup
     );
-  }, [event, baseFlightPricePerPerson, minTicketPriceTotalPerPerson, maup, forceSkipHotel]);
+  }, [event, baseFlightPricePerPerson, minTicketPriceTotalPerPerson, markup, forceSkipHotel]);
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
@@ -193,7 +197,7 @@ export function useOrderVars() {
       : 0;
 
     return Math.ceil(
-      ticketTotal + maup * numberOfEventTickets +
+      ticketTotal + markup * numberOfEventTickets +
         flightComponent +
         hotelComponent +
         skipFlightMarkup +
@@ -208,7 +212,7 @@ export function useOrderVars() {
     skipHotel,
     hotelPriceAddition,
     totalGuests,
-    maup,
+    markup,
     numberOfEventTickets,
     flightPriceAddition,
     baseFlightPricePerPerson,
