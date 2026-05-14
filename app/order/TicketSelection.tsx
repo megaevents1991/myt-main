@@ -17,6 +17,7 @@ import {
   type TixStockListing,
   type TixStockMatchableListing,
 } from "@/lib/tixstock-map";
+import { useSearchParams } from "next/navigation";
 
 export const TicketSelection = () => {
   const {
@@ -34,8 +35,8 @@ export const TicketSelection = () => {
   const eventRef = useRef(event);
   const selectedEventsRef = useRef(selectedEvents);
   const activeEventRef = useRef<typeof event>(undefined);
-  //const searchParams = useSearchParams();
-  const isDebugMode = false; //searchParams.get("debug") === "1";
+  const searchParams = useSearchParams();
+  const isDebugMode = searchParams.get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
