@@ -447,6 +447,30 @@ export const TicketSelection = () => {
     return effectiveTickets;
   }, [isTxEvent, effectiveTickets, matchedTicketIds]);
 
+  const getEventTicketForCategory = useCallback(
+    (category?: string | null) => {
+      const normalizedCategory = category?.trim().toLowerCase();
+      if (!normalizedCategory) return undefined;
+      return availableTickets.find(
+        (ticket) => ticket.category.trim().toLowerCase() === normalizedCategory,
+      );
+    },
+    [availableTickets],
+  );
+
+  const formatOrderPriceDiff = useCallback(
+    (price?: number | null) => {
+      if (price === undefined || price === null || !Number.isFinite(price)) {
+        return "—";
+      }
+
+      const diff = Math.ceil(price - baseTicketPrice);
+      if (diff === 0) return "כלול במחיר";
+      return `${diff > 0 ? "+" : "-"}$${Math.abs(diff)}`;
+    },
+    [baseTicketPrice],
+  );
+
   /* ── Debug panel ──────────────────────────────────────────────── */
   const debugPanel = isDebugMode && isTxEvent && (
     <details
@@ -473,6 +497,9 @@ export const TicketSelection = () => {
                 <th className="pr-3 py-1">Qty avail</th>
                 <th className="pr-3 py-1">Split qty</th>
                 <th className="pr-3 py-1">Price</th>
+                <th className="pr-3 py-1">Event ref price</th>
+                <th className="pr-3 py-1">Order diff</th>
+                <th className="pr-3 py-1">Live vs ref</th>
                 <th className="pr-3 py-1">Restrictions / benefits</th>
               </tr>
             </thead>
@@ -489,6 +516,17 @@ export const TicketSelection = () => {
                         )
                         .join(", ")
                     : l.restrictions_benefits?.other || "—";
+                const referenceTicket = getEventTicketForCategory(
+                  l.seat_details?.category,
+                );
+                const referencePrice = referenceTicket?.price;
+                const livePrice = Math.ceil(
+                  parseFloat(l.proceed_price?.amount ?? "NaN"),
+                );
+                const liveVsReference =
+                  referencePrice !== undefined && Number.isFinite(livePrice)
+                    ? livePrice - referencePrice
+                    : null;
                 return (
                   <tr key={l.id} className="border-b border-yellow-200 even:bg-yellow-100">
                     <td className="pr-3 py-1 text-yellow-700">{l.id}</td>
@@ -503,6 +541,29 @@ export const TicketSelection = () => {
                     </td>
                     <td className="pr-3 py-1 font-semibold">
                       {l.proceed_price?.amount ?? "—"} {l.proceed_price?.currency ?? ""}
+                    </td>
+                    <td className="pr-3 py-1 font-semibold">
+                      {referencePrice !== undefined ? `$${referencePrice}` : "—"}
+                    </td>
+                    <td className="pr-3 py-1 font-semibold">
+                      {formatOrderPriceDiff(referencePrice)}
+                    </td>
+                    <td
+                      className={`pr-3 py-1 font-semibold ${
+                        liveVsReference === null
+                          ? ""
+                          : liveVsReference < 0
+                            ? "text-green-700"
+                            : liveVsReference > 0
+                              ? "text-red-700"
+                              : "text-gray-700"
+                      }`}
+                    >
+                      {liveVsReference === null
+                        ? "—"
+                        : liveVsReference === 0
+                          ? "$0"
+                          : `${liveVsReference > 0 ? "+" : "-"}$${Math.abs(liveVsReference)}`}
                     </td>
                     <td className="pr-3 py-1 max-w-[220px] break-words">{restrictionText}</td>
                   </tr>
