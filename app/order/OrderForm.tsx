@@ -20,6 +20,7 @@ import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondia
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
+import { getTotalMarkupForEvents } from "@/lib/events/price";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -190,7 +191,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   })();
 
   const basePrice = (() => {
-    const markup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
+    const markup = getTotalMarkupForEvents(effectiveEvents);
     const isBundle = effectiveEvents.length > 1;
 
     if (isBundle) {

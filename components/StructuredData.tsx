@@ -1,4 +1,5 @@
 import { Event } from "@/lib/app.types";
+import { computePackagePrice } from "@/lib/events/price";
 
 interface StructuredDataProps {
   events: Event[];
@@ -55,25 +56,14 @@ export function StructuredData({ events }: StructuredDataProps) {
         const availabilityUrl = hasAvailableTickets
           ? "https://schema.org/InStock"
           : "https://schema.org/OutOfStock";
+        const packagePrice = computePackagePrice(event);
         return ({
         "@type": "Offer",
         position: index + 1,
         name: event.name,
         description: `חבילה מלאה לאירוע ${event.name} ב${event.location.name}`,
         priceCurrency: "USD",
-        price: (
-          event.base_flight_price +
-          event.base_hotel_price +
-          (() => {
-            const available = event.tickets_and_rates.filter(
-              (t) => t?.available !== false
-            );
-            return available.length > 0
-              ? Math.min(...available.map((t) => t.price))
-              : 0;
-          })() +
-          Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-        ).toString(),
+        price: (packagePrice ?? 0).toString(),
         validFrom: new Date().toISOString(),
         validThrough: event.date,
   availability: availabilityUrl,
@@ -93,19 +83,7 @@ export function StructuredData({ events }: StructuredDataProps) {
           offers: {
             "@type": "Offer",
             priceCurrency: "USD",
-            price: (
-              event.base_flight_price +
-              event.base_hotel_price +
-              (() => {
-                const available = event.tickets_and_rates.filter(
-                  (t) => t?.available !== false
-                );
-                return available.length > 0
-                  ? Math.min(...available.map((t) => t.price))
-                  : 0;
-              })() +
-              Number(process.env.NEXT_PUBLIC_MARKUP || "150")
-            ).toString(),
+            price: (packagePrice ?? 0).toString(),
             availability: availabilityUrl,
           },
         },

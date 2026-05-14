@@ -782,6 +782,7 @@ export default function OrderReview() {
           category: ticket.category,
           event_type: evt?.type || "",
           event_tags: evt?.tags || "",
+          event_additional_markup: evt?.event_additional_markup ?? null,
           price_per_ticket: ticket.price,
           total_tickets_price: ticket.price * numberOfEventTickets,
           vendor: ticket.vendor,

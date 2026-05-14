@@ -9,7 +9,7 @@
  * - Events marked as "Sold"
  */
 
-import { computePackagePrice, isEventSoldOut, hasAvailableTickets } from '../price';
+import { computePackagePrice, getTotalMarkupForEvents, isEventSoldOut, hasAvailableTickets } from '../price';
 import { Event, EventTicket } from '@/lib/app.types';
 
 // Helper to create test tickets
@@ -130,6 +130,21 @@ console.log('Test 7: Custom markup');
 const event7 = createMockEvent();
 const price7 = computePackagePrice(event7, 250);
 console.log(`✓ Price with custom markup: $${price7} (Expected: $1150 = 500+300+100+250)\n`);
+
+// Test 8: Event-specific additional markup
+console.log('Test 8: Event-specific additional markup');
+const event8 = createMockEvent({ event_additional_markup: 80 });
+const price8 = computePackagePrice(event8);
+console.log(`✓ Price with event additional markup: $${price8} (Expected: $1155 = 500+300+100+175+80)\n`);
+
+// Test 9: Bundle markup uses the highest event-specific additional markup
+console.log('Test 9: Bundle additional markup');
+const bundleMarkup = getTotalMarkupForEvents([
+  createMockEvent({ event_additional_markup: 40 }),
+  createMockEvent({ event_additional_markup: 95 }),
+  createMockEvent({ event_additional_markup: 25 }),
+]);
+console.log(`✓ Bundle markup: $${bundleMarkup} (Expected: $270 = 175+95)\n`);
 
 console.log('✅ All edge cases handled correctly!');
 console.log('\nSummary:');

@@ -14,6 +14,29 @@ export function getMarkup(): number {
   return Number(process.env.NEXT_PUBLIC_MARKUP) || DEFAULT_MARKUP;
 }
 
+export function getEventAdditionalMarkup(event: Event): number {
+  const additionalMarkup = Number(event.event_additional_markup ?? 0);
+  return Number.isFinite(additionalMarkup) ? additionalMarkup : 0;
+}
+
+export function getMaxEventAdditionalMarkup(events: Event[]): number {
+  return events.reduce(
+    (max, event) => Math.max(max, getEventAdditionalMarkup(event)),
+    0
+  );
+}
+
+export function getTotalMarkup(event: Event, markup?: number): number {
+  return (markup ?? getMarkup()) + getEventAdditionalMarkup(event);
+}
+
+export function getTotalMarkupForEvents(
+  events: Event[],
+  markup?: number
+): number {
+  return (markup ?? getMarkup()) + getMaxEventAdditionalMarkup(events);
+}
+
 /**
  * Computes the total package price for an event.
  * Returns null if the event has no available tickets.
@@ -22,7 +45,8 @@ export function getMarkup(): number {
  * - Base flight price
  * - Base hotel price  
  * - Minimum ticket price (from available tickets only)
- * - Markup
+ * - Global markup
+ * - Event-specific additional markup
  * 
  * @param event - The event to compute price for
  * @param markup - Optional markup override (defaults to env var or 175)
@@ -57,8 +81,7 @@ export function computePackagePrice(
     ...availableTickets.map((ticket) => ticket.price)
   );
 
-  // Use provided markup or get from environment
-  const effectiveMarkup = markup ?? getMarkup();
+  const effectiveMarkup = getTotalMarkup(event, markup);
 
   // Compute total package price
   return (
