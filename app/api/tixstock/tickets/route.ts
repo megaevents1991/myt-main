@@ -7,6 +7,7 @@ import type { TixStockListing } from "@/lib/tixstock.types";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
+const REVALIDATE_API_ORIGIN = "https://www.mega-events.co.il";
 
 /** Convert an amount string in any supported currency to USD, with per-currency markup */
 function toUsd(amount: string, currency: string): string {
@@ -55,6 +56,34 @@ function getCheapestCategoryPrices(listings: TixStockListing[]) {
   }
 
   return prices;
+}
+
+async function callRevalidateEndpoint() {
+  const secret = process.env.NEXT_SECRET_REVALIDATION_SECRET;
+  if (!secret) {
+    console.warn(
+      "[TixStock Tickets] Skipping /api/revalidate call: missing NEXT_SECRET_REVALIDATION_SECRET",
+    );
+    return;
+  }
+
+  try {
+    const revalidateUrl = new URL("/api/revalidate", REVALIDATE_API_ORIGIN);
+    revalidateUrl.searchParams.set("secret", secret);
+
+    const response = await fetch(revalidateUrl.toString(), {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      console.warn(
+        `[TixStock Tickets] /api/revalidate returned ${response.status}: ${await response.text()}`,
+      );
+    }
+  } catch (error) {
+    console.error("[TixStock Tickets] Failed to call /api/revalidate:", error);
+  }
 }
 
 async function updateDbTicketPricesFromLiveListings(
@@ -146,6 +175,7 @@ async function updateDbTicketPricesFromLiveListings(
   }
 
   revalidateTag("events");
+  callRevalidateEndpoint();
 
   console.log(
     `[TixStock Tickets] Synced ${priceUpdates.length} DB ticket price(s) for event ${dbEventId}`,
