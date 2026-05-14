@@ -229,15 +229,38 @@ function isExcludedSection(
     .trim()
     .toLowerCase();
   const listingSectionSlug = slugify(listingSection);
-  return excludedSections.some((excl) => {
-    const lastUnderscore = excl.lastIndexOf("_");
-    if (lastUnderscore === -1) return false;
-    const catSlug = excl.substring(0, lastUnderscore);
-    const sectionId = excl.substring(lastUnderscore + 1).toLowerCase();
-    if (listingCatSlug === catSlug && listingSectionSlug === listingCatSlug) {
-      return true;
+
+  const parsedExcludedSections = excludedSections
+    .map((excl) => {
+      const lastUnderscore = excl.lastIndexOf("_");
+      if (lastUnderscore === -1) return null;
+      return {
+        catSlug: excl.substring(0, lastUnderscore),
+        sectionId: excl.substring(lastUnderscore + 1).toLowerCase(),
+      };
+    })
+    .filter(
+      (section): section is { catSlug: string; sectionId: string } =>
+        section !== null,
+    );
+
+  const isCategoryOnlyListing =
+    listingCatSlug !== "" && listingSectionSlug === listingCatSlug;
+  const hasConcreteExcludedSectionInCategory = parsedExcludedSections.some(
+    ({ catSlug, sectionId }) =>
+      catSlug === listingCatSlug &&
+      sectionId !== "" &&
+      sectionId !== listingCatSlug,
+  );
+
+  return parsedExcludedSections.some(({ catSlug, sectionId }) => {
+    if (listingCatSlug !== catSlug) return false;
+
+    if (isCategoryOnlyListing) {
+      return hasConcreteExcludedSectionInCategory;
     }
-    return listingCatSlug === catSlug && listingSection === sectionId;
+
+    return listingSection === sectionId;
   });
 }
 
