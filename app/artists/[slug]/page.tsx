@@ -15,6 +15,7 @@ import Link from "next/link";
 import { getEventsByName } from "@/lib/eventsData";
 import EventButton from "../../../components/EventButton";
 import ClientTracker from "../../../components/ClientTracker";
+import { computePackagePrice } from "@/lib/events/price";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new artists on-demand
@@ -145,6 +146,7 @@ export default async function ArtistPage({
             {events.map((event) => {
               const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
               const computedSold = !hasAvailableTickets || event.tags === "Sold";
+              const packagePrice = computePackagePrice(event);
               return (
               <Link
                 key={event.id}
@@ -221,22 +223,9 @@ export default async function ArtistPage({
                           מחיר חבילה ממוצע לאדם
                         </div>
                         <div className="text-2xl font-extrabold">
-                          $
-                          {(
-                            event.base_flight_price +
-                            event.base_hotel_price +
-                            (() => {
-                              const available = event.tickets_and_rates.filter(
-                                (t) => t?.available !== false
-                              );
-                              const min =
-                                available.length > 0
-                                  ? Math.min(...available.map((t) => t.price))
-                                  : 0;
-                              return min;
-                            })() +
-                            Number(process.env.NEXT_PUBLIC_MARKUP || "175")
-                          ).toLocaleString("en-US")}
+                          {packagePrice !== null
+                            ? `$${packagePrice.toLocaleString("en-US")}`
+                            : "אזלו הכרטיסים"}
                         </div>
                         <div className="flex-grow min-h-[4px]"></div>
                         <div
@@ -245,7 +234,7 @@ export default async function ArtistPage({
                         >
                           לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
                         </div>
-                        {event.tags === "Sold" ? (
+                        {computedSold ? (
                           <div className="my-2 py-2 flex-shrink-0 h-[22px] sm:h-[23px]"></div>
                         ) : (
                           <>

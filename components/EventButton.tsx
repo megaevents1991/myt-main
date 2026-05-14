@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { orderStage } from "../app/hooks/Affiliate";
 import { Event } from "@/lib/app.types";
 import { trackEvent } from "@/lib/mixpanel";
+import { computePackagePrice } from "@/lib/events/price";
 
 export default function EventButton({
   event,
@@ -15,9 +16,6 @@ export default function EventButton({
   const tickets = event.tickets_and_rates || [];
   const hasAvailableTickets = tickets.some((t) => t?.available !== false);
   const computedTags = hasAvailableTickets ? event.tags : "Sold";
-  const minAvailablePrice = hasAvailableTickets
-    ? Math.min(...tickets.filter((t) => t?.available !== false).map((t) => t.price))
-    : 0;
   return (
     <div
       onClick={() => {
@@ -28,11 +26,7 @@ export default function EventButton({
           eventType: event.type,
           eventLocation: event.location.name,
           eventTags: computedTags,
-          eventPrice:
-            event.base_flight_price +
-            event.base_hotel_price +
-            minAvailablePrice +
-            Number(process.env.NEXT_PUBLIC_MARKUP || "150"),
+          eventPrice: computePackagePrice(event),
         });
         if (computedTags === "Sold") {
           return;
