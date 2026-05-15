@@ -10,11 +10,11 @@ import { amadeus } from "../amadeusClient";
 import { getEvents } from "@/lib/eventsData";
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
-import { serialize } from 'tinyduration';
-import { 
-  trackServerSideEvent, 
-  extractIpFromRequest, 
-  extractUserAgentFromRequest 
+import { serialize } from "tinyduration";
+import {
+  trackServerSideEvent,
+  extractIpFromRequest,
+  extractUserAgentFromRequest,
 } from "@/lib/gtmAnalytics";
 
 // Type definition for Amadeus API error response
@@ -35,7 +35,7 @@ interface AmadeusError {
 async function retryAmadeusCall<T>(
   apiCall: () => Promise<T>,
   maxRetries: number = 3,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
 ): Promise<T> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -44,30 +44,35 @@ async function retryAmadeusCall<T>(
       // Check if this is the specific Amadeus system error we want to retry
       const amadeusError = error as AmadeusError;
       const isSystemError = amadeusError?.response?.result?.errors?.some(
-        (err) => err.status === 500 && err.code === 141 && err.title === "SYSTEM ERROR HAS OCCURRED"
+        (err) =>
+          err.status === 500 &&
+          err.code === 141 &&
+          err.title === "SYSTEM ERROR HAS OCCURRED",
       );
-      
+
       // If it's the last attempt or not a system error, throw the error
       if (attempt === maxRetries || !isSystemError) {
         throw error;
       }
-      
+
       // Calculate delay with exponential backoff (1s, 2s, 4s, etc.)
       const delay = baseDelay * Math.pow(2, attempt - 1);
-      console.warn(`Amadeus API system error (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
-      
+      console.warn(
+        `Amadeus API system error (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`,
+      );
+
       // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
-  
+
   throw new Error("All retry attempts failed");
 }
 
-export const maxDuration = 30;
+export const maxDuration = 40;
 const currencyCode = "USD";
-const MAX_STOP_DURATION_HOURS = 4;
-const MAX_STOPS = 1; // Maximum allowed stops per journey
+const MAX_STOP_DURATION_HOURS = 8;
+const MAX_STOPS = 2; // Maximum allowed stops per journey
 
 const PTfunction = (duration: string): string => {
   const parts = duration.split(":").map(Number);
@@ -85,7 +90,7 @@ const transformDbFlightToFlight = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dbFlight: any,
   id: number,
-  num_of_travelers: number
+  num_of_travelers: number,
 ): Flight => {
   if (
     dbFlight.initial_quantity - dbFlight.consumed_quantity <
@@ -150,7 +155,7 @@ const getOfflineFlightsFromDB = async (
   depart_date: string,
   return_date: string,
   indexShift: number,
-  num_of_travelers: number
+  num_of_travelers: number,
 ): Promise<Flight[]> => {
   try {
     const { data: flights, error } = await supabase
@@ -170,8 +175,8 @@ const getOfflineFlightsFromDB = async (
           transformDbFlightToFlight(
             flight,
             index + indexShift,
-            num_of_travelers
-          )
+            num_of_travelers,
+          ),
         )
       : ([] as Flight[]);
   } catch (error) {
@@ -187,7 +192,7 @@ export async function POST(request: Request) {
         error:
           "Amadeus client is not initialized. Check your environment variables.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -197,7 +202,7 @@ export async function POST(request: Request) {
   if (!eventId) {
     return NextResponse.json(
       { error: "Event ID is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -210,18 +215,19 @@ export async function POST(request: Request) {
   }
 
   const {
-      returnDate: returnDateFromUi,
-      departureDate: departureDateFromUi,
-      originLocationCode = "TLV",
-      adults,
-      nonStop,
-      gtmIdnts,
-      outboundDestination,
-      returnOrigin,
-    }: FlightSearchOptions = await request.json();
+    returnDate: returnDateFromUi,
+    departureDate: departureDateFromUi,
+    originLocationCode = "TLV",
+    adults,
+    nonStop,
+    gtmIdnts,
+    outboundDestination,
+    returnOrigin,
+  }: FlightSearchOptions = await request.json();
 
   // For bundle events: use provided locations, otherwise use event location
-  const effectiveOutboundDestination = outboundDestination || event.location.city_iata;
+  const effectiveOutboundDestination =
+    outboundDestination || event.location.city_iata;
   const effectiveReturnOrigin = returnOrigin || event.location.city_iata;
   const isMultiCity = effectiveOutboundDestination !== effectiveReturnOrigin;
 
@@ -229,7 +235,7 @@ export async function POST(request: Request) {
   try {
     const ip = extractIpFromRequest(request);
     const userAgent = extractUserAgentFromRequest(request);
-    
+
     await trackServerSideEvent({
       eventData: {
         id: event.id,
@@ -237,7 +243,7 @@ export async function POST(request: Request) {
         value: 1500,
         currency: "USD",
         category: event.type || "music_event",
-        brand: "Mega Events"
+        brand: "Mega Events",
       },
       eventType: "add_to_cart",
       gtmIdnts,
@@ -246,7 +252,10 @@ export async function POST(request: Request) {
     });
   } catch (analyticsError) {
     // Don't fail the main request if analytics fails
-    console.warn("Analytics tracking failed for flight search:", analyticsError);
+    console.warn(
+      "Analytics tracking failed for flight search:",
+      analyticsError,
+    );
   }
 
   try {
@@ -254,7 +263,7 @@ export async function POST(request: Request) {
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 
     let response;
-    
+
     // For multi-city bundle events (different outbound destination and return origin),
     // use POST endpoint with originDestinations array
     if (isMultiCity) {
@@ -283,10 +292,16 @@ export async function POST(request: Request) {
             sources: ["GDS"],
             searchCriteria: {
               maxFlightOffers: 250,
-              ...(nonStop ? { flightFilters: { connectionRestriction: { maxNumberOfConnections: 0 } } } : {}),
+              ...(nonStop
+                ? {
+                    flightFilters: {
+                      connectionRestriction: { maxNumberOfConnections: 0 },
+                    },
+                  }
+                : {}),
             },
-          })
-        )
+          }),
+        ),
       );
     } else {
       response = await retryAmadeusCall(() =>
@@ -299,7 +314,7 @@ export async function POST(request: Request) {
           max: 250,
           nonStop,
           currencyCode,
-        })
+        }),
       );
     }
 
@@ -308,211 +323,210 @@ export async function POST(request: Request) {
       departureDate,
       returnDate,
       0,
-      adults || 1
+      adults || 1,
     );
 
     const baseId = flights.length + 1;
 
     // Transform Amadeus response to match our flight data structure
-    const moreFlights: Flight[] = response.result.data.reduce(
-      (acc, offer) => {
-        const { validatingAirlineCodes, price, itineraries, travelerPricings } =
-          offer;
-        const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
+    const moreFlights: Flight[] = response.result.data.reduce((acc, offer) => {
+      const { validatingAirlineCodes, price, itineraries, travelerPricings } =
+        offer;
+      const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
 
-        if (!airlineByIata.logo) {
-          return acc;
-        }
-
-        // Filter flights with too many stops (early check)
-        const outboundStops = itineraries[0].segments.length - 1;
-        const inboundStops = itineraries[1].segments.length - 1;
-
-        if (outboundStops > MAX_STOPS || inboundStops > MAX_STOPS) {
-          return acc; // Skip flights with too many stops
-        }
-
-        const toDeparture = itineraries[0].segments[0];
-        const toArrival = itineraries[0].segments.at(-1);
-        const fromDeparture = itineraries[1].segments[0];
-        const fromArrival = itineraries[1].segments.at(-1);
-
-        // Calculate stops and durations early
-        const toStops = itineraries[0].segments.map((segment, i) => ({
-          iataCode: segment.arrival.iataCode,
-          duration: Math.ceil(
-            (new Date(
-              itineraries[0].segments?.[i + 1]?.departure?.at
-            ).getTime() -
-              new Date(segment.arrival.at).getTime()) /
-              1000 /
-              60 /
-              60
-          ),
-        }));
-
-        const fromStops = itineraries[1].segments.map((segment, i) => ({
-          iataCode: segment.arrival.iataCode,
-          duration: Math.ceil(
-            (new Date(
-              itineraries[1].segments?.[i + 1]?.departure?.at
-            ).getTime() -
-              new Date(segment.arrival.at).getTime()) /
-              1000 /
-              60 /
-              60
-          ),
-        }));
-
-        const hasLongLayover =
-          toStops.some((stop) => stop.duration > MAX_STOP_DURATION_HOURS) ||
-          fromStops.some((stop) => stop.duration > MAX_STOP_DURATION_HOURS);
-
-        // Skip flights with layovers longer than threshold
-        if (hasLongLayover) {
-          return acc;
-        }
-
-        const fromCheckBagsIncluded = itineraries[0].segments.every((segment) =>
-          travelerPricings[0].fareDetailsBySegment.some(
-            (fare) =>
-              fare.segmentId === segment.id &&
-              fare.includedCheckedBags?.quantity
-          )
-        );
-        const fromCabinBagsIncluded = itineraries[0].segments.every(
-          (segment) => {
-            return travelerPricings[0].fareDetailsBySegment.some((fare) => {
-              return (
-                fare.segmentId === segment.id &&
-                fare.includedCabinBags?.quantity
-              );
-            });
-          }
-        );
-
-        const toCheckBagsIncluded = itineraries[1].segments.every((segment) => {
-          return travelerPricings[0].fareDetailsBySegment.some((fare) => {
-            return (
-              fare.segmentId === segment.id &&
-              fare.includedCheckedBags?.quantity
-            );
-          });
-        });
-
-        const toCabinBagsIncluded = itineraries[1].segments.every((segment) => {
-          return travelerPricings[0].fareDetailsBySegment.some((fare) => {
-            return (
-              fare.segmentId === segment.id && fare.includedCabinBags?.quantity
-            );
-          });
-        });
-
-        if (
-          fromCabinBagsIncluded !== toCabinBagsIncluded ||
-          fromCheckBagsIncluded !== toCheckBagsIncluded
-        ) {
-          return acc; // Skip flights with inconsistent baggage policies
-        }
-
-        const outbound: FlightSegment = {
-          stops: toStops,
-          departureTime: toDeparture.departure.at,
-          departureAirport: toDeparture.departure.iataCode,
-          arrivalAirport: toArrival?.arrival.iataCode || "",
-          arrivalTime: toArrival?.arrival.at || "0",
-          duration: itineraries[0].duration,
-          checkBagsIncluded: fromCheckBagsIncluded,
-          cabinBagsIncluded: fromCabinBagsIncluded,
-          flightNumber:
-            validatingAirlineCodes[0] + itineraries[0].segments[0].number,
-        };
-
-        const inbound: FlightSegment = {
-          departureTime: fromDeparture.departure.at,
-          departureAirport: fromDeparture.departure.iataCode,
-          arrivalAirport: fromArrival?.arrival.iataCode || "",
-          arrivalTime: fromArrival?.arrival.at || "0",
-          stops: fromStops,
-          duration: itineraries[1].duration,
-          checkBagsIncluded: toCheckBagsIncluded,
-          cabinBagsIncluded: toCabinBagsIncluded,
-          flightNumber:
-            validatingAirlineCodes[0] + itineraries[1].segments[0].number,
-        };
-
-        const currentFlightId = String(baseId + acc.length);
-        acc.push({
-          offer,
-          id: currentFlightId,
-          numOfTravelers: travelerPricings.length,
-          price: parseFloat(price.grandTotal),
-          duration: itineraries[0].duration,
-          stops: itineraries[0].segments.length - 1,
-          airline: validatingAirlineCodes[0],
-          outbound,
-          inbound,
-          metadata: {
-            ...airlineByIata,
-            name: response.result.dictionaries.carriers[
-              validatingAirlineCodes[0]
-            ],
-          },
-        });
-
-        // Special Handling: Check and update logo for LUFTHANSA
-        const currentFlight = acc[acc.length - 1];
-        if (currentFlight.metadata.name === "LUFTHANSA") {
-          currentFlight.metadata.logo =
-            "https://www.avcodes.co.uk/images/logos/DLH.png";
-        }
-        // Special Handling: Check and update for Bluebird
-        else if (currentFlight.metadata.iata === "HR") {
-          if (currentFlight.offer.itineraries[0].segments[0].operating?.carrierCode === "BZ") {
-            currentFlight.metadata.logo =
-              "https://upload.wikimedia.org/wikipedia/fr/c/c2/Bluebird_Airways_logo.png";
-              currentFlight.metadata.name = "Bluebird Airways";
-              currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
-          } else if (currentFlight.offer.itineraries[0].segments[0].operating?.carrierCode === "LY") {
-            currentFlight.metadata.logo =
-              "https://www.avcodes.co.uk/images/logos/ELY.png";
-              currentFlight.metadata.name = "El Al";
-          }
-        }
-        // Special Handling: For low-cost carriers
-        else if (currentFlight.metadata.iata === "6H") {
-          currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
-        }
-        else if (currentFlight.metadata.iata === "IZ") {
-          currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
-        }
-        else if (currentFlight.metadata.iata === "U8") {
-          currentFlight.price = currentFlight.price + 45 * currentFlight.numOfTravelers;
-        }
-
-        if (currentFlight.metadata.iata === "LY" && currentFlight.outbound.checkBagsIncluded === false && currentFlight.inbound.checkBagsIncluded === false) {
-          const variantFlight: Flight = {
-            ...currentFlight,
-            id: String(baseId + acc.length),
-            price: currentFlight.price + 150 * currentFlight.numOfTravelers,
-            outbound: {
-              ...currentFlight.outbound,
-              checkBagsIncluded: true,
-            },
-            inbound: {
-              ...currentFlight.inbound,
-              checkBagsIncluded: true,
-            },
-            virtualOfferType: true,
-          };
-          acc.push(variantFlight);
-        }
-        
-
+      if (!airlineByIata.logo) {
         return acc;
-      },
-      [] as Flight[]
-    );
+      }
+
+      // Filter flights with too many stops (early check)
+      const outboundStops = itineraries[0].segments.length - 1;
+      const inboundStops = itineraries[1].segments.length - 1;
+
+      if (outboundStops > MAX_STOPS || inboundStops > MAX_STOPS) {
+        return acc; // Skip flights with too many stops
+      }
+
+      const toDeparture = itineraries[0].segments[0];
+      const toArrival = itineraries[0].segments.at(-1);
+      const fromDeparture = itineraries[1].segments[0];
+      const fromArrival = itineraries[1].segments.at(-1);
+
+      // Calculate stops and durations early
+      const toStops = itineraries[0].segments.map((segment, i) => ({
+        iataCode: segment.arrival.iataCode,
+        duration: Math.ceil(
+          (new Date(itineraries[0].segments?.[i + 1]?.departure?.at).getTime() -
+            new Date(segment.arrival.at).getTime()) /
+            1000 /
+            60 /
+            60,
+        ),
+      }));
+
+      const fromStops = itineraries[1].segments.map((segment, i) => ({
+        iataCode: segment.arrival.iataCode,
+        duration: Math.ceil(
+          (new Date(itineraries[1].segments?.[i + 1]?.departure?.at).getTime() -
+            new Date(segment.arrival.at).getTime()) /
+            1000 /
+            60 /
+            60,
+        ),
+      }));
+
+      const hasLongLayover =
+        toStops.some((stop) => stop.duration > MAX_STOP_DURATION_HOURS) ||
+        fromStops.some((stop) => stop.duration > MAX_STOP_DURATION_HOURS);
+
+      // Skip flights with layovers longer than threshold
+      if (hasLongLayover) {
+        return acc;
+      }
+
+      const fromCheckBagsIncluded = itineraries[0].segments.every((segment) =>
+        travelerPricings[0].fareDetailsBySegment.some(
+          (fare) =>
+            fare.segmentId === segment.id && fare.includedCheckedBags?.quantity,
+        ),
+      );
+      const fromCabinBagsIncluded = itineraries[0].segments.every((segment) => {
+        return travelerPricings[0].fareDetailsBySegment.some((fare) => {
+          return (
+            fare.segmentId === segment.id && fare.includedCabinBags?.quantity
+          );
+        });
+      });
+
+      const toCheckBagsIncluded = itineraries[1].segments.every((segment) => {
+        return travelerPricings[0].fareDetailsBySegment.some((fare) => {
+          return (
+            fare.segmentId === segment.id && fare.includedCheckedBags?.quantity
+          );
+        });
+      });
+
+      const toCabinBagsIncluded = itineraries[1].segments.every((segment) => {
+        return travelerPricings[0].fareDetailsBySegment.some((fare) => {
+          return (
+            fare.segmentId === segment.id && fare.includedCabinBags?.quantity
+          );
+        });
+      });
+
+      if (
+        fromCabinBagsIncluded !== toCabinBagsIncluded ||
+        fromCheckBagsIncluded !== toCheckBagsIncluded
+      ) {
+        return acc; // Skip flights with inconsistent baggage policies
+      }
+
+      const outbound: FlightSegment = {
+        stops: toStops,
+        departureTime: toDeparture.departure.at,
+        departureAirport: toDeparture.departure.iataCode,
+        arrivalAirport: toArrival?.arrival.iataCode || "",
+        arrivalTime: toArrival?.arrival.at || "0",
+        duration: itineraries[0].duration,
+        checkBagsIncluded: fromCheckBagsIncluded,
+        cabinBagsIncluded: fromCabinBagsIncluded,
+        flightNumber:
+          validatingAirlineCodes[0] + itineraries[0].segments[0].number,
+      };
+
+      const inbound: FlightSegment = {
+        departureTime: fromDeparture.departure.at,
+        departureAirport: fromDeparture.departure.iataCode,
+        arrivalAirport: fromArrival?.arrival.iataCode || "",
+        arrivalTime: fromArrival?.arrival.at || "0",
+        stops: fromStops,
+        duration: itineraries[1].duration,
+        checkBagsIncluded: toCheckBagsIncluded,
+        cabinBagsIncluded: toCabinBagsIncluded,
+        flightNumber:
+          validatingAirlineCodes[0] + itineraries[1].segments[0].number,
+      };
+
+      const currentFlightId = String(baseId + acc.length);
+      acc.push({
+        offer,
+        id: currentFlightId,
+        numOfTravelers: travelerPricings.length,
+        price: parseFloat(price.grandTotal),
+        duration: itineraries[0].duration,
+        stops: itineraries[0].segments.length - 1,
+        airline: validatingAirlineCodes[0],
+        outbound,
+        inbound,
+        metadata: {
+          ...airlineByIata,
+          name: response.result.dictionaries.carriers[
+            validatingAirlineCodes[0]
+          ],
+        },
+      });
+
+      // Special Handling: Check and update logo for LUFTHANSA
+      const currentFlight = acc[acc.length - 1];
+      if (currentFlight.metadata.name === "LUFTHANSA") {
+        currentFlight.metadata.logo =
+          "https://www.avcodes.co.uk/images/logos/DLH.png";
+      }
+      // Special Handling: Check and update for Bluebird
+      else if (currentFlight.metadata.iata === "HR") {
+        if (
+          currentFlight.offer.itineraries[0].segments[0].operating
+            ?.carrierCode === "BZ"
+        ) {
+          currentFlight.metadata.logo =
+            "https://upload.wikimedia.org/wikipedia/fr/c/c2/Bluebird_Airways_logo.png";
+          currentFlight.metadata.name = "Bluebird Airways";
+          currentFlight.price =
+            currentFlight.price + 45 * currentFlight.numOfTravelers;
+        } else if (
+          currentFlight.offer.itineraries[0].segments[0].operating
+            ?.carrierCode === "LY"
+        ) {
+          currentFlight.metadata.logo =
+            "https://www.avcodes.co.uk/images/logos/ELY.png";
+          currentFlight.metadata.name = "El Al";
+        }
+      }
+      // Special Handling: For low-cost carriers
+      else if (currentFlight.metadata.iata === "6H") {
+        currentFlight.price =
+          currentFlight.price + 45 * currentFlight.numOfTravelers;
+      } else if (currentFlight.metadata.iata === "IZ") {
+        currentFlight.price =
+          currentFlight.price + 45 * currentFlight.numOfTravelers;
+      } else if (currentFlight.metadata.iata === "U8") {
+        currentFlight.price =
+          currentFlight.price + 45 * currentFlight.numOfTravelers;
+      }
+
+      if (
+        currentFlight.metadata.iata === "LY" &&
+        currentFlight.outbound.checkBagsIncluded === false &&
+        currentFlight.inbound.checkBagsIncluded === false
+      ) {
+        const variantFlight: Flight = {
+          ...currentFlight,
+          id: String(baseId + acc.length),
+          price: currentFlight.price + 150 * currentFlight.numOfTravelers,
+          outbound: {
+            ...currentFlight.outbound,
+            checkBagsIncluded: true,
+          },
+          inbound: {
+            ...currentFlight.inbound,
+            checkBagsIncluded: true,
+          },
+          virtualOfferType: true,
+        };
+        acc.push(variantFlight);
+      }
+
+      return acc;
+    }, [] as Flight[]);
 
     const debug = {
       departureDate: departureDateFromUi,
@@ -529,7 +543,7 @@ export async function POST(request: Request) {
         error:
           "Failed to fetch flight data. Please check the server logs for more information.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
