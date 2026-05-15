@@ -71,7 +71,7 @@ async function retryAmadeusCall<T>(
 
 export const maxDuration = 40;
 const currencyCode = "USD";
-const MAX_STOP_DURATION_HOURS = 8;
+const MAX_STOP_DURATION_HOURS = 10;
 const MAX_STOPS = 2; // Maximum allowed stops per journey
 
 const PTfunction = (duration: string): string => {
