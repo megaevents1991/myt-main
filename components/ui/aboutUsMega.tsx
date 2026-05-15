@@ -5,10 +5,7 @@ import { motion } from "framer-motion";
 
 export default function MegaEventsSection() {
   return (
-    <section
-      dir="rtl"
-      className="bg-gradient-to-b from-white to-gray-100 py-16 px-4 sm:px-8 lg:px-16"
-    >
+    <section className="bg-background py-16 px-4 sm:px-8 lg:px-16">
       <div className="max-w-7xl mx-auto text-center">
         {/* כותרת */}
         <motion.h2
@@ -69,11 +66,11 @@ export default function MegaEventsSection() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="bg-white rounded-3xl shadow-xl p-8 max-w-3xl mx-auto text-gray-700 text-lg leading-relaxed"
+          className="bg-card text-card-foreground rounded-3xl shadow-card p-8 max-w-3xl mx-auto text-lg leading-relaxed"
         >
           <p className="mb-6">
             Mega Events הוא שירות חדשני מבית{" "}
-            <span className="font-semibold text-primary">מגה תיירות</span> -
+            <span className="font-bold text-foreground">מגה תיירות</span> -
             מובילה בתחום התיירות כבר יותר מ-30 שנה.
           </p>
           <p className="mb-6">
@@ -89,7 +86,7 @@ export default function MegaEventsSection() {
           </div>
 
           {/* אמינות - מיני כרטיסים */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-primary text-center mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-foreground [&_svg_path]:fill-primary [&_svg_path]:stroke-primary text-center mb-6">
             {[
               {
                 icon: (
@@ -168,7 +165,7 @@ export default function MegaEventsSection() {
             ].map((item, idx) => (
               <div
                 key={idx}
-                className="flex flex-col items-center bg-gray-50 rounded-2xl p-4 shadow-sm hover:shadow-md transition"
+                className="flex flex-col items-center bg-muted rounded-2xl p-4 shadow-card hover:shadow-card-hover transition"
               >
                 {item.icon}
                 <p className="font-bold text-base mt-2">{item.text}</p>

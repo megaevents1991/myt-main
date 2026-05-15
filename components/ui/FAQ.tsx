@@ -72,10 +72,10 @@ export const faqItems: FAQItems = [
 export function FAQ() {
   return (
     <section className="w-full py-10 px-4 md:px-6 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold text-secondary text-center mb-8">
+      <h2 className="font-display text-2xl font-extrabold text-foreground text-center mb-8">
         שאלות נפוצות
       </h2>
-      <div className="space-y-4" dir="rtl">
+      <div className="space-y-4">
         <FAQAccordion items={faqItems} />
       </div>
     </section>

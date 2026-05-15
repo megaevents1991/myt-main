@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { Stepper as MantineStepper } from "@mantine/core";
 
 const defaultSteps = ["כרטיסים", "טיסה", "מלון", "סיום"];
@@ -9,25 +8,11 @@ type StepperProps = {
   steps?: string[];
 };
 
-const StepperLabel = ({
-  label,
-  completed,
-}: {
-  label: string;
-  completed: boolean;
-}) => {
-  return (
-    <div
-      className={cn(
-        "w-full flex font-bold justify-center text-lg",
-        completed ? "text-secondary" : "text-main"
-      )}
-    >
-      {label}
-    </div>
-  );
-};
-
+/**
+ * Booking progress indicator. Mantine renders the three states distinctly
+ * once primaryColor (mint) is set: completed = filled + check, active =
+ * outlined, upcoming = muted. Forward steps are not selectable.
+ */
 export const Stepper = ({
   currentStep,
   onStepperClick,
@@ -35,28 +20,19 @@ export const Stepper = ({
 }: StepperProps) => {
   const active = currentStep - 1;
   return (
-    <div className="w-full max-w-2xl mx-auto my-6 px-10" dir="rtl">
+    <div className="mx-auto my-6 w-full max-w-2xl px-4 sm:px-10">
       <MantineStepper
         onStepClick={onStepperClick}
         size="sm"
         active={active}
-        styles={{
-          step: {
-            position: "relative",
-          },
-          stepBody: {
-            display: "block",
-            position: "absolute",
-            bottom: "-80%",
-            margin: "unset",
-            width: "100%",
-          },
-        }}
+        allowNextStepsSelect={false}
+        styles={{ stepLabel: { fontWeight: 700 } }}
       >
         {steps.map((step, index) => (
           <MantineStepper.Step
             key={index}
-            label={<StepperLabel completed={index <= active} label={step} />}
+            label={step}
+            allowStepSelect={index <= active}
           />
         ))}
       </MantineStepper>

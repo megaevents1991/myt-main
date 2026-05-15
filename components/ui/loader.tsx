@@ -30,11 +30,8 @@ export const LoaderWrapper = ({
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                <div
-                  className="flex flex-col items-center justify-center gap-2"
-                  dir="rtl"
-                >
-                  <Loader />
+                <div className="flex flex-col items-center justify-center gap-2 text-foreground">
+                  <Loader color="var(--mantine-color-myColor-4)" />
                   {text}
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
 import { FAQ } from "@/components/ui/FAQ";
 import MegaEventsSection from "@/components/ui/aboutUsMega";
+import { TrustSection } from "@/components/TrustSection";
 import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
 import { contentfulClient } from "@/lib/contentful";
@@ -131,6 +132,7 @@ export default async function Home() {
         artists={artists}
         carouselArtists={carouselArtists}
       />
+      <TrustSection />
       <MegaEventsSection />
       <FAQ />
     </main>

@@ -22,6 +22,9 @@ import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { EventStatusBadge } from "@/components/EventStatusBadge";
+import { HeroCarousel } from "@/components/HeroCarousel";
+import { TrustBadges } from "@/components/ui/TrustBadges";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -240,12 +243,10 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
         <input
           ref={ref}
           className={cn(
-            "w-full bg-white",
-            inline ? "rounded-r" : "rounded border-secondary",
-            "p-2 text-main border",
-            "placeholder-black"
+            "w-full bg-card text-foreground border border-input",
+            inline ? "rounded-r-none rounded-l-lg" : "rounded-lg",
+            "p-2 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           )}
-          dir="rtl"
           placeholder="חפש אירוע..."
           value={searchValue}
           onChange={(event) => {
@@ -287,11 +288,11 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
           {artistOptions}
           <Combobox.Option
             value="feedback"
-            style={{ 
-              textAlign: "right", 
+            style={{
+              textAlign: "right",
               fontSize: "16px",
-              backgroundColor: "#f5f5f5",
-              borderTop: "1px solid #e0e0e0",
+              backgroundColor: "hsl(var(--muted))",
+              borderTop: "1px solid hsl(var(--border))",
               marginTop: "4px",
               paddingTop: "12px",
               paddingBottom: "12px"
@@ -355,17 +356,18 @@ const MobileCarousel = ({ events, allEvents, artists }: { events: Event[]; allEv
           height: "32px",
           minWidth: "32px",
           minHeight: "32px",
-          backgroundColor: "rgba(17, 17, 17, 0.6)",
+          backgroundColor: "hsl(var(--surface-inverse))",
           borderRadius: "50%",
           border: "none",
           boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-          color: "white",
+          color: "hsl(var(--surface-inverse-foreground))",
           '&[dataInactive]': {
             opacity: 0,
             cursor: 'default',
           },
           '&:not([dataInactive]):hover': {
-            backgroundColor: "rgba(107, 114, 128, 0.85)",
+            backgroundColor: "hsl(var(--primary))",
+            color: "hsl(var(--primary-foreground))",
           },
         },
       }}
@@ -439,85 +441,33 @@ function CompactEventCard({ event }: { event: Event }) {
       }}
     >
       <div
-        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
+        className="rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
       >
-        <div
-          className="relative group overflow-hidden rounded-t-lg flex-1"
-          dir="rtl"
-        >
-          {/* Accessibility: Added proper ARIA labels and role for status badges */}
-          {event.tags === "LastTickets" && (
-            <div 
-              className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
-              aria-label="כרטיסים אחרונים זמינים לאירוע זה"
-              role="status"
-            >
-              כרטיסים אחרונים!
-            </div>
-          )}
-          {event.tags === "Popular" && (
-            <div 
-              className="absolute top-0 left-0 w-32 h-6 bg-secondary text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
-              aria-label="אירוע פופולרי שנמכר במהירות"
-              role="status"
-            >
-              נמכר במהירות!
-            </div>
-          )}
-          {event.tags === "Restock" && (
-            <div 
-              className="absolute top-0 left-0 w-32 h-6 bg-[#52C4A3] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
-              aria-label="אירוע שחזר למלאי"
-              role="status"
-            >
-              חזר למלאי!
-            </div>
-          )}
-          {event.tags === "VIPevent" && (
-            <div 
-              className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
-              aria-label="אירוח VIP זמין לאירוע זה"
-              role="status"
-            >
-              אירוח VIP
-            </div>
-          )}
-          {event.tags === "VIPavailable" && (
-            <div 
-              className="absolute top-0 left-0 w-32 h-6 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
-              aria-label="אופציית VIP זמינה לאירוע זה"
-              role="status"
-            >
-              אופציית VIP
-            </div>
-          )}
-          {event.tags === "Sold" && (
-            <div
-              className="absolute top-0 left-0 w-32 h-6 bg-[#d63a59] text-white font-bold text-xs transform -translate-x-8 translate-y-3 rotate-[-45deg] flex items-center justify-center z-10 pr-3"
-              aria-label="אזלו הכרטיסים לאירוע זה"
-              role="status"
-            >
-              אזלו הכרטיסים
-            </div>
-          )}
+        <div className="relative group overflow-hidden rounded-t-2xl flex-1">
+          <div className="absolute top-2 right-2 z-10">
+            <EventStatusBadge event={event} />
+          </div>
           {event.skip_flight && event.tags !== "Sold" && (
             <TicketOnlyBadge />
           )}
           {/* Accessibility: Enhanced alt text with descriptive event information */}
-          <Image
-            src={event.card_image_url}
-            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
-            priority={true}
-            width={240}
-            height={180}
-            style={{
-              objectPosition: 'center top' // or 'center center', '20% 30%', etc.
-            }}
-            className="object-cover w-full h-full transition-transform group-hover:scale-105"
-          />
+          {event.card_image_url ? (
+            <Image
+              src={event.card_image_url}
+              alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
+              width={240}
+              height={180}
+              style={{
+                objectPosition: 'center top'
+              }}
+              className="object-cover w-full h-full transition-transform group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full bg-muted" aria-hidden />
+          )}
         </div>
         <div className="p-3 text-center flex-shrink-0">
           {/* Accessibility: Added semantic heading for event name */}
@@ -544,12 +494,12 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
       aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
     >
       <div
-        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
+        className="rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
       >
-        <div className="relative group overflow-hidden rounded-t-lg flex-1">
+        <div className="relative group overflow-hidden rounded-t-2xl flex-1">
           {/* Accessibility: Enhanced alt text with descriptive team information */}
           {team.fields.heroBanner?.fields?.file?.url && (
             <Image
@@ -568,7 +518,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
         <div className="p-3 text-center flex-none">
           {/* Accessibility: Added semantic heading for team name */}
           <h3
-            className="font-bold text-md text-gray-800 line-clamp-2 mb-1"
+            className="font-bold text-md text-foreground line-clamp-2 mb-1"
             style={{ lineHeight: "1.2" }}
             title={team.fields.name || ""}
           >
@@ -590,12 +540,12 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
       aria-label={`עמוד האומן ${artist.fields.name || "לא ידוע"}`}
     >
       <div
-        className="rounded-lg shadow-lg hover:shadow-xl hover:outline hover:outline-main flex flex-col bg-white w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
+        className="rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
       >
-        <div className="relative group overflow-hidden rounded-t-lg flex-1">
+        <div className="relative group overflow-hidden rounded-t-2xl flex-1">
           {/* Accessibility: Enhanced alt text with descriptive artist information */}
           {artist.fields.heroBanner?.fields?.file?.url && (
             <Image
@@ -614,7 +564,7 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
         <div className="p-3 text-center flex-none">
           {/* Accessibility: Added semantic heading for artist name */}
           <h3
-            className="font-bold text-md text-gray-800 line-clamp-2 mb-1"
+            className="font-bold text-md text-foreground line-clamp-2 mb-1"
             style={{ lineHeight: "1.2" }}
             title={artist.fields.name || ""}
           >
@@ -691,7 +641,7 @@ const UniversalCarousel = ({
         root: "",
         container: "py-[2px] px-0",
         control: "data-[inactive]:!opacity-0",
-        indicator: "bg-gray-300 data-[active]:bg-secondary transition-all duration-200",
+        indicator: "bg-muted data-[active]:bg-primary transition-all duration-200",
         indicators: "gap-2 mt-4",
         viewport: variant === "compact" && !isMobile ? "h-[245px]" : "",
         slide: "transition-transform duration-300 ease-out",
@@ -704,17 +654,18 @@ const UniversalCarousel = ({
           height: "32px",
           minWidth: "32px",
           minHeight: "32px",
-          backgroundColor: "rgba(17, 17, 17, 0.6)",
+          backgroundColor: "hsl(var(--surface-inverse))",
           borderRadius: "50%",
           border: "none",
           boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-          color: "white",
+          color: "hsl(var(--surface-inverse-foreground))",
           '&[dataInactive]': {
             opacity: 0,
             cursor: 'default',
           },
           '&:not([dataInactive]):hover': {
-            backgroundColor: "rgba(31, 34, 39, 0.85)",
+            backgroundColor: "hsl(var(--primary))",
+            color: "hsl(var(--primary-foreground))",
           },
         },
         viewport: {
@@ -774,6 +725,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [visibleMusicCount, setVisibleMusicCount] = useState(11);
 
   useEffect(() => {
     setIsMounted(true);
@@ -918,16 +870,16 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
         <section className="bg-main relative overflow-hidden">
           <div className="container mx-auto flex flex-col lg:flex-row items-center justify-between py-12 px-4 md:px-8 min-h-[400px]">
             <div className="w-full h-full flex items-center justify-center">
-              <div className="animate-pulse bg-white/20 h-8 w-64 rounded"></div>
+              <div className="animate-pulse bg-main-foreground/20 h-8 w-64 rounded"></div>
             </div>
           </div>
         </section>
         <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse space-y-8">
-            <div className="h-6 bg-gray-200 rounded w-48"></div>
+            <div className="h-6 bg-muted rounded w-48"></div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-64 bg-gray-200 rounded"></div>
+                <div key={i} className="h-64 bg-muted rounded-2xl"></div>
               ))}
             </div>
           </div>
@@ -1074,7 +1026,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
       ></div>
       
       {/* Accessibility: Enhanced skip link for keyboard navigation */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-secondary text-white p-3 rounded z-50 focus:outline focus:outline-2 focus:outline-white font-bold">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground p-3 rounded-lg z-50 font-bold">
         דלג לתוכן הראשי
       </a>
       {!matches && (
@@ -1090,7 +1042,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           title={
             <div className="flex flex-col items-center justify-center w-full py-3 bg-main">
               <div className="w-[180px] mb-2">
-                <MYT className="" />
+                <MYT className="text-main-foreground" />
               </div>
               <h2 className="text-white text-2xl font-bold">חיפוש אירועים</h2>
             </div>
@@ -1099,7 +1051,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           aria-describedby="search-modal-description"
           styles={{
             header: {
-              backgroundColor: "#05203C",
+              backgroundColor: "hsl(var(--surface-inverse))",
               padding: 0,
               marginBottom: "1rem",
               position: "relative",
@@ -1173,14 +1125,14 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             }}
             noValidate
           >
-            <fieldset className="border border-gray-300 rounded p-4 mb-4">
+            <fieldset className="border border-border rounded-lg p-4 mb-4">
               <legend className="px-2 font-bold text-lg">פרטי הבקשה</legend>
               <div className="mb-4">
                 <label
-                  className="block text-gray-700 text-sm font-bold mb-2"
+                  className="block text-foreground text-sm font-bold mb-2"
                   htmlFor="event"
                 >
-                  מה שם האומן/משחק והאם יש העדפה למקום? <span className="text-red-500" aria-label="שדה חובה">*</span>
+                  מה שם האומן/משחק והאם יש העדפה למקום? <span className="text-destructive" aria-label="שדה חובה">*</span>
                 </label>
                 <input
                   id="event"
@@ -1189,19 +1141,19 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                   required
                   aria-required="true"
                   aria-describedby="event-help"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-secondary"
+                  className="appearance-none border border-input bg-card rounded-lg w-full py-2 px-3 text-foreground leading-tight focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="ביונסה בפריז"
                 />
-                <div id="event-help" className="text-xs text-gray-600 mt-1">
+                <div id="event-help" className="text-xs text-muted-foreground mt-1">
                   לדוגמה: שם האומן או שם הקבוצה והעיר המועדפת
                 </div>
               </div>
               <div className="mb-4">
                 <label
-                  className="block text-gray-700 text-sm font-bold mb-2"
+                  className="block text-foreground text-sm font-bold mb-2"
                   htmlFor="email"
                 >
-                  שנחזור אליכם עם הצעה? <span className="text-red-500" aria-label="שדה חובה">*</span>
+                  שנחזור אליכם עם הצעה? <span className="text-destructive" aria-label="שדה חובה">*</span>
                 </label>
                 <input
                   id="email"
@@ -1210,17 +1162,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                   required
                   aria-required="true"
                   aria-describedby="email-help"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-secondary"
+                  className="appearance-none border border-input bg-card rounded-lg w-full py-2 px-3 text-foreground leading-tight focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="טלפון או אימייל"
                 />
-                <div id="email-help" className="text-xs text-gray-600 mt-1">
+                <div id="email-help" className="text-xs text-muted-foreground mt-1">
                   מספר טלפון או כתובת אימייל ליצירת קשר
                 </div>
               </div>
             </fieldset>
             <button
               type="submit"
-              className="bg-secondary hover:bg-secondary-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
               aria-label="שלח בקשה להצעת מחיר לאירוע"
             >
               שלח בקשה
@@ -1228,7 +1180,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           </form>
         )}
       </Modal>
-      <section className="w-full py-1 lg:py-6 px-4 md:px-6 text-white bg-main relative" role="banner">
+      <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative" role="banner">
         <div className="container mx-auto max-w-4xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
           <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
@@ -1244,17 +1196,20 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             </span>
             {" "}
             <span className="inline-block whitespace-nowrap hidden md:inline-block">האירועים הכי שווים בעולם</span>
-            <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-8">
+            <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-4">
               בחרו, הרכיבו וטוסו ליהנות{" "}
             </span>
           </h1>
+          <TrustBadges className="justify-center text-main-foreground/80 mb-6" />
         </div>
+        {/* Hero gallery — tilted colorful cards linking to artist pages */}
+        <HeroCarousel artists={carouselArtists ?? artists} />
         {/* Accessibility: Enhanced search form with proper labeling and instructions */}
         <div
           ref={searchContainerRef}
           className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 ${
             isSticky
-              ? "fixed top-0 left-0 right-0 z-50 bg-white py-4 shadow-md transition-all duration-300"
+              ? "fixed top-0 left-0 right-0 z-50 bg-card py-4 shadow-card transition-all duration-300"
               : "absolute bottom-0 left-0 right-0 transform translate-y-1/2"
           } min-w-70`}
           role="search"
@@ -1277,8 +1232,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                 value={searchValue}
                 placeholder="חפש אירוע..."
                 type="text"
-                className={`w-2/3 rounded-r rounded-l-none p-2 text-main border bg-white ${
-                  isSticky ? "border-secondary" : ""
+                className={`w-2/3 rounded-r-lg rounded-l-none p-2 text-foreground border border-input bg-card placeholder:text-muted-foreground ${
+                  isSticky ? "ring-2 ring-ring" : ""
                 }`}
                 aria-label="חיפוש אירועים - לחץ לפתיחת חיפוש מלא עם הצעות"
                 aria-describedby="search-instructions-main"
@@ -1297,7 +1252,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
               />
             )}
             <button
-              className="w-1/3 bg-secondary text-white font-bold rounded-l hover:bg-secondary-dark focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
+              className="w-1/3 bg-primary text-primary-foreground font-bold rounded-l-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
               onClick={(e) => {
                 e.preventDefault();
                 if (!matches) {
@@ -1318,7 +1273,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           </div>
         </div>
       </section>
-      <section className="w-full py-10 lg:py-14 bg-gray-100 dark:bg-gray-800 px-4 md:px-6" role="main" id="main-content">
+      <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">
         <div className="container mx-auto">
           {/* Accessibility: Enhanced mobile guarantees section with semantic structure */}
           <div className="sm:hidden py-1">
@@ -1443,7 +1398,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           {/* Accessibility: Enhanced section headings with proper hierarchy */}
           <div className="flex flex-row mb-4 lg:mb-6 justify-end items-stretch">
             <div>
-              <h2 className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+              <h2 className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                 המבוקשים ביותר
               </h2>
             </div>
@@ -1485,7 +1440,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             <section aria-labelledby="football-section-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 id="football-section-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="football-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                     כדורגל
                   </h2>
                 </div>
@@ -1521,7 +1476,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 id="artists-section-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="artists-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                     אמנים מובילים
                   </h2>
                 </div>
@@ -1557,7 +1512,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             <section aria-labelledby="music-events-heading">
               <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
-                  <h2 id="music-events-heading" className="text-2xl font-bold text-secondary tracking-tighter sm:text-4xl text-center mx-2">
+                  <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                     הופעות נוספות
                   </h2>
                 </div>
@@ -1599,7 +1554,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                     }}
                   >
                     <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-52 flex items-center justify-center">
-                      <MYT className="" />
+                      <MYT className="text-main-foreground" />
                     </div>
                     <div
                       className="p-10 text-center text-main text-lg font-bold flex items-center justify-center min-h-[88px]"
@@ -1614,7 +1569,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
               <div className="hidden sm:grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
                    role="list"
                    aria-label="רשימת הופעות נוספות">
-                {musicEvents.map((event) => (
+                {musicEvents.slice(0, visibleMusicCount).map((event) => (
                   <div key={event.id} role="listitem">
                     <EventCard event={event} allEvents={initialEvents} artists={artists} />
                   </div>
@@ -1634,7 +1589,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                   }}
                 >
                   <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
-                    <MYT className="" />
+                    <MYT className="text-main-foreground" />
                   </div>
                   <div
                     className="p-4 text-center text-main text-xl font-bold h-20"
@@ -1644,6 +1599,18 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                   </div>
                 </div>
               </div>
+              {visibleMusicCount < musicEvents.length && (
+                <div className="hidden sm:flex justify-center mb-8">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMusicCount((c) => c + 12)}
+                    className="px-8 py-3 rounded-lg border-2 border-main text-main font-bold hover:bg-main hover:text-main-foreground transition-colors"
+                    dir="rtl"
+                  >
+                    הצג עוד הופעות
+                  </button>
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -1772,57 +1739,32 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
         }}
       >
         {/* Accessibility: Enhanced event card with proper semantic structure */}
-        <article className={`rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
+        <article className={`rounded-2xl bg-card shadow-card transition-shadow flex flex-col hover:shadow-card-hover ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
         <div className="flex flex-row sm:flex-col flex-1">
           <div
-            className={`relative group overflow-hidden rounded-tl-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-bl-lg'}`}
-            dir="rtl"
+            className={`relative group overflow-hidden rounded-tl-2xl sm:rounded-t-2xl sm:rounded-b-none w-[48%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-bl-2xl'}`}
           >
-          {event.tags === "LastTickets" && !computedSold && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="כרטיסים אחרונים זמינים">
-              כרטיסים אחרונים!
-            </div>
-          )}
-          {event.tags === "Popular" && !computedSold && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אירוע פופולרי">
-              נמכר במהירות!
-            </div>
-          )}
-          {event.tags === "Restock" && !computedSold && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חזר למלאי">
-              חזר למלאי!
-            </div>
-          )}
-          {event.tags === "VIPevent" && !computedSold && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
-              אירוח VIP
-            </div>
-          )}
-          {event.tags === "VIPavailable" && !computedSold && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אופציית VIP זמינה">
-              אופציית VIP
-            </div>
-          )}
-          {computedSold && (
-            <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
-              אזלו הכרטיסים
-            </div>
-          )}
+          <div className="absolute top-2 right-2 z-10">
+            <EventStatusBadge event={event} />
+          </div>
           {event.skip_flight && !computedSold && (
             <TicketOnlyBadge />
           )}
           {/* Accessibility: Enhanced image with descriptive alt text */}
-          <Image
-            src={event.card_image_url}
-            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
-            priority={true}
-            width={400}
-            height={300}
-            style={{
-              objectPosition: 'center top' // or 'center center', '20% 30%', etc.
-            }}
-            className="object-cover w-full h-72 transition-transform group-hover:scale-105"
-          />
+          {event.card_image_url ? (
+            <Image
+              src={event.card_image_url}
+              alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
+              width={400}
+              height={300}
+              style={{
+                objectPosition: 'center top'
+              }}
+              className="object-cover w-full h-72 transition-transform group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-72 bg-muted" aria-hidden />
+          )}
         </div>
         <div className={`flex flex-col text-center w-[52%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-br-lg sm:rounded-br-none'}`}>
           {/* Accessibility: Added semantic heading for event name */}
@@ -1832,8 +1774,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
             </h3>
           </header>
           <div
-            className="py-1 px-2 bg-secondary text-white flex flex-wrap justify-center items-center"
-            dir="rtl"
+            className="py-1 px-2 bg-primary text-primary-foreground flex flex-wrap justify-center items-center"
             role="group"
             aria-label="פרטי האירוע: תאריך ומיקום"
           >
@@ -1843,7 +1784,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
               {event.location.name}
             </span>
           </div>
-          <div className="p-2 text-center flex flex-col flex-grow" dir="rtl">
+          <div className="p-2 text-center flex flex-col flex-grow">
             <div className="text-[15px] sm:text-base">
               מחיר חבילה ממוצע לאדם
             </div>
@@ -1862,7 +1803,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
             ) : (
               <>
                 <div className="flex justify-center items-baseline gap-1" role="group" aria-label="סטטוס זמינות">
-                  <div className="text-2xl font-extrabold text-[#d63a59]">
+                  <div className="text-2xl font-extrabold text-destructive">
                     אזלו הכרטיסים
                   </div>
                 </div>
@@ -1880,13 +1821,13 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
                 aria-hidden="true"
               ></div>
             ) : isMounted && isMobile ? (
-              <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center"
+              <div className="bg-main text-main-foreground text-[14px] font-bold mx-1 my-2 justify-center rounded-lg px-4 py-2 flex items-center"
                    role="button"
                    aria-label="הוזילו או שדרגו את החבילה">
                 הוזילו או שדרגו כאן {"  >"}
               </div>
             ) : (
-              <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold"
+              <u className="my-2 flex justify-center text-foreground text-[14px] font-bold"
                  role="button"
                  aria-label="הוזילו או שדרגו את החבילה">
                 הוזילו או שדרגו כאן {"  >"}
@@ -1899,9 +1840,9 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
     </Link>
     {/* Strip for multiple dates - MOVED OUTSIDE Link to prevent navigation conflict */}
     {hasMultipleDates && (
-      <div 
+      <div
         data-strip-click="true"
-        className="w-full bg-gradient-to-r from-secondary to-[#0a4d6e] text-white text-center py-2 px-3 rounded-b-lg cursor-pointer hover:from-[#0a4d6e] hover:to-secondary transition-all duration-200 shadow-lg"
+        className="w-full bg-main text-main-foreground text-center py-2 px-3 rounded-b-2xl cursor-pointer hover:bg-main/90 transition-colors duration-200 shadow-card"
         role="button"
         aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
         onClick={handleStripClick}

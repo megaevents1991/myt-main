@@ -11,10 +11,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        main: "#05203C",
-        secondary: { DEFAULT: "#277E89", foreground: "#F0F0F2" },
+        // Brand-level aliases kept for existing `bg-main` / `text-secondary` usages.
+        main: {
+          DEFAULT: "hsl(var(--surface-inverse))",
+          foreground: "hsl(var(--surface-inverse-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        surface: {
+          inverse: "hsl(var(--surface-inverse))",
+          "inverse-foreground": "hsl(var(--surface-inverse-foreground))",
+        },
         background: "hsl(var(--background))",
-        foreground: "#F0F0F2",
+        foreground: "hsl(var(--foreground))",
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
@@ -27,10 +38,6 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
-        // secondary: {
-        //   DEFAULT: "hsl(var(--secondary))",
-        //   foreground: "hsl(var(--secondary-foreground))",
-        // },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -43,6 +50,16 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        info: "hsl(var(--info))",
+        badge: {
+          urgent: "hsl(var(--badge-urgent))",
+          new: "hsl(var(--badge-new))",
+          vip: "hsl(var(--badge-vip))",
+          soldout: "hsl(var(--badge-soldout))",
+          foreground: "hsl(var(--badge-foreground))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -54,10 +71,25 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
       },
+      fontFamily: {
+        sans: ["var(--font-sans)", "Arial Hebrew", "Arial", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-sans)", "sans-serif"],
+      },
+      fontSize: {
+        "display-sm": ["1.75rem", { lineHeight: "1.2", fontWeight: "800" }],
+        "display-md": ["2.5rem", { lineHeight: "1.15", fontWeight: "800" }],
+        "display-lg": ["3.5rem", { lineHeight: "1.1", fontWeight: "900" }],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
+      },
+      boxShadow: {
+        card: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04)",
+        "card-hover": "0 10px 24px -6px rgb(0 0 0 / 0.12)",
       },
     },
   },
