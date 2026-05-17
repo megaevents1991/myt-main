@@ -4,9 +4,9 @@
  * Handles SVG parsing, section matching, duplicate cleanup,
  * and visual highlighting for tx_event venue maps.
  */
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
+/**
+ * Parse raw SVG text, strip scripts / inline event handlers and
+ * normalize text rendering so the authored label transforms stay intact.
 /* ------------------------------------------------------------------ */
 
 /** Re-export the canonical full listing type for callers that need it. */
@@ -237,94 +237,27 @@ export const sanitizeAndPrepareSvg = (rawSvg: string): string | null => {
   // Ensure LTR text direction inside the SVG regardless of surrounding page direction
   svg.setAttribute("direction", "ltr");
 
-  // Override SVG font-families to a system sans-serif (the original
-  // SVG typically references fonts like DMSans-Medium / DMSans-Bold
-  // which aren't loaded on the page, causing fallback metrics to
-  // shift labels.)  Also set text-anchor: middle on section labels so
-  // the runtime re-centering in `centerSectionLabels` works correctly.
-  const styleEl = svg.querySelector("style");
-  if (styleEl) {
-    styleEl.textContent =
-      (styleEl.textContent || "").replace(
-        /font-family:\s*'[^']+'/g,
-        "font-family: Arial, Helvetica, sans-serif",
-      ) +
-      "\n.section-label { text-anchor: middle; dominant-baseline: central; direction: ltr; unicode-bidi: isolate; }";
-  }
+  // Force stable text metrics with an injected override stylesheet.
+  // Preserving the SVG-authored transforms avoids the slight label drift
+  // introduced by runtime re-centering against fallback fonts.
+  const styleEl = doc.createElementNS("http://www.w3.org/2000/svg", "style");
+  styleEl.textContent = `
+    text,
+    tspan {
+      pointer-events: none !important;
+      user-select: none !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+      direction: ltr;
+      unicode-bidi: isolate;
+    }
+
+    .section-label {
+      font-size: 10px !important;
+    }
+  `;
+  svg.appendChild(styleEl);
 
   return svg.outerHTML;
-};
-
-/* ------------------------------------------------------------------ */
-/*  Section-label centering                                            */
-/* ------------------------------------------------------------------ */
-
-/**
- * Re-centre every `.section-label` text element on its parent
- * section's `.block` shape.  Must be called **after** the SVG is
- * mounted in the live DOM so `getBBox()` returns real geometry.
- *
- * Works in tandem with the CSS rule
- *   `.section-label { text-anchor: middle; dominant-baseline: central; }`
- * injected during sanitisation.
- */
-export const centerSectionLabels = (container: HTMLElement): void => {
-  const sectionEls = container.querySelectorAll("[data-section]");
-
-  for (const sec of Array.from(sectionEls)) {
-    const block = sec.querySelector(".block") as SVGGraphicsElement | null;
-    const label = sec.querySelector(".section-label") as SVGTextElement | null;
-    if (!block || !label) continue;
-
-    // Persist the SVG-authored transform once so we can always restore it.
-    const labelEl = label as SVGTextElement & {
-      dataset: DOMStringMap;
-    };
-    if (labelEl.dataset.origTransform === undefined) {
-      labelEl.dataset.origTransform = label.getAttribute("transform") || "";
-    }
-
-    try {
-      const blockRect = block.getBoundingClientRect();
-      const labelRect = label.getBoundingClientRect();
-
-      // SVG not laid out yet (or hidden) — leave the original
-      // author-provided transform in place. DO NOT strip it: doing so
-      // collapses every label to (0,0) and produces a single black
-      // blob at the SVG origin.
-      if (
-        blockRect.width === 0 ||
-        blockRect.height === 0 ||
-        labelRect.width === 0
-      ) {
-        continue;
-      }
-
-      const ctm = label.getScreenCTM();
-      if (!ctm || ctm.a === 0 || ctm.d === 0) continue;
-
-      // Pixel delta needed to centre the label on the block (screen space)
-      const dxPx =
-        blockRect.left +
-        blockRect.width / 2 -
-        (labelRect.left + labelRect.width / 2);
-      const dyPx =
-        blockRect.top +
-        blockRect.height / 2 -
-        (labelRect.top + labelRect.height / 2);
-
-      // Convert pixel delta → SVG user-space delta (parent coords)
-      const dx = dxPx / ctm.a;
-      const dy = dyPx / ctm.d;
-
-      // Prepend a translate to the original transform so the label
-      // ends up centred without disturbing its authored orientation.
-      const orig = labelEl.dataset.origTransform || "";
-      label.setAttribute("transform", `translate(${dx} ${dy}) ${orig}`.trim());
-    } catch {
-      // getBBox/getBoundingClientRect can throw on unrendered nodes
-    }
-  }
 };
 
 /* ------------------------------------------------------------------ */
