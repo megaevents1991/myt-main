@@ -11,7 +11,6 @@ import React, {
 import {
   type TixStockMatchableListing,
   categoryOnlyMatchesEl,
-  centerSectionLabels,
   cleanupDuplicateSections,
   doesTicketMatchAnyMapSection,
   getCategoryIdFromSectionEl,
@@ -190,14 +189,6 @@ export function TixstockDynamicMap({
       // Duplicate section cleanup (idempotent)
       cleanupDuplicateSections(root);
 
-      // Centre section labels on their parent shapes (idempotent).
-      // Defer to next animation frame so layout is committed and
-      // getBBox() returns real geometry — otherwise on first mount
-      // labels collapse to (0,0) and appear corrupted/missing.
-      requestAnimationFrame(() => {
-        if (containerRef.current) centerSectionLabels(containerRef.current);
-      });
-
       const sectionEls = Array.from(root.querySelectorAll("[data-section]"));
 
       // Reset all sections to their base colours
@@ -274,12 +265,12 @@ export function TixstockDynamicMap({
     ticketCategoryOrSectionMatches,
   ]);
 
-  // Run repaint for dynamic changes (selection, hover, label centering).
+  // Run repaint for dynamic changes (selection, hover).
   // The initial available/inactive painting is already baked into
   // `paintedSvg`, so even if this effect is delayed the map looks correct.
   // `paintedSvg` is included so that when innerHTML is replaced (which
-  // does NOT re-fire the ref callback), we still re-center labels and
-  // re-apply runtime styles on the fresh nodes.
+  // does NOT re-fire the ref callback), we still re-apply runtime styles
+  // on the fresh nodes.
   useLayoutEffect(() => {
     repaint();
   }, [repaint, domReady, paintedSvg]);
