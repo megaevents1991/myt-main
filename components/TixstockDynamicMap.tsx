@@ -411,7 +411,7 @@ export function TixstockDynamicMap({
       <div
         ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: paintedSvg }}
-        className="rounded-lg overflow-hidden [&_svg]:w-full [&_svg]:h-auto"
+        className="flex justify-center rounded-lg overflow-hidden [&_svg]:max-w-full [&_svg]:w-auto [&_svg]:h-auto [&_svg]:max-h-[45svh] lg:[&_svg]:max-h-[calc(100vh-10rem)]"
       />
     </div>
   );
