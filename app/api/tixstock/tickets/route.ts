@@ -51,7 +51,9 @@ function listingCanSatisfyQuantity(
     return quantityAvailable === 1 || quantityAvailable === splitQuantity;
   }
 
-  return quantityAvailable >= requestedQuantity || splitQuantity >= requestedQuantity;
+  return (
+    quantityAvailable >= requestedQuantity || splitQuantity >= requestedQuantity
+  );
 }
 
 function getCheapestCategoryPrices(
