@@ -154,11 +154,7 @@ export const categoryOnlyMatchesEl = (
   if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug)
     return true;
   const sectionSlug = mapSectionId.toLowerCase();
-  return (
-    sectionSlug === ticketCatSlug ||
-    sectionSlug.startsWith(`${ticketCatSlug}_`) ||
-    sectionSlug.startsWith(`${ticketCatSlug}-`)
-  );
+  return sectionSlug === ticketCatSlug;
 };
 
 /**
@@ -177,11 +173,7 @@ export const ticketCategoryMatchesEl = (
   }
 
   const sectionSlug = mapSectionId.toLowerCase();
-  return (
-    sectionSlug === ticketCatSlug ||
-    sectionSlug.startsWith(`${ticketCatSlug}_`) ||
-    sectionSlug.startsWith(`${ticketCatSlug}-`)
-  );
+  return sectionSlug === ticketCatSlug;
 };
 
 /**
