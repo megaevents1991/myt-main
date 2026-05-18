@@ -140,8 +140,10 @@ export const isTicketMatchingCategory = (
 /**
  * Check whether a category-only ticket matches a map section element.
  * Tries an explicit [data-category] group first, then falls back to
- * matching the [data-section] id directly against the category slug.
- * This handles SVGs that don't wrap sections in a data-category group.
+ * an exact [data-section] slug match.
+ *
+ * This strict fallback avoids cross-highlighting sibling categories
+ * whose ids share a prefix, e.g. "fosse" vs "fosse-or-gauche".
  */
 export const categoryOnlyMatchesEl = (
   ticket: TixStockMatchableListing,
@@ -154,11 +156,7 @@ export const categoryOnlyMatchesEl = (
   if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug)
     return true;
   const sectionSlug = mapSectionId.toLowerCase();
-  return (
-    sectionSlug === ticketCatSlug ||
-    sectionSlug.startsWith(`${ticketCatSlug}_`) ||
-    sectionSlug.startsWith(`${ticketCatSlug}-`)
-  );
+  return sectionSlug === ticketCatSlug;
 };
 
 /**
@@ -177,11 +175,7 @@ export const ticketCategoryMatchesEl = (
   }
 
   const sectionSlug = mapSectionId.toLowerCase();
-  return (
-    sectionSlug === ticketCatSlug ||
-    sectionSlug.startsWith(`${ticketCatSlug}_`) ||
-    sectionSlug.startsWith(`${ticketCatSlug}-`)
-  );
+  return sectionSlug === ticketCatSlug;
 };
 
 /**
