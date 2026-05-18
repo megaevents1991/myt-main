@@ -20,7 +20,7 @@ import {
 
 
 export const TicketSelection = () => {
-  const { setEventTicket, event, eventTicket, setEvent } = useContext(OrderContext);
+  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice } = useContext(OrderContext);
   const eventRef = useRef(event);
   const isDebugMode = useSearchParams().get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
@@ -84,6 +84,7 @@ export const TicketSelection = () => {
         const currentEvent = eventRef.current;
         const params = new URLSearchParams({
           event_id: tixEventId,
+          ticket_quantity: String(numberOfEventTickets),
           _: String(Date.now()),
         });
         if (currentEvent?.id) {
@@ -128,7 +129,7 @@ export const TicketSelection = () => {
     return () => {
       cancelled = true;
     };
-  }, [isTxEvent, tixEventId, event?.tx_excluded_sections, setEvent]);
+  }, [isTxEvent, tixEventId, event?.tx_excluded_sections, numberOfEventTickets, setEvent]);
 
   /**
   * Find the cheapest live listing in `category` that can satisfy `qty`.
@@ -195,6 +196,7 @@ export const TicketSelection = () => {
       console.log('No available tickets found - clearing all ticket state');
       setCheapestTicket(null);
       setSelectedTicket(undefined);
+      setCurrentMinTicketPrice(0);
       // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
       setEventTicket({
         id: "",
@@ -214,33 +216,18 @@ export const TicketSelection = () => {
 
     setCheapestTicket(cheapt);
 
-    // If the currently-selected ticket is still in the live-priced list,
-    // keep it selected and just refresh its price (& quantity) in context.
-    // Otherwise auto-select the cheapest available category.
-    const stillSelected = effectiveTickets.find((t) => t.id === selectedTicket);
-    if (stillSelected) {
-      setEventTicket({
-        ...eventTicket,
-        id: stillSelected.id,
-        category: stillSelected.category,
-        price: stillSelected.price,
-        description: stillSelected.description,
-        vendor: stillSelected.vendor,
-        quantity: numberOfEventTickets,
-      });
-    } else {
-      setSelectedTicket(cheapt?.id);
-      setEventTicket({
-        id: cheapt?.id || "",
-        vendor: cheapt?.vendor || "",
-        category: cheapt?.category || "",
-        price: cheapt?.price || 0,
-        description: cheapt?.description || "",
-        quantity: numberOfEventTickets,
-      });
-    }
+    setCurrentMinTicketPrice(cheapt.price);
+    setSelectedTicket(cheapt.id);
+    setEventTicket({
+      id: cheapt.id,
+      vendor: cheapt.vendor || "",
+      category: cheapt.category,
+      price: cheapt.price,
+      description: cheapt.description || "",
+      quantity: numberOfEventTickets,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTickets, numberOfEventTickets, setEventTicket]);
+  }, [effectiveTickets, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)

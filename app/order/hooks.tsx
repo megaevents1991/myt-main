@@ -17,6 +17,7 @@ export function useOrderVars() {
     eventTicket,
     event,
     numberOfEventTickets,
+    currentMinTicketPrice,
     skipHotel,
     flightSkipped,
   } = useContext(OrderContext);
@@ -71,7 +72,7 @@ export function useOrderVars() {
   }, [selectedFlight, event]);
 
   /* Fetch lowest available ticket price (exclude tickets with available === false) */
-  const minTicketPrice = useMemo(() => {
+  const dbMinTicketPrice = useMemo(() => {
     if (!event || !event.tickets_and_rates || event.tickets_and_rates.length === 0) {
       return 0;
     }
@@ -79,6 +80,8 @@ export function useOrderVars() {
     if (available.length === 0) return 0;
     return Math.min(...available.map((ticket) => ticket.price));
   }, [event]);
+
+  const minTicketPrice = currentMinTicketPrice || dbMinTicketPrice;
 
   /* Main variables to calculate price additions */
   const eventTicketPriceAddition = (eventTicket.price || 0) - minTicketPrice;

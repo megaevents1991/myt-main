@@ -39,10 +39,37 @@ function normalizeCategory(category: string | undefined | null): string {
   return (category || "").trim().toLowerCase();
 }
 
-function getCheapestCategoryPrices(listings: TixStockListing[]) {
+function listingCanSatisfyQuantity(
+  listing: TixStockListing,
+  requestedQuantity: number,
+): boolean {
+  const quantityAvailable =
+    listing.number_of_tickets_for_sale?.quantity_available ?? 0;
+  const splitQuantity = listing.number_of_tickets_for_sale?.split_quantity ?? 0;
+
+  if (requestedQuantity === 1) {
+    return quantityAvailable === 1 || quantityAvailable === splitQuantity;
+  }
+
+  return (
+    quantityAvailable >= requestedQuantity || splitQuantity >= requestedQuantity
+  );
+}
+
+function getCheapestCategoryPrices(
+  listings: TixStockListing[],
+  requestedQuantity?: number,
+) {
   const prices = new Map<string, number>();
 
   for (const listing of listings) {
+    if (
+      requestedQuantity !== undefined &&
+      !listingCanSatisfyQuantity(listing, requestedQuantity)
+    ) {
+      continue;
+    }
+
     const category = normalizeCategory(listing.seat_details?.category);
     const amount = Math.ceil(
       parseFloat(listing.proceed_price?.amount ?? "NaN"),
@@ -89,8 +116,9 @@ async function callRevalidateEndpoint() {
 async function updateDbTicketPricesFromLiveListings(
   dbEventId: string | null,
   listings: TixStockListing[],
+  requestedQuantity: number,
 ) {
-  if (!dbEventId) {
+  if (!dbEventId || requestedQuantity !== 2) {
     return { priceUpdates: [], ticketsAndRates: null };
   }
 
@@ -123,7 +151,7 @@ async function updateDbTicketPricesFromLiveListings(
     };
   }
 
-  const categoryPrices = getCheapestCategoryPrices(listings);
+  const categoryPrices = getCheapestCategoryPrices(listings, requestedQuantity);
   const ticketsAndRates = (eventRow.tickets_and_rates || []) as EventTicket[];
   const priceUpdates: Array<{
     ticket_id: string;
@@ -268,6 +296,9 @@ function isExcludedSection(
 export async function GET(req: NextRequest) {
   const eventId = req.nextUrl.searchParams.get("event_id");
   const dbEventId = req.nextUrl.searchParams.get("db_event_id");
+  const requestedQuantity = Number(
+    req.nextUrl.searchParams.get("ticket_quantity") ?? "2",
+  );
   const excludedSectionsParam =
     req.nextUrl.searchParams.get("excluded_sections") ?? "";
   const excludedSections = excludedSectionsParam
@@ -365,7 +396,13 @@ export async function GET(req: NextRequest) {
     }
 
     const { priceUpdates, ticketsAndRates } =
-      await updateDbTicketPricesFromLiveListings(dbEventId, filtered);
+      await updateDbTicketPricesFromLiveListings(
+        dbEventId,
+        filtered,
+        Number.isFinite(requestedQuantity) && requestedQuantity > 0
+          ? requestedQuantity
+          : 2,
+      );
 
     // Return in the same shape the client expects: { success, data: { data: [...] } }
     return NextResponse.json({

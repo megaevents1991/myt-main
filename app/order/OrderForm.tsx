@@ -49,6 +49,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     hotel,
     eventTicket,
     numberOfEventTickets,
+    currentMinTicketPrice,
     planeTickets,
     selectedPlaneTicketsFilters,
     selectedHotelFilters,
@@ -127,10 +128,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
     (ticket) => ticket.available !== false
   );
 
-  const minTicketPrice =
+  const dbMinTicketPrice =
     availableTickets.length > 0
       ? Math.min(...availableTickets.map((ticket) => ticket.price))
       : 0;
+
+  const minTicketPrice = currentMinTicketPrice || dbMinTicketPrice;
 
   const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 
