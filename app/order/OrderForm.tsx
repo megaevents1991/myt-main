@@ -55,6 +55,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     selectedEventTickets,
     setSelectedEventTickets,
     numberOfEventTickets,
+    currentMinTicketPrices,
     planeTickets,
     selectedPlaneTicketsFilters,
     selectedHotelFilters,
@@ -159,6 +160,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
     selectedEvents && selectedEvents.length > 0 ? selectedEvents : [event];
 
   const minTicketPriceForEvent = (evt: Event): number => {
+    const liveMinPrice = currentMinTicketPrices?.[evt.id];
+    if (typeof liveMinPrice === "number") return liveMinPrice;
     const rates = (evt.tickets_and_rates || []).filter((t) => t?.available !== false);
     if (rates.length === 0) return 0;
     return Math.min(...rates.map((t) => t.price));

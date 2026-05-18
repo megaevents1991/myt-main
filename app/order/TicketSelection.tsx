@@ -24,13 +24,13 @@ export const TicketSelection = () => {
     setEventTicket,
     setEvent,
     event,
-    eventTicket,
     selectedEvents,
     setSelectedEvents,
     activeTicketEventIndex,
     setActiveTicketEventIndex,
     selectedEventTickets,
     setSelectedEventTickets,
+    setCurrentMinTicketPrices,
   } = useContext(OrderContext);
   const eventRef = useRef(event);
   const selectedEventsRef = useRef(selectedEvents);
@@ -121,6 +121,7 @@ export const TicketSelection = () => {
         const currentActiveEvent = activeEventRef.current;
         const params = new URLSearchParams({
           event_id: tixEventId,
+          ticket_quantity: String(numberOfEventTickets),
           _: String(Date.now()),
         });
         if (currentActiveEvent?.id) {
@@ -182,7 +183,14 @@ export const TicketSelection = () => {
     return () => {
       cancelled = true;
     };
-  }, [isTxEvent, tixEventId, activeEventId, setEvent, setSelectedEvents]);
+  }, [
+    isTxEvent,
+    tixEventId,
+    activeEventId,
+    numberOfEventTickets,
+    setEvent,
+    setSelectedEvents,
+  ]);
 
   /**
    * Find the cheapest live listing in `category` that can satisfy `qty`.
@@ -247,7 +255,7 @@ export const TicketSelection = () => {
     if (!activeEvent) return;
 
     const existingSelection = selectedEventTickets?.[activeEvent.id];
-    if (existingSelection?.id) {
+    if (existingSelection?.id && existingSelection.quantity === numberOfEventTickets) {
       const refreshedTicket = effectiveTickets.find(
         (ticket) => ticket.id === existingSelection.id,
       );
@@ -276,6 +284,17 @@ export const TicketSelection = () => {
           },
         }));
       }
+
+      if (effectiveTickets.length > 0) {
+        const cheapestTicket = effectiveTickets.reduce<EventTicket>((min, ticket) =>
+          ticket.price < min.price ? ticket : min,
+          effectiveTickets[0]
+        );
+        setCurrentMinTicketPrices((prev) => ({
+          ...prev,
+          [activeEvent.id]: cheapestTicket.price,
+        }));
+      }
       return;
     }
 
@@ -283,6 +302,10 @@ export const TicketSelection = () => {
       // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
       console.log('No available tickets found - clearing all ticket state');
       setSelectedTicket(undefined);
+      setCurrentMinTicketPrices((prev) => ({
+        ...prev,
+        [activeEvent.id]: 0,
+      }));
       // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
       setEventTicket({
         id: "",
@@ -302,10 +325,7 @@ export const TicketSelection = () => {
 
     console.log(`Auto-selecting cheapest ticket: ${cheapt.category} (ID: ${cheapt.id}, available: ${cheapt.available})`);
 
-    // If the currently-selected ticket is still in the effective (live-priced) list,
-    // keep it selected and refresh price/qty. Otherwise auto-select the cheapest.
-    const stillSelected = effectiveTickets.find((t) => t.id === selectedTicket);
-    const chosen = stillSelected ?? cheapt;
+    const chosen = cheapt;
     const ticketPayload = {
       id: chosen?.id || "",
       vendor: chosen?.vendor || "",
@@ -315,10 +335,12 @@ export const TicketSelection = () => {
       quantity: numberOfEventTickets,
     };
 
-    if (!stillSelected) {
-      setSelectedTicket(chosen?.id);
-    }
-    setEventTicket(stillSelected ? { ...eventTicket, ...ticketPayload } : ticketPayload);
+    setSelectedTicket(chosen?.id);
+    setCurrentMinTicketPrices((prev) => ({
+      ...prev,
+      [activeEvent.id]: cheapt.price,
+    }));
+    setEventTicket(ticketPayload);
 
     if (activeEvent?.id) {
       setSelectedEventTickets((prev) => ({
@@ -330,7 +352,14 @@ export const TicketSelection = () => {
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeEvent, effectiveTickets, numberOfEventTickets, setEventTicket, setSelectedEventTickets]);
+  }, [
+    activeEvent,
+    effectiveTickets,
+    numberOfEventTickets,
+    setCurrentMinTicketPrices,
+    setEventTicket,
+    setSelectedEventTickets,
+  ]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)

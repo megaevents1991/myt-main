@@ -20,6 +20,7 @@ export function useOrderVars() {
     selectedEventTickets,
     activeTicketEventIndex,
     numberOfEventTickets,
+    currentMinTicketPrices,
     skipHotel,
     forceSkipHotel,
     flightSkipped,
@@ -101,11 +102,14 @@ export function useOrderVars() {
   }, [selectedFlight, event, baseFlightPricePerPerson, flightSkipped]);
 
   const minTicketPriceForEvent = useCallback((evt?: typeof event) => {
-    if (!evt || !evt.tickets_and_rates || evt.tickets_and_rates.length === 0) return 0;
+    if (!evt) return 0;
+    const liveMinPrice = currentMinTicketPrices?.[evt.id];
+    if (typeof liveMinPrice === "number") return liveMinPrice;
+    if (!evt.tickets_and_rates || evt.tickets_and_rates.length === 0) return 0;
     const available = evt.tickets_and_rates.filter((t) => t?.available !== false);
     if (available.length === 0) return 0;
     return Math.min(...available.map((t) => t.price));
-  }, []);
+  }, [currentMinTicketPrices]);
 
   const minTicketPriceTotalPerPerson = useMemo(() => {
     return effectiveEvents.reduce((sum, evt) => sum + minTicketPriceForEvent(evt), 0);

@@ -1,6 +1,6 @@
 import { Event, Flight, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { isMobile } from "react-device-detect";
-import { useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import { Accordion } from "@mantine/core";
 import { EventSummary } from "./EventSummary";
 import { HotelSummary } from "./HotelSummary";
@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import { cn } from "@/lib/utils";
 import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
 import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondial2026Title";
+import { OrderContext } from "@/app/app.context";
 
 export const Review = ({
   agentCommission,
@@ -46,6 +47,7 @@ export const Review = ({
   skipHotel?: boolean;
   flightSkipped?: boolean;
 }) => {
+  const { currentMinTicketPrices } = useContext(OrderContext);
   const mondialParsed = useMemo(() => parseMondial2026EventName(event?.name), [event?.name]);
 
   const effectiveEvents = useMemo<Event[]>(
@@ -54,11 +56,13 @@ export const Review = ({
   );
   const isBundle = effectiveEvents.length > 1;
 
-  const minTicketPriceForEvent = (evt: Event): number => {
+  const minTicketPriceForEvent = useCallback((evt: Event): number => {
+    const liveMinPrice = currentMinTicketPrices?.[evt.id];
+    if (typeof liveMinPrice === "number") return liveMinPrice;
     const rates = (evt.tickets_and_rates || []).filter((t) => t?.available !== false);
     if (rates.length === 0) return 0;
     return Math.min(...rates.map((t) => t.price));
-  };
+  }, [currentMinTicketPrices]);
 
   const ticketLines = useMemo(() => {
     return effectiveEvents
@@ -84,7 +88,7 @@ export const Review = ({
         };
       })
       .filter((l) => typeof l.label === "string" && l.label.length > 0);
-  }, [effectiveEvents, selectedEventTickets]);
+  }, [effectiveEvents, minTicketPriceForEvent, selectedEventTickets]);
 
   const totalTickets = useMemo(() => {
     if (!isBundle) return numberOfEventTickets;
