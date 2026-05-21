@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2, Copy, Link2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { OrderData } from "@/lib/app.types";
+import { OrderData, Flight } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
@@ -115,19 +115,32 @@ export default function ConfirmationPage() {
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
         }
+        // Flight is optional: skipped flights are saved as an empty object.
+        const rawFlightInfo = orderData.flight_order_info;
+        const hasFlight = Boolean(
+          rawFlightInfo &&
+            Object.keys(rawFlightInfo).length > 0 &&
+            (rawFlightInfo as Flight).outbound
+        );
+        const flightInfo = rawFlightInfo as Flight;
+
         const orderDataToShow: OrderConfirmationData = {
           eventName: orderData.event_order_info.name,
           eventDate: orderData.event_order_info.date.toString(),
           eventLocation: orderData.event_order_info.location_name,
           ticketType: orderData.event_order_info.category,
           quantity: orderData.event_order_info.number_of_ticket.toString(),
-          airline: orderData.flight_order_info.metadata.name,
-          flights: `Outbound: ${orderData.flight_order_info.outbound.flightNumber}, Return: ${orderData.flight_order_info.inbound.flightNumber}`,
-          dates: `Outbound: ${dayjs(
-            orderData.flight_order_info.outbound.departureTime
-          ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
-            orderData.flight_order_info.inbound.departureTime
-          ).format("DD/MM/YYYY HH:MM")}`,
+          airline: hasFlight ? flightInfo.metadata?.name ?? "" : "",
+          flights: hasFlight
+            ? `Outbound: ${flightInfo.outbound.flightNumber}, Return: ${flightInfo.inbound.flightNumber}`
+            : "",
+          dates: hasFlight
+            ? `Outbound: ${dayjs(
+                flightInfo.outbound.departureTime
+              ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
+                flightInfo.inbound.departureTime
+              ).format("DD/MM/YYYY HH:MM")}`
+            : "",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
           isPaid,
@@ -147,7 +160,7 @@ export default function ConfirmationPage() {
           eventLocation: orderData.event_order_info.location_name,
           ticketCategory: orderData.event_order_info.category,
           numberOfTickets: orderData.event_order_info.number_of_ticket,
-          airline: orderData.flight_order_info.metadata.name,
+          airline: hasFlight ? flightInfo.metadata?.name ?? "SKIPPED" : "SKIPPED",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "SKIPPED" : orderData.hotel_order_info.name,
           paymentMethod:
             Object.keys(orderData.payment_info || {}).length === 0
@@ -157,7 +170,8 @@ export default function ConfirmationPage() {
           finalPrice: orderData.final_purchase_price_ils,
         });
       }
-    } catch {
+    } catch (error) {
+      console.error("Failed to load confirmation order data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -334,15 +348,23 @@ export default function ConfirmationPage() {
                 <p>
                   <strong>Tickets:</strong> (x{quantity}) {ticketType}
                 </p>
-                <p>
-                  <strong>Airline:</strong> {airline}
-                </p>
-                <p>
-                  <strong>Flight Numbers-</strong> {flights}
-                </p>
-                <p>
-                  <strong>Flight Schedule-</strong> {dates}
-                </p>
+                {flights ? (
+                  <>
+                    <p>
+                      <strong>Airline:</strong> {airline}
+                    </p>
+                    <p>
+                      <strong>Flight Numbers-</strong> {flights}
+                    </p>
+                    <p>
+                      <strong>Flight Schedule-</strong> {dates}
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    <strong>Flight:</strong> ללא טיסה
+                  </p>
+                )}
                 {hotel !== "ללא מלון" && (
                   <p>
                     <strong>Hotel:</strong> {hotel}
@@ -402,15 +424,23 @@ export default function ConfirmationPage() {
                 <p>
                   <strong>Tickets:</strong> (x{quantity}) {ticketType}
                 </p>
-                <p>
-                  <strong>Airline:</strong> {airline}
-                </p>
-                <p>
-                  <strong>Flight Numbers-</strong> {flights}
-                </p>
-                <p>
-                  <strong>Flight Schedule-</strong> {dates}
-                </p>
+                {flights ? (
+                  <>
+                    <p>
+                      <strong>Airline:</strong> {airline}
+                    </p>
+                    <p>
+                      <strong>Flight Numbers-</strong> {flights}
+                    </p>
+                    <p>
+                      <strong>Flight Schedule-</strong> {dates}
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    <strong>Flight:</strong> ללא טיסה
+                  </p>
+                )}
                 {hotel !== "ללא מלון" && (
                   <p>
                     <strong>Hotel:</strong> {hotel}
