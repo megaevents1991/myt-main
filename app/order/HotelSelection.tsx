@@ -441,25 +441,19 @@ export const HotelSelection = () => {
 
       const meta = isOffline ? offlineMeta[orderHotel.id] : null;
 
-      // Offline hotels must ride the flight-aligned dateRange, not the static
-      // check_in/check_out stored on the offline_hotels row. Online hotels
-      // already get flight-aligned dates via the WorldOTA search request.
-      const offlineCheckin = dateRange[0]
-        ? dayjs(dateRange[0]).format("YYYY-MM-DD")
-        : hotelsData?.data?.debug?.request?.checkin ?? "";
-      const offlineCheckout = dateRange[1]
-        ? dayjs(dateRange[1]).format("YYYY-MM-DD")
-        : hotelsData?.data?.debug?.request?.checkout ?? "";
-
+      // Offline hotels carry the inventory row's own fixed check_in/check_out
+      // (exact-matched to the flight by /api/offline-hotels). The order stores
+      // those real dates so it never silently diverges from the held block.
+      // Online hotels get flight-aligned dates via the WorldOTA search request.
       setHotel({
         ...orderHotel,
         hotelInformation,
         guests: meta ? roomParams : hotelsData?.data?.debug?.request?.guests,
         checkin: isOffline
-          ? offlineCheckin
+          ? meta?.checkin ?? ""
           : hotelsData?.data?.debug?.request?.checkin,
         checkout: isOffline
-          ? offlineCheckout
+          ? meta?.checkout ?? ""
           : hotelsData?.data?.debug?.request?.checkout,
         ...(isOffline && meta && {
           isOffline: true,
@@ -469,7 +463,7 @@ export const HotelSelection = () => {
         }),
       });
     },
-    [hotelsData, offlineHotelsInfo, offlineMeta, roomParams, setHotel, dateRange]
+    [hotelsData, offlineHotelsInfo, offlineMeta, roomParams, setHotel]
   );
 
   const handleSetRooms = (room: {

@@ -102,21 +102,27 @@ export async function GET(request: Request) {
     }
   }
 
-  // 1) Offline inventory rows for this event, filtered by the flight-aligned
-  // window: only rows whose inventory [check_in, check_out] fully covers the
-  // requested [checkin, checkout] are eligible.
+  // Offline inventory has FIXED dates — a pre-purchased room block cannot be
+  // stretched. A row is eligible only when its window EXACTLY matches the
+  // flight-aligned stay (check_in == arrival date, check_out == return
+  // departure date). A "covers" filter would wrongly keep offering an offline
+  // hotel after the customer shifts their flight within the block's window.
+  if (!checkin || !checkout) {
+    // Without flight-aligned dates an exact match is impossible.
+    return NextResponse.json({ hotels: [], hotelsInfo: {}, meta: {} });
+  }
+
+  // 1) Offline inventory rows for this event whose dates exactly match.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase as any)
+  const query = (supabase as any)
     .from("offline_hotels")
     .select(
       "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date"
     )
     .contains("event_ids", [eventId])
-    .eq("is_deleted", false);
-
-  if (checkin && checkout) {
-    query = query.lte("check_in", checkin).gte("check_out", checkout);
-  }
+    .eq("is_deleted", false)
+    .eq("check_in", checkin)
+    .eq("check_out", checkout);
 
   const { data: offlineRows, error } = await query.order("price", {
     ascending: true,
