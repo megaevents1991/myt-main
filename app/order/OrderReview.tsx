@@ -773,7 +773,9 @@ export default function OrderReview() {
         vendor: eventTicket.vendor,
         id: eventTicket.id,
       },
-      flight_order_info: selectedFlight || {},
+      // A skipped-flight order never carries flight data, even if a late
+      // flight search re-populated `flight` after the skip.
+      flight_order_info: flightSkipped ? {} : selectedFlight || {},
       hotel_order_info: skipHotel ? {} : (selectedHotel || {}),
       user_shown_price: finalPurchasePrice,
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
