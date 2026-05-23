@@ -12,7 +12,7 @@ import {
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea } from "@mantine/core";
-import { Settings2Icon, Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   useCallback,
   useContext,
