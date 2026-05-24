@@ -7,6 +7,13 @@ import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
 import Link from "next/link";
 import { getServerHomeHref } from "@/lib/homeHref";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import {
+  getMondial2026OrderUrl,
+  isMondial2026Host,
+  isMondial2026Event,
+} from "@/lib/mondial2026Redirect";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
@@ -98,10 +105,15 @@ export async function generateMetadata({
 
 export default async function OrderPageWithId({
   params,
+  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { eventId } = await params;
+  const queryParams = await searchParams;
+  const requestHeaders = await headers();
+  const isAlreadyOnMondial2026 = isMondial2026Host(requestHeaders.get("host"));
 
   if (!eventId) {
     return <EventNotFoundNotice />;
@@ -119,6 +131,10 @@ export default async function OrderPageWithId({
 
   if (!event) {
     return <EventNotFoundNotice eventId={eventId} />;
+  }
+
+  if (!isAlreadyOnMondial2026 && isMondial2026Event(event)) {
+    redirect(getMondial2026OrderUrl(eventId, queryParams));
   }
 
   // Check if event has any available tickets

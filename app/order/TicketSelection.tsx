@@ -716,7 +716,7 @@ export const TicketSelection = () => {
                 hideLabel={<ChevronUpCircle fill="black" width={"100%"} aria-label="כווץ מפת האירוע" />}
               >
                 <Image
-                  className="rounded-lg"
+                  className="rounded-lg w-full h-auto max-h-[45svh] lg:max-h-[calc(100vh-10rem)] object-contain"
                   width={600}
                   height={600}
                   priority={true}
@@ -726,7 +726,7 @@ export const TicketSelection = () => {
               </Spoiler>
               <div className="lg:w-[45%] hidden lg:block">
                 <Image
-                  className="rounded-lg w-auto h-auto w-full"
+                  className="rounded-lg w-full h-auto max-h-[calc(100vh-10rem)] object-contain"
                   width={600}
                   height={600}
                   priority={true}

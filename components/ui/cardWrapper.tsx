@@ -9,6 +9,7 @@ type CardWrapperProps = {
   className?: string;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  disabled?: boolean;
 };
 
 export const CardWrapper = ({
@@ -18,14 +19,16 @@ export const CardWrapper = ({
   className,
   onMouseEnter,
   onMouseLeave,
+  disabled = false,
 }: CardWrapperProps) => {
   return (
     <div
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={disabled ? undefined : onMouseEnter}
+      onMouseLeave={disabled ? undefined : onMouseLeave}
       dir="rtl"
       tabIndex={-1}
+      aria-disabled={disabled}
       style={{ WebkitTapHighlightColor: "transparent" }}
       className={cn(
         "flex cursor-pointer flex-row items-center justify-between px-4 py-2 bg-white rounded-lg shadow-lg relative border border-2 border-gray-200",
@@ -36,6 +39,8 @@ export const CardWrapper = ({
         !isSelected && "focus:border-gray-200 active:border-gray-200",
         isSelected &&
           "border-secondary bg-[#277E890D] focus:border-secondary active:border-secondary",
+        disabled &&
+          "cursor-not-allowed border-gray-300 bg-gray-100 opacity-60 grayscale shadow-none hover:shadow-none hover:outline-none",
         className
       )}
     >

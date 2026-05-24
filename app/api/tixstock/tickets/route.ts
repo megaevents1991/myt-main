@@ -262,6 +262,7 @@ function isExcludedSection(
     .map((excl) => {
       const lastUnderscore = excl.lastIndexOf("_");
       if (lastUnderscore === -1) return null;
+
       return {
         catSlug: excl.substring(0, lastUnderscore),
         sectionId: excl.substring(lastUnderscore + 1).toLowerCase(),

@@ -55,15 +55,24 @@ export const HotelFetchProvider = ({
 
           const controller = new AbortController();
           abortControllerRef.current = controller;
-          const res = await fetchHotels(params, controller.signal);
 
-          startTransition(() => {
-            setHotels(res);
-            resolve(res);
+          try {
+            const res = await fetchHotels(params, controller.signal);
+
+            startTransition(() => {
+              setHotels(res);
+              resolve(res);
+              setIsFetching(false);
+            });
+          } catch (err) {
+            // This request was superseded by a newer one — expected, the
+            // newer request now owns `isFetching`, so just stop quietly.
+            if (controller.signal.aborted) return;
+            // A real failure — surface it and clear the loading state so
+            // the UI isn't stuck on the spinner.
+            console.error("Hotel fetch failed:", err);
             setIsFetching(false);
-          });
-
-          return res;
+          }
         }, 1000); // debounce delay in ms
       });
     },

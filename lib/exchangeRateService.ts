@@ -3,7 +3,7 @@ import { logger } from "./logger";
 interface ExchangeRateData {
   rate: number;
   lastUpdated: Date;
-  source: "api" | "floatrates" | "jsdelivr" | "hardcoded";
+  source: "jsdelivr" | "hardcoded";
 }
 
 interface CurrencyRates {
@@ -18,8 +18,8 @@ const CURRENCY_CONFIG: Record<
   RateKey,
   {
     pair: string;
-    floatBase: string;
-    floatTarget: string;
+    base: string;
+    target: string;
     min: number;
     max: number;
     fallback: number;
@@ -27,29 +27,33 @@ const CURRENCY_CONFIG: Record<
 > = {
   usdIls: {
     pair: "USD/ILS",
-    floatBase: "usd",
-    floatTarget: "ils",
+    base: "usd",
+    target: "ils",
     min: 2.7,
     max: 3.65,
-    fallback: 3.0,
+    fallback: 2.95,
   },
   eurUsd: {
     pair: "EUR/USD",
-    floatBase: "eur",
-    floatTarget: "usd",
+    base: "eur",
+    target: "usd",
     min: 1,
     max: 1.7,
     fallback: 1.17,
   },
   gbpUsd: {
     pair: "GBP/USD",
-    floatBase: "gbp",
-    floatTarget: "usd",
+    base: "gbp",
+    target: "usd",
     min: 0.8,
     max: 1.8,
     fallback: 1.36,
   },
 };
+
+const JSDELIVR_BASE =
+  "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
+const CLOUDFLARE_BASE = "https://latest.currency-api.pages.dev/v1/currencies";
 
 const makeHardcoded = (key: RateKey): ExchangeRateData => ({
   rate: CURRENCY_CONFIG[key].fallback,
@@ -65,18 +69,11 @@ class ExchangeRateService {
   };
   private intervalId: NodeJS.Timeout | null = null;
 
-  private readonly TWELVE_DATA_URL = "https://api.twelvedata.com/exchange_rate";
-  private readonly TWELVE_DATA_KEY = "43c9bbfbf1cb4a1990c01a1a6d9ddf2f";
-  private readonly FLOAT_RATES_URL = "https://www.floatrates.com/daily";
-  private readonly JSDELIVR_URL =
-    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
   private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour
   private readonly CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 hours
-  private readonly MAX_RETRIES = 4;
-  private readonly RETRY_DELAY = 1500; // 1.5s
 
   constructor() {
-    this.updateAllRates();
+    setImmediate(() => this.updateAllRates());
     this.startPeriodicUpdates();
   }
 
@@ -120,140 +117,81 @@ class ExchangeRateService {
     return err instanceof Error ? err.message : "Unknown error";
   }
 
-  // --- Fetch strategies ---
+  // --- Fetch strategy ---
 
-  private async fetchFromTwelveData(key: RateKey): Promise<number | null> {
-    const { pair } = CURRENCY_CONFIG[key];
-    const url = `${this.TWELVE_DATA_URL}?symbol=${pair}&apikey=${this.TWELVE_DATA_KEY}`;
+  private async fetchFromCurrencyApi(key: RateKey): Promise<number | null> {
+    const { pair, base, target } = CURRENCY_CONFIG[key];
+    const urls = [
+      `${JSDELIVR_BASE}/${base}.json`,
+      `${CLOUDFLARE_BASE}/${base}.json`,
+    ];
 
-    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+    for (const url of urls) {
       try {
-        const data = (await this.fetchJson(url)) as { rate?: number };
-        if (typeof data?.rate !== "number")
-          throw new Error("Invalid response structure");
+        const data = (await this.fetchJson(url)) as Record<
+          string,
+          Record<string, number>
+        >;
+        const rawRate = data?.[base]?.[target];
+        if (typeof rawRate !== "number")
+          throw new Error(`Missing "${target}" in "${base}" entry`);
 
-        const rate = this.validateRate(data.rate, key);
+        const rate = this.validateRate(rawRate, key);
         if (rate !== null) {
-          logger.debug(`TwelveData ${pair}: ${rate} (attempt ${attempt})`);
+          logger.info(`jsDelivr ${pair}: ${rate}`);
           return rate;
         }
         throw new Error("Rate outside valid range");
       } catch (err) {
-        if (attempt === this.MAX_RETRIES) {
-          logger.error(
-            `TwelveData ${pair} failed after ${attempt} attempts: ${this.errMsg(err)}`,
-          );
-        } else {
-          logger.warn(
-            `TwelveData ${pair} attempt ${attempt} failed: ${this.errMsg(err)}`,
-          );
-          await new Promise((r) => setTimeout(r, this.RETRY_DELAY));
-        }
+        logger.warn(
+          `Currency API (${url}) ${pair} failed: ${this.errMsg(err)}`,
+        );
       }
     }
+
+    logger.error(`Currency API ${pair}: all endpoints failed`);
     return null;
-  }
-
-  private async fetchFromFloatRates(key: RateKey): Promise<number | null> {
-    const { pair, floatBase, floatTarget } = CURRENCY_CONFIG[key];
-    const url = `${this.FLOAT_RATES_URL}/${floatBase}.json`;
-
-    try {
-      const data = (await this.fetchJson(url)) as Record<
-        string,
-        { rate?: number }
-      >;
-      const rawRate = data?.[floatTarget]?.rate;
-      if (typeof rawRate !== "number")
-        throw new Error(`Missing "${floatTarget}" entry`);
-
-      const rate = this.validateRate(rawRate, key);
-      if (rate !== null) {
-        logger.info(`FloatRates ${pair}: ${rate}`);
-        return rate;
-      }
-      throw new Error("Rate outside valid range");
-    } catch (err) {
-      logger.error(`FloatRates ${pair} failed: ${this.errMsg(err)}`);
-      return null;
-    }
-  }
-
-  private async fetchFromJsdelivr(key: RateKey): Promise<number | null> {
-    const { pair, floatBase, floatTarget } = CURRENCY_CONFIG[key];
-    const url = `${this.JSDELIVR_URL}/${floatBase}.json`;
-
-    try {
-      const data = (await this.fetchJson(url)) as Record<
-        string,
-        Record<string, number>
-      >;
-      const rawRate = data?.[floatBase]?.[floatTarget];
-      if (typeof rawRate !== "number")
-        throw new Error(`Missing "${floatTarget}" in "${floatBase}" entry`);
-
-      const rate = this.validateRate(rawRate, key);
-      if (rate !== null) {
-        logger.info(`jsDelivr ${pair}: ${rate}`);
-        return rate;
-      }
-      throw new Error("Rate outside valid range");
-    } catch (err) {
-      logger.error(`jsDelivr ${pair} failed: ${this.errMsg(err)}`);
-      return null;
-    }
   }
 
   // --- Update logic ---
 
-  private storeRate(
-    key: RateKey,
-    rate: number,
-    source: ExchangeRateData["source"],
-  ): void {
-    this.currentRates[key] = { rate, lastUpdated: new Date(), source };
-    logger.info(`${CURRENCY_CONFIG[key].pair} updated: ${rate} (${source})`);
+  private storeRate(key: RateKey, rate: number): void {
+    this.currentRates[key] = {
+      rate,
+      lastUpdated: new Date(),
+      source: "jsdelivr",
+    };
+    logger.info(`${CURRENCY_CONFIG[key].pair} updated: ${rate} (jsdelivr)`);
   }
 
   private async updateRate(key: RateKey): Promise<void> {
     const { pair } = CURRENCY_CONFIG[key];
 
     try {
-      // Layer 1: Primary API (TwelveData)
-      const apiRate = await this.fetchFromTwelveData(key);
-      if (apiRate !== null) return this.storeRate(key, apiRate, "api");
+      const rate = await this.fetchFromCurrencyApi(key);
+      if (rate !== null) return this.storeRate(key, rate);
 
-      // Use cached rate if still valid (< 12h)
+      // Keep cached rate if still valid (< 12h)
       if (this.isCacheValid(key)) {
-        const cached = this.currentRates[key]!;
+        const cached = this.currentRates[key];
         const ageMin = Math.round(
           (Date.now() - cached.lastUpdated.getTime()) / 60_000,
         );
         logger.warn(
-          `${pair}: API failed, using cached rate ${cached.rate} (${cached.source}, ${ageMin}min old)`,
+          `${pair}: using cached rate ${cached.rate} (${ageMin}min old)`,
         );
         return;
       }
 
-      // Layer 2: FloatRates fallback
-      const floatRate = await this.fetchFromFloatRates(key);
-      if (floatRate !== null)
-        return this.storeRate(key, floatRate, "floatrates");
-
-      // Layer 3: jsDelivr (fawazahmed0) daily fallback
-      const jsdelivrRate = await this.fetchFromJsdelivr(key);
-      if (jsdelivrRate !== null)
-        return this.storeRate(key, jsdelivrRate, "jsdelivr");
-
-      // Layer 4: Hardcoded fallback — rate is never null
+      // Hardcoded fallback
       const existing = this.currentRates[key];
       if (existing.source !== "hardcoded") {
         logger.error(
-          `${pair}: all sources failed, keeping stale rate ${existing.rate} from ${existing.lastUpdated.toISOString()}`,
+          `${pair}: fetch failed, keeping stale rate ${existing.rate} from ${existing.lastUpdated.toISOString()}`,
         );
       } else {
         logger.error(
-          `${pair}: all sources failed, using hardcoded fallback rate ${existing.rate}`,
+          `${pair}: fetch failed, using hardcoded fallback ${existing.rate}`,
         );
         this.currentRates[key] = makeHardcoded(key);
       }

@@ -800,6 +800,8 @@ export default function OrderReview() {
 
         return { events };
       })(),
+      // A skipped-flight order never carries flight data, even if a late
+      // flight search re-populated `flight` after the skip.
       // Use empty object as sentinel for "skipped" — mirrors hotel_order_info convention,
       // and matches the DB column (NOT NULL JSON).
       flight_order_info: flightSkipped ? {} : (selectedFlight || {}),

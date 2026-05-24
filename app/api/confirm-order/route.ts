@@ -34,6 +34,8 @@ export async function POST(req: Request) {
         offlineId?: number;
         offlineIds?: number[];
         offlineRawPrice?: number;
+        checkin?: string;
+        checkout?: string;
       }
     | undefined;
 
@@ -43,6 +45,53 @@ export async function POST(req: Request) {
       : hotelInfoForLink?.offlineId != null
       ? [hotelInfoForLink.offlineId]
       : null;
+
+  // Defense-in-depth: offline hotel inventory has fixed dates. Reject the order
+  // if any linked offline_hotels row doesn't EXACTLY match the booked stay
+  // (guards against stale client state after a flight-date change, races, or
+  // tampering — the client filter in /api/offline-hotels is the first line).
+  if (offlineHotelIdsForLink) {
+    const bookedCheckin = hotelInfoForLink?.checkin;
+    const bookedCheckout = hotelInfoForLink?.checkout;
+    const uniqueOfflineIds = Array.from(new Set(offlineHotelIdsForLink));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: offlineRows, error: offlineErr } = await (supabase as any)
+      .from("offline_hotels")
+      .select("id, check_in, check_out")
+      .in("id", uniqueOfflineIds);
+
+    if (offlineErr) {
+      console.error(
+        "Offline hotel date validation query failed:",
+        JSON.stringify(offlineErr),
+      );
+      return NextResponse.json(
+        { error: "Failed to validate offline hotel" },
+        { status: 500 },
+      );
+    }
+
+    const datesMismatch =
+      !bookedCheckin ||
+      !bookedCheckout ||
+      uniqueOfflineIds.length !== (offlineRows?.length ?? 0) ||
+      (offlineRows ?? []).some(
+        (r: { check_in: string; check_out: string }) =>
+          r.check_in !== bookedCheckin || r.check_out !== bookedCheckout,
+      );
+
+    if (datesMismatch) {
+      console.error(
+        "Offline hotel date mismatch — rejecting order.",
+        JSON.stringify({ bookedCheckin, bookedCheckout, offlineRows }),
+      );
+      return NextResponse.json(
+        { error: "OFFLINE_HOTEL_DATE_MISMATCH" },
+        { status: 409 },
+      );
+    }
+  }
 
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

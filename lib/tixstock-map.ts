@@ -4,9 +4,9 @@
  * Handles SVG parsing, section matching, duplicate cleanup,
  * and visual highlighting for tx_event venue maps.
  */
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
+/**
+ * Parse raw SVG text, strip scripts / inline event handlers and
+ * normalize text rendering so the authored label transforms stay intact.
 /* ------------------------------------------------------------------ */
 
 /** Re-export the canonical full listing type for callers that need it. */
@@ -140,8 +140,10 @@ export const isTicketMatchingCategory = (
 /**
  * Check whether a category-only ticket matches a map section element.
  * Tries an explicit [data-category] group first, then falls back to
- * matching the [data-section] id directly against the category slug.
- * This handles SVGs that don't wrap sections in a data-category group.
+ * an exact [data-section] slug match.
+ *
+ * This strict fallback avoids cross-highlighting sibling categories
+ * whose ids share a prefix, e.g. "fosse" vs "fosse-or-gauche".
  */
 export const categoryOnlyMatchesEl = (
   ticket: TixStockMatchableListing,
@@ -229,8 +231,9 @@ export const sanitizeAndPrepareSvg = (rawSvg: string): string | null => {
   // Ensure LTR text direction inside the SVG regardless of surrounding page direction
   svg.setAttribute("direction", "ltr");
 
-  // Force stable text metrics while preserving the SVG-authored transforms.
-  // This avoids the slight label drift introduced by runtime re-centering.
+  // Force stable text metrics with an injected override stylesheet.
+  // Preserving the SVG-authored transforms avoids the slight label drift
+  // introduced by runtime re-centering against fallback fonts.
   const styleEl = doc.createElementNS("http://www.w3.org/2000/svg", "style");
   styleEl.textContent = `
     text,
@@ -271,6 +274,7 @@ export const prePaintSvg = (
   svgHtml: string,
   tickets: TixStockMatchableListing[],
   excludedSections?: string[],
+  disabledTicketIds?: Set<string>,
 ): string => {
   if (!svgHtml || typeof DOMParser === "undefined") return svgHtml;
 
@@ -291,15 +295,24 @@ export const prePaintSvg = (
         continue;
       }
 
-      const hasMatchingTicket = tickets.some((t) => {
+      const matchingTickets = tickets.filter((t) => {
         if (isCategoryOnlyTicket(t)) {
           return categoryOnlyMatchesEl(t, secId, catId);
         }
         return isTicketMatchingSection(t, secId, catId);
       });
 
-      if (hasMatchingTicket) {
+      const hasEnabledTicket = matchingTickets.some(
+        (t) => !disabledTicketIds?.has(t.id),
+      );
+      const hasDisabledTicket = matchingTickets.some((t) =>
+        disabledTicketIds?.has(t.id),
+      );
+
+      if (hasEnabledTicket) {
         paintSection(el, "available");
+      } else if (hasDisabledTicket) {
+        paintSection(el, "disabled");
       } else {
         paintSection(el, "inactive");
       }

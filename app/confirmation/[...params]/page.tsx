@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2, Copy, Link2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { OrderData } from "@/lib/app.types";
+import { OrderData, Flight } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
@@ -121,31 +121,32 @@ export default function ConfirmationPage() {
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
         }
+        // Flight is optional: skipped flights are saved as an empty object.
+        const rawFlightInfo = orderData.flight_order_info;
+        const hasFlight = Boolean(
+          rawFlightInfo &&
+            Object.keys(rawFlightInfo).length > 0 &&
+            (rawFlightInfo as Flight).outbound
+        );
+        const flightInfo = rawFlightInfo as Flight;
+
         const orderDataToShow: OrderConfirmationData = {
-            eventNames: events.map((e) => e.name),
-            eventDate: primaryEvent.date.toString(),
-            eventLocation: primaryEvent.location_name,
-            ticketType: primaryEvent.category,
-            quantity: primaryEvent.number_of_ticket.toString(),
-          airline: (() => {
-            const f = orderData.flight_order_info;
-            if (!f || Object.keys(f).length === 0 || !f.outbound) return "ללא טיסה";
-            return f.metadata?.name ?? "";
-          })(),
-          flights: (() => {
-            const f = orderData.flight_order_info;
-            if (!f || Object.keys(f).length === 0 || !f.outbound) return "ללא טיסה";
-            return `Outbound: ${f.outbound?.flightNumber}, Return: ${f.inbound?.flightNumber}`;
-          })(),
-          dates: (() => {
-            const f = orderData.flight_order_info;
-            if (!f || Object.keys(f).length === 0 || !f.outbound) return "ללא טיסה";
-            return `Outbound: ${dayjs(f.outbound?.departureTime).format(
-              "DD/MM/YYYY HH:MM"
-            )}, Return: ${dayjs(f.inbound?.departureTime).format(
-              "DD/MM/YYYY HH:MM"
-            )}`;
-          })(),
+          eventNames: events.map((e) => e.name),
+          eventDate: primaryEvent.date.toString(),
+          eventLocation: primaryEvent.location_name,
+          ticketType: primaryEvent.category,
+          quantity: primaryEvent.number_of_ticket.toString(),
+          airline: hasFlight ? flightInfo.metadata?.name ?? "" : "ללא טיסה",
+          flights: hasFlight
+            ? `Outbound: ${flightInfo.outbound.flightNumber}, Return: ${flightInfo.inbound.flightNumber}`
+            : "ללא טיסה",
+          dates: hasFlight
+            ? `Outbound: ${dayjs(
+                flightInfo.outbound.departureTime
+              ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
+                flightInfo.inbound.departureTime
+              ).format("DD/MM/YYYY HH:MM")}`
+            : "ללא טיסה",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
           isPaid,
@@ -165,7 +166,7 @@ export default function ConfirmationPage() {
           eventLocation: primaryEvent.location_name,
           ticketCategory: primaryEvent.category,
           numberOfTickets: primaryEvent.number_of_ticket,
-          airline: orderData.flight_order_info?.metadata?.name ?? "SKIPPED",
+          airline: hasFlight ? flightInfo.metadata?.name ?? "SKIPPED" : "SKIPPED",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "SKIPPED" : orderData.hotel_order_info.name,
           paymentMethod:
             Object.keys(orderData.payment_info || {}).length === 0
@@ -175,7 +176,8 @@ export default function ConfirmationPage() {
           finalPrice: orderData.final_purchase_price_ils,
         });
       }
-    } catch {
+    } catch (error) {
+      console.error("Failed to load confirmation order data:", error);
     } finally {
       setIsLoading(false);
     }

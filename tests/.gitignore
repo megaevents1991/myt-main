@@ -1,0 +1,12 @@
+# Test secrets — never commit
+.env
+
+# Saved auth session created by global-setup
+.auth/
+
+# Playwright output
+playwright-report/
+test-results/
+
+# logs
+*.log
