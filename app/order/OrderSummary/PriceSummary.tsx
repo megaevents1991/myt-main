@@ -36,7 +36,9 @@ export const PriceSummary = ({
     <div className="flex flex-row justify-between items-center py-4 px-6 border-b border-gray-400">
       <div>
         <div className="flex justify-between items-baseline w-full text-[18px] gap-2 font-bold">
-          <span className="text-xl">${formattedFinalPurchasePrice}</span>
+          <span className="text-xl" data-testid="order-total">
+            ${formattedFinalPurchasePrice}
+          </span>
           {originalNoDiscount && (
             <span className="line-through text-[red]">
               ${originalNoDiscount}

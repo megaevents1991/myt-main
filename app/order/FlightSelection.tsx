@@ -12,7 +12,7 @@ import {
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea } from "@mantine/core";
-import { Settings2Icon, Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   useCallback,
   useContext,
@@ -39,6 +39,28 @@ import { getRoomParams } from "@/lib/getRoomParams";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 
 const MAX_FLIGHT_DURATION = 30;
+
+// "Best" flight scoring — lower is better. Cheapest per traveler, penalized for
+// stops, rewarded for included baggage.
+const BEST_FLIGHT_STOP_PENALTY =
+  Number(process.env.NEXT_PUBLIC_BEST_FLIGHT_STOP_PENALTY) || 300;
+
+const flightScore = (f: Flight): number =>
+  f.price / f.numOfTravelers +
+  f.stops * BEST_FLIGHT_STOP_PENALTY -
+  (f.outbound.checkBagsIncluded ? 50 : 0) -
+  (f.outbound.cabinBagsIncluded ? 10 : 0);
+
+// The default-selected flight. Offline flight+hotel inventory is sold as a
+// bundle, so an available offline flight is the default choice; otherwise the
+// best-scored flight wins. Picks only from visible flights so the selection
+// always lands on a card the customer can see.
+const pickBestFlight = (visibleFlights: Flight[]): Flight | undefined => {
+  if (!visibleFlights.length) return undefined;
+  const offline = visibleFlights.filter((f) => f.isOffline);
+  const pool = offline.length ? offline : visibleFlights;
+  return pool.reduce((best, f) => (flightScore(f) < flightScore(best) ? f : best));
+};
 
 export const FlightSelection = () => {
   const {
@@ -95,6 +117,17 @@ export const FlightSelection = () => {
   }>({ departureDate: new Date(), returnDate: new Date() });
 
   const filterRef = useRef<HTMLDivElement>(null);
+
+  // Tracks whether this step is still mounted. A live Amadeus search that
+  // resolves after the customer has left the flight step (e.g. tapped
+  // "skip flight") must not write its result back into the shared order
+  // context — otherwise a skipped-flight order silently gets a flight.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (filterRef.current && matches) {
@@ -201,6 +234,11 @@ export const FlightSelection = () => {
         debug: { departureDate: string; returnDate: string };
       } = await res.json();
 
+      // The customer may have skipped the flight (or otherwise left this
+      // step) while the search was in flight — drop stale results so they
+      // can't re-populate `flight` after a skip.
+      if (!isMountedRef.current) return;
+
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);
 
@@ -215,7 +253,8 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
       });
 
-      setFilteredFlights(filteredFlights.slice(0, 50));
+      const visibleFlights = filteredFlights.slice(0, 50);
+      setFilteredFlights(visibleFlights);
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setSelectedFlightPrice(Math.ceil(maxPrice));
       setDebug({
@@ -235,7 +274,7 @@ export const FlightSelection = () => {
         directOnly,
       }));
       setFlights(flights);
-      setFlight(filteredFlights[0]);
+      setFlight(pickBestFlight(visibleFlights));
       return flights;
     } catch (err) {
       console.error(err);
@@ -263,26 +302,11 @@ export const FlightSelection = () => {
     [flights]
   );
 
-  const offlineFlights = useMemo(
-    () => flights.filter((f) => f.isOffline),
-    [flights]
+  // The "best" badge lands on the same flight the funnel default-selects.
+  const bestFlightId = useMemo(
+    () => pickBestFlight(filteredFlights)?.id ?? null,
+    [filteredFlights]
   );
-
-  const bestFlightId = useMemo(() => {
-    // Prefer offline pool when available; otherwise pick from visible filtered
-    // flights so the "best" badge always lands on a card the user can see.
-    const pool = offlineFlights.length ? offlineFlights : filteredFlights;
-    if (!pool.length) return null;
-    const stopPenalty = Number(process.env.NEXT_PUBLIC_BEST_FLIGHT_STOP_PENALTY) || 300;
-    const score = (f: Flight) =>
-      f.price / f.numOfTravelers +
-      f.stops * stopPenalty -
-      (f.outbound.checkBagsIncluded ? 50 : 0) -
-      (f.outbound.cabinBagsIncluded ? 10 : 0);
-    return pool.reduce((best, f) =>
-      score(f) < score(best) ? f : best
-    ).id;
-  }, [offlineFlights, filteredFlights]);
 
   const cheapestFlightId = useMemo(() => {
     // Use filteredFlights so the badge always lands on a visible card
@@ -344,10 +368,11 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
         ...{ [type]: value },
       });
-      if (filteredFlights.length !== 0) {
-        setFlight(filteredFlights[0]);
+      const visibleFlights = filteredFlights.slice(0, 50);
+      if (visibleFlights.length !== 0) {
+        setFlight(pickBestFlight(visibleFlights));
       }
-      setFilteredFlights(filteredFlights.slice(0, 50));
+      setFilteredFlights(visibleFlights);
     });
   };
   const displayFlights = useMemo(() => {
