@@ -32,8 +32,15 @@ export function useOrderVars() {
 
   const hotelPriceAddition = useMemo(() => {
     if (skipHotel && event) {
-      // When skipping hotel, add profit
-      return event.base_flight_price < 550 ? 100 : 150;
+      // When skipping hotel, add profit. Tunable via env vars.
+      const HOTEL_SKIP_FLIGHT_THRESHOLD = 550;
+      const hotelSkipMarkupLow =
+        Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_LOW) || 100;
+      const hotelSkipMarkupHigh =
+        Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_HIGH) || 150;
+      return event.base_flight_price < HOTEL_SKIP_FLIGHT_THRESHOLD
+        ? hotelSkipMarkupLow
+        : hotelSkipMarkupHigh;
     }
     if (!selectedHotel || !event) {
       return 0;
@@ -142,16 +149,27 @@ export function useOrderVars() {
       : (flightPriceAddition + event.base_flight_price) * numTravelers;
 
     // When skipping flight, add admin-set per-ticket markup to keep margin
+    const skipFlightMarkupValue = Math.max(0, Number(event.skip_flight_markup ?? 0));
     const skipFlightMarkup = flightSkipped
-      ? Math.max(0, Number(event.skip_flight_markup ?? 0)) * numberOfEventTickets
+      ? skipFlightMarkupValue * numberOfEventTickets
       : 0;
+
+    // If event is skip-flight enabled, client skipped flight, and a skip-flight
+    // markup was applied, suppress the hotel-skip markup to avoid double margin.
+    const skipFlightMarkupAlreadyApplied =
+      event.skip_flight === true && flightSkipped && skipFlightMarkupValue > 0;
+
+    const hotelSkipAddition =
+      skipHotel && !skipFlightMarkupAlreadyApplied
+        ? hotelPriceAddition * numberOfEventTickets
+        : 0;
 
     return Math.ceil(
       ((eventTicket.price || 0) + markup) * numberOfEventTickets +
         flightComponent +
         hotelComponent +
         skipFlightMarkup +
-        (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
+        hotelSkipAddition
     );
   }, [
     eventTicket,
