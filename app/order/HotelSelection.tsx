@@ -599,25 +599,6 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offlineHotels]);
 
-  const hasOfflineHotels = offlineHotels.length > 0;
-
-  const bestOnlineHotelId = useMemo(() => {
-    // TODO: enable once Ratehawk review-score rating is wired in;
-    // apply to all hotels (drop the offline guard) at that point.
-    if (hasOfflineHotels) return null;
-    let bestId: string | null = null;
-    let bestRating = -Infinity;
-    for (const hotel of displayHotels) {
-      if (hotel.isOffline) continue;
-      const rating = mergedHotelsInfo[hotel.id]?.metadata.rating ?? 0;
-      if (rating > bestRating) {
-        bestRating = rating;
-        bestId = hotel.id;
-      }
-    }
-    return bestId;
-  }, [hasOfflineHotels, displayHotels, mergedHotelsInfo]);
-
   const hotelCards = useMemo(
     () =>
       displayHotels.map(
@@ -640,7 +621,7 @@ export const HotelSelection = () => {
               hotelInfo={mergedHotelsInfo[hotel.id]}
               handleSelect={() => setSelectedHotelId(hotel.id)}
               handleSelectedRate={handleSelectedRate}
-              isPromoted={hotel.isOffline || hotel.id === bestOnlineHotelId}
+              isPromoted={hotel.isOffline}
             />
           )
       ),
@@ -653,7 +634,6 @@ export const HotelSelection = () => {
       isFetching,
       selectedHotelId,
       handleSelectedRate,
-      bestOnlineHotelId,
     ]
   );
 
