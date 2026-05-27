@@ -77,6 +77,7 @@ export const FlightFilters = ({
   flightDurationComponent,
   priceComponent,
   handleFlightSearchCriteriaChange,
+  onApply,
 }: {
   priceComponent: React.ReactNode;
   flightDurationComponent: React.ReactNode;
@@ -88,6 +89,7 @@ export const FlightFilters = ({
     maxPrice: string;
     luggage: string[];
   };
+  onApply?: () => void;
 }) => {
   const [departureTime, setDepartureTime] = React.useState<string[]>([]);
   const [arrivalTime, setArrivalTime] = React.useState<string[]>([]);
@@ -297,6 +299,20 @@ export const FlightFilters = ({
           ))}
         </Checkbox.Group>
       </div>
+      {onApply && (
+        <div
+          className="sticky bottom-0 left-0 right-0 w-full px-4 py-3 mt-2"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+        >
+          <button
+            type="button"
+            onClick={onApply}
+            className="w-full min-h-[48px] bg-main text-white rounded-lg font-medium hover:bg-opacity-90 transition-colors"
+          >
+            הצג תוצאות
+          </button>
+        </div>
+      )}
     </div>
   );
 };
