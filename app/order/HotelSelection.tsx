@@ -91,6 +91,7 @@ export const HotelSelection = () => {
   const [, startTransition] = useTransition();
   const [isProcessingHotels, setIsProcessingHotels] = useState(false);
   const [hotelNameFilter, setHotelNameFilter] = useState("");
+  const [userInteracted, setUserInteracted] = useState(false);
 
   // Offline hotels — fetched from /api/offline-hotels and merged into the main
   // WorldOTA-style list so they render through the exact same <HotelCard>.
@@ -350,6 +351,8 @@ export const HotelSelection = () => {
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
 
+    setUserInteracted(true);
+
     setSelectedHotelFilters((prev) => ({
       ...prev,
       [type]: value,
@@ -394,11 +397,19 @@ export const HotelSelection = () => {
     }
 
     startTransition(() => {
+      const combinedHotels = [
+        ...hotelsData.data.data.hotels,
+        ...offlineHotels,
+      ];
+      const combinedHotelsInfoForFilter = {
+        ...hotelsData.hotelsInfo,
+        ...offlineHotelsInfo,
+      };
       const hotelsToSet = applyFiltersAndSorting({
-        hotels: hotelsData.data.data.hotels,
+        hotels: combinedHotels,
         priceRange,
         rating,
-        hotelsInfo: hotelsData.hotelsInfo,
+        hotelsInfo: combinedHotelsInfoForFilter,
         meal,
         kind,
         freeCancellation,
@@ -521,6 +532,9 @@ export const HotelSelection = () => {
   );
 
   const displayHotels = useMemo(() => {
+    if (userInteracted) {
+      return filteredHotels;
+    }
     const online = filteredHotels.filter((h) => !h.isOffline);
     const nameQuery = hotelNameFilter.trim().toUpperCase();
     const offline = nameQuery
@@ -531,7 +545,13 @@ export const HotelSelection = () => {
         )
       : offlineHotels;
     return [...offline, ...online];
-  }, [offlineHotels, offlineHotelsInfo, filteredHotels, hotelNameFilter]);
+  }, [
+    userInteracted,
+    offlineHotels,
+    offlineHotelsInfo,
+    filteredHotels,
+    hotelNameFilter,
+  ]);
 
   const mergedHotelsInfo = useMemo(
     () => ({ ...hotelsData.hotelsInfo, ...offlineHotelsInfo }),
