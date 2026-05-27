@@ -70,16 +70,9 @@ export default function OrderReview() {
     flightSkipped,
   } = useContext(OrderContext);
 
-  // Total tickets across (possibly multi-event) selection — used as passenger count
-  // when flight is skipped (no flight to dictate numOfTravelers).
-  const totalTicketsForPassengerCount =
-    Object.values(selectedEventTickets || {}).reduce(
-      (sum, t) => sum + (t?.quantity || 0),
-      0
-    ) || numberOfEventTickets || 1;
   const passengerSlots = flightSkipped
-    ? totalTicketsForPassengerCount
-    : selectedFlight?.numOfTravelers || 1;
+    ? (numberOfEventTickets || 1)
+    : (selectedFlight?.numOfTravelers || 1);
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
