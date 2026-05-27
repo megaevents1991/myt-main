@@ -150,7 +150,7 @@ export type AffiliateTracking = {
   timestamp: string;
 };
 
-export type SortOptions = "price_asc" | "rating";
+export type SortOptions = "price_asc" | "rating" | "distance_asc";
 
 export type HotelSearchCriteria =
   | {

@@ -519,6 +519,7 @@ export const FlightSelection = () => {
             }
             airlines={airlines}
             filters={filters}
+            onApply={() => setShowFilters(false)}
           />
         </FiltersModal>
       )}
