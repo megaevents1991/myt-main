@@ -5,9 +5,8 @@ import type { Event, Flight } from "../../lib/app.types";
 /**
  * Unit tests for getDefaultDateRange — pure function, no browser.
  *
- * Hotel checkout follows the RETURN flight's departure time:
- *   - departs before 06:00 → checkout = flight date (guest already left)
- *   - departs at/after 06:00 → checkout = flight date + 1 (needs the last night)
+ * Hotel checkout = return flight's departure calendar date (any hour).
+ * Guest takes the last night and checks out the morning of the flight.
  */
 
 const event = {
@@ -42,28 +41,28 @@ test.describe("getDefaultDateRange — checkout from return flight time", () => 
     expect(ymd(checkOut)).toBe("2026-07-14");
   });
 
-  test("return flight exactly 06:00 → checkout = flight date + 1", () => {
+  test("return flight at 06:00 → checkout = flight date", () => {
     const [, checkOut] = getDefaultDateRange(
       event,
       flightWith("2026-07-09T10:00:00", "2026-07-14T06:00:00")
     );
-    expect(ymd(checkOut)).toBe("2026-07-15");
+    expect(ymd(checkOut)).toBe("2026-07-14");
   });
 
-  test("return flight at 11:00 → checkout = flight date + 1", () => {
+  test("return flight at 11:00 → checkout = flight date", () => {
     const [, checkOut] = getDefaultDateRange(
       event,
       flightWith("2026-07-09T10:00:00", "2026-07-14T11:00:00")
     );
-    expect(ymd(checkOut)).toBe("2026-07-15");
+    expect(ymd(checkOut)).toBe("2026-07-14");
   });
 
-  test("late return flight crossing a month boundary", () => {
+  test("late return flight near a month boundary → checkout = flight date", () => {
     const [, checkOut] = getDefaultDateRange(
       event,
       flightWith("2026-07-09T10:00:00", "2026-07-31T22:00:00")
     );
-    expect(ymd(checkOut)).toBe("2026-08-01");
+    expect(ymd(checkOut)).toBe("2026-07-31");
   });
 
   test("check-in still respects the 8 AM arrival rule", () => {
