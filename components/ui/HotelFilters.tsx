@@ -1,4 +1,4 @@
-import { Checkbox, RangeSlider } from "@mantine/core";
+import { Autocomplete, Checkbox, RangeSlider } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { StarsGroup } from "@/components/ui/StarsGroup";
 import { Search } from "lucide-react";
@@ -36,6 +36,8 @@ export const HotelFilters = ({
   minPrice,
   basePrice,
   hotelKindOptions,
+  hotelNames,
+  onApply,
 }: //freeCancellation,
 {
   onCriteriaChange: (criteria: HotelSearchCriteria) => void;
@@ -48,6 +50,8 @@ export const HotelFilters = ({
   basePrice: number;
   hotelKindOptions: HotelKind[];
   freeCancellation: ("withFreeCancellation" | "withoutFreeCancellation")[];
+  hotelNames: string[];
+  onApply?: () => void;
 }) => {
   const [searchValue, setSearchValue] = useState("");
   const [value, setValue] = useState<[number, number]>([minPrice, maxPrice]);
@@ -200,33 +204,30 @@ export const HotelFilters = ({
           marks={marks}
         />
       </div>
-      <div className="m-auto w-full mt-2 px-2">
-        <form className="flex w-full shadow-md mt-8" dir="rtl">
-          <input
-            onChange={(e) => setSearchValue(e.target.value)}
-            value={searchValue}
-            placeholder="חפש מלון..."
-            type="text"
-            className="w-2/3 rounded-r p-2 text-main border text-xs"
-            id="hotel-search-input"
-            aria-label="חפש מלון לפי שם"
-          />
-          <button
-            type="submit"
-            className="w-1/3 bg-secondary text-white rounded-l flex items-center justify-center"
-            onClick={(e) => {
-              e.preventDefault();
-              onCriteriaChange({
-                value: searchValue,
-                type: "hotelName",
-              });
-              setSearchValue("");
-            }}
-            aria-label="חפש מלון"
-          >
-            <Search />
-          </button>
-        </form>
+      <div className="m-auto w-full mt-2 px-2" dir="rtl">
+        <Autocomplete
+          value={searchValue}
+          onChange={(value) => {
+            setSearchValue(value);
+            onCriteriaChange({ value, type: "hotelName" });
+          }}
+          onOptionSubmit={(value) => {
+            setSearchValue(value);
+            onCriteriaChange({ value, type: "hotelName" });
+          }}
+          data={hotelNames}
+          placeholder="חפש מלון..."
+          leftSection={<Search size={16} />}
+          limit={8}
+          clearable
+          aria-label="חפש מלון לפי שם"
+          id="hotel-search-input"
+          inputMode="search"
+          className="mt-8"
+          styles={{
+            input: { fontSize: 16 },
+          }}
+        />
       </div>
       <div className="m-auto w-full mt-4 px-2">
         <h3 className="text-lg text-end font-semibold mb-2">מרחק</h3>
@@ -252,6 +253,20 @@ export const HotelFilters = ({
         />
         <div className="p-6"></div>
       </div>
+      {onApply && (
+        <div
+          className="sticky bottom-0 left-0 right-0 w-full px-4 py-3 mt-2"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+        >
+          <button
+            type="button"
+            onClick={onApply}
+            className="w-full min-h-[48px] bg-main text-white rounded-lg font-medium hover:bg-opacity-90 transition-colors"
+          >
+            הצג תוצאות
+          </button>
+        </div>
+      )}
     </div>
   );
 };

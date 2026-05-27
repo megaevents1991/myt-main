@@ -25,6 +25,7 @@ export const HotelCard = memo(
     isLoading,
     minPrice,
     persons,
+    isPromoted,
   }: {
     hotelRates: Hotel["rates"];
     handleSelect: () => void;
@@ -37,6 +38,7 @@ export const HotelCard = memo(
     isLoading: boolean;
     minPrice: number;
     persons: number;
+    isPromoted?: boolean;
   }) => {
     const isSelected = selectedHotelId === hotelId;
     // const [opened, setOpened] = useState(false);
@@ -129,6 +131,13 @@ export const HotelCard = memo(
       <Skeleton visible={isLoading}>
         <CardWrapper isSelected={isSelected} onClick={handleSelect}>
           <div className="w-full flex flex-col pt-2 lg:pt-0 items-right gap-2">
+            {isPromoted && (
+              <div dir="rtl" className="flex">
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                  ★ מומלצים
+                </span>
+              </div>
+            )}
             <div className="flex flex-col lg:flex-row lg:content-between gap-2">
               <div className="flex flex-col lg:w-4/5 items-right gap-2">
                 <div className="flex flex-col gap-1">

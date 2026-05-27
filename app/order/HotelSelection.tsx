@@ -16,12 +16,11 @@ import { OrderContext } from "../app.context";
 import { DateRange } from "@/components/ui/dateInput";
 import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
 import { HotelCard } from "@/components/ui/hotelCard";
-import { Search, Settings2Icon } from "lucide-react";
+import { Search, SlidersHorizontal, DollarSign, Star, MapPin } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
 import { applyFiltersAndSorting } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
-import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import {
   Event,
   HotelSearchCriteria,
@@ -91,6 +90,8 @@ export const HotelSelection = () => {
   >(getDefaultDateRange(event, flight));
   const [, startTransition] = useTransition();
   const [isProcessingHotels, setIsProcessingHotels] = useState(false);
+  const [hotelNameFilter, setHotelNameFilter] = useState("");
+  const [userInteracted, setUserInteracted] = useState(false);
 
   // Offline hotels — fetched from /api/offline-hotels and merged into the main
   // WorldOTA-style list so they render through the exact same <HotelCard>.
@@ -350,6 +351,8 @@ export const HotelSelection = () => {
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
 
+    setUserInteracted(true);
+
     setSelectedHotelFilters((prev) => ({
       ...prev,
       [type]: value,
@@ -371,9 +374,7 @@ export const HotelSelection = () => {
         setPriceRange(filterValue);
         break;
       case "hotelName":
-        if (showFilters) {
-          setShowFilters(false);
-        }
+        setHotelNameFilter(value);
         break;
       case "meal":
         setMeal(value);
@@ -396,11 +397,19 @@ export const HotelSelection = () => {
     }
 
     startTransition(() => {
+      const combinedHotels = [
+        ...hotelsData.data.data.hotels,
+        ...offlineHotels,
+      ];
+      const combinedHotelsInfoForFilter = {
+        ...hotelsData.hotelsInfo,
+        ...offlineHotelsInfo,
+      };
       const hotelsToSet = applyFiltersAndSorting({
-        hotels: hotelsData.data.data.hotels,
+        hotels: combinedHotels,
         priceRange,
         rating,
-        hotelsInfo: hotelsData.hotelsInfo,
+        hotelsInfo: combinedHotelsInfoForFilter,
         meal,
         kind,
         freeCancellation,
@@ -523,13 +532,42 @@ export const HotelSelection = () => {
   );
 
   const displayHotels = useMemo(() => {
+    if (userInteracted) {
+      return filteredHotels;
+    }
     const online = filteredHotels.filter((h) => !h.isOffline);
-    return [...offlineHotels, ...online];
-  }, [offlineHotels, filteredHotels]);
+    const nameQuery = hotelNameFilter.trim().toUpperCase();
+    const offline = nameQuery
+      ? offlineHotels.filter((h) =>
+          offlineHotelsInfo[h.id]?.metadata?.hotelName
+            ?.toUpperCase()
+            .includes(nameQuery)
+        )
+      : offlineHotels;
+    return [...offline, ...online];
+  }, [
+    userInteracted,
+    offlineHotels,
+    offlineHotelsInfo,
+    filteredHotels,
+    hotelNameFilter,
+  ]);
 
   const mergedHotelsInfo = useMemo(
     () => ({ ...hotelsData.hotelsInfo, ...offlineHotelsInfo }),
     [hotelsData.hotelsInfo, offlineHotelsInfo]
+  );
+
+  const hotelNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          Object.values(mergedHotelsInfo)
+            .map((h) => h?.metadata?.hotelName)
+            .filter((name): name is string => !!name)
+        )
+      ),
+    [mergedHotelsInfo]
   );
 
   // Default-select the cheapest offline hotel once it loads (and nothing is selected yet)
@@ -561,6 +599,25 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offlineHotels]);
 
+  const hasOfflineHotels = offlineHotels.length > 0;
+
+  const bestOnlineHotelId = useMemo(() => {
+    // TODO: enable once Ratehawk review-score rating is wired in;
+    // apply to all hotels (drop the offline guard) at that point.
+    if (hasOfflineHotels) return null;
+    let bestId: string | null = null;
+    let bestRating = -Infinity;
+    for (const hotel of displayHotels) {
+      if (hotel.isOffline) continue;
+      const rating = mergedHotelsInfo[hotel.id]?.metadata.rating ?? 0;
+      if (rating > bestRating) {
+        bestRating = rating;
+        bestId = hotel.id;
+      }
+    }
+    return bestId;
+  }, [hasOfflineHotels, displayHotels, mergedHotelsInfo]);
+
   const hotelCards = useMemo(
     () =>
       displayHotels.map(
@@ -583,6 +640,7 @@ export const HotelSelection = () => {
               hotelInfo={mergedHotelsInfo[hotel.id]}
               handleSelect={() => setSelectedHotelId(hotel.id)}
               handleSelectedRate={handleSelectedRate}
+              isPromoted={hotel.isOffline || hotel.id === bestOnlineHotelId}
             />
           )
       ),
@@ -595,6 +653,7 @@ export const HotelSelection = () => {
       isFetching,
       selectedHotelId,
       handleSelectedRate,
+      bestOnlineHotelId,
     ]
   );
 
@@ -612,6 +671,8 @@ export const HotelSelection = () => {
           meal={meal}
           kind={kind}
           hotelKindOptions={hotelKinds}
+          hotelNames={hotelNames}
+          onApply={() => setShowFilters(false)}
         />
       </FiltersModal>
       <div className="flex flex-col w-full items-center">
@@ -718,6 +779,124 @@ export const HotelSelection = () => {
           </div>
         </div>
       </div>
+      <div dir="rtl" className="px-4 lg:px-6">
+        <Skeleton visible={isFetching || isProcessingHotels}>
+          {/* Desktop: 3 cards in a row */}
+          <div
+            className="hidden lg:grid lg:grid-cols-3 gap-3"
+            role="tablist"
+            aria-label="מיון מלונות"
+          >
+            {([
+              { key: "price_asc" as const, title: "הזול ביותר", sub: "המחיר הנמוך ביותר", Icon: DollarSign },
+              { key: "rating" as const, title: "כוכבים", sub: "הדירוג הגבוה ביותר", Icon: Star },
+              { key: "distance_asc" as const, title: "הקרוב ביותר", sub: "הקרוב למרכז העיר", Icon: MapPin },
+            ]).map(({ key, title, sub, Icon }) => {
+              const isActive = sortOption === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() =>
+                    handleSearchCriteriaChange({
+                      value: key,
+                      type: "sortOption",
+                    })
+                  }
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
+                    isActive
+                      ? "border-secondary bg-secondary/10"
+                      : "border-gray-200 bg-white hover:border-secondary"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
+                      isActive ? "bg-secondary" : "bg-gray-100"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-[18px] h-[18px] transition-colors",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span className="flex flex-col items-end flex-1 min-w-0">
+                    <span className="font-bold text-sm text-gray-900">{title}</span>
+                    <span className="text-[11px] text-gray-500 mt-0.5">{sub}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile: filter icon + 3 sort pills in one row */}
+          <div className="flex lg:hidden items-stretch gap-1.5 w-full">
+            <button
+              type="button"
+              aria-label="פתח פילטרים"
+              onClick={() => setShowFilters(true)}
+              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-secondary hover:bg-secondary/10 transition-colors"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-gray-900" strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            <div
+              role="tablist"
+              aria-label="מיון מלונות"
+              className="flex-1 flex bg-white border border-gray-200 rounded-md p-[3px] gap-[2px] min-w-0"
+            >
+              {([
+                { key: "price_asc" as const, label: "הזול ביותר", Icon: DollarSign },
+                { key: "rating" as const, label: "כוכבים", Icon: Star },
+                { key: "distance_asc" as const, label: "הקרוב ביותר", Icon: MapPin },
+              ]).map(({ key, label, Icon }) => {
+                const isActive = sortOption === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() =>
+                      handleSearchCriteriaChange({
+                        value: key,
+                        type: "sortOption",
+                      })
+                    }
+                    className={cn(
+                      "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
+                      isActive ? "bg-secondary" : "hover:bg-gray-50"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-3.5 h-3.5 flex-shrink-0",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold whitespace-nowrap",
+                        isActive ? "text-white" : "text-gray-900"
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Skeleton>
+      </div>
       <div
         className={cn(
           "flex flex-row lg:gap-4 gap-2 flex-row-reverse items-start w-full",
@@ -731,59 +910,6 @@ export const HotelSelection = () => {
           )}
           ref={filterRef}
         >
-          {" "}
-          <Skeleton visible={isFetching || isProcessingHotels}>
-            <SortOptionsContainer
-              sortOptions={
-                <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
-                  <button
-                    className={cn(
-                      "font-bold px-6 py-1 rounded-r-md",
-                      sortOption === "price_asc" && "text-white bg-main"
-                    )}
-                    onClick={() =>
-                      handleSearchCriteriaChange({
-                        value: "price_asc",
-                        type: "sortOption",
-                      })
-                    }
-                    type="button"
-                    aria-label="מיין לפי מחיר"
-                    aria-pressed={sortOption === "price_asc"}
-                  >
-                    מחיר
-                  </button>
-                  <button
-                    className={cn(
-                      "font-bold px-6 py-1 rounded-l-md",
-                      sortOption === "rating" && "text-white bg-main"
-                    )}
-                    onClick={() =>
-                      handleSearchCriteriaChange({
-                        value: "rating",
-                        type: "sortOption",
-                      })
-                    }
-                    type="button"
-                    aria-label="מיין לפי דירוג כוכבים"
-                    aria-pressed={sortOption === "rating"}
-                  >
-                    כוכבים
-                  </button>
-                </div>
-              }
-              settings={
-                <button
-                  className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
-                  type="button"
-                  aria-label="הגדרות מסננים"
-                  onClick={() => setShowFilters(true)}
-                >
-                  <Settings2Icon />
-                </button>
-              }
-            />
-          </Skeleton>
           {matches && (
             <Skeleton visible={isFetching || isProcessingHotels}>
               <HotelFilters
@@ -797,11 +923,12 @@ export const HotelSelection = () => {
                 meal={meal}
                 kind={kind}
                 hotelKindOptions={hotelKinds}
+                hotelNames={hotelNames}
               />
             </Skeleton>
           )}
         </div>{" "}
-        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
+        <ScrollArea.Autosize mah={matches ? scrollerHeight : undefined} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
             {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) && offlineHotels.length === 0 ? (
               <FlightLoadingTransition
