@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **⚠ IMPORTANT: This project is part of a two-project platform.**
-> The sibling project `../myt---backoffice` is the admin dashboard that manages the data this app displays.
+> The sibling project `../MYT-backoffice-app` is the admin dashboard that manages the data this app displays.
 > See `../CLAUDE.md` for the full system architecture and shared database schema.
 > **Any change to events, types, API routes, or database tables may require changes in the backoffice too.**
 

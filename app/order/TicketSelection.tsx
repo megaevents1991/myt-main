@@ -37,7 +37,7 @@ export const TicketSelection = () => {
   /** Is this a TixStock dynamic-map event? */
   const isTxEvent = event?.type === "tx_event";
 
-  const { numberOfEventTickets, setNumberOfEventTickets } =
+  const { numberOfEventTickets, setNumberOfEventTickets, setPlaneTickets } =
     useContext(OrderContext);
 
   const matches = useMediaQuery("(min-width: 1024px)");
@@ -279,6 +279,10 @@ export const TicketSelection = () => {
     }
     setErrorMessage("");
     setNumberOfEventTickets(+value);
+    // Keep traveler count (flights + hotel) in sync with the chosen party size.
+    // Without this, the hotel search defaults to 2 guests when the flight step
+    // is skipped (skip-flight events), under-booking the room.
+    setPlaneTickets({ adults: +value, children: 0 });
   };
 
   // ── TixStock helpers ──────────────────────────────────────────

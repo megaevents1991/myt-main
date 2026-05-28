@@ -57,6 +57,9 @@ export const HotelSelection = () => {
       adults: number;
       children: number[];
     }[]
+    // Hotel party size follows the flight traveler count (planeTickets.adults),
+    // which is itself synced to the number of booked tickets at ticket
+    // selection. tickets → flight → hotel, one consistent headcount.
   >(getRoomParams(planeTickets?.adults));
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
@@ -120,6 +123,39 @@ export const HotelSelection = () => {
     () => JSON.stringify(roomParams),
     [roomParams]
   );
+
+  // Correct a stale online hotel search. An early preload (OrderForm, on event
+  // load) fetches hotels with the default 2 guests — before the customer's real
+  // party size is known — and a stale-cache guard then blocks later refetches.
+  // If the cached search's guest count doesn't match the current party size,
+  // refetch once so prices, room capacity, and the selected hotel reflect the
+  // real headcount (this drove the "hotel only for 2" under-booking bug).
+  const guestCorrectedRef = useRef<string | null>(null);
+  const cachedGuestCount = getTotalPersons(
+    hotelsData?.data?.debug?.request?.guests || []
+  );
+  useEffect(() => {
+    if (event?.location?.country_code === "US") return;
+    const wantedGuests = getTotalPersons(roomParams);
+    if (!wantedGuests) return;
+    const hasHotels = !!hotelsData?.data?.data?.hotels;
+    if (hasHotels && cachedGuestCount === wantedGuests) {
+      guestCorrectedRef.current = roomParamsKey;
+      return;
+    }
+    // Only auto-correct once per party-size config to avoid a refetch loop if
+    // the API ever normalizes the guest array differently than requested.
+    if (guestCorrectedRef.current === roomParamsKey) return;
+    guestCorrectedRef.current = roomParamsKey;
+    getHotels({
+      dateRange,
+      location: event.location,
+      guests: roomParams,
+      radius: distanceRange[1] || 2000,
+      eventId: event.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cachedGuestCount, roomParamsKey]);
 
   useEffect(() => {
     if (!event?.id) return;
