@@ -67,8 +67,16 @@ function matchRoomsToInventory(
   let total = 0;
 
   for (const pax of needs) {
+    // Snug fit: a room must hold the party (capacity >= pax) but not waste beds
+    // (capacity <= pax) — e.g. a couple should never be offered a Triple. Floor
+    // the upper bound at 2 because offline inventory has no single-capacity
+    // rooms, so a solo traveler still matches a Double/Twin.
+    const maxCapacity = Math.max(pax, 2);
     const pick = units
-      .filter((u) => u.remaining > 0 && u.capacity >= pax)
+      .filter(
+        (u) =>
+          u.remaining > 0 && u.capacity >= pax && u.capacity <= maxCapacity
+      )
       .sort((a, b) => a.capacity - b.capacity || a.price - b.price)[0];
     if (!pick) return null;
     pick.remaining -= 1;

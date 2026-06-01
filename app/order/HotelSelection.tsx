@@ -45,6 +45,7 @@ export const HotelSelection = () => {
     setSelectedHotelFilters,
     setSkipHotel,
     flightSkipped,
+    numberOfEventTickets,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -60,7 +61,11 @@ export const HotelSelection = () => {
     // Hotel party size follows the flight traveler count (planeTickets.adults),
     // which is itself synced to the number of booked tickets at ticket
     // selection. tickets → flight → hotel, one consistent headcount.
-  >(getRoomParams(planeTickets?.adults));
+    // Fall back to the ticket count when planeTickets isn't set yet (skip-flight
+    // / US / direct-to-hotel) — otherwise getRoomParams(undefined) returns [],
+    // collapsing the per-person divisor to 1 and showing the full room price
+    // (e.g. 940) as the per-traveler price instead of 470.
+  >(getRoomParams(planeTickets?.adults || numberOfEventTickets || 1));
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
@@ -563,8 +568,10 @@ export const HotelSelection = () => {
       roomParams.reduce(
         (sum, r) => sum + r.adults + r.children.length,
         0
-      ) || 1,
-    [roomParams]
+      ) ||
+      numberOfEventTickets ||
+      1,
+    [roomParams, numberOfEventTickets]
   );
 
   const displayHotels = useMemo(() => {
