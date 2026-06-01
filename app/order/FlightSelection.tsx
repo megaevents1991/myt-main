@@ -36,30 +36,23 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import dayjs from "dayjs";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
+import { parseDuration } from "@/lib/parseDuration";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 
 const MAX_FLIGHT_DURATION = 30;
 
-// "Best" flight scoring — lower is better. Cheapest per traveler, penalized for
-// stops, rewarded for included baggage.
-const BEST_FLIGHT_STOP_PENALTY =
-  Number(process.env.NEXT_PUBLIC_BEST_FLIGHT_STOP_PENALTY) || 300;
-
-const flightScore = (f: Flight): number =>
-  f.price / f.numOfTravelers +
-  f.stops * BEST_FLIGHT_STOP_PENALTY -
-  (f.outbound.checkBagsIncluded ? 50 : 0) -
-  (f.outbound.cabinBagsIncluded ? 10 : 0);
-
-// The default-selected flight. Offline flight+hotel inventory is sold as a
-// bundle, so an available offline flight is the default choice; otherwise the
-// best-scored flight wins. Picks only from visible flights so the selection
-// always lands on a card the customer can see.
+// The default-selected / "best"-badged flight. Offline flight+hotel inventory
+// is sold as a bundle, so an available offline flight is always the best choice.
+// With no offline inventory, the fastest flight (shortest total duration) wins.
+// Picks only from visible flights so the selection always lands on a card the
+// customer can see.
 const pickBestFlight = (visibleFlights: Flight[]): Flight | undefined => {
   if (!visibleFlights.length) return undefined;
   const offline = visibleFlights.filter((f) => f.isOffline);
   const pool = offline.length ? offline : visibleFlights;
-  return pool.reduce((best, f) => (flightScore(f) < flightScore(best) ? f : best));
+  return pool.reduce((best, f) =>
+    parseDuration(f.duration) < parseDuration(best.duration) ? f : best
+  );
 };
 
 export const FlightSelection = () => {
@@ -309,13 +302,12 @@ export const FlightSelection = () => {
   );
 
   const cheapestFlightId = useMemo(() => {
-    // Use filteredFlights so the badge always lands on a visible card
+    // Use filteredFlights so the badge always lands on a visible card.
+    // Strictly the lowest price per traveler — no offline preference here;
+    // offline inventory is surfaced via the "best" tab, not "cheapest".
     if (!filteredFlights.length) return null;
-    const offlineBoost = Number(process.env.NEXT_PUBLIC_OFFLINE_FLIGHT_BOOST) || 60;
-    const effectivePrice = (f: Flight) =>
-      f.price / f.numOfTravelers - (f.isOffline ? offlineBoost : 0);
     return filteredFlights.reduce((min, f) =>
-      effectivePrice(f) < effectivePrice(min) ? f : min
+      f.price / f.numOfTravelers < min.price / min.numOfTravelers ? f : min
     ).id;
   }, [filteredFlights]);
 

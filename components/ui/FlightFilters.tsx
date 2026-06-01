@@ -194,7 +194,7 @@ export const FlightFilters = ({
       </div>
       {/* Departure Time Section */}
       <div dir="rtl" className="px-2">
-        <h3 className="text-lg font-semibold mt-8 mb-2">זמן המראה</h3>
+        <h3 className="text-lg font-semibold mt-8 mb-2">זמן המראה הלוך</h3>
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
             label="בוקר"
@@ -236,7 +236,7 @@ export const FlightFilters = ({
       </div>
       {/* Arrival Time Section */}
       <div dir="rtl" className="px-2">
-        <h3 className="text-lg font-semibold mb-2">זמן הגעה</h3>
+        <h3 className="text-lg font-semibold mb-2">זמן המראה חזור</h3>
         <div className="grid grid-cols-3 gap-4">
           <TimeBlock
             label="בוקר"
