@@ -92,12 +92,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
     if (isUS) return;
     if (!event?.id) return;
     if (hotelsData?.data?.data?.hotels) return;
-    getHotels({
-      dateRange: getDefaultDateRange(event, undefined),
-      guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
-      location: event.location,
-      eventId: event.id,
-    });
+    getHotels(
+      {
+        dateRange: getDefaultDateRange(event, undefined),
+        guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
+        location: event.location,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.id]);
 
@@ -291,12 +294,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
     trackEvent("flightSelected", { skipped: true, numOfPeople: numberOfPersons });
     // No flight selected → fetch hotels with event default dates
     if (!isUS && !hotelsData?.data?.data?.hotels) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, undefined),
-        guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
-        location: event.location,
-        eventId: event.id,
-      });
+      getHotels(
+        {
+          dateRange: getDefaultDateRange(event, undefined),
+          guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
+          location: event.location,
+          eventId: event.id,
+        },
+        { immediate: true }
+      );
     }
     setStep((prev) => prev + 1);
   };

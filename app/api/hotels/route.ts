@@ -67,9 +67,9 @@ export async function POST(request: Request) {
       fetchHotels(hotelSearchRequest)
         .then((res) => res.json())
         .then(async (data: HotelResponse) => {
+          // Cold serp sometimes returns 0 — retry once immediately (no sleep).
           if (!data.data.total_hotels) {
-            console.log("No hotels found, retrying in 1 second");
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            console.log("No hotels found, retrying immediately");
             return (await fetchHotels(hotelSearchRequest)).json();
           }
           return data;
