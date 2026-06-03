@@ -99,7 +99,7 @@ export const FlightSelection = () => {
     planeTickets,
     setSelectedPlaneTicketsFilters,
   } = useContext(OrderContext);
-  const { getHotels, hotelsData } = useContext(HotelFetchContext);
+  const { getHotels } = useContext(HotelFetchContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [filters, setFilters] = useState<{
@@ -174,32 +174,26 @@ export const FlightSelection = () => {
   const departureDateKey = dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD");
   const returnDateKey = dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD");
 
+  // Refetch hotels with the chosen flight's real dates / party size. The mount
+  // preload in OrderForm already kicked off the default-dates fetch; identical
+  // params are coalesced by the provider, so this only does real work when the
+  // flight's dates differ from the event defaults. (Merged the old separate
+  // "first fetch" effect into this one — coalescing makes it redundant.)
   useEffect(() => {
     if (event?.location?.country_code === "US") return;
     if (orderFlight?.id) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, orderFlight),
-        guests: getRoomParams(planeTickets.adults),
-        location: event.location,
-        eventId: event.id,
-      });
+      getHotels(
+        {
+          dateRange: getDefaultDateRange(event, orderFlight),
+          guests: getRoomParams(planeTickets.adults),
+          location: event.location,
+          eventId: event.id,
+        },
+        { immediate: true }
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departureDateKey, returnDateKey, planeTickets.adults]);
-
-  // First time fetching hotels, only if no hotels are already fetched
-  useEffect(() => {
-    if (event?.location?.country_code === "US") return;
-    if (orderFlight?.id && !hotelsData?.data?.data?.hotels) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, orderFlight),
-        guests: getRoomParams(planeTickets.adults),
-        location: event.location,
-        eventId: event.id,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderFlight?.id]);
 
   useEffect(() => {
     setSelectedPlaneTicketsFilters({});

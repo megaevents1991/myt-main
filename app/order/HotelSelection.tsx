@@ -152,13 +152,16 @@ export const HotelSelection = () => {
     // the API ever normalizes the guest array differently than requested.
     if (guestCorrectedRef.current === roomParamsKey) return;
     guestCorrectedRef.current = roomParamsKey;
-    getHotels({
-      dateRange,
-      location: event.location,
-      guests: roomParams,
-      radius: distanceRange[1] || 2000,
-      eventId: event.id,
-    });
+    getHotels(
+      {
+        dateRange,
+        location: event.location,
+        guests: roomParams,
+        radius: distanceRange[1] || 2000,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cachedGuestCount, roomParamsKey]);
 
@@ -953,14 +956,19 @@ export const HotelSelection = () => {
         </div>{" "}
         <ScrollArea.Autosize mah={matches ? scrollerHeight : undefined} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
-            {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) && offlineHotels.length === 0 ? (
+            {isFetching && offlineHotels.length === 0 ? (
+              // Show the branded loading animation for ANY active fetch (same as
+              // the flight step), not only first load. Prefetch now survives into
+              // this step, so hotelsData is often already populated when a refetch
+              // (dates/guests/distance) runs — gating on "no hotels" used to drop
+              // us into the plain skeleton branch and lose the animation.
               <FlightLoadingTransition
                 title={flightSkipped ? "מחפשים לכם את המלונות הטובים ביותר" : "!?כבר הספקתם לבחור טיסות"}
                 subtitle={flightSkipped ? "ממש עוד רגע יופיעו המלונות" : "ממש עוד רגע יופיעו גם המלונות"}
                 showHotelOnly
                 className="py-12"
               />
-            ) : (isProcessingHotels || isFetching) && offlineHotels.length === 0 ? (
+            ) : isProcessingHotels && offlineHotels.length === 0 ? (
               Array.from({ length: 4 }, (_, i) => (
                 <div key={i} className="flex justify-center">
                   <Skeleton className="p-28" />

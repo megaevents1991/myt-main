@@ -28,6 +28,8 @@ type OfflineRow = {
   meal_plan: string | null;
   notes: string | null;
   last_cancellation_date: string | null;
+  guest_rating: number | null; // manual override; null = inherit via hid
+  guest_review_count: number | null;
 };
 
 type OfflineMeta = {
@@ -125,7 +127,7 @@ export async function GET(request: Request) {
   const query = (supabase as any)
     .from("offline_hotels")
     .select(
-      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date"
+      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date, guest_rating, guest_review_count"
     )
     .contains("event_ids", [eventId])
     .eq("is_deleted", false)
@@ -174,13 +176,15 @@ export async function GET(request: Request) {
     address: string;
     latitude: number;
     longitude: number;
+    guest_rating: number | null;
+    guest_review_count: number | null;
   };
   let hotelsMetaRows: HotelMetaRow[] = [];
   if (hids.length > 0) {
     const { data: meta } = await supabase
       .from("hotels")
       .select(
-        "hid, _id, name, star_rating, kind, images_ext, amenity_groups, room_groups, address, latitude, longitude"
+        "hid, _id, name, star_rating, kind, images_ext, amenity_groups, room_groups, address, latitude, longitude, guest_rating, guest_review_count"
       )
       .in("hid", hids);
     hotelsMetaRows = meta ?? [];
@@ -272,6 +276,10 @@ export async function GET(request: Request) {
         longitude: meta?.longitude ?? 0,
         latitude: meta?.latitude ?? 0,
         distanceFromCenter,
+        // Manual override wins; otherwise inherit the cached score via hid.
+        guestRating: anchor.guest_rating ?? meta?.guest_rating ?? 0,
+        guestReviewCount:
+          anchor.guest_review_count ?? meta?.guest_review_count ?? 0,
       },
     };
 
