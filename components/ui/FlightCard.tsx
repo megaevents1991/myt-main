@@ -254,9 +254,9 @@ export const FlightTicketCard = memo(
               )}
             </div>
             {/* Mobile best/cheapest badge — desktop shows it in the price column,
-                which is hidden on mobile, so render a compact version here. */}
+                which is hidden on mobile. z-10 keeps it in front of the card. */}
             {(isBest || isCheapest) && (
-              <div className="absolute lg:hidden left-2 top-0 -translate-y-1/2 flex flex-row gap-1">
+              <div className="absolute z-10 lg:hidden left-2 top-0 -translate-y-1/2 flex flex-row gap-1">
                 {isBest && (
                   <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
                     ★ הטוב ביותר
