@@ -6,7 +6,17 @@ import { Event } from "@/lib/app.types";
 import { getDistance } from "geolib";
 import { supabase } from "@/lib/supabase";
 import { authHeader } from "../keys";
+import { getHotelReviews } from "./reviews";
+import { HotelGuestRating } from "@/lib/hotel.type";
 import { difference } from "lodash";
+
+// HotelInfo static data merged with our cached guest-rating fields.
+type HotelStaticWithReviews = HotelInfo["data"] & {
+  _id: string;
+  guest_rating?: number | null;
+  guest_review_count?: number | null;
+  guest_detailed_ratings?: Record<string, number> | null;
+};
 
 interface AmenityGroup {
   group_name: string;
@@ -76,9 +86,7 @@ const getHotelsStaticDataFromDB = async (
   }
 };
 
-const saveNewHotelsStaticDataToDB = async (
-  data: (HotelInfo["data"] & { _id: string })[]
-) => {
+const saveNewHotelsStaticDataToDB = async (data: HotelStaticWithReviews[]) => {
   try {
     const hotels = processHotelsData(data);
     const { error } = await supabase.from("hotels").upsert(hotels);
@@ -92,7 +100,9 @@ const saveNewHotelsStaticDataToDB = async (
   }
 };
 
-const processHotelsData = (hotels: (HotelInfo["data"] & { _id: string })[]) => {
+const processHotelsData = (hotels: HotelStaticWithReviews[]) => {
+  const hasReviews = (h: HotelStaticWithReviews) =>
+    h.guest_rating != null || h.guest_review_count != null;
   return hotels.map((hotel) => ({
     _id: hotel.id,
     hid: hotel.hid,
@@ -106,6 +116,10 @@ const processHotelsData = (hotels: (HotelInfo["data"] & { _id: string })[]) => {
     images_ext: JSON.parse(JSON.stringify(hotel.images_ext || [])),
     amenity_groups: JSON.parse(JSON.stringify(hotel.amenity_groups || [])),
     city: "Missing",
+    guest_rating: hotel.guest_rating ?? null,
+    guest_review_count: hotel.guest_review_count ?? null,
+    guest_detailed_ratings: hotel.guest_detailed_ratings ?? null,
+    guest_rating_updated_at: hasReviews(hotel) ? new Date().toISOString() : null,
   }));
 };
 
@@ -136,7 +150,7 @@ export async function POST(request: Request) {
   try {
     const hotelIds = hotels.map((hotel) => hotel.hid);
     const hotelsData = await getHotelsStaticDataFromDB(hotelIds);
-    let missingHotels: (HotelInfo["data"] & { _id: string })[] = [];
+    let missingHotels: HotelStaticWithReviews[] = [];
 
     if (hotelsData?.length !== hotelIds.length) {
       const missingHotelsIds = difference(
@@ -146,11 +160,27 @@ export async function POST(request: Request) {
 
       console.log("Missing hotels:", missingHotelsIds);
 
-      missingHotels = (
+      const fetchedHotels = (
         await Promise.all(missingHotelsIds.slice(0, 14).map(getHotelInfo))
       )
         .filter((hotel) => !!hotel)
-        .map(({ data }) => ({ ...data, _id: data.id }));
+        .map(({ data }) => data);
+
+      // Fetch RateHawk guest ratings for the newly-cached hotels in one call,
+      // and attach them so they're persisted + returned alongside static data.
+      const reviewsByHid = await getHotelReviews(
+        fetchedHotels.map((h) => h.hid)
+      );
+      missingHotels = fetchedHotels.map((data) => {
+        const review: HotelGuestRating | undefined = reviewsByHid[data.hid];
+        return {
+          ...data,
+          _id: data.id,
+          guest_rating: review?.guest_rating ?? null,
+          guest_review_count: review?.guest_review_count ?? null,
+          guest_detailed_ratings: review?.guest_detailed_ratings ?? null,
+        };
+      });
 
       console.log("Missing hotels received from API:", missingHotels.length);
     }
@@ -215,6 +245,8 @@ export async function POST(request: Request) {
             kind: hotel.kind,
             hid: hotel.hid,
             distanceFromCenter: distanceInMeters,
+            guestRating: hotel.guest_rating ?? 0,
+            guestReviewCount: hotel.guest_review_count ?? 0,
           },
         };
 
