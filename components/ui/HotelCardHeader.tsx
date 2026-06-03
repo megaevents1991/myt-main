@@ -94,10 +94,7 @@ export const HotelCardHeader = ({
               {formatHotelName(hotelName)}
             </div>
             <Stars rating={rating} />
-            <GuestScoreBadge
-              rating={guestRating}
-              reviewCount={guestReviewCount}
-            />
+            <GuestScoreBadge rating={guestRating} />
           </div>
           <div className="text-[14px] flex items-center">
             <span>
