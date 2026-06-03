@@ -27,7 +27,9 @@ export const applyFiltersAndSorting = (
 
   const filteredFlights = flights.filter((flight) => {
     const departureTime = getTimeValue(new Date(flight.outbound.departureTime));
-    const arrivalTime = getTimeValue(new Date(flight.outbound.arrivalTime));
+    const returnDepartureTime = getTimeValue(
+      new Date(flight.inbound.departureTime)
+    );
 
     const departureRangesToDateTime: [number, number][] = departureRanges.map(
       (range) => {
@@ -56,7 +58,7 @@ export const applyFiltersAndSorting = (
     const matchesArrivalRange =
       !arrivalRangesToDateTime.length ||
       arrivalRangesToDateTime.some(([start, end]) => {
-        return arrivalTime >= start && arrivalTime <= end;
+        return returnDepartureTime >= start && returnDepartureTime <= end;
       });
 
     const matchesAirline = airline.includes(flight.airline);

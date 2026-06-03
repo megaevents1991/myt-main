@@ -234,6 +234,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                         </Link>
                         <Link
                           className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
+                          href="/blog"
+                        >
+                          הבלוגים שלנו
+                        </Link>
+                        <Link
+                          className="text-xs sm:text-sm hover:underline underline-offset-4 whitespace-nowrap"
                           href="/football"
                         >
                           הקבוצות שלנו

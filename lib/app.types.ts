@@ -387,6 +387,44 @@ export type FootballFields = {
   };
 };
 
+export type BlogTemplateFields = {
+  contentTypeId: "blogTemplate";
+  fields: {
+    name: string;
+    title: string;
+    previewText: string;
+    byWho?: string;
+    heroBanner?: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: {
+            image?: {
+              height?: number;
+              width?: number;
+            };
+          };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    mainContent: EntryFieldTypes.Object<{
+      content: {
+        content: {
+          value?: string;
+        }[];
+      }[];
+    }>;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
+    sys: EntryFieldTypes.Object<{
+      id: string;
+    }>;
+  };
+};
+
 export type FootballTeam = {
   sys: {
     id: string;

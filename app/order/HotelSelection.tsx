@@ -45,6 +45,7 @@ export const HotelSelection = () => {
     setSelectedHotelFilters,
     setSkipHotel,
     flightSkipped,
+    numberOfEventTickets,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -57,7 +58,14 @@ export const HotelSelection = () => {
       adults: number;
       children: number[];
     }[]
-  >(getRoomParams(planeTickets?.adults));
+    // Hotel party size follows the flight traveler count (planeTickets.adults),
+    // which is itself synced to the number of booked tickets at ticket
+    // selection. tickets → flight → hotel, one consistent headcount.
+    // Fall back to the ticket count when planeTickets isn't set yet (skip-flight
+    // / US / direct-to-hotel) — otherwise getRoomParams(undefined) returns [],
+    // collapsing the per-person divisor to 1 and showing the full room price
+    // (e.g. 940) as the per-traveler price instead of 470.
+  >(getRoomParams(planeTickets?.adults || numberOfEventTickets || 1));
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
@@ -120,6 +128,39 @@ export const HotelSelection = () => {
     () => JSON.stringify(roomParams),
     [roomParams]
   );
+
+  // Correct a stale online hotel search. An early preload (OrderForm, on event
+  // load) fetches hotels with the default 2 guests — before the customer's real
+  // party size is known — and a stale-cache guard then blocks later refetches.
+  // If the cached search's guest count doesn't match the current party size,
+  // refetch once so prices, room capacity, and the selected hotel reflect the
+  // real headcount (this drove the "hotel only for 2" under-booking bug).
+  const guestCorrectedRef = useRef<string | null>(null);
+  const cachedGuestCount = getTotalPersons(
+    hotelsData?.data?.debug?.request?.guests || []
+  );
+  useEffect(() => {
+    if (event?.location?.country_code === "US") return;
+    const wantedGuests = getTotalPersons(roomParams);
+    if (!wantedGuests) return;
+    const hasHotels = !!hotelsData?.data?.data?.hotels;
+    if (hasHotels && cachedGuestCount === wantedGuests) {
+      guestCorrectedRef.current = roomParamsKey;
+      return;
+    }
+    // Only auto-correct once per party-size config to avoid a refetch loop if
+    // the API ever normalizes the guest array differently than requested.
+    if (guestCorrectedRef.current === roomParamsKey) return;
+    guestCorrectedRef.current = roomParamsKey;
+    getHotels({
+      dateRange,
+      location: event.location,
+      guests: roomParams,
+      radius: distanceRange[1] || 2000,
+      eventId: event.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cachedGuestCount, roomParamsKey]);
 
   useEffect(() => {
     if (!event?.id) return;
@@ -527,8 +568,10 @@ export const HotelSelection = () => {
       roomParams.reduce(
         (sum, r) => sum + r.adults + r.children.length,
         0
-      ) || 1,
-    [roomParams]
+      ) ||
+      numberOfEventTickets ||
+      1,
+    [roomParams, numberOfEventTickets]
   );
 
   const displayHotels = useMemo(() => {
@@ -599,25 +642,6 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offlineHotels]);
 
-  const hasOfflineHotels = offlineHotels.length > 0;
-
-  const bestOnlineHotelId = useMemo(() => {
-    // TODO: enable once Ratehawk review-score rating is wired in;
-    // apply to all hotels (drop the offline guard) at that point.
-    if (hasOfflineHotels) return null;
-    let bestId: string | null = null;
-    let bestRating = -Infinity;
-    for (const hotel of displayHotels) {
-      if (hotel.isOffline) continue;
-      const rating = mergedHotelsInfo[hotel.id]?.metadata.rating ?? 0;
-      if (rating > bestRating) {
-        bestRating = rating;
-        bestId = hotel.id;
-      }
-    }
-    return bestId;
-  }, [hasOfflineHotels, displayHotels, mergedHotelsInfo]);
-
   const hotelCards = useMemo(
     () =>
       displayHotels.map(
@@ -640,7 +664,7 @@ export const HotelSelection = () => {
               hotelInfo={mergedHotelsInfo[hotel.id]}
               handleSelect={() => setSelectedHotelId(hotel.id)}
               handleSelectedRate={handleSelectedRate}
-              isPromoted={hotel.isOffline || hotel.id === bestOnlineHotelId}
+              isPromoted={hotel.isOffline}
             />
           )
       ),
@@ -653,7 +677,6 @@ export const HotelSelection = () => {
       isFetching,
       selectedHotelId,
       handleSelectedRate,
-      bestOnlineHotelId,
     ]
   );
 
