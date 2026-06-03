@@ -73,6 +73,22 @@ const pickBestFlight = (visibleFlights: Flight[]): Flight | undefined => {
   });
 };
 
+// Cap the (price-sorted) list to `limit` for rendering, but never drop offline
+// flights: they're the priciest in total, so a plain slice() pushes them past
+// the cutoff and they vanish from the list, the "best" badge, and the default
+// selection. Always retain offline flights and fill the rest with the cheapest.
+const FLIGHT_DISPLAY_LIMIT = 50;
+const capFlightsKeepingOffline = (
+  sorted: Flight[],
+  limit = FLIGHT_DISPLAY_LIMIT
+): Flight[] => {
+  const head = sorted.slice(0, limit);
+  const droppedOffline = sorted
+    .slice(limit)
+    .filter((f) => f.isOffline);
+  return droppedOffline.length ? [...head, ...droppedOffline] : head;
+};
+
 export const FlightSelection = () => {
   const {
     setFlight,
@@ -264,7 +280,7 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
       });
 
-      const visibleFlights = filteredFlights.slice(0, 50);
+      const visibleFlights = capFlightsKeepingOffline(filteredFlights);
       setFilteredFlights(visibleFlights);
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setSelectedFlightPrice(Math.ceil(maxPrice));
@@ -378,7 +394,7 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
         ...{ [type]: value },
       });
-      const visibleFlights = filteredFlights.slice(0, 50);
+      const visibleFlights = capFlightsKeepingOffline(filteredFlights);
       if (visibleFlights.length !== 0) {
         setFlight(pickBestFlight(visibleFlights));
       }
