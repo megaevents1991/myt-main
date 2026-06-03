@@ -253,6 +253,22 @@ export const FlightTicketCard = memo(
                 <span>כלול במחיר</span>
               )}
             </div>
+            {/* Mobile best/cheapest badge — desktop shows it in the price column,
+                which is hidden on mobile, so render a compact version here. */}
+            {(isBest || isCheapest) && (
+              <div className="absolute lg:hidden left-2 top-0 -translate-y-1/2 flex flex-row gap-1">
+                {isBest && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                    ★ הטוב ביותר
+                  </span>
+                )}
+                {isCheapest && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                    ↓ הזול ביותר
+                  </span>
+                )}
+              </div>
+            )}
             <LuggageButton
               isSelected={isSelected}
               cabinBagsIncluded={outbound.cabinBagsIncluded}
