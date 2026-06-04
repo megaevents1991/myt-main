@@ -26,8 +26,8 @@ export async function generateMetadata({
       return { title: "Blog Post Not Found - MYT" };
     }
 
-    const { title, previewText, seoTitle, metaDescription, metaTags, heroBanner } = post.fields;
-    const seoT = String(seoTitle || "") || `${title} | מגה איבנטס`;
+    const { title, previewText, seoTitleTag, metaDescription, metaTags, heroBanner } = post.fields;
+    const seoT = String(seoTitleTag || "") || `${title} | מגה איבנטס`;
     const description = String(metaDescription || previewText || "") || String(title);
     const keywords = metaTags || `${title}, בלוג, מגה איבנטס`;
     const imageUrl = heroBanner?.fields?.file?.url

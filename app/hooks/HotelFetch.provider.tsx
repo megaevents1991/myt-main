@@ -6,6 +6,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import dayjs from "dayjs";
 import { fetchHotels, FetchHotelsParams } from "../order/fetchHotels";
 
 export type HotelsData = {
@@ -13,11 +14,38 @@ export type HotelsData = {
   hotelsInfo: HotelsInfoClient;
 };
 
+export type GetHotelsOptions = {
+  // Skip the debounce — use for programmatic preloads (mount, skip-flight,
+  // flight-selected, guest-correct). The debounce only makes sense for
+  // user-driven filter changes (e.g. dragging the distance slider).
+  immediate?: boolean;
+};
+
 type HotelFetch = {
-  getHotels: (params: FetchHotelsParams) => Promise<HotelsData>;
+  getHotels: (
+    params: FetchHotelsParams,
+    options?: GetHotelsOptions
+  ) => Promise<HotelsData>;
   isFetching: boolean;
   hotelsData: HotelsData;
 };
+
+// Identity of a search request. Two calls with the same key fetch the same
+// data, so we coalesce them onto one in-flight promise instead of aborting +
+// restarting (which was wasting prefetches and re-triggering the debounce).
+const requestKey = ({
+  eventId,
+  dateRange,
+  radius,
+  guests,
+}: FetchHotelsParams): string =>
+  JSON.stringify({
+    eventId,
+    checkin: dayjs(dateRange[0]?.toDateString()).format("YYYY-MM-DD"),
+    checkout: dayjs(dateRange[1]?.toDateString()).format("YYYY-MM-DD"),
+    radius,
+    guests,
+  });
 
 export const HotelFetchContext = createContext<HotelFetch>({} as HotelFetch);
 
@@ -36,21 +64,38 @@ export const HotelFetchProvider = ({
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // The request currently in flight, keyed by its params. A new call with the
+  // same key returns this promise instead of starting a second fetch.
+  const inFlightRef = useRef<{ key: string; promise: Promise<HotelsData> } | null>(
+    null
+  );
 
   const getHotels = useCallback(
-    (params: FetchHotelsParams): Promise<HotelsData> => {
-      // Cancel any existing debounce timeout
+    (
+      params: FetchHotelsParams,
+      options?: GetHotelsOptions
+    ): Promise<HotelsData> => {
+      const key = requestKey(params);
+
+      // Coalesce: an identical request is already running — reuse it so racing
+      // callers (mount preload, flight effects, guest-correct) don't abort and
+      // restart each other.
+      if (inFlightRef.current?.key === key) {
+        return inFlightRef.current.promise;
+      }
+
+      // Cancel any pending debounce from a previous (different) call.
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
 
-      return new Promise((resolve) => {
+      const promise = new Promise<HotelsData>((resolve, reject) => {
         setIsFetching(true);
 
-        debounceTimeoutRef.current = setTimeout(async () => {
-          // Abort previous fetch
+        const run = async () => {
+          // Params changed — abort the now-stale in-flight fetch.
           if (abortControllerRef.current) {
-            abortControllerRef.current.abort("another request is has started");
+            abortControllerRef.current.abort("another request has started");
           }
 
           const controller = new AbortController();
@@ -66,15 +111,30 @@ export const HotelFetchProvider = ({
             });
           } catch (err) {
             // This request was superseded by a newer one — expected, the
-            // newer request now owns `isFetching`, so just stop quietly.
+            // newer request now owns `isFetching`, so leave this promise
+            // unsettled (same as before) to avoid surfacing abort rejections.
             if (controller.signal.aborted) return;
             // A real failure — surface it and clear the loading state so
             // the UI isn't stuck on the spinner.
             console.error("Hotel fetch failed:", err);
             setIsFetching(false);
+            reject(err);
+          } finally {
+            if (inFlightRef.current?.key === key) {
+              inFlightRef.current = null;
+            }
           }
-        }, 1000); // debounce delay in ms
+        };
+
+        if (options?.immediate) {
+          run();
+        } else {
+          debounceTimeoutRef.current = setTimeout(run, 1000); // debounce delay in ms
+        }
       });
+
+      inFlightRef.current = { key, promise };
+      return promise;
     },
     []
   );

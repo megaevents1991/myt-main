@@ -42,18 +42,52 @@ import { MONDIAL_2026_MAIN_TITLE, parseMondial2026EventName } from "@/lib/mondia
 
 const MAX_FLIGHT_DURATION = 30;
 
+const pricePerTraveler = (f: Flight) => f.price / f.numOfTravelers;
+
 // The default-selected / "best"-badged flight. Offline flight+hotel inventory
-// is sold as a bundle, so an available offline flight is always the best choice.
-// With no offline inventory, the fastest flight (shortest total duration) wins.
-// Picks only from visible flights so the selection always lands on a card the
-// customer can see.
+// is sold as a bundle, so an available offline flight is always the best choice
+// — and when several offline flights exist, the CHEAPEST one (per traveler)
+// wins. With no offline inventory, "best value" is the composite: fewest stops,
+// then cheapest per traveler, then shortest total duration. Picks only from
+// visible flights so the selection always lands on a card the customer can see.
 const pickBestFlight = (visibleFlights: Flight[]): Flight | undefined => {
   if (!visibleFlights.length) return undefined;
+
   const offline = visibleFlights.filter((f) => f.isOffline);
-  const pool = offline.length ? offline : visibleFlights;
-  return pool.reduce((best, f) =>
-    parseDuration(f.duration) < parseDuration(best.duration) ? f : best
-  );
+  if (offline.length) {
+    // Cheapest offline per traveler; tie-break on shorter duration.
+    return offline.reduce((best, f) => {
+      const diff = pricePerTraveler(f) - pricePerTraveler(best);
+      if (diff < 0) return f;
+      if (diff === 0 && parseDuration(f.duration) < parseDuration(best.duration))
+        return f;
+      return best;
+    });
+  }
+
+  // No offline: fewest stops → cheapest per traveler → shortest duration.
+  return visibleFlights.reduce((best, f) => {
+    if (f.stops !== best.stops) return f.stops < best.stops ? f : best;
+    const diff = pricePerTraveler(f) - pricePerTraveler(best);
+    if (diff !== 0) return diff < 0 ? f : best;
+    return parseDuration(f.duration) < parseDuration(best.duration) ? f : best;
+  });
+};
+
+// Cap the (price-sorted) list to `limit` for rendering, but never drop offline
+// flights: they're the priciest in total, so a plain slice() pushes them past
+// the cutoff and they vanish from the list, the "best" badge, and the default
+// selection. Always retain offline flights and fill the rest with the cheapest.
+const FLIGHT_DISPLAY_LIMIT = 50;
+const capFlightsKeepingOffline = (
+  sorted: Flight[],
+  limit = FLIGHT_DISPLAY_LIMIT
+): Flight[] => {
+  const head = sorted.slice(0, limit);
+  const droppedOffline = sorted
+    .slice(limit)
+    .filter((f) => f.isOffline);
+  return droppedOffline.length ? [...head, ...droppedOffline] : head;
 };
 
 export const FlightSelection = () => {
@@ -67,7 +101,7 @@ export const FlightSelection = () => {
     planeTickets,
     setSelectedPlaneTicketsFilters,
   } = useContext(OrderContext);
-  const { getHotels, hotelsData } = useContext(HotelFetchContext);
+  const { getHotels } = useContext(HotelFetchContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [filters, setFilters] = useState<{
@@ -221,32 +255,26 @@ export const FlightSelection = () => {
   const departureDateKey = dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD");
   const returnDateKey = dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD");
 
+  // Refetch hotels with the chosen flight's real dates / party size. The mount
+  // preload in OrderForm already kicked off the default-dates fetch; identical
+  // params are coalesced by the provider, so this only does real work when the
+  // flight's dates differ from the event defaults. (Merged the old separate
+  // "first fetch" effect into this one — coalescing makes it redundant.)
   useEffect(() => {
     if (event?.location?.country_code === "US") return;
     if (orderFlight?.id) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, orderFlight),
-        guests: getRoomParams(planeTickets.adults),
-        location: event.location,
-        eventId: event.id,
-      });
+      getHotels(
+        {
+          dateRange: getDefaultDateRange(event, orderFlight),
+          guests: getRoomParams(planeTickets.adults),
+          location: event.location,
+          eventId: event.id,
+        },
+        { immediate: true }
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departureDateKey, returnDateKey, planeTickets.adults]);
-
-  // First time fetching hotels, only if no hotels are already fetched
-  useEffect(() => {
-    if (event?.location?.country_code === "US") return;
-    if (orderFlight?.id && !hotelsData?.data?.data?.hotels) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, orderFlight),
-        guests: getRoomParams(planeTickets.adults),
-        location: event.location,
-        eventId: event.id,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderFlight?.id]);
 
   useEffect(() => {
     setSelectedPlaneTicketsFilters({});
@@ -337,7 +365,7 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
       });
 
-      const visibleFlights = filteredFlights.slice(0, 50);
+      const visibleFlights = capFlightsKeepingOffline(filteredFlights);
       setFilteredFlights(visibleFlights);
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setSelectedFlightPrice(Math.ceil(maxPrice));
@@ -451,7 +479,7 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
         ...{ [type]: value },
       });
-      const visibleFlights = filteredFlights.slice(0, 50);
+      const visibleFlights = capFlightsKeepingOffline(filteredFlights);
       if (visibleFlights.length !== 0) {
         setFlight(pickBestFlight(visibleFlights));
       }
@@ -459,6 +487,19 @@ export const FlightSelection = () => {
     });
   };
   const displayFlights = useMemo(() => {
+    const offline = filteredFlights.filter((f) => f.isOffline);
+    const online = filteredFlights.filter((f) => !f.isOffline);
+
+    // Default "best" view with offline inventory: offline is a flight+hotel
+    // bundle, so the whole offline block surfaces first, cheapest (the badged
+    // "best") on top, then the online flights in their current price order.
+    if (activeTab === "best" && offline.length) {
+      const offlineByPrice = [...offline].sort(
+        (a, b) => pricePerTraveler(a) - pricePerTraveler(b)
+      );
+      return [...offlineByPrice, ...online];
+    }
+
     const pinnedId =
       activeTab === "best"
         ? bestFlightId
@@ -468,12 +509,10 @@ export const FlightSelection = () => {
 
     // Israeli tab (or no pin): offline flights first, then rest in current sort order
     if (!pinnedId) {
-      const offline = filteredFlights.filter((f) => f.isOffline);
-      const online = filteredFlights.filter((f) => !f.isOffline);
       return [...offline, ...online];
     }
 
-    // Best/Cheapest: pin the selected flight to position 0, rest stay in price order
+    // Cheapest: pin the selected flight to position 0, rest stay in price order
     const idx = filteredFlights.findIndex((f) => f.id === pinnedId);
     if (idx <= 0) return filteredFlights;
     const copy = [...filteredFlights];

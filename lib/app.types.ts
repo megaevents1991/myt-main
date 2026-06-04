@@ -416,7 +416,7 @@ export type BlogTemplateFields = {
         }[];
       }[];
     }>;
-    seoTitle?: string;
+    seoTitleTag?: string;
     metaDescription?: string;
     metaTags?: string;
     sys: EntryFieldTypes.Object<{
