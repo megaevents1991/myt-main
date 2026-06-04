@@ -276,8 +276,8 @@ export async function POST(request: Request) {
     const baseId = flights.length + 1;
 
     // Transform Amadeus response to match our flight data structure
-    const moreFlights: Flight[] = response.result.data.reduce(
-      (acc, offer) => {
+    const moreFlights: Flight[] = (response.result.data as FlightOffer[]).reduce(
+      (acc: Flight[], offer: FlightOffer) => {
         const { validatingAirlineCodes, price, itineraries, travelerPricings } =
           offer;
         const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
