@@ -146,17 +146,23 @@ const transformDbFlightToFlight = (
 };
 
 const getOfflineFlightsFromDB = async (
-  destination: string,
+  eventId: number,
   depart_date: string,
   return_date: string,
   indexShift: number,
   num_of_travelers: number
 ): Promise<Flight[]> => {
   try {
+    // Offline flights are explicitly assigned to events via `event_ids` in the
+    // backoffice (same pattern as offline hotels). We must match on that link —
+    // NOT on the arrival airport. The event stores a city/metro code (e.g.
+    // "LON") while a flight row stores a specific airport (e.g. "LTN"), so an
+    // airport `.eq` would silently drop every London flight.
     const { data: flights, error } = await supabase
       .from("flights")
       .select("*")
-      .eq("outbound_arrival_airport", destination)
+      .contains("event_ids", [eventId])
+      .eq("is_deleted", false)
       .gte("outbound_departure_time", `${depart_date}T00:00:00`)
       .lt("outbound_departure_time", `${depart_date}T23:59:59`)
       .gte("inbound_departure_time", `${return_date}T00:00:00`)
@@ -260,7 +266,7 @@ export async function POST(request: Request) {
     );
 
     const flights = await getOfflineFlightsFromDB(
-      event.location.city_iata,
+      event.id,
       departureDate,
       returnDate,
       0,
