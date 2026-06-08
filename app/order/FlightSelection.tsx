@@ -602,7 +602,7 @@ export const FlightSelection = () => {
           </div>
         </div>
       </div>
-      {!isLoading && (bestFlightId || cheapestFlightId) && (
+      {!isLoading && flights.length > 0 && (
         <div dir="rtl" className="px-4 lg:px-6">
           {/* Desktop: 3 cards in a row */}
           <div
