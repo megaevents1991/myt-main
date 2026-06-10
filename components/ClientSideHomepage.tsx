@@ -1176,6 +1176,14 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
       </Modal>
       <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
+        {/* Logo stays pinned top-right (RTL) of the hero even while the header is hidden */}
+        <Link
+          href="/"
+          aria-label="MegaEvents — דף הבית"
+          className="absolute right-4 top-4 z-20 md:right-6 md:top-6"
+        >
+          <MYT className="h-8 w-auto text-main-foreground md:h-9" />
+        </Link>
         <div className="container relative z-10 mx-auto max-w-3xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
           <h1 className="font-display text-2xl font-bold sm:text-3xl md:text-4xl mb-1 lg:mb-2">
