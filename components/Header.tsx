@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
-import { ContactUs } from "@/components/ui/ContactUs";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -117,8 +116,23 @@ export const Header = () => {
               {link.label}
             </Link>
           ))}
-          <div className="mt-1 px-3">
-            <ContactUs inHeader />
+          {/* Contact — plain inline links (ContactUs positions itself absolutely,
+              which overlapped the header bar on mobile) */}
+          <div className="mt-1 flex items-center gap-4 border-t border-main-foreground/10 px-3 pt-3 text-sm font-semibold">
+            <a href="tel:+97237684800" className="hover:underline">
+              03-768-4800 דברו איתנו
+            </a>
+            <a
+              href="https://wa.me/972542002722"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              WhatsApp
+            </a>
+            <a href="mailto:reservations@mega-events.co.il" className="hover:underline">
+              מייל
+            </a>
           </div>
         </nav>
       </div>
