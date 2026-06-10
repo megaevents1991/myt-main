@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans_Hebrew, Heebo } from "next/font/google";
+import { Assistant, Rubik } from "next/font/google";
 import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
 import { Suspense, ReactNode } from "react";
@@ -16,18 +16,20 @@ import MixpanelProvider from "./hooks/Mixpanel";
 import { Header } from "@/components/Header";
 import { SocialLinks } from "@/components/ui/SocialLinks";
 
-const fontSans = IBM_Plex_Sans_Hebrew({
-  weight: ["300", "400", "500", "600", "700"],
+// Body face. Assistant mirrors the Figma body (Inter) feel while rendering Hebrew
+// RTL correctly — free Google substitute for the brand-book body font.
+const fontSans = Assistant({
+  weight: ["400", "500", "600", "700"],
   style: "normal",
   subsets: ["hebrew", "latin"],
   display: "swap",
   variable: "--font-sans",
 });
 
-// Display face for headings + logo wordmark. Heebo covers Hebrew + Latin at
-// heavy weights; confirm against the MegaEvents 2.0 Figma and swap if needed.
-const fontDisplay = Heebo({
-  weight: ["700", "800", "900"],
+// Display face for headings + logo wordmark. Rubik is a warm geometric sans with
+// strong Hebrew + Latin coverage — free substitute for the proprietary Fedra Sans.
+const fontDisplay = Rubik({
+  weight: ["600", "700", "800"],
   style: "normal",
   subsets: ["hebrew", "latin"],
   display: "swap",
@@ -123,18 +125,19 @@ export const metadata: Metadata = {
   },
 };
 
-// MegaEvents 2.0 mint — tonal ramp so Mantine components match the token system.
+// MegaEvents 2.0 pulse-mint (#5BFF95) — tonal ramp so Mantine components match
+// the brand-book primary. Shade 4 is the exact brand neon.
 const myColor: MantineColorsTuple = [
-  "#E9FBF1",
-  "#CDF6DF",
-  "#A3EFC4",
-  "#78E8A8",
-  "#5DE89A",
-  "#43D384",
-  "#33B870",
-  "#268F58",
-  "#1B6B42",
-  "#0F4A2D",
+  "#E6FFEF",
+  "#C2FFD8",
+  "#99FFBE",
+  "#70FFA4",
+  "#5BFF95",
+  "#2EE875",
+  "#15C95C",
+  "#0FA049",
+  "#0A7637",
+  "#064D24",
 ];
 
 const theme = createTheme({

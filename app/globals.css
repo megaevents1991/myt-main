@@ -8,80 +8,106 @@
 
 @layer base {
   :root {
-    /* MegaEvents 2.0 — light (cream) theme.
-       HSL triplets estimated from the Figma; eyedrop exact values to confirm. */
-    --background: 54 31% 94%; /* cream page background */
-    --foreground: 156 30% 10%; /* forest green-black text */
+    /* MegaEvents 2.0 — light theme. HSL triplets converted exactly from the
+       Figma brand book (off-white base, neon brand palette, deep-forest bands). */
+    --background: 60 33% 97%; /* off-white #FAFAF5 — page background */
+    --foreground: 244 81% 4%; /* black-900 #030213 — text */
     --card: 0 0% 100%; /* white cards */
-    --card-foreground: 156 30% 10%;
+    --card-foreground: 244 81% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 156 30% 10%;
-    --primary: 146 75% 64%; /* vivid mint — CTAs, accents, icon circles */
-    --primary-foreground: 156 30% 10%;
-    --secondary: 146 75% 64%; /* mint (brand accent) */
-    --secondary-foreground: 156 30% 10%;
-    --surface-inverse: 147 33% 9%; /* dark hero / detail-hero / pill buttons */
-    --surface-inverse-foreground: 54 31% 96%;
-    --muted: 54 20% 88%;
-    --muted-foreground: 156 12% 38%;
-    --accent: 146 60% 90%; /* pale mint */
-    --accent-foreground: 156 30% 10%;
-    --destructive: 357 84% 66%;
+    --popover-foreground: 244 81% 4%;
+    --primary: 141 100% 68%; /* pulse-mint-green #5BFF95 — CTAs, accents */
+    --primary-foreground: 244 81% 4%; /* dark text on neon mint (AA) */
+    --secondary: 141 100% 68%;
+    --secondary-foreground: 244 81% 4%;
+    --surface-inverse: 158 44% 7%; /* deep-forest-black #0A1A14 — dark hero/bands/pills */
+    --surface-inverse-foreground: 60 33% 97%;
+    --muted: 60 20% 95%;
+    --muted-foreground: 240 7% 48%; /* gray-500 #717182 — secondary text */
+    --accent: 141 70% 92%; /* pale mint */
+    --accent-foreground: 244 81% 4%;
+    --destructive: 354 100% 65%; /* neon-coral #FF4F61 */
     --destructive-foreground: 0 0% 100%;
-    --success: 146 75% 40%;
-    --warning: 50 86% 59%;
-    --info: 257 69% 70%;
-    --border: 54 15% 84%;
-    --input: 54 15% 84%;
-    --ring: 146 75% 50%;
-    --badge-urgent: 336 77% 88%; /* pink — last tickets */
-    --badge-new: 257 69% 84%; /* lavender — new date */
-    --badge-vip: 50 86% 59%; /* yellow — VIP package */
-    --badge-soldout: 357 84% 66%; /* red — sold out */
-    --badge-foreground: 156 30% 12%;
-    --chart-1: 146 75% 64%;
-    --chart-2: 257 69% 70%;
-    --chart-3: 50 86% 59%;
-    --chart-4: 336 77% 78%;
-    --chart-5: 147 33% 25%;
+    --success: 141 70% 42%;
+    --warning: 48 96% 53%; /* golden-beam-yellow #FACC15 */
+    --info: 189 100% 64%; /* aero-aqua #45E2FF */
+    --border: 0 0% 85%; /* gray-100 #D9D9D9 */
+    --input: 0 0% 85%;
+    --ring: 141 100% 60%; /* mint focus ring (deepened for visibility) */
+    --badge-urgent: 354 100% 65%; /* coral — last tickets */
+    --badge-new: 257 100% 82%; /* soft-aura-violet #BBA1FF — new date / live */
+    --badge-vip: 48 96% 53%; /* golden — VIP package */
+    --badge-soldout: 240 7% 48%; /* gray-500 — sold out */
+    --badge-foreground: 244 81% 6%;
+    --chart-1: 141 100% 68%; /* mint */
+    --chart-2: 257 100% 82%; /* violet */
+    --chart-3: 48 96% 53%; /* gold */
+    --chart-4: 354 100% 65%; /* coral */
+    --chart-5: 189 100% 64%; /* aqua */
     --radius: 0.75rem;
+
+    /* Brand neon accents (category coding, blobs, glows) — Figma brand palette */
+    --brand-mint: 141 100% 68%; /* #5BFF95 */
+    --brand-aqua: 189 100% 64%; /* #45E2FF */
+    --brand-violet: 257 100% 82%; /* #BBA1FF */
+    --brand-coral: 354 100% 65%; /* #FF4F61 */
+    --brand-gold: 48 96% 53%; /* #FACC15 */
+    --brand-orange: 27 100% 65%; /* #FF9D4D */
+
+    /* Aurora mesh — flowing gradient background motif (Elevation #1) */
+    --mesh-1: var(--brand-mint);
+    --mesh-2: var(--brand-aqua);
+    --mesh-3: var(--brand-violet);
+    --mesh-4: var(--brand-coral);
+    --mesh-5: var(--brand-gold);
+    --mesh-6: var(--brand-orange);
+    --flow-duration: 10s;
+    --mesh-saturation: 1.2;
+
+    /* Motion tokens — micro-interactions, page-load orchestration */
+    --dur-micro: 200ms;
+    --dur-enter: 320ms;
+    --dur-exit: 200ms; /* exit < enter */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --stagger: 40ms;
   }
   .dark {
-    /* MegaEvents 2.0 — dark theme. Desaturated tonal variants, not inverted. */
-    --background: 147 28% 7%;
-    --foreground: 54 31% 94%;
-    --card: 150 18% 12%;
-    --card-foreground: 54 31% 94%;
-    --popover: 150 18% 12%;
-    --popover-foreground: 54 31% 94%;
-    --primary: 146 70% 60%;
-    --primary-foreground: 147 33% 8%;
-    --secondary: 146 70% 60%;
-    --secondary-foreground: 147 33% 8%;
-    --surface-inverse: 150 20% 14%;
-    --surface-inverse-foreground: 54 31% 94%;
-    --muted: 150 12% 18%;
-    --muted-foreground: 54 10% 65%;
-    --accent: 150 22% 20%;
-    --accent-foreground: 54 31% 94%;
-    --destructive: 357 70% 55%;
+    /* MegaEvents 2.0 — dark theme. Deep-forest/black surfaces, neon kept at full
+       chroma (reads well on dark — the Aurora intent). */
+    --background: 158 40% 6%; /* deep-forest, darkened */
+    --foreground: 60 33% 97%;
+    --card: 158 30% 10%;
+    --card-foreground: 60 33% 97%;
+    --popover: 158 30% 10%;
+    --popover-foreground: 60 33% 97%;
+    --primary: 141 100% 68%; /* full neon mint on dark */
+    --primary-foreground: 158 44% 6%;
+    --secondary: 141 100% 68%;
+    --secondary-foreground: 158 44% 6%;
+    --surface-inverse: 244 60% 6%; /* near-black band on dark */
+    --surface-inverse-foreground: 60 33% 97%;
+    --muted: 158 18% 16%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 158 25% 18%;
+    --accent-foreground: 60 33% 97%;
+    --destructive: 354 90% 62%;
     --destructive-foreground: 0 0% 100%;
-    --success: 146 60% 50%;
-    --warning: 50 75% 55%;
-    --info: 257 60% 70%;
-    --border: 150 12% 22%;
-    --input: 150 12% 22%;
-    --ring: 146 70% 55%;
-    --badge-urgent: 336 45% 60%;
-    --badge-new: 257 45% 65%;
-    --badge-vip: 50 65% 55%;
-    --badge-soldout: 357 65% 58%;
-    --badge-foreground: 54 31% 96%;
-    --chart-1: 146 70% 60%;
-    --chart-2: 257 60% 70%;
-    --chart-3: 50 75% 55%;
-    --chart-4: 336 55% 62%;
-    --chart-5: 146 30% 70%;
+    --success: 141 70% 50%;
+    --warning: 48 90% 55%;
+    --info: 189 90% 64%;
+    --border: 158 18% 20%;
+    --input: 158 18% 20%;
+    --ring: 141 100% 64%;
+    --badge-urgent: 354 90% 64%;
+    --badge-new: 257 100% 82%;
+    --badge-vip: 48 90% 58%;
+    --badge-soldout: 240 7% 55%;
+    --badge-foreground: 244 60% 8%; /* dark text on bright neon badges */
+    --chart-1: 141 100% 68%;
+    --chart-2: 257 100% 82%;
+    --chart-3: 48 90% 58%;
+    --chart-4: 354 90% 64%;
+    --chart-5: 189 90% 64%;
     --radius: 0.75rem;
   }
 }
@@ -92,6 +118,7 @@
   }
   html {
     background-color: hsl(var(--background));
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground;
@@ -100,6 +127,23 @@
 
   body::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Tabular figures — prices, timers, countdowns (Elevation #6) */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Global reduced-motion off-ramp — every animation must degrade here */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 

@@ -45,3 +45,6 @@ next-env.d.ts
 node_modules
 
 .claude
+
+# Figma reference art (design alignment, not shipped)
+.figma_ref/

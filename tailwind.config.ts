@@ -63,6 +63,15 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        // Brand neon accents (category coding, glows, blobs) — Figma brand palette
+        brand: {
+          mint: "hsl(var(--brand-mint))",
+          aqua: "hsl(var(--brand-aqua))",
+          violet: "hsl(var(--brand-violet))",
+          coral: "hsl(var(--brand-coral))",
+          gold: "hsl(var(--brand-gold))",
+          orange: "hsl(var(--brand-orange))",
+        },
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",
@@ -76,9 +85,15 @@ export default {
         display: ["var(--font-display)", "var(--font-sans)", "sans-serif"],
       },
       fontSize: {
-        "display-sm": ["1.75rem", { lineHeight: "1.2", fontWeight: "800" }],
-        "display-md": ["2.5rem", { lineHeight: "1.15", fontWeight: "800" }],
-        "display-lg": ["3.5rem", { lineHeight: "1.1", fontWeight: "900" }],
+        // Figma brand-book type scale (display + h1/h2/h3 = display font; rest = body)
+        "display-sm": ["2rem", { lineHeight: "1.25", fontWeight: "700" }], // = h1 32/40
+        "display-md": ["2.5rem", { lineHeight: "1.2", fontWeight: "700" }], // = display 40/48
+        "display-lg": ["3.5rem", { lineHeight: "1.1", fontWeight: "800" }], // hero (beyond Figma)
+        h1: ["2rem", { lineHeight: "1.25", fontWeight: "700" }], // 32/40
+        h2: ["1.375rem", { lineHeight: "1.27", fontWeight: "700" }], // 22/28
+        h3: ["1.125rem", { lineHeight: "1.33", fontWeight: "400" }], // 18/24
+        price: ["1.375rem", { lineHeight: "1.27", fontWeight: "700" }], // 22/28
+        label: ["0.75rem", { lineHeight: "1.33", fontWeight: "600" }], // 12/16
       },
       borderRadius: {
         lg: "var(--radius)",
