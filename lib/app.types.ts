@@ -25,6 +25,13 @@ export type Event = {
   map_image_url: string;
   description: string;
   card_image_url: string;
+  // Card "blob" art (set in the backoffice). When art_image_url (a transparent
+  // cut-out PNG) is present the card renders it on a neon brand blob; otherwise
+  // it falls back to the full card_image_url photo. art_color_index (0–5) and
+  // art_shape_index (0–3) pick the blob colour + shape; omitted = derived from id.
+  art_image_url?: string | null;
+  art_color_index?: number | null;
+  art_shape_index?: number | null;
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;

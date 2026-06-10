@@ -33,11 +33,12 @@ export const EventFilters = ({
   }, [events]);
 
   const chipBase =
-    "rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "shrink-0 rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
+    // Mobile: single horizontal-scroll row. Desktop: centered wrap.
     <div
-      className="flex max-w-3xl flex-wrap justify-center gap-2"
+      className="flex w-full max-w-3xl gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-visible"
       role="group"
       aria-label="קטגוריות מהירות"
       dir="rtl"

@@ -460,8 +460,11 @@ function CompactEventCard({ event }: { event: Event }) {
           {/* Brand swoosh background behind the artist image (color + shape per event) */}
           <EventArt
             id={event.id}
-            imageUrl={event.card_image_url}
+            imageUrl={event.art_image_url || event.card_image_url}
             alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
+            variant={event.art_image_url ? "blob" : "photo"}
+            colorIndex={event.art_color_index ?? undefined}
+            shapeIndex={event.art_shape_index ?? undefined}
             className="h-full w-full"
           />
         </div>
@@ -1678,9 +1681,11 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
             {event.skip_flight && !computedSold && <TicketOnlyBadge />}
             <EventArt
               id={event.id}
-              imageUrl={event.card_image_url}
+              imageUrl={event.art_image_url || event.card_image_url}
               alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
-              variant={(event.type ?? "").toString().includes("sports") ? "photo" : "blob"}
+              variant={event.art_image_url ? "blob" : "photo"}
+              colorIndex={event.art_color_index ?? undefined}
+              shapeIndex={event.art_shape_index ?? undefined}
               className="h-52 w-full sm:h-56"
             />
           </div>

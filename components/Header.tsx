@@ -62,9 +62,9 @@ export const Header = () => {
         visible ? "translate-y-0" : "-translate-y-full"
       )}
     >
-      <div className="container mx-auto flex items-center gap-3 px-4 py-3 lg:gap-6">
+      <div className="container mx-auto flex items-center gap-2 px-3 py-2.5 md:gap-4 md:px-4 md:py-3">
         <Link href="/" aria-label="MegaEvents — דף הבית" className="shrink-0">
-          <MYT className="h-8 w-auto md:h-9" />
+          <MYT className="h-5 w-auto sm:h-6 md:h-8" />
         </Link>
 
         {/* Search — opens the search modal directly */}
@@ -72,13 +72,13 @@ export const Header = () => {
           type="button"
           onClick={openSearch}
           aria-label="חיפוש אירוע"
-          className="mx-auto flex h-10 w-full max-w-md items-center gap-2 rounded-full bg-card px-4 text-sm text-muted-foreground transition-shadow hover:shadow-card"
+          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full bg-card px-3 text-sm text-muted-foreground transition-shadow hover:shadow-card md:h-10 md:max-w-md md:px-4"
         >
           <Search className="size-4 shrink-0" aria-hidden />
-          <span>חיפוש אירוע</span>
+          <span className="truncate">חיפוש אירוע</span>
         </button>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 md:gap-1">
           <ThemeToggle />
           <button
             type="button"
