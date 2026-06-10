@@ -1183,35 +1183,37 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
       </Modal>
       <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
-        <div className="container relative z-10 mx-auto max-w-4xl text-center">
+        <div className="container relative z-10 mx-auto max-w-3xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
-          <h1 className="font-display text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
+          <h1 className="font-display text-2xl font-bold sm:text-3xl md:text-4xl mb-1 lg:mb-2">
             {/* Mobile: האירועים first, then במקום */}
             <span className="inline-block whitespace-nowrap md:hidden">האירועים הכי שווים בעולם</span>
-            <span className="text-secondary whitespace-nowrap text-5xl md:hidden">
+            <span className="text-secondary whitespace-nowrap text-3xl md:hidden">
               {" "}
               במקום אחד
             </span>
             {/* Desktop: במקום first, then האירועים */}
-            <span className="text-secondary whitespace-nowrap text-5xl hidden md:inline-block">
+            <span className="text-secondary whitespace-nowrap text-4xl hidden md:inline-block">
               במקום אחד
             </span>
             {" "}
             <span className="inline-block whitespace-nowrap hidden md:inline-block">האירועים הכי שווים בעולם</span>
-            <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl mb-4">
+            <span className="block mt-1.5 text-xl sm:text-2xl md:text-3xl">
               בחרו, הרכיבו וטוסו ליהנות{" "}
             </span>
           </h1>
-          <TrustBadges className="justify-center text-main-foreground/80 mb-6" />
         </div>
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
-        <div className="relative z-10">
+        <div className="relative z-10 mt-4">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
+        {/* Trust row — sits under the gallery, per Dor's layout note */}
+        <TrustBadges className="relative z-10 mt-5 justify-center text-main-foreground/80" />
         {/* Accessibility: Enhanced search form with proper labeling and instructions */}
         <div
+          id="search"
           ref={searchContainerRef}
-          className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 ${
+          className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 scroll-mt-28 ${
             isSticky
               ? "fixed top-0 left-0 right-0 z-50 bg-card py-4 shadow-card transition-all duration-300"
               : "absolute bottom-0 left-0 right-0 z-10 transform translate-y-1/2"

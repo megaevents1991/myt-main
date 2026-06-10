@@ -9,6 +9,18 @@ export default {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    container: {
+      center: true,
+      // Cap content width so the layout breathes on wide screens (side margins)
+      // instead of running full-bleed edge-to-edge.
+      screens: {
+        sm: "640px",
+        md: "768px",
+        lg: "1024px",
+        xl: "1140px",
+        "2xl": "1200px",
+      },
+    },
     extend: {
       colors: {
         // Brand-level aliases kept for existing `bg-main` / `text-secondary` usages.

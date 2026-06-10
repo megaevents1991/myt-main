@@ -42,7 +42,7 @@ export const Header = () => {
         </nav>
 
         <Link
-          href="/"
+          href="/#search"
           aria-label="חיפוש אירוע"
           className="ms-auto hidden h-10 max-w-xs flex-1 items-center gap-2 rounded-full bg-card px-4 text-sm text-muted-foreground transition-shadow hover:shadow-card md:flex"
         >
@@ -82,7 +82,7 @@ export const Header = () => {
           className="container mx-auto flex flex-col gap-1 px-4 py-3"
         >
           <Link
-            href="/"
+            href="/#search"
             onClick={() => setMenuOpen(false)}
             className="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold hover:bg-main-foreground/10"
           >

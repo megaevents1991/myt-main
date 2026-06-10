@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -21,14 +24,38 @@ const tilts = ["-rotate-3", "rotate-2", "-rotate-2", "rotate-3", "-rotate-1", "r
  * Hero gallery — a scrollable row of tilted, colorful cutout cards shown
  * under the homepage hero headline. Decorative + navigational: each card
  * links to its artist page.
+ *
+ * On first load it does a single gentle "peek" scroll to signal that the row
+ * is swipeable, then returns to start (skipped under prefers-reduced-motion).
  */
 export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const items = artists.filter((a) => a.fields.heroBanner?.fields?.file?.url);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const overflow = el.scrollWidth - el.clientWidth;
+    if (overflow <= 8) return; // nothing to reveal
+
+    const delta = Math.min(overflow, 240);
+    // RTL page: extra content sits to the left → negative scrollLeft.
+    const peek = setTimeout(() => el.scrollBy({ left: -delta, behavior: "smooth" }), 700);
+    const back = setTimeout(() => el.scrollBy({ left: delta, behavior: "smooth" }), 1800);
+    return () => {
+      clearTimeout(peek);
+      clearTimeout(back);
+    };
+  }, [items.length]);
+
   if (items.length === 0) return null;
 
   return (
     <div
-      className="flex gap-3 overflow-x-auto px-4 pb-4 pt-2 [scrollbar-width:none] sm:gap-4 sm:px-8"
+      ref={scrollRef}
+      className="flex snap-x snap-mandatory scroll-smooth gap-3 overflow-x-auto px-4 pb-4 pt-2 [scrollbar-width:none] sm:gap-4 sm:px-8"
       role="list"
       aria-label="אירועים מובילים"
     >
@@ -42,7 +69,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
             role="listitem"
             aria-label={`עמוד האומן ${name}`}
             className={cn(
-              "group relative block shrink-0 transition-transform duration-300 hover:rotate-0 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main",
+              "group relative block shrink-0 snap-start transition-transform duration-300 hover:rotate-0 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main",
               tilts[i % tilts.length]
             )}
           >
