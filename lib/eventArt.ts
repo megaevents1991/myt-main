@@ -13,8 +13,8 @@ export const EVENT_ART_COLORS = [
   "var(--brand-orange)",
 ] as const;
 
-// Number of swoosh shape variants available in EventArt.
-export const EVENT_ART_SHAPES = 4;
+// Number of blob shape variants available in EventArt (3 Figma shapes × 2 mirrors).
+export const EVENT_ART_SHAPES = 6;
 
 const hash = (s: string): number => {
   let h = 0;

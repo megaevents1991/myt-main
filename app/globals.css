@@ -176,6 +176,13 @@
   to { transform: translateX(-50%); }
 }
 
+/* Hero center logo card — wordmark breathes in, mint dot pulses (per the Figma
+   animated logo card; CSS stand-in until a Lottie source exists). */
+@keyframes logo-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.92; }
+}
+
 /* Screen reader only content */
 .sr-only {
   position: absolute;
