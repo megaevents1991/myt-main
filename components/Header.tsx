@@ -23,7 +23,18 @@ export const Header = () => {
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setShown(window.scrollY > 320);
+    // Show the header only once the hero's own search box has scrolled away,
+    // so there's never two search bars on screen at once.
+    const search = document.getElementById("search");
+    if (search) {
+      const io = new IntersectionObserver(([e]) => setShown(!e.isIntersecting), {
+        threshold: 0,
+      });
+      io.observe(search);
+      return () => io.disconnect();
+    }
+    // Pages without an on-page search (non-home): reveal after a small scroll.
+    const onScroll = () => setShown(window.scrollY > 200);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);

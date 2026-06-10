@@ -26,6 +26,7 @@ import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
+import { EventArt } from "@/components/ui/EventArt";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -454,21 +455,13 @@ function CompactEventCard({ event }: { event: Event }) {
           {event.skip_flight && event.tags !== "Sold" && (
             <TicketOnlyBadge />
           )}
-          {/* Accessibility: Enhanced alt text with descriptive event information */}
-          {event.card_image_url ? (
-            <Image
-              src={event.card_image_url}
-              alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
-              width={240}
-              height={180}
-              style={{
-                objectPosition: 'center top'
-              }}
-              className="object-cover w-full h-full transition-transform group-hover:scale-105"
-            />
-          ) : (
-            <div className="w-full h-full bg-muted" aria-hidden />
-          )}
+          {/* Brand swoosh background behind the artist image (color + shape per event) */}
+          <EventArt
+            id={event.id}
+            imageUrl={event.card_image_url}
+            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
+            className="h-full w-full"
+          />
         </div>
         <div className="p-3 text-center flex-shrink-0">
           {/* Accessibility: Added semantic heading for event name */}
@@ -590,6 +583,7 @@ const UniversalCarousel = ({
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const items = teams || artists || events || [];
 
@@ -601,99 +595,62 @@ const UniversalCarousel = ({
     return null;
   }
 
-  // Calculate how many slides to show based on variant and screen size
-  let slideSize: string;
-  let slidesToScroll: number;
-
-  if (variant === "compact") {
-    if (isMobile) {
-      // Show 2 cards per view on mobile with a 2px gap
-      slideSize = "calc((100% - 2px) / 2)";
-      slidesToScroll = 1;
-    } else {
-      // Desktop: let slides size to their intrinsic width (240px)
-      slideSize = "auto";
-      slidesToScroll = 1;
-    }
-  } else {
-    // Default: 1 on mobile, 4 on desktop with 24px gaps
-    slideSize = isMobile ? "100%" : "calc((100% - (3 * 24px)) / 4)";
-    slidesToScroll = 1;
-  }
-
-  const showControls =
-    items.length >
-    (variant === "compact" ? (isMobile ? 2 : 5) : isMobile ? 1 : 4);
-  const showIndicators = variant === "default" && isMobile && items.length > 1;
+  // Native horizontal scroll with RTL-aware arrows. (Mantine/Embla mis-scrolled
+  // in RTL and froze, so we use plain overflow scrolling + custom controls.)
+  const perView = variant === "compact" ? 5 : 4;
+  const showArrows = items.length > perView;
+  const scrollRow = (dir: "next" | "prev") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = Math.round(el.clientWidth * 0.8);
+    // RTL: "next" reveals content to the left (negative scrollLeft).
+    el.scrollBy({ left: dir === "next" ? -amount : amount, behavior: "smooth" });
+  };
+  const itemWidth =
+    variant === "compact"
+      ? "w-[44%] shrink-0 sm:w-auto"
+      : "w-[85%] shrink-0 sm:w-[300px]";
+  const arrowBtn =
+    "absolute top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-main text-main-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
 
   return (
-    <Carousel
-      withIndicators={showIndicators}
-      withControls={showControls}
-      slideSize={slideSize}
-      slideGap={isMobile ? "16px" : "24px"}
-      align="start"
-      dragFree={false}
-      slidesToScroll={slidesToScroll}
-      containScroll="trimSnaps"
-      nextControlIcon={<ChevronLeft size={22} />}
-      previousControlIcon={<ChevronRight size={22} />}
-      classNames={{
-        root: "",
-        container: "py-[2px] px-0",
-        control: "data-[inactive]:!opacity-30 data-[inactive]:!cursor-default",
-        indicator: "bg-muted data-[active]:bg-primary transition-all duration-200",
-        indicators: "gap-2 mt-4",
-        viewport: variant === "compact" && !isMobile ? "h-[245px]" : "",
-        slide: "transition-transform duration-300 ease-out",
-        controls: isMobile ? "!-left-2 !-right-2" : "!left-1 !right-1",
-      }}
-      styles={{
-        control: {
-          transition: "all 0.2s ease-in-out",
-          width: "32px",
-          height: "32px",
-          minWidth: "32px",
-          minHeight: "32px",
-          backgroundColor: "hsl(var(--surface-inverse))",
-          borderRadius: "50%",
-          border: "none",
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-          color: "hsl(var(--surface-inverse-foreground))",
-          '&[dataInactive]': {
-            opacity: 0,
-            cursor: 'default',
-          },
-          '&:not([dataInactive]):hover': {
-            backgroundColor: "hsl(var(--primary))",
-            color: "hsl(var(--primary-foreground))",
-          },
-        },
-        viewport: {
-          willChange: "transform",
-          backfaceVisibility: "hidden",
-          perspective: "1000px",
-        },
-        container: {
-          transform: "translateZ(0)",
-          backfaceVisibility: "hidden",
-        }
-      }}
-    >
-      {items.map((item) => {
-        // Determine the type of item and generate appropriate key
-        let key: string;
-        if (teams) {
-          key = (item as FootballTeam).sys.id;
-        } else if (artists) {
-          key = (item as Artist).sys.id;
-        } else {
-          key = (item as Event).id.toString();
-        }
+    <div className="relative">
+      {showArrows && (
+        <>
+          <button
+            type="button"
+            onClick={() => scrollRow("next")}
+            aria-label="הבא"
+            className={cn(arrowBtn, "left-0")}
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollRow("prev")}
+            aria-label="הקודם"
+            className={cn(arrowBtn, "right-0")}
+          >
+            <ChevronRight className="size-5" aria-hidden />
+          </button>
+        </>
+      )}
+      <div
+        ref={scrollRef}
+        className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-6"
+      >
+        {items.map((item) => {
+          let key: string;
+          if (teams) {
+            key = (item as FootballTeam).sys.id;
+          } else if (artists) {
+            key = (item as Artist).sys.id;
+          } else {
+            key = (item as Event).id.toString();
+          }
 
-        return (
-          <Carousel.Slide key={key}>
-            <div className="transition-transform duration-300 ease-out">
+          return (
+            <div key={key} className={cn("snap-start", itemWidth)}>
               {variant === "compact" ? (
                 teams ? (
                   <CompactTeamCard team={item as FootballTeam} />
@@ -706,10 +663,10 @@ const UniversalCarousel = ({
                 <EventCard event={item as Event} />
               )}
             </div>
-          </Carousel.Slide>
-        );
-      })}
-  </Carousel>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -1176,14 +1133,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
       </Modal>
       <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
-        {/* Logo stays pinned top-right (RTL) of the hero even while the header is hidden */}
-        <Link
-          href="/"
-          aria-label="MegaEvents — דף הבית"
-          className="absolute right-4 top-4 z-20 md:right-6 md:top-6"
-        >
-          <MYT className="h-8 w-auto text-main-foreground md:h-9" />
-        </Link>
+        {/* Logo sits in-flow at the hero top (right in RTL); visible while the header is hidden */}
+        <div className="container relative z-20 mx-auto mb-2 flex">
+          <Link href="/" aria-label="MegaEvents — דף הבית">
+            <MYT className="h-8 w-auto text-main-foreground md:h-9" />
+          </Link>
+        </div>
         <div className="container relative z-10 mx-auto max-w-3xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
           <h1 className="font-display text-2xl font-bold sm:text-3xl md:text-4xl mb-1 lg:mb-2">
@@ -1757,21 +1712,13 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
           {event.skip_flight && !computedSold && (
             <TicketOnlyBadge />
           )}
-          {/* Accessibility: Enhanced image with descriptive alt text */}
-          {event.card_image_url ? (
-            <Image
-              src={event.card_image_url}
-              alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
-              width={400}
-              height={300}
-              style={{
-                objectPosition: 'center top'
-              }}
-              className="object-cover w-full h-72 transition-transform group-hover:scale-105"
-            />
-          ) : (
-            <div className="w-full h-72 bg-muted" aria-hidden />
-          )}
+          {/* Brand swoosh background behind the artist image (color + shape per event) */}
+          <EventArt
+            id={event.id}
+            imageUrl={event.card_image_url}
+            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
+            className="h-full min-h-[18rem] w-full"
+          />
         </div>
         <div className={`flex flex-col text-center w-[52%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-br-lg sm:rounded-br-none'}`}>
           {/* Accessibility: Added semantic heading for event name */}
