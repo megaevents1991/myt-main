@@ -122,8 +122,9 @@ function authHeaders(token: string): Record<string, string> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
   };
-  if (OFFICE_ID) {
-    // Enterprise requests may be scoped to an Office ID.
+  if (OFFICE_ID && ENV === "enterprise") {
+    // Office ID is Enterprise-only. Sending it to the test/self-service host
+    // triggers Amadeus error 2668 (officeId not allowed).
     headers["X-Amadeus-Office-Id"] = OFFICE_ID;
   }
   return headers;
@@ -189,6 +190,12 @@ export const amadeus = {
       // GET /v2/shopping/flight-offers
       get: (params: SearchParams) =>
         request("GET", "/v2/shopping/flight-offers", { query: params }),
+      // POST /v2/shopping/flight-offers — richer body; lets us set
+      // searchCriteria.additionalInformation.brandedFares=false, which the GET
+      // endpoint can't express. Needed on the Enterprise gateway where the
+      // branded-fares default + officeId combo triggers error 2668.
+      post: (body: unknown) =>
+        request("POST", "/v2/shopping/flight-offers", { body }),
     },
     flightOffers: {
       pricing: {
