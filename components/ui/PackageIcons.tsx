@@ -29,7 +29,7 @@ export const PackageIcons = ({
           key={key}
           className={cn(
             "flex flex-col items-center gap-1 text-[11px] font-medium",
-            active ? "text-warning" : "text-muted-foreground"
+            active ? "text-brand-orange" : "text-muted-foreground"
           )}
         >
           <Icon className="size-5" aria-hidden />

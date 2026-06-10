@@ -28,6 +28,7 @@ import { HeroCarousel } from "@/components/HeroCarousel";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { EventArt } from "@/components/ui/EventArt";
+import { PackageIcons } from "@/components/ui/PackageIcons";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -1671,96 +1672,63 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
         }}
       >
         {/* Accessibility: Enhanced event card with proper semantic structure */}
-        <article className={`rounded-2xl bg-card shadow-card transition-shadow flex flex-col hover:shadow-card-hover ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
-        <div className="flex flex-row sm:flex-col flex-1">
-          <div
-            className={`relative group overflow-hidden rounded-tl-2xl sm:rounded-t-2xl sm:rounded-b-none w-[48%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-bl-2xl'}`}
-          >
-          <div className="absolute top-2 right-2 z-10">
-            <EventStatusBadge event={event} />
+        <article className={`group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
+          {/* Image — neon blob + cut-out for artists, full photo for sports */}
+          <div className="relative">
+            {event.skip_flight && !computedSold && <TicketOnlyBadge />}
+            <EventArt
+              id={event.id}
+              imageUrl={event.card_image_url}
+              alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
+              variant={(event.type ?? "").toString().includes("sports") ? "photo" : "blob"}
+              className="h-52 w-full sm:h-56"
+            />
           </div>
-          {event.skip_flight && !computedSold && (
-            <TicketOnlyBadge />
-          )}
-          {/* Brand swoosh background behind the artist image (color + shape per event) */}
-          <EventArt
-            id={event.id}
-            imageUrl={event.card_image_url}
-            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
-            className="h-full min-h-[18rem] w-full"
-          />
-        </div>
-        <div className={`flex flex-col text-center w-[52%] sm:w-auto ${hasMultipleDates ? '' : 'rounded-br-lg sm:rounded-br-none'}`}>
-          {/* Accessibility: Added semantic heading for event name */}
-          <header className="p-2">
-            <h3 className="text-2xl font-bold" style={{ lineHeight: "1.1" }}>
+
+          {/* Body */}
+          <div className="flex flex-1 flex-col p-4 text-right" dir="rtl">
+            <h3 className="text-xl font-bold leading-tight" title={event.name}>
               {event.name}
             </h3>
-          </header>
-          <div
-            className="py-1 px-2 bg-primary text-primary-foreground flex flex-wrap justify-center items-center"
-            role="group"
-            aria-label="פרטי האירוע: תאריך ומיקום"
-          >
-            <span>{dayjs(event.date).format("DD/MM/YYYY")}</span>
-            <span className="sm:inline hidden mx-2" aria-hidden="true">|</span>
-            <span className="w-full sm:w-auto whitespace-nowrap">
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-bold text-foreground">
+                {dayjs(event.date).format("DD/MM/YY")}
+              </span>
+              <span className="mx-1.5" aria-hidden="true">•</span>
               {event.location.name}
-            </span>
-          </div>
-          <div className="p-2 text-center flex flex-col flex-grow">
-            <div className="text-[15px] sm:text-base">
-              מחיר חבילה ממוצע לאדם
+            </p>
+
+            <div className="mt-2 min-h-[28px]">
+              <EventStatusBadge event={event} />
             </div>
-            {packagePrice !== null ? (
-              <>
-                <div className="flex justify-center items-baseline gap-1" role="group" aria-label="מחיר">
-                  <div className="text-2xl font-extrabold">
+
+            <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
+              <PackageIcons
+                highlight={
+                  (["flight", "hotel", "ticket"] as const)[Number(event.id) % 3]
+                }
+              />
+              <div className="text-left">
+                {packagePrice !== null ? (
+                  <div className="text-2xl font-extrabold leading-none tabular-nums">
                     ${packagePrice.toLocaleString("en-US")}
                   </div>
-                </div>
-                <div className="flex-grow min-h-[4px]"></div>
-                <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
-                  לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex justify-center items-baseline gap-1" role="group" aria-label="סטטוס זמינות">
-                  <div className="text-2xl font-extrabold text-destructive">
+                ) : (
+                  <div className="text-lg font-extrabold text-destructive">
                     אזלו הכרטיסים
                   </div>
-                </div>
-                <div className="flex-grow min-h-[4px]"></div>
-                <div className="text-[14px]" style={{ lineHeight: "1.1" }}>
-                  &nbsp;
-                </div>
-              </>
-            )}
-            {event.tags === "Sold" ? (
-              // Empty space placeholder with same height to maintain layout
-              <div
-                className="my-2 py-2 flex-shrink-0"
-                style={{ height: isMounted && isMobile ? "40px" : "22px" }}
-                aria-hidden="true"
-              ></div>
-            ) : isMounted && isMobile ? (
-              <div className="bg-main text-main-foreground text-[14px] font-bold mx-1 my-2 justify-center rounded-lg px-4 py-2 flex items-center"
-                   role="button"
-                   aria-label="הוזילו או שדרגו את החבילה">
-                הוזילו או שדרגו כאן {"  >"}
+                )}
+                <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
+                  לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                </p>
               </div>
-            ) : (
-              <u className="my-2 flex justify-center text-foreground text-[14px] font-bold"
-                 role="button"
-                 aria-label="הוזילו או שדרגו את החבילה">
-                הוזילו או שדרגו כאן {"  >"}
-              </u>
-            )}
+            </div>
+
+            <div className="mt-4 w-full rounded-xl bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-main/90">
+              {computedSold ? "אזל מהמלאי" : "לפרטים והזמנה"}
+            </div>
           </div>
-        </div>
-        </div>
-      </article>
+        </article>
     </Link>
     {/* Strip for multiple dates - MOVED OUTSIDE Link to prevent navigation conflict */}
     {hasMultipleDates && (

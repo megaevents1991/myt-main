@@ -25,6 +25,7 @@ export const EventArt = ({
   colorIndex,
   shapeIndex,
   priority,
+  variant = "blob",
 }: {
   id: string | number;
   imageUrl?: string | null;
@@ -33,6 +34,8 @@ export const EventArt = ({
   colorIndex?: number;
   shapeIndex?: number;
   priority?: boolean;
+  /** "blob" = neon swoosh + cut-out artist (contain); "photo" = full image (cover). */
+  variant?: "blob" | "photo";
 }) => {
   const art = getEventArt(id, { colorIndex, shapeIndex });
   const color = EVENT_ART_COLORS[art.colorIndex];
@@ -44,17 +47,18 @@ export const EventArt = ({
         className
       )}
     >
-      {/* Brand swoosh */}
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox="0 0 300 220"
-        preserveAspectRatio="xMidYMid slice"
-        aria-hidden="true"
-      >
-        <path d={SHAPES[art.shapeIndex]} fill={`hsl(${color})`} />
-      </svg>
+      {/* Brand swoosh (blob variant only) */}
+      {variant === "blob" && (
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 300 220"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          <path d={SHAPES[art.shapeIndex]} fill={`hsl(${color})`} />
+        </svg>
+      )}
 
-      {/* Artist image on top of the swoosh */}
       {imageUrl ? (
         <Image
           src={imageUrl}
@@ -62,7 +66,12 @@ export const EventArt = ({
           fill
           sizes="(max-width: 640px) 90vw, 400px"
           priority={priority}
-          className="object-contain object-bottom transition-transform duration-300 group-hover:scale-105"
+          className={cn(
+            "transition-transform duration-300 group-hover:scale-105",
+            variant === "blob"
+              ? "object-contain object-bottom"
+              : "object-cover object-center"
+          )}
         />
       ) : null}
     </div>
