@@ -36,6 +36,7 @@ export const validateOrderData = async (
           number_of_ticket: yup.number().required(),
           vendor: yup.string(),
           event_tags: yup.string(),
+          event_additional_markup: yup.number().nullable(),
           event_type: yup.string(),
           id: yup.string(),
           category: yup.string().required().min(1),

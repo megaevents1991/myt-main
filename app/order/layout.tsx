@@ -25,6 +25,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
+  const [currentMinTicketPrice, setCurrentMinTicketPrice] = useState(0);
   const [planeTickets, setPlaneTickets] = useState({ adults: 2, children: 0 });
   const [step, setStep] = useState(1);
   const [eventTicket, setEventTicket] = useState({} as OrderTicket);
@@ -96,6 +97,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           hotel,
           numberOfEventTickets,
           setNumberOfEventTickets,
+          currentMinTicketPrice,
+          setCurrentMinTicketPrice,
           planeTickets,
           setPlaneTickets,
           globalLoader: isLoading,

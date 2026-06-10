@@ -990,7 +990,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
     const remainingEvents = initialEvents.filter(
       (event) =>
         !isEventSoldOut(event) && // Exclude sold-out events
-        (event.type === 'music_live_event_dynamic' || event.type === "music_event" || event.type === "tx_event") &&
+        (event.type === 'music_live_event_dynamic' || event.type === "music_event" || (event.type === "tx_event" && !event.name.startsWith("מונדיאל 2026"))) &&
         event.tags !== "VIPevent" &&
         !usedEventIds.has(event.id)
     );

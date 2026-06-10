@@ -194,4 +194,9 @@ export type HotelInfoDB = {
   star_rating: number;
   city: string;
   created_at: string;
+  // RateHawk guest review score cached alongside static data (by hid).
+  guest_rating?: number | null;
+  guest_review_count?: number | null;
+  guest_detailed_ratings?: Record<string, number> | null;
+  guest_rating_updated_at?: string | null;
 };

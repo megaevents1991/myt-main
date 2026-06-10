@@ -172,7 +172,36 @@ export type HotelInfoClient = {
     longitude: number;
     latitude: number;
     distanceFromCenter: number;
+    // RateHawk guest review score (0–10) + review count. NOT TripAdvisor —
+    // ETG does not expose TripAdvisor via API. 0/undefined = no score → hide.
+    guestRating?: number;
+    guestReviewCount?: number;
   };
 };
 
 export type HotelsInfoClient = Record<string, HotelInfoClient>;
+
+// Normalized guest-rating record cached on the `hotels` table (by hid).
+export type HotelGuestRating = {
+  guest_rating: number; // 0–10 overall score
+  guest_review_count: number;
+  guest_detailed_ratings: Record<string, number> | null; // cleanness/location/...
+};
+
+// Response of POST https://api.worldota.net/api/content/v1/hotel_reviews_by_ids/
+// Shape is defensive — confirm exact fields against the first real response once
+// ETG enables Content-API reviews access on the key.
+export type HotelReviewsResponse = {
+  data?: Array<{
+    hid: number;
+    id?: string;
+    rating?: number; // overall guest score
+    detailed_ratings?: Record<string, number>;
+    reviews?: Array<{
+      rating?: number;
+      detailed_review?: Record<string, number>;
+    }>;
+  }>;
+  status?: string;
+  error?: string | null;
+};

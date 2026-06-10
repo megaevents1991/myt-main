@@ -12,7 +12,7 @@ import {
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { SortOptions } from "@/lib/flightSort";
 import { Button, ScrollArea } from "@mantine/core";
-import { Settings2Icon, Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   useCallback,
   useContext,
@@ -36,9 +36,58 @@ import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import dayjs from "dayjs";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
+import { parseDuration } from "@/lib/parseDuration";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 
 const MAX_FLIGHT_DURATION = 30;
+
+const pricePerTraveler = (f: Flight) => f.price / f.numOfTravelers;
+
+// The default-selected / "best"-badged flight. Offline flight+hotel inventory
+// is sold as a bundle, so an available offline flight is always the best choice
+// — and when several offline flights exist, the CHEAPEST one (per traveler)
+// wins. With no offline inventory, "best value" is the composite: fewest stops,
+// then cheapest per traveler, then shortest total duration. Picks only from
+// visible flights so the selection always lands on a card the customer can see.
+const pickBestFlight = (visibleFlights: Flight[]): Flight | undefined => {
+  if (!visibleFlights.length) return undefined;
+
+  const offline = visibleFlights.filter((f) => f.isOffline);
+  if (offline.length) {
+    // Cheapest offline per traveler; tie-break on shorter duration.
+    return offline.reduce((best, f) => {
+      const diff = pricePerTraveler(f) - pricePerTraveler(best);
+      if (diff < 0) return f;
+      if (diff === 0 && parseDuration(f.duration) < parseDuration(best.duration))
+        return f;
+      return best;
+    });
+  }
+
+  // No offline: fewest stops → cheapest per traveler → shortest duration.
+  return visibleFlights.reduce((best, f) => {
+    if (f.stops !== best.stops) return f.stops < best.stops ? f : best;
+    const diff = pricePerTraveler(f) - pricePerTraveler(best);
+    if (diff !== 0) return diff < 0 ? f : best;
+    return parseDuration(f.duration) < parseDuration(best.duration) ? f : best;
+  });
+};
+
+// Cap the (price-sorted) list to `limit` for rendering, but never drop offline
+// flights: they're the priciest in total, so a plain slice() pushes them past
+// the cutoff and they vanish from the list, the "best" badge, and the default
+// selection. Always retain offline flights and fill the rest with the cheapest.
+const FLIGHT_DISPLAY_LIMIT = 50;
+const capFlightsKeepingOffline = (
+  sorted: Flight[],
+  limit = FLIGHT_DISPLAY_LIMIT
+): Flight[] => {
+  const head = sorted.slice(0, limit);
+  const droppedOffline = sorted
+    .slice(limit)
+    .filter((f) => f.isOffline);
+  return droppedOffline.length ? [...head, ...droppedOffline] : head;
+};
 
 export const FlightSelection = () => {
   const {
@@ -50,7 +99,7 @@ export const FlightSelection = () => {
     planeTickets,
     setSelectedPlaneTicketsFilters,
   } = useContext(OrderContext);
-  const { getHotels, hotelsData } = useContext(HotelFetchContext);
+  const { getHotels } = useContext(HotelFetchContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);
   const [filters, setFilters] = useState<{
@@ -96,6 +145,17 @@ export const FlightSelection = () => {
 
   const filterRef = useRef<HTMLDivElement>(null);
 
+  // Tracks whether this step is still mounted. A live Amadeus search that
+  // resolves after the customer has left the flight step (e.g. tapped
+  // "skip flight") must not write its result back into the shared order
+  // context — otherwise a skipped-flight order silently gets a flight.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   useLayoutEffect(() => {
     if (filterRef.current && matches) {
       setScrollerHeight(filterRef.current.offsetHeight);
@@ -114,32 +174,26 @@ export const FlightSelection = () => {
   const departureDateKey = dayjs(getDefaultDateRange(event, orderFlight)[0]).format("YYYY-MM-DD");
   const returnDateKey = dayjs(getDefaultDateRange(event, orderFlight)[1]).format("YYYY-MM-DD");
 
+  // Refetch hotels with the chosen flight's real dates / party size. The mount
+  // preload in OrderForm already kicked off the default-dates fetch; identical
+  // params are coalesced by the provider, so this only does real work when the
+  // flight's dates differ from the event defaults. (Merged the old separate
+  // "first fetch" effect into this one — coalescing makes it redundant.)
   useEffect(() => {
     if (event?.location?.country_code === "US") return;
     if (orderFlight?.id) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, orderFlight),
-        guests: getRoomParams(planeTickets.adults),
-        location: event.location,
-        eventId: event.id,
-      });
+      getHotels(
+        {
+          dateRange: getDefaultDateRange(event, orderFlight),
+          guests: getRoomParams(planeTickets.adults),
+          location: event.location,
+          eventId: event.id,
+        },
+        { immediate: true }
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departureDateKey, returnDateKey, planeTickets.adults]);
-
-  // First time fetching hotels, only if no hotels are already fetched
-  useEffect(() => {
-    if (event?.location?.country_code === "US") return;
-    if (orderFlight?.id && !hotelsData?.data?.data?.hotels) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, orderFlight),
-        guests: getRoomParams(planeTickets.adults),
-        location: event.location,
-        eventId: event.id,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderFlight?.id]);
 
   useEffect(() => {
     setSelectedPlaneTicketsFilters({});
@@ -201,6 +255,11 @@ export const FlightSelection = () => {
         debug: { departureDate: string; returnDate: string };
       } = await res.json();
 
+      // The customer may have skipped the flight (or otherwise left this
+      // step) while the search was in flight — drop stale results so they
+      // can't re-populate `flight` after a skip.
+      if (!isMountedRef.current) return;
+
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);
 
@@ -215,7 +274,8 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
       });
 
-      setFilteredFlights(filteredFlights.slice(0, 50));
+      const visibleFlights = capFlightsKeepingOffline(filteredFlights);
+      setFilteredFlights(visibleFlights);
       setSelectedFlightDuration(Math.ceil(maxDuration / 60));
       setSelectedFlightPrice(Math.ceil(maxPrice));
       setDebug({
@@ -235,7 +295,7 @@ export const FlightSelection = () => {
         directOnly,
       }));
       setFlights(flights);
-      setFlight(filteredFlights[0]);
+      setFlight(pickBestFlight(visibleFlights));
       return flights;
     } catch (err) {
       console.error(err);
@@ -263,35 +323,19 @@ export const FlightSelection = () => {
     [flights]
   );
 
-  const offlineFlights = useMemo(
-    () => flights.filter((f) => f.isOffline),
-    [flights]
+  // The "best" badge lands on the same flight the funnel default-selects.
+  const bestFlightId = useMemo(
+    () => pickBestFlight(filteredFlights)?.id ?? null,
+    [filteredFlights]
   );
 
-  const bestFlightId = useMemo(() => {
-    // Prefer offline pool when available; otherwise pick from visible filtered
-    // flights so the "best" badge always lands on a card the user can see.
-    const pool = offlineFlights.length ? offlineFlights : filteredFlights;
-    if (!pool.length) return null;
-    const stopPenalty = Number(process.env.NEXT_PUBLIC_BEST_FLIGHT_STOP_PENALTY) || 300;
-    const score = (f: Flight) =>
-      f.price / f.numOfTravelers +
-      f.stops * stopPenalty -
-      (f.outbound.checkBagsIncluded ? 50 : 0) -
-      (f.outbound.cabinBagsIncluded ? 10 : 0);
-    return pool.reduce((best, f) =>
-      score(f) < score(best) ? f : best
-    ).id;
-  }, [offlineFlights, filteredFlights]);
-
   const cheapestFlightId = useMemo(() => {
-    // Use filteredFlights so the badge always lands on a visible card
+    // Use filteredFlights so the badge always lands on a visible card.
+    // Strictly the lowest price per traveler — no offline preference here;
+    // offline inventory is surfaced via the "best" tab, not "cheapest".
     if (!filteredFlights.length) return null;
-    const offlineBoost = Number(process.env.NEXT_PUBLIC_OFFLINE_FLIGHT_BOOST) || 60;
-    const effectivePrice = (f: Flight) =>
-      f.price / f.numOfTravelers - (f.isOffline ? offlineBoost : 0);
     return filteredFlights.reduce((min, f) =>
-      effectivePrice(f) < effectivePrice(min) ? f : min
+      f.price / f.numOfTravelers < min.price / min.numOfTravelers ? f : min
     ).id;
   }, [filteredFlights]);
 
@@ -344,13 +388,27 @@ export const FlightSelection = () => {
         luggage: filters.luggage,
         ...{ [type]: value },
       });
-      if (filteredFlights.length !== 0) {
-        setFlight(filteredFlights[0]);
+      const visibleFlights = capFlightsKeepingOffline(filteredFlights);
+      if (visibleFlights.length !== 0) {
+        setFlight(pickBestFlight(visibleFlights));
       }
-      setFilteredFlights(filteredFlights.slice(0, 50));
+      setFilteredFlights(visibleFlights);
     });
   };
   const displayFlights = useMemo(() => {
+    const offline = filteredFlights.filter((f) => f.isOffline);
+    const online = filteredFlights.filter((f) => !f.isOffline);
+
+    // Default "best" view with offline inventory: offline is a flight+hotel
+    // bundle, so the whole offline block surfaces first, cheapest (the badged
+    // "best") on top, then the online flights in their current price order.
+    if (activeTab === "best" && offline.length) {
+      const offlineByPrice = [...offline].sort(
+        (a, b) => pricePerTraveler(a) - pricePerTraveler(b)
+      );
+      return [...offlineByPrice, ...online];
+    }
+
     const pinnedId =
       activeTab === "best"
         ? bestFlightId
@@ -360,12 +418,10 @@ export const FlightSelection = () => {
 
     // Israeli tab (or no pin): offline flights first, then rest in current sort order
     if (!pinnedId) {
-      const offline = filteredFlights.filter((f) => f.isOffline);
-      const online = filteredFlights.filter((f) => !f.isOffline);
       return [...offline, ...online];
     }
 
-    // Best/Cheapest: pin the selected flight to position 0, rest stay in price order
+    // Cheapest: pin the selected flight to position 0, rest stay in price order
     const idx = filteredFlights.findIndex((f) => f.id === pinnedId);
     if (idx <= 0) return filteredFlights;
     const copy = [...filteredFlights];
@@ -494,6 +550,7 @@ export const FlightSelection = () => {
             }
             airlines={airlines}
             filters={filters}
+            onApply={() => setShowFilters(false)}
           />
         </FiltersModal>
       )}
@@ -545,7 +602,7 @@ export const FlightSelection = () => {
           </div>
         </div>
       </div>
-      {!isLoading && (bestFlightId || cheapestFlightId) && (
+      {!isLoading && flights.length > 0 && (
         <div dir="rtl" className="px-4 lg:px-6">
           {/* Desktop: 3 cards in a row */}
           <div

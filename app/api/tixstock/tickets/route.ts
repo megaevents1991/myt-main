@@ -7,6 +7,7 @@ import type { TixStockListing } from "@/lib/tixstock.types";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
+const REVALIDATE_API_ORIGIN = "https://mondial2026.mega-events.co.il";
 
 /** Convert an amount string in any supported currency to USD, with per-currency markup */
 function toUsd(amount: string, currency: string): string {
@@ -38,10 +39,37 @@ function normalizeCategory(category: string | undefined | null): string {
   return (category || "").trim().toLowerCase();
 }
 
-function getCheapestCategoryPrices(listings: TixStockListing[]) {
+function listingCanSatisfyQuantity(
+  listing: TixStockListing,
+  requestedQuantity: number,
+): boolean {
+  const quantityAvailable =
+    listing.number_of_tickets_for_sale?.quantity_available ?? 0;
+  const splitQuantity = listing.number_of_tickets_for_sale?.split_quantity ?? 0;
+
+  if (requestedQuantity === 1) {
+    return quantityAvailable === 1 || quantityAvailable === splitQuantity;
+  }
+
+  return (
+    quantityAvailable >= requestedQuantity || splitQuantity >= requestedQuantity
+  );
+}
+
+function getCheapestCategoryPrices(
+  listings: TixStockListing[],
+  requestedQuantity?: number,
+) {
   const prices = new Map<string, number>();
 
   for (const listing of listings) {
+    if (
+      requestedQuantity !== undefined &&
+      !listingCanSatisfyQuantity(listing, requestedQuantity)
+    ) {
+      continue;
+    }
+
     const category = normalizeCategory(listing.seat_details?.category);
     const amount = Math.ceil(
       parseFloat(listing.proceed_price?.amount ?? "NaN"),
@@ -57,11 +85,40 @@ function getCheapestCategoryPrices(listings: TixStockListing[]) {
   return prices;
 }
 
-async function updateLowerDbTicketPrices(
+async function callRevalidateEndpoint() {
+  const secret = process.env.NEXT_SECRET_REVALIDATION_SECRET;
+  if (!secret) {
+    console.warn(
+      "[TixStock Tickets] Skipping /api/revalidate call: missing NEXT_SECRET_REVALIDATION_SECRET",
+    );
+    return;
+  }
+
+  try {
+    const revalidateUrl = new URL("/api/revalidate", REVALIDATE_API_ORIGIN);
+    revalidateUrl.searchParams.set("secret", secret);
+
+    const response = await fetch(revalidateUrl.toString(), {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      console.warn(
+        `[TixStock Tickets] /api/revalidate returned ${response.status}: ${await response.text()}`,
+      );
+    }
+  } catch (error) {
+    console.error("[TixStock Tickets] Failed to call /api/revalidate:", error);
+  }
+}
+
+async function updateDbTicketPricesFromLiveListings(
   dbEventId: string | null,
   listings: TixStockListing[],
+  requestedQuantity: number,
 ) {
-  if (!dbEventId) {
+  if (!dbEventId || requestedQuantity !== 2) {
     return { priceUpdates: [], ticketsAndRates: null };
   }
 
@@ -94,7 +151,7 @@ async function updateLowerDbTicketPrices(
     };
   }
 
-  const categoryPrices = getCheapestCategoryPrices(listings);
+  const categoryPrices = getCheapestCategoryPrices(listings, requestedQuantity);
   const ticketsAndRates = (eventRow.tickets_and_rates || []) as EventTicket[];
   const priceUpdates: Array<{
     ticket_id: string;
@@ -105,10 +162,15 @@ async function updateLowerDbTicketPrices(
 
   const nextTicketsAndRates = ticketsAndRates.map((ticket) => {
     const livePrice = categoryPrices.get(normalizeCategory(ticket.category));
+    const priceDiff =
+      livePrice !== undefined && Number.isFinite(ticket.price)
+        ? livePrice - ticket.price
+        : null;
     if (
       livePrice === undefined ||
       !Number.isFinite(ticket.price) ||
-      livePrice >= ticket.price
+      priceDiff === null ||
+      Math.abs(priceDiff) <= 1
     ) {
       return ticket;
     }
@@ -141,9 +203,10 @@ async function updateLowerDbTicketPrices(
   }
 
   revalidateTag("events");
+  callRevalidateEndpoint();
 
   console.log(
-    `[TixStock Tickets] Lowered ${priceUpdates.length} DB ticket price(s) for event ${dbEventId}`,
+    `[TixStock Tickets] Synced ${priceUpdates.length} DB ticket price(s) for event ${dbEventId}`,
     priceUpdates,
   );
 
@@ -194,21 +257,48 @@ function isExcludedSection(
     .trim()
     .toLowerCase();
   const listingSectionSlug = slugify(listingSection);
-  return excludedSections.some((excl) => {
-    const lastUnderscore = excl.lastIndexOf("_");
-    if (lastUnderscore === -1) return false;
-    const catSlug = excl.substring(0, lastUnderscore);
-    const sectionId = excl.substring(lastUnderscore + 1).toLowerCase();
-    if (listingCatSlug === catSlug && listingSectionSlug === listingCatSlug) {
-      return true;
+
+  const parsedExcludedSections = excludedSections
+    .map((excl) => {
+      const lastUnderscore = excl.lastIndexOf("_");
+      if (lastUnderscore === -1) return null;
+
+      return {
+        catSlug: excl.substring(0, lastUnderscore),
+        sectionId: excl.substring(lastUnderscore + 1).toLowerCase(),
+      };
+    })
+    .filter(
+      (section): section is { catSlug: string; sectionId: string } =>
+        section !== null,
+    );
+
+  const isCategoryOnlyListing =
+    listingCatSlug !== "" && listingSectionSlug === listingCatSlug;
+  const hasConcreteExcludedSectionInCategory = parsedExcludedSections.some(
+    ({ catSlug, sectionId }) =>
+      catSlug === listingCatSlug &&
+      sectionId !== "" &&
+      sectionId !== listingCatSlug,
+  );
+
+  return parsedExcludedSections.some(({ catSlug, sectionId }) => {
+    if (listingCatSlug !== catSlug) return false;
+
+    if (isCategoryOnlyListing) {
+      return hasConcreteExcludedSectionInCategory;
     }
-    return listingCatSlug === catSlug && listingSection === sectionId;
+
+    return listingSection === sectionId;
   });
 }
 
 export async function GET(req: NextRequest) {
   const eventId = req.nextUrl.searchParams.get("event_id");
   const dbEventId = req.nextUrl.searchParams.get("db_event_id");
+  const requestedQuantity = Number(
+    req.nextUrl.searchParams.get("ticket_quantity") ?? "2",
+  );
   const excludedSectionsParam =
     req.nextUrl.searchParams.get("excluded_sections") ?? "";
   const excludedSections = excludedSectionsParam
@@ -305,10 +395,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { priceUpdates, ticketsAndRates } = await updateLowerDbTicketPrices(
-      dbEventId,
-      filtered,
-    );
+    const { priceUpdates, ticketsAndRates } =
+      await updateDbTicketPricesFromLiveListings(
+        dbEventId,
+        filtered,
+        Number.isFinite(requestedQuantity) && requestedQuantity > 0
+          ? requestedQuantity
+          : 2,
+      );
 
     // Return in the same shape the client expects: { success, data: { data: [...] } }
     return NextResponse.json({

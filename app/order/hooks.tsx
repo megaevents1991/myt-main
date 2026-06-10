@@ -8,6 +8,7 @@ import {
   shortenAirlineName,
 } from "./order-review.utils";
 import { superTrack } from "@/lib/mixpanel";
+import { getTotalMarkup } from "@/lib/events/price";
 
 export function useOrderVars() {
   const {
@@ -16,6 +17,7 @@ export function useOrderVars() {
     eventTicket,
     event,
     numberOfEventTickets,
+    currentMinTicketPrice,
     skipHotel,
     flightSkipped,
   } = useContext(OrderContext);
@@ -30,8 +32,15 @@ export function useOrderVars() {
 
   const hotelPriceAddition = useMemo(() => {
     if (skipHotel && event) {
-      // When skipping hotel, add profit
-      return event.base_flight_price < 550 ? 100 : 150;
+      // When skipping hotel, add profit. Tunable via env vars.
+      const HOTEL_SKIP_FLIGHT_THRESHOLD = 550;
+      const hotelSkipMarkupLow =
+        Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_LOW) || 100;
+      const hotelSkipMarkupHigh =
+        Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_HIGH) || 150;
+      return event.base_flight_price < HOTEL_SKIP_FLIGHT_THRESHOLD
+        ? hotelSkipMarkupLow
+        : hotelSkipMarkupHigh;
     }
     if (!selectedHotel || !event) {
       return 0;
@@ -70,7 +79,7 @@ export function useOrderVars() {
   }, [selectedFlight, event]);
 
   /* Fetch lowest available ticket price (exclude tickets with available === false) */
-  const minTicketPrice = useMemo(() => {
+  const dbMinTicketPrice = useMemo(() => {
     if (!event || !event.tickets_and_rates || event.tickets_and_rates.length === 0) {
       return 0;
     }
@@ -79,10 +88,12 @@ export function useOrderVars() {
     return Math.min(...available.map((ticket) => ticket.price));
   }, [event]);
 
+  const minTicketPrice = currentMinTicketPrice || dbMinTicketPrice;
+
   /* Main variables to calculate price additions */
   const eventTicketPriceAddition = (eventTicket.price || 0) - minTicketPrice;
 
-  const maup = Number(process.env.NEXT_PUBLIC_MARKUP || "150");
+  const markup = useMemo(() => (event ? getTotalMarkup(event) : 0), [event]);
 
   const isNumberOfPersonsEqual = useMemo(() => {
     if (!selectedFlight) {
@@ -115,9 +126,9 @@ export function useOrderVars() {
     // strikethrough/recommended total so the price reflects "no flight" mode.
     const flightComponent = flightSkipped ? 0 : event.base_flight_price;
     return Math.ceil(
-      flightComponent + event.base_hotel_price + minTicketPrice + maup
+      flightComponent + event.base_hotel_price + minTicketPrice + markup
     );
-  }, [event, minTicketPrice, maup, flightSkipped]);
+  }, [event, minTicketPrice, markup, flightSkipped]);
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
@@ -138,16 +149,27 @@ export function useOrderVars() {
       : (flightPriceAddition + event.base_flight_price) * numTravelers;
 
     // When skipping flight, add admin-set per-ticket markup to keep margin
+    const skipFlightMarkupValue = Math.max(0, Number(event.skip_flight_markup ?? 0));
     const skipFlightMarkup = flightSkipped
-      ? Math.max(0, Number(event.skip_flight_markup ?? 0)) * numberOfEventTickets
+      ? skipFlightMarkupValue * numberOfEventTickets
       : 0;
 
+    // If event is skip-flight enabled, client skipped flight, and a skip-flight
+    // markup was applied, suppress the hotel-skip markup to avoid double margin.
+    const skipFlightMarkupAlreadyApplied =
+      event.skip_flight === true && flightSkipped && skipFlightMarkupValue > 0;
+
+    const hotelSkipAddition =
+      skipHotel && !skipFlightMarkupAlreadyApplied
+        ? hotelPriceAddition * numberOfEventTickets
+        : 0;
+
     return Math.ceil(
-      (eventTicket.price + maup || 0) * numberOfEventTickets +
+      ((eventTicket.price || 0) + markup) * numberOfEventTickets +
         flightComponent +
         hotelComponent +
         skipFlightMarkup +
-        (skipHotel ? hotelPriceAddition * numberOfEventTickets : 0) // Apply hotel credit per person when skipping
+        hotelSkipAddition
     );
   }, [
     eventTicket,
@@ -157,7 +179,7 @@ export function useOrderVars() {
     skipHotel,
     hotelPriceAddition,
     totalGuests,
-    maup,
+    markup,
     numberOfEventTickets,
     flightPriceAddition,
   ]);

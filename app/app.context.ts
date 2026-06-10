@@ -19,6 +19,8 @@ type AppContext = {
   setEvent: (event: Event) => void;
   numberOfEventTickets: number;
   setNumberOfEventTickets: (numberOfEventTickets: number) => void;
+  currentMinTicketPrice: number;
+  setCurrentMinTicketPrice: Dispatch<SetStateAction<number>>;
   planeTickets: {
     adults: number;
     children: number;

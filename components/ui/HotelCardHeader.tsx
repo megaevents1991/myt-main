@@ -1,5 +1,6 @@
 import { formatHotelName } from "@/lib/formatHotelName";
 import { Stars } from "./stars";
+import { GuestScoreBadge } from "./GuestScoreBadge";
 import { Utensils, MapPin } from "lucide-react";
 import { Tooltip, Modal } from "@mantine/core";
 import { useClickOutside, useDisclosure } from "@mantine/hooks";
@@ -14,12 +15,16 @@ type HotelCardHeaderProps = {
   meals: boolean;
   roomName: string;
   rating: number;
+  guestRating?: number;
+  guestReviewCount?: number;
   address?: string;
   coordinates?: { lat: number; lng: number };
 };
 
 export const HotelCardHeader = ({
   rating,
+  guestRating,
+  guestReviewCount,
   distanceFromCenter,
   hotelName,
   roomName,
@@ -89,6 +94,7 @@ export const HotelCardHeader = ({
               {formatHotelName(hotelName)}
             </div>
             <Stars rating={rating} />
+            <GuestScoreBadge rating={guestRating} />
           </div>
           <div className="text-[14px] flex items-center">
             <span>

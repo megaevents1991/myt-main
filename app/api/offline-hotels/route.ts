@@ -28,6 +28,8 @@ type OfflineRow = {
   meal_plan: string | null;
   notes: string | null;
   last_cancellation_date: string | null;
+  guest_rating: number | null; // manual override; null = inherit via hid
+  guest_review_count: number | null;
 };
 
 type OfflineMeta = {
@@ -67,8 +69,16 @@ function matchRoomsToInventory(
   let total = 0;
 
   for (const pax of needs) {
+    // Snug fit: a room must hold the party (capacity >= pax) but not waste beds
+    // (capacity <= pax) — e.g. a couple should never be offered a Triple. Floor
+    // the upper bound at 2 because offline inventory has no single-capacity
+    // rooms, so a solo traveler still matches a Double/Twin.
+    const maxCapacity = Math.max(pax, 2);
     const pick = units
-      .filter((u) => u.remaining > 0 && u.capacity >= pax)
+      .filter(
+        (u) =>
+          u.remaining > 0 && u.capacity >= pax && u.capacity <= maxCapacity
+      )
       .sort((a, b) => a.capacity - b.capacity || a.price - b.price)[0];
     if (!pick) return null;
     pick.remaining -= 1;
@@ -102,21 +112,27 @@ export async function GET(request: Request) {
     }
   }
 
-  // 1) Offline inventory rows for this event, filtered by the flight-aligned
-  // window: only rows whose inventory [check_in, check_out] fully covers the
-  // requested [checkin, checkout] are eligible.
+  // Offline inventory has FIXED dates — a pre-purchased room block cannot be
+  // stretched. A row is eligible only when its window EXACTLY matches the
+  // flight-aligned stay (check_in == arrival date, check_out == return
+  // departure date). A "covers" filter would wrongly keep offering an offline
+  // hotel after the customer shifts their flight within the block's window.
+  if (!checkin || !checkout) {
+    // Without flight-aligned dates an exact match is impossible.
+    return NextResponse.json({ hotels: [], hotelsInfo: {}, meta: {} });
+  }
+
+  // 1) Offline inventory rows for this event whose dates exactly match.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase as any)
+  const query = (supabase as any)
     .from("offline_hotels")
     .select(
-      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date"
+      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date, guest_rating, guest_review_count"
     )
     .contains("event_ids", [eventId])
-    .eq("is_deleted", false);
-
-  if (checkin && checkout) {
-    query = query.lte("check_in", checkin).gte("check_out", checkout);
-  }
+    .eq("is_deleted", false)
+    .eq("check_in", checkin)
+    .eq("check_out", checkout);
 
   const { data: offlineRows, error } = await query.order("price", {
     ascending: true,
@@ -160,13 +176,15 @@ export async function GET(request: Request) {
     address: string;
     latitude: number;
     longitude: number;
+    guest_rating: number | null;
+    guest_review_count: number | null;
   };
   let hotelsMetaRows: HotelMetaRow[] = [];
   if (hids.length > 0) {
     const { data: meta } = await supabase
       .from("hotels")
       .select(
-        "hid, _id, name, star_rating, kind, images_ext, amenity_groups, room_groups, address, latitude, longitude"
+        "hid, _id, name, star_rating, kind, images_ext, amenity_groups, room_groups, address, latitude, longitude, guest_rating, guest_review_count"
       )
       .in("hid", hids);
     hotelsMetaRows = meta ?? [];
@@ -258,6 +276,10 @@ export async function GET(request: Request) {
         longitude: meta?.longitude ?? 0,
         latitude: meta?.latitude ?? 0,
         distanceFromCenter,
+        // Manual override wins; otherwise inherit the cached score via hid.
+        guestRating: anchor.guest_rating ?? meta?.guest_rating ?? 0,
+        guestReviewCount:
+          anchor.guest_review_count ?? meta?.guest_review_count ?? 0,
       },
     };
 

@@ -22,8 +22,15 @@ export const getDefaultDateRange = (
     }
   }
 
-  return [
-    checkInDate,
-    new Date(flight?.inbound?.departureTime ?? event.def_date_return),
-  ];
+  // Checkout = return flight's departure calendar date. Guest takes the last
+  // night and checks out the morning of the flight.
+  const returnDepartureTime = flight?.inbound?.departureTime
+    ? new Date(flight.inbound.departureTime)
+    : null;
+
+  const checkOutDate = returnDepartureTime
+    ? new Date(returnDepartureTime)
+    : new Date(event.def_date_return);
+
+  return [checkInDate, checkOutDate];
 };

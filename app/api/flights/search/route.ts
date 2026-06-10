@@ -86,12 +86,16 @@ const transformDbFlightToFlight = (
   dbFlight: any,
   id: number,
   num_of_travelers: number
-): Flight => {
+): Flight | null => {
+  // Not enough remaining inventory for this party size — hide the flight
+  // entirely. Returning a placeholder ({}) here would propagate an invalid
+  // Flight to the client and crash flight rendering. Returning null lets the
+  // caller filter it out so the online flights still show.
   if (
     dbFlight.initial_quantity - dbFlight.consumed_quantity <
     num_of_travelers
   ) {
-    return {} as Flight;
+    return null;
   }
   return {
     offer: {} as Flight["offer"],
@@ -146,17 +150,23 @@ const transformDbFlightToFlight = (
 };
 
 const getOfflineFlightsFromDB = async (
-  destination: string,
+  eventId: number,
   depart_date: string,
   return_date: string,
   indexShift: number,
   num_of_travelers: number
 ): Promise<Flight[]> => {
   try {
+    // Offline flights are explicitly assigned to events via `event_ids` in the
+    // backoffice (same pattern as offline hotels). We must match on that link —
+    // NOT on the arrival airport. The event stores a city/metro code (e.g.
+    // "LON") while a flight row stores a specific airport (e.g. "LTN"), so an
+    // airport `.eq` would silently drop every London flight.
     const { data: flights, error } = await supabase
       .from("flights")
       .select("*")
-      .eq("outbound_arrival_airport", destination)
+      .contains("event_ids", [eventId])
+      .eq("is_deleted", false)
       .gte("outbound_departure_time", `${depart_date}T00:00:00`)
       .lt("outbound_departure_time", `${depart_date}T23:59:59`)
       .gte("inbound_departure_time", `${return_date}T00:00:00`)
@@ -166,13 +176,15 @@ const getOfflineFlightsFromDB = async (
 
     // Transform DB records to Flight objects
     return flights
-      ? flights.map((flight, index) =>
-          transformDbFlightToFlight(
-            flight,
-            index + indexShift,
-            num_of_travelers
+      ? flights
+          .map((flight, index) =>
+            transformDbFlightToFlight(
+              flight,
+              index + indexShift,
+              num_of_travelers
+            )
           )
-        )
+          .filter((f): f is Flight => f !== null)
       : ([] as Flight[]);
   } catch (error) {
     console.error("DB flights static data retrieval error:", error);
@@ -260,7 +272,7 @@ export async function POST(request: Request) {
     );
 
     const flights = await getOfflineFlightsFromDB(
-      event.location.city_iata,
+      event.id,
       departureDate,
       returnDate,
       0,

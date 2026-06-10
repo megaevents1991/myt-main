@@ -16,12 +16,11 @@ import { OrderContext } from "../app.context";
 import { DateRange } from "@/components/ui/dateInput";
 import RoomsAndGuestsInput from "@/components/ui/roomsAndGuestsInput";
 import { HotelCard } from "@/components/ui/hotelCard";
-import { Search, Settings2Icon } from "lucide-react";
+import { Search, SlidersHorizontal, DollarSign, Star, MapPin } from "lucide-react";
 import { useMediaQuery } from "@mantine/hooks";
 import { HotelFilters } from "@/components/ui/HotelFilters";
 import { applyFiltersAndSorting } from "@/lib/hotelFilter";
 import { FiltersModal } from "@/components/ui/FiltersModal";
-import { SortOptionsContainer } from "@/components/ui/SortOptionsContainer";
 import {
   Event,
   HotelSearchCriteria,
@@ -46,6 +45,7 @@ export const HotelSelection = () => {
     setSelectedHotelFilters,
     setSkipHotel,
     flightSkipped,
+    numberOfEventTickets,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -58,7 +58,14 @@ export const HotelSelection = () => {
       adults: number;
       children: number[];
     }[]
-  >(getRoomParams(planeTickets?.adults));
+    // Hotel party size follows the flight traveler count (planeTickets.adults),
+    // which is itself synced to the number of booked tickets at ticket
+    // selection. tickets → flight → hotel, one consistent headcount.
+    // Fall back to the ticket count when planeTickets isn't set yet (skip-flight
+    // / US / direct-to-hotel) — otherwise getRoomParams(undefined) returns [],
+    // collapsing the per-person divisor to 1 and showing the full room price
+    // (e.g. 940) as the per-traveler price instead of 470.
+  >(getRoomParams(planeTickets?.adults || numberOfEventTickets || 1));
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
@@ -91,6 +98,8 @@ export const HotelSelection = () => {
   >(getDefaultDateRange(event, flight));
   const [, startTransition] = useTransition();
   const [isProcessingHotels, setIsProcessingHotels] = useState(false);
+  const [hotelNameFilter, setHotelNameFilter] = useState("");
+  const [userInteracted, setUserInteracted] = useState(false);
 
   // Offline hotels — fetched from /api/offline-hotels and merged into the main
   // WorldOTA-style list so they render through the exact same <HotelCard>.
@@ -119,6 +128,42 @@ export const HotelSelection = () => {
     () => JSON.stringify(roomParams),
     [roomParams]
   );
+
+  // Correct a stale online hotel search. An early preload (OrderForm, on event
+  // load) fetches hotels with the default 2 guests — before the customer's real
+  // party size is known — and a stale-cache guard then blocks later refetches.
+  // If the cached search's guest count doesn't match the current party size,
+  // refetch once so prices, room capacity, and the selected hotel reflect the
+  // real headcount (this drove the "hotel only for 2" under-booking bug).
+  const guestCorrectedRef = useRef<string | null>(null);
+  const cachedGuestCount = getTotalPersons(
+    hotelsData?.data?.debug?.request?.guests || []
+  );
+  useEffect(() => {
+    if (event?.location?.country_code === "US") return;
+    const wantedGuests = getTotalPersons(roomParams);
+    if (!wantedGuests) return;
+    const hasHotels = !!hotelsData?.data?.data?.hotels;
+    if (hasHotels && cachedGuestCount === wantedGuests) {
+      guestCorrectedRef.current = roomParamsKey;
+      return;
+    }
+    // Only auto-correct once per party-size config to avoid a refetch loop if
+    // the API ever normalizes the guest array differently than requested.
+    if (guestCorrectedRef.current === roomParamsKey) return;
+    guestCorrectedRef.current = roomParamsKey;
+    getHotels(
+      {
+        dateRange,
+        location: event.location,
+        guests: roomParams,
+        radius: distanceRange[1] || 2000,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cachedGuestCount, roomParamsKey]);
 
   useEffect(() => {
     if (!event?.id) return;
@@ -350,6 +395,8 @@ export const HotelSelection = () => {
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
 
+    setUserInteracted(true);
+
     setSelectedHotelFilters((prev) => ({
       ...prev,
       [type]: value,
@@ -371,9 +418,7 @@ export const HotelSelection = () => {
         setPriceRange(filterValue);
         break;
       case "hotelName":
-        if (showFilters) {
-          setShowFilters(false);
-        }
+        setHotelNameFilter(value);
         break;
       case "meal":
         setMeal(value);
@@ -396,11 +441,19 @@ export const HotelSelection = () => {
     }
 
     startTransition(() => {
+      const combinedHotels = [
+        ...hotelsData.data.data.hotels,
+        ...offlineHotels,
+      ];
+      const combinedHotelsInfoForFilter = {
+        ...hotelsData.hotelsInfo,
+        ...offlineHotelsInfo,
+      };
       const hotelsToSet = applyFiltersAndSorting({
-        hotels: hotelsData.data.data.hotels,
+        hotels: combinedHotels,
         priceRange,
         rating,
-        hotelsInfo: hotelsData.hotelsInfo,
+        hotelsInfo: combinedHotelsInfoForFilter,
         meal,
         kind,
         freeCancellation,
@@ -441,25 +494,19 @@ export const HotelSelection = () => {
 
       const meta = isOffline ? offlineMeta[orderHotel.id] : null;
 
-      // Offline hotels must ride the flight-aligned dateRange, not the static
-      // check_in/check_out stored on the offline_hotels row. Online hotels
-      // already get flight-aligned dates via the WorldOTA search request.
-      const offlineCheckin = dateRange[0]
-        ? dayjs(dateRange[0]).format("YYYY-MM-DD")
-        : hotelsData?.data?.debug?.request?.checkin ?? "";
-      const offlineCheckout = dateRange[1]
-        ? dayjs(dateRange[1]).format("YYYY-MM-DD")
-        : hotelsData?.data?.debug?.request?.checkout ?? "";
-
+      // Offline hotels carry the inventory row's own fixed check_in/check_out
+      // (exact-matched to the flight by /api/offline-hotels). The order stores
+      // those real dates so it never silently diverges from the held block.
+      // Online hotels get flight-aligned dates via the WorldOTA search request.
       setHotel({
         ...orderHotel,
         hotelInformation,
         guests: meta ? roomParams : hotelsData?.data?.debug?.request?.guests,
         checkin: isOffline
-          ? offlineCheckin
+          ? meta?.checkin ?? ""
           : hotelsData?.data?.debug?.request?.checkin,
         checkout: isOffline
-          ? offlineCheckout
+          ? meta?.checkout ?? ""
           : hotelsData?.data?.debug?.request?.checkout,
         ...(isOffline && meta && {
           isOffline: true,
@@ -469,7 +516,7 @@ export const HotelSelection = () => {
         }),
       });
     },
-    [hotelsData, offlineHotelsInfo, offlineMeta, roomParams, setHotel, dateRange]
+    [hotelsData, offlineHotelsInfo, offlineMeta, roomParams, setHotel]
   );
 
   const handleSetRooms = (room: {
@@ -524,18 +571,49 @@ export const HotelSelection = () => {
       roomParams.reduce(
         (sum, r) => sum + r.adults + r.children.length,
         0
-      ) || 1,
-    [roomParams]
+      ) ||
+      numberOfEventTickets ||
+      1,
+    [roomParams, numberOfEventTickets]
   );
 
   const displayHotels = useMemo(() => {
+    if (userInteracted) {
+      return filteredHotels;
+    }
     const online = filteredHotels.filter((h) => !h.isOffline);
-    return [...offlineHotels, ...online];
-  }, [offlineHotels, filteredHotels]);
+    const nameQuery = hotelNameFilter.trim().toUpperCase();
+    const offline = nameQuery
+      ? offlineHotels.filter((h) =>
+          offlineHotelsInfo[h.id]?.metadata?.hotelName
+            ?.toUpperCase()
+            .includes(nameQuery)
+        )
+      : offlineHotels;
+    return [...offline, ...online];
+  }, [
+    userInteracted,
+    offlineHotels,
+    offlineHotelsInfo,
+    filteredHotels,
+    hotelNameFilter,
+  ]);
 
   const mergedHotelsInfo = useMemo(
     () => ({ ...hotelsData.hotelsInfo, ...offlineHotelsInfo }),
     [hotelsData.hotelsInfo, offlineHotelsInfo]
+  );
+
+  const hotelNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          Object.values(mergedHotelsInfo)
+            .map((h) => h?.metadata?.hotelName)
+            .filter((name): name is string => !!name)
+        )
+      ),
+    [mergedHotelsInfo]
   );
 
   // Default-select the cheapest offline hotel once it loads (and nothing is selected yet)
@@ -589,6 +667,7 @@ export const HotelSelection = () => {
               hotelInfo={mergedHotelsInfo[hotel.id]}
               handleSelect={() => setSelectedHotelId(hotel.id)}
               handleSelectedRate={handleSelectedRate}
+              isPromoted={hotel.isOffline}
             />
           )
       ),
@@ -618,6 +697,8 @@ export const HotelSelection = () => {
           meal={meal}
           kind={kind}
           hotelKindOptions={hotelKinds}
+          hotelNames={hotelNames}
+          onApply={() => setShowFilters(false)}
         />
       </FiltersModal>
       <div className="flex flex-col w-full items-center">
@@ -724,6 +805,124 @@ export const HotelSelection = () => {
           </div>
         </div>
       </div>
+      <div dir="rtl" className="px-4 lg:px-6">
+        <Skeleton visible={isFetching || isProcessingHotels}>
+          {/* Desktop: 3 cards in a row */}
+          <div
+            className="hidden lg:grid lg:grid-cols-3 gap-3"
+            role="tablist"
+            aria-label="מיון מלונות"
+          >
+            {([
+              { key: "price_asc" as const, title: "הזול ביותר", sub: "המחיר הנמוך ביותר", Icon: DollarSign },
+              { key: "rating" as const, title: "כוכבים", sub: "הדירוג הגבוה ביותר", Icon: Star },
+              { key: "distance_asc" as const, title: "הקרוב ביותר", sub: "הקרוב למרכז העיר", Icon: MapPin },
+            ]).map(({ key, title, sub, Icon }) => {
+              const isActive = sortOption === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() =>
+                    handleSearchCriteriaChange({
+                      value: key,
+                      type: "sortOption",
+                    })
+                  }
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
+                    isActive
+                      ? "border-secondary bg-secondary/10"
+                      : "border-gray-200 bg-white hover:border-secondary"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
+                      isActive ? "bg-secondary" : "bg-gray-100"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-[18px] h-[18px] transition-colors",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span className="flex flex-col items-end flex-1 min-w-0">
+                    <span className="font-bold text-sm text-gray-900">{title}</span>
+                    <span className="text-[11px] text-gray-500 mt-0.5">{sub}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile: filter icon + 3 sort pills in one row */}
+          <div className="flex lg:hidden items-stretch gap-1.5 w-full">
+            <button
+              type="button"
+              aria-label="פתח פילטרים"
+              onClick={() => setShowFilters(true)}
+              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-secondary hover:bg-secondary/10 transition-colors"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-gray-900" strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            <div
+              role="tablist"
+              aria-label="מיון מלונות"
+              className="flex-1 flex bg-white border border-gray-200 rounded-md p-[3px] gap-[2px] min-w-0"
+            >
+              {([
+                { key: "price_asc" as const, label: "הזול ביותר", Icon: DollarSign },
+                { key: "rating" as const, label: "כוכבים", Icon: Star },
+                { key: "distance_asc" as const, label: "הקרוב ביותר", Icon: MapPin },
+              ]).map(({ key, label, Icon }) => {
+                const isActive = sortOption === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() =>
+                      handleSearchCriteriaChange({
+                        value: key,
+                        type: "sortOption",
+                      })
+                    }
+                    className={cn(
+                      "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
+                      isActive ? "bg-secondary" : "hover:bg-gray-50"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "w-3.5 h-3.5 flex-shrink-0",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold whitespace-nowrap",
+                        isActive ? "text-white" : "text-gray-900"
+                      )}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Skeleton>
+      </div>
       <div
         className={cn(
           "flex flex-row lg:gap-4 gap-2 flex-row-reverse items-start w-full",
@@ -737,59 +936,6 @@ export const HotelSelection = () => {
           )}
           ref={filterRef}
         >
-          {" "}
-          <Skeleton visible={isFetching || isProcessingHotels}>
-            <SortOptionsContainer
-              sortOptions={
-                <div className="flex items-center border-2 border-gray-200 shadow-lg rounded-lg">
-                  <button
-                    className={cn(
-                      "font-bold px-6 py-1 rounded-r-md",
-                      sortOption === "price_asc" && "text-white bg-main"
-                    )}
-                    onClick={() =>
-                      handleSearchCriteriaChange({
-                        value: "price_asc",
-                        type: "sortOption",
-                      })
-                    }
-                    type="button"
-                    aria-label="מיין לפי מחיר"
-                    aria-pressed={sortOption === "price_asc"}
-                  >
-                    מחיר
-                  </button>
-                  <button
-                    className={cn(
-                      "font-bold px-6 py-1 rounded-l-md",
-                      sortOption === "rating" && "text-white bg-main"
-                    )}
-                    onClick={() =>
-                      handleSearchCriteriaChange({
-                        value: "rating",
-                        type: "sortOption",
-                      })
-                    }
-                    type="button"
-                    aria-label="מיין לפי דירוג כוכבים"
-                    aria-pressed={sortOption === "rating"}
-                  >
-                    כוכבים
-                  </button>
-                </div>
-              }
-              settings={
-                <button
-                  className="flex items-center border-2 p-2 border-gray-200 shadow-lg rounded-lg"
-                  type="button"
-                  aria-label="הגדרות מסננים"
-                  onClick={() => setShowFilters(true)}
-                >
-                  <Settings2Icon />
-                </button>
-              }
-            />
-          </Skeleton>
           {matches && (
             <Skeleton visible={isFetching || isProcessingHotels}>
               <HotelFilters
@@ -803,20 +949,26 @@ export const HotelSelection = () => {
                 meal={meal}
                 kind={kind}
                 hotelKindOptions={hotelKinds}
+                hotelNames={hotelNames}
               />
             </Skeleton>
           )}
         </div>{" "}
-        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
+        <ScrollArea.Autosize mah={matches ? scrollerHeight : undefined} className="w-full lg:w-3/4">
           <div className="grid grid-cols-1 py-4 lg:py-0 lg:gap-4 gap-6 items-start">
-            {isFetching && (!hotelsData?.data?.data?.hotels || hotelsData?.data?.data?.hotels.length === 0) && offlineHotels.length === 0 ? (
+            {isFetching && offlineHotels.length === 0 ? (
+              // Show the branded loading animation for ANY active fetch (same as
+              // the flight step), not only first load. Prefetch now survives into
+              // this step, so hotelsData is often already populated when a refetch
+              // (dates/guests/distance) runs — gating on "no hotels" used to drop
+              // us into the plain skeleton branch and lose the animation.
               <FlightLoadingTransition
                 title={flightSkipped ? "מחפשים לכם את המלונות הטובים ביותר" : "!?כבר הספקתם לבחור טיסות"}
                 subtitle={flightSkipped ? "ממש עוד רגע יופיעו המלונות" : "ממש עוד רגע יופיעו גם המלונות"}
                 showHotelOnly
                 className="py-12"
               />
-            ) : (isProcessingHotels || isFetching) && offlineHotels.length === 0 ? (
+            ) : isProcessingHotels && offlineHotels.length === 0 ? (
               Array.from({ length: 4 }, (_, i) => (
                 <div key={i} className="flex justify-center">
                   <Skeleton className="p-28" />

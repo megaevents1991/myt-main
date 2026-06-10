@@ -19,6 +19,7 @@ import { shortenAirlineName } from "./order-review.utils";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
+import { getTotalMarkup } from "@/lib/events/price";
 
 const buttonText: Record<number, string> = {
   1: "לבחירת טיסה",
@@ -48,6 +49,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     hotel,
     eventTicket,
     numberOfEventTickets,
+    currentMinTicketPrice,
     planeTickets,
     selectedPlaneTicketsFilters,
     selectedHotelFilters,
@@ -90,12 +92,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
     if (isUS) return;
     if (!event?.id) return;
     if (hotelsData?.data?.data?.hotels) return;
-    getHotels({
-      dateRange: getDefaultDateRange(event, undefined),
-      guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
-      location: event.location,
-      eventId: event.id,
-    });
+    getHotels(
+      {
+        dateRange: getDefaultDateRange(event, undefined),
+        guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
+        location: event.location,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.id]);
 
@@ -122,11 +127,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const ticketCategory = eventTicket.category;
 
-  const minTicketPrice =
-    event.tickets_and_rates?.length > 0
-      ? Math.min(...event.tickets_and_rates
-          .filter(ticket => ticket.available !== false)
-          .map((ticket) => ticket.price)) : 0;
+  const availableTickets = (event.tickets_and_rates || []).filter(
+    (ticket) => ticket.available !== false
+  );
+
+  const dbMinTicketPrice =
+    availableTickets.length > 0
+      ? Math.min(...availableTickets.map((ticket) => ticket.price))
+      : 0;
+
+  const minTicketPrice = currentMinTicketPrice || dbMinTicketPrice;
 
   const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 
@@ -134,7 +144,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
     event.base_flight_price +
       event.base_hotel_price +
       minTicketPrice +
-      Number(process.env.NEXT_PUBLIC_MARKUP || "150")
+      getTotalMarkup(event)
   ).toLocaleString("en-US");
 
   const nextStep = (skipHotel = false) =>
@@ -284,12 +294,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
     trackEvent("flightSelected", { skipped: true, numOfPeople: numberOfPersons });
     // No flight selected → fetch hotels with event default dates
     if (!isUS && !hotelsData?.data?.data?.hotels) {
-      getHotels({
-        dateRange: getDefaultDateRange(event, undefined),
-        guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
-        location: event.location,
-        eventId: event.id,
-      });
+      getHotels(
+        {
+          dateRange: getDefaultDateRange(event, undefined),
+          guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
+          location: event.location,
+          eventId: event.id,
+        },
+        { immediate: true }
+      );
     }
     setStep((prev) => prev + 1);
   };

@@ -29,6 +29,8 @@ export const applyFiltersAndSorting = ({
   const inRange = (value: number, [min, max]: [number, number]) =>
     value >= min && value <= max;
 
+  const nameOverride = !!hotelName;
+
   const filteredHotels = hotels
     .filter((hotel) => {
       const priceLow =
@@ -82,6 +84,10 @@ export const applyFiltersAndSorting = ({
       const matchesPriceRange =
         inRange(priceLow, priceRange) || inRange(priceHigh, priceRange);
 
+      if (nameOverride) {
+        return matchesName;
+      }
+
       return (
         matchesPriceRange &&
         matchesRating &&
@@ -93,6 +99,10 @@ export const applyFiltersAndSorting = ({
       );
     })
     .map((hotel) => {
+      if (nameOverride) {
+        return hotel;
+      }
+
       const filteredRates = hotel.rates.filter((rate) => {
         const price = +rate.payment_options?.payment_types[0]?.show_amount;
 
@@ -141,6 +151,11 @@ export const hotelSort = (
       case "rating":
         return (
           hotelsInfo[b.id].metadata.rating - hotelsInfo[a.id].metadata.rating
+        );
+      case "distance_asc":
+        return (
+          (hotelsInfo[a.id]?.metadata.distanceFromCenter ?? Infinity) -
+          (hotelsInfo[b.id]?.metadata.distanceFromCenter ?? Infinity)
         );
 
       default:

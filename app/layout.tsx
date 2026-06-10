@@ -238,6 +238,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                           { href: "/about", label: "אודותינו" },
                           { href: "/faq", label: "שאלות נפוצות" },
                           { href: "/artists", label: "האומנים שלנו" },
+                          { href: "/blog", label: "הבלוגים שלנו" },
                           { href: "/football", label: "הקבוצות שלנו" },
                           { href: "/terms", label: "תנאי שימוש" },
                           { href: "/privacy", label: "מדיניות פרטיות" },

@@ -39,6 +39,7 @@ export type Event = {
   is_deleted: string;
   tags: string;
   tx_excluded_sections?: string[];
+  event_additional_markup?: number | null;
 };
 
 export type Flight = {
@@ -149,7 +150,7 @@ export type AffiliateTracking = {
   timestamp: string;
 };
 
-export type SortOptions = "price_asc" | "rating";
+export type SortOptions = "price_asc" | "rating" | "distance_asc";
 
 export type HotelSearchCriteria =
   | {
@@ -272,6 +273,7 @@ export type OrderData = {
     number_of_ticket: number;
     category: string;
     event_tags?: string;
+    event_additional_markup?: number | null;
     price_per_ticket: number;
     total_tickets_price: number;
     vendor?: string;
@@ -364,6 +366,44 @@ export type FootballFields = {
     name: string;
     nameDBenglish: string;
     seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
+    sys: EntryFieldTypes.Object<{
+      id: string;
+    }>;
+  };
+};
+
+export type BlogTemplateFields = {
+  contentTypeId: "blogTemplate";
+  fields: {
+    name: string;
+    title: string;
+    previewText: string;
+    byWho?: string;
+    heroBanner?: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: {
+            image?: {
+              height?: number;
+              width?: number;
+            };
+          };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    mainContent: EntryFieldTypes.Object<{
+      content: {
+        content: {
+          value?: string;
+        }[];
+      }[];
+    }>;
+    seoTitleTag?: string;
     metaDescription?: string;
     metaTags?: string;
     sys: EntryFieldTypes.Object<{
