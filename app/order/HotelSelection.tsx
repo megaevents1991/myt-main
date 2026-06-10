@@ -760,7 +760,7 @@ export const HotelSelection = () => {
                         </div>
                       ))}
                       <button
-                        className="text-secondary px-2 text-left"
+                        className="text-success px-2 text-left"
                         onClick={() =>
                           setRoomParams((prev) => [
                             ...prev,

@@ -397,7 +397,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   )}
 
                   {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
+                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-success text-md">
                     {step > 2 && !flightSkipped && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">

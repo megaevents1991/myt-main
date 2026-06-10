@@ -224,8 +224,8 @@ export const HotelCard = memo(
           {/* Mobile pricing element - similar to FlightTicketCard */}
           <div
             className={cn(
-              "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
-              isSelected && "bg-secondary text-white"
+              "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-success rounded-2xl px-3 py-1 text-sm",
+              isSelected && "bg-secondary text-secondary-foreground"
             )}
           >
             {priceOutsidePackBoundariesMobile ? (

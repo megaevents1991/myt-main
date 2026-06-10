@@ -29,7 +29,7 @@ export const RoomCard = ({
       <div
         className={cn(
           "py-1 w-full flex flex-col items-right cursor-pointer hover:font-bold border-b border-gray-200 text-sm flex flex-row justify-between items-center",
-          isSelected && "text-secondary font-bold"
+          isSelected && "text-success font-bold"
         )}
       >
         <div className="font-extrabold">

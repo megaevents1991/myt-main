@@ -20,7 +20,7 @@ export const MobileHeader = ({
       >
         <LuAlarmClockCheck className="text-yellow-700" size={20} />
         ההזמנה שמורה עבורך למשך
-        <span className="text-secondary">
+        <span className="text-success font-bold">
           <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
         </span>
         דקות

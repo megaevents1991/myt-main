@@ -38,7 +38,7 @@ export const CardWrapper = ({
         "[&:focus-visible]:outline-none [&:focus-visible]:ring-0",
         !isSelected && "focus:border-gray-200 active:border-gray-200",
         isSelected &&
-          "border-secondary bg-[#277E890D] focus:border-secondary active:border-secondary",
+          "border-secondary bg-[#20B6550D] focus:border-secondary active:border-secondary",
         disabled &&
           "cursor-not-allowed border-gray-300 bg-gray-100 opacity-60 grayscale shadow-none hover:shadow-none hover:outline-none",
         className

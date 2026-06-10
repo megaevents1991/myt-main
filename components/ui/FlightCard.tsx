@@ -46,7 +46,10 @@ const StopsString = (
     <span>
       <span
         style={{
-          color: stops.length - 1 > 0 ? "#FF3B30" : "#277E89",
+          color:
+            stops.length - 1 > 0
+              ? "hsl(var(--destructive))"
+              : "hsl(var(--success))",
           textDecoration:
             stops.length - 1 > 0 && isMobile ? "underline" : "none",
         }}
@@ -106,7 +109,7 @@ const LuggageButton = ({
     <button
       className={cn(
         "bg-gray-200 rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
-        isSelected && "bg-[#277E892e]"
+        isSelected && "bg-primary/15"
       )}
       type="button"
       aria-label={`מידע על מזוודות: תיק יד כלול, ${
@@ -159,7 +162,7 @@ const LuggageButton = ({
           <div className="border-b w-full border-gray-400"></div>
 
         <div className="text-xs font-bold flex items-center justify-center gap-1 w-full ">
-          <InfoIcon fill={isSelected ? "#277E89" : "grey"} />
+          <InfoIcon fill={isSelected ? "#20B655" : "grey"} />
         </div>
            */}
       </div>
@@ -233,8 +236,8 @@ export const FlightTicketCard = memo(
             {/* Mobile pricing element */}
             <div
               className={cn(
-                "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
-                isSelected && "bg-secondary text-white"
+                "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-success rounded-2xl px-3 py-1 text-sm",
+                isSelected && "bg-secondary text-secondary-foreground"
               )}
             >
               {priceOutsidePackBoundries ? (
@@ -475,7 +478,7 @@ export const FlightMeta = ({
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
           <Tooltip label="נחיתה ביום למחרת" position="top">
-            <span className="text-xs mr-1 text-secondary absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
+            <span className="text-xs mr-1 text-success absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
               {plusOne ? "1+" : ""}
             </span>
           </Tooltip>

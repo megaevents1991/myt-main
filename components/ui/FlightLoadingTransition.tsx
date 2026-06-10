@@ -45,7 +45,7 @@ export const FlightLoadingTransition = ({ className, title, subtitle, showHotelO
         <div className="animate-bounce motion-reduce:animate-none flex items-center justify-center w-16 h-16">
           <Hotel 
             size={48} 
-            className="text-secondary" 
+            className="text-success"
             aria-hidden="true"
           />
         </div>

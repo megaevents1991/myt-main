@@ -48,3 +48,6 @@ node_modules
 
 # Figma reference art (design alignment, not shipped)
 .figma_ref/
+
+# MCP
+.playwright-mcp
