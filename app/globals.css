@@ -152,6 +152,30 @@
   background-color: hsl(var(--primary) / 0.1);
 }
 
+/* Aurora — flowing neon gradient-mesh background (signature motif, Elevation #1).
+   Each blob drifts on its own slow loop; mix-blend-mode: screen makes the neons
+   glow on dark surfaces. GPU-friendly (transform/opacity only). */
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(12%, 8%, 0) scale(1.18); }
+  66% { transform: translate3d(-8%, 14%, 0) scale(0.92); }
+}
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  40% { transform: translate3d(-14%, -10%, 0) scale(0.88); }
+  75% { transform: translate3d(10%, -6%, 0) scale(1.2); }
+}
+@keyframes aurora-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50% { transform: translate3d(16%, -12%, 0) scale(1.25); }
+}
+
+/* Footer wordmark marquee (Elevation #7) */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 /* Screen reader only content */
 .sr-only {
   position: absolute;

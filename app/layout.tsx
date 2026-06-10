@@ -15,6 +15,7 @@ import { AuthProvider } from "./hooks/AuthContext";
 import MixpanelProvider from "./hooks/Mixpanel";
 import { Header } from "@/components/Header";
 import { SocialLinks } from "@/components/ui/SocialLinks";
+import { FooterMarquee } from "@/components/ui/FooterMarquee";
 
 // Body face. Assistant mirrors the Figma body (Inter) feel while rendering Hebrew
 // RTL correctly — free Google substitute for the brand-book body font.
@@ -226,6 +227,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 <Header />
                 <main id="main-content">{children}</main>
                 <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6">
+                  <FooterMarquee />
                   <div className="container mx-auto">
                     <p className="mb-6 text-sm text-main-foreground/80">
                       לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר

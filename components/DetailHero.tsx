@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { TrustBadges } from "@/components/ui/TrustBadges";
+import { Aurora } from "@/components/ui/Aurora";
 
 /**
  * Split detail-hero for artist / football pages — dark surface, cutout image
@@ -25,11 +26,12 @@ export const DetailHero = ({
   ctaHref?: string;
   ctaLabel?: string;
 }) => (
-  <section className="bg-main text-main-foreground">
-    <div className="container mx-auto grid items-center gap-8 px-4 py-10 md:grid-cols-2 md:py-16">
+  <section className="relative overflow-hidden bg-main text-main-foreground">
+    <Aurora intensity={0.4} />
+    <div className="container relative z-10 mx-auto grid items-center gap-8 px-4 py-10 md:grid-cols-2 md:py-16">
       {imageUrl && (
         <div className="relative mx-auto w-full max-w-sm md:max-w-md">
-          <div className="absolute inset-0 -rotate-6 rounded-[40%_60%_55%_45%/55%_45%_60%_40%] bg-primary" />
+          <div className="absolute inset-0 -rotate-6 rounded-[40%_60%_55%_45%/55%_45%_60%_40%] bg-primary shadow-[0_0_60px_-10px_hsl(var(--brand-mint)/0.6)]" />
           <div className="relative aspect-square overflow-hidden rounded-[40%_60%_55%_45%/55%_45%_60%_40%]">
             <Image
               src={imageUrl}

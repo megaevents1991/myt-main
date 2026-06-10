@@ -25,6 +25,7 @@ import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { TrustBadges } from "@/components/ui/TrustBadges";
+import { Aurora } from "@/components/ui/Aurora";
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english"], // Fields to search in
@@ -1180,10 +1181,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           </form>
         )}
       </Modal>
-      <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative" role="banner">
-        <div className="container mx-auto max-w-4xl text-center">
+      <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
+        <Aurora intensity={0.5} />
+        <div className="container relative z-10 mx-auto max-w-4xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
-          <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
+          <h1 className="font-display text-3xl font-bold sm:text-4xl md:text-5xl mb-1 lg:mb-4">
             {/* Mobile: האירועים first, then במקום */}
             <span className="inline-block whitespace-nowrap md:hidden">האירועים הכי שווים בעולם</span>
             <span className="text-secondary whitespace-nowrap text-5xl md:hidden">
@@ -1203,14 +1205,16 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           <TrustBadges className="justify-center text-main-foreground/80 mb-6" />
         </div>
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
-        <HeroCarousel artists={carouselArtists ?? artists} />
+        <div className="relative z-10">
+          <HeroCarousel artists={carouselArtists ?? artists} />
+        </div>
         {/* Accessibility: Enhanced search form with proper labeling and instructions */}
         <div
           ref={searchContainerRef}
           className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 ${
             isSticky
               ? "fixed top-0 left-0 right-0 z-50 bg-card py-4 shadow-card transition-all duration-300"
-              : "absolute bottom-0 left-0 right-0 transform translate-y-1/2"
+              : "absolute bottom-0 left-0 right-0 z-10 transform translate-y-1/2"
           } min-w-70`}
           role="search"
           aria-label="חיפוש אירועים"

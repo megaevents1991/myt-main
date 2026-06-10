@@ -38,7 +38,7 @@ export const EventCard = ({
       role="listitem"
     >
       <EventButton event={event}>
-        <article className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-shadow hover:shadow-card-hover">
+        <article className="group flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_14px_36px_-10px_hsl(var(--brand-mint)/0.4)]">
           <div className="flex items-start justify-between gap-3">
             <span
               className={`text-2xl font-extrabold ${

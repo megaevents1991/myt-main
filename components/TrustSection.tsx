@@ -40,9 +40,9 @@ export const TrustSection = () => (
         {pillars.map(({ Icon, title, desc }) => (
           <div
             key={title}
-            className="flex flex-col items-center gap-3 rounded-2xl bg-main p-8 text-main-foreground"
+            className="flex flex-col items-center gap-3 rounded-2xl bg-main p-8 text-main-foreground transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_16px_40px_-12px_hsl(var(--brand-mint)/0.45)]"
           >
-            <div className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <div className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_0_24px_-4px_hsl(var(--brand-mint)/0.7)]">
               <Icon className="size-7" aria-hidden />
             </div>
             <h3 className="font-display text-lg font-bold">{title}</h3>

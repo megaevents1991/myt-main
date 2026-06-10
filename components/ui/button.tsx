@@ -11,7 +11,7 @@ const buttonVariants = cva(
       variant: {
         // Mint CTA — primary action (detail-hero "לפרטים והזמנה")
         default:
-          "bg-primary text-primary-foreground shadow-card hover:bg-primary/90",
+          "bg-primary text-primary-foreground shadow-card hover:bg-primary/90 hover:shadow-[0_6px_24px_-4px_hsl(var(--brand-mint)/0.55)]",
         // Dark pill — card CTA ("לפרטים והזמנה" / "בחרו תאריך" on cards)
         pill: "rounded-full bg-main text-main-foreground hover:bg-main/90",
         destructive:

@@ -33,21 +33,21 @@ export const PriceSummary = ({
   });
 
   return (
-    <div className="flex flex-row justify-between items-center py-4 px-6 border-b border-gray-400">
+    <div className="flex flex-row justify-between items-center py-4 px-6 border-b border-border">
       <div>
         <div className="flex justify-between items-baseline w-full text-[18px] gap-2 font-bold">
-          <span className="text-xl" data-testid="order-total">
+          <span className="text-xl tabular-nums" data-testid="order-total">
             ${formattedFinalPurchasePrice}
           </span>
           {originalNoDiscount && (
-            <span className="line-through text-[red]">
+            <span className="line-through tabular-nums text-destructive">
               ${originalNoDiscount}
             </span>
           )}
         </div>
-        <div className="flex justify-left items-center w-full text-lg font-semibold text-gray-500 gap-1">
+        <div className="flex justify-left items-center w-full text-lg font-semibold text-muted-foreground gap-1">
             <span>(לאדם</span>
-            <span>${pricePerPerson})</span>
+            <span className="tabular-nums">${pricePerPerson})</span>
         </div>
         {/* <div dir="rtl" className="text-left">
           {formattedFinalPurchasePriceILS} ש&quot;ח
@@ -56,7 +56,7 @@ export const PriceSummary = ({
       <div className="flex flex-col items-start font-bold" dir="rtl">
         <span className="text-[22px] ">סה&quot;כ</span>
         {agentCommission > 0 ? (
-          <span className="text-[14px]" style={{ color: "green" }}>
+          <span className="text-[14px] tabular-nums text-success">
             עמלה צפויה $
             {((agentCommission / 100) * finalPurchasePrice).toLocaleString(
               "en-US"
@@ -64,7 +64,7 @@ export const PriceSummary = ({
           </span>
         ) : (
           affDiscount > 0 && (
-            <span className="text-[14px]" style={{ color: "green" }}>
+            <span className="text-[14px] tabular-nums text-success">
               כולל הנחת $
               {affDiscount.toLocaleString("en-US")}
             </span>
