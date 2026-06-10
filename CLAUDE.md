@@ -22,6 +22,18 @@ yarn lint       # ESLint
 
 No test runner is configured yet (no test script in `package.json`).
 
+**Build gotchas:**
+- Uses **yarn**. If `yarn` missing on PATH: `corepack enable && corepack prepare yarn@stable --activate`. Fresh checkout: `yarn install` first (`node_modules` not committed).
+- yarn may auto-migrate to v4 on install (rewrites `yarn.lock`, adds `.yarnrc.yml`) — `git restore yarn.lock && rm .yarnrc.yml` if you only meant to build.
+- `yarn build` needs `.env.local` or fails at "Collecting page data" with `Error: supabaseUrl is required`. Compile + typecheck run *before* that step, so this error still confirms the code is type-valid.
+
+## Deployment (Vercel)
+
+- Vercel team `mega-events`, project **`mega-events-platform`**. Deploys from `origin` = **`megaevents1991/myt-main`** (cut over from `giladlesh/MYT` on 2026-06-10).
+- Production branch: `main`. Primary domain: `www.mega-events.co.il` (apex 308→www).
+- Branch `mondial` auto-deploys to `mondial2026.mega-events.co.il` — keep that branch alive.
+- No `vercel.json`; all build/env/domain config is dashboard-managed.
+
 ## Environment Variables
 
 Required in `.env.local`:
