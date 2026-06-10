@@ -10,7 +10,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { ArrowLeftIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeftIcon, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { EventFilters } from "@/components/ui/EventFilters";
 import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
@@ -698,6 +699,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
     }, 100);
   };
 
+  // Let the global Header open this search modal (it dispatches myt:open-search),
+  // and support landing with ?search=open from another page.
+  useEffect(() => {
+    const open = () => setShowSearchModal(true);
+    window.addEventListener("myt:open-search", open);
+    if (new URLSearchParams(window.location.search).get("search") === "open") {
+      open();
+    }
+    return () => window.removeEventListener("myt:open-search", open);
+  }, []);
+
   const handleSearchPromptClick = () => {
     // On mobile, just open the search modal directly
     if (!matches) {
@@ -1133,10 +1145,10 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
       </Modal>
       <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
-        {/* Logo sits in-flow at the hero top (right in RTL); visible while the header is hidden */}
-        <div className="container relative z-20 mx-auto mb-2 flex">
+        {/* Logo centered at the hero top (per Figma); visible while the header is hidden */}
+        <div className="container relative z-20 mx-auto mb-3 flex justify-center">
           <Link href="/" aria-label="MegaEvents — דף הבית">
-            <MYT className="h-8 w-auto text-main-foreground md:h-9" />
+            <MYT className="h-9 w-auto text-main-foreground md:h-11" />
           </Link>
         </div>
         <div className="container relative z-10 mx-auto max-w-3xl text-center">
@@ -1164,75 +1176,33 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
         {/* Trust row — sits under the gallery, per Dor's layout note */}
-        <TrustBadges className="relative z-10 mt-5 justify-center text-main-foreground/80" />
-        {/* Accessibility: Enhanced search form with proper labeling and instructions */}
-        <div
-          id="search"
-          ref={searchContainerRef}
-          className={`w-full max-w-sm px-4 lg:max-w-xl mx-auto space-y-2 scroll-mt-28 ${
-            isSticky
-              ? "fixed top-0 left-0 right-0 z-50 bg-card py-4 shadow-card transition-all duration-300"
-              : "absolute bottom-0 left-0 right-0 z-10 transform translate-y-1/2"
-          } min-w-70`}
-          role="search"
-          aria-label="חיפוש אירועים"
-        >
-          <form
-            className={`flex center shadow-md ${
-              isSticky ? "max-w-xl mx-auto" : ""
-            }`}
-            dir="rtl"
-            role="search"
+        <TrustBadges className="relative z-10 mt-6 justify-center text-main-foreground/80" />
+      </section>
+
+      {/* Search + quick-filter chips section (per Figma) */}
+      <section
+        id="search"
+        className="w-full bg-main px-4 pb-10 pt-2 text-main-foreground md:px-6"
+        role="search"
+        aria-label="חיפוש וסינון אירועים"
+      >
+        <div className="container mx-auto flex max-w-3xl flex-col items-center gap-5">
+          <button
+            type="button"
+            onClick={handleSearchModalOpen}
+            className="flex h-12 w-full items-center gap-2 rounded-full bg-card px-5 text-base text-muted-foreground shadow-card transition-shadow hover:shadow-card-hover"
+            aria-label="פתיחת חיפוש אירועים"
           >
-            {!matches ? (
-              <input
-                onFocus={(e) => {
-                  handleSearchModalOpen();
-                  e.target.blur();
-                }}
-                onChange={(e) => setSearchValue(e.target.value)}
-                value={searchValue}
-                placeholder="חפש אירוע..."
-                type="text"
-                className={`w-2/3 rounded-r-lg rounded-l-none p-2 text-foreground border border-input bg-card placeholder:text-muted-foreground ${
-                  isSticky ? "ring-2 ring-ring" : ""
-                }`}
-                aria-label="חיפוש אירועים - לחץ לפתיחת חיפוש מלא עם הצעות"
-                aria-describedby="search-instructions-main"
-                role="searchbox"
-              />
-            ) : (
-              <SearchCombobox
-                inline
-                events={initialEvents}
-                footballTeams={footballTeams}
-                artists={artists}
-                searchValue={searchValue}
-                setSearchValue={setSearchValue}
-                ref={ref}
-                onOpenFeedbackModal={() => setShowFeedbackModal(true)}
-              />
-            )}
-            <button
-              className="w-1/3 bg-primary text-primary-foreground font-bold rounded-l-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring"
-              onClick={(e) => {
-                e.preventDefault();
-                if (!matches) {
-                  handleSearchModalOpen();
-                } else {
-                  ref.current?.focus();
-                }
-              }}
-              type="button"
-              aria-label="התחל לחפש אירועים - פתח את חלון החיפוש המלא"
-            >
-              התחילו לתכנן!
-            </button>
-          </form>
-          {/* Accessibility: Hidden instructions for screen readers */}
-          <div id="search-instructions-main" className="sr-only">
-            שדה חיפוש לאירועים. במכשירים ניידים יפתח חלון חיפוש מלא, במחשב יציג הצעות חיפוש בזמן אמת.
-          </div>
+            <Search className="size-5 shrink-0" aria-hidden />
+            <span>חיפוש אירוע</span>
+          </button>
+          <EventFilters
+            events={initialEvents}
+            onPick={(term) => {
+              setSearchValue(term);
+              handleSearchModalOpen();
+            }}
+          />
         </div>
       </section>
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">

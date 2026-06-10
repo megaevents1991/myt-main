@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
@@ -18,6 +19,18 @@ const navLinks = [
 
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+
+  // Open the search modal directly. On the homepage the open-search event is
+  // handled in place; elsewhere we route home and request it via the URL.
+  const openSearch = () => {
+    setMenuOpen(false);
+    if (typeof document !== "undefined" && document.getElementById("search")) {
+      window.dispatchEvent(new CustomEvent("myt:open-search"));
+    } else {
+      router.push("/?search=open");
+    }
+  };
   // Header stays hidden over the hero (which has its own search) and slides in
   // once the user scrolls down, keeping the top of the page clean.
   const [shown, setShown] = useState(false);
@@ -54,15 +67,16 @@ export const Header = () => {
           <MYT className="h-8 w-auto md:h-9" />
         </Link>
 
-        {/* Single search entry — links to the on-page search box */}
-        <Link
-          href="/#search"
+        {/* Search — opens the search modal directly */}
+        <button
+          type="button"
+          onClick={openSearch}
           aria-label="חיפוש אירוע"
           className="mx-auto flex h-10 w-full max-w-md items-center gap-2 rounded-full bg-card px-4 text-sm text-muted-foreground transition-shadow hover:shadow-card"
         >
           <Search className="size-4 shrink-0" aria-hidden />
           <span>חיפוש אירוע</span>
-        </Link>
+        </button>
 
         <div className="flex shrink-0 items-center gap-1">
           <ThemeToggle />
