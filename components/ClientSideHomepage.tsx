@@ -11,7 +11,7 @@ import { type Event, FootballTeam, Artist } from "@/lib/app.types";
 import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { EventFilters } from "@/components/ui/EventFilters";
+import { HeroSearch } from "@/components/HeroSearch";
 import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
@@ -703,16 +703,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
     }, 100);
   };
 
-  // Let the global Header open this search modal (it dispatches myt:open-search),
-  // and support landing with ?search=open from another page.
-  useEffect(() => {
-    const open = () => setShowSearchModal(true);
-    window.addEventListener("myt:open-search", open);
-    if (new URLSearchParams(window.location.search).get("search") === "open") {
-      open();
-    }
-    return () => window.removeEventListener("myt:open-search", open);
-  }, []);
+  // The header's search button dispatches myt:open-search; HeroSearch (the
+  // single search experience) listens and takes focus.
 
   const handleSearchPromptClick = () => {
     // On mobile, just open the search modal directly
@@ -1175,40 +1167,18 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             </span>
           </h1>
         </div>
+        {/* The single search experience — assembles a package live as you type */}
+        <div className="relative z-20 mt-5">
+          <HeroSearch events={initialEvents} />
+        </div>
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
-        <div className="relative z-10 mt-4">
+        <div className="relative z-10 mt-6">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
         {/* Trust row — sits under the gallery, per Dor's layout note */}
         <TrustBadges className="relative z-10 mt-6 justify-center text-main-foreground/80" />
       </section>
 
-      {/* Search + quick-filter chips section (per Figma) */}
-      <section
-        id="search"
-        className="w-full bg-main px-4 pb-10 pt-2 text-main-foreground md:px-6"
-        role="search"
-        aria-label="חיפוש וסינון אירועים"
-      >
-        <div className="container mx-auto flex max-w-3xl flex-col items-center gap-5">
-          <button
-            type="button"
-            onClick={handleSearchModalOpen}
-            className="flex h-12 w-full items-center gap-2 rounded-full bg-card px-5 text-base text-muted-foreground shadow-card transition-shadow hover:shadow-card-hover"
-            aria-label="פתיחת חיפוש אירועים"
-          >
-            <Search className="size-5 shrink-0" aria-hidden />
-            <span>חיפוש אירוע</span>
-          </button>
-          <EventFilters
-            events={initialEvents}
-            onPick={(term) => {
-              setSearchValue(term);
-              handleSearchModalOpen();
-            }}
-          />
-        </div>
-      </section>
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">
         <div className="container mx-auto">
           {/* Accessibility: Enhanced mobile guarantees section with semantic structure */}
