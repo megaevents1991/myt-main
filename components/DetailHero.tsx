@@ -1,9 +1,11 @@
 import { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
+import { MYT } from "@/components/ui/myt";
 
 /**
  * Split detail-hero for artist / football pages — dark surface, cutout image
@@ -28,6 +30,13 @@ export const DetailHero = ({
 }) => (
   <section className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
+    {/* Way home — the global header only appears after scroll, so the hero
+        carries its own wordmark link. */}
+    <div className="container relative z-10 mx-auto px-4 pt-5">
+      <Link href="/" aria-label="חזרה לדף הבית" className="inline-block">
+        <MYT className="h-5 w-auto text-main-foreground md:h-6" />
+      </Link>
+    </div>
     <div className="container relative z-10 mx-auto grid items-center gap-8 px-4 py-10 md:grid-cols-2 md:py-16">
       {imageUrl && (
         <div className="relative mx-auto w-full max-w-sm md:max-w-md">

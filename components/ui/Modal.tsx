@@ -1,6 +1,6 @@
 import { Modal as MantineModal } from "@mantine/core";
 import React from "react";
-import { InfoIcon, Clock9, Plane, Beer } from "lucide-react";
+import { InfoIcon, Clock9, Plane, Beer, Gift } from "lucide-react";
 
 // Function to wrap icons with a styled background
 const IconWithBackground = ({ children }: { children: React.ReactNode }) => (
@@ -28,6 +28,11 @@ const iconStyles = {
   Beer: (
     <IconWithBackground>
       <Beer size={32} />
+    </IconWithBackground>
+  ),
+  Gift: (
+    <IconWithBackground>
+      <Gift size={32} />
     </IconWithBackground>
   ),
 };

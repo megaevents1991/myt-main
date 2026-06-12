@@ -70,13 +70,12 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="w-full">
-      {step !== 4 && (
-        <Stepper
-          currentStep={step}
-          onStepperClick={handleStepperClick}
-          steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
-        />
-      )}
+      <Stepper
+        currentStep={step}
+        onStepperClick={handleStepperClick}
+        steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
+        hideSteps={step === 4}
+      />
       <OrderContext.Provider
         value={{
           eventTicket,

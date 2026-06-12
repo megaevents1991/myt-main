@@ -264,7 +264,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                       <div className="flex flex-col items-center gap-4 sm:flex-row">
                         <SocialLinks />
                         <p className="text-center text-xs sm:text-start sm:text-sm">
-                          © 2025 מגה איבנטס מבית מגה תיירות. כל הזכויות שמורות.
+                          © {new Date().getFullYear()} מגה איבנטס מבית מגה
+                          תיירות. כל הזכויות שמורות.
                         </p>
                       </div>
                     </div>

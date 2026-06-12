@@ -401,12 +401,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
                     {step > 2 && !flightSkipped && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">
-                          {formatPrice(
-                            Math.ceil(
+                          {(() => {
+                            const flightDelta = Math.ceil(
                               (flight?.price || 0) / planeTickets.adults -
                                 event.base_flight_price
-                            )
-                          )}
+                            );
+                            return flightDelta > 0
+                              ? formatPrice(flightDelta)
+                              : "(כלול במחיר)";
+                          })()}
                         </span>
                         <div className="flex items-center justify-end">
                           <span className="text-right mr-2 lg:ml-2">

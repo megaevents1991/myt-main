@@ -916,10 +916,10 @@ export default function OrderReview() {
       />
       {/* Special offer modal - triggered by 20s of inactivity, non-agent only */}
       <Modal
-        title="מה נתקעת?!"
+        title="רגע, יש לנו משהו בשבילכם 🎁"
         description={<>
-        { 
-         `הנחה קטנה תעזור? קיבלתם $${specialOfferTotalDiscount} הנחה!`
+        {
+         `מגיעה לכם הנחה של $${specialOfferTotalDiscount} על ההזמנה — לחצו והיא תתווסף לסיכום.`
         }
         </>
         }
@@ -939,7 +939,7 @@ export default function OrderReview() {
           isSpecialOfferAllowed &&
           !isPercentageAffiliateDiscount
         }
-        iconType="Beer"
+        iconType="Gift"
       />
       <LoaderWrapper
         isLoading={isSubmitting}
@@ -987,7 +987,11 @@ export default function OrderReview() {
                   )}
                 >
                   {!isMobile ? (
-                    <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
+                    <div className="flex items-center gap-2" dir="rtl">
+                      <span className="text-sm">ההזמנה שמורה עבורך למשך</span>
+                      <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
+                      <span className="text-sm">דקות</span>
+                    </div>
                   ) : (
                     <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
                       {selectedFlight && (
@@ -1490,9 +1494,9 @@ export default function OrderReview() {
                             <div className="space-y-1">
                               <Label
                                 htmlFor={`firstName-${index}`}
-                                className="sr-only"
+                                className="text-sm font-medium"
                               >
-                                שם פרטי באנגלית לנוסע {index + 1}
+                                שם פרטי באנגלית
                               </Label>
                               <Input
                                 id={`firstName-${index}`}
@@ -1548,9 +1552,9 @@ export default function OrderReview() {
                             <div className="space-y-1">
                               <Label
                                 htmlFor={`lastName-${index}`}
-                                className="sr-only"
+                                className="text-sm font-medium"
                               >
-                                שם משפחה באנגלית לנוסע {index + 1}
+                                שם משפחה באנגלית
                               </Label>
                               <Input
                                 id={`lastName-${index}`}
@@ -1606,7 +1610,14 @@ export default function OrderReview() {
                           {index === 0 && (
                             <>
                               <div className="space-y-1">
+                                <Label
+                                  htmlFor={`email-${index}`}
+                                  className="text-sm font-medium"
+                                >
+                                  אימייל
+                                </Label>
                                 <Input
+                                  id={`email-${index}`}
                                   dir="rtl"
                                   placeholder="אימייל"
                                   type="email"
@@ -1637,7 +1648,14 @@ export default function OrderReview() {
                               </div>
 
                               <div className="space-y-1">
+                                <Label
+                                  htmlFor={`phone-${index}`}
+                                  className="text-sm font-medium"
+                                >
+                                  טלפון נייד
+                                </Label>
                                 <Input
+                                  id={`phone-${index}`}
                                   dir="rtl"
                                   placeholder="טלפון נייד"
                                   name="phone"

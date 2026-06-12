@@ -488,6 +488,9 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
   return (
     <Link
       href={`/football/${team.sys?.id}`}
+      // Mondial pages hard-redirect to an external subdomain in middleware;
+      // RSC prefetch hits CORS and logs an error on every home load.
+      prefetch={false}
       className="block hover:opacity-90 transition-opacity"
       key={team.sys.id}
       aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
@@ -1662,7 +1665,10 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
 
           {/* Body */}
           <div className="flex flex-1 flex-col p-4 text-right" dir="rtl">
-            <h3 className="text-xl font-bold leading-tight" title={event.name}>
+            <h3
+              className="line-clamp-2 min-h-[2.5em] text-xl font-bold leading-tight"
+              title={event.name}
+            >
               {event.name}
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -1677,7 +1683,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
               <EventStatusBadge event={event} />
             </div>
 
-            <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
+            <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
               <PackageIcons
                 highlight={
                   (["flight", "hotel", "ticket"] as const)[Number(event.id) % 3]
@@ -1721,7 +1727,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
         }}
         tabIndex={0}
       >
-        <span className="text-sm font-bold">
+        <span className="block truncate text-sm font-bold">
           לכל האירועים של {event.name} לחצו כאן
         </span>
       </div>

@@ -17,6 +17,9 @@ export const FooterMarquee = () => {
   return (
     <div
       aria-hidden="true"
+      // dir="ltr": the keyframes animate translateX(0 → -50%); in the page's RTL
+      // flow the track scrolls out of the visible window and the band goes blank.
+      dir="ltr"
       className="mb-8 flex w-full overflow-hidden border-y border-main-foreground/10 py-6"
     >
       <div

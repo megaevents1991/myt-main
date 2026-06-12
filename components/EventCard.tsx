@@ -1,5 +1,6 @@
 import Link from "next/link";
 import dayjs from "dayjs";
+import "dayjs/locale/he";
 
 import { Event } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
@@ -27,6 +28,9 @@ export const EventCard = ({
   const dateLabel = event.date
     ? dayjs(event.date).format("DD/MM/YY")
     : "תאריך יפורסם בקרוב";
+  const weekday = event.date
+    ? dayjs(event.date).locale("he").format("dddd")
+    : null;
 
   return (
     <Link
@@ -49,9 +53,16 @@ export const EventCard = ({
                 ? `$${price.toLocaleString("en-US")}`
                 : "—"}
             </span>
-            <span className="text-xl font-extrabold tabular-nums text-foreground">
-              {dateLabel}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="text-xl font-extrabold tabular-nums text-foreground">
+                {dateLabel}
+              </span>
+              {weekday && (
+                <span className="text-xs text-muted-foreground">
+                  יום {weekday}
+                </span>
+              )}
+            </div>
           </div>
 
           <p className="text-sm text-muted-foreground">
