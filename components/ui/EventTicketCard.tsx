@@ -137,7 +137,7 @@ export const EventTicketCard = ({
           </div>
         </div>
         {isSelected && !disabled && (
-          <div className="w-full block lg:hidden border-t-2 pt-2 border-white mt-2">
+          <div className="w-full block lg:hidden border-t-2 pt-2 border-border mt-2">
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}
@@ -162,7 +162,7 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
       <button
         onClick={() => onChange(value - 1)}
         disabled={+value <= minValue}
-        className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
+        className="bg-background rounded-full p-1 hover:border-main dark:hover:border-foreground border border-border border-solid border-1"
         type="button"
         aria-label="הפחת כמות כרטיסים"
       >
@@ -171,7 +171,7 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
       <div className="w-8 text-xl font-bold text-center" role="status" aria-live="polite" aria-label={`${value} כרטיסים נבחרו`}>{value}</div>
       <button
         onClick={() => onChange(value + 1)}
-        className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
+        className="bg-background rounded-full p-1 hover:border-main dark:hover:border-foreground border border-border border-solid border-1"
         type="button"
         aria-label="הוסף כמות כרטיסים"
       >

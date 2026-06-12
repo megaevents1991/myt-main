@@ -234,9 +234,9 @@ export default function ConfirmationPage() {
           </div>
           {copySuccess && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-lg">
-              <div className="flex items-center gap-2 px-6 py-3 bg-secondary text-white rounded-full shadow-lg border border-secondary/20">
-                <Check className="h-5 w-5 text-white" />
-                <span className="text-sm font-medium text-white">הלינק הועתק</span>
+              <div className="flex items-center gap-2 px-6 py-3 bg-secondary text-secondary-foreground rounded-full shadow-lg border border-secondary/20">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">הלינק הועתק</span>
               </div>
             </div>
           )}

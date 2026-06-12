@@ -321,7 +321,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       )}
       {/* Sticky Footer */}
       <div className="flex w-full flex-col items-center bottom-0 sticky z-40">
-        <div className="mt-4 w-screen bg-gray-200">
+        <div className="mt-4 w-screen bg-muted">
           <div className="w-full">
             {step < 4 && (
               <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
@@ -334,7 +334,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         disabled={buttonDisabled}
                         onClick={() => nextStep()}
                         className={cn(
-                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
+                          "bg-main text-white dark:bg-foreground dark:text-background tracking-wide rounded-lg p-2 font-bold flex-[3]",
                           buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                         )}
                         type="button"
@@ -345,7 +345,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                       </button>
                       <button
                         onClick={handleSkipHotel}
-                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
+                        className="border-2 border-main text-main dark:border-foreground/60 dark:text-foreground tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 dark:hover:bg-foreground/10 transition-colors text-sm lg:text-base"
                         type="button"
                         aria-label="המשך ללא מלון"
                       >
@@ -359,7 +359,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                         disabled={buttonDisabled}
                         onClick={() => nextStep()}
                         className={cn(
-                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
+                          "bg-main text-white dark:bg-foreground dark:text-background tracking-wide rounded-lg p-2 font-bold flex-[3]",
                           buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                         )}
                         type="button"
@@ -370,7 +370,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                       </button>
                       <button
                         onClick={handleSkipFlight}
-                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
+                        className="border-2 border-main text-main dark:border-foreground/60 dark:text-foreground tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 dark:hover:bg-foreground/10 transition-colors text-sm lg:text-base"
                         type="button"
                         aria-label="המשך ללא טיסה"
                       >
@@ -383,7 +383,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                       disabled={buttonDisabled}
                       onClick={() => nextStep()}
                       className={cn(
-                        "bg-main text-white tracking-wide rounded-lg p-2 font-bold",
+                        "bg-main text-white dark:bg-foreground dark:text-background tracking-wide rounded-lg p-2 font-bold",
                         "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
                         buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
                       )}

@@ -26,7 +26,7 @@ export const FiltersModal = ({
           icon: <ChevronDown />,
         }}
       >
-        <div className="bg-gray-100 p-4 rounded-lg space-y-4">{children}</div>
+        <div className="bg-muted p-4 rounded-lg space-y-4">{children}</div>
       </Modal>
     )
   );

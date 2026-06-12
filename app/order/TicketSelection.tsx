@@ -411,7 +411,7 @@ export const TicketSelection = () => {
         <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{event?.location?.name}</p>
       </div>
       <div className="flex flex-col items-center ">
-        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
+        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-muted ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
           </div>

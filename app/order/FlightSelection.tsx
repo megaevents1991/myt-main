@@ -555,7 +555,7 @@ export const FlightSelection = () => {
         </FiltersModal>
       )}
       <div className="flex flex-col items-center">
-        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-gray-200 ">
+        <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-muted ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
             <div className="flex w-full lg:w-[60%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
@@ -627,27 +627,27 @@ export const FlightSelection = () => {
                     "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
                     isActive
                       ? "border-success bg-success/10"
-                      : "border-gray-200 bg-white hover:border-success"
+                      : "border-border bg-card hover:border-success"
                   )}
                 >
                   <span
                     className={cn(
                       "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
-                      isActive ? "bg-success" : "bg-gray-100"
+                      isActive ? "bg-success" : "bg-muted"
                     )}
                   >
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-colors",
-                        isActive ? "text-white" : "text-gray-500"
+                        isActive ? "text-white" : "text-muted-foreground"
                       )}
                       strokeWidth={1.8}
                       aria-hidden="true"
                     />
                   </span>
                   <span className="flex flex-col items-end flex-1 min-w-0">
-                    <span className="font-bold text-sm text-gray-900">{title}</span>
-                    <span className="text-[11px] text-gray-500 mt-0.5">{sub}</span>
+                    <span className="font-bold text-sm text-foreground">{title}</span>
+                    <span className="text-[11px] text-muted-foreground mt-0.5">{sub}</span>
                   </span>
                 </button>
               );
@@ -660,14 +660,14 @@ export const FlightSelection = () => {
               type="button"
               aria-label="פתח פילטרים"
               onClick={() => setShowFilters(true)}
-              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-success hover:bg-success/10 transition-colors"
+              className="w-[38px] flex-shrink-0 bg-card border border-border rounded-md flex items-center justify-center hover:border-success hover:bg-success/10 transition-colors"
             >
-              <SlidersHorizontal className="w-4 h-4 text-gray-900" strokeWidth={1.8} aria-hidden="true" />
+              <SlidersHorizontal className="w-4 h-4 text-foreground" strokeWidth={1.8} aria-hidden="true" />
             </button>
             <div
               role="tablist"
               aria-label="מיון טיסות"
-              className="flex-1 flex bg-white border border-gray-200 rounded-md p-[3px] gap-[2px] min-w-0"
+              className="flex-1 flex bg-card border border-border rounded-md p-[3px] gap-[2px] min-w-0"
             >
               {([
                 { key: "best", label: "הטוב ביותר", Icon: Star },
@@ -684,13 +684,13 @@ export const FlightSelection = () => {
                     onClick={() => handleSortTabChange(key)}
                     className={cn(
                       "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
-                      isActive ? "bg-success" : "hover:bg-gray-50"
+                      isActive ? "bg-success" : "hover:bg-muted"
                     )}
                   >
                     <Icon
                       className={cn(
                         "w-3.5 h-3.5 flex-shrink-0",
-                        isActive ? "text-white" : "text-gray-500"
+                        isActive ? "text-white" : "text-muted-foreground"
                       )}
                       strokeWidth={1.8}
                       aria-hidden="true"
@@ -698,7 +698,7 @@ export const FlightSelection = () => {
                     <span
                       className={cn(
                         "text-[11px] font-bold whitespace-nowrap",
-                        isActive ? "text-white" : "text-gray-900"
+                        isActive ? "text-white" : "text-foreground"
                       )}
                     >
                       {label}

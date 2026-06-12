@@ -877,7 +877,7 @@ export default function OrderReview() {
   const penText = selectedFlight ? getPenText(selectedFlight) : "";
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center">
+    <div className="min-h-screen bg-background flex flex-col items-center">
       {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} skipHotel={skipHotel} />}
 
       <div className="sr-only">
@@ -980,7 +980,7 @@ export default function OrderReview() {
           )}
           <div className="grid md:grid-cols-2 gap-4 items-start">
             <div className="space-y-4 order-1 md:order-1">
-              <Card className="bg-white shadow-lg overflow-hidden">
+              <Card className="bg-card text-card-foreground shadow-lg overflow-hidden">
                 <div
                   className={cn(
                     "bg-main text-main-foreground py-4 px-6 flex flex-row justify-between items-center"
@@ -1206,7 +1206,7 @@ export default function OrderReview() {
               </div>
               {/*
               <Card
-                className="bg-white shadow-lg overflow-hidden md:hidden"
+                className="bg-card text-card-foreground shadow-lg overflow-hidden md:hidden"
                 dir="rtl"
               >
                 {(() => {
@@ -1229,7 +1229,7 @@ export default function OrderReview() {
                   ];
 
                   return (
-                    <div className="bg-white p-4 md:p-8 space-y-6 mx-auto text-right">
+                    <div className="bg-card p-4 md:p-8 space-y-6 mx-auto text-right">
                       {items.map((item, idx) => (
                         <div key={idx} className="flex">
                           <Image
@@ -1454,7 +1454,7 @@ export default function OrderReview() {
             </div>
             <div className="space-y-6 order-2 md:order-2">
               <Card
-                className="bg-white shadow-lg overflow-hidden"
+                className="bg-card text-card-foreground shadow-lg overflow-hidden"
                 ref={passengerDetailsRef}
               >
                 <div className="px-8 pt-6 pb-8">
@@ -1695,7 +1695,7 @@ export default function OrderReview() {
               {/* Trust */}
               {agentCommission <= 0 && (
                 <Card
-                  className="bg-white shadow-lg overflow-hidden order-4 md:order-3 hidden md:block"
+                  className="bg-card text-card-foreground shadow-lg overflow-hidden order-4 md:order-3 hidden md:block"
                   dir="rtl"
                 >
                   {(() => {
@@ -1718,7 +1718,7 @@ export default function OrderReview() {
                     ];
 
                     return (
-                      <div className="bg-white p-4 md:p-8 space-y-6 mx-auto text-right">
+                      <div className="bg-card p-4 md:p-8 space-y-6 mx-auto text-right">
                         {items.map((item, idx) => (
                           <div key={idx} className="flex">
                             <Image
@@ -1921,7 +1921,7 @@ export default function OrderReview() {
       {showStickyFooter && (
         <div
           ref={stickyFooterRef}
-          className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 md:hidden"
+          className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-50 md:hidden"
         >
           {/* Additional Options Dropdown */}
           {showStickyOptions && (
@@ -1958,7 +1958,7 @@ export default function OrderReview() {
             <Button
               onClick={() => setShowStickyOptions(!showStickyOptions)}
               variant="outline"
-              className="w-[20%] h-[52px] text-[12px] leading-tight border-[#05203c] text-[#05203c] hover:bg-[#05203c]/10 whitespace-normal break-words px-1"
+              className="w-[20%] h-[52px] text-[12px] leading-tight border-[#05203c] text-[#05203c] dark:border-foreground/60 dark:text-foreground dark:hover:bg-foreground/10 hover:bg-[#05203c]/10 whitespace-normal break-words px-1"
               aria-label="אפשרויות נוספות"
             >
               {showStickyOptions ? "סגור" : "אפשרויות נוספות"}

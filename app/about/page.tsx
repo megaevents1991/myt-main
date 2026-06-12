@@ -171,7 +171,7 @@ export default async function AboutPage() {
           </h2>
           <Link
             href="/"
-            className="bg-secondary text-white px-16 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
+            className="bg-secondary text-secondary-foreground px-16 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
             aria-label="עברו לעמוד הראשי להזמנת אירועים"
           >
             הזמינו עכשיו!

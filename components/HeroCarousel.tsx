@@ -30,9 +30,10 @@ const COPIES = 3;
 
 /** Instant (non-smooth) scroll jump, overriding the `scroll-smooth` class. */
 const jumpBy = (el: HTMLElement, delta: number) => {
+  const prev = el.style.scrollBehavior;
   el.style.scrollBehavior = "auto";
   el.scrollLeft += delta;
-  el.style.scrollBehavior = "";
+  el.style.scrollBehavior = prev;
 };
 
 /**
@@ -112,6 +113,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       stopped = true;
       cancelAnimationFrame(raf);
       el.style.scrollSnapType = "";
+      el.style.scrollBehavior = "";
     };
 
     const frame = (now: number) => {
@@ -138,7 +140,11 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       raf = requestAnimationFrame(frame);
     };
 
+    // Suspend snap AND smooth behavior while gliding: with `scroll-smooth`
+    // active, every per-frame scrollLeft write would start its own smooth
+    // animation — dozens of competing animations read as vibration.
     el.style.scrollSnapType = "none";
+    el.style.scrollBehavior = "auto";
     raf = requestAnimationFrame(frame);
     // Wrapper catches the arrow buttons too, not just the scroll row.
     const wrap = el.parentElement ?? el;

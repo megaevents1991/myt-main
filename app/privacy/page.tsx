@@ -268,7 +268,7 @@ export default async function PrivacyPage() {
           </p>
           <a
             href="mailto:privacy@mega-events.co.il"
-            className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
+            className="bg-secondary text-secondary-foreground px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
             aria-label="שלחו מייל לאחראי הפרטיות"
           >
             צרו קשר בנושא פרטיות

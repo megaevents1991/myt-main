@@ -108,7 +108,7 @@ const LuggageButton = ({
   return (
     <button
       className={cn(
-        "bg-gray-200 rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
+        "bg-muted rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
         isSelected && "bg-primary/15"
       )}
       type="button"
@@ -236,7 +236,7 @@ export const FlightTicketCard = memo(
             {/* Mobile pricing element */}
             <div
               className={cn(
-                "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-success rounded-2xl px-3 py-1 text-sm",
+                "absolute bg-card border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-success rounded-2xl px-3 py-1 text-sm",
                 isSelected && "bg-success text-white border-success"
               )}
             >

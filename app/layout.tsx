@@ -5,11 +5,7 @@ import "@mantine/core/styles.css";
 import "@mantine/carousel/styles.css";
 import { Suspense, ReactNode } from "react";
 import Script from "next/script";
-import {
-  MantineProvider,
-  createTheme,
-  MantineColorsTuple,
-} from "@mantine/core";
+import { MantineThemeProvider } from "@/components/MantineThemeProvider";
 import Link from "next/link";
 import { AuthProvider } from "./hooks/AuthContext";
 import MixpanelProvider from "./hooks/Mixpanel";
@@ -126,33 +122,6 @@ export const metadata: Metadata = {
   },
 };
 
-// MegaEvents 2.0 pulse-mint (#5BFF95) — tonal ramp so Mantine components match
-// the brand-book primary. Shade 4 is the exact brand neon.
-const myColor: MantineColorsTuple = [
-  "#E6FFEF",
-  "#C2FFD8",
-  "#99FFBE",
-  "#70FFA4",
-  "#5BFF95",
-  "#2EE875",
-  "#15C95C",
-  "#0FA049",
-  "#0A7637",
-  "#064D24",
-];
-
-const theme = createTheme({
-  colors: {
-    myColor,
-  },
-  primaryColor: "myColor",
-  // Shade 6 (#15C95C) — a harder green than the neon brand mint (shade 4).
-  // Selection controls (stepper, checkboxes, sliders) need the stronger tone
-  // to read clearly on light surfaces; big brand CTAs keep the neon mint via
-  // Tailwind classes.
-  primaryShade: 6,
-});
-
 const GTM_TAG = process.env.NEXT_PUBLIC_GTM || undefined;
 const GTM_URL = `https://www.googletagmanager.com/ns.html?id=${GTM_TAG}`;
 
@@ -201,7 +170,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           try {
             var t = localStorage.getItem('myt-theme');
             if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            if (t === 'dark') document.documentElement.classList.add('dark');
+            if (t === 'dark') {
+              document.documentElement.classList.add('dark');
+              document.documentElement.setAttribute('data-mantine-color-scheme', 'dark');
+            }
           } catch (e) {}
           `}
         </Script>
@@ -223,7 +195,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <MixpanelProvider />
           <AuthProvider>
             <Suspense>
-              <MantineProvider theme={theme}>
+              <MantineThemeProvider>
                 <a
                   href="#main-content"
                   className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -275,7 +247,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                     </div>
                   </div>
                 </footer>
-              </MantineProvider>
+              </MantineThemeProvider>
             </Suspense>
           </AuthProvider>
         </div>
