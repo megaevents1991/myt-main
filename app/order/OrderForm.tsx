@@ -325,7 +325,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
           <div className="w-full">
             {step < 4 && (
               <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
-                <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center">
+                <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center gap-3">
                   {/* Button Section - Split on step 3 (hotel) and step 2 when skipFlight enabled */}
                   {step === 3 ? (
                     // Hotel Selection Step: Show split buttons (desktop) or stacked (mobile)
@@ -397,7 +397,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
                   )}
 
                   {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-success text-md">
+                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-success text-md min-w-0">
                     {step > 2 && !flightSkipped && (
                       <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
                         <span className="text-left lg:ml-2">
@@ -450,12 +450,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
                       </div>
                     )}
                     {step > -1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto">
-                        <span className="text-left lg:ml-2 font-bold tracking-wide">
+                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto min-w-0 gap-2">
+                        <span className="text-left lg:ml-2 font-bold tracking-wide shrink-0">
                           ${basePrice}
                         </span>
-                        <div className="flex items-center justify-end lg:ml-2">
-                          <span className="text-right font-bold">
+                        <div className="flex items-center justify-end lg:ml-2 min-w-0">
+                          <span className="text-right font-bold truncate">
                             {event.name}
                           </span>
                         </div>
