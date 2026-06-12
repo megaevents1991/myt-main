@@ -325,7 +325,7 @@ export default function ConfirmationPage() {
             
             {isHold && <OrderRecoverySection />}
             
-            <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
+            <div className="bg-muted rounded-lg p-6 my-6 text-left">
               <h2 className="text-2xl font-bold mb-4 text-center">
                 פרטי ההזמנה
               </h2>
@@ -401,7 +401,7 @@ export default function ConfirmationPage() {
             
             {isHold && <OrderRecoverySection />}
             
-            <div className="bg-gray-50 rounded-lg p-6 my-6 text-left">
+            <div className="bg-muted rounded-lg p-6 my-6 text-left">
               <h2 className="text-2xl font-bold mb-4 text-center">
                 פרטי ההזמנה
               </h2>

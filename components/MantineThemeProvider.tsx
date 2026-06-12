@@ -60,4 +60,3 @@ export function MantineThemeProvider({ children }: { children: ReactNode }) {
     </MantineProvider>
   );
 }
-s
