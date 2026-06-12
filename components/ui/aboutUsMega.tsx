@@ -12,7 +12,7 @@ export default function MegaEventsSection() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="text-4xl md:text-5xl font-extrabold text-main mb-6 leading-snug"
+          className="text-4xl md:text-5xl font-extrabold text-main dark:text-foreground mb-6 leading-snug"
         >
           <span className="block md:inline">פשוט לבחור.</span>{" "}
           <span className="block md:inline">פשוט ליהנות.</span>{" "}
@@ -54,7 +54,7 @@ export default function MegaEventsSection() {
               whileHover={{ scale: 1.05 }}
               className="flex flex-col items-center text-center"
             >
-              <item.icon className="text-main text-5xl mb-4" />
+              <item.icon className="text-main dark:text-foreground text-5xl mb-4" />
               <h3 className="text-xl font-bold">{item.title}</h3>
               <p className="text-lg text-base mb-8">{item.desc}</p>
             </motion.div>
@@ -175,7 +175,7 @@ export default function MegaEventsSection() {
           </div>
 
           {/* סיום */}
-          <p className="font-bold text-main">
+          <p className="font-bold text-main dark:text-foreground">
             הרכיבו את החוויה שמתאימה לכם - ואנחנו נדאג שהיא תתממש בדיוק כפי
             שבחרתם.
           </p>

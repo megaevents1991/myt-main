@@ -29,14 +29,14 @@ export const FlightLoadingTransition = ({ className, title, subtitle, showHotelO
             <div className="animate-bounce motion-reduce:animate-none [animation-delay:-0.3s] flex items-center justify-center w-16 h-16">
               <Plane 
                 size={48} 
-                className="text-main transform rotate-45" 
+                className="text-main dark:text-foreground transform rotate-45"
                 aria-hidden="true"
               />
             </div>
             <div className="animate-bounce motion-reduce:animate-none [animation-delay:-0.15s] flex items-center justify-center w-16 h-16">
               <Search 
                 size={36} 
-                className="text-main/70" 
+                className="text-main/70 dark:text-foreground/70"
                 aria-hidden="true"
               />
             </div>
@@ -53,10 +53,10 @@ export const FlightLoadingTransition = ({ className, title, subtitle, showHotelO
 
       {/* Loading Message */}
       <div id="flight-loading-message" className="text-center space-y-1 max-w-md">
-        <h3 className="text-base sm:text-xl font-semibold text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis">
+        <h3 className="text-base sm:text-xl font-semibold text-gray-700 dark:text-foreground whitespace-nowrap overflow-hidden text-ellipsis">
           {title ?? "רגע אחד, אנחנו מארגנים עבורכם מה שצריך"}
         </h3>
-        <p className="text-sm sm:text-lg text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+        <p className="text-sm sm:text-lg text-gray-600 dark:text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
           {subtitle ?? "כל הטיסות והמלונות הכי משתלמים - במקום אחד"}
         </p>
       </div>

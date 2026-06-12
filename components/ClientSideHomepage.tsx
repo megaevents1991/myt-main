@@ -1142,17 +1142,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           </form>
         )}
       </Modal>
-      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-2 py-6 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
+      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-3 py-8 md:py-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
         {/* Logo centered at the hero top (per Figma); visible while the header is hidden */}
-        <div className="container relative z-20 mx-auto mb-3 flex justify-center">
+        <div className="container relative z-20 mx-auto mb-4 md:mb-5 flex justify-center">
           <Link href="/" aria-label="MegaEvents — דף הבית">
             <MYT className="h-9 w-auto text-main-foreground md:h-11" />
           </Link>
         </div>
         <div className="container relative z-10 mx-auto max-w-3xl text-center">
           {/* Accessibility: Proper main heading hierarchy */}
-          <h1 className="font-display text-2xl font-bold sm:text-3xl md:text-4xl mb-1 lg:mb-2">
+          <h1 className="font-display text-2xl font-bold sm:text-3xl md:text-4xl mb-2 lg:mb-3">
             {/* Mobile: האירועים first, then במקום */}
             <span className="inline-block whitespace-nowrap md:hidden">האירועים הכי שווים בעולם</span>
             <span className="text-secondary whitespace-nowrap text-3xl md:hidden">
@@ -1171,13 +1171,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           </h1>
         </div>
         {/* The single search experience — assembles a package live as you type */}
-        <div className="relative z-20 mt-5">
+        <div className="relative z-20 mt-6 md:mt-7">
           <HeroSearch events={initialEvents} />
         </div>
         {/* Trust row — sits under the gallery, per Dor's layout note */}
-        <TrustBadges className="relative z-10 mt-6 justify-center text-main-foreground/80" />
+        <TrustBadges className="relative z-10 mt-7 md:mt-8 justify-center text-main-foreground/80" />
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
-        <div className="relative z-10 mt-6">
+        <div className="relative z-10 mt-10 sm:mt-8">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
       </section>
@@ -1339,10 +1339,14 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
               ))}
             </div>
           </section>
-          <ElfsightWidget
-            widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7"
-            lazy="first-activity"
-          />
+          {/* Third-party widget renders dark text expecting a light page —
+              give it a light surface in dark mode */}
+          <div className="dark:rounded-2xl dark:bg-white dark:p-4">
+            <ElfsightWidget
+              widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7"
+              lazy="first-activity"
+            />
+          </div>
 
           {/* Sports Section */}
           {footballTeams && footballTeams.length > 0 && (
@@ -1450,7 +1454,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                   </div>
                   {/* Accessibility: Enhanced search prompt card with proper labeling */}
                   <div
-                    className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
+                    className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
                     onClick={handleSearchPromptClick}
                     role="button"
                     tabIndex={0}
@@ -1466,7 +1470,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                       <MYT className="text-main-foreground" />
                     </div>
                     <div
-                      className="p-10 text-center text-main text-lg font-bold flex items-center justify-center min-h-[88px]"
+                      className="p-10 text-center text-main dark:text-foreground text-lg font-bold flex items-center justify-center min-h-[88px]"
                       dir="rtl"
                     >
                       לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
@@ -1485,7 +1489,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                 ))}
                 {/* Accessibility: Enhanced search prompt card with proper labeling */}
                 <div
-                  className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main cursor-pointer"
+                  className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
                   onClick={handleSearchPromptClick}
                   role="button"
                   tabIndex={0}
@@ -1501,7 +1505,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                     <MYT className="text-main-foreground" />
                   </div>
                   <div
-                    className="p-4 text-center text-main text-xl font-bold h-20"
+                    className="p-4 text-center text-main dark:text-foreground text-xl font-bold h-20"
                     dir="rtl"
                   >
                     לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
@@ -1513,7 +1517,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                   <button
                     type="button"
                     onClick={() => setVisibleMusicCount((c) => c + 12)}
-                    className="px-8 py-3 rounded-lg border-2 border-main text-main font-bold hover:bg-main hover:text-main-foreground transition-colors"
+                    className="px-8 py-3 rounded-lg border-2 border-main text-main dark:border-foreground/60 dark:text-foreground font-bold hover:bg-main hover:text-main-foreground dark:hover:bg-foreground dark:hover:text-background transition-colors"
                     dir="rtl"
                   >
                     הצג עוד הופעות

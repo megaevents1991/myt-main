@@ -123,6 +123,13 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans), "Arial Hebrew", Arial, sans-serif;
+    /* Mantine's global stylesheet re-colors <body> via its own vars
+       (--mantine-color-text: #000, --mantine-color-body: #fff), which loads
+       after Tailwind base and wins — in dark mode every inheriting element
+       turned black. Redefining the vars at body level beats Mantine's
+       :root-level definitions regardless of stylesheet order. */
+    --mantine-color-text: hsl(var(--foreground));
+    --mantine-color-body: hsl(var(--background));
   }
 
   body::-webkit-scrollbar {
