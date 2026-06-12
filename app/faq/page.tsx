@@ -119,9 +119,9 @@ export default async function FAQPage() {
       </section>
 
       {/* Additional Help Section */}
-      <section className="w-full py-12 bg-gray-50" dir="rtl" aria-labelledby="help-section">
+      <section className="w-full py-12 bg-muted" dir="rtl" aria-labelledby="help-section">
         <div className="container mx-auto max-w-4xl text-center px-4">
-          <h2 id="help-section" className="text-2xl font-bold text-main mb-4">
+          <h2 id="help-section" className="text-2xl font-bold text-main dark:text-foreground mb-4">
             לא מצאתם את התשובה שחיפשתם?
           </h2>
           <p className="text-lg mb-6">
@@ -144,21 +144,21 @@ export default async function FAQPage() {
       {/* Customer Journey Guide */}
       <section className="w-full py-12" dir="rtl">
         <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="text-2xl font-bold text-main text-center mb-8">
+          <h2 className="text-2xl font-bold text-main dark:text-foreground text-center mb-8">
             המדריך שלכם להזמנה מושלמת
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md">
               <div className="text-3xl mb-4">🎯</div>
               <h3 className="text-xl font-bold mb-2">שלב 1: בחירה</h3>
               <p>בחרו את האירוע, התאריכים, הטיסה והמלון שמתאימים לכם</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md">
               <div className="text-3xl mb-4">💳</div>
               <h3 className="text-xl font-bold mb-2">שלב 2: הזמנה</h3>
               <p>השלימו את הפרטים ובצעו תשלום מאובטח</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md">
               <div className="text-3xl mb-4">🎉</div>
               <h3 className="text-xl font-bold mb-2">שלב 3: הנאה</h3>
               <p>קבלו את הכטיסים ותיהנו מהחוויה!</p>
@@ -167,7 +167,7 @@ export default async function FAQPage() {
           <div className="flex pt-16 flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
               href="/"
-              className="bg-main text-white px-16 py-3 rounded-lg font-bold hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-main focus:ring-offset-2 inline-block"
+              className="bg-main text-white dark:bg-foreground dark:text-background px-16 py-3 rounded-lg font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-main focus:ring-offset-2 inline-block"
               aria-label="עברו לעמוד הראשי להזמנת אירועים"
             >
               הזמינו עכשיו!
