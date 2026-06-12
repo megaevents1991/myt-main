@@ -1139,7 +1139,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           </form>
         )}
       </Modal>
-      <section className="w-full pt-4 pb-16 lg:pt-8 lg:pb-20 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
+      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-2 py-6 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
         {/* Logo centered at the hero top (per Figma); visible while the header is hidden */}
         <div className="container relative z-20 mx-auto mb-3 flex justify-center">

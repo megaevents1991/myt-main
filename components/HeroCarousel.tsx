@@ -46,6 +46,42 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     });
   }, [items.length]);
 
+  // Idle auto-rotation: advances one card every few seconds (ping-pong at the
+  // edges) until the user first touches the gallery. Plays nicely with scroll
+  // snapping because it uses the same smooth scrollBy as the arrow buttons.
+  // Skipped under prefers-reduced-motion.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let dir: 1 | -1 = -1; // RTL: forward content sits at negative scrollLeft
+
+    const tick = setInterval(() => {
+      if (document.hidden) return;
+      const min = -(el.scrollWidth - el.clientWidth);
+      if (el.scrollLeft <= min + 8) dir = 1;
+      else if (el.scrollLeft >= -8) dir = -1;
+      el.scrollBy({ left: dir * 220, behavior: "smooth" });
+    }, 2600);
+
+    const stop = () => clearInterval(tick);
+    // Wrapper catches the arrow buttons too, not just the scroll row.
+    const wrap = el.parentElement ?? el;
+    const opts = { passive: true } as AddEventListenerOptions;
+    wrap.addEventListener("pointerdown", stop, opts);
+    wrap.addEventListener("wheel", stop, opts);
+    wrap.addEventListener("touchstart", stop, opts);
+    wrap.addEventListener("keydown", stop);
+    return () => {
+      stop();
+      wrap.removeEventListener("pointerdown", stop);
+      wrap.removeEventListener("wheel", stop);
+      wrap.removeEventListener("touchstart", stop);
+      wrap.removeEventListener("keydown", stop);
+    };
+  }, [items.length]);
+
   if (items.length === 0) return null;
 
   // RTL: "forward" reveals content to the left (negative scrollLeft).
@@ -101,27 +137,43 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
                 aria-label="חיפוש אירוע"
                 className="group relative block h-64 w-44 shrink-0 snap-center overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary transition-transform duration-300 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main sm:h-80 sm:w-56"
               >
-                {/* Aurora wash drifting behind the wordmark */}
+                {/* Aurora wash cycling through the brand neons behind the wordmark */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute -inset-1/4 rounded-full opacity-70 blur-2xl"
+                  className="pointer-events-none absolute -inset-1/3 rounded-full opacity-90 blur-2xl"
                   style={{
                     background:
-                      "radial-gradient(closest-side, hsl(var(--brand-aqua) / 0.9), transparent 70%)",
-                    animation: "logo-aurora 7s var(--ease-out) infinite",
+                      "radial-gradient(closest-side, hsl(var(--brand-aqua)), transparent 72%)",
+                    animation: "logo-aurora 6s linear infinite",
+                  }}
+                />
+                {/* Second wash, counter-phased coral */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-1/3 rounded-full opacity-60 blur-3xl"
+                  style={{
+                    background:
+                      "radial-gradient(closest-side, hsl(var(--brand-coral) / 0.8), transparent 70%)",
+                    animation: "logo-aurora 9s linear infinite reverse",
                   }}
                 />
                 {/* Neon sheen sweeping across */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/35 blur-md"
-                  style={{ animation: "logo-sheen 3.6s ease-in-out infinite" }}
+                  className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/50 blur-lg"
+                  style={{ animation: "logo-sheen 2.8s ease-in-out infinite" }}
+                />
+                {/* Pulsing ring radiating out */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-6 rounded-full border-4 border-[hsl(var(--surface-inverse))]/30"
+                  style={{ animation: "logo-ring 2.4s ease-out infinite" }}
                 />
                 <span
                   className="relative flex h-full w-full items-center justify-center"
-                  style={{ animation: "logo-breathe 4.5s var(--ease-out) infinite" }}
+                  style={{ animation: "logo-breathe 3.6s var(--ease-out) infinite" }}
                 >
-                  <MYT className="h-6 w-auto text-[hsl(var(--surface-inverse))] sm:h-7" />
+                  <MYT className="h-auto w-[82%] text-[hsl(var(--surface-inverse))]" />
                 </span>
               </button>
             ) : null;

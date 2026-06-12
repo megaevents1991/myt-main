@@ -180,18 +180,25 @@
    animated logo until a Lottie source exists). */
 @keyframes logo-breathe {
   0%, 100% { transform: scale(1) rotate(0deg); }
-  35% { transform: scale(1.1) rotate(-2deg); }
-  70% { transform: scale(0.97) rotate(1.5deg); }
+  30% { transform: scale(1.22) rotate(-4deg); }
+  55% { transform: scale(0.94) rotate(3deg); }
+  75% { transform: scale(1.12) rotate(-1.5deg); }
 }
 /* Neon sheen sweeping diagonally across the card */
 @keyframes logo-sheen {
-  0% { transform: translateX(-160%) rotate(18deg); }
-  55%, 100% { transform: translateX(220%) rotate(18deg); }
+  0% { transform: translateX(-180%) rotate(18deg); }
+  45%, 100% { transform: translateX(260%) rotate(18deg); }
 }
-/* Slow aurora wash behind the wordmark */
+/* Aurora wash behind the wordmark — drifts + cycles hue across the brand neons */
 @keyframes logo-aurora {
-  0%, 100% { transform: translate3d(-12%, -10%, 0) scale(1); }
-  50% { transform: translate3d(14%, 12%, 0) scale(1.35); }
+  0%, 100% { transform: translate3d(-18%, -14%, 0) scale(1); filter: hue-rotate(0deg); }
+  33% { transform: translate3d(18%, 14%, 0) scale(1.6); filter: hue-rotate(120deg); }
+  66% { transform: translate3d(-8%, 18%, 0) scale(1.25); filter: hue-rotate(240deg); }
+}
+/* Pulsing ring radiating from the card */
+@keyframes logo-ring {
+  0% { transform: scale(0.7); opacity: 0.7; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 
 /* Screen reader only content */
