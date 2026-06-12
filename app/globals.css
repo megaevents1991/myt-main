@@ -176,11 +176,22 @@
   to { transform: translateX(-50%); }
 }
 
-/* Hero center logo card — wordmark breathes in, mint dot pulses (per the Figma
-   animated logo card; CSS stand-in until a Lottie source exists). */
+/* Hero center logo card — layered brand animation (CSS stand-in for the Figma
+   animated logo until a Lottie source exists). */
 @keyframes logo-breathe {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.06); opacity: 0.92; }
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  35% { transform: scale(1.1) rotate(-2deg); }
+  70% { transform: scale(0.97) rotate(1.5deg); }
+}
+/* Neon sheen sweeping diagonally across the card */
+@keyframes logo-sheen {
+  0% { transform: translateX(-160%) rotate(18deg); }
+  55%, 100% { transform: translateX(220%) rotate(18deg); }
+}
+/* Slow aurora wash behind the wordmark */
+@keyframes logo-aurora {
+  0%, 100% { transform: translate3d(-12%, -10%, 0) scale(1); }
+  50% { transform: translate3d(14%, 12%, 0) scale(1.35); }
 }
 
 /* Screen reader only content */

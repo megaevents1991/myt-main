@@ -61,23 +61,23 @@ export const Header = () => {
         visible ? "translate-y-0" : "-translate-y-full"
       )}
     >
-      <div className="container mx-auto flex items-center gap-2 px-3 py-2.5 md:gap-4 md:px-4 md:py-3">
+      <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:gap-4 md:px-4 md:py-3">
         <Link href="/" aria-label="MegaEvents — דף הבית" className="shrink-0">
           <MYT className="h-5 w-auto sm:h-6 md:h-8" />
         </Link>
 
-        {/* Search — opens the search modal directly */}
+        {/* Search — opens the search modal directly. Page-centered on desktop. */}
         <button
           type="button"
           onClick={openSearch}
           aria-label="חיפוש אירוע"
-          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full bg-card px-3 text-sm text-muted-foreground transition-shadow hover:shadow-card md:h-10 md:max-w-md md:px-4"
+          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full bg-card px-3 text-sm text-muted-foreground transition-shadow hover:shadow-card md:absolute md:left-1/2 md:top-1/2 md:h-10 md:w-full md:max-w-md md:flex-none md:-translate-x-1/2 md:-translate-y-1/2 md:px-4"
         >
           <Search className="size-4 shrink-0" aria-hidden />
           <span className="truncate">חיפוש אירוע</span>
         </button>
 
-        <div className="flex shrink-0 items-center gap-0.5 md:gap-1">
+        <div className="ms-auto flex shrink-0 items-center gap-0.5 md:gap-1">
           <ThemeToggle />
           <button
             type="button"

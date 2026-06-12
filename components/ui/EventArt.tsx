@@ -94,7 +94,7 @@ export const EventArt = ({
             "transition-transform duration-300 group-hover:scale-105",
             variant === "blob"
               ? "object-contain object-bottom"
-              : "object-cover object-center"
+              : "object-cover object-top"
           )}
         />
       ) : null}

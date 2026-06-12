@@ -1171,12 +1171,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
         <div className="relative z-20 mt-5">
           <HeroSearch events={initialEvents} />
         </div>
+        {/* Trust row — sits under the gallery, per Dor's layout note */}
+        <TrustBadges className="relative z-10 mt-6 justify-center text-main-foreground/80" />
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
         <div className="relative z-10 mt-6">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
-        {/* Trust row — sits under the gallery, per Dor's layout note */}
-        <TrustBadges className="relative z-10 mt-6 justify-center text-main-foreground/80" />
       </section>
 
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">

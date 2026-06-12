@@ -34,24 +34,16 @@ const tilts = ["-rotate-3", "rotate-2", "-rotate-2", "rotate-3", "-rotate-1", "r
  */
 export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLButtonElement>(null);
   const items = artists.filter((a) => a.fields.heroBanner?.fields?.file?.url);
 
+  // Start with the brand logo card centered in the viewport (per Figma).
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const overflow = el.scrollWidth - el.clientWidth;
-    if (overflow <= 8) return; // nothing to reveal
-
-    const delta = Math.min(overflow, 240);
-    // RTL page: extra content sits to the left → negative scrollLeft.
-    const peek = setTimeout(() => el.scrollBy({ left: -delta, behavior: "smooth" }), 700);
-    const back = setTimeout(() => el.scrollBy({ left: delta, behavior: "smooth" }), 1800);
-    return () => {
-      clearTimeout(peek);
-      clearTimeout(back);
-    };
+    logoRef.current?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "instant" as ScrollBehavior,
+    });
   }, [items.length]);
 
   if (items.length === 0) return null;
@@ -97,19 +89,37 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         {items.map((artist, i) => {
           const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
           const name = String(artist.fields.name ?? "");
-          // Brand card sits mid-row (per Figma) — mint panel, breathing wordmark.
+          // Brand card sits mid-row (per Figma) — animated: aurora wash, neon
+          // sheen sweep, breathing wordmark. Carousel opens centered on it.
           const logoCard =
             i === Math.floor(items.length / 2) ? (
               <button
                 key="logo-card"
+                ref={logoRef}
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("myt:open-search"))}
                 aria-label="חיפוש אירוע"
-                className="group relative block h-64 w-44 shrink-0 snap-start overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary transition-transform duration-300 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main sm:h-80 sm:w-56"
+                className="group relative block h-64 w-44 shrink-0 snap-center overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary transition-transform duration-300 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main sm:h-80 sm:w-56"
               >
+                {/* Aurora wash drifting behind the wordmark */}
                 <span
-                  className="flex h-full w-full items-center justify-center"
-                  style={{ animation: "logo-breathe 4s var(--ease-out) infinite" }}
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-1/4 rounded-full opacity-70 blur-2xl"
+                  style={{
+                    background:
+                      "radial-gradient(closest-side, hsl(var(--brand-aqua) / 0.9), transparent 70%)",
+                    animation: "logo-aurora 7s var(--ease-out) infinite",
+                  }}
+                />
+                {/* Neon sheen sweeping across */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/35 blur-md"
+                  style={{ animation: "logo-sheen 3.6s ease-in-out infinite" }}
+                />
+                <span
+                  className="relative flex h-full w-full items-center justify-center"
+                  style={{ animation: "logo-breathe 4.5s var(--ease-out) infinite" }}
                 >
                   <MYT className="h-6 w-auto text-[hsl(var(--surface-inverse))] sm:h-7" />
                 </span>

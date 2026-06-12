@@ -213,7 +213,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             ></iframe>
           </noscript>
         )}
-        <div className="w-screen relative min-h-screen">
+        {/* w-full (not w-screen — 100vw overflows past the scrollbar) + clip
+            so decorative overflow never causes sideways scrolling on mobile */}
+        <div className="w-full relative min-h-screen overflow-x-clip">
           <MixpanelProvider />
           <AuthProvider>
             <Suspense>

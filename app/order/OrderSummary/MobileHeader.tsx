@@ -15,7 +15,7 @@ export const MobileHeader = ({
   return (
     <>
       <div
-        className="bg-yellow-100 w-screen text-main p-2 -mt-3 text-center text-sm font-semibold flex items-center justify-center gap-1"
+        className="bg-yellow-100 w-full text-main p-2 -mt-3 text-center text-sm font-semibold flex items-center justify-center gap-1"
         dir="rtl"
       >
         <LuAlarmClockCheck className="text-yellow-700" size={20} />
