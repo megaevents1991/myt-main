@@ -590,7 +590,7 @@ export const FlightSelection = () => {
                 <button
                   onClick={handleFlightSearch}
                   disabled={isLoading}
-                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
+                  className="p-2 px-4 bg-success text-white rounded-l-lg h-[40px] flex items-center justify-center r"
                   type="button"
                   aria-label={isLoading ? "מחפש טיסות..." : "חפש טיסות"}
                 >
@@ -626,14 +626,14 @@ export const FlightSelection = () => {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
                     isActive
-                      ? "border-secondary bg-secondary/10"
-                      : "border-gray-200 bg-white hover:border-secondary"
+                      ? "border-success bg-success/10"
+                      : "border-gray-200 bg-white hover:border-success"
                   )}
                 >
                   <span
                     className={cn(
                       "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
-                      isActive ? "bg-secondary" : "bg-gray-100"
+                      isActive ? "bg-success" : "bg-gray-100"
                     )}
                   >
                     <Icon
@@ -660,7 +660,7 @@ export const FlightSelection = () => {
               type="button"
               aria-label="פתח פילטרים"
               onClick={() => setShowFilters(true)}
-              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-secondary hover:bg-secondary/10 transition-colors"
+              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-success hover:bg-success/10 transition-colors"
             >
               <SlidersHorizontal className="w-4 h-4 text-gray-900" strokeWidth={1.8} aria-hidden="true" />
             </button>
@@ -684,7 +684,7 @@ export const FlightSelection = () => {
                     onClick={() => handleSortTabChange(key)}
                     className={cn(
                       "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
-                      isActive ? "bg-secondary" : "hover:bg-gray-50"
+                      isActive ? "bg-success" : "hover:bg-gray-50"
                     )}
                   >
                     <Icon

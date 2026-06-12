@@ -146,7 +146,11 @@ const theme = createTheme({
     myColor,
   },
   primaryColor: "myColor",
-  primaryShade: 4,
+  // Shade 6 (#15C95C) — a harder green than the neon brand mint (shade 4).
+  // Selection controls (stepper, checkboxes, sliders) need the stronger tone
+  // to read clearly on light surfaces; big brand CTAs keep the neon mint via
+  // Tailwind classes.
+  primaryShade: 6,
 });
 
 const GTM_TAG = process.env.NEXT_PUBLIC_GTM || undefined;

@@ -142,22 +142,22 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/30 blur-lg"
-                  style={{ animation: "logo-sheen 4.5s ease-in-out infinite" }}
+                  style={{ animation: "logo-sheen 3s ease-in-out infinite" }}
                 />
                 {/* Wordmark ⇄ MΣ mark crossfade-morph */}
                 <span
                   className="relative flex h-full w-full items-center justify-center text-[hsl(var(--surface-inverse))]"
-                  style={{ animation: "logo-breathe 5s var(--ease-out) infinite" }}
+                  style={{ animation: "logo-breathe 3.5s var(--ease-out) infinite" }}
                 >
                   <span
                     className="absolute inset-0 flex items-center justify-center"
-                    style={{ animation: "logo-swap 7s var(--ease-out) infinite" }}
+                    style={{ animation: "logo-swap 4.5s var(--ease-out) infinite" }}
                   >
                     <MYT className="h-auto w-[82%]" />
                   </span>
                   <span
                     className="absolute inset-0 flex items-center justify-center"
-                    style={{ animation: "logo-swap 7s var(--ease-out) -3.5s infinite" }}
+                    style={{ animation: "logo-swap 4.5s var(--ease-out) -2.25s infinite" }}
                   >
                     <MYTMark className="h-auto w-[62%]" />
                   </span>

@@ -148,8 +148,36 @@
 }
 
 .selected-flight {
-  border-color: hsl(var(--primary));
-  background-color: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--success));
+  background-color: hsl(var(--success) / 0.08);
+}
+
+/* Order stepper — keep all 4 steps on one line on phones (Mantine wraps by
+   default; !important because Mantine's own .m_* rules load after ours) */
+@media (max-width: 40em) {
+  .mantine-Stepper-root {
+    --stepper-icon-size: 26px !important;
+    --stepper-fz: 12px !important;
+    --stepper-spacing: 0.25rem !important;
+  }
+  .mantine-Stepper-steps {
+    flex-wrap: nowrap !important;
+  }
+  .mantine-Stepper-step {
+    padding: 0 !important;
+  }
+  .mantine-Stepper-stepBody {
+    margin-inline-start: 5px !important;
+  }
+  .mantine-Stepper-stepLabel {
+    font-size: 11.5px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap;
+  }
+  .mantine-Stepper-separator {
+    margin-inline: 4px !important;
+    min-width: 10px !important;
+  }
 }
 
 /* Aurora — flowing neon gradient-mesh background (signature motif, Elevation #1).

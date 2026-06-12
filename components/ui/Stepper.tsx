@@ -38,7 +38,12 @@ export const Stepper = ({
             size="sm"
             active={active}
             allowNextStepsSelect={false}
-            styles={{ stepLabel: { fontWeight: 700 } }}
+            styles={{
+              stepLabel: { fontWeight: 700 },
+              // All 4 steps stay on one line on phones; the media query in
+              // globals.css shrinks icons/labels/separators to make them fit.
+              steps: { flexWrap: "nowrap" },
+            }}
           >
             {steps.map((step, index) => (
               <MantineStepper.Step
