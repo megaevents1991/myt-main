@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Artist } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
 import { MYT } from "@/components/ui/myt";
+import { MYTMark } from "@/components/ui/mytMark";
 
 // Bright blob backgrounds cycled across the tilted cards.
 const blobColors = [
@@ -137,43 +138,29 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
                 aria-label="חיפוש אירוע"
                 className="group relative block h-64 w-44 shrink-0 snap-center overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary transition-transform duration-300 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main sm:h-80 sm:w-56"
               >
-                {/* Aurora wash cycling through the brand neons behind the wordmark */}
+                {/* Soft sheen sweeping across */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute -inset-1/3 rounded-full opacity-90 blur-2xl"
-                  style={{
-                    background:
-                      "radial-gradient(closest-side, hsl(var(--brand-aqua)), transparent 72%)",
-                    animation: "logo-aurora 6s linear infinite",
-                  }}
+                  className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/30 blur-lg"
+                  style={{ animation: "logo-sheen 4.5s ease-in-out infinite" }}
                 />
-                {/* Second wash, counter-phased coral */}
+                {/* Wordmark ⇄ MΣ mark crossfade-morph */}
                 <span
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-1/3 rounded-full opacity-60 blur-3xl"
-                  style={{
-                    background:
-                      "radial-gradient(closest-side, hsl(var(--brand-coral) / 0.8), transparent 70%)",
-                    animation: "logo-aurora 9s linear infinite reverse",
-                  }}
-                />
-                {/* Neon sheen sweeping across */}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/50 blur-lg"
-                  style={{ animation: "logo-sheen 2.8s ease-in-out infinite" }}
-                />
-                {/* Pulsing ring radiating out */}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-6 rounded-full border-4 border-[hsl(var(--surface-inverse))]/30"
-                  style={{ animation: "logo-ring 2.4s ease-out infinite" }}
-                />
-                <span
-                  className="relative flex h-full w-full items-center justify-center"
-                  style={{ animation: "logo-breathe 3.6s var(--ease-out) infinite" }}
+                  className="relative flex h-full w-full items-center justify-center text-[hsl(var(--surface-inverse))]"
+                  style={{ animation: "logo-breathe 5s var(--ease-out) infinite" }}
                 >
-                  <MYT className="h-auto w-[82%] text-[hsl(var(--surface-inverse))]" />
+                  <span
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ animation: "logo-swap 7s var(--ease-out) infinite" }}
+                  >
+                    <MYT className="h-auto w-[82%]" />
+                  </span>
+                  <span
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ animation: "logo-swap 7s var(--ease-out) -3.5s infinite" }}
+                  >
+                    <MYTMark className="h-auto w-[62%]" />
+                  </span>
                 </span>
               </button>
             ) : null;
