@@ -18,7 +18,7 @@ export const GuestScoreBadge = ({ rating }: { rating?: number }) => {
   return (
     <div className="flex items-center gap-1.5" dir="ltr">
       {scoreWord(rating) && (
-        <span className="text-xs font-semibold text-emerald-700">
+        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
           {scoreWord(rating)}
         </span>
       )}

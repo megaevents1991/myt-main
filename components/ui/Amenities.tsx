@@ -39,7 +39,7 @@ export const Amenities = ({
           <span
             key={icon.originalTag}
             style={{ display: "inline-block" }}
-            className="bg-gray-200 rounded-md text-xs px-1 py-0.5 my-1 ml-2"
+            className="bg-gray-200 dark:bg-muted rounded-md text-xs px-1 py-0.5 my-1 ml-2"
           >
             <div className="flex items-center gap-1">
               <span className="hidden lg:inline-block">{icon?.displayTag}</span>
@@ -50,6 +50,7 @@ export const Amenities = ({
                 width={16}
                 height={16}
                 unoptimized
+                className="dark:invert"
               />
             </div>
           </span>
