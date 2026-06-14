@@ -45,3 +45,12 @@ next-env.d.ts
 node_modules
 
 .claude
+
+# Figma reference art (design alignment, not shipped)
+.figma_ref/
+
+# MCP
+.playwright-mcp
+snapshoot
+# UX review screenshots (local tooling)
+.ux-review/
