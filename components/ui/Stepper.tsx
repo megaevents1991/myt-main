@@ -35,14 +35,16 @@ export const Stepper = ({
         <div className="w-full max-w-2xl flex-1">
           <MantineStepper
             onStepClick={onStepperClick}
-            size="sm"
+            size="md"
             active={active}
             allowNextStepsSelect={false}
             styles={{
-              stepLabel: { fontWeight: 700 },
+              stepLabel: { fontWeight: 700, fontSize: 15 },
               // All 4 steps stay on one line on phones; the media query in
               // globals.css shrinks icons/labels/separators to make them fit.
               steps: { flexWrap: "nowrap" },
+              // Loosen the connecting lines between steps a touch.
+              separator: { marginInline: 16 },
             }}
           >
             {steps.map((step, index) => (

@@ -1418,7 +1418,7 @@ export default function OrderReview() {
               {/* CTA Button */}
               <Button
                 onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-[18px] h-[52px] hidden md:block"
+                className="w-full bg-main text-main-foreground font-bold hover:bg-main/90 text-[18px] h-[52px] hidden md:block"
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
@@ -1870,7 +1870,7 @@ export default function OrderReview() {
               <Button
                 ref={originalButtonRef}
                 onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-[18px] h-[52px] block md:hidden"
+                className="w-full bg-main text-main-foreground font-bold hover:bg-main/90 text-[18px] h-[52px] block md:hidden"
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
@@ -1965,7 +1965,7 @@ export default function OrderReview() {
             </Button>
             <Button
               onClick={(e) => handleSubmit(e, true)}
-              className="flex-1 bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-[18px] h-[52px] w-full justify-between"
+              className="flex-1 bg-main text-main-foreground font-bold hover:bg-main/90 text-[18px] h-[52px] w-full justify-between"
               disabled={isSubmitting}
               aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
             >

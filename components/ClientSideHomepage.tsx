@@ -1730,7 +1730,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
     {hasMultipleDates && (
       <div
         data-strip-click="true"
-        className="w-full bg-main text-main-foreground text-center py-2 px-3 rounded-b-2xl cursor-pointer hover:bg-main/90 transition-colors duration-200 shadow-card"
+        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-main/90 transition-colors duration-200 shadow-card"
         role="button"
         aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
         onClick={handleStripClick}

@@ -6,7 +6,9 @@ import { AirlinesStrip } from "@/components/ui/AirlinesStrip";
 import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
 import { contentfulClient } from "@/lib/contentful";
-import { FootballFields, ArtistFields, Artist, CarouselFields, FootballTeam } from "@/lib/app.types";
+import { FootballFields, ArtistFields, Artist, CarouselFields, FootballTeam, CategoryFields } from "@/lib/app.types";
+import { CategorySection, type HomeCategory } from "@/components/CategorySection";
+import { getCategories as getCategoryRows } from "@/lib/categories";
 
 // Force static generation with ISR
 export const dynamic = "force-static";
@@ -104,15 +106,30 @@ async function getCarouselArtists(): Promise<Artist[]> {
   }
 }
 
+async function getCategories(): Promise<HomeCategory[]> {
+  // Live source: backoffice-managed Supabase `categories` table.
+  const rows = await getCategoryRows();
+  return rows.map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    subtitle: c.subtitle ?? undefined,
+    tag: c.tag ?? undefined,
+    sport: c.sport ?? undefined,
+    imageUrl: c.image_url ?? undefined,
+    linkUrl: c.link_url ?? undefined,
+  }));
+}
+
 export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
 
-  const [events, footballTeams, carouselArtists, artists] = await Promise.all([
+  const [events, footballTeams, carouselArtists, artists, categories] = await Promise.all([
     getEventsForPage(),
     getFootballTeams(),
     getCarouselArtists(),
     getAllArtists(),
+    getCategories(),
   ]);
 
   return (
@@ -133,9 +150,9 @@ export default async function Home() {
         artists={artists}
         carouselArtists={carouselArtists}
       />
-      <AirlinesStrip />
+      <CategorySection categories={categories} />
+      {/* AirlinesStrip + MegaEventsSection (about / "שותפים לדרך") hidden for now — re-add later */}
       <TrustSection />
-      <MegaEventsSection />
       <FAQ />
     </main>
   );

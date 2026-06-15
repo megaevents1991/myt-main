@@ -163,27 +163,28 @@
    default; !important because Mantine's own .m_* rules load after ours) */
 @media (max-width: 40em) {
   .mantine-Stepper-root {
-    --stepper-icon-size: 26px !important;
-    --stepper-fz: 12px !important;
+    --stepper-icon-size: 28px !important;
+    --stepper-fz: 13px !important;
     --stepper-spacing: 0.25rem !important;
   }
   .mantine-Stepper-steps {
     flex-wrap: nowrap !important;
+    width: 100% !important;
+    justify-content: space-between !important;
   }
   .mantine-Stepper-step {
     padding: 0 !important;
   }
   .mantine-Stepper-stepBody {
-    margin-inline-start: 5px !important;
+    margin-inline-start: 6px !important;
   }
   .mantine-Stepper-stepLabel {
-    font-size: 11.5px !important;
+    font-size: 13px !important;
     line-height: 1.15 !important;
     white-space: nowrap;
   }
   .mantine-Stepper-separator {
-    margin-inline: 4px !important;
-    min-width: 10px !important;
+    display: none !important;
   }
 }
 

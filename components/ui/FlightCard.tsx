@@ -237,7 +237,7 @@ export const FlightTicketCard = memo(
             <div
               className={cn(
                 "absolute bg-card border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-success rounded-2xl px-3 py-1 text-sm",
-                isSelected && "bg-success text-white border-success"
+                isSelected && "bg-main text-main-foreground border-main dark:bg-foreground dark:text-background dark:border-foreground"
               )}
             >
               {priceOutsidePackBoundries ? (

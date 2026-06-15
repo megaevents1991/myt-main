@@ -381,6 +381,88 @@ export type FootballFields = {
   };
 };
 
+/**
+ * Templates — generic backoffice CMS rows (Supabase `templates` table) that
+ * replace Contentful. Common fields are columns; type-specific fields live in
+ * `data` (jsonb). Shared DB shape: keep in sync with backoffice
+ * `types/template.types.ts`.
+ */
+export interface Template<D = Record<string, unknown>> {
+  id: number;
+  type: string;
+  slug: string;
+  name: string;
+  name_english: string | null;
+  image_url: string | null;
+  data: D;
+  display_order: number;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** type-specific `data` payload for `type = "category"`. */
+export interface CategoryData {
+  subtitle?: string | null;
+  tag?: string | null;
+  sport?: string | null;
+  /** Contentful entry IDs of the artist/team pages grouped under this category. */
+  member_ids?: string[];
+  link_url?: string | null;
+}
+
+/** Flattened category view used by the UI (template row + data merged). */
+export interface Category {
+  slug: string;
+  name: string;
+  name_english: string | null;
+  subtitle: string | null;
+  tag: string | null;
+  sport: string | null;
+  image_url: string | null;
+  member_ids: string[];
+  link_url: string | null;
+  display_order: number;
+  is_active: boolean;
+}
+
+/**
+ * (Legacy / reference) Contentful-backed category type. Kept for reference;
+ * the live source is the Supabase `categories` table (see `Category` above).
+ */
+export type CategoryFields = {
+  contentTypeId: "categoryTemplate";
+  fields: {
+    name: string;
+    nameEnglish?: string;
+    /** Meta line under the title, e.g. "עונת 2025/26 · אירופה · שלב ההכרעה". */
+    subtitle?: string;
+    /** Grouping label for the homepage section, e.g. "כדורגל". */
+    sport?: string;
+    /** Optional badge text, e.g. "כרטיסים אחרונים". */
+    tag?: string;
+    heroBanner: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: { image?: { height?: number; width?: number } };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    /** Artist/team entries that belong to this category. */
+    members?: EntryFieldTypes.Array<
+      EntryFieldTypes.EntryLink<ArtistFields | FootballFields>
+    >;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
+    sys: EntryFieldTypes.Object<{ id: string }>;
+  };
+};
+
 export type BlogTemplateFields = {
   contentTypeId: "blogTemplate";
   fields: {

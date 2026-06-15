@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
@@ -19,6 +19,10 @@ const navLinks = [
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  // Inside the order flow the Stepper is the only chrome — hide the global
+  // header so users can't bounce back to the homepage mid-booking.
+  const hidden = pathname?.startsWith("/order");
 
   // Open the search modal directly. On the homepage the open-search event is
   // handled in place; elsewhere we route home and request it via the URL.
@@ -53,6 +57,8 @@ export const Header = () => {
   }, []);
 
   const visible = shown || menuOpen;
+
+  if (hidden) return null;
 
   return (
     <header

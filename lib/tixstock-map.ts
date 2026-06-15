@@ -34,18 +34,19 @@ export type TixStockMatchableListing = {
 /* ------------------------------------------------------------------ */
 
 export const TX_TICKET_COLOR = "rgb(5, 32, 60)";
-/** Light solid fill for sections with available tickets (opaque equivalent of ~20 % teal on white – avoids stacking artefacts from overlapping shapes) */
-export const TX_SECTION_FILL_LIGHT = "#D4E5E7";
-/** Base/available section stroke — secondary DEFAULT */
-export const TX_SECTION_FILL = "#277E89";
+/** Light solid fill for sections with available tickets — light mint tint
+ *  (brand-aligned, opaque to avoid stacking artefacts from overlapping shapes) */
+export const TX_SECTION_FILL_LIGHT = "#DBF4E7";
+/** Base/available section stroke — brand green */
+export const TX_SECTION_FILL = "#1FA85C";
 /** Hover/highlighted stroke & text — secondary foreground */
 export const TX_HOVER_STROKE = "#F0F0F2";
 /** Text shadow on hover */
 export const TX_TEXT_SHADOW = "#000000";
-/** Slightly brighter teal for hover feedback */
-export const TX_HOVER_FILL = "#2F97A3";
-/** Stronger teal for selected state */
-export const TX_SELECTED_FILL = "#277E89";
+/** Brighter green for hover feedback */
+export const TX_HOVER_FILL = "#2BC274";
+/** Stronger green for selected state */
+export const TX_SELECTED_FILL = "#1FA85C";
 /** Fill for explicitly disabled/excluded sections */
 export const TX_DISABLED_FILL = "#D8D8D8";
 /** Stroke for explicitly disabled/excluded sections */

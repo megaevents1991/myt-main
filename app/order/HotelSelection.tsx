@@ -793,7 +793,7 @@ export const HotelSelection = () => {
                 <button
                   disabled={isFetching}
                   onClick={() => fetchHotels()}
-                  className="p-2 px-4 bg-success text-white rounded-l-lg h-[40px] flex items-center justify-center r"
+                  className="p-2 px-4 bg-main text-main-foreground rounded-l-lg h-[40px] flex items-center justify-center r"
                   type="button"
                   aria-label="חפש מלונות"
                 >
@@ -834,20 +834,20 @@ export const HotelSelection = () => {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
                     isActive
-                      ? "border-success bg-success/10"
-                      : "border-border bg-card hover:border-success"
+                      ? "border-main bg-main/10 dark:border-foreground/40"
+                      : "border-border bg-card hover:border-main"
                   )}
                 >
                   <span
                     className={cn(
                       "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
-                      isActive ? "bg-success" : "bg-muted"
+                      isActive ? "bg-main dark:bg-foreground" : "bg-muted"
                     )}
                   >
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-colors",
-                        isActive ? "text-white" : "text-muted-foreground"
+                        isActive ? "text-white dark:text-background" : "text-muted-foreground"
                       )}
                       strokeWidth={1.8}
                       aria-hidden="true"
@@ -897,13 +897,13 @@ export const HotelSelection = () => {
                     }
                     className={cn(
                       "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
-                      isActive ? "bg-success" : "hover:bg-muted"
+                      isActive ? "bg-main dark:bg-foreground" : "hover:bg-muted"
                     )}
                   >
                     <Icon
                       className={cn(
                         "w-3.5 h-3.5 flex-shrink-0",
-                        isActive ? "text-white" : "text-muted-foreground"
+                        isActive ? "text-white dark:text-background" : "text-muted-foreground"
                       )}
                       strokeWidth={1.8}
                       aria-hidden="true"
@@ -911,7 +911,7 @@ export const HotelSelection = () => {
                     <span
                       className={cn(
                         "text-[11px] font-bold whitespace-nowrap",
-                        isActive ? "text-white" : "text-foreground"
+                        isActive ? "text-white dark:text-background" : "text-foreground"
                       )}
                     >
                       {label}

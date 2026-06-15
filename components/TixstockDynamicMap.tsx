@@ -408,10 +408,12 @@ export function TixstockDynamicMap({
 
   return (
     <div className="w-full" dir="ltr">
+      {/* Map always sits on a white panel — the venue SVG (stage, outlines) is
+          authored for a light background, so keep it white in dark mode too. */}
       <div
         ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: paintedSvg }}
-        className="flex justify-center rounded-lg overflow-hidden [&_svg]:max-w-full [&_svg]:w-auto [&_svg]:h-auto [&_svg]:max-h-[45svh] lg:[&_svg]:max-h-[calc(100vh-10rem)]"
+        className="flex justify-center overflow-hidden rounded-xl border border-black/5 bg-[#f5f6f7] p-3 shadow-sm [&_svg]:max-w-full [&_svg]:w-auto [&_svg]:h-auto [&_svg]:max-h-[45svh] lg:[&_svg]:max-h-[calc(100vh-10rem)]"
       />
     </div>
   );
