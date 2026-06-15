@@ -36,6 +36,9 @@ const fontDisplay = Rubik({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Dark brand surface so the mobile browser top chrome matches the dark
+  // header (no white strip above the page).
+  themeColor: "#0A1A14",
 };
 
 export const metadata: Metadata = {
@@ -111,7 +114,11 @@ export const metadata: Metadata = {
     google: "YOUR_GOOGLE_VERIFICATION_CODE", // Replace with actual verification code
   },
   icons: {
-    icon: "/favicon.ico",
+    // New ME brand mark (SVG) for modern browsers; .ico kept as fallback.
+    icon: [
+      { url: "/brand/logo-mark-ME.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
     apple: "/apple-touch-icon.png",
   },
   other: {

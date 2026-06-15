@@ -13,6 +13,8 @@ import ClientTracker from "@/components/ClientTracker";
 import { DetailHero } from "@/components/DetailHero";
 import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TrustSection } from "@/components/TrustSection";
+import { FAQ } from "@/components/ui/FAQ";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
@@ -152,6 +154,9 @@ export default async function FootballPage({
             <EmptyState title="אין אירועים קרובים" />
           )}
         </section>
+
+        <TrustSection />
+        <FAQ />
       </>
     );
   } catch (error) {

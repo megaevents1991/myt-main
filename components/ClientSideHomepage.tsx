@@ -1188,13 +1188,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
 
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">
         <div className="container mx-auto">
-          {/* Mobile trust bar — compact single line (replaces the old stacked guarantees) */}
-          <div className="sm:hidden mb-5">
-            <section aria-labelledby="guarantees-heading">
-              <h2 id="guarantees-heading" className="sr-only">היתרונות שלנו</h2>
-              <TrustBadges className="justify-center rounded-xl bg-main px-3 py-2.5 text-main-foreground/90 shadow-card" />
-            </section>
-          </div>
+          {/* Mobile trust bar removed — the hero already carries the trust row. */}
           <div className="hidden" aria-hidden>
             <section>
               <h2 className="sr-only">היתרונות שלנו</h2>

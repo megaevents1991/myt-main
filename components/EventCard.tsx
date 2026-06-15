@@ -43,17 +43,9 @@ export const EventCard = ({
     >
       <EventButton event={event}>
         <article className="group flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_14px_36px_-10px_hsl(var(--brand-mint)/0.4)]">
+          {/* Date on the right, price on the left (swapped per mock) */}
           <div className="flex items-start justify-between gap-3">
-            <span
-              className={`text-2xl font-extrabold ${
-                sold ? "text-muted-foreground" : "text-foreground"
-              }`}
-            >
-              {price !== null
-                ? `$${price.toLocaleString("en-US")}`
-                : "—"}
-            </span>
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-start">
               <span className="text-xl font-extrabold tabular-nums text-foreground">
                 {dateLabel}
               </span>
@@ -63,9 +55,19 @@ export const EventCard = ({
                 </span>
               )}
             </div>
+            <span
+              className={`text-2xl font-extrabold ${
+                sold ? "text-muted-foreground" : "text-foreground"
+              }`}
+            >
+              {price !== null
+                ? `$${price.toLocaleString("en-US")}`
+                : "—"}
+            </span>
           </div>
 
-          <p className="text-sm text-muted-foreground">
+          {/* Destination — larger per mock */}
+          <p className="text-lg font-bold text-foreground">
             {event.location?.name}
           </p>
 
@@ -74,7 +76,9 @@ export const EventCard = ({
             {!sold && event.skip_flight && <TicketOnlyBadge />}
           </div>
 
+          {/* Icons on the right, button on the left (swapped per mock) */}
           <div className="mt-auto flex items-end justify-between gap-3 pt-1">
+            <PackageIcons highlight="ticket" />
             <Button
               variant="pill"
               size="sm"
@@ -84,7 +88,6 @@ export const EventCard = ({
             >
               {sold ? "אזל מהמלאי" : "בחרו תאריך"}
             </Button>
-            <PackageIcons highlight="ticket" />
           </div>
         </article>
       </EventButton>

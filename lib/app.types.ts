@@ -382,19 +382,16 @@ export type FootballFields = {
 };
 
 /**
- * Templates — generic backoffice CMS rows (Supabase `templates` table) that
- * replace Contentful. Common fields are columns; type-specific fields live in
- * `data` (jsonb). Shared DB shape: keep in sync with backoffice
- * `types/template.types.ts`.
+ * Backoffice CMS templates — one typed table per content type (replacing
+ * Contentful). Every table shares `TemplateBase`. Shared DB shape: keep in sync
+ * with backoffice `types/template.types.ts` + per-type files.
  */
-export interface Template<D = Record<string, unknown>> {
+export interface TemplateBase {
   id: number;
-  type: string;
   slug: string;
   name: string;
   name_english: string | null;
   image_url: string | null;
-  data: D;
   display_order: number;
   is_active: boolean;
   is_deleted: boolean;
@@ -402,29 +399,18 @@ export interface Template<D = Record<string, unknown>> {
   updated_at: string;
 }
 
-/** type-specific `data` payload for `type = "category"`. */
-export interface CategoryData {
-  subtitle?: string | null;
-  tag?: string | null;
-  sport?: string | null;
-  /** Contentful entry IDs of the artist/team pages grouped under this category. */
-  member_ids?: string[];
-  link_url?: string | null;
-}
-
-/** Flattened category view used by the UI (template row + data merged). */
-export interface Category {
-  slug: string;
-  name: string;
-  name_english: string | null;
+/**
+ * Category — typed row of the Supabase `categories` table. Managed in the
+ * backoffice, read by this app. Keep in sync with backoffice
+ * `types/category.types.ts`.
+ */
+export interface Category extends TemplateBase {
   subtitle: string | null;
   tag: string | null;
   sport: string | null;
-  image_url: string | null;
+  /** Artist/team page IDs grouped under this category (Contentful IDs for now). */
   member_ids: string[];
   link_url: string | null;
-  display_order: number;
-  is_active: boolean;
 }
 
 /**
