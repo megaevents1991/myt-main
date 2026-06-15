@@ -32,7 +32,15 @@ export const PackageIcons = ({
             active ? "text-brand-orange" : "text-muted-foreground"
           )}
         >
-          <Icon className="size-5" aria-hidden />
+          <Icon
+            className="size-5"
+            aria-hidden
+            style={
+              active
+                ? { animation: "icon-glow 1.8s ease-in-out infinite" }
+                : undefined
+            }
+          />
           <span>{label}</span>
         </li>
       );

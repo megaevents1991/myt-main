@@ -25,6 +25,7 @@ import { ElfsightWidget } from "@/components/ui/elfReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { HeroCarousel } from "@/components/HeroCarousel";
+import { PackageBanners } from "@/components/PackageBanners";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { EventArt } from "@/components/ui/EventArt";
@@ -1182,12 +1183,21 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
         </div>
       </section>
 
+      {/* Promo package banners — featured events, auto-selected */}
+      <PackageBanners events={initialEvents} />
+
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">
         <div className="container mx-auto">
-          {/* Accessibility: Enhanced mobile guarantees section with semantic structure */}
-          <div className="sm:hidden py-1">
+          {/* Mobile trust bar — compact single line (replaces the old stacked guarantees) */}
+          <div className="sm:hidden mb-5">
             <section aria-labelledby="guarantees-heading">
               <h2 id="guarantees-heading" className="sr-only">היתרונות שלנו</h2>
+              <TrustBadges className="justify-center rounded-xl bg-main px-3 py-2.5 text-main-foreground/90 shadow-card" />
+            </section>
+          </div>
+          <div className="hidden" aria-hidden>
+            <section>
+              <h2 className="sr-only">היתרונות שלנו</h2>
               <div
                 className="flex justify-around items-center text-right container mb-4"
                 dir="rtl"
@@ -1670,12 +1680,12 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
           {/* Body */}
           <div className="flex flex-1 flex-col p-4 text-right" dir="rtl">
             <h3
-              className="line-clamp-2 min-h-[2.5em] text-xl font-bold leading-tight"
+              className="line-clamp-2 text-xl font-bold leading-tight"
               title={event.name}
             >
               {event.name}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               <span className="font-bold text-foreground">
                 {dayjs(event.date).format("DD/MM/YY")}
               </span>
@@ -1687,13 +1697,9 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
               <EventStatusBadge event={event} />
             </div>
 
+            {/* Price on the right, package icons on the left (per mock) */}
             <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
-              <PackageIcons
-                highlight={
-                  (["flight", "hotel", "ticket"] as const)[Number(event.id) % 3]
-                }
-              />
-              <div className="text-left">
+              <div className="text-right">
                 {packagePrice !== null ? (
                   <div className="text-2xl font-extrabold leading-none tabular-nums">
                     ${packagePrice.toLocaleString("en-US")}
@@ -1704,12 +1710,17 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
                   </div>
                 )}
                 <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
-                  לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)
+                  לנוסע · כולל טיסה, מלון וכרטיס
                 </p>
               </div>
+              <PackageIcons
+                highlight={
+                  (["flight", "hotel", "ticket"] as const)[Number(event.id) % 3]
+                }
+              />
             </div>
 
-            <div className="mt-4 w-full rounded-xl bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-main/90">
+            <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-main/90">
               {computedSold ? "אזל מהמלאי" : "לפרטים והזמנה"}
             </div>
           </div>

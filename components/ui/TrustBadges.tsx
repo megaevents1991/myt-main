@@ -1,15 +1,16 @@
-import { Home, Ticket, Lock } from "lucide-react";
+import { Award, Ticket, Lock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Short labels on mobile (space-tight), full labels on desktop.
 const badges = [
-  { Icon: Home, label: "מבית מגה תיירות · 30 שנות ניסיון" },
-  { Icon: Ticket, label: "כרטיסים רשמיים בלבד" },
-  { Icon: Lock, label: "תשלום מאובטח" },
+  { Icon: Award, short: "30 שנות ניסיון", long: "מבית מגה תיירות · 30 שנות ניסיון" },
+  { Icon: Ticket, short: "כרטיסים רשמיים", long: "כרטיסים רשמיים בלבד" },
+  { Icon: Lock, short: "תשלום מאובטח", long: "תשלום מאובטח" },
 ];
 
 /** Divider-separated trust row used in the hero and detail-hero. Single line
- *  on mobile (smaller type), roomier on desktop. */
+ *  on mobile (short labels, smaller type), full labels on desktop. */
 export const TrustBadges = ({ className }: { className?: string }) => (
   <ul
     className={cn(
@@ -17,8 +18,8 @@ export const TrustBadges = ({ className }: { className?: string }) => (
       className
     )}
   >
-    {badges.map(({ Icon, label }, i) => (
-      <li key={label} className="flex items-center gap-1 sm:gap-2">
+    {badges.map(({ Icon, short, long }, i) => (
+      <li key={long} className="flex items-center gap-1 sm:gap-2">
         {i > 0 && (
           <span
             aria-hidden
@@ -26,7 +27,8 @@ export const TrustBadges = ({ className }: { className?: string }) => (
           />
         )}
         <Icon className="size-3.5 shrink-0 sm:size-4" aria-hidden />
-        <span>{label}</span>
+        <span className="sm:hidden">{short}</span>
+        <span className="hidden sm:inline">{long}</span>
       </li>
     ))}
   </ul>

@@ -58,9 +58,12 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
   );
   const fuse = useMemo(() => new Fuse(available, fuseOptions), [available]);
 
+  // The event the user picked from the list — drives the package panel.
+  const [selected, setSelected] = useState<Event | null>(null);
+
   const matches = useMemo(() => {
     if (query.trim().length < 2) return [];
-    return fuse.search(query.trim()).slice(0, 3).map((r) => r.item);
+    return fuse.search(query.trim()).slice(0, 5).map((r) => r.item);
   }, [query, fuse]);
   const top = matches[0];
 
@@ -98,8 +101,19 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
     rec.start();
   };
 
-  const goTo = (event: Event) => {
+  // Stage 1 → 2: pull a chosen list row up into the package panel.
+  const pick = (event: Event) => {
     trackEvent("heroSearchSelected", {
+      eventId: event.id,
+      eventName: event.name,
+      query,
+    });
+    setSelected(event);
+  };
+
+  // Stage 2 CTA: go to the order flow for the assembled package.
+  const goTo = (event: Event) => {
+    trackEvent("heroSearchOrder", {
       eventId: event.id,
       eventName: event.name,
       query,
@@ -107,11 +121,11 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
     router.push(`/order/${event.id}`);
   };
 
-  const price = top ? computePackagePrice(top) : null;
-  const parts = top
+  const price = selected ? computePackagePrice(selected) : null;
+  const parts = selected
     ? ([
-        ...(!top.skip_flight ? [{ label: "טיסה", Icon: Plane }] : []),
-        ...(!top.skip_flight ? [{ label: "מלון", Icon: Building2 }] : []),
+        ...(!selected.skip_flight ? [{ label: "טיסה", Icon: Plane }] : []),
+        ...(!selected.skip_flight ? [{ label: "מלון", Icon: Building2 }] : []),
         { label: "כרטיס", Icon: Ticket },
       ] as { label: string; Icon: typeof Plane }[])
     : [];
@@ -123,9 +137,14 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (selected) setSelected(null);
+          }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && top) goTo(top);
+            if (e.key !== "Enter") return;
+            if (selected) goTo(selected);
+            else if (top) pick(top);
           }}
           placeholder="לאן טסים? אירוע, אומן או עיר…"
           aria-label="חיפוש אירוע — הקלידו אירוע, אומן או עיר"
@@ -148,36 +167,84 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
         )}
         <button
           type="button"
-          onClick={() => top && goTo(top)}
-          disabled={!top}
-          aria-label="חיפוש"
+          onClick={() => (selected ? goTo(selected) : top && pick(top))}
+          disabled={!top && !selected}
+          aria-label={selected ? "המשך להזמנה" : "חיפוש"}
           className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
         >
           <ArrowUp className="size-5" aria-hidden />
         </button>
       </div>
 
-      {/* Live package panel */}
-      {top && (
-        <div className="mt-3 rounded-2xl border border-main-foreground/15 bg-main-foreground/[0.07] p-4 text-right backdrop-blur-sm">
-          <p className="flex items-center justify-end gap-2 text-xs font-medium text-main-foreground/60">
-            מרכיבים את החבילה שלך…
+      {/* Stage 1 — plain results list. Pick a row to assemble its package. */}
+      {!selected && matches.length > 0 && (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-main-foreground/15 bg-main-foreground/[0.07] backdrop-blur-sm">
+          <p className="flex items-center justify-end gap-2 border-b border-main-foreground/10 px-4 py-2.5 text-xs font-medium text-main-foreground/60">
+            אירועים תואמים · המחיר ממוצע וניתן לשינוי בהמשך
             <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
           </p>
+          <ul>
+            {matches.map((m) => {
+              const mPrice = computePackagePrice(m);
+              return (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => pick(m)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-right transition-colors hover:bg-main-foreground/10"
+                  >
+                    {mPrice !== null && (
+                      <span className="shrink-0 text-left text-sm leading-tight text-main-foreground/60">
+                        מחיר מ־
+                        <span className="block text-base font-bold tabular-nums text-primary">
+                          ${mPrice.toLocaleString("en-US")}
+                        </span>
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-base font-bold text-main-foreground">
+                        {m.name}
+                      </span>
+                      {m.location?.name ? (
+                        <span className="block truncate text-xs text-main-foreground/60">
+                          {m.location.name}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
-          <div className="mt-2 flex items-center justify-between gap-3">
+      {/* Stage 2 — chosen event pulled up; package assembles live. */}
+      {selected && (
+        <div className="mt-3 rounded-2xl border border-main-foreground/15 bg-main-foreground/[0.07] p-4 text-right backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-xs font-medium text-main-foreground/60">
+              מרכיבים את החבילה שלך…
+              <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
+            </p>
             <button
               type="button"
-              onClick={() => goTo(top)}
-              className="flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+              onClick={() => setSelected(null)}
+              className="text-xs font-medium text-main-foreground/60 underline-offset-2 hover:text-main-foreground hover:underline"
             >
-              <Check className="size-4" aria-hidden />
-              בחרו
+              החלף בחירה
             </button>
-            <p className="truncate text-base font-bold text-main-foreground">
-              {top.name}
-              {top.location?.name ? (
-                <span className="font-medium text-main-foreground/70"> · {top.location.name}</span>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="flex shrink-0 items-center gap-1 rounded-lg bg-primary/15 px-2 py-1 text-xs font-bold text-primary">
+              <Check className="size-3.5" aria-hidden />
+              נבחר
+            </span>
+            <p className="min-w-0 truncate text-base font-bold text-main-foreground">
+              {selected.name}
+              {selected.location?.name ? (
+                <span className="font-medium text-main-foreground/70"> · {selected.location.name}</span>
               ) : null}
             </p>
           </div>
@@ -194,32 +261,59 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
             ))}
           </div>
 
-          <div className="mt-3 flex items-center justify-between border-t border-main-foreground/10 pt-3 text-sm">
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-main-foreground/10 pt-3 text-sm">
             <span className="text-main-foreground/60">
               {price !== null ? (
                 <>
-                  ממוצע <span className="font-bold tabular-nums text-main-foreground">${price.toLocaleString("en-US")}</span> · ניתן לשנות
+                  מחיר מ־<span className="font-bold tabular-nums text-main-foreground">${price.toLocaleString("en-US")}</span> · ניתן לשנות
                 </>
               ) : (
                 "מחיר יוצג בשלב הבא"
               )}
             </span>
-            <span className="font-bold text-primary">החבילה מוכנה</span>
+            <button
+              type="button"
+              onClick={() => goTo(selected)}
+              className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              החבילה מוכנה
+            </button>
           </div>
 
-          {matches.length > 1 && (
-            <div className="mt-2 space-y-1 border-t border-main-foreground/10 pt-2">
-              {matches.slice(1).map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => goTo(m)}
-                  className="block w-full truncate rounded-lg px-2 py-1.5 text-right text-sm text-main-foreground/70 transition-colors hover:bg-main-foreground/10 hover:text-main-foreground"
-                >
-                  {m.name}
-                  {m.location?.name ? ` · ${m.location.name}` : ""}
-                </button>
-              ))}
+          {/* Other matches — pick a different event without re-typing */}
+          {matches.filter((m) => m.id !== selected.id).length > 0 && (
+            <div className="mt-3 border-t border-main-foreground/10 pt-2">
+              <p className="px-1 pb-1 text-xs font-medium text-main-foreground/50">
+                אירועים נוספים
+              </p>
+              <ul>
+                {matches
+                  .filter((m) => m.id !== selected.id)
+                  .map((m) => {
+                    const mPrice = computePackagePrice(m);
+                    return (
+                      <li key={m.id}>
+                        <button
+                          type="button"
+                          onClick={() => pick(m)}
+                          className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-right transition-colors hover:bg-main-foreground/10"
+                        >
+                          {mPrice !== null && (
+                            <span className="shrink-0 text-left text-xs font-bold tabular-nums text-primary">
+                              ${mPrice.toLocaleString("en-US")}
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1 truncate text-sm text-main-foreground/80">
+                            {m.name}
+                            {m.location?.name ? (
+                              <span className="text-main-foreground/50"> · {m.location.name}</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
             </div>
           )}
         </div>

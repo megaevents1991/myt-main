@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { MYT } from "@/components/ui/myt";
 import { MYTMark } from "@/components/ui/mytMark";
 
-// Bright blob backgrounds cycled across the tilted cards.
+// Bright blob backgrounds cycled across the cards.
 const blobColors = [
   "bg-[#5BC8E8]",
   "bg-[#F0902F]",
@@ -20,13 +20,12 @@ const blobColors = [
   "bg-badge-new",
 ];
 
-// Slight alternating tilt so the row feels playful, per the Figma hero.
-const tilts = ["-rotate-3", "rotate-2", "-rotate-2", "rotate-3", "-rotate-1", "rotate-1"];
-
-// The row is rendered three times so native scrolling can loop seamlessly:
+// The row is rendered three times so native scrolling loops seamlessly:
 // whenever the viewport drifts out of the middle copy we instantly jump by
 // exactly one copy's width — identical content, so the jump is invisible.
 const COPIES = 3;
+
+type Card = { kind: "logo" } | { kind: "artist"; artist: Artist; idx: number };
 
 /** Instant (non-smooth) scroll jump, overriding the `scroll-smooth` class. */
 const jumpBy = (el: HTMLElement, delta: number) => {
@@ -36,10 +35,7 @@ const jumpBy = (el: HTMLElement, delta: number) => {
   el.style.scrollBehavior = prev;
 };
 
-/**
- * Keep the viewport inside the middle copy. RTL: scrollLeft is 0 at the
- * start (right edge) and negative going forward (left).
- */
+/** Keep the viewport inside the middle copy (RTL: scrollLeft ≤ 0). */
 const normalize = (el: HTMLElement) => {
   const set = el.scrollWidth / COPIES;
   if (!set) return;
@@ -48,61 +44,108 @@ const normalize = (el: HTMLElement) => {
 };
 
 /**
- * Hero gallery — an infinitely looping scrollable row of tilted, colorful
- * cutout cards shown under the homepage hero headline. Decorative +
- * navigational: each card links to its artist page.
+ * Hero gallery — an infinitely looping coverflow row (per Dor's mock). The row
+ * is cloned ×3 so it scrolls endlessly in both directions; the card nearest the
+ * viewport center is always brought to the front — scaled up, lit, full opacity
+ * — while the rest sit smaller and dimmed behind it. The brand logo card sits
+ * mid-row and the carousel opens centered on it.
  *
- * - Infinite loop: content is cloned ×3; an instant wrap-jump keeps the user
- *   in the middle copy, so scrolling never hits an edge in either direction.
- * - Auto-play: starts centered on the brand logo card, slowly advances one
- *   direction for exactly one full loop, and settles back on the logo.
- *   Stops on first user interaction; skipped under prefers-reduced-motion.
- * - Desktop: prev/next arrow buttons (RTL-aware) for clear scroll affordance.
- * - Touch: native swipe + scroll-snap.
+ * - Native swipe / scroll + RTL-aware arrows that skip two cards at a time.
+ * - Center focus is applied imperatively per-frame (transform/opacity only) so
+ *   it stays smooth during momentum scroll and the auto-play glide.
+ * - Idle auto-play drifts one loop then settles on the logo; stops on first
+ *   interaction; skipped under prefers-reduced-motion.
  */
 export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLButtonElement>(null);
-  const items = artists.filter((a) => a.fields.heroBanner?.fields?.file?.url);
-  const mid = Math.floor(items.length / 2);
+  const logoRef = useRef<HTMLDivElement>(null);
 
-  // Start with the brand logo card (middle copy) centered in the viewport.
+  const items = useMemo(
+    () => artists.filter((a) => a.fields.heroBanner?.fields?.file?.url),
+    [artists]
+  );
+
+  // One copy of the row: artist cards with the brand logo card spliced mid-row.
+  const baseCards = useMemo(() => {
+    const list: Card[] = items.map((artist, idx) => ({
+      kind: "artist" as const,
+      artist,
+      idx,
+    }));
+    list.splice(Math.floor(list.length / 2), 0, { kind: "logo" });
+    return list;
+  }, [items]);
+
+  // Bring the card closest to the row center to the front (imperative so it
+  // tracks momentum scroll smoothly; transform/opacity only — no reflow).
+  const updateFocus = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+    const cards = el.querySelectorAll<HTMLElement>("[data-card]");
+    let best: HTMLElement | null = null;
+    let bestDist = Infinity;
+    cards.forEach((c) => {
+      const r = c.getBoundingClientRect();
+      const dist = Math.abs(r.left + r.width / 2 - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = c;
+      }
+    });
+    cards.forEach((c) => {
+      const focused = c === best;
+      c.style.transform = focused ? "scale(1.08)" : "scale(0.84)";
+      c.style.opacity = focused ? "1" : "0.5";
+      c.style.filter = focused ? "none" : "brightness(0.65)";
+      c.style.zIndex = focused ? "20" : "1";
+      c.querySelector<HTMLElement>("[data-name]")?.style.setProperty(
+        "opacity",
+        focused ? "1" : "0"
+      );
+    });
+  }, []);
+
+  // Open centered on the brand logo card, then set initial focus.
   useEffect(() => {
     logoRef.current?.scrollIntoView({
       inline: "center",
       block: "nearest",
       behavior: "instant" as ScrollBehavior,
     });
-  }, [items.length]);
+    requestAnimationFrame(updateFocus);
+  }, [baseCards.length, updateFocus]);
 
-  // Infinite wrap for manual scrolling. Debounced so the instant jump only
-  // happens after a smooth/momentum scroll settles — never mid-animation.
+  // Infinite wrap + per-frame focus on manual scroll.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    let raf = 0;
     let t: ReturnType<typeof setTimeout>;
     const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateFocus);
       clearTimeout(t);
       t = setTimeout(() => normalize(el), 140);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      cancelAnimationFrame(raf);
       clearTimeout(t);
       el.removeEventListener("scroll", onScroll);
     };
-  }, [items.length]);
+  }, [updateFocus]);
 
-  // Idle auto-play: a slow continuous glide in one direction (rAF-driven)
-  // until it has covered exactly one full loop, then settles centered on the
-  // logo card. Scroll-snap is suspended while gliding so the browser doesn't
-  // fight the sub-pixel scroll position; restored on stop. Stops on first
-  // user interaction. Skipped under prefers-reduced-motion.
+  // Idle auto-play: a slow continuous glide for one full loop, then settle on
+  // the logo. Snap + smooth suspended while gliding so the browser doesn't
+  // fight the sub-pixel writes. Stops on first interaction / reduced-motion.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const SPEED = 140; // px per second; RTL: forward = negative scrollLeft
+    const SPEED = 130; // px/sec; RTL forward = negative scrollLeft
     let traveled = 0;
     let raf = 0;
     let last = 0;
@@ -118,14 +161,11 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
 
     const frame = (now: number) => {
       if (stopped) return;
-      // Clamp dt so returning from a background tab doesn't lurch forward.
       const dt = last ? Math.min(now - last, 100) : 0;
       last = now;
       const set = el.scrollWidth / COPIES;
       const dx = (SPEED * dt) / 1000;
       if (set && traveled + dx >= set) {
-        // Full loop done — wrap-jumps along the way kept us in the middle
-        // copy, so its logo is the nearest one. Center it to finish.
         stop();
         logoRef.current?.scrollIntoView({
           inline: "center",
@@ -137,126 +177,108 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       traveled += dx;
       el.scrollLeft -= dx;
       normalize(el);
+      updateFocus();
       raf = requestAnimationFrame(frame);
     };
 
-    // Suspend snap AND smooth behavior while gliding: with `scroll-smooth`
-    // active, every per-frame scrollLeft write would start its own smooth
-    // animation — dozens of competing animations read as vibration.
     el.style.scrollSnapType = "none";
     el.style.scrollBehavior = "auto";
     raf = requestAnimationFrame(frame);
-    // Wrapper catches the arrow buttons too, not just the scroll row.
-    const wrap = el.parentElement ?? el;
     const opts = { passive: true } as AddEventListenerOptions;
-    wrap.addEventListener("pointerdown", stop, opts);
-    wrap.addEventListener("wheel", stop, opts);
-    wrap.addEventListener("touchstart", stop, opts);
-    wrap.addEventListener("keydown", stop);
+    el.addEventListener("pointerdown", stop, opts);
+    el.addEventListener("wheel", stop, opts);
+    el.addEventListener("touchstart", stop, opts);
     return () => {
       stop();
-      wrap.removeEventListener("pointerdown", stop);
-      wrap.removeEventListener("wheel", stop);
-      wrap.removeEventListener("touchstart", stop);
-      wrap.removeEventListener("keydown", stop);
+      el.removeEventListener("pointerdown", stop);
+      el.removeEventListener("wheel", stop);
+      el.removeEventListener("touchstart", stop);
     };
-  }, [items.length]);
+  }, [baseCards.length, updateFocus]);
 
-  if (items.length === 0) return null;
+  if (baseCards.length === 0) return null;
 
-  // RTL: "forward" reveals content to the left (negative scrollLeft).
+  // Arrows skip TWO cards at a time. RTL: forward reveals content to the left.
   const scroll = (dir: "next" | "prev") => {
     const el = scrollRef.current;
     if (!el) return;
-    const amount = Math.round(el.clientWidth * 0.8);
-    el.scrollBy({ left: dir === "next" ? -amount : amount, behavior: "smooth" });
+    const card = el.querySelector<HTMLElement>("[data-card]");
+    const gap = 16;
+    const step = card ? (card.offsetWidth + gap) * 2 : Math.round(el.clientWidth * 0.6);
+    el.scrollBy({ left: dir === "next" ? -step : step, behavior: "smooth" });
   };
 
   const arrowBtn =
-    "absolute top-1/2 z-20 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
+    "absolute top-1/2 z-30 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
 
-  // One copy of the row. Only the middle copy (copy === 1) is exposed to
-  // assistive tech / keyboard — the clones are presentational scroll buffer.
-  const renderSet = (copy: number) => {
-    const isPrimary = copy === 1;
-    return items.map((artist, i) => {
-      const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
-      const name = String(artist.fields.name ?? "");
-      // Brand card sits mid-row (per Figma) — animated: aurora wash, neon
-      // sheen sweep, breathing wordmark. Carousel opens centered on it.
-      const logoCard =
-        i === mid ? (
-          <button
-            key={`logo-${copy}`}
-            ref={isPrimary ? logoRef : undefined}
-            type="button"
-            tabIndex={isPrimary ? undefined : -1}
-            aria-hidden={isPrimary ? undefined : true}
-            onClick={() => window.dispatchEvent(new CustomEvent("myt:open-search"))}
-            aria-label={isPrimary ? "חיפוש אירוע" : undefined}
-            className="group relative block h-64 w-44 shrink-0 snap-center overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary transition-transform duration-300 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main sm:h-80 sm:w-56"
-          >
-            {/* Soft sheen sweeping across */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/30 blur-lg"
-              style={{ animation: "logo-sheen 3s ease-in-out infinite" }}
-            />
-            {/* Wordmark ⇄ MΣ mark crossfade-morph */}
-            <span
-              className="relative flex h-full w-full items-center justify-center text-[hsl(var(--surface-inverse))]"
-              style={{ animation: "logo-breathe 3.5s var(--ease-out) infinite" }}
-            >
-              <span
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ animation: "logo-swap 4.5s var(--ease-out) infinite" }}
-              >
-                <MYT className="h-auto w-[82%]" />
-              </span>
-              <span
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ animation: "logo-swap 4.5s var(--ease-out) -2.25s infinite" }}
-              >
-                <MYTMark className="h-auto w-[62%]" />
-              </span>
-            </span>
-          </button>
-        ) : null;
+  const renderCard = (card: Card) => {
+    if (card.kind === "logo") {
       return (
-        <React.Fragment key={`${copy}-${artist.sys.id}`}>
-          {logoCard}
-          <Link
-            href={`/artists/${artist.sys.id}`}
-            role={isPrimary ? "listitem" : undefined}
-            tabIndex={isPrimary ? undefined : -1}
-            aria-hidden={isPrimary ? undefined : true}
-            aria-label={isPrimary ? `עמוד האומן ${name}` : undefined}
-            className={cn(
-              "group relative block shrink-0 snap-start transition-transform duration-300 hover:rotate-0 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main",
-              tilts[i % tilts.length]
-            )}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("myt:open-search"))}
+          aria-label="חיפוש אירוע"
+          className="group relative block h-64 w-44 overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-80 sm:w-56"
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/30 blur-lg"
+            style={{ animation: "logo-sheen 3s ease-in-out infinite" }}
+          />
+          <span
+            className="relative flex h-full w-full items-center justify-center text-[hsl(var(--surface-inverse))]"
+            style={{ animation: "logo-breathe 3.5s var(--ease-out) infinite" }}
           >
-            <div
-              className={cn(
-                "relative h-64 w-44 overflow-hidden rounded-3xl sm:h-80 sm:w-56",
-                blobColors[i % blobColors.length]
-              )}
+            <span
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ animation: "logo-swap 4.5s var(--ease-out) infinite" }}
             >
-              <Image
-                src={url}
-                alt={isPrimary ? name : ""}
-                fill
-                sizes="(max-width: 640px) 11rem, 14rem"
-                className="object-cover object-bottom"
-              />
-            </div>
-            <span className="absolute inset-x-2 bottom-2 truncate rounded-xl bg-main/70 px-3 py-1.5 text-center text-sm font-bold text-main-foreground opacity-0 transition-opacity group-hover:opacity-100">
-              {name}
+              <MYT className="h-auto w-[82%]" />
             </span>
-          </Link>
-        </React.Fragment>
+            <span
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ animation: "logo-swap 4.5s var(--ease-out) -2.25s infinite" }}
+            >
+              <MYTMark className="h-auto w-[62%]" />
+            </span>
+          </span>
+        </button>
       );
-    });
+    }
+
+    const { artist, idx } = card;
+    const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
+    const name = String(artist.fields.name ?? "");
+    return (
+      <Link
+        href={`/artists/${artist.sys.id}`}
+        aria-label={`עמוד האומן ${name}`}
+        className="group relative block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main"
+        draggable={false}
+      >
+        <div
+          className={cn(
+            "relative h-64 w-44 overflow-hidden rounded-3xl sm:h-80 sm:w-56",
+            blobColors[idx % blobColors.length]
+          )}
+        >
+          <Image
+            src={url}
+            alt={name}
+            fill
+            sizes="(max-width: 640px) 11rem, 14rem"
+            className="object-cover object-bottom"
+            draggable={false}
+          />
+        </div>
+        <span
+          data-name
+          className="absolute inset-x-2 bottom-2 truncate rounded-xl bg-main/70 px-3 py-1.5 text-center text-sm font-bold text-main-foreground opacity-0 transition-opacity"
+        >
+          {name}
+        </span>
+      </Link>
+    );
   };
 
   return (
@@ -266,7 +288,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         type="button"
         onClick={() => scroll("next")}
         aria-label="האירועים הבאים"
-        className={cn(arrowBtn, "left-2")}
+        className={cn(arrowBtn, "left-2 sm:left-6")}
       >
         <ChevronLeft className="size-5" aria-hidden />
       </button>
@@ -275,18 +297,34 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         type="button"
         onClick={() => scroll("prev")}
         aria-label="האירועים הקודמים"
-        className={cn(arrowBtn, "right-2")}
+        className={cn(arrowBtn, "right-2 sm:right-6")}
       >
         <ChevronRight className="size-5" aria-hidden />
       </button>
 
       <div
         ref={scrollRef}
-        className="flex snap-x snap-mandatory scroll-smooth gap-3 overflow-x-auto px-4 pb-4 pt-2 [scrollbar-width:none] sm:gap-4 sm:px-8"
+        className="flex snap-x snap-mandatory scroll-smooth items-center gap-4 overflow-x-auto px-[40%] py-8 [scrollbar-width:none] sm:px-[calc(50%-7rem)]"
         role="list"
         aria-label="אירועים מובילים"
       >
-        {Array.from({ length: COPIES }, (_, copy) => renderSet(copy))}
+        {Array.from({ length: COPIES }, (_, copy) =>
+          baseCards.map((card, i) => {
+            const isLogoMiddle = card.kind === "logo" && copy === 1;
+            return (
+              <div
+                key={`${copy}-${i}`}
+                ref={isLogoMiddle ? logoRef : undefined}
+                data-card
+                role="listitem"
+                className="shrink-0 snap-center transition-[transform,opacity,filter] duration-300 ease-out will-change-transform"
+                style={{ transform: "scale(0.84)", opacity: 0.5 }}
+              >
+                {renderCard(card)}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

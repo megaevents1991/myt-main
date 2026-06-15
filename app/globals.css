@@ -231,6 +231,18 @@
   98%, 100% { opacity: 1; transform: scale(1); filter: blur(0); }
 }
 
+/* Highlighted package icon on event cards — soft breathing neon glow */
+@keyframes icon-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); opacity: 0.85; }
+  50% { filter: drop-shadow(0 0 6px hsl(var(--brand-orange) / 0.85)); opacity: 1; }
+}
+
+/* Pulsing dot on the "last tickets" tag */
+@keyframes tag-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.4; }
+}
+
 /* Screen reader only content */
 .sr-only {
   position: absolute;
