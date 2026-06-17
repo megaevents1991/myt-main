@@ -86,12 +86,16 @@ const transformDbFlightToFlight = (
   dbFlight: any,
   id: number,
   num_of_travelers: number
-): Flight => {
+): Flight | null => {
+  // Not enough remaining inventory for this party size — hide the flight
+  // entirely. Returning a placeholder ({}) here would propagate an invalid
+  // Flight to the client and crash flight rendering. Returning null lets the
+  // caller filter it out so the online flights still show.
   if (
     dbFlight.initial_quantity - dbFlight.consumed_quantity <
     num_of_travelers
   ) {
-    return {} as Flight;
+    return null;
   }
   return {
     offer: {} as Flight["offer"],
@@ -172,13 +176,15 @@ const getOfflineFlightsFromDB = async (
 
     // Transform DB records to Flight objects
     return flights
-      ? flights.map((flight, index) =>
-          transformDbFlightToFlight(
-            flight,
-            index + indexShift,
-            num_of_travelers
+      ? flights
+          .map((flight, index) =>
+            transformDbFlightToFlight(
+              flight,
+              index + indexShift,
+              num_of_travelers
+            )
           )
-        )
+          .filter((f): f is Flight => f !== null)
       : ([] as Flight[]);
   } catch (error) {
     console.error("DB flights static data retrieval error:", error);
