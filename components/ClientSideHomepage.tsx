@@ -1453,7 +1453,10 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
               <div className="block sm:hidden mb-8">
                 <MobileCarousel events={musicEvents} allEvents={initialEvents} artists={artists} />
                 <div className="grid gap-6 grid-cols-1 mt-6">
-                  <div className="fixed bottom-20 left-2 z-50">
+                  <div
+                    className="fixed left-3 z-50"
+                    style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+                  >
                     <ContactUs inHeader={false} />
                   </div>
                   {/* Accessibility: Enhanced search prompt card with proper labeling */}

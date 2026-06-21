@@ -34,33 +34,63 @@ export const Header = () => {
       router.push("/?search=open");
     }
   };
-  // Header stays hidden over the hero (which has its own search) and slides in
-  // once the user scrolls down, keeping the top of the page clean.
+  // Header stays hidden over a page's own hero (homepage search / detail hero)
+  // and slides in once the user scrolls past it, keeping the top clean. On
+  // pages with no such hero it's visible from the top so nav is always there.
   const [shown, setShown] = useState(false);
+  // Plain pages (catalog/text) have no overlay hero — reserve a spacer so the
+  // fixed header never covers the page's first content.
+  const [needsSpacer, setNeedsSpacer] = useState(false);
 
   useEffect(() => {
-    // Show the header only once the hero's own search box has scrolled away,
-    // so there's never two search bars on screen at once.
-    const search = document.getElementById("search");
-    if (search) {
-      const io = new IntersectionObserver(([e]) => setShown(!e.isIntersecting), {
+    // Which pages carry their own top hero that the header should defer to:
+    // the homepage (its search bar) and artist/football detail pages (their
+    // DetailHero). Decided by route — not DOM presence — so a slow-loading
+    // hero never makes us mistake the page for a plain one.
+    const hasOwnHero =
+      pathname === "/" || /^\/(artists|football)\/[^/]+$/.test(pathname ?? "");
+
+    if (!hasOwnHero) {
+      // Plain page (e.g. /football, /artists, /faq): keep nav available from
+      // the top and push content down so the fixed bar never covers it.
+      setShown(true);
+      setNeedsSpacer(true);
+      return;
+    }
+
+    // Hero page: reveal the header only once that hero scrolls away, so the
+    // two never overlap. The sentinel may mount after this effect (loading
+    // skeleton first), so wait for it via rAF before observing.
+    setNeedsSpacer(false);
+    let raf = 0;
+    let io: IntersectionObserver | null = null;
+    const attach = () => {
+      const sentinel =
+        document.getElementById("search") ||
+        document.getElementById("detail-hero");
+      if (!sentinel) {
+        raf = requestAnimationFrame(attach);
+        return;
+      }
+      io = new IntersectionObserver(([e]) => setShown(!e.isIntersecting), {
         threshold: 0,
       });
-      io.observe(search);
-      return () => io.disconnect();
-    }
-    // Pages without an on-page search (non-home): reveal after a small scroll.
-    const onScroll = () => setShown(window.scrollY > 200);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+      io.observe(sentinel);
+    };
+    attach();
+    return () => {
+      cancelAnimationFrame(raf);
+      io?.disconnect();
+    };
+  }, [pathname]);
 
   const visible = shown || menuOpen;
 
   if (hidden) return null;
 
   return (
+    <>
+    {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground shadow-card transition-transform duration-300",
@@ -143,5 +173,6 @@ export const Header = () => {
         </nav>
       </div>
     </header>
+    </>
   );
 };

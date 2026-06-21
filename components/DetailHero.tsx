@@ -27,7 +27,7 @@ export const DetailHero = ({
   ctaHref?: string;
   ctaLabel?: string;
 }) => (
-  <section className="relative overflow-hidden bg-main text-main-foreground">
+  <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
     {/* Way home — the global header only appears after scroll, so the hero
         carries its own wordmark link. */}

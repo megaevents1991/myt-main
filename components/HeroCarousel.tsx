@@ -7,8 +7,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Artist } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
-import { MYT } from "@/components/ui/myt";
-import { MYTMark } from "@/components/ui/mytMark";
 
 // Bright blob backgrounds cycled across the cards.
 const blobColors = [
@@ -25,7 +23,7 @@ const blobColors = [
 // exactly one copy's width — identical content, so the jump is invisible.
 const COPIES = 3;
 
-type Card = { kind: "logo" } | { kind: "artist"; artist: Artist; idx: number };
+type Card = { kind: "artist"; artist: Artist; idx: number };
 
 /** Instant (non-smooth) scroll jump, overriding the `scroll-smooth` class. */
 const jumpBy = (el: HTMLElement, delta: number) => {
@@ -58,23 +56,20 @@ const normalize = (el: HTMLElement) => {
  */
 export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
+  const centerRef = useRef<HTMLDivElement>(null);
 
   const items = useMemo(
     () => artists.filter((a) => a.fields.heroBanner?.fields?.file?.url),
     [artists]
   );
 
-  // One copy of the row: artist cards with the brand logo card spliced mid-row.
-  const baseCards = useMemo(() => {
-    const list: Card[] = items.map((artist, idx) => ({
-      kind: "artist" as const,
-      artist,
-      idx,
-    }));
-    list.splice(Math.floor(list.length / 2), 0, { kind: "logo" });
-    return list;
-  }, [items]);
+  // One copy of the row — all artist cards.
+  const baseCards = useMemo<Card[]>(
+    () => items.map((artist, idx) => ({ kind: "artist" as const, artist, idx })),
+    [items]
+  );
+  // The card the carousel opens on and settles back to (mid-row).
+  const centerIndex = Math.floor(baseCards.length / 2);
 
   // Bring the card closest to the row center to the front (imperative so it
   // tracks momentum scroll smoothly; transform/opacity only — no reflow).
@@ -100,16 +95,12 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       c.style.opacity = focused ? "1" : "0.5";
       c.style.filter = focused ? "none" : "brightness(0.65)";
       c.style.zIndex = focused ? "20" : "1";
-      c.querySelector<HTMLElement>("[data-name]")?.style.setProperty(
-        "opacity",
-        focused ? "1" : "0"
-      );
     });
   }, []);
 
-  // Open centered on the brand logo card, then set initial focus.
+  // Open centered on the mid-row card, then set initial focus.
   useEffect(() => {
-    logoRef.current?.scrollIntoView({
+    centerRef.current?.scrollIntoView({
       inline: "center",
       block: "nearest",
       behavior: "instant" as ScrollBehavior,
@@ -167,7 +158,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       const dx = (SPEED * dt) / 1000;
       if (set && traveled + dx >= set) {
         stop();
-        logoRef.current?.scrollIntoView({
+        centerRef.current?.scrollIntoView({
           inline: "center",
           block: "nearest",
           behavior: "smooth",
@@ -212,40 +203,6 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     "absolute top-1/2 z-30 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
 
   const renderCard = (card: Card) => {
-    if (card.kind === "logo") {
-      return (
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent("myt:open-search"))}
-          aria-label="חיפוש אירוע"
-          className="group relative block h-64 w-44 overflow-hidden rounded-3xl border border-main-foreground/20 bg-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-80 sm:w-56"
-        >
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/30 blur-lg"
-            style={{ animation: "logo-sheen 3s ease-in-out infinite" }}
-          />
-          <span
-            className="relative flex h-full w-full items-center justify-center text-[hsl(var(--surface-inverse))]"
-            style={{ animation: "logo-breathe 3.5s var(--ease-out) infinite" }}
-          >
-            <span
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ animation: "logo-swap 4.5s var(--ease-out) infinite" }}
-            >
-              <MYT className="h-auto w-[82%]" />
-            </span>
-            <span
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ animation: "logo-swap 4.5s var(--ease-out) -2.25s infinite" }}
-            >
-              <MYTMark className="h-auto w-[62%]" />
-            </span>
-          </span>
-        </button>
-      );
-    }
-
     const { artist, idx } = card;
     const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
     const name = String(artist.fields.name ?? "");
@@ -270,13 +227,16 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
             className="object-cover object-bottom"
             draggable={false}
           />
+          {/* Always-on gradient + name so every card is identifiable, not just
+              the focused one. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent"
+          />
+          <span className="absolute inset-x-2 bottom-2 truncate text-center text-sm font-bold text-white drop-shadow">
+            {name}
+          </span>
         </div>
-        <span
-          data-name
-          className="absolute inset-x-2 bottom-2 truncate rounded-xl bg-main/70 px-3 py-1.5 text-center text-sm font-bold text-main-foreground opacity-0 transition-opacity"
-        >
-          {name}
-        </span>
       </Link>
     );
   };
@@ -310,11 +270,11 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       >
         {Array.from({ length: COPIES }, (_, copy) =>
           baseCards.map((card, i) => {
-            const isLogoMiddle = card.kind === "logo" && copy === 1;
+            const isCenter = i === centerIndex && copy === 1;
             return (
               <div
                 key={`${copy}-${i}`}
-                ref={isLogoMiddle ? logoRef : undefined}
+                ref={isCenter ? centerRef : undefined}
                 data-card
                 role="listitem"
                 className="shrink-0 snap-center transition-[transform,opacity,filter] duration-300 ease-out will-change-transform"

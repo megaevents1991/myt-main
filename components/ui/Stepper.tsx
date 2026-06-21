@@ -27,7 +27,11 @@ export const Stepper = ({
 }: StepperProps) => {
   const active = currentStep - 1;
   return (
-    <div className="mx-auto my-4 flex w-full max-w-5xl flex-col items-center gap-3 px-4 sm:my-6 sm:flex-row sm:gap-8 sm:px-10">
+    // Sticky so the booking progress stays visible on every step — on mobile
+    // the page can load scrolled past a static bar, hiding it. The global
+    // header is hidden inside the order flow, so nothing competes for the top.
+    <div className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+    <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 px-4 py-3 sm:flex-row sm:gap-8 sm:px-10 sm:py-4">
       <Link href="/" aria-label="חזרה לדף הבית" className="shrink-0">
         <MYT className="h-5 w-auto text-foreground md:h-6" />
       </Link>
@@ -57,6 +61,7 @@ export const Stepper = ({
           </MantineStepper>
         </div>
       )}
+    </div>
     </div>
   );
 };
