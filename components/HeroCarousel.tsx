@@ -81,6 +81,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const dragging = useRef(false);
   const moved = useRef(false);
   const dragStart = useRef(0);
+  const dragRef = useRef(0); // live sub-card drag remainder (px)
   const interacted = useRef(false);
 
   const baseStep = cardW * STEP_FRAC;
@@ -156,19 +157,36 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging.current) return;
-    const dx = e.clientX - dragStart.current;
+    let dx = e.clientX - dragStart.current;
     if (!moved.current && Math.abs(dx) > 4) {
       moved.current = true;
       // Capture only once a real drag begins, so a plain tap still delivers its
       // click to the card/CTA (capturing on down would swallow that click).
       e.currentTarget.setPointerCapture?.(e.pointerId);
     }
-    if (moved.current) setDrag(dx);
+    if (!moved.current) return;
+    // Step `current` as the finger crosses each card-width and keep only the
+    // sub-card remainder as the live offset — so the strip scrolls card-by-card
+    // under the finger and never slides off-screen.
+    let steps = 0;
+    while (dx <= -baseStep) {
+      steps += 1;
+      dx += baseStep;
+    }
+    while (dx >= baseStep) {
+      steps -= 1;
+      dx -= baseStep;
+    }
+    if (steps) setCurrent((c) => c + steps);
+    dragStart.current = e.clientX - dx; // origin follows, remainder stays live
+    dragRef.current = dx;
+    setDrag(dx);
   };
   const endDrag = () => {
     if (!dragging.current) return;
     dragging.current = false;
-    const steps = Math.round(-drag / baseStep);
+    const steps = Math.round(-dragRef.current / baseStep); // remainder → 0 or ±1
+    dragRef.current = 0;
     setDrag(0);
     if (steps) setCurrent((c) => c + steps);
   };
