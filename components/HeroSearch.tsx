@@ -2,12 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import dayjs from "dayjs";
 import "dayjs/locale/he";
 import Fuse from "fuse.js";
-import { ArrowUp, Check, Mic, Plane, Building2, Ticket } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  Mic,
+  Plane,
+  Building2,
+  Ticket,
+  ChevronLeft,
+} from "lucide-react";
 
-import type { Event } from "@/lib/app.types";
+import type { Event, Artist } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
@@ -47,7 +56,13 @@ const getSpeechRecognition = ():
  * שלך…") with the best-matching event, its included parts and average price.
  * Optional voice input via the Web Speech API (Hebrew).
  */
-export const HeroSearch = ({ events }: { events: Event[] }) => {
+export const HeroSearch = ({
+  events,
+  artists = [],
+}: {
+  events: Event[];
+  artists?: Artist[];
+}) => {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,11 +84,32 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
   // The event the user picked from the list — drives the package panel.
   const [selected, setSelected] = useState<Event | null>(null);
 
+  // First-pick-only "assembling your package online" animation: pills reveal
+  // one-by-one, then the price. `revealed` = how many pills are shown so far;
+  // while `assembling` the rest render as shimmer skeletons.
+  const [assembling, setAssembling] = useState(false);
+  const [revealed, setRevealed] = useState(0);
+  const assembledOnce = useRef(false);
+
   const matches = useMemo(() => {
     if (query.trim().length < 2) return [];
-    return fuse.search(query.trim()).slice(0, 5).map((r) => r.item);
+    return fuse.search(query.trim()).slice(0, 50).map((r) => r.item);
   }, [query, fuse]);
   const top = matches[0];
+
+  // Match an event to a Contentful artist page by english name (same rule as
+  // the homepage cards). Used for the "all shows of <artist>" footer link.
+  const artistFor = (event?: Event | null): Artist | null => {
+    if (!event?.name_english || artists.length === 0) return null;
+    const id = event.name_english.trim().toLowerCase();
+    return (
+      artists.find(
+        (a) => a.fields.nameDBenglish?.trim().toLowerCase() === id
+      ) ?? null
+    );
+  };
+  const topArtist = artistFor(top);
+  const selectedArtist = artistFor(selected);
 
   // Header search button + /?search=open land here.
   useEffect(() => {
@@ -138,6 +174,11 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
       query,
     });
     setSelected(event);
+    // Play the "assembling online" animation only on the very first pick.
+    if (!assembledOnce.current) {
+      setRevealed(0);
+      setAssembling(true);
+    }
   };
 
   // Stage 2 CTA: go to the order flow for the assembled package.
@@ -151,13 +192,34 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
   };
 
   const price = selected ? computePackagePrice(selected) : null;
-  const parts = selected
-    ? ([
-        ...(!selected.skip_flight ? [{ label: "טיסה", Icon: Plane }] : []),
-        ...(!selected.skip_flight ? [{ label: "מלון", Icon: Building2 }] : []),
-        { label: "כרטיס", Icon: Ticket },
-      ] as { label: string; Icon: typeof Plane }[])
-    : [];
+  // Always show all three parts; flight + hotel are struck-through/dimmed for
+  // ticket-only (skip_flight) events.
+  const parts: { label: string; Icon: typeof Plane; disabled: boolean }[] =
+    selected
+      ? [
+          { label: "טיסה", Icon: Plane, disabled: !!selected.skip_flight },
+          { label: "מלון", Icon: Building2, disabled: !!selected.skip_flight },
+          { label: "כרטיס", Icon: Ticket, disabled: false },
+        ]
+      : [];
+
+  // Drive the staggered reveal once `assembling` turns on (first pick only).
+  useEffect(() => {
+    if (!assembling) return;
+    const total = parts.length;
+    const STEP = 500;
+    const timers = Array.from({ length: total }, (_, i) =>
+      setTimeout(() => setRevealed(i + 1), (i + 1) * STEP)
+    );
+    // Price reveals one step after the last pill; then assembly is done.
+    timers.push(
+      setTimeout(() => {
+        setAssembling(false);
+        assembledOnce.current = true;
+      }, (total + 1) * STEP)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [assembling, parts.length]);
 
   return (
     <div ref={containerRef} id="search" className="mx-auto w-full max-w-xl scroll-mt-24 px-4" dir="rtl">
@@ -170,7 +232,10 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
-            if (selected) setSelected(null);
+            if (selected) {
+              setSelected(null);
+              setAssembling(false);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
@@ -214,7 +279,7 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
             אירועים תואמים · המחיר ממוצע וניתן לשינוי בהמשך
             <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
           </p>
-          <ul>
+          <ul className="max-h-[20rem] overflow-y-auto overscroll-contain">
             {matches.map((m) => {
               const mPrice = computePackagePrice(m);
               return (
@@ -246,6 +311,24 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
               );
             })}
           </ul>
+          {topArtist && (
+            <Link
+              href={`/artists/${topArtist.sys.id}`}
+              onClick={() =>
+                trackEvent("heroSearchArtistAllShows", {
+                  artistId: topArtist.sys.id,
+                  artistName: topArtist.fields.name,
+                  query,
+                })
+              }
+              className="flex items-center justify-between gap-2 border-t border-main-foreground/10 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-main-foreground/10"
+            >
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-right">
+                לכל ההופעות של {topArtist.fields.name}
+              </span>
+            </Link>
+          )}
         </div>
       )}
 
@@ -259,7 +342,10 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
             </p>
             <button
               type="button"
-              onClick={() => setSelected(null)}
+              onClick={() => {
+                setSelected(null);
+                setAssembling(false);
+              }}
               className="text-xs font-medium text-main-foreground/60 underline-offset-2 hover:text-main-foreground hover:underline"
             >
               החלף בחירה
@@ -281,33 +367,54 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
           </div>
 
           <div className="mt-3 flex flex-row-reverse gap-2">
-            {parts.map(({ label, Icon }) => (
-              <span
-                key={label}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-primary/50 px-4 py-2 text-sm font-semibold text-primary"
-              >
-                <Icon className="size-4" aria-hidden />
-                {label}
-              </span>
-            ))}
+            {parts.map(({ label, Icon }, i) =>
+              assembling && i >= revealed ? (
+                <span
+                  key={label}
+                  className="h-10 flex-1 animate-pulse rounded-xl bg-main-foreground/10"
+                  aria-hidden
+                />
+              ) : (
+                <span
+                  key={label}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-primary/50 px-4 py-2 text-sm font-semibold text-primary"
+                >
+                  <Icon className="size-4" aria-hidden />
+                  {label}
+                </span>
+              )
+            )}
           </div>
+          {!assembling && selected.skip_flight && (
+            <p className="mt-2 text-center text-xs font-medium text-primary/80">
+              אפשרות לכרטיס בלבד
+            </p>
+          )}
 
           <div className="mt-3 flex items-center justify-center gap-3 border-t border-main-foreground/10 pt-3 text-sm">
-            <span className="text-main-foreground/60">
-              {price !== null ? (
-                <>
-                  מחיר מ־<span className="font-bold tabular-nums text-main-foreground">${price.toLocaleString("en-US")}</span> · ניתן לשנות
-                </>
-              ) : (
-                "מחיר יוצג בשלב הבא"
-              )}
-            </span>
+            {assembling ? (
+              <span
+                className="h-5 w-28 animate-pulse rounded bg-main-foreground/10"
+                aria-hidden
+              />
+            ) : (
+              <span className="text-main-foreground/60">
+                {price !== null ? (
+                  <>
+                    מחיר מ־<span className="font-bold tabular-nums text-main-foreground">${price.toLocaleString("en-US")}</span> · ניתן לשנות
+                  </>
+                ) : (
+                  "מחיר יוצג בשלב הבא"
+                )}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => goTo(selected)}
-              className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+              disabled={assembling}
+              className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
-              החבילה מוכנה
+              {assembling ? "מרכיבים…" : "החבילה מוכנה"}
             </button>
           </div>
 
@@ -317,7 +424,7 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
               <p className="px-1 pb-1 text-xs font-medium text-main-foreground/50">
                 אירועים נוספים
               </p>
-              <ul>
+              <ul className="max-h-[15rem] overflow-y-auto overscroll-contain">
                 {matches
                   .filter((m) => m.id !== selected.id)
                   .map((m) => {
@@ -347,6 +454,27 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
                   })}
               </ul>
             </div>
+          )}
+
+          {/* All shows of this artist — keep available after a pick too */}
+          {selectedArtist && (
+            <Link
+              href={`/artists/${selectedArtist.sys.id}`}
+              onClick={() =>
+                trackEvent("heroSearchArtistAllShows", {
+                  artistId: selectedArtist.sys.id,
+                  artistName: selectedArtist.fields.name,
+                  query,
+                  source: "stage2",
+                })
+              }
+              className="mt-3 flex items-center justify-between gap-2 border-t border-main-foreground/10 pt-3 text-sm font-semibold text-primary transition-colors hover:opacity-80"
+            >
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-right">
+                לכל ההופעות של {selectedArtist.fields.name}
+              </span>
+            </Link>
           )}
         </div>
       )}
