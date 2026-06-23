@@ -1710,11 +1710,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
                   לנוסע · כולל טיסה, מלון וכרטיס
                 </p>
               </div>
-              <PackageIcons
-                highlight={
-                  (["flight", "hotel", "ticket"] as const)[Number(event.id) % 3]
-                }
-              />
+              <PackageIcons cycle />
             </div>
 
             <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-main/90">

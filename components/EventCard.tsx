@@ -78,7 +78,7 @@ export const EventCard = ({
 
           {/* Icons on the right, button on the left (swapped per mock) */}
           <div className="mt-auto flex items-end justify-between gap-3 pt-1">
-            <PackageIcons highlight="ticket" />
+            <PackageIcons cycle />
             <Button
               variant="pill"
               size="sm"

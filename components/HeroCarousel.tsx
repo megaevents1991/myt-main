@@ -6,6 +6,8 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Artist } from "@/lib/app.types";
+import { MYT } from "@/components/ui/myt";
+import { MYTMark } from "@/components/ui/mytMark";
 import { cn } from "@/lib/utils";
 
 // Bright blob backgrounds cycled across the cards.
@@ -23,7 +25,9 @@ const blobColors = [
 // exactly one copy's width — identical content, so the jump is invisible.
 const COPIES = 3;
 
-type Card = { kind: "artist"; artist: Artist; idx: number };
+type Card =
+  | { kind: "artist"; artist: Artist; idx: number }
+  | { kind: "logo" };
 
 /** Instant (non-smooth) scroll jump, overriding the `scroll-smooth` class. */
 const jumpBy = (el: HTMLElement, delta: number) => {
@@ -63,13 +67,19 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     [artists]
   );
 
-  // One copy of the row — all artist cards.
-  const baseCards = useMemo<Card[]>(
-    () => items.map((artist, idx) => ({ kind: "artist" as const, artist, idx })),
-    [items]
-  );
-  // The card the carousel opens on and settles back to (mid-row).
-  const centerIndex = Math.floor(baseCards.length / 2);
+  // One copy of the row — all artist cards, with the brand-logo card spliced
+  // into the middle so the carousel opens on it and auto-play settles back to it.
+  const baseCards = useMemo<Card[]>(() => {
+    const cards: Card[] = items.map((artist, idx) => ({
+      kind: "artist" as const,
+      artist,
+      idx,
+    }));
+    cards.splice(Math.floor(cards.length / 2), 0, { kind: "logo" });
+    return cards;
+  }, [items]);
+  // The card the carousel opens on and settles back to (the logo, mid-row).
+  const centerIndex = baseCards.findIndex((c) => c.kind === "logo");
 
   // Bring the card closest to the row center to the front (imperative so it
   // tracks momentum scroll smoothly; transform/opacity only — no reflow).
@@ -203,6 +213,38 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     "absolute top-1/2 z-30 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
 
   const renderCard = (card: Card) => {
+    // Brand-logo card — the row's center, what the carousel opens on. Layered
+    // brand animation: a breathing mint glow, a diagonal neon sheen sweep, and
+    // the wordmark ⇄ MΣ-mark morph (two layers crossfading on opposite phases).
+    // All motion gated behind `motion-safe`; reduced-motion shows the static
+    // wordmark only.
+    if (card.kind === "logo") {
+      return (
+        <div
+          className="relative flex h-64 w-44 items-center justify-center overflow-hidden rounded-3xl bg-secondary shadow-card sm:h-80 sm:w-56"
+          aria-label="מגה איבנטס"
+        >
+          {/* Breathing emerald glow behind the mark (deeper green so it reads on
+              the bright #5BFF95 card) */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 size-44 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(160_84%_39%/0.45),transparent_70%)] blur-2xl motion-safe:animate-[logo-breathe_6s_ease-in-out_infinite]"
+          />
+          {/* Diagonal sheen sweeping across the card */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 -left-1/2 -right-1/2 motion-reduce:hidden"
+          >
+            <span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-md motion-safe:animate-[logo-sheen_4.5s_ease-in-out_infinite]" />
+          </span>
+          {/* Wordmark ⇄ MΣ-mark morph (stacked, opposite phases) */}
+          <div className="relative grid place-items-center">
+            <MYT className="col-start-1 row-start-1 w-28 text-primary-foreground sm:w-36 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite]" />
+            <MYTMark className="col-start-1 row-start-1 w-14 text-primary-foreground sm:w-16 opacity-0 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite] motion-safe:[animation-delay:-3.5s]" />
+          </div>
+        </div>
+      );
+    }
     const { artist, idx } = card;
     const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
     const name = String(artist.fields.name ?? "");

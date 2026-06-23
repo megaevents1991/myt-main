@@ -238,6 +238,20 @@
   50% { filter: drop-shadow(0 0 6px hsl(var(--brand-orange) / 0.85)); opacity: 1; }
 }
 
+/* Package icons (טיסה / מלון / כרטיס) — orange highlight travels between the
+   three labels. Each item runs this with a 1/3-cycle stagger via animation-delay,
+   so the accent steps flight → hotel → ticket and loops. */
+@keyframes pkg-cycle {
+  0%, 27% {
+    color: hsl(var(--brand-orange));
+    filter: drop-shadow(0 0 6px hsl(var(--brand-orange) / 0.7));
+  }
+  34%, 100% {
+    color: hsl(var(--muted-foreground));
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
 /* Pulsing dot on the "last tickets" tag */
 @keyframes tag-dot {
   0%, 100% { transform: scale(1); opacity: 1; }

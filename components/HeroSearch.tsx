@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dayjs from "dayjs";
+import "dayjs/locale/he";
 import Fuse from "fuse.js";
 import { ArrowUp, Check, Mic, Plane, Building2, Ticket } from "lucide-react";
 
@@ -59,6 +61,10 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
     [events]
   );
   const fuse = useMemo(() => new Fuse(available, fuseOptions), [available]);
+
+  // Event date → Hebrew "26 באוקטובר" (or a placeholder when unset).
+  const fmtDate = (d?: string) =>
+    d ? dayjs(d).locale("he").format("D בMMMM") : "תאריך יפורסם";
 
   // The event the user picked from the list — drives the package panel.
   const [selected, setSelected] = useState<Event | null>(null);
@@ -219,22 +225,21 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-right transition-colors hover:bg-main-foreground/10"
                   >
                     {mPrice !== null && (
-                      <span className="shrink-0 text-left text-sm leading-tight text-main-foreground/60">
+                      <span className="flex shrink-0 items-baseline gap-1 text-left text-sm text-main-foreground/60">
                         מחיר מ־
-                        <span className="block text-base font-bold tabular-nums text-primary">
+                        <span className="text-base font-bold tabular-nums text-primary">
                           ${mPrice.toLocaleString("en-US")}
                         </span>
                       </span>
                     )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-bold text-main-foreground">
+                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                      <span className="min-w-0 truncate text-base font-bold text-main-foreground">
                         {m.name}
                       </span>
-                      {m.location?.name ? (
-                        <span className="block truncate text-xs text-main-foreground/60">
-                          {m.location.name}
-                        </span>
-                      ) : null}
+                      <span className="shrink-0 text-xs text-main-foreground/60">
+                        {m.location?.name ? `${m.location.name} · ` : ""}
+                        {fmtDate(m.date)}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -261,24 +266,25 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
             </button>
           </div>
 
-          <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="mt-2 flex items-center justify-center gap-3">
             <span className="flex shrink-0 items-center gap-1 rounded-lg bg-primary/15 px-2 py-1 text-xs font-bold text-primary">
               <Check className="size-3.5" aria-hidden />
               נבחר
             </span>
             <p className="min-w-0 truncate text-base font-bold text-main-foreground">
               {selected.name}
-              {selected.location?.name ? (
-                <span className="font-medium text-main-foreground/70"> · {selected.location.name}</span>
-              ) : null}
+              <span className="font-medium text-main-foreground/70">
+                {selected.location?.name ? ` · ${selected.location.name}` : ""}
+                {` · ${fmtDate(selected.date)}`}
+              </span>
             </p>
           </div>
 
-          <div className="mt-3 flex flex-row-reverse flex-wrap justify-start gap-2">
+          <div className="mt-3 flex flex-row-reverse gap-2">
             {parts.map(({ label, Icon }) => (
               <span
                 key={label}
-                className="flex items-center gap-1.5 rounded-xl border border-primary/50 px-4 py-2 text-sm font-semibold text-primary"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-primary/50 px-4 py-2 text-sm font-semibold text-primary"
               >
                 <Icon className="size-4" aria-hidden />
                 {label}
@@ -286,7 +292,7 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
             ))}
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-main-foreground/10 pt-3 text-sm">
+          <div className="mt-3 flex items-center justify-center gap-3 border-t border-main-foreground/10 pt-3 text-sm">
             <span className="text-main-foreground/60">
               {price !== null ? (
                 <>
@@ -330,9 +336,10 @@ export const HeroSearch = ({ events }: { events: Event[] }) => {
                           )}
                           <span className="min-w-0 flex-1 truncate text-sm text-main-foreground/80">
                             {m.name}
-                            {m.location?.name ? (
-                              <span className="text-main-foreground/50"> · {m.location.name}</span>
-                            ) : null}
+                            <span className="text-main-foreground/50">
+                              {m.location?.name ? ` · ${m.location.name}` : ""}
+                              {` · ${fmtDate(m.date)}`}
+                            </span>
                           </span>
                         </button>
                       </li>
