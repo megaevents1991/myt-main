@@ -81,7 +81,6 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const dragging = useRef(false);
   const moved = useRef(false);
   const dragStart = useRef(0);
-  const wheelAccum = useRef(0);
   const interacted = useRef(false);
 
   const baseStep = cardW * STEP_FRAC;
@@ -94,8 +93,6 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     },
     [current, N]
   );
-
-  const activeBase = (((current % N) + N) % N);
 
   // Card width tracks the responsive size (w-44 → w-56 at the sm breakpoint).
   useEffect(() => {
@@ -126,43 +123,27 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     [stop]
   );
 
-  // Vertical wheel → step through cards (accumulated so one notch ≈ one card).
-  useEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-      e.preventDefault();
-      stop();
-      wheelAccum.current += e.deltaY;
-      const THRESH = 60;
-      while (Math.abs(wheelAccum.current) >= THRESH) {
-        const dir = wheelAccum.current > 0 ? 1 : -1;
-        wheelAccum.current -= dir * THRESH;
-        setCurrent((c) => c + dir);
-      }
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [stop]);
-
-  // One-time "peek" nudge: step forward then settle back on the logo. Advertises
-  // that the row scrolls without an auto-loop. Cancels on first interaction.
+  // One-time auto-loop on load: glide once around the whole ring (logo → every
+  // card → back to the logo), advertising the gallery. Inputs are arrows + drag
+  // (PC) / swipe (mobile) — no wheel, so nothing races this. Stops on the first
+  // interaction; skipped under reduced-motion.
   useEffect(() => {
     if (reducedRef.current || N <= 1) return;
-    let t1 = 0;
-    let t2 = 0;
-    t1 = window.setTimeout(() => {
-      if (interacted.current) return;
-      setCurrent((c) => c + 1);
-      t2 = window.setTimeout(() => {
-        if (interacted.current) return;
-        setCurrent((c) => c - 1);
-      }, 850);
-    }, 750);
+    let steps = 0;
+    let interval = 0;
+    const startT = window.setTimeout(() => {
+      interval = window.setInterval(() => {
+        if (interacted.current || steps >= N) {
+          clearInterval(interval);
+          return;
+        }
+        steps += 1;
+        setCurrent((c) => c + 1);
+      }, 750);
+    }, 900);
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      clearTimeout(startT);
+      clearInterval(interval);
     };
   }, [N]);
 
@@ -172,13 +153,17 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     moved.current = false;
     dragStart.current = e.clientX;
     stop();
-    stageRef.current?.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging.current) return;
     const dx = e.clientX - dragStart.current;
-    if (Math.abs(dx) > 4) moved.current = true;
-    setDrag(dx);
+    if (!moved.current && Math.abs(dx) > 4) {
+      moved.current = true;
+      // Capture only once a real drag begins, so a plain tap still delivers its
+      // click to the card/CTA (capturing on down would swallow that click).
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    if (moved.current) setDrag(dx);
   };
   const endDrag = () => {
     if (!dragging.current) return;
@@ -219,49 +204,46 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
     const name = String(artist.fields.name ?? "");
     return (
-      <Link
-        href={`/artists/${artist.sys.id}`}
-        aria-label={`עמוד האומן ${name}`}
-        tabIndex={centered ? 0 : -1}
-        className="group relative block h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-main"
-        draggable={false}
-        onDragStart={(e) => e.preventDefault()}
+      <div
+        className={cn(
+          "relative h-full w-full overflow-hidden rounded-3xl",
+          blobColors[idx % blobColors.length]
+        )}
+        style={{ WebkitBoxReflect: BOX_REFLECT } as React.CSSProperties}
       >
-        <div
+        <Image
+          src={url}
+          alt={name}
+          fill
+          sizes="(max-width: 640px) 11rem, 14rem"
+          className="object-cover object-bottom"
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 to-transparent"
+        />
+        <span className="absolute inset-x-2 bottom-12 truncate text-center text-base font-bold text-white drop-shadow">
+          {name}
+        </span>
+        {/* Only the CTA navigates — clicking the card art never does. */}
+        <Link
+          href={`/artists/${artist.sys.id}`}
+          aria-label={`עמוד האומן ${name}`}
+          tabIndex={centered ? 0 : -1}
+          draggable={false}
           className={cn(
-            "relative h-full w-full overflow-hidden rounded-3xl",
-            blobColors[idx % blobColors.length]
+            "absolute inset-x-0 bottom-3 mx-auto flex w-max items-center gap-1 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-black shadow transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            centered
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-2 opacity-0"
           )}
-          style={{ WebkitBoxReflect: BOX_REFLECT } as React.CSSProperties}
         >
-          <Image
-            src={url}
-            alt={name}
-            fill
-            sizes="(max-width: 640px) 11rem, 14rem"
-            className="object-cover object-bottom"
-            draggable={false}
-          />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 to-transparent"
-          />
-          <span className="absolute inset-x-2 bottom-12 truncate text-center text-base font-bold text-white drop-shadow">
-            {name}
-          </span>
-          <span
-            className={cn(
-              "absolute inset-x-0 bottom-3 mx-auto flex w-max items-center gap-1 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-black shadow transition-all duration-300",
-              centered
-                ? "translate-y-0 opacity-100"
-                : "pointer-events-none translate-y-2 opacity-0"
-            )}
-          >
-            לאירועים
-            <ChevronLeft className="size-3.5" aria-hidden />
-          </span>
-        </div>
-      </Link>
+          לאירועים
+          <ChevronLeft className="size-3.5" aria-hidden />
+        </Link>
+      </div>
     );
   };
 
@@ -357,31 +339,6 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
             >
               {renderInner(card, d === 0)}
             </div>
-          );
-        })}
-      </div>
-
-      {/* Dot pagination — one per card; active dot tracks the centered card. */}
-      <div
-        className="mt-1 flex items-center justify-center gap-2"
-        role="tablist"
-        aria-label="ניווט בגלריה"
-      >
-        {cards.map((_, i) => {
-          const active = i === activeBase;
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => goToDelta(deltaOf(i))}
-              aria-label={`עבור לכרטיס ${i + 1}`}
-              aria-selected={active}
-              role="tab"
-              className={cn(
-                "h-2 rounded-full bg-white transition-all duration-300",
-                active ? "w-5 opacity-100" : "w-2 opacity-40"
-              )}
-            />
           );
         })}
       </div>
