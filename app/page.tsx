@@ -5,10 +5,11 @@ import { TrustSection } from "@/components/TrustSection";
 import { AirlinesStrip } from "@/components/ui/AirlinesStrip";
 import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
-import { contentfulClient } from "@/lib/contentful";
-import { FootballFields, ArtistFields, Artist, CarouselFields, FootballTeam, CategoryFields } from "@/lib/app.types";
+import { Artist, FootballTeam } from "@/lib/app.types";
 import { CategorySection, type HomeCategory } from "@/components/CategorySection";
 import { getCategories as getCategoryRows } from "@/lib/categories";
+import { getAllArtists as listAllArtists, getFeaturedArtists } from "@/lib/artists";
+import { getAllFootballTeams, getFeaturedFootballTeams } from "@/lib/football";
 
 // Force static generation with ISR
 export const dynamic = "force-static";
@@ -24,86 +25,17 @@ async function getEventsForPage() {
   }
 }
 
+// Featured football teams (carousel order via `featured_order`), falling back
+// to all teams when none are marked featured. Source: Supabase.
 async function getFootballTeams(): Promise<FootballTeam[]> {
-  try {
-    // Fetch the specific carousel entry with its linked football teams
-    const carouselEntry = await contentfulClient.getEntry("2VjS97BWIScDQXwjx9Q4nP", {
-      include: 2, // Include linked entries (football teams)
-    });
-
-    const items = carouselEntry.fields.items;
-    
-    if (!items || !Array.isArray(items)) {
-      console.warn("No items found in football carousel entry");
-      return [];
-    }
-
-    // Extract the ordered football teams (already have the correct structure)
-    const orderedFootballTeams: FootballTeam[] = items
-      .filter((item): item is FootballTeam => item !== null && typeof item === 'object' && 'fields' in item) as FootballTeam[];
-
-    return orderedFootballTeams;
-  } catch (error) {
-    console.error("Page: Fail to get ordered football teams from carousel:", error);
-    
-    // Fallback: get all football teams if carousel fetch fails
-    try {
-      const { items } = await contentfulClient.getEntries<FootballFields>({
-        content_type: "footballTeamTemplate",
-      });
-      return items;
-    } catch (fallbackError) {
-      console.error("Page: Failed to get football teams fallback:", fallbackError);
-      return [];
-    }
-  }
+  const featured = await getFeaturedFootballTeams();
+  return featured.length ? featured : getAllFootballTeams();
 }
 
-async function getAllArtists(): Promise<Artist[]> {
-  try {
-    const { items } = await contentfulClient.getEntries<ArtistFields>({
-      content_type: "artistTemplate",
-    });
-
-    return items.map((item) => ({
-      sys: { id: item.sys.id },
-      fields: {
-        name: item.fields.name,
-        nameDBenglish: item.fields.nameDBenglish,
-        previewText: item.fields.previewText,
-        heroBanner: item.fields.heroBanner,
-        bio: item.fields.bio,
-      },
-    }));
-  } catch (error) {
-    console.error("Page: Failed to get all artists:", error);
-    return [];
-  }
-}
-
+// Featured artists (hero carousel order), falling back to all. Source: Supabase.
 async function getCarouselArtists(): Promise<Artist[]> {
-  try {
-    // Fetch the specific carousel entry with its linked artists
-    const carouselEntry = await contentfulClient.getEntry<CarouselFields>("3RxzAgWZi26FSbBYhgMmVO", {
-      include: 2, // Include linked entries (artists)
-    });
-
-    if (!carouselEntry.fields.items) {
-      console.warn("No items found in carousel entry");
-      return [];
-    }
-
-    // Extract the ordered artists (already have the correct structure)
-    const orderedArtists: Artist[] = carouselEntry.fields.items
-      .filter((item) => item && 'fields' in item) as Artist[]; // Filter for resolved entries only
-
-    return orderedArtists;
-  } catch (error) {
-    console.error("Page: Failed to get ordered artists from carousel:", error);
-
-    // Fallback: if carousel fetch fails, just return all artists
-    return getAllArtists();
-  }
+  const featured = await getFeaturedArtists();
+  return featured.length ? featured : listAllArtists();
 }
 
 async function getCategories(): Promise<HomeCategory[]> {
@@ -128,7 +60,7 @@ export default async function Home() {
     getEventsForPage(),
     getFootballTeams(),
     getCarouselArtists(),
-    getAllArtists(),
+    listAllArtists(),
     getCategories(),
   ]);
 

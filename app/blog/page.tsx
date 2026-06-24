@@ -1,5 +1,4 @@
-import { contentfulClient } from "@/lib/contentful";
-import { BlogTemplateFields } from "@/lib/app.types";
+import { getAllBlogPosts } from "@/lib/blog";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
@@ -17,9 +16,7 @@ export default async function BlogPage() {
   const timestamp = Date.now();
 
   try {
-    const { items } = await contentfulClient.getEntries<BlogTemplateFields>({
-      content_type: "blogTemplate",
-    });
+    const items = await getAllBlogPosts();
 
     return (
       <main dir="rtl" className="container mx-auto py-8 px-4">

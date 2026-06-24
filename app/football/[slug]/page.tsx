@@ -1,5 +1,4 @@
-import { contentfulClient } from "@/lib/contentful";
-import { FootballFields } from "@/lib/app.types";
+import { getFootballTeamBySlug, getFootballTeamSlugs } from "@/lib/football";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
@@ -27,7 +26,7 @@ export async function generateMetadata({
   const { slug } = await params;
 
   try {
-    const team = await contentfulClient.getEntry<FootballFields>(slug);
+    const team = await getFootballTeamBySlug(slug);
     if (!team?.fields?.name) {
       return { title: "Team Not Found - MYT" };
     }
@@ -62,13 +61,8 @@ export async function generateMetadata({
 
 export async function generateStaticParams() {
   try {
-    const { items } = await contentfulClient.getEntries({
-      content_type: "footballTeamTemplate",
-    });
-
-    return items.map((item) => ({
-      slug: item.sys.id,
-    }));
+    const slugs = await getFootballTeamSlugs();
+    return slugs.map((slug) => ({ slug }));
   } catch (error) {
     console.error('Error generating static params for football teams:', error);
     return [];
@@ -98,7 +92,7 @@ export default async function FootballPage({
   const { slug } = await params;
 
   try {
-    const team = await contentfulClient.getEntry<FootballFields>(slug);
+    const team = await getFootballTeamBySlug(slug);
 
     if (!team || !team.fields) {
       notFound();

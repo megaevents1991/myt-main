@@ -1,7 +1,6 @@
-import { contentfulClient } from "@/lib/contentful";
-import { FootballFields } from "@/lib/app.types";
 import type { Metadata } from "next";
 import { CatalogPageTemplate, type CatalogItem } from "@/components/CatalogPageTemplate";
+import { getAllFootballTeams } from "@/lib/football";
 
 export const revalidate = 3600;
 
@@ -14,9 +13,7 @@ export const metadata: Metadata = {
 
 export default async function FootballsPage() {
   try {
-    const { items } = await contentfulClient.getEntries<FootballFields>({
-      content_type: "footballTeamTemplate",
-    });
+    const items = await getAllFootballTeams();
 
     const teams: CatalogItem[] = items.map((team) => ({
       id: team.sys.id,

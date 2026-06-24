@@ -1,5 +1,4 @@
-import { contentfulClient } from "@/lib/contentful";
-import { ArtistFields } from "@/lib/app.types";
+import { getArtistBySlug, getArtistSlugs } from "@/lib/artists";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
@@ -27,7 +26,7 @@ export async function generateMetadata({
   const { slug } = await params;
 
   try {
-    const artist = await contentfulClient.getEntry<ArtistFields>(slug);
+    const artist = await getArtistBySlug(slug);
     if (!artist?.fields?.name) {
       return { title: "Artist Not Found - MYT" };
     }
@@ -62,13 +61,8 @@ export async function generateMetadata({
 
 export async function generateStaticParams() {
   try {
-    const { items } = await contentfulClient.getEntries({
-      content_type: "artistTemplate",
-    });
-
-    return items.map((item) => ({
-      slug: item.sys.id,
-    }));
+    const slugs = await getArtistSlugs();
+    return slugs.map((slug) => ({ slug }));
   } catch (error) {
     console.error('Error generating static params for artists:', error);
     return [];
@@ -98,7 +92,7 @@ export default async function ArtistPage({
   const { slug } = await params;
 
   try {
-    const artist = await contentfulClient.getEntry<ArtistFields>(slug);
+    const artist = await getArtistBySlug(slug);
 
     if (!artist || !artist.fields) {
       notFound();
@@ -125,6 +119,7 @@ export default async function ArtistPage({
           bio={documentToReactComponents(bio as Document, bioOptions)}
           imageUrl={imageUrl}
           imageAlt={`תמונה של האומן ${String(name)}`}
+          ticketOnly={events.length > 0 && events.every((e) => e.skip_flight)}
         />
 
         <section

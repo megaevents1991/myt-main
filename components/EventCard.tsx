@@ -47,7 +47,11 @@ export const EventCard = ({
       role="listitem"
     >
       <EventButton event={event}>
-        <article className="group flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_14px_36px_-10px_hsl(var(--brand-mint)/0.4)]">
+        <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_14px_36px_-10px_hsl(var(--brand-mint)/0.4)]">
+          {/* Ticket-only marker — floats in the empty top gap between price and date */}
+          {!sold && event.skip_flight && (
+            <TicketOnlyBadge className="absolute left-1/2 top-3 z-20 -translate-x-1/2" />
+          )}
           {/* Date on the right, price on the left (swapped per mock) */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col items-start">
@@ -88,7 +92,6 @@ export const EventCard = ({
 
           <div className="flex flex-wrap items-center gap-2">
             <EventStatusBadge event={event} />
-            {!sold && event.skip_flight && <TicketOnlyBadge />}
           </div>
 
           {/* Icons on the right, button on the left (swapped per mock) */}

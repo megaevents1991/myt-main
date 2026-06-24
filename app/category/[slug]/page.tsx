@@ -3,8 +3,9 @@ import Image from "next/image";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { contentfulClient } from "@/lib/contentful";
 import { getCategories, getCategoryBySlug } from "@/lib/categories";
+import { getArtistBySlug } from "@/lib/artists";
+import { getFootballTeamBySlug } from "@/lib/football";
 import { DetailHero } from "@/components/DetailHero";
 import { EmptyState } from "@/components/ui/EmptyState";
 import ClientTracker from "@/components/ClientTracker";
@@ -19,26 +20,27 @@ type Member = {
   href: string;
 };
 
-/** Resolve member artist/team pages (Contentful entries) by their IDs. */
+/** Resolve member artist/team pages from Supabase by their slug (= old
+ *  Contentful entry id). Tries artists first, then football teams. */
 async function resolveMembers(ids: string[]): Promise<Member[]> {
   if (!ids.length) return [];
-  const entries = await Promise.all(
-    ids.map((id) =>
-      contentfulClient.getEntry(id).catch(() => null)
-    )
+  const resolved = await Promise.all(
+    ids.map(async (id) => {
+      const artist = await getArtistBySlug(id);
+      if (artist) return { entry: artist, base: "/artists" as const };
+      const team = await getFootballTeamBySlug(id);
+      if (team) return { entry: team, base: "/football" as const };
+      return null;
+    })
   );
-  return entries.filter(Boolean).map((entry) => {
-    const e = entry as unknown as {
-      sys: { id: string; contentType?: { sys?: { id?: string } } };
-      fields?: { name?: string; heroBanner?: { fields?: { file?: { url?: string } } } };
-    };
-    const isFootball = e.sys.contentType?.sys?.id === "footballTeamTemplate";
-    const url = e.fields?.heroBanner?.fields?.file?.url;
+  return resolved.filter(Boolean).map((r) => {
+    const { entry, base } = r!;
+    const url = entry.fields.heroBanner?.fields?.file?.url;
     return {
-      id: e.sys.id,
-      name: String(e.fields?.name ?? ""),
+      id: entry.sys.id,
+      name: String(entry.fields.name ?? ""),
       imageUrl: url ? "https:" + url : undefined,
-      href: `${isFootball ? "/football" : "/artists"}/${e.sys.id}`,
+      href: `${base}/${entry.sys.id}`,
     };
   });
 }

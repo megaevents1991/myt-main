@@ -1,7 +1,6 @@
-import { contentfulClient } from "@/lib/contentful";
-import { ArtistFields } from "@/lib/app.types";
 import type { Metadata } from "next";
 import { CatalogPageTemplate, type CatalogItem } from "@/components/CatalogPageTemplate";
+import { getAllArtists } from "@/lib/artists";
 
 export const revalidate = 3600;
 
@@ -14,9 +13,7 @@ export const metadata: Metadata = {
 
 export default async function ArtistsPage() {
   try {
-    const { items } = await contentfulClient.getEntries<ArtistFields>({
-      content_type: "artistTemplate",
-    });
+    const items = await getAllArtists();
 
     const artists: CatalogItem[] = items.map((artist) => ({
       id: artist.sys.id,

@@ -3,7 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 
-export function TicketOnlyBadge() {
+export function TicketOnlyBadge({
+  className = "absolute top-2 right-2 z-20",
+}: {
+  /** Wrapper positioning. Default = corner overlay (for image cards). Pass a
+   * non-absolute value (e.g. "relative z-20") to flow it inline in a row. */
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLDivElement>(null);
@@ -147,7 +153,7 @@ export function TicketOnlyBadge() {
       `}</style>
 
       <div
-        className="absolute top-2 right-2 z-20"
+        className={className}
         style={{ WebkitTapHighlightColor: "transparent" }}
       >
         <div

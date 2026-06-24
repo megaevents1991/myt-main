@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **🚧 TODO — REMOVE CONTENTFUL (Phase 3, pending).**
+> Content (artists, football teams, blog, categories) was migrated to Supabase
+> tables and the site now reads Supabase. A **Contentful fallback** is still in
+> place as a safety net (`lib/cms/people.ts`, `lib/blog.ts`). Verified 100%
+> coverage (51 artists / 15 teams / 2 blog). When ready, remove:
+> the fallback in those readers, `lib/contentful.ts` + `contentfulClient`, the
+> `*Fields` Contentful types in `lib/app.types.ts`, the `contentful` dep, and
+> `scripts/migrate-contentful.mjs` + `scripts/verify-migration.mjs`. Backoffice
+> manages this content under **Templates** (תבניות).
+
 ## Always-on rules (auto-loaded)
 
 Tech standards:

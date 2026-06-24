@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { MYT } from "@/components/ui/myt";
+import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 
 /**
  * Split detail-hero for artist / football pages — dark surface, cutout image
@@ -18,6 +19,7 @@ export const DetailHero = ({
   imageAlt,
   ctaHref = "#upcoming-events",
   ctaLabel = "לפרטים והזמנה",
+  ticketOnly = false,
 }: {
   name: string;
   nameEnglish?: string;
@@ -26,9 +28,14 @@ export const DetailHero = ({
   imageAlt: string;
   ctaHref?: string;
   ctaLabel?: string;
+  /** Show the ticket-only marker (when this entity's events are ticket-only). */
+  ticketOnly?: boolean;
 }) => (
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
+    {ticketOnly && (
+      <TicketOnlyBadge className="absolute left-4 top-5 z-20 md:left-6" />
+    )}
     {/* Way home — the global header only appears after scroll, so the hero
         carries its own wordmark link. */}
     <div className="container relative z-10 mx-auto px-4 pt-5">
