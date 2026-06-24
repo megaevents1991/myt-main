@@ -134,7 +134,7 @@ export const HotelFilters = ({
           </Checkbox.Group>
         </div>
       </div>
-      <div className="m-auto w-full mt-4 px-2">
+      <div className="m-auto w-full mt-4 px-6">
         <div dir="rtl" className="w-full">
           <h3 className="text-lg text-start font-semibold mb-2">סוג אירוח</h3>
           <Checkbox.Group
@@ -175,7 +175,7 @@ export const HotelFilters = ({
           </Checkbox.Group>
         </div>
       </div>
-      <div className="m-auto w-full mt-2 px-2">
+      <div className="m-auto w-full mt-2 px-6">
         <h3 className="text-lg text-end font-semibold mb-2">דירוג כוכבים</h3>
         <StarsGroup
           value={stars}
@@ -229,7 +229,7 @@ export const HotelFilters = ({
           }}
         />
       </div>
-      <div className="m-auto w-full mt-4 px-2">
+      <div className="m-auto w-full mt-4 px-6">
         <h3 className="text-lg text-end font-semibold mb-2">מרחק</h3>
         <RangeSlider
           thumbSize={20}
