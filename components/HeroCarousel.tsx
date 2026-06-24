@@ -31,10 +31,6 @@ const BOX_REFLECT = "below 1px linear-gradient(transparent 70%, rgba(0,0,0,0.28)
 const BOX_REFLECT_DESKTOP =
   "below 2px linear-gradient(transparent 58%, rgba(0,0,0,0.42))";
 
-// Glow colour cast behind the centered card (cycled per artist; logo = mint).
-const glowColors = ["#5BC8E8", "#F0902F", "#E5484D", "#8B5CF6", "#22D3EE", "#F59E0B"];
-const LOGO_GLOW = "#5BFF9A";
-
 type Card =
   | { kind: "artist"; artist: Artist; idx: number }
   | { kind: "logo" };
@@ -94,12 +90,6 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   // More side cards on desktop to fill the width; fewer on mobile.
   const side = Math.min(isDesktop ? 4 : SIDE_MAX, Math.max(0, Math.floor((N - 1) / 2)));
   const reflect = isDesktop ? BOX_REFLECT_DESKTOP : BOX_REFLECT;
-  // Glow colour behind the centered card (tracks the centered artist).
-  const centeredCard = cards[(((current % N) + N) % N)];
-  const glow =
-    centeredCard?.kind === "artist"
-      ? glowColors[centeredCard.idx % glowColors.length]
-      : LOGO_GLOW;
 
   // Shortest signed distance from `current` to card `i` around the ring.
   const deltaOf = useCallback(
@@ -330,12 +320,6 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         onPointerCancel={endDrag}
         onPointerLeave={endDrag}
       >
-        {/* Cinematic color spotlight behind the centered card. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[95%] w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[140px] transition-colors duration-700"
-          style={{ backgroundColor: glow, opacity: isDesktop ? 0.68 : 0.42 }}
-        />
         {cards.map((card, i) => {
           const d = deltaOf(i);
           const reduced = reducedRef.current;

@@ -1145,6 +1145,16 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
       </Modal>
       <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-3 py-8 md:py-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
+        {/* Soft ambient fill across the mid-hero so the Aurora-lit top and the
+            carousel glow below read as one continuous wash (no dark mid-band). */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{
+            background:
+              "radial-gradient(70% 55% at 50% 46%, hsl(160 55% 28% / 0.32), transparent 72%)",
+          }}
+        />
         {/* Logo centered at the hero top (per Figma); visible while the header is hidden */}
         <div className="container relative z-20 mx-auto mb-4 md:mb-5 flex justify-center">
           <Link href="/" aria-label="MegaEvents — דף הבית">
@@ -1181,11 +1191,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
         <div className="relative z-10 mt-3 sm:mt-2">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
-        {/* Soft fade so the dark hero melts into the next section (no hard seam) */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-40 bg-gradient-to-b from-transparent to-background"
-        />
       </section>
 
       {/* Promo package banners — featured events, auto-selected */}
