@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/he";
 
 import { Event } from "@/lib/app.types";
+import { cn } from "@/lib/utils";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { Button } from "@/components/ui/button";
 import { PackageIcons } from "@/components/ui/PackageIcons";
@@ -18,10 +19,14 @@ import EventButton from "@/components/EventButton";
 export const EventCard = ({
   event,
   title,
+  showName = false,
 }: {
   event: Event;
   /** Display title — falls back to the event name. */
   title?: string;
+  /** Show the event name above the venue (used on the search results grid,
+   * where the same event isn't implied by the page context). */
+  showName?: boolean;
 }) => {
   const sold = isEventSoldOut(event);
   const price = computePackagePrice(event);
@@ -66,8 +71,18 @@ export const EventCard = ({
             </span>
           </div>
 
-          {/* Destination — larger per mock */}
-          <p className="text-lg font-bold text-foreground">
+          {/* Event name (search grid only) + destination */}
+          {showName && (
+            <p className="line-clamp-2 text-lg font-bold leading-tight text-foreground">
+              {title ?? event.name}
+            </p>
+          )}
+          <p
+            className={cn(
+              "font-bold text-foreground",
+              showName ? "text-sm text-muted-foreground" : "text-lg"
+            )}
+          >
             {event.location?.name}
           </p>
 
