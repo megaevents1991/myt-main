@@ -114,20 +114,6 @@ export const HeroSearch = ({
   const topArtist = artistFor(top);
   const selectedArtist = artistFor(selected);
 
-  // Header search button + /?search=open land here.
-  useEffect(() => {
-    const focus = () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setOpen(true);
-      setTimeout(() => inputRef.current?.focus(), 350);
-    };
-    window.addEventListener("myt:open-search", focus);
-    if (new URLSearchParams(window.location.search).get("search") === "open") {
-      focus();
-    }
-    return () => window.removeEventListener("myt:open-search", focus);
-  }, []);
-
   useEffect(() => {
     setSpeechSupported(Boolean(getSpeechRecognition()));
   }, []);

@@ -4,20 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@mantine/core";
 
-import type { Event } from "@/lib/app.types";
+import type { Event, Artist } from "@/lib/app.types";
 import { HeroSearch } from "@/components/HeroSearch";
 
 /**
- * Global search overlay — lets the header search button open the *same* search
- * experience on any page, in place, instead of routing to the homepage. The
- * homepage renders its own in-hero search, so this no-ops there. Events are
- * lazy-loaded (cached API) the first time it opens, so non-search pages pay
- * nothing for it.
+ * Global search overlay — the header search button opens the *same* search
+ * experience here, in place, on every page (including the homepage), instead of
+ * routing anywhere. Events + artists are lazy-loaded (cached API) the first time
+ * it opens, so pages that never search pay nothing for it.
  */
 export const GlobalSearch = () => {
   const pathname = usePathname();
   const [opened, setOpened] = useState(false);
   const [events, setEvents] = useState<Event[] | null>(null);
+  const [artists, setArtists] = useState<Artist[]>([]);
   const loading = useRef(false);
 
   const load = () => {
@@ -25,15 +25,16 @@ export const GlobalSearch = () => {
     loading.current = true;
     fetch("/api/search-events")
       .then((r) => r.json())
-      .then((d) => setEvents(d.events ?? []))
+      .then((d) => {
+        setEvents(d.events ?? []);
+        setArtists(d.artists ?? []);
+      })
       .catch(() => setEvents([]))
       .finally(() => (loading.current = false));
   };
 
   useEffect(() => {
     const onOpen = () => {
-      // Homepage handles its own in-hero search — never open the modal there.
-      if (window.location.pathname === "/") return;
       load();
       setOpened(true);
     };
@@ -48,9 +49,6 @@ export const GlobalSearch = () => {
   // Close on navigation (e.g. after picking an event → /order/[id]).
   useEffect(() => setOpened(false), [pathname]);
 
-  // Homepage owns its own in-place search; don't double up there.
-  if (pathname === "/") return null;
-
   return (
     <Modal
       opened={opened}
@@ -60,6 +58,11 @@ export const GlobalSearch = () => {
       size="lg"
       dir="rtl"
       overlayProps={{ backgroundOpacity: 0.6, blur: 3 }}
+      closeButtonProps={{
+        "aria-label": "סגור",
+        className:
+          "!text-main-foreground !bg-transparent hover:!bg-main-foreground/15 !rounded-full",
+      }}
       styles={{
         content: { backgroundColor: "hsl(var(--surface-inverse))" },
         header: {
@@ -67,12 +70,11 @@ export const GlobalSearch = () => {
           color: "hsl(var(--surface-inverse-foreground))",
         },
         title: { fontWeight: 700 },
-        close: { color: "hsl(var(--surface-inverse-foreground))" },
         body: { paddingBottom: "1.5rem" },
       }}
     >
       <div className="bg-main text-main-foreground">
-        <HeroSearch events={events ?? []} autoFocus />
+        <HeroSearch events={events ?? []} artists={artists} autoFocus />
       </div>
     </Modal>
   );
