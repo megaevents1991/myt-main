@@ -191,6 +191,14 @@ export const HeroSearch = ({
     router.push(`/order/${event.id}`);
   };
 
+  // Stage 1 ↑/Enter: "see all results" → the full search page (grid + filters).
+  // The inline dropdown stays the quick-pick path (click a row to assemble).
+  const goToSearch = () => {
+    const q = query.trim();
+    trackEvent("heroSearchSeeAll", { query: q });
+    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+  };
+
   const price = selected ? computePackagePrice(selected) : null;
   // Always show all three parts; flight + hotel are struck-through/dimmed for
   // ticket-only (skip_flight) events.
@@ -240,7 +248,7 @@ export const HeroSearch = ({
           onKeyDown={(e) => {
             if (e.key !== "Enter") return;
             if (selected) goTo(selected);
-            else if (top) pick(top);
+            else goToSearch();
           }}
           placeholder="לאן טסים? אירוע, אומן או עיר…"
           aria-label="חיפוש אירוע — הקלידו אירוע, אומן או עיר"
@@ -263,9 +271,8 @@ export const HeroSearch = ({
         )}
         <button
           type="button"
-          onClick={() => (selected ? goTo(selected) : top && pick(top))}
-          disabled={!top && !selected}
-          aria-label={selected ? "המשך להזמנה" : "חיפוש"}
+          onClick={() => (selected ? goTo(selected) : goToSearch())}
+          aria-label={selected ? "המשך להזמנה" : "הצגת כל התוצאות"}
           className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
         >
           <ArrowUp className="size-5" aria-hidden />
