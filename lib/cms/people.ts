@@ -26,6 +26,11 @@ type PersonRow = {
   meta_description: string | null;
   meta_tags: string | null;
   featured_order: number | null;
+  // Page enrichments (may be absent on Contentful-fallback rows).
+  hero_video_url?: string | null;
+  banners?: { image_url?: string; link_url?: string; title?: string }[] | null;
+  gallery?: string[] | null;
+  videos?: { url?: string; label?: string }[] | null;
 };
 
 type PeopleConfig = {
@@ -59,6 +64,10 @@ const toPerson = (r: PersonRow): Artist => ({
     seoTitle: r.seo_title ?? undefined,
     metaDescription: r.meta_description ?? undefined,
     metaTags: r.meta_tags ?? undefined,
+    heroVideoUrl: r.hero_video_url ?? undefined,
+    banners: r.banners?.length ? r.banners : undefined,
+    gallery: r.gallery?.length ? r.gallery : undefined,
+    videos: r.videos?.length ? r.videos : undefined,
   },
 });
 

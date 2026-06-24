@@ -14,6 +14,9 @@ import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrustSection } from "@/components/TrustSection";
 import { FAQ } from "@/components/ui/FAQ";
+import { ArtistBanners } from "@/components/ArtistBanners";
+import { ArtistGallery } from "@/components/ArtistGallery";
+import { ArtistVideos } from "@/components/ArtistVideos";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new artists on-demand
@@ -98,7 +101,7 @@ export default async function ArtistPage({
       notFound();
     }
 
-    const { name, nameDBenglish, bio, heroBanner } = artist.fields;
+    const { name, nameDBenglish, bio, heroBanner, heroVideoUrl, banners, gallery, videos } = artist.fields;
 
     if (!name || !nameDBenglish) {
       console.error('Artist missing required fields:', { slug, name, nameDBenglish });
@@ -119,8 +122,11 @@ export default async function ArtistPage({
           bio={documentToReactComponents(bio as Document, bioOptions)}
           imageUrl={imageUrl}
           imageAlt={`תמונה של האומן ${String(name)}`}
+          heroVideoUrl={heroVideoUrl}
           ticketOnly={events.length > 0 && events.every((e) => e.skip_flight)}
         />
+
+        <ArtistBanners banners={banners} />
 
         <section
           id="upcoming-events"
@@ -151,6 +157,8 @@ export default async function ArtistPage({
           )}
         </section>
 
+        <ArtistVideos videos={videos} />
+        <ArtistGallery images={gallery} />
         <TrustSection />
         <FAQ />
       </>

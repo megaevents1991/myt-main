@@ -48,13 +48,19 @@ export const EventCard = ({
     >
       <EventButton event={event}>
         <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_14px_36px_-10px_hsl(var(--brand-mint)/0.4)]">
-          {/* Ticket-only marker — floats in the empty top gap between price and date */}
+          {/* Ticket-only marker — pinned in the top-right corner; the date row
+              below gets right-side room so the badge never sits on the date. */}
           {!sold && event.skip_flight && (
-            <TicketOnlyBadge className="absolute left-1/2 top-3 z-20 -translate-x-1/2" />
+            <TicketOnlyBadge className="absolute right-3 top-3 z-20" />
           )}
           {/* Date on the right, price on the left (swapped per mock) */}
           <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col items-start">
+            <div
+              className={cn(
+                "flex flex-col items-start",
+                !sold && event.skip_flight && "ps-12"
+              )}
+            >
               <span className="text-xl font-extrabold tabular-nums text-foreground">
                 {dateLabel}
               </span>

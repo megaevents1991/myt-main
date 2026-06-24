@@ -14,6 +14,9 @@ import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrustSection } from "@/components/TrustSection";
 import { FAQ } from "@/components/ui/FAQ";
+import { ArtistBanners } from "@/components/ArtistBanners";
+import { ArtistGallery } from "@/components/ArtistGallery";
+import { ArtistVideos } from "@/components/ArtistVideos";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
@@ -98,7 +101,7 @@ export default async function FootballPage({
       notFound();
     }
 
-    const { name, nameDBenglish, bio, heroBanner } = team.fields;
+    const { name, nameDBenglish, bio, heroBanner, heroVideoUrl, banners, gallery, videos } = team.fields;
 
     if (!name || !nameDBenglish) {
       console.error('Football team missing required fields:', { slug, name, nameDBenglish });
@@ -118,7 +121,10 @@ export default async function FootballPage({
           bio={documentToReactComponents(bio as Document, bioOptions)}
           imageUrl={imageUrl}
           imageAlt={`לוגו של קבוצת ${String(name)}`}
+          heroVideoUrl={heroVideoUrl}
         />
+
+        <ArtistBanners banners={banners} />
 
         <section
           id="upcoming-events"
@@ -149,6 +155,8 @@ export default async function FootballPage({
           )}
         </section>
 
+        <ArtistVideos videos={videos} />
+        <ArtistGallery images={gallery} />
         <TrustSection />
         <FAQ />
       </>

@@ -520,6 +520,15 @@ export type FootballTeam = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Backoffice-managed page enrichments (Supabase artists/football_teams).
+    /** #19b: YouTube URL that plays behind the hero circle. */
+    heroVideoUrl?: string;
+    /** #20: promo banners on the page. */
+    banners?: { image_url?: string; link_url?: string; title?: string }[];
+    /** #21: image gallery URLs. */
+    gallery?: string[];
+    /** #24: performance videos (YouTube). */
+    videos?: { url?: string; label?: string }[];
   };
 };
 
@@ -556,6 +565,15 @@ export type Artist = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Backoffice-managed page enrichments (Supabase artists/football_teams).
+    /** #19b: YouTube URL that plays behind the hero circle. */
+    heroVideoUrl?: string;
+    /** #20: promo banners on the page. */
+    banners?: { image_url?: string; link_url?: string; title?: string }[];
+    /** #21: image gallery URLs. */
+    gallery?: string[];
+    /** #24: performance videos (YouTube). */
+    videos?: { url?: string; label?: string }[];
   };
 };
 
