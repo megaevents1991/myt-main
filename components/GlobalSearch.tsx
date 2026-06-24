@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 import type { Event, Artist } from "@/lib/app.types";
 import { HeroSearch } from "@/components/HeroSearch";
@@ -15,6 +16,7 @@ import { HeroSearch } from "@/components/HeroSearch";
  */
 export const GlobalSearch = () => {
   const pathname = usePathname();
+  const isMobile = useMediaQuery("(max-width: 640px)");
   const [opened, setOpened] = useState(false);
   const [events, setEvents] = useState<Event[] | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -56,6 +58,7 @@ export const GlobalSearch = () => {
       title="חיפוש אירוע"
       centered
       size="lg"
+      fullScreen={isMobile}
       dir="rtl"
       overlayProps={{ backgroundOpacity: 0.6, blur: 3 }}
       closeButtonProps={{

@@ -143,17 +143,17 @@ export const SearchResults = ({
       if (from && e.date && e.date < from) return false;
       if (to && e.date && e.date > to) return false;
       const price = priceOf.get(e.id);
-      if (minPrice && (price === null || price < Number(minPrice))) return false;
-      if (maxPrice && (price === null || price > Number(maxPrice))) return false;
+      if (minPrice && (price == null || price < Number(minPrice))) return false;
+      if (maxPrice && (price == null || price > Number(maxPrice))) return false;
       return true;
     });
 
     const byPrice = (a: Event, b: Event, dir: 1 | -1) => {
       const pa = priceOf.get(a.id);
       const pb = priceOf.get(b.id);
-      if (pa === null && pb === null) return 0;
-      if (pa === null) return 1;
-      if (pb === null) return -1;
+      if (pa == null && pb == null) return 0;
+      if (pa == null) return 1;
+      if (pb == null) return -1;
       return (pa - pb) * dir;
     };
 
