@@ -26,7 +26,7 @@ export const CategorySection = ({
       dir="rtl"
     >
       <div className="container mx-auto">
-        <div className="mb-4 flex flex-row items-stretch justify-end lg:mb-6">
+        <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
           <h2
             id="categories-heading"
             className="mx-2 text-center font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl"

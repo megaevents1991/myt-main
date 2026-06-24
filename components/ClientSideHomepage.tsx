@@ -1309,7 +1309,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
             </section>
           </div>
           {/* Accessibility: Enhanced section headings with proper hierarchy */}
-          <div className="flex flex-row mb-4 lg:mb-6 justify-end items-stretch">
+          <div className="flex flex-row mb-4 lg:mb-6 justify-start items-stretch">
             <div>
               <h2 className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                 המבוקשים ביותר
@@ -1355,7 +1355,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           {/* Sports Section */}
           {footballTeams && footballTeams.length > 0 && (
             <section aria-labelledby="football-section-heading">
-              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+              <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
                   <h2 id="football-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                     כדורגל
@@ -1391,7 +1391,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           {/* Artists Section */}
           {carouselArtists && carouselArtists.length > 0 && (
             <section aria-labelledby="artists-section-heading">
-              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+              <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
                   <h2 id="artists-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                     אמנים מובילים
@@ -1427,7 +1427,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
           {/* Music Section (renamed from "האירועים שלנו") */}
           {musicEvents.length > 0 && (
             <section aria-labelledby="music-events-heading">
-              <div className="flex flex-row justify-end mt-2 mb-4 lg:mb-6 items-stretch">
+              <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div>
                   <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
                     הופעות נוספות

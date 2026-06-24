@@ -925,7 +925,7 @@ export const HotelSelection = () => {
       </div>
       <div
         className={cn(
-          "flex flex-row lg:gap-4 gap-2 flex-row-reverse items-start w-full",
+          "flex flex-row lg:gap-4 gap-2 items-start w-full",
           !matches && "flex-col"
         )}
       >
