@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 
-import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,16 @@ export const Header = () => {
   // Inside the order flow the Stepper is the only chrome — hide the global
   // header so users can't bounce back to the homepage mid-booking.
   const hidden = pathname?.startsWith("/order");
+
+  // #25: artist/team pages push their name here so it sticks in the header once
+  // the hero scrolls away. Detail pages mount <HeaderTitle name=…>.
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
+  useEffect(() => {
+    const onTitle = (e: Event) =>
+      setPageTitle((e as CustomEvent<string | null>).detail ?? null);
+    window.addEventListener("myt:header-title", onTitle);
+    return () => window.removeEventListener("myt:header-title", onTitle);
+  }, []);
 
   // Open the search modal directly. On the homepage the open-search event is
   // handled in place; elsewhere we route home and request it via the URL.
@@ -43,6 +53,7 @@ export const Header = () => {
   const [needsSpacer, setNeedsSpacer] = useState(false);
 
   useEffect(() => {
+    setPageTitle(null); // reset on navigation; the new page re-sets it if any
     // Which pages carry their own top hero that the header should defer to:
     // the homepage (its search bar) and artist/football detail pages (their
     // DetailHero). Decided by route — not DOM presence — so a slow-loading
@@ -99,21 +110,45 @@ export const Header = () => {
     >
       <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:gap-4 md:px-4 md:py-3">
         <Link href="/" aria-label="MegaEvents — דף הבית" className="shrink-0">
-          <MYT className="h-5 w-auto sm:h-6 md:h-8" />
+          <Image
+            src="/brand/logo-mark-ME.svg"
+            alt="MegaEvents"
+            width={36}
+            height={36}
+            priority
+            className="size-8 rounded-lg md:size-9"
+          />
         </Link>
 
-        {/* Search — opens the search modal directly. Page-centered on desktop. */}
-        <button
-          type="button"
-          onClick={openSearch}
-          aria-label="חיפוש אירוע"
-          className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full bg-card px-3 text-sm text-muted-foreground transition-shadow hover:shadow-card md:absolute md:left-1/2 md:top-1/2 md:h-10 md:w-full md:max-w-md md:flex-none md:-translate-x-1/2 md:-translate-y-1/2 md:px-4"
-        >
-          <Search className="size-4 shrink-0" aria-hidden />
-          <span className="truncate">חיפוש אירוע</span>
-        </button>
+        {pageTitle ? (
+          // On artist/team pages the artist name takes the bar once scrolled.
+          <span className="min-w-0 flex-1 truncate text-center text-base font-bold md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
+            {pageTitle}
+          </span>
+        ) : (
+          /* Search — opens the search modal directly. Page-centered on desktop. */
+          <button
+            type="button"
+            onClick={openSearch}
+            aria-label="חיפוש אירוע"
+            className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full bg-card px-3 text-sm text-muted-foreground transition-shadow hover:shadow-card md:absolute md:left-1/2 md:top-1/2 md:h-10 md:w-full md:max-w-md md:flex-none md:-translate-x-1/2 md:-translate-y-1/2 md:px-4"
+          >
+            <Search className="size-4 shrink-0" aria-hidden />
+            <span className="truncate">חיפוש אירוע</span>
+          </button>
+        )}
 
         <div className="ms-auto flex shrink-0 items-center gap-0.5 md:gap-1">
+          {pageTitle && (
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label="חיפוש אירוע"
+              className="inline-flex size-11 items-center justify-center rounded-full transition-colors hover:bg-main-foreground/10"
+            >
+              <Search className="size-5" aria-hidden />
+            </button>
+          )}
           <ThemeToggle />
           <button
             type="button"

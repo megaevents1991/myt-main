@@ -9,6 +9,7 @@ import {
 import { ReactNode } from "react";
 import { getEventsByName } from "@/lib/eventsData";
 import ClientTracker from "@/components/ClientTracker";
+import { HeaderTitle } from "@/components/HeaderTitle";
 import { DetailHero } from "@/components/DetailHero";
 import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -116,6 +117,7 @@ export default async function ArtistPage({
     return (
       <>
         <ClientTracker />
+        <HeaderTitle name={String(name)} />
         <DetailHero
           name={String(name)}
           nameEnglish={String(nameDBenglish)}
