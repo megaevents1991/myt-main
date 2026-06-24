@@ -61,7 +61,9 @@ export const CustomSlider = ({
         ];
 
   return (
-    <div style={{ margin: "auto", maxWidth: "90%" }}>
+    // Horizontal padding keeps the first/last mark labels (which center on the
+    // track ends and spill ±half their width) inside the narrow filter column.
+    <div className="mx-auto w-full px-6">
       <Slider
         thumbSize={20}
         min={variant === "flightDuration" ? minValue : Math.ceil(minValue)}
