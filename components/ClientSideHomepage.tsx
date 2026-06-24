@@ -1178,9 +1178,14 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
         {/* Trust row — sits under the gallery, per Dor's layout note */}
         <TrustBadges className="relative z-10 mt-7 md:mt-8 justify-center text-main-foreground/80" />
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
-        <div className="relative z-10 mt-10 sm:mt-8">
+        <div className="relative z-10 mt-3 sm:mt-2">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
+        {/* Soft fade so the dark hero melts into the next section (no hard seam) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-40 bg-gradient-to-b from-transparent to-background"
+        />
       </section>
 
       {/* Promo package banners — featured events, auto-selected */}

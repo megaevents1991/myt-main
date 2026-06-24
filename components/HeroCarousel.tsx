@@ -28,6 +28,12 @@ const CENTER_SCALE = 1.06;
 
 // Reflection cast under every card (WebKit/Blink; Firefox simply omits it).
 const BOX_REFLECT = "below 1px linear-gradient(transparent 70%, rgba(0,0,0,0.28))";
+const BOX_REFLECT_DESKTOP =
+  "below 2px linear-gradient(transparent 58%, rgba(0,0,0,0.42))";
+
+// Glow colour cast behind the centered card (cycled per artist; logo = mint).
+const glowColors = ["#5BC8E8", "#F0902F", "#E5484D", "#8B5CF6", "#22D3EE", "#F59E0B"];
+const LOGO_GLOW = "#5BFF9A";
 
 type Card =
   | { kind: "artist"; artist: Artist; idx: number }
@@ -70,12 +76,12 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
 
   const N = cards.length;
   const logoIndex = cards.findIndex((c) => c.kind === "logo");
-  const side = Math.min(SIDE_MAX, Math.max(0, Math.floor((N - 1) / 2)));
 
   // `current` is unbounded (we reduce mod N for content) so stepping never hits
   // an edge — the ring is infinite in both directions.
   const [current, setCurrent] = useState(logoIndex);
   const [cardW, setCardW] = useState(176);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [drag, setDrag] = useState(0); // live px offset while pointer-dragging
 
   const dragging = useRef(false);
@@ -85,6 +91,15 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const interacted = useRef(false);
 
   const baseStep = cardW * STEP_FRAC;
+  // More side cards on desktop to fill the width; fewer on mobile.
+  const side = Math.min(isDesktop ? 4 : SIDE_MAX, Math.max(0, Math.floor((N - 1) / 2)));
+  const reflect = isDesktop ? BOX_REFLECT_DESKTOP : BOX_REFLECT;
+  // Glow colour behind the centered card (tracks the centered artist).
+  const centeredCard = cards[(((current % N) + N) % N)];
+  const glow =
+    centeredCard?.kind === "artist"
+      ? glowColors[centeredCard.idx % glowColors.length]
+      : LOGO_GLOW;
 
   // Shortest signed distance from `current` to card `i` around the ring.
   const deltaOf = useCallback(
@@ -95,9 +110,14 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     [current, N]
   );
 
-  // Card width tracks the responsive size (w-44 → w-56 at the sm breakpoint).
+  // Card width tracks the responsive size (w-44 → w-56 → w-64) so baseStep and
+  // the visible side count match the rendered card.
   useEffect(() => {
-    const measure = () => setCardW(window.innerWidth >= 640 ? 224 : 176);
+    const measure = () => {
+      const w = window.innerWidth;
+      setIsDesktop(w >= 1024);
+      setCardW(w >= 1024 ? 256 : w >= 640 ? 224 : 176);
+    };
     measure();
     reducedRef.current = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -198,7 +218,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       return (
         <div
           className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-3xl bg-secondary shadow-card"
-          style={{ WebkitBoxReflect: BOX_REFLECT } as React.CSSProperties}
+          style={{ WebkitBoxReflect: reflect } as React.CSSProperties}
           aria-label="מגה איבנטס"
         >
           <span
@@ -227,13 +247,13 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
           "relative h-full w-full overflow-hidden rounded-3xl",
           blobColors[idx % blobColors.length]
         )}
-        style={{ WebkitBoxReflect: BOX_REFLECT } as React.CSSProperties}
+        style={{ WebkitBoxReflect: reflect } as React.CSSProperties}
       >
         <Image
           src={url}
           alt={name}
           fill
-          sizes="(max-width: 640px) 11rem, 14rem"
+          sizes="(max-width: 640px) 11rem, (max-width: 1024px) 14rem, 16rem"
           className="object-cover object-bottom"
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
@@ -242,7 +262,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 to-transparent"
         />
-        <span className="absolute inset-x-2 bottom-12 truncate text-center text-base font-bold text-white drop-shadow">
+        <span className="absolute inset-x-2 bottom-12 truncate text-center text-base font-bold text-white drop-shadow lg:bottom-14 lg:text-xl">
           {name}
         </span>
         {/* Only the CTA navigates — clicking the card art never does. */}
@@ -252,7 +272,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
           tabIndex={centered ? 0 : -1}
           draggable={false}
           className={cn(
-            "absolute inset-x-0 bottom-3 mx-auto flex w-max items-center gap-1 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-black shadow transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "absolute inset-x-0 bottom-3 mx-auto flex w-max items-center gap-1 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-black shadow transition-all duration-300 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:bottom-4 lg:px-5 lg:py-2 lg:text-sm",
             centered
               ? "translate-y-0 opacity-100"
               : "pointer-events-none translate-y-2 opacity-0"
@@ -266,24 +286,24 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   };
 
   const arrowBtn =
-    "absolute top-1/2 z-30 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
+    "absolute top-1/2 z-30 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex md:opacity-0 md:group-hover:opacity-100 lg:size-12";
 
   return (
-    <div className="relative">
-      {/* Next (forward) — left side in RTL */}
-      <button
-        type="button"
-        onClick={() => step(1)}
-        aria-label="האירועים הבאים"
-        className={cn(arrowBtn, "left-2 sm:left-6")}
-      >
-        <ChevronLeft className="size-5" aria-hidden />
-      </button>
-      {/* Prev — right side in RTL */}
+    <div className="group relative">
+      {/* Left chevron — brings the card on the left toward center. */}
       <button
         type="button"
         onClick={() => step(-1)}
         aria-label="האירועים הקודמים"
+        className={cn(arrowBtn, "left-2 sm:left-6")}
+      >
+        <ChevronLeft className="size-5" aria-hidden />
+      </button>
+      {/* Right chevron — brings the card on the right toward center. */}
+      <button
+        type="button"
+        onClick={() => step(1)}
+        aria-label="האירועים הבאים"
         className={cn(arrowBtn, "right-2 sm:right-6")}
       >
         <ChevronRight className="size-5" aria-hidden />
@@ -291,8 +311,16 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
 
       <div
         ref={stageRef}
-        className="relative h-[360px] w-full cursor-grab touch-pan-y select-none overflow-hidden active:cursor-grabbing sm:h-[460px]"
-        style={{ perspective: "1400px", perspectiveOrigin: "center" }}
+        className="relative h-[340px] w-full cursor-grab touch-pan-y select-none overflow-hidden active:cursor-grabbing sm:h-[420px] lg:h-[480px]"
+        style={{
+          perspective: "1400px",
+          perspectiveOrigin: "center",
+          // Radial vignette so the gallery melts into the hero on every edge.
+          maskImage:
+            "radial-gradient(118% 80% at 50% 46%, #000 46%, transparent 100%)",
+          WebkitMaskImage:
+            "radial-gradient(118% 80% at 50% 46%, #000 46%, transparent 100%)",
+        }}
         role="list"
         aria-label="אירועים מובילים"
         aria-roledescription="carousel"
@@ -302,25 +330,31 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         onPointerCancel={endDrag}
         onPointerLeave={endDrag}
       >
+        {/* Cinematic color spotlight behind the centered card. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[95%] w-[68%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[140px] transition-colors duration-700"
+          style={{ backgroundColor: glow, opacity: isDesktop ? 0.68 : 0.42 }}
+        />
         {cards.map((card, i) => {
           const d = deltaOf(i);
-          const adist = Math.abs(d);
-          const visible = adist <= side;
           const reduced = reducedRef.current;
+          // Continuous position in card-units, including the live drag — so the
+          // 3D interpolates smoothly during a swipe (a real slide) instead of
+          // popping at each card boundary. Stepping still recycles cards.
+          const pos = reduced ? d : d + drag / baseStep;
+          const apos = Math.abs(pos);
+          const visible = apos <= side + 0.5;
           const x = d * baseStep + drag;
-          const rotateY = reduced || d === 0 ? 0 : d < 0 ? ROTATE : -ROTATE;
-          const translateZ = reduced ? 0 : -Math.min(adist, side) * 60;
-          const scale =
-            d === 0
-              ? CENTER_SCALE
-              : reduced
-              ? 0.88
-              : Math.max(0.82 - (adist - 1) * 0.06, 0.62);
-          const opacity = !visible
-            ? 0
-            : d === 0
-            ? 1
-            : Math.max(0.9 - (adist - 1) * 0.28, 0.25);
+          const rotateY = reduced ? 0 : -Math.sign(pos) * Math.min(apos, 1) * ROTATE;
+          const translateZ = reduced ? 0 : -Math.min(apos, side) * 60;
+          const scale = reduced
+            ? apos < 0.5
+              ? 1
+              : 0.88
+            : Math.max(CENTER_SCALE - apos * 0.18, 0.6);
+          const opacity = !visible ? 0 : Math.max(1 - apos * 0.26, 0.22);
+          const zIndex = Math.round(100 - apos * 10);
           return (
             <div
               key={i}
@@ -329,7 +363,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
               role="listitem"
               aria-hidden={!visible}
               className={cn(
-                "absolute left-1/2 top-1/2 h-64 w-44 will-change-transform [backface-visibility:hidden] sm:h-80 sm:w-56",
+                "absolute left-1/2 top-1/2 h-64 w-44 will-change-transform [backface-visibility:hidden] sm:h-80 sm:w-56 lg:h-96 lg:w-64",
                 // No transition while dragging (track the finger) or for the
                 // far cards that wrap around the ring (avoid a cross-screen slide).
                 !dragging.current && visible &&
@@ -338,7 +372,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
               style={{
                 transform: `translate(-50%, -50%) translateX(${x}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
                 opacity,
-                zIndex: 100 - adist,
+                zIndex,
                 pointerEvents: visible ? "auto" : "none",
               }}
               onClickCapture={(e) => {
