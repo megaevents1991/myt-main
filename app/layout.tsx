@@ -10,6 +10,7 @@ import Link from "next/link";
 import { AuthProvider } from "./hooks/AuthContext";
 import MixpanelProvider from "./hooks/Mixpanel";
 import { Header } from "@/components/Header";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { SocialLinks } from "@/components/ui/SocialLinks";
 import { FooterMarquee } from "@/components/ui/FooterMarquee";
 
@@ -210,6 +211,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                   דלג לתוכן הראשי
                 </a>
                 <Header />
+                <GlobalSearch />
                 <main id="main-content">{children}</main>
                 <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6">
                   <FooterMarquee />

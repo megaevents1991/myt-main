@@ -59,9 +59,12 @@ const getSpeechRecognition = ():
 export const HeroSearch = ({
   events,
   artists = [],
+  autoFocus = false,
 }: {
   events: Event[];
   artists?: Artist[];
+  /** Focus the input on mount — used when rendered inside the search modal. */
+  autoFocus?: boolean;
 }) => {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +131,15 @@ export const HeroSearch = ({
   useEffect(() => {
     setSpeechSupported(Boolean(getSpeechRecognition()));
   }, []);
+
+  // When mounted inside the search modal, focus + open the dropdown immediately
+  // (the open event that triggered the modal fired before this mounted).
+  useEffect(() => {
+    if (!autoFocus) return;
+    setOpen(true);
+    const t = setTimeout(() => inputRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, [autoFocus]);
 
   // Close the results/package dropdown on outside click or Escape.
   useEffect(() => {

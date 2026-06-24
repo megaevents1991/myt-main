@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 
+import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,6 @@ const navLinks = [
 
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const router = useRouter();
   const pathname = usePathname();
   // Inside the order flow the Stepper is the only chrome — hide the global
   // header so users can't bounce back to the homepage mid-booking.
@@ -34,15 +33,12 @@ export const Header = () => {
     return () => window.removeEventListener("myt:header-title", onTitle);
   }, []);
 
-  // Open the search modal directly. On the homepage the open-search event is
-  // handled in place; elsewhere we route home and request it via the URL.
+  // Open the search overlay in place. The homepage handles this in its hero
+  // search; every other page has the GlobalSearch modal listen for it. Either
+  // way we never navigate the user away just to search.
   const openSearch = () => {
     setMenuOpen(false);
-    if (typeof document !== "undefined" && document.getElementById("search")) {
-      window.dispatchEvent(new CustomEvent("myt:open-search"));
-    } else {
-      router.push("/?search=open");
-    }
+    window.dispatchEvent(new CustomEvent("myt:open-search"));
   };
   // Header stays hidden over a page's own hero (homepage search / detail hero)
   // and slides in once the user scrolls past it, keeping the top clean. On
@@ -110,14 +106,7 @@ export const Header = () => {
     >
       <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:gap-4 md:px-4 md:py-3">
         <Link href="/" aria-label="MegaEvents — דף הבית" className="shrink-0">
-          <Image
-            src="/brand/logo-mark-ME.svg"
-            alt="MegaEvents"
-            width={36}
-            height={36}
-            priority
-            className="size-8 rounded-lg md:size-9"
-          />
+          <MYT className="h-5 w-auto sm:h-6 md:h-8" />
         </Link>
 
         {pageTitle ? (
