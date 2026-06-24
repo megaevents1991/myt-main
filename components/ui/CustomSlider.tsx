@@ -61,9 +61,7 @@ export const CustomSlider = ({
         ];
 
   return (
-    // Horizontal padding keeps the first/last mark labels (which center on the
-    // track ends and spill ±half their width) inside the narrow filter column.
-    <div className="mx-auto w-full px-6">
+    <div className="mx-auto w-full">
       <Slider
         thumbSize={20}
         min={variant === "flightDuration" ? minValue : Math.ceil(minValue)}
@@ -87,8 +85,11 @@ export const CustomSlider = ({
             ? formatTime(value)
             : Math.ceil(value / numOfPassengers - priceMinValue)
         }
-        marks={marks}
       />
+      <div dir="rtl" className="mt-1 flex justify-between gap-2 text-sm text-muted-foreground">
+        <span>{marks[0].label}</span>
+        <span>{marks[1].label}</span>
+      </div>
     </div>
   );
 };

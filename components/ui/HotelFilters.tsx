@@ -134,7 +134,7 @@ export const HotelFilters = ({
           </Checkbox.Group>
         </div>
       </div>
-      <div className="m-auto w-full mt-4 px-6">
+      <div className="m-auto w-full mt-4 px-2">
         <div dir="rtl" className="w-full">
           <h3 className="text-lg text-start font-semibold mb-2">סוג אירוח</h3>
           <Checkbox.Group
@@ -175,7 +175,7 @@ export const HotelFilters = ({
           </Checkbox.Group>
         </div>
       </div>
-      <div className="m-auto w-full mt-2 px-6">
+      <div className="m-auto w-full mt-2 px-2">
         <h3 className="text-lg text-end font-semibold mb-2">דירוג כוכבים</h3>
         <StarsGroup
           value={stars}
@@ -201,8 +201,11 @@ export const HotelFilters = ({
           }}
           onChange={handlePriceRangeChange}
           onChangeEnd={handlePriceRangeChangeEnd}
-          marks={marks}
         />
+        <div dir="rtl" className="mt-1 flex justify-between gap-2 text-sm text-muted-foreground">
+          <span>{marks[0].label}</span>
+          <span>{marks[1].label}</span>
+        </div>
       </div>
       <div className="m-auto w-full mt-2 px-2" dir="rtl">
         <Autocomplete
@@ -229,7 +232,7 @@ export const HotelFilters = ({
           }}
         />
       </div>
-      <div className="m-auto w-full mt-4 px-6">
+      <div className="m-auto w-full mt-4 px-2">
         <h3 className="text-lg text-end font-semibold mb-2">מרחק</h3>
         <RangeSlider
           thumbSize={20}
@@ -249,8 +252,11 @@ export const HotelFilters = ({
           }}
           onChange={handleDistanceFromCenterChange}
           onChangeEnd={handleDistanceFromCenterChangeEnd}
-          marks={distanceMarks}
         />
+        <div dir="rtl" className="mt-1 flex justify-between gap-2 text-sm text-muted-foreground">
+          <span>{distanceMarks[0].label}</span>
+          <span>{distanceMarks[1].label}</span>
+        </div>
         <div className="p-6"></div>
       </div>
       {onApply && (
