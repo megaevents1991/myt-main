@@ -169,14 +169,14 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     dragging.current = true;
     moved.current = false;
     dragStart.current = e.clientX;
-    // Capture the pointer up-front. On a real touch device an *un*captured pointer
-    // belongs to the page scroller: the instant the finger moves, Chrome's scroll
-    // arbitration claims it and fires `pointercancel`, killing the swipe. (That
-    // arbitration is why it works in DevTools mobile emulation — which skips it —
-    // but not on an actual phone.) `touch-action: pan-y` still lets a vertical
-    // swipe scroll the page, and for touch the capture auto-releases on pointerup,
-    // so a plain tap's click still lands on the card/CTA.
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    // Mouse/pen ONLY: capture so a drag keeps tracking if the cursor leaves the
+    // stage. NEVER capture a touch pointer — WebKit/iOS has a long-standing bug
+    // where setPointerCapture on an ancestor for a touch pointer makes pointermove
+    // silently STOP firing (gotpointercapture lies). That is what froze the swipe
+    // on iPhone. Touch already has working *implicit* capture on its own target,
+    // so moves keep bubbling here; `touch-action: pan-y` lets vertical scroll pass.
+    // https://github.com/openseadragon/openseadragon/issues/1962
+    if (e.pointerType !== "touch") e.currentTarget.setPointerCapture?.(e.pointerId);
     stop();
   };
   const onPointerMove = (e: React.PointerEvent) => {
