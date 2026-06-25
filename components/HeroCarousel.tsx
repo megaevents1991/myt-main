@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Artist } from "@/lib/app.types";
@@ -10,16 +9,6 @@ import { MYT } from "@/components/ui/myt";
 import { MYTMark } from "@/components/ui/mytMark";
 import { EventArt } from "@/components/ui/EventArt";
 import { cn } from "@/lib/utils";
-
-// Bright blob backgrounds cycled across the cards.
-const blobColors = [
-  "bg-[#5BC8E8]",
-  "bg-[#F0902F]",
-  "bg-badge-soldout",
-  "bg-primary",
-  "bg-badge-vip",
-  "bg-badge-new",
-];
 
 // Coverflow tuning.
 const SIDE_MAX = 3; // cards shown each side of center (rest fade out)
@@ -340,44 +329,48 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         </div>
       );
     }
-    const { artist, idx } = card;
+    const { artist } = card;
     const name = String(artist.fields.name ?? "");
     const artImageUrl = artist.fields.artImageUrl;
     const heroUrl = artist.fields.heroBanner?.fields?.file?.url
       ? "https:" + artist.fields.heroBanner.fields.file.url
       : undefined;
+    // Aspect-independent fill so every card looks like the catalog cards. These
+    // carousel cards are TALL portrait; the catalog cards are near-square. With
+    // `contain` (the catalog default) a portrait box fits the cut-out to WIDTH, so
+    // padded cut-outs shrink and float in the blob. Forcing `cover` scales the
+    // cut-out to fill the card HEIGHT, bottom-anchored — the subject fills the card
+    // the same way it does on the square catalog cards, regardless of card aspect
+    // or each cut-out's framing. Blob stays `cover` (fills) at one constant size.
+    const blob = Boolean(artImageUrl);
     return (
       <div
-        className={cn(
-          "relative h-full w-full overflow-hidden rounded-3xl",
-          // EventArt brings its own dark surface; only tint when showing a flat image.
-          !artImageUrl && blobColors[idx % blobColors.length]
-        )}
+        className="relative h-full w-full overflow-hidden rounded-3xl"
         style={{ WebkitBoxReflect: reflect } as React.CSSProperties}
       >
-        {artImageUrl ? (
-          <EventArt
-            id={artist.sys.id}
-            imageUrl={artImageUrl}
-            alt={name}
-            colorIndex={artist.fields.artColorIndex}
-            shapeIndex={artist.fields.artShapeIndex}
-            blobFit="contain"
-            imageClassName="scale-[1.4] origin-bottom"
-            hoverZoom={false}
-            className="absolute inset-0 h-full w-full"
-          />
-        ) : (
-          <Image
-            src={heroUrl!}
-            alt={name}
-            fill
-            sizes="(max-width: 640px) 11rem, (max-width: 1024px) 14rem, 16rem"
-            className="object-cover object-bottom"
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-          />
-        )}
+        <EventArt
+          id={artist.sys.id}
+          imageUrl={artImageUrl || heroUrl}
+          alt={name}
+          variant={blob ? "blob" : "photo"}
+          colorIndex={artist.fields.artColorIndex}
+          shapeIndex={artist.fields.artShapeIndex}
+          // "cover" makes the cut-out fill the card and bleed to ALL edges (a wide
+          // pose like Weeknd's arm runs off the card edge — never floats mid-card).
+          imageFit="cover"
+          // ⬇️ ARTIST ZOOM DIAL (person only — blob untouched), bottom-anchored.
+          // 1 = cover fill, flush to the card edges. KEEP IT >= 1: pushing it ABOVE 1
+          // zooms further IN (still edge-to-edge). Going BELOW 1 shrinks the image
+          // inward so its edge floats in the MIDDLE of the card with blob beside it
+          // (the gap you saw) — a finite cut-out can't be both smaller AND touch the
+          // edge. First value = BLOB artists, second = flat photos. Literal values
+          // only (scale-[1.1]…) — Tailwind compiles classes it sees as text.
+          imageClassName={
+            blob ? "scale-[0.9] origin-bottom" : "scale-[1] origin-bottom"
+          }
+          hoverZoom={false}
+          className="absolute inset-0 h-full w-full"
+        />
         <span
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 to-transparent"
