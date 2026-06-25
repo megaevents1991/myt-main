@@ -27,6 +27,13 @@ const STEP_FRAC = 0.56; // gap between card centers, as a fraction of card width
 const ROTATE = 46; // side-card Y rotation (deg)
 const CENTER_SCALE = 1.06;
 
+// Momentum fling — release with speed → a roulette-style glide that decelerates
+// and snaps to the nearest card (velocity is in px/ms; +x = finger moving right).
+const FLING_MIN_V = 0.3; // below this, a release just snaps to nearest (no spin)
+const FLING_FRICTION = 0.005; // per-ms exponential velocity decay
+const FLING_STOP_V = 0.02; // momentum ends here → final snap to nearest card
+const FLING_MAX_CARDS = 12; // cap travel so a hard flick can't over-spin a small ring
+
 // Reflection cast under each card. DESKTOP ONLY: on mobile WebKit the card is a
 // composited 3D layer (will-change + translateZ + backface-visibility) and
 // `-webkit-box-reflect` gets dropped once the layer is promoted to the GPU — the
@@ -95,6 +102,13 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const dragRef = useRef(0); // live sub-card drag remainder (px)
   const interacted = useRef(false);
 
+  // Momentum-fling state: velocity sampling during the drag + the running rAF.
+  const flinging = useRef(false); // true while a release is gliding to rest
+  const momentumRaf = useRef(0); // requestAnimationFrame id of the glide loop
+  const velocity = useRef(0); // smoothed pointer velocity (px/ms) at release
+  const lastX = useRef(0); // last sampled clientX (for velocity)
+  const lastT = useRef(0); // last sample timestamp (ms, same clock as rAF)
+
   const baseStep = cardW * STEP_FRAC;
   // More side cards on desktop to fill the width; fewer on mobile.
   const side = Math.min(isDesktop ? 4 : SIDE_MAX, Math.max(0, Math.floor((N - 1) / 2)));
@@ -127,7 +141,22 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
 
   const stop = useCallback(() => {
     interacted.current = true;
+    // Any new input (grab, arrow, tap) halts a glide in progress — grab to stop,
+    // like catching a spinning roulette.
+    if (momentumRaf.current) {
+      cancelAnimationFrame(momentumRaf.current);
+      momentumRaf.current = 0;
+    }
+    flinging.current = false;
   }, []);
+
+  // Cancel a glide still running when the gallery unmounts.
+  useEffect(
+    () => () => {
+      if (momentumRaf.current) cancelAnimationFrame(momentumRaf.current);
+    },
+    []
+  );
   const step = useCallback(
     (dir: number) => {
       stop();
@@ -171,7 +200,13 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const onPointerDown = (e: React.PointerEvent) => {
     dragging.current = true;
     moved.current = false;
-    dragStart.current = e.clientX;
+    // Anchor so the live offset carries over from any glide we just interrupted
+    // (dragRef is 0 on a fresh grab, so this is `= e.clientX` in the common case).
+    dragStart.current = e.clientX - dragRef.current;
+    // Reset velocity tracking for this gesture.
+    velocity.current = 0;
+    lastX.current = e.clientX;
+    lastT.current = e.timeStamp;
     // Mouse/pen ONLY: capture so a drag keeps tracking if the cursor leaves the
     // stage. NEVER capture a touch pointer — WebKit/iOS has a long-standing bug
     // where setPointerCapture on an ancestor for a touch pointer makes pointermove
@@ -205,6 +240,15 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     dragStart.current = e.clientX - dx; // origin follows, remainder stays live
     dragRef.current = dx;
     setDrag(dx);
+    // Sample velocity (smoothed) so a release can fling. A finger that pauses
+    // before lifting decays toward 0 → no spin, which is what we want.
+    const dt = e.timeStamp - lastT.current;
+    if (dt > 0) {
+      const sample = (e.clientX - lastX.current) / dt;
+      velocity.current = velocity.current * 0.6 + sample * 0.4;
+      lastX.current = e.clientX;
+      lastT.current = e.timeStamp;
+    }
   };
   const endDrag = (e?: React.PointerEvent) => {
     if (!dragging.current) return;
@@ -214,10 +258,59 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     if (e && e.currentTarget.hasPointerCapture?.(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
-    const steps = Math.round(-dragRef.current / baseStep); // remainder → 0 or ±1
-    dragRef.current = 0;
-    setDrag(0);
-    if (steps) setCurrent((c) => c + steps);
+
+    // Fold the live remainder to the nearest card (no momentum). Used for a slow
+    // release, a finger that paused before lifting, or reduced-motion.
+    const snapToNearest = () => {
+      const steps = Math.round(-dragRef.current / baseStep); // → 0 or ±1
+      dragRef.current = 0;
+      setDrag(0);
+      if (steps) setCurrent((c) => c + steps);
+    };
+
+    let v = velocity.current;
+    const paused = e ? e.timeStamp - lastT.current > 80 : false;
+    if (reducedRef.current || paused || Math.abs(v) < FLING_MIN_V) {
+      snapToNearest();
+      return;
+    }
+
+    // Clamp speed so total glide distance (≈ v / friction) stays within the cap.
+    const maxV = FLING_MAX_CARDS * baseStep * FLING_FRICTION;
+    v = Math.max(-maxV, Math.min(maxV, v));
+
+    // Roulette glide: decay velocity each frame, fold whole card-steps into
+    // `current`, keep the sub-card remainder live in `drag` (same bookkeeping as
+    // the drag handler), then snap to the nearest card when it slows to a stop.
+    flinging.current = true;
+    let carry = dragRef.current;
+    let lastFrameT = e ? e.timeStamp : lastT.current;
+    const frame = (t: number) => {
+      const dt = Math.min(t - lastFrameT, 50); // clamp (e.g. backgrounded tab)
+      lastFrameT = t;
+      v *= Math.exp(-FLING_FRICTION * dt);
+      carry += v * dt;
+      let steps = 0;
+      while (carry <= -baseStep) {
+        steps += 1;
+        carry += baseStep;
+      }
+      while (carry >= baseStep) {
+        steps -= 1;
+        carry -= baseStep;
+      }
+      if (steps) setCurrent((c) => c + steps);
+      dragRef.current = carry;
+      setDrag(carry);
+      if (Math.abs(v) > FLING_STOP_V) {
+        momentumRaf.current = requestAnimationFrame(frame);
+      } else {
+        flinging.current = false;
+        momentumRaf.current = 0;
+        snapToNearest(); // CSS transition eases the final settle
+      }
+    };
+    momentumRaf.current = requestAnimationFrame(frame);
   };
 
   if (N === 0) return null;
@@ -385,9 +478,10 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
               aria-hidden={!visible}
               className={cn(
                 "absolute left-1/2 top-1/2 h-64 w-44 will-change-transform [backface-visibility:hidden] sm:h-80 sm:w-56 lg:h-96 lg:w-64",
-                // No transition while dragging (track the finger) or for the
-                // far cards that wrap around the ring (avoid a cross-screen slide).
-                !dragging.current && visible &&
+                // No transition while dragging or mid-fling (rAF drives the
+                // motion frame-by-frame), nor for the far cards that wrap around
+                // the ring (avoid a cross-screen slide).
+                !dragging.current && !flinging.current && visible &&
                   "transition-[transform,opacity] duration-500 ease-out"
               )}
               style={{
