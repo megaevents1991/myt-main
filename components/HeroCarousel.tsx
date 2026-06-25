@@ -27,8 +27,11 @@ const STEP_FRAC = 0.56; // gap between card centers, as a fraction of card width
 const ROTATE = 46; // side-card Y rotation (deg)
 const CENTER_SCALE = 1.06;
 
-// Reflection cast under every card (WebKit/Blink; Firefox simply omits it).
-const BOX_REFLECT = "below 1px linear-gradient(transparent 70%, rgba(0,0,0,0.28))";
+// Reflection cast under each card. DESKTOP ONLY: on mobile WebKit the card is a
+// composited 3D layer (will-change + translateZ + backface-visibility) and
+// `-webkit-box-reflect` gets dropped once the layer is promoted to the GPU — the
+// reflection flashes for one frame then vanishes. So we omit it on mobile (as
+// Firefox already does on every platform) and keep it on desktop Blink.
 const BOX_REFLECT_DESKTOP =
   "below 2px linear-gradient(transparent 58%, rgba(0,0,0,0.42))";
 
@@ -95,7 +98,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const baseStep = cardW * STEP_FRAC;
   // More side cards on desktop to fill the width; fewer on mobile.
   const side = Math.min(isDesktop ? 4 : SIDE_MAX, Math.max(0, Math.floor((N - 1) / 2)));
-  const reflect = isDesktop ? BOX_REFLECT_DESKTOP : BOX_REFLECT;
+  const reflect = isDesktop ? BOX_REFLECT_DESKTOP : undefined;
 
   // Shortest signed distance from `current` to card `i` around the ring.
   const deltaOf = useCallback(
