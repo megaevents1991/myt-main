@@ -169,17 +169,22 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     dragging.current = true;
     moved.current = false;
     dragStart.current = e.clientX;
+    // Capture the pointer up-front. On a real touch device an *un*captured pointer
+    // belongs to the page scroller: the instant the finger moves, Chrome's scroll
+    // arbitration claims it and fires `pointercancel`, killing the swipe. (That
+    // arbitration is why it works in DevTools mobile emulation — which skips it —
+    // but not on an actual phone.) `touch-action: pan-y` still lets a vertical
+    // swipe scroll the page, and for touch the capture auto-releases on pointerup,
+    // so a plain tap's click still lands on the card/CTA.
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     stop();
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging.current) return;
     let dx = e.clientX - dragStart.current;
-    if (!moved.current && Math.abs(dx) > 4) {
-      moved.current = true;
-      // Capture only once a real drag begins, so a plain tap still delivers its
-      // click to the card/CTA (capturing on down would swallow that click).
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-    }
+    // Mark a real drag (vs a tap) so the onClickCapture guard swallows the
+    // post-swipe click but lets a tap through.
+    if (!moved.current && Math.abs(dx) > 4) moved.current = true;
     if (!moved.current) return;
     // Step `current` as the finger crosses each card-width and keep only the
     // sub-card remainder as the live offset — so the strip scrolls card-by-card
@@ -198,9 +203,14 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     dragRef.current = dx;
     setDrag(dx);
   };
-  const endDrag = () => {
+  const endDrag = (e?: React.PointerEvent) => {
     if (!dragging.current) return;
     dragging.current = false;
+    // Release the capture taken in pointerdown. Touch auto-releases on pointerup,
+    // but mouse/pen don't — without this the next desktop click is misrouted.
+    if (e && e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
     const steps = Math.round(-dragRef.current / baseStep); // remainder → 0 or ±1
     dragRef.current = 0;
     setDrag(0);
