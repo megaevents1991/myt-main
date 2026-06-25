@@ -446,7 +446,7 @@ function CompactEventCard({ event }: { event: Event }) {
       }}
     >
       <div
-        className="rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
+        className="rounded-2xl border border-border shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
@@ -497,7 +497,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
       aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
     >
       <div
-        className="rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
+        className="rounded-2xl border border-border shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
@@ -517,6 +517,9 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
               className="object-cover w-full h-full transition-transform group-hover:scale-105"
             />
           )}
+          {/* Dark bottom-edge gradient — grounds the image against the white name
+              panel in light mode (matches the קטגוריות CategoryCard treatment). */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
         <div className="p-3 text-center flex-none">
           {/* Accessibility: Added semantic heading for team name */}
@@ -543,26 +546,32 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
       aria-label={`עמוד האומן ${artist.fields.name || "לא ידוע"}`}
     >
       <div
-        className="rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
+        className="rounded-2xl border border-border shadow-card hover:shadow-card-hover transition-shadow flex flex-col bg-card w-full h-full sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]"
         style={{
           height: "245px",
         }}
       >
         <div className="relative group overflow-hidden rounded-t-2xl flex-1">
-          {/* Accessibility: Enhanced alt text with descriptive artist information */}
-          {artist.fields.heroBanner?.fields?.file?.url && (
-            <Image
-              src={"https:" + artist.fields.heroBanner.fields.file.url}
-              alt={`תמונה של האומן ${artist.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של האומן`}
-              priority={true}
-              width={240}
-              height={180}
-              style={{
-                objectPosition: 'center top' // or 'center center', '20% 30%', etc.
-              }}
-              className="object-cover w-full h-full transition-transform group-hover:scale-105"
-            />
-          )}
+          {/* Brand blob behind the artist cut-out (color + shape per artist),
+              falling back to the flat hero photo when no blob art is set. */}
+          <EventArt
+            id={artist.sys.id}
+            imageUrl={
+              artist.fields.artImageUrl ||
+              (artist.fields.heroBanner?.fields?.file?.url
+                ? "https:" + artist.fields.heroBanner.fields.file.url
+                : undefined)
+            }
+            alt={`תמונה של האומן ${artist.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של האומן`}
+            variant={artist.fields.artImageUrl ? "blob" : "photo"}
+            colorIndex={artist.fields.artColorIndex ?? undefined}
+            shapeIndex={artist.fields.artShapeIndex ?? undefined}
+            priority
+            className="h-full w-full"
+          />
+          {/* Dark bottom-edge gradient — grounds the art against the white name
+              panel in light mode (matches the קטגוריות CategoryCard treatment). */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
         <div className="p-3 text-center flex-none">
           {/* Accessibility: Added semantic heading for artist name */}
