@@ -21,6 +21,10 @@ export type BlogPost = {
     seoTitleTag?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
   };
 };
 
@@ -33,6 +37,9 @@ type BlogRow = {
   image_url: string | null;
   image_width: number | null;
   image_height: number | null;
+  art_image_url: string | null;
+  art_color_index: number | null;
+  art_shape_index: number | null;
   main_content: unknown;
   seo_title_tag: string | null;
   meta_description: string | null;
@@ -63,6 +70,9 @@ const toBlog = (r: BlogRow): BlogPost => ({
     seoTitleTag: r.seo_title_tag ?? undefined,
     metaDescription: r.meta_description ?? undefined,
     metaTags: r.meta_tags ?? undefined,
+    artImageUrl: r.art_image_url ?? undefined,
+    artColorIndex: r.art_color_index ?? undefined,
+    artShapeIndex: r.art_shape_index ?? undefined,
   },
 });
 

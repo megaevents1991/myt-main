@@ -46,6 +46,10 @@ export const EventArt = ({
   shapeIndex,
   priority,
   variant = "blob",
+  blobFit = "cover",
+  imageFit,
+  imageClassName,
+  hoverZoom = true,
 }: {
   id: string | number;
   imageUrl?: string | null;
@@ -56,7 +60,29 @@ export const EventArt = ({
   priority?: boolean;
   /** "blob" = neon brand blob + cut-out artist (contain); "photo" = full image (cover). */
   variant?: "blob" | "photo";
+  /**
+   * How the blob fills the box. "cover" (default) slices to fill — right for
+   * square/landscape cards. "contain" fits the whole blob at width-scale and
+   * centers it — use on tall/portrait cards (e.g. the hero carousel) so the
+   * blob doesn't zoom bigger than on the square cards.
+   */
+  blobFit?: "cover" | "contain";
+  /**
+   * How the cut-out image fills the box. Defaults follow `variant`
+   * (blob → contain, photo → cover). Override to "cover" on portrait cards so a
+   * cut-out with transparent margins fills the card instead of shrinking.
+   */
+  imageFit?: "cover" | "contain";
+  /** Extra classes on the cut-out image — e.g. "scale-125 origin-bottom" to grow it. */
+  imageClassName?: string;
+  /**
+   * Subtle zoom on parent `group` hover. On by default for cards. Turn OFF where
+   * the whole region is one big `group` (e.g. the hero carousel) so the image
+   * keeps one constant size and doesn't resize on hover.
+   */
+  hoverZoom?: boolean;
 }) => {
+  const fit = imageFit ?? (variant === "blob" ? "contain" : "cover");
   const art = getEventArt(id, { colorIndex, shapeIndex });
   const color = EVENT_ART_COLORS[art.colorIndex % EVENT_ART_COLORS.length];
   const shape = SHAPES[art.shapeIndex % SHAPES.length];
@@ -72,7 +98,7 @@ export const EventArt = ({
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox={`0 0 ${shape.w} ${shape.h}`}
-          preserveAspectRatio="xMidYMid slice"
+          preserveAspectRatio={blobFit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}
           aria-hidden="true"
         >
           <path
@@ -91,10 +117,11 @@ export const EventArt = ({
           sizes="(max-width: 640px) 90vw, 400px"
           priority={priority}
           className={cn(
-            "transition-transform duration-300 group-hover:scale-105",
-            variant === "blob"
-              ? "object-contain object-bottom"
-              : "object-cover object-top"
+            "transition-transform duration-300",
+            hoverZoom && "group-hover:scale-105",
+            fit === "contain" ? "object-contain" : "object-cover",
+            variant === "photo" ? "object-top" : "object-bottom",
+            imageClassName
           )}
         />
       ) : null}

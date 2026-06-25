@@ -2,12 +2,16 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EventArt } from "@/components/ui/EventArt";
 
 export type CatalogItem = {
   id: string;
   name: string;
   imageUrl?: string;
   previewText?: string;
+  artImageUrl?: string;
+  artColorIndex?: number;
+  artShapeIndex?: number;
 };
 
 type CatalogPageTemplateProps = {
@@ -64,7 +68,16 @@ export const CatalogPageTemplate = ({
             className="group rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-shadow group-hover:shadow-card-hover">
-              {item.imageUrl && (
+              {item.artImageUrl ? (
+                <EventArt
+                  id={item.id}
+                  imageUrl={item.artImageUrl}
+                  alt={`${imageAltPrefix} ${item.name}`}
+                  colorIndex={item.artColorIndex}
+                  shapeIndex={item.artShapeIndex}
+                  className="aspect-square"
+                />
+              ) : item.imageUrl ? (
                 <div className="relative aspect-square overflow-hidden">
                   <Image
                     src={item.imageUrl}
@@ -74,7 +87,7 @@ export const CatalogPageTemplate = ({
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
-              )}
+              ) : null}
               <div className="p-3 text-start">
                 <h2 className="font-display text-base font-bold text-foreground sm:text-lg">
                   {item.name}

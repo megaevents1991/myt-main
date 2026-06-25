@@ -49,6 +49,9 @@ async function getCategories(): Promise<HomeCategory[]> {
     sport: c.sport ?? undefined,
     imageUrl: c.image_url ?? undefined,
     linkUrl: c.link_url ?? undefined,
+    artImageUrl: c.art_image_url ?? undefined,
+    artColorIndex: c.art_color_index ?? undefined,
+    artShapeIndex: c.art_shape_index ?? undefined,
   }));
 }
 

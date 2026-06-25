@@ -8,6 +8,9 @@ export type HomeCategory = {
   imageUrl?: string;
   sport?: string;
   linkUrl?: string;
+  artImageUrl?: string;
+  artColorIndex?: number;
+  artShapeIndex?: number;
 };
 
 /** Homepage section of category banner cards. Renders nothing until at least
@@ -47,6 +50,9 @@ export const CategorySection = ({
               tag={c.tag}
               imageUrl={c.imageUrl}
               linkUrl={c.linkUrl}
+              artImageUrl={c.artImageUrl}
+              artColorIndex={c.artColorIndex}
+              artShapeIndex={c.artShapeIndex}
             />
           ))}
         </div>

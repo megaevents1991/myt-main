@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { Badge } from "@/components/ui/Badge";
+import { EventArt } from "@/components/ui/EventArt";
 
 /**
  * Homepage category banner card (per Dor's mock) — e.g. "ליגת האלופות", "F1".
@@ -15,6 +16,9 @@ export const CategoryCard = ({
   tag,
   imageUrl,
   linkUrl,
+  artImageUrl,
+  artColorIndex,
+  artShapeIndex,
 }: {
   slug: string;
   name: string;
@@ -23,6 +27,9 @@ export const CategoryCard = ({
   imageUrl?: string;
   /** Optional override; when set the card links here instead of /category/[slug]. */
   linkUrl?: string;
+  artImageUrl?: string;
+  artColorIndex?: number;
+  artShapeIndex?: number;
 }) => (
   <Link
     href={linkUrl || `/category/${slug}`}
@@ -31,7 +38,16 @@ export const CategoryCard = ({
     dir="rtl"
   >
     <div className="relative h-40 sm:h-44">
-      {imageUrl ? (
+      {artImageUrl ? (
+        <EventArt
+          id={slug}
+          imageUrl={artImageUrl}
+          alt={name}
+          colorIndex={artColorIndex}
+          shapeIndex={artShapeIndex}
+          className="h-full w-full"
+        />
+      ) : imageUrl ? (
         <Image
           src={imageUrl}
           alt={name}

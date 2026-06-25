@@ -24,6 +24,9 @@ export default async function ArtistsPage() {
       imageUrl: artist.fields.heroBanner?.fields?.file?.url
         ? "https:" + artist.fields.heroBanner.fields.file.url
         : undefined,
+      artImageUrl: artist.fields.artImageUrl,
+      artColorIndex: artist.fields.artColorIndex,
+      artShapeIndex: artist.fields.artShapeIndex,
     }));
 
     return (

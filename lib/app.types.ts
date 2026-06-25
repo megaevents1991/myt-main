@@ -392,6 +392,11 @@ export interface TemplateBase {
   name: string;
   name_english: string | null;
   image_url: string | null;
+  // Blob card-art (optional). When art_image_url is set the site shows the
+  // cut-out over a neon blob; otherwise it falls back to image_url.
+  art_image_url: string | null;
+  art_color_index: number | null;
+  art_shape_index: number | null;
   display_order: number;
   is_active: boolean;
   is_deleted: boolean;
@@ -520,6 +525,10 @@ export type FootballTeam = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
     // Backoffice-managed page enrichments (Supabase artists/football_teams).
     /** #19b: YouTube URL that plays behind the hero circle. */
     heroVideoUrl?: string;
@@ -565,6 +574,10 @@ export type Artist = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
     // Backoffice-managed page enrichments (Supabase artists/football_teams).
     /** #19b: YouTube URL that plays behind the hero circle. */
     heroVideoUrl?: string;

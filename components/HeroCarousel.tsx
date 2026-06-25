@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Artist } from "@/lib/app.types";
 import { MYT } from "@/components/ui/myt";
 import { MYTMark } from "@/components/ui/mytMark";
+import { EventArt } from "@/components/ui/EventArt";
 import { cn } from "@/lib/utils";
 
 // Bright blob backgrounds cycled across the cards.
@@ -53,8 +54,13 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const stageRef = useRef<HTMLDivElement>(null);
   const reducedRef = useRef(false);
 
+  // Include artists with either a plain hero image OR blob card-art set in the
+  // backoffice (an artist may have only the cut-out + blob, no flat image).
   const items = useMemo(
-    () => artists.filter((a) => a.fields.heroBanner?.fields?.file?.url),
+    () =>
+      artists.filter(
+        (a) => a.fields.heroBanner?.fields?.file?.url || a.fields.artImageUrl
+      ),
     [artists]
   );
 
@@ -229,25 +235,43 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
       );
     }
     const { artist, idx } = card;
-    const url = "https:" + artist.fields.heroBanner!.fields!.file!.url;
     const name = String(artist.fields.name ?? "");
+    const artImageUrl = artist.fields.artImageUrl;
+    const heroUrl = artist.fields.heroBanner?.fields?.file?.url
+      ? "https:" + artist.fields.heroBanner.fields.file.url
+      : undefined;
     return (
       <div
         className={cn(
           "relative h-full w-full overflow-hidden rounded-3xl",
-          blobColors[idx % blobColors.length]
+          // EventArt brings its own dark surface; only tint when showing a flat image.
+          !artImageUrl && blobColors[idx % blobColors.length]
         )}
         style={{ WebkitBoxReflect: reflect } as React.CSSProperties}
       >
-        <Image
-          src={url}
-          alt={name}
-          fill
-          sizes="(max-width: 640px) 11rem, (max-width: 1024px) 14rem, 16rem"
-          className="object-cover object-bottom"
-          draggable={false}
-          onDragStart={(e) => e.preventDefault()}
-        />
+        {artImageUrl ? (
+          <EventArt
+            id={artist.sys.id}
+            imageUrl={artImageUrl}
+            alt={name}
+            colorIndex={artist.fields.artColorIndex}
+            shapeIndex={artist.fields.artShapeIndex}
+            blobFit="contain"
+            imageClassName="scale-[1.4] origin-bottom"
+            hoverZoom={false}
+            className="absolute inset-0 h-full w-full"
+          />
+        ) : (
+          <Image
+            src={heroUrl!}
+            alt={name}
+            fill
+            sizes="(max-width: 640px) 11rem, (max-width: 1024px) 14rem, 16rem"
+            className="object-cover object-bottom"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
+        )}
         <span
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 to-transparent"

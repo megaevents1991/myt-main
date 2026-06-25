@@ -24,6 +24,9 @@ export default async function FootballsPage() {
       imageUrl: team.fields.heroBanner?.fields?.file?.url
         ? "https:" + team.fields.heroBanner.fields.file.url
         : undefined,
+      artImageUrl: team.fields.artImageUrl,
+      artColorIndex: team.fields.artColorIndex,
+      artShapeIndex: team.fields.artShapeIndex,
     }));
 
     return (

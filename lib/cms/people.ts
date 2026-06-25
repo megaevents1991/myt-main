@@ -26,6 +26,9 @@ type PersonRow = {
   meta_description: string | null;
   meta_tags: string | null;
   featured_order: number | null;
+  art_image_url?: string | null;
+  art_color_index?: number | null;
+  art_shape_index?: number | null;
   // Page enrichments (may be absent on Contentful-fallback rows).
   hero_video_url?: string | null;
   banners?: { image_url?: string; link_url?: string; title?: string }[] | null;
@@ -68,6 +71,9 @@ const toPerson = (r: PersonRow): Artist => ({
     banners: r.banners?.length ? r.banners : undefined,
     gallery: r.gallery?.length ? r.gallery : undefined,
     videos: r.videos?.length ? r.videos : undefined,
+    artImageUrl: r.art_image_url ?? undefined,
+    artColorIndex: r.art_color_index ?? undefined,
+    artShapeIndex: r.art_shape_index ?? undefined,
   },
 });
 
