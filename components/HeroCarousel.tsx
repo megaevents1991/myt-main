@@ -369,7 +369,11 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
             blob ? "scale-[0.9] origin-bottom" : "scale-[1] origin-bottom"
           }
           hoverZoom={false}
-          className="absolute inset-0 h-full w-full"
+          // rounded-3xl on EventArt itself (not just the wrapper): iOS Safari won't
+          // clip a GPU-promoted child to a transformed ANCESTOR's radius, so the
+          // centered card showed square corners. Rounding the image's own
+          // overflow-hidden node fixes it.
+          className="absolute inset-0 h-full w-full rounded-3xl"
         />
         <span
           aria-hidden
