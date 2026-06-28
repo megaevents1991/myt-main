@@ -7,6 +7,7 @@ import { ArrowUp, Search, SlidersHorizontal, X } from "lucide-react";
 
 import type { Event } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { multiTermSearch } from "@/lib/search";
 import { EventCard } from "@/components/EventCard";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
@@ -129,7 +130,7 @@ export const SearchResults = ({
     // Base order: fuse relevance when searching, else date-ascending.
     let list: Event[] =
       q.length >= 2
-        ? fuse.search(q).map((r) => r.item)
+        ? multiTermSearch(fuse, q)
         : [...events].sort(
             (a, b) =>
               new Date(a.date).getTime() - new Date(b.date).getTime()

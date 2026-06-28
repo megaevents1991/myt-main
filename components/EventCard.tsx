@@ -110,7 +110,7 @@ export const EventCard = ({
               className="pointer-events-none"
               tabIndex={-1}
             >
-              {sold ? "אזל מהמלאי" : "בחרו תאריך"}
+              {sold ? "אזל מהמלאי" : "לפרטים והזמנה"}
             </Button>
           </div>
         </article>

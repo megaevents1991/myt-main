@@ -18,6 +18,7 @@ import {
 
 import type { Event, Artist } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { multiTermSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
 
@@ -96,7 +97,7 @@ export const HeroSearch = ({
 
   const matches = useMemo(() => {
     if (query.trim().length < 2) return [];
-    return fuse.search(query.trim()).slice(0, 50).map((r) => r.item);
+    return multiTermSearch(fuse, query).slice(0, 50);
   }, [query, fuse]);
   const top = matches[0];
 

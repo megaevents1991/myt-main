@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
+import { multiTermSearch } from "@/lib/search";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
@@ -93,17 +94,11 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
 
   const value = searchValue.toLowerCase().trim();
   
-  const filteredOptions = value
-    ? fuse.search(value).map((result) => result.item)
-    : events;
-  
-  const filteredTeams = value
-    ? teamsFuse.search(value).map((result) => result.item)
-    : [];
-  
-  const filteredArtists = value
-    ? artistsFuse.search(value).map((result) => result.item)
-    : [];
+  const filteredOptions = value ? multiTermSearch(fuse, value) : events;
+
+  const filteredTeams = value ? multiTermSearch(teamsFuse, value) : [];
+
+  const filteredArtists = value ? multiTermSearch(artistsFuse, value) : [];
 
   const options = filteredOptions.map((item) => (
     <Combobox.Option
