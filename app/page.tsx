@@ -59,12 +59,13 @@ export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
 
-  const [events, footballTeams, carouselArtists, artists, categories] = await Promise.all([
+  const [events, footballTeams, carouselArtists, artists, categories, allFootballTeams] = await Promise.all([
     getEventsForPage(),
     getFootballTeams(),
     getCarouselArtists(),
     listAllArtists(),
     getCategories(),
+    getAllFootballTeams(),
   ]);
 
   return (
@@ -82,6 +83,7 @@ export default async function Home() {
       <ClientSideHomepage
         initialEvents={events.events}
         footballTeams={footballTeams}
+        allFootballTeams={allFootballTeams}
         artists={artists}
         carouselArtists={carouselArtists}
       />
