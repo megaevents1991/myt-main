@@ -149,7 +149,7 @@ export default async function FootballPage({
               aria-label="רשימת משחקים קרובים"
             >
               {events.map((event) => (
-                <EventCard key={event.id} event={event} title={event.name} />
+                <EventCard key={event.id} event={event} title={event.name} showName />
               ))}
             </div>
           ) : (
