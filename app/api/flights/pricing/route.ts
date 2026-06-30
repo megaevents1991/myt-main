@@ -16,7 +16,12 @@ type BaggageItem = {
 };
 
 export async function POST(request: Request) {
-  const { flightOffer, virtual }: { flightOffer: FlightOffer, virtual: boolean } = await request.json();
+  const {
+    flightOffer,
+    virtual,
+    eventId,
+  }: { flightOffer: FlightOffer; virtual: boolean; eventId?: number | string } =
+    await request.json();
 
   if (!amadeus) {
     return NextResponse.json(
@@ -66,6 +71,13 @@ export async function POST(request: Request) {
     }
   }
   try {
+    // Amadeus per-request client reference (ama-Client-Ref) — required by the
+    // production-certification checklist. Falls back to a time-only ref if the
+    // caller didn't send an eventId.
+    const clientRef = eventId
+      ? `MYT-${eventId}-${Math.floor(Date.now() / 1000)}`
+      : `MYT-${Math.floor(Date.now() / 1000)}`;
+
     const response = await amadeus.shopping.flightOffers.pricing.post(
       {
         data: {
@@ -73,7 +85,7 @@ export async function POST(request: Request) {
           flightOffers: [flightOffer],
         },
       },
-      { include: ["bags", "detailed-fare-rules"] }
+      { include: ["bags", "detailed-fare-rules"], clientRef }
     );
 
     // processing the response and returning it to the client.

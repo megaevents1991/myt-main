@@ -258,38 +258,24 @@ export async function POST(request: Request) {
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 
-    const adultsCount = adults || 1;
-    // POST search (not GET) so we can set brandedFares=false. On the Enterprise
-    // gateway the branded-fares default clashes with officeId rules -> 400/2668.
-    const searchBody = {
-      currencyCode,
-      originDestinations: [
-        {
-          id: "1",
-          originLocationCode,
-          destinationLocationCode: event.location.city_iata,
-          departureDateTimeRange: { date: departureDate },
-        },
-        {
-          id: "2",
-          originLocationCode: event.location.city_iata,
-          destinationLocationCode: originLocationCode,
-          departureDateTimeRange: { date: returnDate },
-        },
-      ],
-      travelers: Array.from({ length: adultsCount }, (_, i) => ({
-        id: String(i + 1),
-        travelerType: "ADULT",
-      })),
-      sources: ["GDS"],
-      searchCriteria: {
-        maxFlightOffers: 250,
-        additionalInformation: { brandedFares: false },
-      },
-    };
+    // Amadeus per-request client reference (ama-Client-Ref) — required by the
+    // production-certification checklist. Ties the call to the event + time.
+    const clientRef = `MYT-${event.id}-${Math.floor(Date.now() / 1000)}`;
 
     const response = await retryAmadeusCall(() =>
-      amadeus.shopping.flightOffersSearch.post(searchBody)
+      amadeus.shopping.flightOffersSearch.get(
+        {
+          originLocationCode,
+          destinationLocationCode: event.location.city_iata,
+          departureDate,
+          returnDate,
+          adults: adults || 1,
+          max: 250,
+          nonStop,
+          currencyCode,
+        },
+        clientRef
+      )
     );
 
     const flights = await getOfflineFlightsFromDB(
