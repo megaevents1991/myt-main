@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { ArrowUp, Search, SlidersHorizontal, X } from "lucide-react";
@@ -34,23 +34,29 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "date-asc", label: "תאריך: הקרוב" },
 ];
 
-// Sports events vs everything else (concerts). Mondial football is a tx_event
-// but belongs under sports.
+const SPORTS_TYPES = new Set<Event["type"]>([
+  "sports_event",
+  "sports_event_dynamic",
+  "sports_live_event_dynamic",
+]);
+
+// tx_event is a mixed feed (football + concerts). Football rows always read
+// "TeamA vs TeamB" (english) or are World Cup / מונדיאל; concerts never do.
+const isFootballTx = (e: Event): boolean =>
+  e.type === "tx_event" &&
+  (/ vs /i.test(e.name_english ?? "") ||
+    /world cup/i.test(e.name_english ?? "") ||
+    e.name.includes("מונדיאל"));
+
+// Sports events vs everything else (concerts).
 const categoryOf = (e: Event): Exclude<Category, "all"> =>
-  e.type === "sports_event" ||
-  e.type === "sports_event_dynamic" ||
-  (e.type === "tx_event" && e.name.startsWith("מונדיאל"))
-    ? "sports"
-    : "music";
+  SPORTS_TYPES.has(e.type) || isFootballTx(e) ? "sports" : "music";
 
 export type SearchInitial = {
   q?: string;
   cat?: Category;
   city?: string;
   from?: string;
-  to?: string;
-  min?: string;
-  max?: string;
   sold?: string;
   ticket?: string;
   sort?: SortKey;
@@ -69,9 +75,6 @@ export const SearchResults = ({
   const [category, setCategory] = useState<Category>(initial.cat ?? "all");
   const [city, setCity] = useState(initial.city ?? "");
   const [from, setFrom] = useState(initial.from ?? "");
-  const [to, setTo] = useState(initial.to ?? "");
-  const [minPrice, setMinPrice] = useState(initial.min ?? "");
-  const [maxPrice, setMaxPrice] = useState(initial.max ?? "");
   const [includeSold, setIncludeSold] = useState(initial.sold === "1");
   const [ticketOnly, setTicketOnly] = useState(initial.ticket === "1");
   const [sort, setSort] = useState<SortKey>(initial.sort ?? "relevance");
@@ -96,16 +99,24 @@ export const SearchResults = ({
     [events]
   );
 
+  // When the typed query itself is a city, the city dropdown is redundant — the
+  // text search already narrows to it. Hide the select and drop the city filter.
+  const queryIsCity = useMemo(() => {
+    const q = query.trim();
+    return (
+      q.length > 0 &&
+      cities.some((c) => c.localeCompare(q, "he", { sensitivity: "base" }) === 0)
+    );
+  }, [query, cities]);
+  const effectiveCity = queryIsCity ? "" : city;
+
   // Keep the URL shareable/deep-linkable as filters change.
   useEffect(() => {
     const p = new URLSearchParams();
     if (query.trim()) p.set("q", query.trim());
     if (category !== "all") p.set("cat", category);
-    if (city) p.set("city", city);
+    if (effectiveCity) p.set("city", effectiveCity);
     if (from) p.set("from", from);
-    if (to) p.set("to", to);
-    if (minPrice) p.set("min", minPrice);
-    if (maxPrice) p.set("max", maxPrice);
     if (includeSold) p.set("sold", "1");
     if (ticketOnly) p.set("ticket", "1");
     if (sort !== "relevance") p.set("sort", sort);
@@ -114,11 +125,8 @@ export const SearchResults = ({
   }, [
     query,
     category,
-    city,
+    effectiveCity,
     from,
-    to,
-    minPrice,
-    maxPrice,
     includeSold,
     ticketOnly,
     sort,
@@ -139,13 +147,9 @@ export const SearchResults = ({
     list = list.filter((e) => {
       if (!includeSold && isEventSoldOut(e)) return false;
       if (category !== "all" && categoryOf(e) !== category) return false;
-      if (city && e.location?.name !== city) return false;
+      if (effectiveCity && e.location?.name !== effectiveCity) return false;
       if (ticketOnly && !e.skip_flight) return false;
       if (from && e.date && e.date < from) return false;
-      if (to && e.date && e.date > to) return false;
-      const price = priceOf.get(e.id);
-      if (minPrice && (price == null || price < Number(minPrice))) return false;
-      if (maxPrice && (price == null || price > Number(maxPrice))) return false;
       return true;
     });
 
@@ -172,11 +176,8 @@ export const SearchResults = ({
     fuse,
     events,
     category,
-    city,
+    effectiveCity,
     from,
-    to,
-    minPrice,
-    maxPrice,
     includeSold,
     ticketOnly,
     sort,
@@ -187,7 +188,7 @@ export const SearchResults = ({
     trackEvent("searchPageQuery", {
       query: query.trim(),
       category,
-      city,
+      city: effectiveCity,
       resultsCount: results.length,
     });
     // Only when the query itself changes — avoid firing on every filter tweak.
@@ -196,11 +197,8 @@ export const SearchResults = ({
 
   const hasActiveFilters =
     category !== "all" ||
-    !!city ||
+    !!effectiveCity ||
     !!from ||
-    !!to ||
-    !!minPrice ||
-    !!maxPrice ||
     includeSold ||
     ticketOnly ||
     sort !== "relevance";
@@ -209,9 +207,6 @@ export const SearchResults = ({
     setCategory("all");
     setCity("");
     setFrom("");
-    setTo("");
-    setMinPrice("");
-    setMaxPrice("");
     setIncludeSold(false);
     setTicketOnly(false);
     setSort("relevance");
@@ -287,21 +282,23 @@ export const SearchResults = ({
           showFilters ? "flex" : "hidden md:flex"
         )}
       >
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          עיר
-          <select
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className={fieldCls}
-          >
-            <option value="">כל הערים</option>
-            {cities.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!queryIsCity && (
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            עיר
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className={fieldCls}
+            >
+              <option value="">כל הערים</option>
+              {cities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           מתאריך
@@ -310,42 +307,6 @@ export const SearchResults = ({
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             className={fieldCls}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          עד תאריך
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className={fieldCls}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          מחיר מ־ ($)
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
-            placeholder="0"
-            className={cn(fieldCls, "w-24")}
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          מחיר עד ($)
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-            placeholder="∞"
-            className={cn(fieldCls, "w-24")}
           />
         </label>
 

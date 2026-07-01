@@ -34,9 +34,6 @@ export default async function SearchPage({
       cat === "music" || cat === "sports" || cat === "all" ? cat : undefined,
     city: one(sp.city),
     from: one(sp.from),
-    to: one(sp.to),
-    min: one(sp.min),
-    max: one(sp.max),
     sold: one(sp.sold),
     ticket: one(sp.ticket),
     sort:
