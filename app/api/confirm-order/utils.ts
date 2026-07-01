@@ -71,7 +71,7 @@ export const userEmail = (
     replacements.promoCode !== undefined
       ? `
       <!-- Refer Friend Component -->
-      <div style="background: linear-gradient(180deg, rgba(0,172,194,1) 31%, rgba(39,126,137,1) 100%); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
+      <div style="background: linear-gradient(180deg, #0FA049 0%, #0A1A14 100%); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
           <div style="margin-bottom: 15px; direction: rtl;" dir="rtl">
               <img src="https://mega-events.co.il/undraw_travelers_kud9.png" alt="Travelers" style="max-width: 150px; height: auto;" />
           </div>
@@ -86,7 +86,7 @@ export const userEmail = (
               <p style="color: #ffffff; font-size: 14px; margin: 5px 0 5px 0;">הקישור האישי שלך:</p>
               
               <div style="background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,1) 100%); border-radius: 8px; padding: 12px; display: block; position: relative;">
-                  <p style="margin: 0; font-size: 16px; color: #277e89; font-weight: bold; word-break: break-all; direction: ltr;">https://mega-events.co.il/?utm_source=${replacements.promoCode}</p>
+                  <p style="margin: 0; font-size: 16px; color: #0A1A14; font-weight: bold; word-break: break-all; direction: ltr;">https://mega-events.co.il/?utm_source=${replacements.promoCode}</p>
               </div>
           </div>                                      
           <div style="margin-bottom: 15px; margin-top: 15px; direction: rtl;" dir="rtl">
@@ -94,19 +94,19 @@ export const userEmail = (
               <table role="presentation" style="width: 100%; border-collapse: collapse; color: #ffffff; direction: rtl;" dir="rtl">
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #277e89; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">1</div>
+                          <div style="background-color: #ffffff; color: #0A1A14; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">1</div>
                       </td>
                       <td style="text-align: right; direction: rtl;" dir="rtl">העתיקו את הקישור ושלחו לחברים</td>
                   </tr>
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; padding: 5px 0; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #277e89; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">2</div>
+                          <div style="background-color: #ffffff; color: #0A1A14; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">2</div>
                       </td>
                       <td style="text-align: right; padding: 5px 0; direction: rtl;" dir="rtl">החברים מבצעים הזמנה באתר</td>
                   </tr>
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #277e89; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">3</div>
+                          <div style="background-color: #ffffff; color: #0A1A14; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">3</div>
                       </td>
                       <td style="text-align: right; direction: rtl;" dir="rtl">אתם מקבלים החזר!</td>
                   </tr>
@@ -218,7 +218,7 @@ export const userEmail = (
                               <td style="padding: 20px 20px; text-align: right; direction: rtl;" dir="rtl">
                                   <!-- Success Icon -->
                                   <div style="text-align: center; margin-bottom: 30px; direction: rtl;" dir="rtl">
-                                      <svg width="48" height="48" viewBox="0 0 24 24" style="fill: none; stroke: #22c55e; stroke-width: 2;">
+                                      <svg width="48" height="48" viewBox="0 0 24 24" style="fill: none; stroke: #0A1A14; stroke-width: 2;">
                                           <path d="M20 6L9 17l-5-5"></path>
                                       </svg>
                                   </div>
@@ -234,18 +234,18 @@ export const userEmail = (
                                     replacements.eventId
                                       ? `
                                   <!-- Order Recovery Section (Only for 24h Hold) -->
-                                  <div style="background-color: #f0f8f8; border: 1px solid #277e89; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
+                                  <div style="background-color: #E6FFEF; border: 1px solid #0A1A14; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
                                       <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; direction: rtl;" dir="rtl">
-                                          <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: #277e89; stroke-width: 2; margin-left: 8px;">
+                                          <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: #0A1A14; stroke-width: 2; margin-left: 8px;">
                                               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                                               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"></path>
                                           </svg>
-                                          <h3 style="color: #277e89; font-size: 18px; margin: 0; direction: rtl;" dir="rtl">שחזור הזמנה</h3>
+                                          <h3 style="color: #0A1A14; font-size: 18px; margin: 0; direction: rtl;" dir="rtl">שחזור הזמנה</h3>
                                       </div>
-                                      <p style="color: #277e89; font-size: 14px; margin: 0 0 15px 0; text-align: center; direction: rtl;" dir="rtl">לשחזור ההזמנה והוספת פרטים נוספים, לחצו על הקישור:</p>
+                                      <p style="color: #0A1A14; font-size: 14px; margin: 0 0 15px 0; text-align: center; direction: rtl;" dir="rtl">לשחזור ההזמנה והוספת פרטים נוספים, לחצו על הקישור:</p>
                                       <div style="text-align: center; direction: rtl;" dir="rtl">
                                           <a href="https://mega-events.co.il/order/${replacements.eventId}?orderId=${replacements.orderId}" 
-                                             style="display: inline-block; background-color: #277e89; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; font-size: 14px; direction: rtl;" dir="rtl">
+                                             style="display: inline-block; background-color: #0A1A14; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; font-size: 14px; direction: rtl;" dir="rtl">
                                               שחזור הזמנה
                                           </a>
                                       </div>
@@ -317,8 +317,8 @@ export const userEmail = (
                                   <div style="text-align: center; color: #666666; font-size: 14px; direction: rtl;" dir="rtl">
                                       <p style="margin: 0 0 10px 0; direction: rtl;" dir="rtl">לשאלות ובירורים:</p>
                                       <p style="margin: 0; direction: rtl;" dir="rtl">
-                                          טלפון: <a href="tel:+972-3-768-4800" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
-                                          אימייל: <a href="mailto:reservations@mega-events.co.il" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl">reservations@mega-events.co.il</a>
+                                          טלפון: <a href="tel:+972-3-768-4800" style="color: #0A1A14; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
+                                          אימייל: <a href="mailto:reservations@mega-events.co.il" style="color: #0A1A14; text-decoration: none; direction: rtl;" dir="rtl">reservations@mega-events.co.il</a>
                                       </p>
                                   </div>
                               </td>

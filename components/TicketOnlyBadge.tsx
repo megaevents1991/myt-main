@@ -161,7 +161,7 @@ export function TicketOnlyBadge({
           className="flex items-center justify-center rounded-full cursor-pointer transition-transform duration-150 hover:scale-110 active:scale-95 w-8 h-8 lg:w-11 lg:h-11"
           style={{
             background: "#5BFF95",
-            boxShadow: "0 2px 10px rgba(39,126,137,.45)",
+            boxShadow: "0 2px 10px rgba(10,26,20,.35)",
             WebkitTapHighlightColor: "transparent",
             userSelect: "none",
           }}

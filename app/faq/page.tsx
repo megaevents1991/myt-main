@@ -132,7 +132,7 @@ export default async function FAQPage() {
               href="https://wa.me/972542002722"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-green-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2"
+              className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-bold hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               aria-label="פתחו שיחה באפליקציית וואטסאפ"
             >
               התחילו איתנו שיחה ב- WhatsApp

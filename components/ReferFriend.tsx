@@ -60,7 +60,7 @@ export const ReferFriend = ({
   // };
 
   return (
-    <Card className="flex flex-col w-full items-start gap-4 p-3 rounded-2xl shadow-[0px_0px_12px_#0000001a] [background:linear-gradient(180deg,rgba(0,172,194,1)_31%,rgba(39,126,137,1)_100%)]">
+    <Card className="flex flex-col w-full items-start gap-4 p-3 rounded-2xl shadow-[0px_0px_12px_#0000001a] [background:linear-gradient(180deg,#0FA049_0%,#0A1A14_100%)]">
       <CardContent className="flex flex-col items-center gap-4 w-full p-0">
         <div className="relative w-[150px] mt-4 h-[107.0px] bg-[url(/undraw_travelers_kud9.png)] bg-[100%_100%]" />
 
@@ -86,7 +86,7 @@ export const ReferFriend = ({
           onClick={handleGetReferralLink}
           aria-label="קבל קישור הפניה לחברים"
         >
-          <span className="font-bold text-[#277e89] text-base leading-normal [font-family:'IBM_Plex_Sans_Hebrew',Helvetica] tracking-[0] [direction:rtl]">
+          <span className="font-bold text-[#0A1A14] text-base leading-normal [font-family:'IBM_Plex_Sans_Hebrew',Helvetica] tracking-[0] [direction:rtl]">
             {"העתיקו את הקישור"}
           </span>
         </Button>
@@ -109,7 +109,7 @@ export const ReferFriend = ({
 
               <div className="inline-flex flex-col items-center justify-center gap-1">
                 <div className="flex w-6 h-6 items-center justify-center bg-white rounded-[20px]">
-                  <div className="font-buttons-mobile-btn2 font-semibold text-[#277e89] text-xs text-center">
+                  <div className="font-buttons-mobile-btn2 font-semibold text-[#0A1A14] text-xs text-center">
                     {index + 1}
                   </div>
                 </div>
@@ -140,7 +140,7 @@ export const ReferFriend = ({
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-center text-[#277e89] font-bold">
+            <DialogTitle className="text-center text-[#0A1A14] font-bold">
               שתף עם חברים
             </DialogTitle>
           </DialogHeader>
@@ -155,7 +155,7 @@ export const ReferFriend = ({
                 onClick={handleCopy}
                 aria-label="העתק קישור הפניה"
               >
-                <FiCopy size={36} className="text-[#277e89]" />
+                <FiCopy size={36} className="text-[#0A1A14]" />
                 <span className="text-base font-medium">העתק</span>
               </Button>
               {/*
@@ -164,7 +164,7 @@ export const ReferFriend = ({
                 className="flex flex-col items-center p-8"
                 onClick={handleShare}
               >
-                <FiShare2 size={36} className="text-[#277e89]" />
+                <FiShare2 size={36} className="text-[#0A1A14]" />
                 <span className="text-base font-medium">שתף</span>
               </Button>
               */}
@@ -172,7 +172,7 @@ export const ReferFriend = ({
 
             {/* Copy notification */}
             {showCopyNotification && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md transition-opacity duration-300">
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-[#0A1A14] text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md transition-opacity duration-300">
                 <FiCheck className="text-white" />
                 <span className="font-medium">הועתק בהצלחה!</span>
               </div>

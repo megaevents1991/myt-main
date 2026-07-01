@@ -59,7 +59,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
             {!editingLogo ? (
               <button
                 onClick={() => setEditingLogo(true)}
-                className="text-teal-600 hover:text-teal-700 transition-colors"
+                className="text-[#0A1A14] hover:text-[#0A1A14]/80 transition-colors"
                 aria-label="Edit logo URL"
               >
                 <Pencil size={16} />
@@ -93,7 +93,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
               id="logoUrl"
               value={tempLogoUrl}
               onChange={(e) => setTempLogoUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5BFF95]"
               placeholder="https://example.com/logo.png"
             />
           ) : (
@@ -129,7 +129,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
             {!editingPrice ? (
               <button
                 onClick={() => setEditingPrice(true)}
-                className="text-teal-600 hover:text-teal-700 transition-colors"
+                className="text-[#0A1A14] hover:text-[#0A1A14]/80 transition-colors"
                 aria-label="Edit final price"
               >
                 <Pencil size={16} />
@@ -165,7 +165,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
                 id="finalPrice"
                 value={tempFinalPrice}
                 onChange={(e) => setTempFinalPrice(Number(e.target.value))}
-                className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5BFF95]"
                 min="0"
                 step="1"
               />
@@ -174,7 +174,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
             <div className="flex items-center">
               <span className="text-xl">${finalPrice.toFixed(2)}</span>
               {finalPrice !== originalPrice && (
-                <span className="ml-2 text-xs text-teal-600">
+                <span className="ml-2 text-xs text-[#0A1A14]">
                   (Original: ${originalPrice.toFixed(2)})
                 </span>
               )}

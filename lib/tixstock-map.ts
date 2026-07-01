@@ -33,18 +33,18 @@ export type TixStockMatchableListing = {
 /*  Colours                                                            */
 /* ------------------------------------------------------------------ */
 
-export const TX_TICKET_COLOR = "rgb(5, 32, 60)";
-/** Light solid fill for sections with available tickets — light mint tint
- *  (brand-aligned, opaque to avoid stacking artefacts from overlapping shapes) */
-export const TX_SECTION_FILL_LIGHT = "#DBF4E7";
-/** Base/available section stroke — brand green */
-export const TX_SECTION_FILL = "#1FA85C";
+export const TX_TICKET_COLOR = "#0A1A14";
+/** Light solid fill for sections with available tickets — light Glow-Green
+ *  tint (brand ramp), opaque to avoid stacking artefacts from overlaps. */
+export const TX_SECTION_FILL_LIGHT = "#C2FFD8";
+/** Base/available section stroke — Glow Green */
+export const TX_SECTION_FILL = "#5BFF95";
 /** Hover/highlighted stroke & text — secondary foreground */
 export const TX_HOVER_STROKE = "#F0F0F2";
 /** Text shadow on hover */
 export const TX_TEXT_SHADOW = "#000000";
-/** Brighter green for hover feedback */
-export const TX_HOVER_FILL = "#2BC274";
+/** Hover feedback — solid Glow Green (brighter than the available tint) */
+export const TX_HOVER_FILL = "#5BFF95";
 /** Brand Dark Forest Green for the selected section — clearly darker than
  *  the hover/available greens so a locked-in pick reads at a glance. */
 export const TX_SELECTED_FILL = "#0A1A14";
