@@ -8,7 +8,7 @@ export const Stars = ({ rating }: { rating: number }) => {
           key={i}
           size={16}
           fill="currentColor"
-          className="text-[#05203C] dark:text-foreground"
+          className="text-[#0A1A14] dark:text-foreground"
         />
       ))}
     </div>

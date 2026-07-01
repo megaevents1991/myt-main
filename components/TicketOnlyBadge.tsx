@@ -108,7 +108,7 @@ export function TicketOnlyBadge({
               top: tooltipPos.top,
               right: tooltipPos.right,
               zIndex: 99999,
-              background: "#05203C",
+              background: "#0A1A14",
               color: "#fff",
               fontSize: "12px",
               fontWeight: 600,
@@ -133,7 +133,7 @@ export function TicketOnlyBadge({
                 right: 12,
                 width: 9,
                 height: 9,
-                background: "#05203C",
+                background: "#0A1A14",
                 transform: "rotate(45deg)",
                 display: "block",
               }}
@@ -160,7 +160,7 @@ export function TicketOnlyBadge({
           ref={btnRef}
           className="flex items-center justify-center rounded-full cursor-pointer transition-transform duration-150 hover:scale-110 active:scale-95 w-8 h-8 lg:w-11 lg:h-11"
           style={{
-            background: "#20B655",
+            background: "#5BFF95",
             boxShadow: "0 2px 10px rgba(39,126,137,.45)",
             WebkitTapHighlightColor: "transparent",
             userSelect: "none",

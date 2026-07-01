@@ -44,7 +44,7 @@ export const Amenities = ({
             <div className="flex items-center gap-1">
               <span className="hidden lg:inline-block">{icon?.displayTag}</span>
               <Image
-                style={{ fill: "#05203C" }}
+                style={{ fill: "#0A1A14" }}
                 alt="amenity icon"
                 src={`/icons/${icon?.icon}`}
                 width={16}

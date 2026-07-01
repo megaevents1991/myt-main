@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 // Short labels on mobile (space-tight), full labels on desktop.
 const badges = [
-  { Icon: Award, short: "30 שנות ניסיון", long: "מבית מגה תיירות · 30 שנות ניסיון" },
-  { Icon: Ticket, short: "כרטיסים רשמיים", long: "כרטיסים רשמיים בלבד" },
-  { Icon: Lock, short: "תשלום מאובטח", long: "תשלום מאובטח" },
+  { Icon: Award, short: "30 שנות ניסיון", long: "מבית מגה תיירות · 30 שנות ניסיון", iconClass: "" },
+  { Icon: Ticket, short: "כרטיסים רשמיים", long: "כרטיסים רשמיים בלבד", iconClass: "text-secondary" },
+  { Icon: Lock, short: "תשלום מאובטח", long: "תשלום מאובטח", iconClass: "" },
 ];
 
 /** Divider-separated trust row used in the hero and detail-hero. Single line
@@ -18,7 +18,7 @@ export const TrustBadges = ({ className }: { className?: string }) => (
       className
     )}
   >
-    {badges.map(({ Icon, short, long }, i) => (
+    {badges.map(({ Icon, short, long, iconClass }, i) => (
       <li key={long} className="flex items-center gap-1 sm:gap-2">
         {i > 0 && (
           <span
@@ -26,7 +26,7 @@ export const TrustBadges = ({ className }: { className?: string }) => (
             className="me-1 h-3.5 w-px bg-current opacity-30 sm:me-2 sm:h-4"
           />
         )}
-        <Icon className="size-[18px] shrink-0 sm:size-5" aria-hidden />
+        <Icon className={cn("size-[18px] shrink-0 sm:size-5", iconClass)} aria-hidden />
         <span className="sm:hidden">{short}</span>
         <span className="hidden sm:inline">{long}</span>
       </li>

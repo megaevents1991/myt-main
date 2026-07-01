@@ -2,7 +2,7 @@ import { FlightSearchCriteria } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
 import { Slider } from "@mantine/core";
 
-const themeColor = "#05203C";
+const themeColor = "#0A1A14";
 
 const formatTime = (value: number) => {
   const hours = Math.floor(value);

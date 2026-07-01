@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { HotelSearchCriteria } from "@/lib/app.types";
 import { HotelKind } from "@/lib/hotel.type";
 
-const themeColor = "#05203C";
+const themeColor = "#0A1A14";
 
 const hotelKindOptionsNaming = {
   Resort: "Resort",

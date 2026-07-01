@@ -74,7 +74,7 @@ export const EventTicketCard = ({
             <Radio
               onChange={() => void 0}
               checked={!disabled && isSelected}
-              color="#05203C"
+              color="#0A1A14"
               style={{ pointerEvents: "none" }}
               disabled={disabled}
             />

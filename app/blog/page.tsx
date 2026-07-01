@@ -39,7 +39,7 @@ export default async function BlogPage() {
               aria-label={`עמוד הבלוג ${post.fields.title || "ללא כותרת"}`}
             >
               <article className="border rounded-lg overflow-hidden h-full flex flex-col">
-                <div className="relative w-full aspect-[16/9] bg-gradient-to-br from-[#05203C] to-[#178189]">
+                <div className="relative w-full aspect-[16/9] bg-gradient-to-br from-[#0A1A14] to-[#178189]">
                   {post.fields.artImageUrl ? (
                     <EventArt
                       id={post.sys.id}

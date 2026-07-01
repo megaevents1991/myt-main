@@ -162,7 +162,7 @@ const LuggageButton = ({
           <div className="border-b w-full border-gray-400"></div>
 
         <div className="text-xs font-bold flex items-center justify-center gap-1 w-full ">
-          <InfoIcon fill={isSelected ? "#20B655" : "grey"} />
+          <InfoIcon fill={isSelected ? "#5BFF95" : "grey"} />
         </div>
            */}
       </div>
