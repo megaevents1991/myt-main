@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-/* Brand palette: Dark Forest Green (structural/dark) + Glow Green (active).
-   DEEP === FOREST — icons/checks use the brand dark green on the mint fill. */
-const FOREST = "#0A1A14";
-const MINT = "#5BFF95";
-const DEEP = "#0A1A14";
+/* Brand palette tokens (single source of truth in globals.css).
+   DEEP === FOREST — icons/checks use the brand dark green on the glow fill. */
+const FOREST = "hsl(var(--brand-forest))";
+const MINT = "hsl(var(--brand-glow))";
+const DEEP = "hsl(var(--brand-forest))";
 
 export type ContinueSlot = {
   icon: "ticket" | "flight" | "hotel";
@@ -147,7 +147,7 @@ export const OrderContinueBar = ({
               className={cn(
                 "flex min-w-0 flex-1 items-center gap-2 rounded-xl border-[1.5px] px-2.5 py-2 transition-colors duration-300",
                 s.filled
-                  ? "border-[#5BFF95]/60 bg-[#5BFF95]/[0.13]"
+                  ? "border-glow/60 bg-glow/[0.13]"
                   : "border-dashed border-border bg-card"
               )}
             >
@@ -205,7 +205,7 @@ export const OrderContinueBar = ({
                   type="button"
                   onClick={handleSkip}
                   aria-label={skip.label}
-                  className="flex-1 whitespace-nowrap rounded-xl border-[1.5px] px-4 py-2.5 text-sm font-bold transition-colors hover:bg-[#0A1A14]/5 sm:flex-none"
+                  className="flex-1 whitespace-nowrap rounded-xl border-[1.5px] px-4 py-2.5 text-sm font-bold transition-colors hover:bg-forest/5 sm:flex-none"
                   style={{ borderColor: FOREST, color: FOREST }}
                 >
                   {skip.label}

@@ -789,6 +789,8 @@ export const HotelSelection = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
+                  showTooltip={true}
+                  tooltipText="רוצים תאריכים אחרים? בחרו כאן"
                 />
                 <button
                   disabled={isFetching}

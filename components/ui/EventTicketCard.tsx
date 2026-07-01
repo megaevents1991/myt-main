@@ -66,17 +66,14 @@ export const EventTicketCard = ({
               off-brand navy from event data) — unified to Glow Green. */}
           <div
             className={cn(
-              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md"
+              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md bg-glow"
             )}
-            style={{
-              backgroundColor: "#5BFF95",
-            }}
           ></div>
           <div className="w-2/3 lg:w-5/9 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
               checked={!disabled && isSelected}
-              color="#0A1A14"
+              color="hsl(var(--brand-forest))"
               style={{ pointerEvents: "none" }}
               disabled={disabled}
             />

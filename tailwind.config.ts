@@ -23,6 +23,10 @@ export default {
     },
     extend: {
       colors: {
+        // Core brand greens — constant across themes (see globals.css).
+        // Supports opacity modifiers: `bg-glow/10`, `border-forest/60`, etc.
+        forest: "hsl(var(--brand-forest))",
+        glow: "hsl(var(--brand-glow))",
         // Brand-level aliases kept for existing `bg-main` / `text-secondary` usages.
         main: {
           DEFAULT: "hsl(var(--surface-inverse))",

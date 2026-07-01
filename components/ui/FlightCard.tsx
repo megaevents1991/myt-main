@@ -236,7 +236,7 @@ export const FlightTicketCard = memo(
             {/* Mobile pricing element */}
             <div
               className={cn(
-                "absolute bg-card border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-success rounded-2xl px-3 py-1 text-sm",
+                "absolute bg-card border border-forest lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-forest rounded-2xl px-3 py-1 text-sm",
                 isSelected && "bg-main text-main-foreground border-main dark:bg-foreground dark:text-background dark:border-foreground"
               )}
             >

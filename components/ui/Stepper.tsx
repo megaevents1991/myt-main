@@ -47,7 +47,7 @@ export const Stepper = ({
             styles={{
               stepLabel: { fontWeight: 700, fontSize: 15 },
               // Dark-green check on the mint fill so it stays legible.
-              stepCompletedIcon: { color: "#0A1A14" },
+              stepCompletedIcon: { color: "hsl(var(--brand-forest))" },
               // All 4 steps stay on one line on phones; the media query in
               // globals.css shrinks icons/labels/separators to make them fit.
               steps: { flexWrap: "nowrap" },

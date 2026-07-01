@@ -33,21 +33,21 @@ export type TixStockMatchableListing = {
 /*  Colours                                                            */
 /* ------------------------------------------------------------------ */
 
-export const TX_TICKET_COLOR = "#0A1A14";
+export const TX_TICKET_COLOR = "hsl(var(--brand-forest))";
 /** Light solid fill for sections with available tickets — light Glow-Green
  *  tint (brand ramp), opaque to avoid stacking artefacts from overlaps. */
-export const TX_SECTION_FILL_LIGHT = "#C2FFD8";
+export const TX_SECTION_FILL_LIGHT = "#C2FFD8"; /* glow tint (brand ramp shade 1) */
 /** Base/available section stroke — Glow Green */
-export const TX_SECTION_FILL = "#5BFF95";
+export const TX_SECTION_FILL = "hsl(var(--brand-glow))";
 /** Hover/highlighted stroke & text — secondary foreground */
 export const TX_HOVER_STROKE = "#F0F0F2";
 /** Text shadow on hover */
 export const TX_TEXT_SHADOW = "#000000";
 /** Hover feedback — solid Glow Green (brighter than the available tint) */
-export const TX_HOVER_FILL = "#5BFF95";
+export const TX_HOVER_FILL = "hsl(var(--brand-glow))";
 /** Brand Dark Forest Green for the selected section — clearly darker than
  *  the hover/available greens so a locked-in pick reads at a glance. */
-export const TX_SELECTED_FILL = "#0A1A14";
+export const TX_SELECTED_FILL = "hsl(var(--brand-forest))";
 /** Fill for explicitly disabled/excluded sections */
 export const TX_DISABLED_FILL = "#D8D8D8";
 /** Stroke for explicitly disabled/excluded sections */

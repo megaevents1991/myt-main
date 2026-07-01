@@ -46,6 +46,12 @@
     --chart-5: 189 100% 64%; /* aqua */
     --radius: 0.75rem;
 
+    /* Core brand greens — CONSTANT across light/dark (single source of truth
+       for the palette: Dark Forest Green + Glow Green). Use via Tailwind
+       `forest`/`glow` or `hsl(var(--brand-forest|glow))` in inline styles. */
+    --brand-forest: 158 44% 7%; /* #0A1A14 — structural / dark green */
+    --brand-glow: 141 100% 68%; /* #5BFF95 — active / light green */
+
     /* Brand neon accents (category coding, blobs, glows) — Figma brand palette */
     --brand-mint: 141 100% 68%; /* #5BFF95 */
     --brand-aqua: 189 100% 64%; /* #45E2FF */

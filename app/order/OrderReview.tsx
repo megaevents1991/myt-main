@@ -1014,12 +1014,15 @@ export default function OrderReview() {
                     </div>
                   )}
                   <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-right">
+                      סיכום הזמנה
+                    </h2>
                     {event?.card_image_url &&
                       (artistSlug ? (
                         <Link
                           href={`/artists/${artistSlug}`}
                           aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
-                          className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-[#0A1A14]"
+                          className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
                         >
                           <Image
                             src={event.card_image_url}
@@ -1038,9 +1041,6 @@ export default function OrderReview() {
                           className="size-12 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-14"
                         />
                       ))}
-                    <h2 className="text-2xl font-bold text-right">
-                      סיכום הזמנה
-                    </h2>
                   </div>
                 </div>
                 {!isMobile && (
