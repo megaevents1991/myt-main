@@ -14,7 +14,7 @@ const badges = [
 export const TrustBadges = ({ className }: { className?: string }) => (
   <ul
     className={cn(
-      "flex flex-nowrap items-center whitespace-nowrap gap-x-2 text-[11px] sm:gap-x-4 sm:text-sm",
+      "flex flex-nowrap items-center whitespace-nowrap gap-x-1.5 text-[15px] font-bold sm:gap-x-4 sm:text-base",
       className
     )}
   >
@@ -26,7 +26,7 @@ export const TrustBadges = ({ className }: { className?: string }) => (
             className="me-1 h-3.5 w-px bg-current opacity-30 sm:me-2 sm:h-4"
           />
         )}
-        <Icon className="size-3.5 shrink-0 sm:size-4" aria-hidden />
+        <Icon className="size-[18px] shrink-0 sm:size-5" aria-hidden />
         <span className="sm:hidden">{short}</span>
         <span className="hidden sm:inline">{long}</span>
       </li>

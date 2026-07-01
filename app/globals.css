@@ -159,6 +159,36 @@
   background-color: hsl(var(--success) / 0.08);
 }
 
+/* ── Elfsight Google Reviews — dark-mode theming ──────────────────────────
+   The widget renders in the LIGHT DOM (no iframe / no shadow root) with stable
+   `es-*` class hooks and near-black (#111) text meant for a light page. In dark
+   mode we recolor its text + carousel controls to the theme's light tones so it
+   blends into the dark page instead of needing a forced white island. The star
+   rating, the "read more" link and the reviewer avatars keep their own colors. */
+.dark .es-embed-root,
+.dark .es-embed-root * {
+  /* Text only — stars, the Google logo and avatars paint via SVG `fill` /
+     images, which `color` doesn't touch, so recoloring every node is safe. */
+  color: hsl(var(--foreground)) !important;
+}
+/* Carousel bullets/arrows were near-black — lift them onto the dark surface. */
+.dark .es-embed-root .es-bullets-control-item {
+  background-color: hsl(var(--foreground) / 0.3) !important;
+}
+.dark .es-embed-root .es-bullets-control-item-active {
+  background-color: hsl(var(--foreground)) !important;
+}
+.dark .es-embed-root .es-carousel-arrow-control {
+  background-color: hsl(var(--foreground) / 0.12) !important;
+  color: hsl(var(--foreground)) !important;
+}
+/* Review cards, if the layout paints a light surface, go to the dark card tone. */
+.dark .es-embed-root [class*="ReviewCard"],
+.dark .es-embed-root [class*="es-review"] {
+  background-color: transparent !important;
+  border-color: hsl(var(--border)) !important;
+}
+
 /* Order stepper — keep all 4 steps on one line on phones (Mantine wraps by
    default; !important because Mantine's own .m_* rules load after ours) */
 @media (max-width: 40em) {

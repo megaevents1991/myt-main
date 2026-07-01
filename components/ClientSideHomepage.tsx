@@ -17,6 +17,7 @@ import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
+import { MYTMark } from "./ui/mytMark";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
 import { multiTermSearch } from "@/lib/search";
@@ -26,7 +27,6 @@ import { ElfsightWidget } from "@/components/ui/elfReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { HeroCarousel } from "@/components/HeroCarousel";
-import { PackageBanners } from "@/components/PackageBanners";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { EventArt } from "@/components/ui/EventArt";
@@ -700,12 +700,18 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [visibleMusicCount, setVisibleMusicCount] = useState(11);
+  // Mobile shows 5 events up-front; desktop bumps to 20 on mount (below).
+  const [visibleMusicCount, setVisibleMusicCount] = useState(5);
 
   useEffect(() => {
     setIsMounted(true);
     // Scroll to top when component mounts (page load/navigation)
     window.scrollTo(0, 0);
+  }, []);
+
+  // Desktop starts with a fuller grid (20); mobile keeps the compact 5.
+  useEffect(() => {
+    if (window.innerWidth >= 640) setVisibleMusicCount((c) => (c < 20 ? 20 : c));
   }, []);
 
   const handleSearchModalOpen = () => {
@@ -1205,15 +1211,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           <HeroSearch events={initialEvents} artists={artists} />
         </div>
         {/* Trust row — sits under the gallery, per Dor's layout note */}
-        <TrustBadges className="relative z-10 mt-7 md:mt-8 justify-center text-main-foreground/80" />
+        <TrustBadges className="relative z-10 mt-3 md:mt-8 justify-center text-main-foreground/80" />
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
-        <div className="relative z-10 mt-3 sm:mt-2">
+        <div className="relative z-10 mt-1 sm:mt-2">
           <HeroCarousel artists={carouselArtists ?? artists} />
         </div>
       </section>
-
-      {/* Promo package banners — featured events, auto-selected */}
-      <PackageBanners events={initialEvents} />
 
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">
         <div className="container mx-auto">
@@ -1339,11 +1342,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           </div>
           {/* Accessibility: Enhanced section headings with proper hierarchy */}
           <div className="flex flex-row mb-4 lg:mb-6 justify-start items-stretch">
-            <div>
-              <h2 className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                המבוקשים ביותר
-              </h2>
-            </div>
             <div
               className="bg-secondary mx-1"
               style={{ height: 40, width: 23 }}
@@ -1356,6 +1354,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               className="bg-secondary mx-1 hidden sm:block"
               style={{ height: 40, width: 46 }}
             />
+            <div>
+              <h2 className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
+                המבוקשים ביותר
+              </h2>
+            </div>
           </div>
           {/* Accessibility: Enhanced prioritized events section with semantic structure */}
           <section aria-labelledby="prioritized-events-heading">
@@ -1372,9 +1375,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               ))}
             </div>
           </section>
-          {/* Third-party widget renders dark text expecting a light page —
-              give it a light surface in dark mode */}
-          <div className="dark:rounded-2xl dark:bg-white dark:p-4">
+          {/* Elfsight Google reviews. Renders near-black text in the light DOM
+              (no iframe/shadow); in dark mode we recolor it via the
+              `.dark .es-embed-root` rules in globals.css so it blends into the
+              dark page instead of sitting on a forced white island. */}
+          <div>
             <ElfsightWidget
               widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7"
               lazy="first-activity"
@@ -1385,11 +1390,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           {footballTeams && footballTeams.length > 0 && (
             <section aria-labelledby="football-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
-                <div>
-                  <h2 id="football-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    כדורגל
-                  </h2>
-                </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
@@ -1405,6 +1405,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   style={{ height: 40, width: 46 }}
                   aria-hidden="true"
                 />
+                <div>
+                  <h2 id="football-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
+                    כדורגל
+                  </h2>
+                </div>
               </div>
               {/* Mobile carousel for Sports events */}
               <div className="block sm:hidden mb-8">
@@ -1421,11 +1426,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           {carouselArtists && carouselArtists.length > 0 && (
             <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
-                <div>
-                  <h2 id="artists-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    אמנים מובילים
-                  </h2>
-                </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
@@ -1441,6 +1441,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   style={{ height: 40, width: 46 }}
                   aria-hidden="true"
                 />
+                <div>
+                  <h2 id="artists-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
+                    אמנים מובילים
+                  </h2>
+                </div>
               </div>
               {/* Mobile carousel for Artists */}
               <div className="block sm:hidden mb-8">
@@ -1456,12 +1461,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           {/* Music Section (renamed from "האירועים שלנו") */}
           {musicEvents.length > 0 && (
             <section aria-labelledby="music-events-heading">
+              {/* Cube to the right of the heading (RTL: first child = right) */}
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
-                <div>
-                  <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    הופעות נוספות
-                  </h2>
-                </div>
                 <div
                   className="bg-secondary mx-1"
                   style={{ height: 40, width: 23 }}
@@ -1477,45 +1478,15 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   style={{ height: 40, width: 46 }}
                   aria-hidden="true"
                 />
-              </div>
-              {/* Mobile carousel for Music events */}
-              <div className="block sm:hidden mb-8">
-                <MobileCarousel events={musicEvents} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
-                <div className="grid gap-6 grid-cols-1 mt-6">
-                  <div
-                    className="fixed left-3 z-50"
-                    style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
-                  >
-                    <ContactUs inHeader={false} />
-                  </div>
-                  {/* Accessibility: Enhanced search prompt card with proper labeling */}
-                  <div
-                    className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
-                    onClick={handleSearchPromptClick}
-                    role="button"
-                    tabIndex={0}
-                    aria-label="פתח חיפוש אירועים"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleSearchPromptClick();
-                      }
-                    }}
-                  >
-                    <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-52 flex items-center justify-center">
-                      <MYT className="text-main-foreground" />
-                    </div>
-                    <div
-                      className="p-10 text-center text-main dark:text-foreground text-lg font-bold flex items-center justify-center min-h-[88px]"
-                      dir="rtl"
-                    >
-                      לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
-                    </div>
-                  </div>
+                <div>
+                  <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
+                    הופעות נוספות
+                  </h2>
                 </div>
               </div>
-              {/* Desktop grid for Music events */}
-              <div className="hidden sm:grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
+              {/* Stacked list — one column on mobile, grid on desktop. Minimal
+                  no-image cards (same as the search page). No carousel. */}
+              <div className="grid gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
                    role="list"
                    aria-label="רשימת הופעות נוספות">
                 {musicEvents.slice(0, visibleMusicCount).map((event) => (
@@ -1523,7 +1494,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                     <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
                   </div>
                 ))}
-                {/* Accessibility: Enhanced search prompt card with proper labeling */}
+                {/* Search-prompt card — smaller, same design, appended at the end */}
                 <div
                   className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
                   onClick={handleSearchPromptClick}
@@ -1537,26 +1508,52 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                     }
                   }}
                 >
-                  <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-60 flex items-center justify-center">
-                    <MYT className="text-main-foreground" />
+                  {/* Animated brand card — same breathe glow + sheen sweep +
+                      wordmark⇄mark morph as the hero carousel's logo card. */}
+                  <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-40 flex items-center justify-center">
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(160_84%_39%/0.45),transparent_70%)] blur-2xl motion-safe:animate-[logo-breathe_6s_ease-in-out_infinite]"
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 -left-1/2 -right-1/2 motion-reduce:hidden"
+                    >
+                      <span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-md motion-safe:animate-[logo-sheen_4.5s_ease-in-out_infinite]" />
+                    </span>
+                    <div className="relative grid place-items-center">
+                      <MYT className="col-start-1 row-start-1 w-28 text-main-foreground sm:w-32 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite]" />
+                      <MYTMark className="col-start-1 row-start-1 w-14 text-main-foreground opacity-0 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite] motion-safe:[animation-delay:-3.5s]" />
+                    </div>
                   </div>
                   <div
-                    className="p-4 text-center text-main dark:text-foreground text-xl font-bold h-20"
+                    className="p-4 text-center text-main dark:text-foreground text-sm font-bold flex items-center justify-center min-h-[56px]"
                     dir="rtl"
                   >
                     לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
                   </div>
                 </div>
               </div>
+              {/* Floating contact button — mobile only (was nested in the old carousel) */}
+              <div
+                className="fixed left-3 z-50 sm:hidden"
+                style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+              >
+                <ContactUs inHeader={false} />
+              </div>
               {visibleMusicCount < musicEvents.length && (
-                <div className="hidden sm:flex justify-center mb-8">
+                <div className="flex justify-center mb-8">
                   <button
                     type="button"
-                    onClick={() => setVisibleMusicCount((c) => c + 12)}
+                    onClick={() =>
+                      setVisibleMusicCount(
+                        (c) => c + (typeof window !== "undefined" && window.innerWidth >= 640 ? 20 : 5)
+                      )
+                    }
                     className="px-8 py-3 rounded-lg border-2 border-main text-main dark:border-foreground/60 dark:text-foreground font-bold hover:bg-main hover:text-main-foreground dark:hover:bg-foreground dark:hover:text-background transition-colors"
                     dir="rtl"
                   >
-                    הצג עוד הופעות
+                    הצג עוד אירועים
                   </button>
                 </div>
               )}
@@ -1792,7 +1789,7 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               <PackageIcons cycle />
             </div>
 
-            <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-main/90">
+            <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black dark:bg-foreground dark:text-background dark:group-hover:bg-foreground/90 dark:group-hover:text-background dark:group-active:bg-foreground/90 dark:group-active:text-background">
               {computedSold ? "אזל מהמלאי" : "לפרטים והזמנה"}
             </div>
           </div>
@@ -1802,7 +1799,7 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
     {hasMultipleDates && (
       <div
         data-strip-click="true"
-        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-main/90 transition-colors duration-200 shadow-card"
+        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 dark:hover:text-background dark:active:bg-foreground/90 dark:active:text-background"
         role="button"
         aria-label={`לחץ כדי לראות את כל האירועים של ${collideTarget?.label ?? event.name}`}
         onClick={handleStripClick}

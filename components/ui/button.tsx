@@ -13,7 +13,7 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow-card hover:bg-primary/90 hover:shadow-[0_6px_24px_-4px_hsl(var(--brand-mint)/0.55)]",
         // Dark pill — card CTA ("לפרטים והזמנה" / "בחרו תאריך" on cards)
-        pill: "rounded-full bg-main text-main-foreground hover:bg-main/90",
+        pill: "rounded-full bg-main text-main-foreground hover:bg-secondary hover:text-black active:bg-secondary active:text-black dark:bg-foreground dark:text-background dark:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.6)] dark:hover:bg-foreground/90 dark:hover:text-background dark:active:bg-foreground/90 dark:active:text-background",
         destructive:
           "bg-destructive text-destructive-foreground shadow-card hover:bg-destructive/90",
         outline:

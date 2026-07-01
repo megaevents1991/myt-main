@@ -100,7 +100,7 @@ export const Header = () => {
     {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground shadow-card transition-transform duration-300",
+        "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground transition-transform duration-300",
         visible ? "translate-y-0" : "-translate-y-full"
       )}
     >

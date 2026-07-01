@@ -18,10 +18,10 @@ const CENTER_SCALE = 1.06;
 
 // Momentum fling — release with speed → a roulette-style glide that decelerates
 // and snaps to the nearest card (velocity is in px/ms; +x = finger moving right).
-const FLING_MIN_V = 0.3; // below this, a release just snaps to nearest (no spin)
-const FLING_FRICTION = 0.005; // per-ms exponential velocity decay
+const FLING_MIN_V = 0.22; // below this, a release just snaps to nearest (no spin)
+const FLING_FRICTION = 0.0035; // per-ms exponential velocity decay (lower = glides longer)
 const FLING_STOP_V = 0.02; // momentum ends here → final snap to nearest card
-const FLING_MAX_CARDS = 12; // cap travel so a hard flick can't over-spin a small ring
+const FLING_MAX_CARDS = 20; // cap travel so a hard flick can't over-spin a small ring
 
 // Reflection cast under each card. DESKTOP ONLY: on mobile WebKit the card is a
 // composited 3D layer (will-change + translateZ + backface-visibility) and
@@ -88,6 +88,8 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const dragging = useRef(false);
   const moved = useRef(false);
   const dragStart = useRef(0);
+  const dragStartY = useRef(0); // pointer Y at grab — for axis-lock
+  const axisLock = useRef<"x" | "y" | null>(null); // gesture direction, decided once
   const dragRef = useRef(0); // live sub-card drag remainder (px)
   const interacted = useRef(false);
 
@@ -146,6 +148,43 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     },
     []
   );
+
+  // Hard axis-lock for touch. `touch-action: pan-y` lets the browser scroll the
+  // page vertically — but on a DIAGONAL swipe that vertical component still
+  // scrolled the page while the finger was trying to move the ring sideways
+  // (the "slides up/down when I swipe left/right" bug). A pointer handler can't
+  // stop that native scroll, so we attach a NON-PASSIVE touchmove that decides
+  // the axis from the raw touch delta and preventDefaults once the gesture is
+  // horizontal — killing the page scroll for the rest of that swipe. Vertical
+  // gestures are left alone, so the page still scrolls normally off the ring.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    let startX = 0;
+    let startY = 0;
+    let decided: "x" | "y" | null = null;
+    const onStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      decided = null;
+    };
+    const onMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      const adx = Math.abs(t.clientX - startX);
+      const ady = Math.abs(t.clientY - startY);
+      if (decided === null) {
+        if (Math.max(adx, ady) < 8) return; // wait until intent is clear
+        decided = adx > ady ? "x" : "y";
+      }
+      if (decided === "x") e.preventDefault(); // horizontal swipe → no page scroll
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+    };
+  }, []);
   const step = useCallback(
     (dir: number) => {
       stop();
@@ -192,6 +231,8 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
     // Anchor so the live offset carries over from any glide we just interrupted
     // (dragRef is 0 on a fresh grab, so this is `= e.clientX` in the common case).
     dragStart.current = e.clientX - dragRef.current;
+    dragStartY.current = e.clientY;
+    axisLock.current = null; // decide direction on the first real move
     // Reset velocity tracking for this gesture.
     velocity.current = 0;
     lastX.current = e.clientX;
@@ -209,10 +250,19 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging.current) return;
     let dx = e.clientX - dragStart.current;
-    // Mark a real drag (vs a tap) so the onClickCapture guard swallows the
-    // post-swipe click but lets a tap through.
-    if (!moved.current && Math.abs(dx) > 4) moved.current = true;
-    if (!moved.current) return;
+    // Axis-lock: decide once, after enough movement, whether this gesture is a
+    // horizontal ring-swipe or a vertical page-scroll. A diagonal drag used to
+    // move the ring AND scroll the page at once (the jitter). Now vertical
+    // intent wins and the ring yields — the page just scrolls.
+    if (axisLock.current === null) {
+      const adx = Math.abs(dx);
+      const ady = Math.abs(e.clientY - dragStartY.current);
+      if (Math.max(adx, ady) < 8) return; // wait until intent is clear
+      axisLock.current = ady > adx ? "y" : "x";
+      moved.current = true; // real drag (not a tap) → swallow the trailing click
+      if (axisLock.current === "y") return; // page scroll owns this gesture
+    }
+    if (axisLock.current === "y") return;
     // Step `current` as the finger crosses each card-width and keep only the
     // sub-card remainder as the live offset — so the strip scrolls card-by-card
     // under the finger and never slides off-screen.

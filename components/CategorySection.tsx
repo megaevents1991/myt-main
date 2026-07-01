@@ -30,14 +30,14 @@ export const CategorySection = ({
     >
       <div className="container mx-auto">
         <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
+          <div className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} />
+          <div className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} />
           <h2
             id="categories-heading"
             className="mx-2 text-center font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl"
           >
             קטגוריות
           </h2>
-          <div className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} />
-          <div className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
