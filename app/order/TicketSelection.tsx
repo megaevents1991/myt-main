@@ -20,7 +20,7 @@ import {
 
 
 export const TicketSelection = () => {
-  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice } = useContext(OrderContext);
+  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, artistSlug } = useContext(OrderContext);
   const eventRef = useRef(event);
   const isDebugMode = useSearchParams().get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
@@ -413,7 +413,10 @@ export const TicketSelection = () => {
       <div className="flex flex-col items-center ">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-muted ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <EventDataHeader event={event} />
+            <EventDataHeader
+              event={event}
+              artistHref={artistSlug ? `/artists/${artistSlug}` : undefined}
+            />
           </div>
         </div>
       </div>

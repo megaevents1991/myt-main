@@ -5,12 +5,10 @@ import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
+import { OrderContinueBar, type ContinueSlot } from "./OrderContinueBar";
 import { Event, Flight } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
-import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/price.utils";
-import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
@@ -20,13 +18,6 @@ import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup } from "@/lib/events/price";
-
-const buttonText: Record<number, string> = {
-  1: "לבחירת טיסה",
-  2: "לבחירת מלון",
-  3: "לסיכום הזמנה",
-  4: "שלח הזמנה",
-} as const;
 
 const shortenTicketCategory = (category: string): string => {
   // Return text up to the first comma if comma exists
@@ -140,12 +131,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 
-  const basePrice = Math.ceil(
+  const basePriceNum = Math.ceil(
     event.base_flight_price +
       event.base_hotel_price +
       minTicketPrice +
       getTotalMarkup(event)
-  ).toLocaleString("en-US");
+  );
+
+  const flightDelta = Math.ceil(
+    (flight?.price || 0) / planeTickets.adults - event.base_flight_price
+  );
 
   const nextStep = (skipHotel = false) =>
     setStep((prev) => {
@@ -307,6 +302,60 @@ export const OrderForm = ({ event }: { event: Event }) => {
     setStep((prev) => prev + 1);
   };
 
+  /* ── Continue-bar model (steps 1–3) ─────────────────────────────────
+     Slots fill as the customer picks; the last step folds into the
+     summary with a short "building the package" animation. */
+  const priceNote = (delta: number) =>
+    delta > 0 ? `+$${delta.toLocaleString("en-US")}` : "כלול";
+
+  const continueSlots: ContinueSlot[] = [
+    {
+      icon: "ticket",
+      label: "כרטיס",
+      filled: !!eventTicket.id,
+      value: eventTicket.id ? shortenTicketCategory(ticketCategory || "") : "",
+      delta: eventTicket.id ? priceNote(ticketRelativePrice) : undefined,
+    },
+    {
+      icon: "flight",
+      label: "טיסה",
+      filled: flightSkipped || !!flight?.id,
+      value: flightSkipped ? "ללא טיסה" : flight?.id ? airline : "",
+      delta: !flightSkipped && flight?.id ? priceNote(flightDelta) : undefined,
+    },
+  ];
+  if (!isUS) {
+    continueSlots.push({
+      icon: "hotel",
+      label: "מלון",
+      filled: skipHotel || !!hotel?.id,
+      value: skipHotel ? "ללא מלון" : hotel?.id ? hotel?.name || "מלון" : "",
+    });
+  }
+
+  // Running total = base package + the same upgrade deltas shown per slot
+  // (no new price math — just sums figures already derived above).
+  const displayTotal =
+    basePriceNum +
+    (ticketRelativePrice > 0 ? ticketRelativePrice : 0) +
+    (flight?.id && !flightSkipped && flightDelta > 0 ? flightDelta : 0);
+
+  const isFinalStep = isUS ? step === 2 : step === 3;
+  const primaryLabel =
+    step === 1
+      ? "בחר והמשך לטיסה"
+      : step === 2
+        ? isUS
+          ? "בחר והמשך לסיכום"
+          : "בחר והמשך למלון"
+        : "בחר והמשך לסיכום";
+  const skipAction =
+    step === 3
+      ? { label: "לא צריך מלון", onSkip: handleSkipHotel }
+      : step === 2 && skipFlight
+        ? { label: "לא צריך טיסה", onSkip: handleSkipFlight }
+        : undefined;
+
   return (
     <div className="max-w-7xl mx-auto px-2 pt-3">
       {step === 1 && <TicketSelection />}
@@ -319,155 +368,20 @@ export const OrderForm = ({ event }: { event: Event }) => {
           <ContactUs inHeader={false} />
         </div>
       )}
-      {/* Sticky Footer */}
-      <div className="flex w-full flex-col items-center bottom-0 sticky z-40">
-        <div className="mt-4 w-screen bg-muted">
-          <div className="w-full">
-            {step < 4 && (
-              <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
-                <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center gap-3">
-                  {/* Button Section - Split on step 3 (hotel) and step 2 when skipFlight enabled */}
-                  {step === 3 ? (
-                    // Hotel Selection Step: Show split buttons (desktop) or stacked (mobile)
-                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
-                      <button
-                        disabled={buttonDisabled}
-                        onClick={() => nextStep()}
-                        className={cn(
-                          "bg-main text-white dark:bg-foreground dark:text-background tracking-wide rounded-lg p-2 font-bold flex-[3]",
-                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                        )}
-                        type="button"
-                        aria-label="בחר והמשך לסיכום"
-                        >
-                        <span className="min-[400px]:inline hidden">בחר והמשך לסיכום</span>
-                        <span className="min-[400px]:hidden">בחר והמשך</span>
-                      </button>
-                      <button
-                        onClick={handleSkipHotel}
-                        className="border-2 border-main text-main dark:border-foreground/60 dark:text-foreground tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 dark:hover:bg-foreground/10 transition-colors text-sm lg:text-base"
-                        type="button"
-                        aria-label="המשך ללא מלון"
-                      >
-                        לא צריך מלון
-                      </button>
-                    </div>
-                  ) : step === 2 && skipFlight ? (
-                    // Flight Selection Step with skip enabled: Show split buttons
-                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
-                      <button
-                        disabled={buttonDisabled}
-                        onClick={() => nextStep()}
-                        className={cn(
-                          "bg-main text-white dark:bg-foreground dark:text-background tracking-wide rounded-lg p-2 font-bold flex-[3]",
-                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                        )}
-                        type="button"
-                        aria-label="בחר והמשך לבחירת מלון"
-                      >
-                        <span className="min-[400px]:inline hidden">בחר והמשך לבחירת מלון</span>
-                        <span className="min-[400px]:hidden">בחר והמשך</span>
-                      </button>
-                      <button
-                        onClick={handleSkipFlight}
-                        className="border-2 border-main text-main dark:border-foreground/60 dark:text-foreground tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 dark:hover:bg-foreground/10 transition-colors text-sm lg:text-base"
-                        type="button"
-                        aria-label="המשך ללא טיסה"
-                      >
-                        לא צריך טיסה
-                      </button>
-                    </div>
-                  ) : (
-                    // Other steps: Show single button
-                    <button
-                      disabled={buttonDisabled}
-                      onClick={() => nextStep()}
-                      className={cn(
-                        "bg-main text-white dark:bg-foreground dark:text-background tracking-wide rounded-lg p-2 font-bold",
-                        "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
-                        buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                      )}
-                      type="button"
-                      aria-label={
-                        step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]
-                      }
-                    >
-                      {step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]}
-                    </button>
-                  )}
-
-                  {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-success text-md min-w-0">
-                    {step > 2 && !flightSkipped && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
-                          {(() => {
-                            const flightDelta = Math.ceil(
-                              (flight?.price || 0) / planeTickets.adults -
-                                event.base_flight_price
-                            );
-                            return flightDelta > 0
-                              ? formatPrice(flightDelta)
-                              : "(כלול במחיר)";
-                          })()}
-                        </span>
-                        <div className="flex items-center justify-end">
-                          <span className="text-right mr-2 lg:ml-2">
-                            {airline}
-                          </span>
-                          <Image
-                            alt="plane icon"
-                            src={`/plane.svg`}
-                            width={16}
-                            height={16}
-                            unoptimized
-                          />
-                        </div>
-                        <span className="hidden lg:inline ml-2">|</span>
-                      </div>
-                    )}
-                    {step > 1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
-                          {ticketRelativePrice > 0
-                            ? formatPrice(ticketRelativePrice)
-                            : "(כלול במחיר)"}
-                        </span>
-                        <div className="flex items-center justify-end">
-                          <span className="text-right mr-2 lg:ml-2">
-                            <span className="lg:hidden">{shortenTicketCategory(ticketCategory)}</span>
-                            <span className="hidden lg:inline">{ticketCategory}</span>
-                          </span>
-                          <Image
-                            alt="ticket icon"
-                            src={`/ticket.svg`}
-                            width={16}
-                            height={16}
-                            unoptimized
-                          />
-                        </div>
-                        <span className="hidden lg:inline ml-2">|</span>
-                      </div>
-                    )}
-                    {step > -1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto min-w-0 gap-2">
-                        <span className="text-left lg:ml-2 font-bold tracking-wide shrink-0">
-                          ${basePrice}
-                        </span>
-                        <div className="flex items-center justify-end lg:ml-2 min-w-0">
-                          <span className="text-right font-bold truncate">
-                            {event.name}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+      {/* Sticky continue bar (steps 1–3) */}
+      {step < 4 && (
+        <div className="sticky bottom-0 z-40 mt-4 w-screen -mx-2 border-t border-border bg-background/85 backdrop-blur">
+          <OrderContinueBar
+            slots={continueSlots}
+            total={displayTotal}
+            primaryLabel={primaryLabel}
+            primaryDisabled={buttonDisabled}
+            onPrimary={() => nextStep()}
+            skip={skipAction}
+            isFinalStep={isFinalStep}
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 };

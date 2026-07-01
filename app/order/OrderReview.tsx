@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { trackEvent, getUTMParams } from "@/lib/mixpanel";
 import Image from "next/image";
+import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
 import { type Fields, validate } from "./order-review.utils";
@@ -59,6 +60,7 @@ export default function OrderReview() {
     hotel: selectedHotel,
     eventTicket,
     event,
+    artistSlug,
     setPaymentMethod,
     numberOfEventTickets,
     setStep,
@@ -1011,7 +1013,31 @@ export default function OrderReview() {
                       )}
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    {event?.card_image_url &&
+                      (artistSlug ? (
+                        <Link
+                          href={`/artists/${artistSlug}`}
+                          aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
+                          className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-[#0f7a3d]"
+                        >
+                          <Image
+                            src={event.card_image_url}
+                            alt={`${event?.name ?? ""} — לעמוד האמן`}
+                            width={56}
+                            height={56}
+                            className="size-12 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-14"
+                          />
+                        </Link>
+                      ) : (
+                        <Image
+                          src={event.card_image_url}
+                          alt=""
+                          width={56}
+                          height={56}
+                          className="size-12 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-14"
+                        />
+                      ))}
                     <h2 className="text-2xl font-bold text-right">
                       סיכום הזמנה
                     </h2>

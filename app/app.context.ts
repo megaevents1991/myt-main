@@ -11,6 +11,10 @@ import { createContext, Dispatch, SetStateAction } from "react";
 type AppContext = {
   flight?: Flight;
   event?: Event;
+  /** Slug of the artist page this event belongs to (resolved server-side by
+   *  name match). Undefined when the event has no artist page. */
+  artistSlug?: string;
+  setArtistSlug: (slug?: string) => void;
   hotel?: OrderHotel;
   eventTicket: OrderTicket;
   setEventTicket: (eventTicket: OrderTicket) => void;

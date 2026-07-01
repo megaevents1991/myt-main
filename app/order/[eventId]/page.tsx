@@ -1,4 +1,5 @@
 import { getCachedEvents } from "@/lib/eventsData";
+import { getAllArtists } from "@/lib/artists";
 import OrderPageClient from "../OrderPageClient";
 import { Event } from "@/lib/app.types";
 import { Metadata } from "next";
@@ -149,9 +150,30 @@ export default async function OrderPageWithId({
     );
   }
 
+  // Resolve the artist page (if any) this event belongs to, by english-name
+  // match — same rule the homepage uses to group events under artist pages.
+  // Lets the ticket-selection header + summary link the photo to the artist.
+  let artistSlug: string | undefined;
+  try {
+    const target = (event.name_english ?? "").trim().toLowerCase();
+    if (target) {
+      const artists = await getAllArtists();
+      const match = artists.find(
+        (a) => (a.fields.nameDBenglish ?? "").trim().toLowerCase() === target
+      );
+      artistSlug = match?.sys.id;
+    }
+  } catch (error) {
+    console.error("Failed to resolve artist slug for order page:", error);
+  }
+
   return (
     <OrderErrorBoundary>
-      <OrderPageClient initialEvent={event} eventId={eventId} />
+      <OrderPageClient
+        initialEvent={event}
+        eventId={eventId}
+        artistSlug={artistSlug}
+      />
     </OrderErrorBoundary>
   );
 }

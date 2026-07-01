@@ -1,21 +1,41 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Event } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { isMobile } from "react-device-detect";
 
-export const EventDataHeader = ({ event }: { event?: Event }) => {
+export const EventDataHeader = ({
+  event,
+  artistHref,
+}: {
+  event?: Event;
+  /** When set, the round photo links to the artist page. */
+  artistHref?: string;
+}) => {
   const imageUrl = event?.card_image_url;
+  const photo = imageUrl && (
+    <Image
+      src={imageUrl}
+      alt={artistHref ? `${event?.name ?? ""} — לעמוד האמן` : ""}
+      width={80}
+      height={80}
+      className="size-16 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-20"
+    />
+  );
   return (
     <div className="flex w-full flex-row items-center gap-4 lg:w-[30%]">
-      {imageUrl && (
-        <Image
-          src={imageUrl}
-          alt=""
-          width={80}
-          height={80}
-          className="size-16 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-20"
-        />
-      )}
+      {photo &&
+        (artistHref ? (
+          <Link
+            href={artistHref}
+            aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
+            className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-[#0f7a3d]"
+          >
+            {photo}
+          </Link>
+        ) : (
+          photo
+        ))}
       <div className="flex flex-col">
         <h1 className="flex flex-col font-normal text-base m-0">
           <span className="text-3xl mb-1 font-bold">{event?.name}</span>

@@ -28,11 +28,18 @@ const MegaEventsSection = dynamic(() => import("@/components/ui/aboutUsMega"), {
 interface OrderPageClientProps {
   initialEvent?: Event;
   eventId?: string;
+  artistSlug?: string;
 }
 
-export default function OrderPageClient({ initialEvent, eventId }: OrderPageClientProps) {
-  const { event, setEvent, step } = useContext(OrderContext);
+export default function OrderPageClient({ initialEvent, eventId, artistSlug }: OrderPageClientProps) {
+  const { event, setEvent, setArtistSlug, step } = useContext(OrderContext);
   const [showAboutSection, setShowAboutSection] = useState(false);
+
+  // Push the server-resolved artist slug into context so the header + summary
+  // photos can link to the artist page.
+  useEffect(() => {
+    setArtistSlug(artistSlug);
+  }, [artistSlug, setArtistSlug]);
 
   // Set the event from props when component mounts, or fetch it if we have eventId but no event
   useEffect(() => {
