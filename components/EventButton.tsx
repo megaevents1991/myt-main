@@ -18,6 +18,7 @@ export default function EventButton({
   const computedTags = hasAvailableTickets ? event.tags : "Sold";
   return (
     <div
+      className="h-full"
       onClick={() => {
         trackEvent("eventSelected", {
           eventId: event.id,

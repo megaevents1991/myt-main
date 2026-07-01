@@ -8,15 +8,16 @@ import {
 } from "@contentful/rich-text-react-renderer";
 import { ReactNode } from "react";
 import { getEventsByName } from "@/lib/eventsData";
+import { documentToPlainText, firstSentence } from "@/lib/richText";
 import ClientTracker from "@/components/ClientTracker";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { DetailHero } from "@/components/DetailHero";
-import { EventCard } from "@/components/EventCard";
+import { ArtistEventsFilter } from "@/components/ArtistEventsFilter";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrustSection } from "@/components/TrustSection";
 import { FAQ } from "@/components/ui/FAQ";
 import { ArtistBanners } from "@/components/ArtistBanners";
-import { ArtistGallery } from "@/components/ArtistGallery";
+import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { ArtistVideos } from "@/components/ArtistVideos";
 
 export const revalidate = 3600;
@@ -114,6 +115,11 @@ export default async function ArtistPage({
       ? "https:" + heroBanner.fields.file.url
       : undefined;
 
+    // Mobile bio collapses to its first sentence with a "קרא עוד.." toggle.
+    const bioPlain = documentToPlainText(bio as Document);
+    const bioFirstSentence = firstSentence(bioPlain);
+    const bioCanExpand = bioFirstSentence.length < bioPlain.length;
+
     return (
       <>
         <ClientTracker />
@@ -122,6 +128,8 @@ export default async function ArtistPage({
           name={String(name)}
           nameEnglish={String(nameDBenglish)}
           bio={documentToReactComponents(bio as Document, bioOptions)}
+          bioFirstSentence={bioFirstSentence}
+          bioCanExpand={bioCanExpand}
           imageUrl={imageUrl}
           imageAlt={`תמונה של האומן ${String(name)}`}
           heroVideoUrl={heroVideoUrl}
@@ -145,22 +153,14 @@ export default async function ArtistPage({
             בחרו תאריך הופעה והתחילו להרכיב את החבילה שלכם
           </p>
           {events.length > 0 ? (
-            <div
-              className="grid gap-4 sm:grid-cols-2"
-              role="list"
-              aria-label="רשימת אירועים קרובים"
-            >
-              {events.map((event) => (
-                <EventCard key={event.id} event={event} title={String(name)} />
-              ))}
-            </div>
+            <ArtistEventsFilter events={events} title={String(name)} />
           ) : (
             <EmptyState title="אין אירועים קרובים" />
           )}
         </section>
 
         <ArtistVideos videos={videos} />
-        <ArtistGallery images={gallery} />
+        <ExperienceCarousel images={gallery} />
         <TrustSection />
         <FAQ />
       </>

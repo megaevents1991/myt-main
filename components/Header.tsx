@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, Search, X } from "lucide-react";
 
@@ -116,7 +117,7 @@ export const Header = () => {
         visible ? "translate-y-0" : "-translate-y-full"
       )}
     >
-      <div className="container relative mx-auto flex items-center gap-1 px-3 py-2.5 md:gap-2 md:px-4 md:py-3">
+      <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-3">
         {/* Action cluster — RTL order (right→left): hamburger, theme, whatsapp,
             search. Grouped in a subtle pill so it reads as one control, not a
             loaded row. First DOM child sits on the right in RTL. */}
@@ -154,21 +155,42 @@ export const Header = () => {
           </button>
         </div>
 
-        {/* On artist/team pages the artist name takes the bar once scrolled. */}
+        {/* Desktop: the artist/team name sits centred once the hero scrolls
+            away (mobile shows it beside the brand mark instead — see below). */}
         {pageTitle && (
-          <span className="min-w-0 flex-1 truncate text-center text-base font-bold md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
+          <span className="absolute left-1/2 top-1/2 hidden max-w-[62%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-base font-bold md:block">
             {pageTitle}
           </span>
         )}
 
-        {/* Logo — RTL end (far left). */}
-        <Link
-          href="/"
-          aria-label="MegaEvents — דף הבית"
-          className="ms-auto shrink-0"
-        >
-          <MYT className="h-5 w-auto sm:h-6 md:h-8" />
-        </Link>
+        {/* Brand mark + (mobile) page name, pinned to the RTL end (far left).
+            On detail pages, mobile shows the compact square "ME" mark with the
+            artist/team name right beside it; desktop keeps the full wordmark
+            (the name is centred above). Every other page: wordmark only. */}
+        <div className="ms-auto flex min-w-0 items-center gap-2">
+          {pageTitle && (
+            <span className="min-w-0 truncate text-sm font-bold md:hidden">
+              {pageTitle}
+            </span>
+          )}
+          <Link href="/" aria-label="MegaEvents — דף הבית" className="shrink-0">
+            {pageTitle ? (
+              <>
+                <Image
+                  src="/brand/logo-mark-ME.svg"
+                  alt="MegaEvents"
+                  width={38}
+                  height={38}
+                  className="size-8 md:hidden"
+                  unoptimized
+                />
+                <MYT className="hidden w-auto md:block md:h-8" />
+              </>
+            ) : (
+              <MYT className="h-5 w-auto sm:h-6 md:h-8" />
+            )}
+          </Link>
+        </div>
       </div>
 
       {/* Slide-down menu holds navigation + contact for all screen sizes */}

@@ -6,6 +6,7 @@ import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { MYT } from "@/components/ui/myt";
 import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
+import { BioReadMore } from "@/components/BioReadMore";
 import { youtubeId, youtubeEmbed } from "@/lib/youtube";
 
 /**
@@ -17,6 +18,8 @@ export const DetailHero = ({
   name,
   nameEnglish,
   bio,
+  bioFirstSentence,
+  bioCanExpand = false,
   imageUrl,
   imageAlt,
   heroVideoUrl,
@@ -27,6 +30,11 @@ export const DetailHero = ({
   name: string;
   nameEnglish?: string;
   bio: ReactNode;
+  /** Plain-text first sentence — when set, the bio collapses to it on mobile
+   *  with a "קרא עוד.." toggle (full bio always shown on desktop). */
+  bioFirstSentence?: string;
+  /** Whether the bio has more than the first sentence to reveal. */
+  bioCanExpand?: boolean;
   imageUrl?: string;
   imageAlt: string;
   /** #19b: YouTube URL that loops inside the hero circle (overrides the image). */
@@ -41,11 +49,12 @@ export const DetailHero = ({
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
     {ticketOnly && (
-      <TicketOnlyBadge className="absolute left-4 top-5 z-20 md:left-6" />
+      <TicketOnlyBadge className="absolute right-4 top-5 z-20 md:right-6" />
     )}
     {/* Way home — the global header only appears after scroll, so the hero
-        carries its own wordmark link. */}
-    <div className="container relative z-10 mx-auto px-4 pt-5">
+        carries its own wordmark link. Sits at the RTL end (far left) to match
+        the global header logo. */}
+    <div className="container relative z-10 mx-auto flex justify-end px-4 pt-5">
       <Link href="/" aria-label="חזרה לדף הבית" className="inline-block">
         <MYT className="h-5 w-auto text-main-foreground md:h-6" />
       </Link>
@@ -79,16 +88,27 @@ export const DetailHero = ({
       )}
 
       <div className="flex flex-col gap-5">
-        <h1 className="font-display text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
+        <h1 className="order-1 font-display text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
           {name}
           {nameEnglish && (
             <span className="hidden text-main-foreground/70 md:block">{nameEnglish}</span>
           )}
         </h1>
-        <div className="text-base leading-relaxed text-main-foreground/85">
-          {bio}
-        </div>
-        <TrustBadges className="text-main-foreground/75" />
+        {/* Trust row sits right under the name on mobile; below the bio on
+            desktop (order swap). */}
+        <TrustBadges className="order-2 text-main-foreground/75 sm:order-3" />
+        {bioFirstSentence ? (
+          <BioReadMore
+            className="order-3 text-base leading-relaxed text-main-foreground/85 sm:order-2"
+            firstSentence={bioFirstSentence}
+            canExpand={bioCanExpand}
+            full={bio}
+          />
+        ) : (
+          <div className="order-3 text-base leading-relaxed text-main-foreground/85 sm:order-2">
+            {bio}
+          </div>
+        )}
       </div>
     </div>
   </section>
