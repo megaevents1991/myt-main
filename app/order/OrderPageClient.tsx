@@ -56,17 +56,17 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
     }
   }, [initialEvent, eventId, event, setEvent]); // More stable order
 
-  // Delay rendering of MegaEventsSection until after main content
-  // Don't show MegaEventsSection on OrderReview step (step 4)
+  // Delay rendering of MegaEventsSection until after main content.
+  // Show it ONLY on the OrderReview summary step (step 4); hide on all others.
   useEffect(() => {
-    if (event && step !== 4) {
+    if (event && step === 4) {
       const timer = setTimeout(() => {
         setShowAboutSection(true);
       }, 200); // Adjust delay as needed
 
       return () => clearTimeout(timer);
     } else {
-      // Hide the section when on step 4 (OrderReview)
+      // Hide the section on every step except OrderReview (step 4)
       setShowAboutSection(false);
     }
   }, [event, step]);

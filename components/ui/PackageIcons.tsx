@@ -48,7 +48,7 @@ export const PackageIcons = ({
             )}
           >
             <Icon
-              className={cn("size-5", key === "ticket" && "text-secondary")}
+              className="size-5"
               aria-hidden
               style={
                 !cycle && active
