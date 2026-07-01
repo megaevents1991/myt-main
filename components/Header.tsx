@@ -202,14 +202,14 @@ export const Header = () => {
       >
         <nav
           aria-label="ניווט"
-          className="container mx-auto flex flex-col gap-1 px-4 py-3"
+          className="container mx-auto flex flex-col gap-0 px-4 py-3"
         >
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-3 text-sm font-semibold hover:bg-main-foreground/10"
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
             >
               {link.label}
             </Link>
@@ -224,11 +224,14 @@ export const Header = () => {
               href="https://wa.me/972542002722"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
+              className="hidden hover:underline md:inline"
             >
               WhatsApp
             </a>
-            <a href="mailto:reservations@mega-events.co.il" className="hover:underline">
+            <a
+              href="mailto:reservations@mega-events.co.il"
+              className="hidden hover:underline md:inline"
+            >
               מייל
             </a>
           </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CatalogPageTemplate, type CatalogItem } from "@/components/CatalogPageTemplate";
 import { getAllFootballTeams } from "@/lib/football";
+import { getAvailabilityChecker } from "@/lib/tourStatus";
 
 export const revalidate = 3600;
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default async function FootballsPage() {
   try {
     const items = await getAllFootballTeams();
+    const isAvailable = await getAvailabilityChecker();
 
     const teams: CatalogItem[] = items.map((team) => ({
       id: team.sys.id,
@@ -27,6 +29,7 @@ export default async function FootballsPage() {
       artImageUrl: team.fields.artImageUrl,
       artColorIndex: team.fields.artColorIndex,
       artShapeIndex: team.fields.artShapeIndex,
+      available: isAvailable(String(team.fields.nameDBenglish ?? "")),
     }));
 
     return (

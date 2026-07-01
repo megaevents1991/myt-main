@@ -27,10 +27,9 @@ export const Stepper = ({
 }: StepperProps) => {
   const active = currentStep - 1;
   return (
-    // Sticky so the booking progress stays visible on every step — on mobile
-    // the page can load scrolled past a static bar, hiding it. The global
-    // header is hidden inside the order flow, so nothing competes for the top.
-    <div className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+    // Static (non-sticky) header — it scrolls away with the page. The global
+    // header is hidden inside the order flow, so this just marks the top.
+    <div className="border-b border-border bg-background">
     <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 px-4 py-3 sm:flex-row sm:gap-8 sm:px-10 sm:py-4">
       <Link href="/" aria-label="חזרה לדף הבית" className="shrink-0">
         <MYT className="h-5 w-auto text-foreground md:h-6" />
@@ -42,8 +41,13 @@ export const Stepper = ({
             size="md"
             active={active}
             allowNextStepsSelect={false}
+            // Brand light-green (mint, shade 4 #5BFF95) for the progress —
+            // overrides the global primaryShade 6 just for the stepper.
+            color="myColor.4"
             styles={{
               stepLabel: { fontWeight: 700, fontSize: 15 },
+              // Dark-green check on the mint fill so it stays legible.
+              stepCompletedIcon: { color: "#0A1A14" },
               // All 4 steps stay on one line on phones; the media query in
               // globals.css shrinks icons/labels/separators to make them fit.
               steps: { flexWrap: "nowrap" },

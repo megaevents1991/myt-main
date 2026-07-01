@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CatalogPageTemplate, type CatalogItem } from "@/components/CatalogPageTemplate";
 import { getAllArtists } from "@/lib/artists";
+import { getAvailabilityChecker } from "@/lib/tourStatus";
 
 export const revalidate = 3600;
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default async function ArtistsPage() {
   try {
     const items = await getAllArtists();
+    const isAvailable = await getAvailabilityChecker();
 
     const artists: CatalogItem[] = items.map((artist) => ({
       id: artist.sys.id,
@@ -27,6 +29,7 @@ export default async function ArtistsPage() {
       artImageUrl: artist.fields.artImageUrl,
       artColorIndex: artist.fields.artColorIndex,
       artShapeIndex: artist.fields.artShapeIndex,
+      available: isAvailable(String(artist.fields.nameDBenglish ?? "")),
     }));
 
     return (
