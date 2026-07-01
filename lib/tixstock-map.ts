@@ -426,7 +426,9 @@ export const paintSection = (
     switch (mode) {
       case "base":
       case "inactive":
-        svgEl.style.fill = node.dataset.origFill || "";
+        // Reset + no-ticket sections: neutral light gray, never the map's raw
+        // (often black) fill — keeps the plan on-brand / off-white.
+        svgEl.style.fill = "#E8E6E0";
         svgEl.style.opacity = "1";
         svgEl.style.cursor = "";
         break;
@@ -460,8 +462,8 @@ export const paintSection = (
 
     switch (mode) {
       case "base":
-        svgEl.style.stroke = node.dataset.origStroke || "";
-        svgEl.style.strokeOpacity = node.dataset.origStrokeOpacity || "";
+        svgEl.style.stroke = "#D3D1CA";
+        svgEl.style.strokeOpacity = "0.8";
         break;
       case "available":
         svgEl.style.stroke = TX_SECTION_FILL;
@@ -476,8 +478,8 @@ export const paintSection = (
         svgEl.style.strokeOpacity = "";
         break;
       case "inactive":
-        svgEl.style.stroke = TX_SECTION_FILL;
-        svgEl.style.strokeOpacity = "0.35";
+        svgEl.style.stroke = "#D3D1CA";
+        svgEl.style.strokeOpacity = "0.8";
         break;
       case "disabled":
         svgEl.style.stroke = TX_DISABLED_STROKE;

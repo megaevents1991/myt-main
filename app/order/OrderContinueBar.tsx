@@ -4,10 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /* Brand palette tokens (single source of truth in globals.css).
-   DEEP === FOREST — icons/checks use the brand dark green on the glow fill. */
-const FOREST = "hsl(var(--brand-forest))";
+   Foreground brand green is theme-adaptive via `text-forest dark:text-glow`
+   (forest ink on light, glow-mint on dark) — the constant forest was invisible
+   on the dark order-flow cards. MINT (glow) reads on both — used for fills. */
 const MINT = "hsl(var(--brand-glow))";
-const DEEP = "hsl(var(--brand-forest))";
+
+/** Adaptive brand-green foreground: forest on light, glow-mint on dark. */
+const ACCENT_FG = "text-forest dark:text-glow";
 
 export type ContinueSlot = {
   icon: "ticket" | "flight" | "hotel";
@@ -68,7 +71,7 @@ const CheckIcon = () => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
-    stroke={DEEP}
+    stroke="currentColor"
     strokeWidth={2.6}
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -134,13 +137,13 @@ export const OrderContinueBar = ({
     skip && (isFinalStep ? finalize(skip.onSkip) : skip.onSkip());
 
   return (
-    <div dir="rtl" className="mx-auto w-full max-w-5xl px-2 py-3">
+    <div dir="rtl" className="mx-auto w-full max-w-5xl px-2 py-2 sm:py-1.5">
       <style>{`
         @keyframes ocb-pop { from { opacity:0; transform:scale(.4) } to { opacity:1; transform:scale(1) } }
       `}</style>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_44px_-24px_rgba(10,26,20,.35)]">
         {/* Slots */}
-        <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2.5">
+        <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2 sm:py-1.5">
           {slots.map((s) => (
             <div
               key={s.label}
@@ -151,7 +154,7 @@ export const OrderContinueBar = ({
                   : "border-dashed border-border bg-card"
               )}
             >
-              <span style={{ color: s.filled ? DEEP : undefined }} className={cn(!s.filled && "text-muted-foreground")}>
+              <span className={cn(s.filled ? ACCENT_FG : "text-muted-foreground")}>
                 <SlotIcon type={s.icon} />
               </span>
               <div className="flex min-w-0 flex-col leading-tight">
@@ -159,7 +162,7 @@ export const OrderContinueBar = ({
                   {s.label}
                 </span>
                 {s.filled && (
-                  <span className="truncate text-[11.5px] font-bold" style={{ color: FOREST }}>
+                  <span className={cn("truncate text-[11.5px] font-bold", ACCENT_FG)}>
                     {s.value}
                     {s.delta && (
                       <span className="mr-1 font-semibold text-muted-foreground">· {s.delta}</span>
@@ -168,7 +171,7 @@ export const OrderContinueBar = ({
                 )}
               </div>
               {s.filled && (
-                <span className="mr-auto" style={{ animation: "ocb-pop .3s ease both" }}>
+                <span className={cn("mr-auto", ACCENT_FG)} style={{ animation: "ocb-pop .3s ease both" }}>
                   <CheckIcon />
                 </span>
               )}
@@ -177,8 +180,8 @@ export const OrderContinueBar = ({
         </div>
 
         {/* Price + actions */}
-        <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-baseline gap-1" style={{ color: FOREST }}>
+        <div className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:py-2">
+          <div className={cn("flex items-baseline gap-1", ACCENT_FG)}>
             <span className="text-[15px] font-bold">$</span>
             <span className="text-[23px] font-extrabold leading-none tabular-nums tracking-tight">
               {price.toLocaleString("en-US")}
@@ -194,7 +197,7 @@ export const OrderContinueBar = ({
                   style={{ width: "100%", background: MINT }}
                 />
               </div>
-              <span className="text-center text-[13px] font-extrabold" style={{ color: DEEP }}>
+              <span className={cn("text-center text-[13px] font-extrabold", ACCENT_FG)}>
                 {buildMsg}
               </span>
             </div>
@@ -205,8 +208,7 @@ export const OrderContinueBar = ({
                   type="button"
                   onClick={handleSkip}
                   aria-label={skip.label}
-                  className="flex-1 whitespace-nowrap rounded-xl border-[1.5px] px-4 py-2.5 text-sm font-bold transition-colors hover:bg-forest/5 sm:flex-none"
-                  style={{ borderColor: FOREST, color: FOREST }}
+                  className="flex-1 whitespace-nowrap rounded-xl border-[1.5px] border-forest text-forest hover:bg-forest/5 dark:border-glow dark:text-glow dark:hover:bg-glow/10 px-4 py-2.5 text-sm font-bold transition-colors sm:flex-none sm:px-3.5 sm:py-1.5 sm:text-[13px]"
                 >
                   {skip.label}
                 </button>
@@ -217,12 +219,11 @@ export const OrderContinueBar = ({
                 disabled={primaryDisabled}
                 aria-label={primaryLabel}
                 className={cn(
-                  "flex-[1.4] whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-transform sm:flex-none",
+                  "flex-[1.4] whitespace-nowrap rounded-xl bg-forest text-white dark:bg-glow dark:text-forest px-5 py-2.5 text-sm font-bold transition-transform sm:flex-none sm:px-4 sm:py-1.5 sm:text-[13px]",
                   primaryDisabled
                     ? "cursor-not-allowed opacity-40"
                     : "hover:-translate-y-px hover:shadow-[0_12px_26px_-12px_rgba(10,26,20,.55)]"
                 )}
-                style={{ background: FOREST }}
               >
                 {primaryLabel}
               </button>

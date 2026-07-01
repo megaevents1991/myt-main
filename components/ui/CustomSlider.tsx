@@ -2,7 +2,10 @@ import { FlightSearchCriteria } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
 import { Slider } from "@mantine/core";
 
-const themeColor = "hsl(var(--brand-forest))";
+/* Adaptive: dark-forest on light surfaces, glow-mint on dark — the constant
+   forest was invisible on the dark order-flow cards. */
+const themeColor = "hsl(var(--brand-accent))";
+const themeColorForeground = "hsl(var(--brand-accent-foreground))";
 
 const formatTime = (value: number) => {
   const hours = Math.floor(value);
@@ -75,7 +78,7 @@ export const CustomSlider = ({
         styles={{
           bar: { backgroundColor: themeColor },
           mark: { backgroundColor: "transparent", borderColor: "transparent" },
-          label: { backgroundColor: themeColor },
+          label: { backgroundColor: themeColor, color: themeColorForeground },
           thumb: { backgroundColor: themeColor, borderColor: themeColor },
         }}
         onChange={handleOnChange}

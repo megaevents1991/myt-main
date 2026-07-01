@@ -52,6 +52,14 @@
     --brand-forest: 158 44% 7%; /* #0A1A14 — structural / dark green */
     --brand-glow: 141 100% 68%; /* #5BFF95 — active / light green */
 
+    /* Adaptive brand accent — the brand green that must stay legible as a
+       FOREGROUND / interactive color on the current surface: dark-forest ink on
+       light, glow-mint on dark. `-foreground` is the text that sits ON the
+       accent fill (white on forest / forest on glow). Use for inline styles &
+       Mantine; Tailwind classes can just do `text-forest dark:text-glow`. */
+    --brand-accent: var(--brand-forest);
+    --brand-accent-foreground: 0 0% 100%;
+
     /* Brand neon accents (category coding, blobs, glows) — Figma brand palette */
     --brand-mint: 141 100% 68%; /* #5BFF95 */
     --brand-aqua: 189 100% 64%; /* #45E2FF */
@@ -104,6 +112,9 @@
     --border: 158 18% 20%;
     --input: 158 18% 20%;
     --ring: 141 100% 64%;
+    /* On dark surfaces the legible brand accent flips to glow-mint. */
+    --brand-accent: var(--brand-glow);
+    --brand-accent-foreground: 158 44% 7%;
     --badge-urgent: 354 90% 64%;
     --badge-new: 257 100% 82%;
     --badge-vip: 48 90% 58%;

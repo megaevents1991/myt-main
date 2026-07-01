@@ -981,7 +981,7 @@ export default function OrderReview() {
             </div>
           )}
           <div className="grid md:grid-cols-2 gap-4 items-start">
-            <div className="space-y-4 order-1 md:order-1">
+            <div className="space-y-4 order-1 md:order-2">
               <Card className="bg-card text-card-foreground shadow-lg overflow-hidden">
                 <div
                   className={cn(
@@ -1444,7 +1444,7 @@ export default function OrderReview() {
               {/* CTA Button */}
               <Button
                 onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-main text-main-foreground font-bold hover:bg-main/90 text-[18px] h-[52px] hidden md:block"
+                className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] hidden md:block"
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
@@ -1478,7 +1478,7 @@ export default function OrderReview() {
                 )}
               </div>
             </div>
-            <div className="space-y-6 order-2 md:order-2">
+            <div className="space-y-6 order-2 md:order-1">
               <Card
                 className="bg-card text-card-foreground shadow-lg overflow-hidden"
                 ref={passengerDetailsRef}
@@ -1896,7 +1896,7 @@ export default function OrderReview() {
               <Button
                 ref={originalButtonRef}
                 onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-main text-main-foreground font-bold hover:bg-main/90 text-[18px] h-[52px] block md:hidden"
+                className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] block md:hidden"
                 disabled={isSubmitting}
                 aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
               >
@@ -1991,7 +1991,7 @@ export default function OrderReview() {
             </Button>
             <Button
               onClick={(e) => handleSubmit(e, true)}
-              className="flex-1 bg-main text-main-foreground font-bold hover:bg-main/90 text-[18px] h-[52px] w-full justify-between"
+              className="flex-1 bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] w-full justify-between"
               disabled={isSubmitting}
               aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
             >

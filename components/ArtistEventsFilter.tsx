@@ -86,6 +86,7 @@ export const ArtistEventsFilter = ({
             aria-expanded={open}
             className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-foreground/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
+            <span className="flex-1 text-right">{current.label}</span>
             <ChevronDown
               className={cn(
                 "size-4 shrink-0 text-muted-foreground transition-transform",
@@ -93,7 +94,6 @@ export const ArtistEventsFilter = ({
               )}
               aria-hidden
             />
-            <span className="flex-1 text-right">{current.label}</span>
           </button>
 
           {open && (

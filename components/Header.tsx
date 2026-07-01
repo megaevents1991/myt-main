@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -32,9 +32,13 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
   // Inside the order flow the Stepper is the only chrome — hide the global
   // header so users can't bounce back to the homepage mid-booking.
   const hidden = pathname?.startsWith("/order");
+
+  const isActive = (href: string) =>
+    pathname === href || (pathname?.startsWith(href + "/") ?? false);
 
   // #25: artist/team pages push their name here so it sticks in the header once
   // the hero scrolls away. Detail pages mount <HeaderTitle name=…>.
@@ -53,6 +57,22 @@ export const Header = () => {
     setMenuOpen(false);
     window.dispatchEvent(new CustomEvent("myt:open-search"));
   };
+
+  // Mobile menu: close on outside click / Escape (the hamburger only exists on
+  // mobile, so this covers the only case where the slide-down is open).
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (!headerRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
   // Header stays hidden over a page's own hero (homepage search / detail hero)
   // and slides in once the user scrolls past it, keeping the top clean. On
   // pages with no such hero it's visible from the top so nav is always there.
@@ -112,22 +132,23 @@ export const Header = () => {
     <>
     {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
     <header
+      ref={headerRef}
       className={cn(
         "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground transition-transform duration-300",
         visible ? "translate-y-0" : "-translate-y-full"
       )}
     >
       <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-3">
-        {/* Action cluster — RTL order (right→left): hamburger, theme, whatsapp,
-            search. Grouped in a subtle pill so it reads as one control, not a
-            loaded row. First DOM child sits on the right in RTL. */}
+        {/* Action cluster — RTL order (right→left): hamburger (mobile only),
+            theme, whatsapp, search. Grouped in a subtle pill so it reads as one
+            control, not a loaded row. First DOM child sits on the right in RTL. */}
         <div className="flex shrink-0 items-center gap-0 rounded-full bg-main-foreground/[0.06] px-0.5">
           <button
             type="button"
             aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            className={iconBtn}
+            className={cn(iconBtn, "md:hidden")}
           >
             {menuOpen ? (
               <X className="size-[18px]" aria-hidden />
@@ -154,6 +175,32 @@ export const Header = () => {
             <Search className="size-[18px]" aria-hidden />
           </button>
         </div>
+
+        {/* Desktop inline nav — replaces the hamburger on ≥md. Centred like the
+            page title; hidden on detail pages where the sticky title takes the
+            centre slot instead. */}
+        {!pageTitle && (
+          <nav
+            aria-label="ניווט"
+            className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 md:flex"
+          >
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-main-foreground/10",
+                  isActive(link.href)
+                    ? "bg-main-foreground/10 text-main-foreground"
+                    : "text-main-foreground/80"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         {/* Desktop: the artist/team name sits centred once the hero scrolls
             away (mobile shows it beside the brand mark instead — see below). */}
@@ -193,10 +240,10 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Slide-down menu holds navigation + contact for all screen sizes */}
+      {/* Slide-down menu — mobile only; desktop nav is inline above */}
       <div
         className={cn(
-          "overflow-hidden border-t border-main-foreground/10 transition-[max-height]",
+          "overflow-hidden border-t border-main-foreground/10 transition-[max-height] md:hidden",
           menuOpen ? "max-h-96" : "max-h-0 border-t-0"
         )}
       >

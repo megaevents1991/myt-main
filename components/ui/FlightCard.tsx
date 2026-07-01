@@ -236,7 +236,7 @@ export const FlightTicketCard = memo(
             {/* Mobile pricing element */}
             <div
               className={cn(
-                "absolute bg-card border border-forest lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-forest rounded-2xl px-3 py-1 text-sm",
+                "absolute bg-card border border-forest text-forest dark:border-glow dark:text-glow lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 rounded-2xl px-3 py-1 text-sm",
                 isSelected && "bg-main text-main-foreground border-main dark:bg-foreground dark:text-background dark:border-foreground"
               )}
             >
@@ -320,7 +320,9 @@ const FlightCard = ({
   return (
     <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
       <div className="w-[20%] lg:w-[20%] flex flex-col items-center">
-        <div className="mb-2">
+        {/* Airline logos are dark-ink PNGs — on the dark card they vanish, so on
+            dark we seat them on a white chip to keep the brand legible. */}
+        <div className="mb-2 rounded-md dark:bg-white/95 dark:p-1.5">
           {metadata.logo ? (
             <Image
               src={metadata.logo}
