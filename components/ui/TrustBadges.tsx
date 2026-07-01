@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 // Short labels on mobile (space-tight), full labels on desktop.
 const badges = [
   { Icon: Award, short: "30 שנות ניסיון", long: "מבית מגה תיירות · 30 שנות ניסיון", iconClass: "" },
-  { Icon: Ticket, short: "כרטיסים רשמיים", long: "כרטיסים רשמיים בלבד", iconClass: "text-secondary" },
+  { Icon: Ticket, short: "כרטיסים רשמיים", long: "כרטיסים רשמיים בלבד", iconClass: "" },
   { Icon: Lock, short: "תשלום מאובטח", long: "תשלום מאובטח", iconClass: "" },
 ];
 
