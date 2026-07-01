@@ -1799,7 +1799,7 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
     {hasMultipleDates && (
       <div
         data-strip-click="true"
-        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 dark:hover:text-background dark:active:bg-foreground/90 dark:active:text-background"
+        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:hover:bg-main/90 dark:hover:text-main-foreground dark:active:bg-main/90 dark:active:text-main-foreground"
         role="button"
         aria-label={`לחץ כדי לראות את כל האירועים של ${collideTarget?.label ?? event.name}`}
         onClick={handleStripClick}
