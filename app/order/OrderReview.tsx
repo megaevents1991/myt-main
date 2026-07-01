@@ -1019,7 +1019,7 @@ export default function OrderReview() {
                         <Link
                           href={`/artists/${artistSlug}`}
                           aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
-                          className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-[#0f7a3d]"
+                          className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-[#0A1A14]"
                         >
                           <Image
                             src={event.card_image_url}

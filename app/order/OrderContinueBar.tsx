@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-/* Brand tokens (mirrors the mockup): forest = dark surface/button,
-   mint = light-green fill, deep = dark-green icon/check. */
+/* Brand palette: Dark Forest Green (structural/dark) + Glow Green (active).
+   DEEP === FOREST — icons/checks use the brand dark green on the mint fill. */
 const FOREST = "#0A1A14";
 const MINT = "#5BFF95";
-const DEEP = "#0f7a3d";
+const DEEP = "#0A1A14";
 
 export type ContinueSlot = {
   icon: "ticket" | "flight" | "hotel";

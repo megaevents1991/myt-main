@@ -32,7 +32,7 @@ export const CardWrapper = ({
       style={{ WebkitTapHighlightColor: "transparent" }}
       className={cn(
         "flex cursor-pointer flex-row items-center justify-between px-4 py-2 bg-card text-card-foreground rounded-lg shadow-lg relative border border-2 border-border",
-        "hover:shadow-xl hover:outline-2 hover:outline-[#0f7a3d] hover:outline-offset-[-2px] hover:outline-solid hover:outline",
+        "hover:shadow-xl hover:outline-2 hover:outline-[#0A1A14] hover:outline-offset-[-2px] hover:outline-solid hover:outline",
         "focus:outline-none focus:ring-0",
         "active:outline-none active:ring-0",
         "[&:focus-visible]:outline-none [&:focus-visible]:ring-0",
@@ -40,7 +40,7 @@ export const CardWrapper = ({
         // Selected = brand dark-green border + faint mint tint (matches the
         // map's selected section and the continue-bar filled slots).
         isSelected &&
-          "border-[#0f7a3d] bg-[#5BFF95]/[0.10] focus:border-[#0f7a3d] active:border-[#0f7a3d] dark:border-[#5BFF95] dark:bg-[#5BFF95]/10 dark:focus:border-[#5BFF95] dark:active:border-[#5BFF95]",
+          "border-[#0A1A14] bg-[#5BFF95]/[0.10] focus:border-[#0A1A14] active:border-[#0A1A14] dark:border-[#5BFF95] dark:bg-[#5BFF95]/10 dark:focus:border-[#5BFF95] dark:active:border-[#5BFF95]",
         disabled &&
           "cursor-not-allowed border-border bg-muted opacity-60 grayscale shadow-none hover:shadow-none hover:outline-none",
         className

@@ -45,9 +45,9 @@ export const TX_HOVER_STROKE = "#F0F0F2";
 export const TX_TEXT_SHADOW = "#000000";
 /** Brighter green for hover feedback */
 export const TX_HOVER_FILL = "#2BC274";
-/** Brand dark-green for the selected section — clearly darker than the
- *  hover/available greens so a locked-in pick reads at a glance. */
-export const TX_SELECTED_FILL = "#0f7a3d";
+/** Brand Dark Forest Green for the selected section — clearly darker than
+ *  the hover/available greens so a locked-in pick reads at a glance. */
+export const TX_SELECTED_FILL = "#0A1A14";
 /** Fill for explicitly disabled/excluded sections */
 export const TX_DISABLED_FILL = "#D8D8D8";
 /** Stroke for explicitly disabled/excluded sections */
