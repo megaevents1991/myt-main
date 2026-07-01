@@ -283,8 +283,8 @@ export default function ConfirmationPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
       <div className="flex flex-col items-center" dir="rtl">
-        <div className="rounded-full bg-green-100 p-3 mb-4">
-          <Check className="h-8 w-8 text-green-600" />
+        <div className="rounded-full bg-glow p-3 mb-4">
+          <Check className="h-8 w-8 text-forest" strokeWidth={2.6} />
         </div>
         <h1 className="text-3xl font-bold">
           {isHold ? "ההזמנה נשמרה ל-24 שעות" : "הזמנתכם נקלטה"}
@@ -325,8 +325,8 @@ export default function ConfirmationPage() {
             
             {isHold && <OrderRecoverySection />}
             
-            <div className="bg-muted rounded-lg p-6 my-6 text-left">
-              <h2 className="text-2xl font-bold mb-4 text-center">
+            <div className="bg-card border border-[#E7E5DC] shadow-sm rounded-2xl p-6 my-6 text-right">
+              <h2 className="text-xl font-extrabold text-forest mb-4 pb-3 border-b-2 border-[#EEF6F0] text-right">
                 פרטי ההזמנה
               </h2>
               <div className="space-y-3">
@@ -401,8 +401,8 @@ export default function ConfirmationPage() {
             
             {isHold && <OrderRecoverySection />}
             
-            <div className="bg-muted rounded-lg p-6 my-6 text-left">
-              <h2 className="text-2xl font-bold mb-4 text-center">
+            <div className="bg-card border border-[#E7E5DC] shadow-sm rounded-2xl p-6 my-6 text-right">
+              <h2 className="text-xl font-extrabold text-forest mb-4 pb-3 border-b-2 border-[#EEF6F0] text-right">
                 פרטי ההזמנה
               </h2>
               <div className="space-y-3">

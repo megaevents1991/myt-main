@@ -66,47 +66,54 @@ export const validateOrderData = async (
 export const userEmail = (
   replacements: Record<string, string | number | boolean | undefined>,
 ) => {
+  const referralUrl = `https://mega-events.co.il/?utm_source=${replacements.promoCode}`;
+  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(
+    `הצטרפו למגה איבנטס דרך הקישור שלי וקבלו הטבה בלעדית: ${referralUrl}`,
+  )}`;
   const refer =
     replacements.promoCode !== "dummy_code" &&
     replacements.promoCode !== undefined
       ? `
       <!-- Refer Friend Component -->
-      <div style="background: linear-gradient(180deg, #0FA049 0%, #0A1A14 100%); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
-          <div style="margin-bottom: 15px; direction: rtl;" dir="rtl">
-              <img src="https://mega-events.co.il/undraw_travelers_kud9.png" alt="Travelers" style="max-width: 150px; height: auto;" />
+      <div style="background-color: #0A1A14; border-radius: 18px; padding: 28px 22px; margin: 0 0 26px 0; text-align: center; direction: rtl;" dir="rtl">
+          <div style="margin-bottom: 12px; direction: rtl;" dir="rtl">
+              <img src="https://mega-events.co.il/undraw_travelers_kud9.png" alt="" width="128" style="width: 128px; max-width: 55%; height: auto;" />
           </div>
-          <div style="color: #ffffff; margin-bottom: 15px; direction: rtl;" dir="rtl">
-              <p style="font-size: 18px; margin: 0 0 10px 0; direction: rtl;" dir="rtl">הזמינו חברים לחופשה ותוכלו לקבל</p>
-              <p style="font-size: 24px; font-weight: bold; margin: 0 0 10px 0; direction: rtl;" dir="rtl">עד <span style="unicode-bidi: embed;">$800</span> החזר!</p>
-              <p style="font-size: 16px; margin: 0; direction: rtl;" dir="rtl">המליצו לחברים - <strong>תקבלו $40 על כל נוסע שיזמין דרך הלינק, </strong>וגם הם יהנו מהטבה בלעדית!</p>
+          <div style="margin-bottom: 18px; direction: rtl;" dir="rtl">
+              <p style="font-size: 13px; font-weight: 700; letter-spacing: .04em; color: #7FD8A6; margin: 0 0 4px 0; direction: rtl;" dir="rtl">הזמינו חברים לחופשה</p>
+              <p style="font-size: 30px; font-weight: 800; color: #5BFF95; margin: 0 0 10px 0; direction: rtl;" dir="rtl">עד <span style="unicode-bidi: embed;">$800</span> החזר!</p>
+              <p style="font-size: 14px; line-height: 1.6; color: #C7D8CF; margin: 0 auto; max-width: 380px; direction: rtl;" dir="rtl">על כל נוסע שיזמין דרך הקישור שלכם — <strong style="color: #5BFF95;">$40 החזר</strong>, והם יהנו מהטבה בלעדית.</p>
           </div>
           
           <!-- Referral Link (LTR content in RTL context) -->
-          <div style="background-color: #ffffff; border: 2px dashed rgba(255,255,255,0.6); border-radius: 12px; margin-bottom: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" dir="ltr">
-              <p style="color: #ffffff; font-size: 14px; margin: 5px 0 5px 0;">הקישור האישי שלך:</p>
+          <div style="background-color: #08130E; border: 1px solid rgba(91,255,149,0.45); border-radius: 12px; margin: 0 0 16px 0; padding: 4px 6px; text-align: center;" dir="ltr">
+              <p style="color: #7FD8A6; font-size: 12px; font-weight: 700; margin: 8px 0 2px 0; direction: rtl;" dir="rtl">הקישור האישי שלך</p>
               
-              <div style="background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,1) 100%); border-radius: 8px; padding: 12px; display: block; position: relative;">
-                  <p style="margin: 0; font-size: 16px; color: #0A1A14; font-weight: bold; word-break: break-all; direction: ltr;">https://mega-events.co.il/?utm_source=${replacements.promoCode}</p>
+              <div style="padding: 4px 8px 10px; display: block;">
+                  <a href="${referralUrl}" style="font-size: 14px; color: #5BFF95; font-weight: bold; text-decoration: none; word-break: break-all; direction: ltr;">${referralUrl}</a>
               </div>
           </div>                                      
+          <div style="text-align: center; margin: 4px 0 10px 0;" dir="rtl">
+              <a href="${waShareUrl}" style="display: inline-block; background-color: #5BFF95; color: #0A1A14; font-size: 15px; font-weight: 800; text-decoration: none; padding: 13px 30px; border-radius: 12px; direction: rtl;" dir="rtl">שתפו עם חברים ←</a>
+          </div>
           <div style="margin-bottom: 15px; margin-top: 15px; direction: rtl;" dir="rtl">
               <p style="font-weight: bold; color: #ffffff; font-size: 18px; margin: 0 0 15px 0; direction: rtl;" dir="rtl">איך זה עובד?</p>
               <table role="presentation" style="width: 100%; border-collapse: collapse; color: #ffffff; direction: rtl;" dir="rtl">
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #0A1A14; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">1</div>
+                          <div style="background-color: transparent; color: #5BFF95; border: 1px solid #5BFF95; border-radius: 50%; width: 24px; height: 24px; line-height: 22px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">1</div>
                       </td>
                       <td style="text-align: right; direction: rtl;" dir="rtl">העתיקו את הקישור ושלחו לחברים</td>
                   </tr>
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; padding: 5px 0; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #0A1A14; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">2</div>
+                          <div style="background-color: transparent; color: #5BFF95; border: 1px solid #5BFF95; border-radius: 50%; width: 24px; height: 24px; line-height: 22px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">2</div>
                       </td>
                       <td style="text-align: right; padding: 5px 0; direction: rtl;" dir="rtl">החברים מבצעים הזמנה באתר</td>
                   </tr>
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #0A1A14; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">3</div>
+                          <div style="background-color: transparent; color: #5BFF95; border: 1px solid #5BFF95; border-radius: 50%; width: 24px; height: 24px; line-height: 22px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">3</div>
                       </td>
                       <td style="text-align: right; direction: rtl;" dir="rtl">אתם מקבלים החזר!</td>
                   </tr>
@@ -133,11 +140,11 @@ export const userEmail = (
             }
           </style>
       </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5; direction: rtl;" dir="rtl">
-          <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #ffffff; direction: rtl;" dir="rtl">
+      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #EEEDE6; direction: rtl;" dir="rtl">
+          <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #EEEDE6; direction: rtl;" dir="rtl">
               <tr>
-                  <td style="padding: 0; direction: rtl;" dir="rtl">
-                      <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse; direction: rtl;" dir="rtl">
+                  <td style="padding: 24px 12px; direction: rtl;" dir="rtl">
+                      <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(10,26,20,0.12); direction: rtl;" dir="rtl">
                           <tr>
                               <td style="background-color: #0A1A14; padding: 20px; text-align: center; direction: rtl;" dir="rtl">
                                 <svg width="184" height="54" viewBox="0 0 263 77" fill="none" xmlns="http://www.w3.org/2000/svg" alt="לוגו מגה איבנטס" style="max-width: 100%; height: auto;">
@@ -217,10 +224,12 @@ export const userEmail = (
                           <tr>
                               <td style="padding: 20px 20px; text-align: right; direction: rtl;" dir="rtl">
                                   <!-- Success Icon -->
-                                  <div style="text-align: center; margin-bottom: 30px; direction: rtl;" dir="rtl">
-                                      <svg width="48" height="48" viewBox="0 0 24 24" style="fill: none; stroke: #0A1A14; stroke-width: 2;">
-                                          <path d="M20 6L9 17l-5-5"></path>
-                                      </svg>
+                                  <div style="text-align: center; margin-bottom: 20px; direction: rtl;" dir="rtl">
+                                      <table role="presentation" align="center" style="margin: 0 auto;"><tr><td style="width: 64px; height: 64px; background-color: #5BFF95; border-radius: 50%; text-align: center; vertical-align: middle;">
+                                          <svg width="34" height="34" viewBox="0 0 24 24" style="fill: none; stroke: #0A1A14; stroke-width: 2.6;">
+                                              <path d="M20 6L9 17l-5-5"></path>
+                                          </svg>
+                                      </td></tr></table>
                                   </div>
   
                                   <div style="margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
@@ -254,8 +263,8 @@ export const userEmail = (
                                       : ""
                                   }
   
-                                  <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
-                                      <h2 style="color: #0A1A14; font-size: 20px; margin: 0 0 20px 0; text-align: center; direction: rtl;" dir="rtl">פרטי ההזמנה</h2>
+                                  <div style="background-color: #FFFFFF; border: 1px solid #E7E5DC; border-radius: 14px; padding: 22px 20px; margin-bottom: 26px; direction: rtl;" dir="rtl">
+                                      <h2 style="color: #0A1A14; font-size: 19px; font-weight: 800; margin: 0 0 14px 0; padding-bottom: 12px; border-bottom: 2px solid #EEF6F0; text-align: right; direction: rtl;" dir="rtl">פרטי ההזמנה</h2>
                                       
                                       <table role="presentation" style="width: 100%; border-collapse: collapse; direction: rtl;" dir="rtl">
                                           <tr>
@@ -304,8 +313,8 @@ export const userEmail = (
                                               : ""
                                           }
                                           <tr>
-                                              <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #0A1A14;">מחיר:</strong> ₪${(replacements.price || "").toLocaleString("he-IL")}
+                                              <td style="padding: 14px 0 4px; direction: rtl;" dir="rtl">
+                                                  <table role="presentation" width="100%" style="border-collapse: separate; direction: rtl;" dir="rtl"><tr><td style="background-color: #F2FBF5; border: 1px solid #D6F3E1; border-radius: 10px; padding: 13px 16px; text-align: right; direction: rtl;" dir="rtl"><strong style="color: #0A1A14; font-size: 15px;">מחיר כולל:</strong> <span style="color: #0A1A14; font-size: 18px; font-weight: 800; unicode-bidi: embed;">₪${(replacements.price || "").toLocaleString("he-IL")}</span></td></tr></table>
                                               </td>
                                           </tr>
                                       </table>

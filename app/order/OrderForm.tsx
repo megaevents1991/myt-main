@@ -306,7 +306,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
      Slots fill as the customer picks; the last step folds into the
      summary with a short "building the package" animation. */
   const priceNote = (delta: number) =>
-    delta > 0 ? `+$${delta.toLocaleString("en-US")}` : "כלול";
+    delta > 0
+      ? `+$${delta.toLocaleString("en-US")}`
+      : delta < 0
+        ? `-$${Math.abs(delta).toLocaleString("en-US")}`
+        : "כלול";
 
   const continueSlots: ContinueSlot[] = [
     {
@@ -330,6 +334,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       label: "מלון",
       filled: skipHotel || !!hotel?.id,
       value: skipHotel ? "ללא מלון" : hotel?.id ? hotel?.name || "מלון" : "",
+      delta: !skipHotel && hotel?.id ? priceNote(hotelPriceAddition) : undefined,
     });
   }
 
@@ -338,7 +343,10 @@ export const OrderForm = ({ event }: { event: Event }) => {
   const displayTotal =
     basePriceNum +
     (ticketRelativePrice > 0 ? ticketRelativePrice : 0) +
-    (flight?.id && !flightSkipped && flightDelta > 0 ? flightDelta : 0);
+    // Flight/hotel deltas may be negative (pick cheaper than base) → reduce the
+    // live total, mirroring the real charge in calculateBaseTotal (hooks.tsx).
+    (flight?.id && !flightSkipped ? flightDelta : 0) +
+    (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
 
   const isFinalStep = isUS ? step === 2 : step === 3;
   const primaryLabel =
@@ -357,20 +365,24 @@ export const OrderForm = ({ event }: { event: Event }) => {
         : undefined;
 
   return (
-    <div className="max-w-7xl mx-auto px-2 pt-3">
-      {step === 1 && <TicketSelection />}
-      {step === 2 && <FlightSelection />}
-      {step === 3 && <HotelSelection />}
-      {step === 4 && <OrderReview />}
-      {/* Floating ContactUs - separate from footer */}
-      {step !== 4 && (
-        <div className="fixed bottom-24 left-2 z-50 sm:hidden">
-          <ContactUs inHeader={false} />
-        </div>
-      )}
-      {/* Sticky continue bar (steps 1–3) */}
+    <>
+      <div className="max-w-7xl mx-auto px-2 pt-3">
+        {step === 1 && <TicketSelection />}
+        {step === 2 && <FlightSelection />}
+        {step === 3 && <HotelSelection />}
+        {step === 4 && <OrderReview />}
+        {/* Floating ContactUs - separate from footer */}
+        {step !== 4 && (
+          <div className="fixed bottom-24 left-2 z-50 sm:hidden">
+            <ContactUs inHeader={false} />
+          </div>
+        )}
+      </div>
+      {/* Sticky continue bar (steps 1–3) — full-width strip, inner card
+         viewport-centered via its own `mx-auto max-w-5xl`. Lives OUTSIDE the
+         max-w-7xl wrapper so `w-full` = viewport, not the centered container. */}
       {step < 4 && (
-        <div className="sticky bottom-0 z-40 mt-4 w-screen -mx-2 border-t border-border bg-background/85 backdrop-blur">
+        <div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur">
           <OrderContinueBar
             slots={continueSlots}
             total={displayTotal}
@@ -382,6 +394,6 @@ export const OrderForm = ({ event }: { event: Event }) => {
           />
         </div>
       )}
-    </div>
+    </>
   );
 };

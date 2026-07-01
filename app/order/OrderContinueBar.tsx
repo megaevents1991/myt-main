@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Ticket, Plane, Building2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* Brand palette tokens (single source of truth in globals.css).
@@ -35,50 +36,15 @@ type Props = {
   isFinalStep: boolean;
 };
 
+/* Brand icon set — lucide-react, same faces the search bar uses
+   (כרטיס→Ticket, טיסה→Plane, מלון→Building2). */
 const SlotIcon = ({ type }: { type: ContinueSlot["icon"] }) => {
-  const common = {
-    width: 17,
-    height: 17,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    className: "shrink-0",
-  };
-  if (type === "ticket")
-    return (
-      <svg {...common}>
-        <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4Z" />
-        <path d="M9 7v10" />
-      </svg>
-    );
-  if (type === "flight")
-    return (
-      <svg {...common}>
-        <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
-      </svg>
-    );
-  return (
-    <svg {...common}>
-      <path d="M3 21V7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v14M16 11h3a2 2 0 0 1 2 2v8M7 9h2M7 13h2M7 17h2" />
-    </svg>
-  );
+  const Icon = type === "ticket" ? Ticket : type === "flight" ? Plane : Building2;
+  return <Icon size={17} strokeWidth={2} className="shrink-0" />;
 };
 
 const CheckIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2.6}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="h-4 w-4 shrink-0"
-  >
-    <path d="M20 6 9 17l-5-5" />
-  </svg>
+  <Check size={16} strokeWidth={2.6} className="shrink-0" />
 );
 
 /** Cubic ease-out count-up between renders when `target` changes. */
@@ -186,7 +152,7 @@ export const OrderContinueBar = ({
             <span className="text-[23px] font-extrabold leading-none tabular-nums tracking-tight">
               {price.toLocaleString("en-US")}
             </span>
-            <span className="mr-1 text-xs font-semibold text-muted-foreground">סה״כ חבילה</span>
+            <span className="mr-1 text-xs font-semibold text-muted-foreground">סה״כ לנוסע</span>
           </div>
 
           {building ? (
