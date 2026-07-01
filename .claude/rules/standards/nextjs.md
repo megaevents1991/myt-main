@@ -21,7 +21,7 @@ Non-negotiables for routes, pages, middleware. Calibrated to Next 15 + ISR strat
 - `NEXT_SECRET_*` server-only — never in client/`"use client"` files. `NEXT_PUBLIC_*` only for client (`MARKUP`, `API_URL`, `MAPBOX_TOKEN`). New secret → add to `.env.local` + document in `CLAUDE.md`.
 
 ## Middleware & images
-- `middleware.ts` scope = Mondial redirect + Cache-Control only. No auth/data-fetch/heavy compute (runs every request).
+- `middleware.ts` scope = Cache-Control only. No auth/data-fetch/heavy compute (runs every request).
 - `next/image` with `width`/`height` (or `fill`) — never raw `<img>` for content.
 
 ## Review output

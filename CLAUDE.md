@@ -123,7 +123,6 @@ Events have a `type` field that determines ticket source:
 ### Middleware
 
 `middleware.ts` runs on all non-static routes:
-- Hard-redirects the legacy Mondial 2026 football page to an external subdomain
 - Sets `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` on HTML pages
 
 ### Pricing

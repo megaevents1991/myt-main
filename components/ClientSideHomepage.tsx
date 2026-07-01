@@ -488,9 +488,6 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
   return (
     <Link
       href={`/football/${team.sys?.id}`}
-      // Mondial pages hard-redirect to an external subdomain in middleware;
-      // RSC prefetch hits CORS and logs an error on every home load.
-      prefetch={false}
       className="block hover:opacity-90 transition-opacity"
       key={team.sys.id}
       aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
