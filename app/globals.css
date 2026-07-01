@@ -159,6 +159,31 @@
   background-color: hsl(var(--success) / 0.08);
 }
 
+/* ── Custom themed scrollbar ───────────────────────────────────────────────
+   Body scrollbar is hidden globally; scrollable panels (search dropdowns, etc.)
+   would otherwise fall back to the default browser bar. Apply `.myt-scroll` to
+   opt into a thin, brand-tinted bar that matches the panel border/hover tones. */
+.myt-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: hsl(var(--surface-inverse-foreground) / 0.25) transparent;
+}
+.myt-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.myt-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.myt-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--surface-inverse-foreground) / 0.25);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.myt-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--surface-inverse-foreground) / 0.4);
+}
+
 /* ── Elfsight Google Reviews — dark-mode theming ──────────────────────────
    The widget renders in the LIGHT DOM (no iframe / no shadow root) with stable
    `es-*` class hooks and near-black (#111) text meant for a light page. In dark

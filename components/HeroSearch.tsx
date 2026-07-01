@@ -285,7 +285,7 @@ export const HeroSearch = ({
             אירועים תואמים · המחיר ממוצע וניתן לשינוי בהמשך
             <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
           </p>
-          <ul className="max-h-[20rem] overflow-y-auto overscroll-contain">
+          <ul className="myt-scroll max-h-[20rem] overflow-y-auto overscroll-contain">
             {matches.map((m) => {
               const mPrice = computePackagePrice(m);
               return (
@@ -430,7 +430,7 @@ export const HeroSearch = ({
               <p className="px-1 pb-1 text-xs font-medium text-main-foreground/50">
                 אירועים נוספים
               </p>
-              <ul className="max-h-[15rem] overflow-y-auto overscroll-contain">
+              <ul className="myt-scroll max-h-[15rem] overflow-y-auto overscroll-contain">
                 {matches
                   .filter((m) => m.id !== selected.id)
                   .map((m) => {
