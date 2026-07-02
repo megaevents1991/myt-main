@@ -241,10 +241,25 @@ export function TixstockDynamicMap({
 
       const activeHoverTicket = hoveredTicket ?? hoveredMapTicket;
 
-      // Highlight the selected ticket only when no ticket/card hover is active.
-      // During hover, the hovered category should be the only emphasized group;
-      // when hover clears, the selected state is restored by this same repaint.
-      if (selectedTicketId && !activeHoverTicket) {
+      // Hover highlight — light glow preview on the hovered category.
+      if (activeHoverTicket) {
+        sectionEls.forEach((el) => {
+          const sec = el.getAttribute("data-section") || "";
+          if (excludedSections?.includes(sec)) return; // never highlight disabled
+          const cat = getCategoryIdFromSectionEl(el);
+
+          const match =
+            !disabledTicketIds?.has(activeHoverTicket.id) &&
+            ticketCategoryOrSectionMatches(activeHoverTicket, sec, cat);
+
+          if (match) paintSection(el, "hover");
+        });
+      }
+
+      // Selected ticket paints LAST and always wins: the picked area stays
+      // dark forest green even while a hover is active (hovering the selected
+      // card used to repaint it light glow).
+      if (selectedTicketId) {
         const selTicket = tickets.find((t) => t.id === selectedTicketId);
         if (selTicket) {
           sectionEls.forEach((el) => {
@@ -259,21 +274,6 @@ export function TixstockDynamicMap({
             if (match) paintSection(el, "selected");
           });
         }
-      }
-
-      // Hover highlight (overrides selection)
-      if (activeHoverTicket) {
-        sectionEls.forEach((el) => {
-          const sec = el.getAttribute("data-section") || "";
-          if (excludedSections?.includes(sec)) return; // never highlight disabled
-          const cat = getCategoryIdFromSectionEl(el);
-
-          const match =
-            !disabledTicketIds?.has(activeHoverTicket.id) &&
-            ticketCategoryOrSectionMatches(activeHoverTicket, sec, cat);
-
-          if (match) paintSection(el, "hover");
-        });
       }
     } catch (e) {
       console.error("[TixstockDynamicMap] repaint error:", e);

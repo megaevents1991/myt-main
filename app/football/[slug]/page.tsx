@@ -132,7 +132,10 @@ export default async function FootballPage({
           imageUrl={imageUrl}
           imageAlt={`לוגו של קבוצת ${String(name)}`}
           heroVideoUrl={heroVideoUrl}
+          artId={team.sys.id}
           artImageUrl={team.fields.artImageUrl}
+          artColorIndex={team.fields.artColorIndex}
+          artShapeIndex={team.fields.artShapeIndex}
         />
 
         <ArtistBanners banners={banners} />

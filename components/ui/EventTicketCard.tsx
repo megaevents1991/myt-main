@@ -46,7 +46,6 @@ export const EventTicketCard = ({
       isSelected={isSelected}
       onClick={onClick}
       hasBorderColor={colorOnTheMap}
-      selectedStyle="solid"
       className={cn("p-2 pr-8 relative overflow-visible")}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -75,9 +74,7 @@ export const EventTicketCard = ({
             <Radio
               onChange={() => void 0}
               checked={!disabled && isSelected}
-              // Selected card is forest-filled → glow radio with forest dot.
-              color="hsl(var(--brand-glow))"
-              iconColor="hsl(var(--brand-forest))"
+              color="hsl(var(--brand-forest))"
               style={{ pointerEvents: "none" }}
               disabled={disabled}
             />
@@ -87,13 +84,11 @@ export const EventTicketCard = ({
               </div>
               {categoryDescription?.length > 0 && (
                 <div
-                  className={cn(
-                    "text-md",
-                    categoryDescription.includes("כרטיסים אחרונים") &&
-                      (isSelected
-                        ? "font-bold text-red-400"
-                        : "font-bold text-red-600")
-                  )}
+                  className={`text-md ${
+                    categoryDescription.includes("כרטיסים אחרונים")
+                      ? "font-bold text-red-600"
+                      : ""
+                  }`}
                 >
                   {categoryDescription}
                 </div>
@@ -142,7 +137,7 @@ export const EventTicketCard = ({
           </div>
         </div>
         {isSelected && !disabled && (
-          <div className="w-full block lg:hidden border-t-2 pt-2 border-white/25 mt-2">
+          <div className="w-full block lg:hidden border-t-2 pt-2 border-border mt-2">
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}

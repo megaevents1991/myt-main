@@ -32,6 +32,15 @@ const SHAPES = [
   ...BASE_SHAPES.map((s) => ({ ...s, mirror: true })),
 ];
 
+// Photo backgrounds — shapeIndex 6-8, set explicitly in the backoffice picker
+// (the deterministic default only picks 0-5). The cut-out sits on the photo
+// instead of a neon blob. Files duplicated in the backoffice public folder.
+const PHOTO_BACKGROUNDS = [
+  "/art-backgrounds/cars.jpg",
+  "/art-backgrounds/tennis.jpg",
+  "/art-backgrounds/football.jpg",
+];
+
 /**
  * Event card art: a dark panel with a neon brand blob behind the artist image
  * (the image should ideally be a transparent cut-out). Colour + shape are chosen
@@ -85,6 +94,11 @@ export const EventArt = ({
   const fit = imageFit ?? (variant === "blob" ? "contain" : "cover");
   const art = getEventArt(id, { colorIndex, shapeIndex });
   const color = EVENT_ART_COLORS[art.colorIndex % EVENT_ART_COLORS.length];
+  // Indices 6+ select a photo background instead of a blob shape.
+  const photoBg =
+    art.shapeIndex >= SHAPES.length
+      ? PHOTO_BACKGROUNDS[(art.shapeIndex - SHAPES.length) % PHOTO_BACKGROUNDS.length]
+      : null;
   const shape = SHAPES[art.shapeIndex % SHAPES.length];
 
   return (
@@ -94,20 +108,30 @@ export const EventArt = ({
         className
       )}
     >
-      {variant === "blob" && (
-        <svg
-          className="absolute inset-0 h-full w-full"
-          viewBox={`0 0 ${shape.w} ${shape.h}`}
-          preserveAspectRatio={blobFit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}
-          aria-hidden="true"
-        >
-          <path
-            d={shape.d}
-            fill={`hsl(${color})`}
-            transform={shape.mirror ? `translate(${shape.w},0) scale(-1,1)` : undefined}
+      {variant === "blob" &&
+        (photoBg ? (
+          <Image
+            src={photoBg}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 90vw, 400px"
+            aria-hidden="true"
+            className="object-cover"
           />
-        </svg>
-      )}
+        ) : (
+          <svg
+            className="absolute inset-0 h-full w-full"
+            viewBox={`0 0 ${shape.w} ${shape.h}`}
+            preserveAspectRatio={blobFit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}
+            aria-hidden="true"
+          >
+            <path
+              d={shape.d}
+              fill={`hsl(${color})`}
+              transform={shape.mirror ? `translate(${shape.w},0) scale(-1,1)` : undefined}
+            />
+          </svg>
+        ))}
 
       {imageUrl ? (
         <Image

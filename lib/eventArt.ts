@@ -14,6 +14,8 @@ export const EVENT_ART_COLORS = [
 ] as const;
 
 // Number of blob shape variants available in EventArt (3 Figma shapes × 2 mirrors).
+// Indices 6-8 are photo backgrounds (EventArt PHOTO_BACKGROUNDS) — reachable only
+// via an explicit backoffice shapeIndex, never by the deterministic default.
 export const EVENT_ART_SHAPES = 6;
 
 const hash = (s: string): number => {

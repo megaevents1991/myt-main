@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { MYT } from "@/components/ui/myt";
+import { EventArt } from "@/components/ui/EventArt";
 import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { BioReadMore } from "@/components/BioReadMore";
 import { youtubeId, youtubeEmbed } from "@/lib/youtube";
@@ -23,7 +24,10 @@ export const DetailHero = ({
   imageUrl,
   imageAlt,
   heroVideoUrl,
+  artId,
   artImageUrl,
+  artColorIndex,
+  artShapeIndex,
   ctaHref = "#upcoming-events",
   ctaLabel = "לפרטים והזמנה",
   ticketOnly = false,
@@ -40,9 +44,13 @@ export const DetailHero = ({
   imageAlt: string;
   /** #19b: YouTube URL that loops inside the hero circle (overrides the image). */
   heroVideoUrl?: string;
-  /** Blob cut-out (backoffice art_image_url) — preferred over `imageUrl`
-   *  inside the same hero blob shape when set. */
+  /** Homepage-card art (backoffice art_* fields) — when set, the hero circle
+   *  shows the exact same EventArt as the catalog card: same colored blob,
+   *  same shape, same cut-out. Hero layout/design unchanged. */
+  artId?: string;
   artImageUrl?: string;
+  artColorIndex?: number;
+  artShapeIndex?: number;
   ctaHref?: string;
   ctaLabel?: string;
   /** Show the ticket-only marker (when this entity's events are ticket-only). */
@@ -77,19 +85,27 @@ export const DetailHero = ({
                 className="pointer-events-none absolute left-1/2 top-1/2 h-full w-[177.78%] -translate-x-1/2 -translate-y-1/2"
                 aria-hidden
               />
+            ) : artImageUrl ? (
+              // Same art as the homepage card — colored blob + shape from the
+              // backoffice art_* fields — clipped by the hero's existing mask.
+              <EventArt
+                id={artId ?? name}
+                imageUrl={artImageUrl}
+                alt={imageAlt}
+                colorIndex={artColorIndex}
+                shapeIndex={artShapeIndex}
+                priority
+                hoverZoom={false}
+                className="absolute inset-0 h-full w-full"
+              />
             ) : (
-              // Prefer the blob cut-out; anchor it to the bottom of the blob
-              // (transparent PNG) so the subject sits on the shape like the
-              // catalog cards. Flat photos keep the full-bleed cover crop.
               <Image
-                src={(artImageUrl || imageUrl) as string}
+                src={imageUrl as string}
                 alt={imageAlt}
                 fill
                 priority
                 sizes="(max-width: 768px) 90vw, 40vw"
-                className={
-                  artImageUrl ? "object-contain object-bottom" : "object-cover"
-                }
+                className="object-cover"
               />
             )}
           </div>
