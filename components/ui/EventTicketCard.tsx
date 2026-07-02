@@ -46,6 +46,7 @@ export const EventTicketCard = ({
       isSelected={isSelected}
       onClick={onClick}
       hasBorderColor={colorOnTheMap}
+      selectedStyle="solid"
       className={cn("p-2 pr-8 relative overflow-visible")}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -63,19 +64,20 @@ export const EventTicketCard = ({
       <div className="flex items-center justify-between w-full lg:flex-row flex-col">
         <div className="flex items-center justify-between w-full">
           {/* Brand accent strip (was per-section colorOnTheMap, often an
-              off-brand navy from event data) — Glow Green at rest, dark
-              forest when the card is selected (matches the selected border). */}
+              off-brand navy from event data) — always Glow Green; it pops on
+              both the white resting card and the forest selected card. */}
           <div
             className={cn(
-              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md transition-colors",
-              isSelected ? "bg-forest dark:bg-glow" : "bg-glow"
+              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md bg-glow"
             )}
           ></div>
           <div className="w-2/3 lg:w-5/9 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
               checked={!disabled && isSelected}
-              color="hsl(var(--brand-forest))"
+              // Selected card is forest-filled → glow radio with forest dot.
+              color="hsl(var(--brand-glow))"
+              iconColor="hsl(var(--brand-forest))"
               style={{ pointerEvents: "none" }}
               disabled={disabled}
             />
@@ -85,11 +87,13 @@ export const EventTicketCard = ({
               </div>
               {categoryDescription?.length > 0 && (
                 <div
-                  className={`text-md ${
-                    categoryDescription.includes("כרטיסים אחרונים")
-                      ? "font-bold text-red-600"
-                      : ""
-                  }`}
+                  className={cn(
+                    "text-md",
+                    categoryDescription.includes("כרטיסים אחרונים") &&
+                      (isSelected
+                        ? "font-bold text-red-400"
+                        : "font-bold text-red-600")
+                  )}
                 >
                   {categoryDescription}
                 </div>
@@ -138,7 +142,7 @@ export const EventTicketCard = ({
           </div>
         </div>
         {isSelected && !disabled && (
-          <div className="w-full block lg:hidden border-t-2 pt-2 border-border mt-2">
+          <div className="w-full block lg:hidden border-t-2 pt-2 border-white/25 mt-2">
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}

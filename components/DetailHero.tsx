@@ -5,7 +5,6 @@ import Link from "next/link";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { MYT } from "@/components/ui/myt";
-import { EventArt } from "@/components/ui/EventArt";
 import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { BioReadMore } from "@/components/BioReadMore";
 import { youtubeId, youtubeEmbed } from "@/lib/youtube";
@@ -24,10 +23,7 @@ export const DetailHero = ({
   imageUrl,
   imageAlt,
   heroVideoUrl,
-  artId,
   artImageUrl,
-  artColorIndex,
-  artShapeIndex,
   ctaHref = "#upcoming-events",
   ctaLabel = "לפרטים והזמנה",
   ticketOnly = false,
@@ -44,12 +40,9 @@ export const DetailHero = ({
   imageAlt: string;
   /** #19b: YouTube URL that loops inside the hero circle (overrides the image). */
   heroVideoUrl?: string;
-  /** Blob card-art (backoffice art_* fields) — when set, the hero shows the
-   *  same neon-blob + cut-out panel as the catalog/carousel cards. */
-  artId?: string;
+  /** Blob cut-out (backoffice art_image_url) — preferred over `imageUrl`
+   *  inside the same hero blob shape when set. */
   artImageUrl?: string;
-  artColorIndex?: number;
-  artShapeIndex?: number;
   ctaHref?: string;
   ctaLabel?: string;
   /** Show the ticket-only marker (when this entity's events are ticket-only). */
@@ -71,21 +64,7 @@ export const DetailHero = ({
       </Link>
     </div>
     <div className="container relative z-10 mx-auto grid items-center gap-8 px-4 py-10 md:grid-cols-2 md:py-16">
-      {artImageUrl && !videoId ? (
-        // Main blob card-art (same look as the catalog + carousel cards).
-        <div className="relative mx-auto w-full max-w-xs md:max-w-sm">
-          <EventArt
-            id={artId ?? name}
-            imageUrl={artImageUrl}
-            alt={imageAlt}
-            colorIndex={artColorIndex}
-            shapeIndex={artShapeIndex}
-            priority
-            hoverZoom={false}
-            className="aspect-square rounded-3xl shadow-[0_0_60px_-10px_hsl(var(--brand-mint)/0.45)]"
-          />
-        </div>
-      ) : (imageUrl || videoId) && (
+      {(artImageUrl || imageUrl || videoId) && (
         <div className="relative mx-auto w-full max-w-xs md:max-w-sm">
           <div className="absolute inset-0 -rotate-6 rounded-[40%_60%_55%_45%/55%_45%_60%_40%] bg-primary shadow-[0_0_60px_-10px_hsl(var(--brand-mint)/0.6)]" />
           <div className="relative aspect-square overflow-hidden rounded-[40%_60%_55%_45%/55%_45%_60%_40%]">
@@ -99,13 +78,18 @@ export const DetailHero = ({
                 aria-hidden
               />
             ) : (
+              // Prefer the blob cut-out; anchor it to the bottom of the blob
+              // (transparent PNG) so the subject sits on the shape like the
+              // catalog cards. Flat photos keep the full-bleed cover crop.
               <Image
-                src={imageUrl as string}
+                src={(artImageUrl || imageUrl) as string}
                 alt={imageAlt}
                 fill
                 priority
                 sizes="(max-width: 768px) 90vw, 40vw"
-                className="object-cover"
+                className={
+                  artImageUrl ? "object-contain object-bottom" : "object-cover"
+                }
               />
             )}
           </div>
