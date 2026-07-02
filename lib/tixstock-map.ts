@@ -34,9 +34,10 @@ export type TixStockMatchableListing = {
 /* ------------------------------------------------------------------ */
 
 export const TX_TICKET_COLOR = "hsl(var(--brand-forest))";
-/** Light solid fill for sections with available tickets — light Glow-Green
- *  tint (brand ramp), opaque to avoid stacking artefacts from overlaps. */
-export const TX_SECTION_FILL_LIGHT = "#C2FFD8"; /* glow tint (brand ramp shade 1) */
+/** Fill for sections with available tickets — near-white so the resting map
+ *  stays calm; availability reads from the Glow-Green BORDER, not the fill.
+ *  (Hover brings the light-green fill, selected the dark forest.) */
+export const TX_SECTION_FILL_LIGHT = "#F5F4F0";
 /** Base/available section stroke — Glow Green */
 export const TX_SECTION_FILL = "hsl(var(--brand-glow))";
 /** Hover/highlighted stroke & text — secondary foreground */
@@ -373,9 +374,9 @@ export const cleanupDuplicateSections = (container: HTMLElement): void => {
  *
  * mode:
  *  - "base"      → restore original styles
- *  - "available"  → light solid teal fill + secondary stroke
- *  - "hover"      → brighter teal + light stroke
- *  - "selected"   → darker teal + light stroke
+ *  - "available"  → near-white fill + Glow-Green border
+ *  - "hover"      → light glow-green fill + light stroke
+ *  - "selected"   → dark forest fill + light stroke
  *  - "inactive"   → no fill change, subtle secondary-colour border
  *  - "disabled"   → gray fill + gray stroke, not-allowed cursor
  */
