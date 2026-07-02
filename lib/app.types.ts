@@ -36,6 +36,9 @@ export type Event = {
   // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
   art_image_scale?: number | null;
   art_bg_scale?: number | null;
+  // Cut-out position, % of frame (null/0 = default bottom-center). X+ = right, Y+ = down.
+  art_image_offset_x?: number | null;
+  art_image_offset_y?: number | null;
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;
@@ -404,6 +407,9 @@ export interface TemplateBase {
   // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
   art_image_scale: number | null;
   art_bg_scale: number | null;
+  // Cut-out position, % of frame (null/0 = default bottom-center). X+ = right, Y+ = down.
+  art_image_offset_x: number | null;
+  art_image_offset_y: number | null;
   display_order: number;
   is_active: boolean;
   is_deleted: boolean;
@@ -538,6 +544,8 @@ export type FootballTeam = {
     artShapeIndex?: number;
     artImageScale?: number;
     artBgScale?: number;
+    artImageOffsetX?: number;
+    artImageOffsetY?: number;
     // Backoffice-managed page enrichments (Supabase artists/football_teams).
     /** #19b: YouTube URL that plays behind the hero circle. */
     heroVideoUrl?: string;
@@ -589,6 +597,8 @@ export type Artist = {
     artShapeIndex?: number;
     artImageScale?: number;
     artBgScale?: number;
+    artImageOffsetX?: number;
+    artImageOffsetY?: number;
     // Backoffice-managed page enrichments (Supabase artists/football_teams).
     /** #19b: YouTube URL that plays behind the hero circle. */
     heroVideoUrl?: string;

@@ -55,6 +55,8 @@ export const EventArt = ({
   shapeIndex,
   imageScale,
   bgScale,
+  imageOffsetX,
+  imageOffsetY,
   priority,
   variant = "blob",
   blobFit = "cover",
@@ -72,6 +74,9 @@ export const EventArt = ({
   imageScale?: number | null;
   /** Background (blob/photo) zoom set in the backoffice (1 = 100%). */
   bgScale?: number | null;
+  /** Cut-out position, % of frame (0 = default). X+ = right, Y+ = down. */
+  imageOffsetX?: number | null;
+  imageOffsetY?: number | null;
   priority?: boolean;
   /** "blob" = neon brand blob + cut-out artist (contain); "photo" = full image (cover). */
   variant?: "blob" | "photo";
@@ -106,17 +111,22 @@ export const EventArt = ({
       ? PHOTO_BACKGROUNDS[(art.shapeIndex - SHAPES.length) % PHOTO_BACKGROUNDS.length]
       : null;
   const shape = SHAPES[art.shapeIndex % SHAPES.length];
-  // Backoffice zoom overrides (1 = default). Inline transform replaces the
-  // hover-zoom class transform, so only set it when actually zoomed.
+  // Backoffice zoom/position overrides (scale 1 / offset 0 = default). Inline
+  // transform replaces the hover-zoom class transform, so only set when used.
   const imgScale = imageScale ?? 1;
   const backScale = bgScale ?? 1;
+  const offX = imageOffsetX ?? 0;
+  const offY = imageOffsetY ?? 0;
   const bgStyle =
     backScale !== 1
       ? { transform: `scale(${backScale})`, transformOrigin: "center" }
       : undefined;
   const imgStyle =
-    imgScale !== 1
-      ? { transform: `scale(${imgScale})`, transformOrigin: "bottom center" }
+    imgScale !== 1 || offX !== 0 || offY !== 0
+      ? {
+          transform: `translate(${offX}%, ${offY}%) scale(${imgScale})`,
+          transformOrigin: "bottom center",
+        }
       : undefined;
 
   return (
@@ -128,13 +138,15 @@ export const EventArt = ({
     >
       {variant === "blob" &&
         (photoBg ? (
+          // object-contain: the whole photo stays visible while zooming — no
+          // corner cropped unless the editor zooms past the frame on purpose.
           <Image
             src={photoBg}
             alt=""
             fill
             sizes="(max-width: 640px) 90vw, 400px"
             aria-hidden="true"
-            className="object-cover"
+            className="object-contain"
             style={bgStyle}
           />
         ) : (

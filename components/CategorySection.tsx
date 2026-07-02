@@ -13,6 +13,8 @@ export type HomeCategory = {
   artShapeIndex?: number;
   artImageScale?: number;
   artBgScale?: number;
+  artImageOffsetX?: number;
+  artImageOffsetY?: number;
 };
 
 /** Homepage section of category banner cards. Renders nothing until at least
@@ -57,6 +59,8 @@ export const CategorySection = ({
               artShapeIndex={c.artShapeIndex}
               artImageScale={c.artImageScale}
               artBgScale={c.artBgScale}
+              artImageOffsetX={c.artImageOffsetX}
+              artImageOffsetY={c.artImageOffsetY}
             />
           ))}
         </div>

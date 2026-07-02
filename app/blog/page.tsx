@@ -49,6 +49,8 @@ export default async function BlogPage() {
                       shapeIndex={post.fields.artShapeIndex}
                       imageScale={post.fields.artImageScale}
                       bgScale={post.fields.artBgScale}
+                      imageOffsetX={post.fields.artImageOffsetX}
+                      imageOffsetY={post.fields.artImageOffsetY}
                       priority
                       className="h-full w-full"
                     />

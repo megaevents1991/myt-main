@@ -63,6 +63,8 @@ export const PackageBanners = ({ events }: { events: Event[] }) => {
                     shapeIndex={event.art_shape_index ?? undefined}
                     imageScale={event.art_image_scale}
                     bgScale={event.art_bg_scale}
+                    imageOffsetX={event.art_image_offset_x}
+                    imageOffsetY={event.art_image_offset_y}
                     className="h-full w-full"
                   />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/75 to-transparent" />

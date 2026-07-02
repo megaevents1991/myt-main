@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-        width: 306,
-        height: 200,
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "מגה איבנטס - מדיניות פרטיות",
       },
     ],
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description:
       "מדיניות הפרטיות של MegaEvents - הגנת המידע האישי וזכויות המשתמשים.",
     images: [
-      "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+      "/og-image.png",
     ],
   },
   robots: {

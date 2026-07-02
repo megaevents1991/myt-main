@@ -21,6 +21,8 @@ export const CategoryCard = ({
   artShapeIndex,
   artImageScale,
   artBgScale,
+  artImageOffsetX,
+  artImageOffsetY,
 }: {
   slug: string;
   name: string;
@@ -34,6 +36,8 @@ export const CategoryCard = ({
   artShapeIndex?: number;
   artImageScale?: number;
   artBgScale?: number;
+  artImageOffsetX?: number;
+  artImageOffsetY?: number;
 }) => (
   <Link
     href={linkUrl || `/category/${slug}`}
@@ -51,6 +55,8 @@ export const CategoryCard = ({
           shapeIndex={artShapeIndex}
           imageScale={artImageScale}
           bgScale={artBgScale}
+          imageOffsetX={artImageOffsetX}
+          imageOffsetY={artImageOffsetY}
           className="h-full w-full"
         />
       ) : imageUrl ? (

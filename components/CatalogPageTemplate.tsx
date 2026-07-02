@@ -14,6 +14,8 @@ export type CatalogItem = {
   artShapeIndex?: number;
   artImageScale?: number;
   artBgScale?: number;
+  artImageOffsetX?: number;
+  artImageOffsetY?: number;
   /** True = we have a currently-available event (On-Tour). False = Wishlist. */
   available: boolean;
 };
@@ -48,6 +50,8 @@ const CatalogCard = ({
         shapeIndex={item.artShapeIndex}
         imageScale={item.artImageScale}
         bgScale={item.artBgScale}
+        imageOffsetX={item.artImageOffsetX}
+        imageOffsetY={item.artImageOffsetY}
         className="aspect-square"
       />
     ) : item.imageUrl ? (

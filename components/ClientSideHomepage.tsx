@@ -26,7 +26,7 @@ import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
-import { HeroCarousel } from "@/components/HeroCarousel";
+import { HeroCarousel, type HeroCarouselItem } from "@/components/HeroCarousel";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { EventArt } from "@/components/ui/EventArt";
@@ -47,6 +47,8 @@ interface Props {
   allFootballTeams?: FootballTeam[];
   artists: Artist[];
   carouselArtists?: Artist[];
+  // Hero-gallery ring: every artist/team with an available event (זמין באתר).
+  heroItems?: HeroCarouselItem[];
 }
 
 const SearchCombobox = React.forwardRef<HTMLInputElement, {
@@ -467,6 +469,8 @@ function CompactEventCard({ event }: { event: Event }) {
             shapeIndex={event.art_shape_index ?? undefined}
             imageScale={event.art_image_scale}
             bgScale={event.art_bg_scale}
+            imageOffsetX={event.art_image_offset_x}
+            imageOffsetY={event.art_image_offset_y}
             className="h-full w-full"
           />
         </div>
@@ -566,6 +570,8 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
             shapeIndex={artist.fields.artShapeIndex ?? undefined}
             imageScale={artist.fields.artImageScale}
             bgScale={artist.fields.artBgScale}
+            imageOffsetX={artist.fields.artImageOffsetX}
+            imageOffsetY={artist.fields.artImageOffsetY}
             priority
             className="h-full w-full"
           />
@@ -688,7 +694,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
@@ -1215,7 +1221,15 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         <TrustBadges className="relative z-10 mt-3 md:mt-8 justify-center text-main-foreground/80" />
         {/* Hero gallery — tilted colorful cards linking to artist pages */}
         <div className="relative z-10 mt-1 sm:mt-2">
-          <HeroCarousel artists={carouselArtists ?? artists} />
+          <HeroCarousel
+            items={
+              heroItems ??
+              (carouselArtists ?? artists).map((entry) => ({
+                kind: "artist" as const,
+                entry,
+              }))
+            }
+          />
         </div>
       </section>
 
@@ -1749,6 +1763,8 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               shapeIndex={event.art_shape_index ?? undefined}
               imageScale={event.art_image_scale}
               bgScale={event.art_bg_scale}
+              imageOffsetX={event.art_image_offset_x}
+              imageOffsetY={event.art_image_offset_y}
               className="h-52 w-full sm:h-56"
             />
           </div>

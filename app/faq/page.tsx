@@ -43,9 +43,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-        width: 306,
-        height: 200,
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "מגה איבנטס - שאלות נפוצות",
       },
     ],
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     description:
       "מענה לכל השאלות שלכם על הזמנת אירועים, טיסות ומלונות. תנאי ביטול, מידע על כרטיסים ועוד.",
     images: [
-      "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+      "/og-image.png",
     ],
   },
   robots: {

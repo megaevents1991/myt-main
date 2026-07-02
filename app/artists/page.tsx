@@ -31,6 +31,8 @@ export default async function ArtistsPage() {
       artShapeIndex: artist.fields.artShapeIndex,
       artImageScale: artist.fields.artImageScale,
       artBgScale: artist.fields.artBgScale,
+      artImageOffsetX: artist.fields.artImageOffsetX,
+      artImageOffsetY: artist.fields.artImageOffsetY,
       available: isAvailable(String(artist.fields.nameDBenglish ?? "")),
     }));
 

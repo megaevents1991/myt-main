@@ -4,11 +4,18 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Artist } from "@/lib/app.types";
+import { Artist, FootballTeam } from "@/lib/app.types";
 import { MYT } from "@/components/ui/myt";
 import { MYTMark } from "@/components/ui/mytMark";
 import { EventArt } from "@/components/ui/EventArt";
 import { cn } from "@/lib/utils";
+
+// One ring entry — an artist or a football team (structurally identical
+// Contentful-shaped records; `kind` only decides the link target + CTA copy).
+export type HeroCarouselItem = {
+  kind: "artist" | "team";
+  entry: Artist | FootballTeam;
+};
 
 // Coverflow tuning.
 const SIDE_MAX = 3; // cards shown each side of center (rest fade out)
@@ -32,7 +39,7 @@ const BOX_REFLECT_DESKTOP =
   "below 2px linear-gradient(transparent 58%, rgba(0,0,0,0.42))";
 
 type Card =
-  | { kind: "artist"; artist: Artist; idx: number }
+  | { kind: "item"; item: HeroCarouselItem; idx: number }
   | { kind: "logo" };
 
 /**
@@ -49,26 +56,27 @@ type Card =
  * - Opens on the brand logo, then a single "peek" nudge advertises scrolling
  *   (cancels on first interaction). Reduced-motion skips the nudge + 3D.
  */
-export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
+export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }) => {
   const stageRef = useRef<HTMLDivElement>(null);
   const reducedRef = useRef(false);
 
-  // Include artists with either a plain hero image OR blob card-art set in the
-  // backoffice (an artist may have only the cut-out + blob, no flat image).
+  // Include entries with either a plain hero image OR blob card-art set in the
+  // backoffice (an artist/team may have only the cut-out + blob, no flat image).
   const items = useMemo(
     () =>
-      artists.filter(
-        (a) => a.fields.heroBanner?.fields?.file?.url || a.fields.artImageUrl
+      itemsProp.filter(
+        ({ entry }) =>
+          entry.fields.heroBanner?.fields?.file?.url || entry.fields.artImageUrl
       ),
-    [artists]
+    [itemsProp]
   );
 
-  // One ring of cards — all artists, with the brand-logo card spliced into the
-  // middle so the carousel opens on it.
+  // One ring of cards — all artists/teams, with the brand-logo card spliced
+  // into the middle so the carousel opens on it.
   const cards = useMemo<Card[]>(() => {
-    const out: Card[] = items.map((artist, idx) => ({
-      kind: "artist" as const,
-      artist,
+    const out: Card[] = items.map((item, idx) => ({
+      kind: "item" as const,
+      item,
       idx,
     }));
     out.splice(Math.floor(out.length / 2), 0, { kind: "logo" });
@@ -379,12 +387,17 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         </div>
       );
     }
-    const { artist } = card;
-    const name = String(artist.fields.name ?? "");
-    const artImageUrl = artist.fields.artImageUrl;
-    const heroUrl = artist.fields.heroBanner?.fields?.file?.url
-      ? "https:" + artist.fields.heroBanner.fields.file.url
+    const { kind, entry } = card.item;
+    const name = String(entry.fields.name ?? "");
+    const artImageUrl = entry.fields.artImageUrl;
+    const heroUrl = entry.fields.heroBanner?.fields?.file?.url
+      ? "https:" + entry.fields.heroBanner.fields.file.url
       : undefined;
+    const href =
+      kind === "team" ? `/football/${entry.sys.id}` : `/artists/${entry.sys.id}`;
+    const ariaLabel =
+      kind === "team" ? `עמוד הקבוצה ${name}` : `עמוד האומן ${name}`;
+    const cta = kind === "team" ? "למשחקים" : "לאירועים";
     // Aspect-independent fill so every card looks like the catalog cards. These
     // carousel cards are TALL portrait; the catalog cards are near-square. With
     // `contain` (the catalog default) a portrait box fits the cut-out to WIDTH, so
@@ -399,15 +412,17 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         style={{ WebkitBoxReflect: reflect } as React.CSSProperties}
       >
         <EventArt
-          id={artist.sys.id}
+          id={entry.sys.id}
           imageUrl={artImageUrl || heroUrl}
           alt={name}
           variant={blob ? "blob" : "photo"}
-          colorIndex={artist.fields.artColorIndex}
-          shapeIndex={artist.fields.artShapeIndex}
-          // Backoffice zoom (inline style) overrides the class dial below when set.
-          imageScale={artist.fields.artImageScale}
-          bgScale={artist.fields.artBgScale}
+          colorIndex={entry.fields.artColorIndex}
+          shapeIndex={entry.fields.artShapeIndex}
+          // Backoffice zoom/position (inline style) overrides the class dial below when set.
+          imageScale={entry.fields.artImageScale}
+          bgScale={entry.fields.artBgScale}
+          imageOffsetX={entry.fields.artImageOffsetX}
+          imageOffsetY={entry.fields.artImageOffsetY}
           // "cover" makes the cut-out fill the card and bleed to ALL edges (a wide
           // pose like Weeknd's arm runs off the card edge — never floats mid-card).
           imageFit="cover"
@@ -437,8 +452,8 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
         </span>
         {/* Only the CTA navigates — clicking the card art never does. */}
         <Link
-          href={`/artists/${artist.sys.id}`}
-          aria-label={`עמוד האומן ${name}`}
+          href={href}
+          aria-label={ariaLabel}
           tabIndex={centered ? 0 : -1}
           draggable={false}
           // Keep the drag machinery off the CTA: without this the stage's
@@ -452,7 +467,7 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
               : "pointer-events-none translate-y-2 opacity-0"
           )}
         >
-          לאירועים
+          {cta}
           <ChevronLeft className="size-3.5" aria-hidden />
         </Link>
       </div>

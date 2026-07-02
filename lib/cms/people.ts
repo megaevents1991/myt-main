@@ -31,6 +31,8 @@ type PersonRow = {
   art_shape_index?: number | null;
   art_image_scale?: number | null;
   art_bg_scale?: number | null;
+  art_image_offset_x?: number | null;
+  art_image_offset_y?: number | null;
   // Page enrichments (may be absent on Contentful-fallback rows).
   hero_video_url?: string | null;
   banners?: { image_url?: string; link_url?: string; title?: string }[] | null;
@@ -78,6 +80,8 @@ const toPerson = (r: PersonRow): Artist => ({
     artShapeIndex: r.art_shape_index ?? undefined,
     artImageScale: r.art_image_scale ?? undefined,
     artBgScale: r.art_bg_scale ?? undefined,
+    artImageOffsetX: r.art_image_offset_x ?? undefined,
+    artImageOffsetY: r.art_image_offset_y ?? undefined,
   },
 });
 

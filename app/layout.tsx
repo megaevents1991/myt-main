@@ -42,6 +42,14 @@ export const viewport: Viewport = {
   themeColor: "#0A1A14",
 };
 
+// Absolute base for og:image and other relative metadata assets. Preview
+// deploys resolve to their own *.vercel.app URL so shared links (e.g. WhatsApp)
+// show the redesign OG image before it reaches production.
+const siteUrl =
+  process.env.VERCEL_ENV === "production" || !process.env.VERCEL_URL
+    ? "https://www.mega-events.co.il"
+    : `https://${process.env.VERCEL_URL}`;
+
 export const metadata: Metadata = {
   title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
   description:
@@ -67,7 +75,7 @@ export const metadata: Metadata = {
   generator: "Next.js",
   category: "Travel & Events",
   classification: "Travel Agency, Event Tickets, Tourism",
-  metadataBase: new URL("https://www.mega-events.co.il"),
+  metadataBase: new URL(siteUrl),
   alternates: {
     canonical: "https://www.mega-events.co.il",
     languages: {
@@ -84,9 +92,9 @@ export const metadata: Metadata = {
     locale: "he_IL",
     images: [
       {
-        url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-        width: 306,
-        height: 200,
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "Mega Events - אתר להזמנת חבילות לאירועים בחו״ל",
       },
     ],
@@ -96,9 +104,7 @@ export const metadata: Metadata = {
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
       "מגה איבנטס מבית מגה תיירות - חבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם. 30 שנות ניסיון, כרטיסים רשמיים בלבד.",
-    images: [
-      "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-    ],
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,

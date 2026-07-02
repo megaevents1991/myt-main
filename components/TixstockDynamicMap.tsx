@@ -65,6 +65,10 @@ export function TixstockDynamicMap({
   const [error, setError] = useState<string | null>(null);
   const [hoveredMapTicket, setHoveredMapTicket] =
     useState<TixStockMatchableListing | null>(null);
+  // Hover preview only on true hover devices (desktop mouse). On touch, a tap
+  // fires mouseover before click and the hover paint sticks on the section —
+  // so hover highlighting is disabled entirely on mobile.
+  const [canHover, setCanHover] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // Monotonically increasing counter – bumped every time the ref callback
   // fires (container div is mounted).  Used as a dependency in effects
@@ -75,6 +79,12 @@ export function TixstockDynamicMap({
   const setContainerRef = useCallback((node: HTMLDivElement | null) => {
     containerRef.current = node;
     if (node) setDomReady((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    setCanHover(
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches,
+    );
   }, []);
 
   const ticketMatchesSection = useCallback(
@@ -239,7 +249,9 @@ export function TixstockDynamicMap({
         }
       });
 
-      const activeHoverTicket = hoveredTicket ?? hoveredMapTicket;
+      const activeHoverTicket = canHover
+        ? hoveredTicket ?? hoveredMapTicket
+        : null;
 
       // Hover highlight — light glow preview on the hovered category.
       if (activeHoverTicket) {
@@ -282,6 +294,7 @@ export function TixstockDynamicMap({
     svgContent,
     hoveredTicket,
     hoveredMapTicket,
+    canHover,
     selectedTicketId,
     tickets,
     excludedSections,
@@ -342,7 +355,7 @@ export function TixstockDynamicMap({
 
   useEffect(() => {
     const root = containerRef.current;
-    if (!root) return;
+    if (!root || !canHover) return;
 
     const onMouseOver = (ev: MouseEvent) => {
       const target = ev.target as Element | null;
@@ -381,7 +394,7 @@ export function TixstockDynamicMap({
       root.removeEventListener("mouseover", onMouseOver);
       root.removeEventListener("mouseout", onMouseOut);
     };
-  }, [svgContent, excludedSections, findBestTicketForSection]);
+  }, [svgContent, excludedSections, findBestTicketForSection, canHover]);
 
   /* ---------- Render --------------------------------------------------- */
 
