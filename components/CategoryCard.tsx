@@ -19,6 +19,8 @@ export const CategoryCard = ({
   artImageUrl,
   artColorIndex,
   artShapeIndex,
+  artImageScale,
+  artBgScale,
 }: {
   slug: string;
   name: string;
@@ -30,6 +32,8 @@ export const CategoryCard = ({
   artImageUrl?: string;
   artColorIndex?: number;
   artShapeIndex?: number;
+  artImageScale?: number;
+  artBgScale?: number;
 }) => (
   <Link
     href={linkUrl || `/category/${slug}`}
@@ -45,6 +49,8 @@ export const CategoryCard = ({
           alt={name}
           colorIndex={artColorIndex}
           shapeIndex={artShapeIndex}
+          imageScale={artImageScale}
+          bgScale={artBgScale}
           className="h-full w-full"
         />
       ) : imageUrl ? (

@@ -53,6 +53,8 @@ export const EventArt = ({
   className,
   colorIndex,
   shapeIndex,
+  imageScale,
+  bgScale,
   priority,
   variant = "blob",
   blobFit = "cover",
@@ -66,6 +68,10 @@ export const EventArt = ({
   className?: string;
   colorIndex?: number;
   shapeIndex?: number;
+  /** Cut-out zoom set in the backoffice (1 = 100%). Overrides hoverZoom when ≠ 1. */
+  imageScale?: number | null;
+  /** Background (blob/photo) zoom set in the backoffice (1 = 100%). */
+  bgScale?: number | null;
   priority?: boolean;
   /** "blob" = neon brand blob + cut-out artist (contain); "photo" = full image (cover). */
   variant?: "blob" | "photo";
@@ -100,6 +106,18 @@ export const EventArt = ({
       ? PHOTO_BACKGROUNDS[(art.shapeIndex - SHAPES.length) % PHOTO_BACKGROUNDS.length]
       : null;
   const shape = SHAPES[art.shapeIndex % SHAPES.length];
+  // Backoffice zoom overrides (1 = default). Inline transform replaces the
+  // hover-zoom class transform, so only set it when actually zoomed.
+  const imgScale = imageScale ?? 1;
+  const backScale = bgScale ?? 1;
+  const bgStyle =
+    backScale !== 1
+      ? { transform: `scale(${backScale})`, transformOrigin: "center" }
+      : undefined;
+  const imgStyle =
+    imgScale !== 1
+      ? { transform: `scale(${imgScale})`, transformOrigin: "bottom center" }
+      : undefined;
 
   return (
     <div
@@ -117,6 +135,7 @@ export const EventArt = ({
             sizes="(max-width: 640px) 90vw, 400px"
             aria-hidden="true"
             className="object-cover"
+            style={bgStyle}
           />
         ) : (
           <svg
@@ -124,6 +143,7 @@ export const EventArt = ({
             viewBox={`0 0 ${shape.w} ${shape.h}`}
             preserveAspectRatio={blobFit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}
             aria-hidden="true"
+            style={bgStyle}
           >
             <path
               d={shape.d}
@@ -142,11 +162,12 @@ export const EventArt = ({
           priority={priority}
           className={cn(
             "transition-transform duration-300",
-            hoverZoom && "group-hover:scale-105",
+            hoverZoom && !imgStyle && "group-hover:scale-105",
             fit === "contain" ? "object-contain" : "object-cover",
             variant === "photo" ? "object-top" : "object-bottom",
             imageClassName
           )}
+          style={imgStyle}
         />
       ) : null}
     </div>

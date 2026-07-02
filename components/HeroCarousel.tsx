@@ -405,6 +405,9 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
           variant={blob ? "blob" : "photo"}
           colorIndex={artist.fields.artColorIndex}
           shapeIndex={artist.fields.artShapeIndex}
+          // Backoffice zoom (inline style) overrides the class dial below when set.
+          imageScale={artist.fields.artImageScale}
+          bgScale={artist.fields.artBgScale}
           // "cover" makes the cut-out fill the card and bleed to ALL edges (a wide
           // pose like Weeknd's arm runs off the card edge — never floats mid-card).
           imageFit="cover"

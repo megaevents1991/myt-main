@@ -33,6 +33,9 @@ export type Event = {
   art_image_url?: string | null;
   art_color_index?: number | null;
   art_shape_index?: number | null;
+  // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
+  art_image_scale?: number | null;
+  art_bg_scale?: number | null;
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;
@@ -398,6 +401,9 @@ export interface TemplateBase {
   art_image_url: string | null;
   art_color_index: number | null;
   art_shape_index: number | null;
+  // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
+  art_image_scale: number | null;
+  art_bg_scale: number | null;
   display_order: number;
   is_active: boolean;
   is_deleted: boolean;
@@ -530,6 +536,8 @@ export type FootballTeam = {
     artImageUrl?: string;
     artColorIndex?: number;
     artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
     // Backoffice-managed page enrichments (Supabase artists/football_teams).
     /** #19b: YouTube URL that plays behind the hero circle. */
     heroVideoUrl?: string;
@@ -579,6 +587,8 @@ export type Artist = {
     artImageUrl?: string;
     artColorIndex?: number;
     artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
     // Backoffice-managed page enrichments (Supabase artists/football_teams).
     /** #19b: YouTube URL that plays behind the hero circle. */
     heroVideoUrl?: string;

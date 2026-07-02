@@ -29,6 +29,8 @@ export default async function FootballsPage() {
       artImageUrl: team.fields.artImageUrl,
       artColorIndex: team.fields.artColorIndex,
       artShapeIndex: team.fields.artShapeIndex,
+      artImageScale: team.fields.artImageScale,
+      artBgScale: team.fields.artBgScale,
       available: isAvailable(String(team.fields.nameDBenglish ?? "")),
     }));
 

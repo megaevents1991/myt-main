@@ -52,6 +52,8 @@ async function getCategories(): Promise<HomeCategory[]> {
     artImageUrl: c.art_image_url ?? undefined,
     artColorIndex: c.art_color_index ?? undefined,
     artShapeIndex: c.art_shape_index ?? undefined,
+    artImageScale: c.art_image_scale ?? undefined,
+    artBgScale: c.art_bg_scale ?? undefined,
   }));
 }
 

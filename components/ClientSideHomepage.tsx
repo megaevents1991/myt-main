@@ -465,6 +465,8 @@ function CompactEventCard({ event }: { event: Event }) {
             variant={event.art_image_url ? "blob" : "photo"}
             colorIndex={event.art_color_index ?? undefined}
             shapeIndex={event.art_shape_index ?? undefined}
+            imageScale={event.art_image_scale}
+            bgScale={event.art_bg_scale}
             className="h-full w-full"
           />
         </div>
@@ -562,6 +564,8 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
             variant={artist.fields.artImageUrl ? "blob" : "photo"}
             colorIndex={artist.fields.artColorIndex ?? undefined}
             shapeIndex={artist.fields.artShapeIndex ?? undefined}
+            imageScale={artist.fields.artImageScale}
+            bgScale={artist.fields.artBgScale}
             priority
             className="h-full w-full"
           />
@@ -1743,6 +1747,8 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               variant={event.art_image_url ? "blob" : "photo"}
               colorIndex={event.art_color_index ?? undefined}
               shapeIndex={event.art_shape_index ?? undefined}
+              imageScale={event.art_image_scale}
+              bgScale={event.art_bg_scale}
               className="h-52 w-full sm:h-56"
             />
           </div>

@@ -47,6 +47,8 @@ export default async function BlogPage() {
                       alt={`תמונה לבלוג ${String(post.fields.title)}`}
                       colorIndex={post.fields.artColorIndex}
                       shapeIndex={post.fields.artShapeIndex}
+                      imageScale={post.fields.artImageScale}
+                      bgScale={post.fields.artBgScale}
                       priority
                       className="h-full w-full"
                     />

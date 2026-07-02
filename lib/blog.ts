@@ -25,6 +25,8 @@ export type BlogPost = {
     artImageUrl?: string;
     artColorIndex?: number;
     artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
   };
 };
 
@@ -40,6 +42,8 @@ type BlogRow = {
   art_image_url: string | null;
   art_color_index: number | null;
   art_shape_index: number | null;
+  art_image_scale: number | null;
+  art_bg_scale: number | null;
   main_content: unknown;
   seo_title_tag: string | null;
   meta_description: string | null;
@@ -73,6 +77,8 @@ const toBlog = (r: BlogRow): BlogPost => ({
     artImageUrl: r.art_image_url ?? undefined,
     artColorIndex: r.art_color_index ?? undefined,
     artShapeIndex: r.art_shape_index ?? undefined,
+    artImageScale: r.art_image_scale ?? undefined,
+    artBgScale: r.art_bg_scale ?? undefined,
   },
 });
 
