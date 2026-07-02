@@ -55,6 +55,20 @@ async function getFootballTeams(): Promise<FootballTeam[]> {
   }
 }
 
+// Full football team catalog (not just the carousel subset) — used by the
+// homepage to collapse a team's home games into one card with a "see all" strip.
+async function getAllFootballTeams(): Promise<FootballTeam[]> {
+  try {
+    const { items } = await contentfulClient.getEntries<FootballFields>({
+      content_type: "footballTeamTemplate",
+    });
+    return items;
+  } catch (error) {
+    console.error("Page: Failed to get all football teams:", error);
+    return [];
+  }
+}
+
 async function getAllArtists(): Promise<Artist[]> {
   try {
     const { items } = await contentfulClient.getEntries<ArtistFields>({
@@ -106,11 +120,12 @@ export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
 
-  const [events, footballTeams, carouselArtists, artists] = await Promise.all([
+  const [events, footballTeams, carouselArtists, artists, allFootballTeams] = await Promise.all([
     getEventsForPage(),
     getFootballTeams(),
     getCarouselArtists(),
     getAllArtists(),
+    getAllFootballTeams(),
   ]);
 
   return (
@@ -128,6 +143,7 @@ export default async function Home() {
       <ClientSideHomepage
         initialEvents={events.events}
         footballTeams={footballTeams}
+        allFootballTeams={allFootballTeams}
         artists={artists}
         carouselArtists={carouselArtists}
       />

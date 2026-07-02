@@ -32,6 +32,10 @@ const fuseOptions = {
 interface Props {
   initialEvents: Event[];
   footballTeams: FootballTeam[];
+  // Full football team catalog (for collide/strip matching). `footballTeams`
+  // above is only the carousel subset, so club teams like Arsenal would never
+  // match without this.
+  allFootballTeams?: FootballTeam[];
   artists: Artist[];
   carouselArtists?: Artist[];
 }
@@ -307,7 +311,7 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
 
 SearchCombobox.displayName = "SearchCombobox";
 
-const MobileCarousel = ({ events, allEvents, artists }: { events: Event[]; allEvents?: Event[]; artists?: Artist[] }) => {
+const MobileCarousel = ({ events, allEvents, artists, footballTeams }: { events: Event[]; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[] }) => {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -373,7 +377,7 @@ const MobileCarousel = ({ events, allEvents, artists }: { events: Event[]; allEv
       {events.map((event) => (
         <Carousel.Slide key={event.id}>
           <div className="transition-transform duration-300 ease-out">
-            <EventCard event={event} allEvents={allEvents} artists={artists} />
+            <EventCard event={event} allEvents={allEvents} artists={artists} footballTeams={footballTeams} />
           </div>
         </Carousel.Slide>
       ))}
@@ -761,7 +765,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, artists, carouselArtists }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
@@ -939,56 +943,67 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
   // Separate VIP events
   // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
-  // Filter events for artists that have an artist page (Contentful artist entries).
-  // Keep only one event per artist (preferably with a tag).
+  // Collapse events that have a dedicated page (artist OR football team) down to
+  // a single representative card, so the homepage shows one card + "see all"
+  // strip per artist/team. Football collapses by HOME team — home games only.
   const filterEventsFromArtistsWithPages = (events: Event[]) => {
-    if (!artists || artists.length === 0) return events;
+    const hasArtistPages = !!artists && artists.length > 0;
+    const teamsForGrouping = allFootballTeams && allFootballTeams.length > 0 ? allFootballTeams : [];
+    if (!hasArtistPages && teamsForGrouping.length === 0) return events;
 
     // Build list of artist identifiers that have pages
     const artistIdentifiersWithPages = new Set(
-      artists
+      (artists ?? [])
         .map(artist => artist.fields.nameDBenglish)
         .filter(Boolean)
-        .map(name => name!.trim().toLowerCase()) // Trim whitespaces before lowercasing
+        .map(name => normalizeName(name)) // Trim + lowercase
     );
 
-    // Group events by artist
-    const eventsByArtist = new Map<string, Event[]>();
-    const nonArtistEvents: Event[] = [];
-
-    events.forEach(event => {
-      // Skip sold-out events entirely
-      if (isEventSoldOut(event)) return;
-      
-      const eventArtistName = event.name_english?.trim().toLowerCase(); // Trim whitespaces before lowercasing
-      if (eventArtistName && artistIdentifiersWithPages.has(eventArtistName)) {
-        if (!eventsByArtist.has(eventArtistName)) {
-          eventsByArtist.set(eventArtistName, []);
-        }
-        eventsByArtist.get(eventArtistName)!.push(event);
-      } else {
-        nonArtistEvents.push(event);
-      }
-    });
-
-    // For each artist, keep only one event (preferably with a tag)
-    const filteredArtistEvents: Event[] = [];
-    eventsByArtist.forEach(artistEvents => {
-      // Sort events to prioritize those with tags (except "Sold")
-      const sortedEvents = artistEvents.sort((a, b) => {
+    // Best representative for a collapsed group (prefer a real tag, then earliest date)
+    const pickRepresentative = (groupEvents: Event[]) =>
+      [...groupEvents].sort((a, b) => {
         const aHasTag = a.tags && a.tags !== "Sold";
         const bHasTag = b.tags && b.tags !== "Sold";
-        
         if (aHasTag && !bHasTag) return -1;
         if (!aHasTag && bHasTag) return 1;
         return new Date(a.date).getTime() - new Date(b.date).getTime();
-      });
-      
-      // Keep only the first (best) event for this artist
-      filteredArtistEvents.push(sortedEvents[0]);
+      })[0];
+
+    // 1) Group by artist (exact english-name match)
+    const eventsByArtist = new Map<string, Event[]>();
+    const afterArtistGrouping: Event[] = [];
+
+    events.forEach(event => {
+      if (isEventSoldOut(event)) return; // Skip sold-out events entirely
+
+      const eventArtistName = normalizeName(event.name_english);
+      if (eventArtistName && artistIdentifiersWithPages.has(eventArtistName)) {
+        if (!eventsByArtist.has(eventArtistName)) eventsByArtist.set(eventArtistName, []);
+        eventsByArtist.get(eventArtistName)!.push(event);
+      } else {
+        afterArtistGrouping.push(event);
+      }
     });
 
-    return [...nonArtistEvents, ...filteredArtistEvents];
+    // 2) Group the rest by football HOME team (away games are left as-is)
+    const eventsByTeam = new Map<string, Event[]>();
+    const nonGroupedEvents: Event[] = [];
+
+    afterArtistGrouping.forEach(event => {
+      const team = findEventHomeTeam(event, teamsForGrouping);
+      if (team) {
+        const key = team.sys.id;
+        if (!eventsByTeam.has(key)) eventsByTeam.set(key, []);
+        eventsByTeam.get(key)!.push(event);
+      } else {
+        nonGroupedEvents.push(event);
+      }
+    });
+
+    const collapsedArtistEvents = [...eventsByArtist.values()].map(pickRepresentative);
+    const collapsedTeamEvents = [...eventsByTeam.values()].map(pickRepresentative);
+
+    return [...nonGroupedEvents, ...collapsedArtistEvents, ...collapsedTeamEvents];
   };
 
   // Get prioritized events for "המבוקשים ביותר" section (including VIP if prioritized)
@@ -1470,7 +1485,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                  aria-label="רשימת האירועים המבוקשים ביותר">
               {prioritized_events.map((event) => (
                 <div key={event.id} role="listitem">
-                  <EventCard event={event} allEvents={initialEvents} artists={artists} />
+                  <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
                 </div>
               ))}
             </div>
@@ -1579,7 +1594,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
               </div>
               {/* Mobile carousel for Music events */}
               <div className="block sm:hidden mb-8">
-                <MobileCarousel events={musicEvents} allEvents={initialEvents} artists={artists} />
+                <MobileCarousel events={musicEvents} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
                 <div className="grid gap-6 grid-cols-1 mt-6">
                   <div className="fixed bottom-20 left-2 z-50">
                     <ContactUs inHeader={false} />
@@ -1616,7 +1631,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
                    aria-label="רשימת הופעות נוספות">
                 {musicEvents.map((event) => (
                   <div key={event.id} role="listitem">
-                    <EventCard event={event} allEvents={initialEvents} artists={artists} />
+                    <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
                   </div>
                 ))}
                 {/* Accessibility: Enhanced search prompt card with proper labeling */}
@@ -1652,62 +1667,112 @@ export function ClientSideHomepage({ initialEvents, footballTeams, artists, caro
   );
 }
 
-function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Event[]; artists?: Artist[] }) {
+// Normalize a name for case/whitespace-insensitive comparison.
+const normalizeName = (s?: string | null) => (s ?? "").trim().toLowerCase();
+
+// Escape a string for safe use inside a RegExp.
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Whole-word match of `id` inside the already-normalized `haystack`. Returns the
+// RegExp match (with `.index`) or null. Prevents "Milan" matching "Milano".
+const wholeWordMatch = (haystack: string, id: string) =>
+  id ? haystack.match(new RegExp(`(^|[^a-z0-9])${escapeRegExp(id)}([^a-z0-9]|$)`, "i")) : null;
+
+// Identify the HOME team of a fixture. Football collide is home-only: "Arsenal"
+// collects a match only when Arsenal hosts it ("Arsenal FC vs X"), never its away
+// games ("X vs Arsenal"). The home team is the side named to the LEFT of the
+// "vs"/"-" separator; we take the rightmost match within that side so competition
+// prefixes like "Champions League: Arsenal vs ..." still resolve to Arsenal.
+const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam | null => {
+  if (!teams || teams.length === 0) return null;
+  const full = normalizeName(event.name_english) || normalizeName(event.name);
+  if (!full) return null;
+  const sep = full.match(/\s(?:vs\.?|v\.?|[-–—])\s/i);
+  const homeSide = sep && sep.index !== undefined ? full.slice(0, sep.index) : full;
+  let best: FootballTeam | null = null;
+  let bestIndex = -1;
+  for (const team of teams) {
+    const match = wholeWordMatch(homeSide, normalizeName(team.fields.nameDBenglish));
+    if (match && match.index !== undefined && match.index > bestIndex) {
+      bestIndex = match.index;
+      best = team;
+    }
+  }
+  return best;
+};
+
+function EventCard({ event, allEvents, artists, footballTeams }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[] }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
   const computedSold = isEventSoldOut(event);
   const packagePrice = computePackagePrice(event);
   const router = useRouter();
 
-  // Find matching artist if available
+  // Match a dedicated ARTIST page by exact english name.
   const matchingArtist = useMemo(() => {
     if (!artists || !event.name_english) return null;
-    
-    const eventIdentifier = event.name_english.trim().toLowerCase();
-    return artists.find(artist => {
-      const artistIdentifier = artist.fields.nameDBenglish?.trim().toLowerCase();
-      return artistIdentifier === eventIdentifier;
-    });
+    const eventIdentifier = normalizeName(event.name_english);
+    return artists.find(artist => normalizeName(artist.fields.nameDBenglish) === eventIdentifier) ?? null;
   }, [event, artists]);
 
-  // Check if there are multiple events with the same name AND a matching artist page exists
+  // If it's not an artist, match a FOOTBALL TEAM page by HOME team (home games only).
+  const matchingTeam = useMemo(() => {
+    if (matchingArtist) return null;
+    return findEventHomeTeam(event, footballTeams);
+  }, [event, footballTeams, matchingArtist]);
+
+  // Unified "see all events" target — artist page or football team page.
+  const collideTarget = useMemo(() => {
+    if (matchingArtist) {
+      return { kind: "artist" as const, id: matchingArtist.sys.id, href: `/artists/${matchingArtist.sys.id}`, label: event.name };
+    }
+    if (matchingTeam) {
+      return { kind: "team" as const, id: matchingTeam.sys.id, href: `/football/${matchingTeam.sys.id}`, label: matchingTeam.fields.name || event.name };
+    }
+    return null;
+  }, [matchingArtist, matchingTeam, event.name]);
+
+  // Show the strip only when the destination page would list more than one (non-sold-out) event.
   const hasMultipleDates = useMemo(() => {
-    if (!allEvents || !matchingArtist) return false;
-    
-    // Use name_english for comparison, fallback to name if not available
-    const eventIdentifier = event.name_english?.trim().toLowerCase() || event.name.trim().toLowerCase();
-    
-    // Count events with the same identifier (excluding sold-out events)
-    const eventsWithSameName = allEvents.filter(e => {
-      const eIdentifier = e.name_english?.trim().toLowerCase() || e.name.trim().toLowerCase();
-      return eIdentifier === eventIdentifier && !isEventSoldOut(e);
-    });
-    
-    return eventsWithSameName.length > 1;
-  }, [event, allEvents, matchingArtist]);
+    if (!allEvents || !collideTarget) return false;
+
+    if (matchingArtist) {
+      // Artists: exact name match (these acts share one identical name).
+      const eventIdentifier = normalizeName(event.name_english) || normalizeName(event.name);
+      return allEvents.filter(
+        e => (normalizeName(e.name_english) || normalizeName(e.name)) === eventIdentifier && !isEventSoldOut(e)
+      ).length > 1;
+    }
+
+    // Teams: count this team's HOME games only.
+    const teamId = matchingTeam?.sys.id;
+    return allEvents.filter(
+      e => !isEventSoldOut(e) && findEventHomeTeam(e, footballTeams)?.sys.id === teamId
+    ).length > 1;
+  }, [event, allEvents, collideTarget, matchingArtist, matchingTeam, footballTeams]);
 
   const handleStripClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (matchingArtist) {
-      // Track analytics
-      trackEvent("artistStripClicked", {
-        eventId: event.id,
-        eventName: event.name,
-        eventDate: event.date,
-        eventLocation: event.location.name,
-        eventTags: computedSold ? "Sold" : event.tags,
-        eventPrice: packagePrice,
-        artistId: matchingArtist.sys.id,
-        artistName: matchingArtist.fields.name,
-        source: "homepage_eventCard"
-      });
-      
-      // Navigate to artist page
-      router.push(`/artists/${matchingArtist.sys.id}`);
-    }
-    // If no matching artist, we could implement a search or filter functionality here
+
+    if (!collideTarget) return;
+
+    // Track analytics
+    trackEvent("artistStripClicked", {
+      eventId: event.id,
+      eventName: event.name,
+      eventDate: event.date,
+      eventLocation: event.location.name,
+      eventTags: computedSold ? "Sold" : event.tags,
+      eventPrice: packagePrice,
+      artistId: collideTarget.kind === "artist" ? collideTarget.id : undefined,
+      teamId: collideTarget.kind === "team" ? collideTarget.id : undefined,
+      artistName: collideTarget.label,
+      source: "homepage_eventCard",
+    });
+
+    // Navigate to the artist / football team page
+    router.push(collideTarget.href);
   };
 
   useEffect(() => {
@@ -1903,7 +1968,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
         data-strip-click="true"
         className="w-full bg-gradient-to-r from-secondary to-[#0a4d6e] text-white text-center py-2 px-3 rounded-b-lg cursor-pointer hover:from-[#0a4d6e] hover:to-secondary transition-all duration-200 shadow-lg"
         role="button"
-        aria-label={`לחץ כדי לראות את כל האירועים של ${event.name}`}
+        aria-label={`לחץ כדי לראות את כל האירועים של ${collideTarget?.label ?? event.name}`}
         onClick={handleStripClick}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -1914,7 +1979,7 @@ function EventCard({ event, allEvents, artists }: { event: Event; allEvents?: Ev
         tabIndex={0}
       >
         <span className="text-sm font-bold">
-          לכל האירועים של {event.name} לחצו כאן
+          לכל האירועים של {collideTarget?.label ?? event.name} לחצו כאן
         </span>
       </div>
     )}
