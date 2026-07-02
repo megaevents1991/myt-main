@@ -63,10 +63,12 @@ export const EventTicketCard = ({
       <div className="flex items-center justify-between w-full lg:flex-row flex-col">
         <div className="flex items-center justify-between w-full">
           {/* Brand accent strip (was per-section colorOnTheMap, often an
-              off-brand navy from event data) — unified to Glow Green. */}
+              off-brand navy from event data) — Glow Green at rest, dark
+              forest when the card is selected (matches the selected border). */}
           <div
             className={cn(
-              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md bg-glow"
+              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md transition-colors",
+              isSelected ? "bg-forest dark:bg-glow" : "bg-glow"
             )}
           ></div>
           <div className="w-2/3 lg:w-5/9 flex items-center gap-4">

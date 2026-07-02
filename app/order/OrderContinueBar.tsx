@@ -108,15 +108,18 @@ export const OrderContinueBar = ({
         @keyframes ocb-pop { from { opacity:0; transform:scale(.4) } to { opacity:1; transform:scale(1) } }
       `}</style>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_44px_-24px_rgba(10,26,20,.35)]">
+        {/* Mobile: two stacked rows (slots / price+actions). Desktop (sm+):
+            one inline row — slots · price · buttons — like the summary bar. */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 sm:px-3 sm:py-2">
         {/* Slots */}
-        <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2 sm:py-1.5">
+        <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2 sm:min-w-0 sm:flex-1 sm:border-b-0 sm:bg-transparent sm:p-0">
           {slots.map((s) => (
             <div
               key={s.label}
               className={cn(
                 "flex min-w-0 flex-1 items-center gap-2 rounded-xl border-[1.5px] px-2.5 py-2 transition-colors duration-300",
                 s.filled
-                  ? "border-glow/60 bg-glow/[0.13]"
+                  ? "border-forest/70 bg-glow/[0.13] dark:border-glow/60"
                   : "border-dashed border-border bg-card"
               )}
             >
@@ -145,9 +148,9 @@ export const OrderContinueBar = ({
           ))}
         </div>
 
-        {/* Price + actions */}
-        <div className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:py-2">
-          <div className={cn("flex items-baseline gap-1", ACCENT_FG)}>
+        {/* Price + actions — `sm:contents` folds them into the desktop row. */}
+        <div className="flex flex-col gap-2 px-4 py-2.5 sm:contents">
+          <div className={cn("flex items-baseline gap-1 sm:shrink-0", ACCENT_FG)}>
             <span className="text-[15px] font-bold">$</span>
             <span className="text-[23px] font-extrabold leading-none tabular-nums tracking-tight">
               {price.toLocaleString("en-US")}
@@ -156,7 +159,7 @@ export const OrderContinueBar = ({
           </div>
 
           {building ? (
-            <div className="flex w-full flex-col gap-1.5 sm:max-w-[62%]">
+            <div className="flex w-full flex-col gap-1.5 sm:w-64 sm:shrink-0">
               <div className="h-2 overflow-hidden rounded-full bg-border">
                 <div
                   className="h-full rounded-full transition-[width] duration-[1800ms] ease-out"
@@ -195,6 +198,7 @@ export const OrderContinueBar = ({
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

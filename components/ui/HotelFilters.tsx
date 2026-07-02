@@ -7,6 +7,13 @@ import { HotelKind } from "@/lib/hotel.type";
 
 const themeColor = "#0A1A14";
 
+/* Filter checkboxes use the dark brand green (adaptive: forest on light,
+   glow on dark) instead of the light Mantine primary green. */
+const checkboxColors = {
+  color: "hsl(var(--brand-accent))",
+  iconColor: "hsl(var(--brand-accent-foreground))",
+} as const;
+
 const hotelKindOptionsNaming = {
   Resort: "Resort",
   Sanatorium: "Sanatorium",
@@ -128,7 +135,7 @@ export const HotelFilters = ({
             }
           >
             <div className="flex items-center space-x-2 space-x-reverse">
-              <Checkbox value="withMeal" id="with-meal" />
+              <Checkbox value="withMeal" id="with-meal" {...checkboxColors} />
               <label htmlFor="withMeal">כולל ארוחת בוקר</label>
             </div>
           </Checkbox.Group>
@@ -170,6 +177,7 @@ export const HotelFilters = ({
                 label={hotelKindOptionsNaming[value]}
                 key={i}
                 className="my-2"
+                {...checkboxColors}
               />
             ))}
           </Checkbox.Group>

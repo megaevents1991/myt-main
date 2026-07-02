@@ -133,6 +133,10 @@ export default async function ArtistPage({
           imageUrl={imageUrl}
           imageAlt={`תמונה של האומן ${String(name)}`}
           heroVideoUrl={heroVideoUrl}
+          artId={artist.sys.id}
+          artImageUrl={artist.fields.artImageUrl}
+          artColorIndex={artist.fields.artColorIndex}
+          artShapeIndex={artist.fields.artShapeIndex}
           ticketOnly={events.length > 0 && events.every((e) => e.skip_flight)}
         />
 

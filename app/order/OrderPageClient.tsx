@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useContext, useState, useEffect } from "react";
+import { Suspense, useContext, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
@@ -20,11 +20,6 @@ const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
   ),
 });
 
-const MegaEventsSection = dynamic(() => import("@/components/ui/aboutUsMega"), {
-  // This is supplemental content; avoid server render to keep above-the-fold smaller
-  ssr: false,
-});
-
 interface OrderPageClientProps {
   initialEvent?: Event;
   eventId?: string;
@@ -32,8 +27,7 @@ interface OrderPageClientProps {
 }
 
 export default function OrderPageClient({ initialEvent, eventId, artistSlug }: OrderPageClientProps) {
-  const { event, setEvent, setArtistSlug, step } = useContext(OrderContext);
-  const [showAboutSection, setShowAboutSection] = useState(false);
+  const { event, setEvent, setArtistSlug } = useContext(OrderContext);
 
   // Push the server-resolved artist slug into context so the header + summary
   // photos can link to the artist page.
@@ -62,21 +56,6 @@ export default function OrderPageClient({ initialEvent, eventId, artistSlug }: O
       fetchData();
     }
   }, [initialEvent, eventId, event, setEvent]); // More stable order
-
-  // Delay rendering of MegaEventsSection until after main content.
-  // Show it ONLY on the OrderReview summary step (step 4); hide on all others.
-  useEffect(() => {
-    if (event && step === 4) {
-      const timer = setTimeout(() => {
-        setShowAboutSection(true);
-      }, 200); // Adjust delay as needed
-
-      return () => clearTimeout(timer);
-    } else {
-      // Hide the section on every step except OrderReview (step 4)
-      setShowAboutSection(false);
-    }
-  }, [event, step]);
 
   return (
     <Suspense
@@ -108,12 +87,6 @@ export default function OrderPageClient({ initialEvent, eventId, artistSlug }: O
           );
         })()}
       </DatesProvider>
-
-      {showAboutSection && (
-        <div className="content-wrapper">
-          <MegaEventsSection />
-        </div>
-      )}
     </Suspense>
   );
 }

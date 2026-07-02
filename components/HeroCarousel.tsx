@@ -438,6 +438,10 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
           aria-label={`עמוד האומן ${name}`}
           tabIndex={centered ? 0 : -1}
           draggable={false}
+          // Keep the drag machinery off the CTA: without this the stage's
+          // pointer-capture retargets the resulting click to the stage and the
+          // link never navigates on desktop.
+          onPointerDown={(e) => e.stopPropagation()}
           className={cn(
             "absolute inset-x-0 bottom-3 mx-auto flex w-max items-center gap-1 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold text-black shadow transition-all duration-300 hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:bottom-4 lg:px-5 lg:py-2 lg:text-sm",
             centered
@@ -538,6 +542,13 @@ export const HeroCarousel = ({ artists }: { artists: Artist[] }) => {
                 pointerEvents: visible ? "auto" : "none",
               }}
               onClickCapture={(e) => {
+                // Clicks on the CTA link always pass through — a swipe that
+                // ended without a click (touch) leaves `moved` stale, which
+                // used to swallow the next tap on "לאירועים".
+                if ((e.target as HTMLElement).closest("a")) {
+                  moved.current = false;
+                  return;
+                }
                 if (moved.current) {
                   e.preventDefault();
                   e.stopPropagation();

@@ -984,39 +984,13 @@ export default function OrderReview() {
             <div className="space-y-4 order-1 md:order-2">
               <Card className="bg-card text-card-foreground shadow-lg overflow-hidden">
                 <div
+                  dir="rtl"
                   className={cn(
                     "bg-main text-main-foreground py-4 px-6 flex flex-row justify-between items-center"
                   )}
                 >
-                  {!isMobile ? (
-                    <div className="flex items-center gap-2" dir="rtl">
-                      <span className="text-sm">ההזמנה שמורה עבורך למשך</span>
-                      <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
-                      <span className="text-sm">דקות</span>
-                    </div>
-                  ) : (
-                    <div className="flex text-sm gap-1 items-center  mt-[4px]" dir="rtl">
-                      {selectedFlight && (
-                        <>
-                          <div>
-                            {dayjs(selectedFlight.outbound.departureTime).format(
-                              "DD/MM/YYYY"
-                            )}
-                          </div>
-                          <div>-</div>
-                          <div>
-                            {dayjs(selectedFlight.inbound.departureTime).format(
-                              "DD/MM/YYYY"
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  {/* RTL: title + photo sit on the right, timer on the left. */}
                   <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-bold text-right">
-                      סיכום הזמנה
-                    </h2>
                     {event?.card_image_url &&
                       (artistSlug ? (
                         <Link
@@ -1041,7 +1015,37 @@ export default function OrderReview() {
                           className="size-12 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-14"
                         />
                       ))}
+                    <h2 className="text-2xl font-bold text-right">
+                      סיכום הזמנה
+                    </h2>
                   </div>
+                  {!isMobile ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">ההזמנה שמורה עבורך למשך</span>
+                      <span dir="ltr">
+                        <Timer onTimeElapsed={handleTimeout} duration={TIMEOUT} />
+                      </span>
+                      <span className="text-sm">דקות</span>
+                    </div>
+                  ) : (
+                    <div className="flex text-sm gap-1 items-center mt-[4px]" dir="ltr">
+                      {selectedFlight && (
+                        <>
+                          <div>
+                            {dayjs(selectedFlight.outbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                          <div>-</div>
+                          <div>
+                            {dayjs(selectedFlight.inbound.departureTime).format(
+                              "DD/MM/YYYY"
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {!isMobile && (
                   <PriceSummary
