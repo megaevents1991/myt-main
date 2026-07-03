@@ -398,14 +398,22 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     const ariaLabel =
       kind === "team" ? `עמוד הקבוצה ${name}` : `עמוד האומן ${name}`;
     const cta = kind === "team" ? "למשחקים" : "לאירועים";
-    // Aspect-independent fill so every card looks like the catalog cards. These
-    // carousel cards are TALL portrait; the catalog cards are near-square. With
-    // `contain` (the catalog default) a portrait box fits the cut-out to WIDTH, so
-    // padded cut-outs shrink and float in the blob. Forcing `cover` scales the
-    // cut-out to fill the card HEIGHT, bottom-anchored — the subject fills the card
-    // the same way it does on the square catalog cards, regardless of card aspect
-    // or each cut-out's framing. Blob stays `cover` (fills) at one constant size.
+    // Blob cut-outs: the whole image must stay visible on these TALL portrait
+    // cards — `contain`, centered, no zoom. The backoffice zoom/offset dials
+    // are tuned on the near-square catalog cards; replayed here (especially
+    // with `cover`) they cropped heads and sides, so blob cards ignore them.
+    // Flat photos keep `cover` (a real photo can crop safely).
     const blob = Boolean(artImageUrl);
+    // ⬇️ BLOB ZOOM DIAL. The shapes vary a lot — some paths flood their whole
+    // viewBox (any "cover" crop shows flat color, the Backstreet/Pitbull bug),
+    // others leave margins. So the ring uses blobFit="contain" (whole shape
+    // fitted inside the card first — edges guaranteed visible on EVERY shape)
+    // and then zooms it with this dial so the color still reaches down toward
+    // the footer. Backoffice bgScale is ignored here (square-card dial).
+    const HERO_BLOB_SCALE = 1.3;
+    // Photo backgrounds (shapeIndex 6-8, e.g. the stadium behind club crests)
+    // keep their natural size but bleed full-card via bgFit="cover".
+    const photoBgCard = (entry.fields.artShapeIndex ?? 0) >= 6;
     return (
       <div
         className="relative h-full w-full overflow-hidden rounded-3xl"
@@ -418,24 +426,18 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
           variant={blob ? "blob" : "photo"}
           colorIndex={entry.fields.artColorIndex}
           shapeIndex={entry.fields.artShapeIndex}
-          // Backoffice zoom/position (inline style) overrides the class dial below when set.
-          imageScale={entry.fields.artImageScale}
-          bgScale={entry.fields.artBgScale}
-          imageOffsetX={entry.fields.artImageOffsetX}
-          imageOffsetY={entry.fields.artImageOffsetY}
-          // "cover" makes the cut-out fill the card and bleed to ALL edges (a wide
-          // pose like Weeknd's arm runs off the card edge — never floats mid-card).
-          imageFit="cover"
-          // ⬇️ ARTIST ZOOM DIAL (person only — blob untouched), bottom-anchored.
-          // 1 = cover fill, flush to the card edges. KEEP IT >= 1: pushing it ABOVE 1
-          // zooms further IN (still edge-to-edge). Going BELOW 1 shrinks the image
-          // inward so its edge floats in the MIDDLE of the card with blob beside it
-          // (the gap you saw) — a finite cut-out can't be both smaller AND touch the
-          // edge. First value = BLOB artists, second = flat photos. Literal values
-          // only (scale-[1.1]…) — Tailwind compiles classes it sees as text.
-          imageClassName={
-            blob ? "scale-[0.9] origin-bottom" : "scale-[1] origin-bottom"
+          imageScale={blob ? undefined : entry.fields.artImageScale}
+          bgScale={
+            blob ? (photoBgCard ? undefined : HERO_BLOB_SCALE) : entry.fields.artBgScale
           }
+          blobFit={blob && !photoBgCard ? "contain" : undefined}
+          bgFit={photoBgCard ? "cover" : undefined}
+          imageOffsetX={blob ? undefined : entry.fields.artImageOffsetX}
+          imageOffsetY={blob ? undefined : entry.fields.artImageOffsetY}
+          imageFit={blob ? "contain" : "cover"}
+          // object-center beats EventArt's default object-bottom (twMerge) —
+          // the cut-out floats centered in the card instead of hugging one edge.
+          imageClassName={blob ? "object-center" : undefined}
           hoverZoom={false}
           // rounded-3xl on EventArt itself (not just the wrapper): iOS Safari won't
           // clip a GPU-promoted child to a transformed ANCESTOR's radius, so the

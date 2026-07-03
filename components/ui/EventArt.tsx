@@ -60,6 +60,7 @@ export const EventArt = ({
   priority,
   variant = "blob",
   blobFit = "cover",
+  bgFit = "contain",
   imageFit,
   imageClassName,
   hoverZoom = true,
@@ -87,6 +88,13 @@ export const EventArt = ({
    * blob doesn't zoom bigger than on the square cards.
    */
   blobFit?: "cover" | "contain";
+  /**
+   * How a PHOTO background (shapeIndex 6-8) fills the box. Default "contain"
+   * keeps the whole photo visible (backoffice-editor parity on the square
+   * catalog cards). Use "cover" on tall cards (hero carousel) so a landscape
+   * photo bleeds full-card instead of leaving dark bands above and below.
+   */
+  bgFit?: "cover" | "contain";
   /**
    * How the cut-out image fills the box. Defaults follow `variant`
    * (blob → contain, photo → cover). Override to "cover" on portrait cards so a
@@ -146,7 +154,7 @@ export const EventArt = ({
             fill
             sizes="(max-width: 640px) 90vw, 400px"
             aria-hidden="true"
-            className="object-contain"
+            className={bgFit === "cover" ? "object-cover" : "object-contain"}
             style={bgStyle}
           />
         ) : (
