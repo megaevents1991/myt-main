@@ -1,5 +1,8 @@
 import { OrderData } from "@/lib/app.types";
 import * as yup from "yup";
+import { getEvents } from "@/lib/eventsData";
+import { exchangeRateService } from "@/lib/exchangeRateService";
+import { getTotalMarkup } from "@/lib/events/price";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -60,6 +63,84 @@ export const validateOrderData = async (
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     throw new Error("Invalid order data: " + errorMessage);
+  }
+};
+
+/**
+ * Server-side guard against purchase-price tampering.
+ *
+ * `final_purchase_price_ils` is computed in the browser and is the amount later
+ * billed by /api/payment. It reaches us client-supplied and, until now, was only
+ * type-checked — so a tampered request could persist a ₪1 total for a full-price
+ * package and be charged ₪1.
+ *
+ * This recomputes a TRUSTED minimum from server-held data (cheapest available
+ * ticket + markup, straight from the events table) times the server exchange
+ * rate, and rejects only amounts grossly below it. The floor intentionally counts
+ * ONLY the always-present, mandatory components (ticket + markup — never the
+ * flight/hotel, which can be skipped) and keeps a wide 40% slack, so a legitimate
+ * order — including affiliate/percentage discounts and hotel/flight-skip flows —
+ * can never trip it; it only catches gross underpayment.
+ *
+ * Fails OPEN: any missing trusted input (unknown event, last-minute event outside
+ * the availability window, no exchange rate, agent booking) skips the check rather
+ * than block a real customer.
+ *
+ * @returns a reason string when the order must be rejected, otherwise null.
+ */
+export const validatePurchasePriceFloor = async (
+  data: OrderData,
+): Promise<string | null> => {
+  try {
+    // Agents book with custom, rep-approved pricing — never gate them.
+    if (data.is_agent_booking) return null;
+
+    const charged = Number(data.final_purchase_price_ils);
+    if (!Number.isFinite(charged) || charged <= 0) {
+      return "Non-positive purchase amount";
+    }
+
+    const eventId = Number(data.event_id);
+    if (!Number.isFinite(eventId)) return null;
+
+    const { events } = await getEvents(eventId);
+    const event = events?.[0];
+    if (!event) return null; // event outside availability window / not found — skip
+
+    const rate = exchangeRateService.getTravelRate();
+    if (!Number.isFinite(rate) || rate <= 0) return null;
+
+    // Cheapest available ticket from TRUSTED event data. Empty for dynamic-ticket
+    // events (XS2Event/Tixstock) — markup alone still anchors a non-zero floor.
+    const available = (event.tickets_and_rates || []).filter(
+      (t) => t?.available !== false,
+    );
+    const trustedMinTicket = available.length
+      ? Math.min(...available.map((t) => t.price))
+      : 0;
+    const markup = getTotalMarkup(event);
+
+    const qtyRaw = Number(data.event_order_info?.number_of_ticket);
+    const qty = Number.isFinite(qtyRaw) && qtyRaw >= 1 ? Math.floor(qtyRaw) : 1;
+
+    const mandatoryUsd = (trustedMinTicket + markup) * qty;
+    if (mandatoryUsd <= 0) return null;
+
+    // 40% slack: legitimate totals always exceed this because they also carry the
+    // (excluded) flight + hotel components on top of ticket + markup.
+    const minAcceptableIls = Math.floor(mandatoryUsd * rate * 0.6);
+
+    if (charged < minAcceptableIls) {
+      return `Charged ${charged} ILS below trusted floor ${minAcceptableIls} ILS`;
+    }
+    return null;
+  } catch (error) {
+    // Never let this guard break checkout — on any internal failure, skip it.
+    console.error(
+      "Price-floor validation error (skipping guard):",
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
   }
 };
 

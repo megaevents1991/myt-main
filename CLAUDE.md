@@ -12,6 +12,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > `scripts/migrate-contentful.mjs` + `scripts/verify-migration.mjs`. Backoffice
 > manages this content under **Templates** (תבניות).
 
+> **🔒 TODO — SECURITY HARDENING (deferred, do carefully after redesign ships).**
+> A 2026-07 audit fixed the top breaches on branch `fix/security-hardening`
+> (payment ₪1 price-tampering floor in `app/api/confirm-order/utils.ts`; order-read
+> IDOR narrowed in `app/api/confirm-order/[id]/route.ts`). **Still open — fix
+> carefully later:**
+> - **User management / auth overhaul.** No real user layer. Partner passwords are
+>   PLAINTEXT (`partners.password`, compared via `.eq()` in
+>   `app/api/affiliate/login/route.ts`); every order auto-creates a partner with a
+>   guessable `<code>_pass` password (`app/api/confirm-order/route.ts`). Backoffice
+>   admins share ONE hardcoded env credential. Plan: unify on Supabase Auth, hash +
+>   migrate, add roles. Candidate approach + file refs in Claude memory
+>   (`auth-user-management-todo`).
+> - **Unauthenticated affiliate data leak.** `GET /api/affiliate/stats` &
+>   `/api/affiliate/checkCode` take a guessable `?affiliateId=` with no auth → leak
+>   revenue/commission. Gate on the partner session once auth exists.
+> - **Order-read still keyed by sequential id** — move to an unguessable per-order token.
+> - **Revalidation secret in URL** (`/api/revalidate`, `/api/hotels`) — move to a
+>   header + rotate (cross-project: backoffice calls these).
+> - **No rate limiting** on `/api/confirm-order` (inventory-exhaustion / inbox flood).
+
 ## Always-on rules (auto-loaded)
 
 Tech standards:
