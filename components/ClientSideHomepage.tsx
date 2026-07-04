@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
@@ -509,20 +508,28 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
         }}
       >
         <div className="relative group overflow-hidden rounded-t-2xl flex-1">
-          {/* Accessibility: Enhanced alt text with descriptive team information */}
-          {team.fields.heroBanner?.fields?.file?.url && (
-            <Image
-              src={"https:" + team.fields.heroBanner.fields.file.url}
-              alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של הקבוצה`}
-              priority={true}
-              width={240}
-              height={180}
-              style={{
-                objectPosition: 'center top' // or 'center center', '20% 30%', etc.
-              }}
-              className="object-cover w-full h-full transition-transform group-hover:scale-105"
-            />
-          )}
+          {/* Brand blob behind the team crest (color + shape per team), falling
+              back to the flat hero photo when no blob art is set — same treatment
+              as the artist cards. */}
+          <EventArt
+            id={team.sys.id}
+            imageUrl={
+              team.fields.artImageUrl ||
+              (team.fields.heroBanner?.fields?.file?.url
+                ? "https:" + team.fields.heroBanner.fields.file.url
+                : undefined)
+            }
+            alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של הקבוצה`}
+            variant={team.fields.artImageUrl ? "blob" : "photo"}
+            colorIndex={team.fields.artColorIndex ?? undefined}
+            shapeIndex={team.fields.artShapeIndex ?? undefined}
+            imageScale={team.fields.artImageScale}
+            bgScale={team.fields.artBgScale}
+            imageOffsetX={team.fields.artImageOffsetX}
+            imageOffsetY={team.fields.artImageOffsetY}
+            priority
+            className="h-full w-full"
+          />
           {/* Dark bottom-edge gradient — grounds the image against the white name
               panel in light mode (matches the קטגוריות CategoryCard treatment). */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
