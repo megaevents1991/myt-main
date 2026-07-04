@@ -494,6 +494,11 @@ function CompactEventCard({ event }: { event: Event }) {
 
 // Compact Team Card for Football Section
 function CompactTeamCard({ team }: { team: FootballTeam }) {
+  // A crest over a stadium photo (shapeIndex 6-8). On these cards we ignore the
+  // backoffice image dials (they shrink the crest to ~0.8 and, being an inline
+  // style transform, would OVERRIDE the class scale) and size the crest purely
+  // via the class below so it reads big and centered.
+  const isPhotoBg = (team.fields.artShapeIndex ?? 0) >= 6;
   return (
     <Link
       href={`/football/${team.sys?.id}`}
@@ -523,17 +528,13 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
             variant={team.fields.artImageUrl ? "blob" : "photo"}
             colorIndex={team.fields.artColorIndex ?? undefined}
             shapeIndex={team.fields.artShapeIndex ?? undefined}
-            imageScale={team.fields.artImageScale}
+            // On photo-bg cards, skip the backoffice image dials so the class
+            // scale below actually takes effect (an inline transform would win).
+            imageScale={isPhotoBg ? undefined : team.fields.artImageScale}
             bgScale={team.fields.artBgScale}
-            imageOffsetX={team.fields.artImageOffsetX}
-            imageOffsetY={team.fields.artImageOffsetY}
-            // Photo-background cards (a crest over a stadium, shapeIndex 6-8) show
-            // the crest larger + centered so it doesn't float small in the card.
-            imageClassName={
-              (team.fields.artShapeIndex ?? 0) >= 6
-                ? "object-center scale-[1.35]"
-                : undefined
-            }
+            imageOffsetX={isPhotoBg ? undefined : team.fields.artImageOffsetX}
+            imageOffsetY={isPhotoBg ? undefined : team.fields.artImageOffsetY}
+            imageClassName={isPhotoBg ? "object-center scale-[1.4]" : undefined}
             priority
             className="h-full w-full"
           />
