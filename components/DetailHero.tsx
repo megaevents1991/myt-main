@@ -88,12 +88,27 @@ export const DetailHero = ({
             ) : artImageUrl ? (
               // Same art as the homepage card — colored blob + shape from the
               // backoffice art_* fields — clipped by the hero's existing mask.
+              // The subject is CENTERED in the circle (not bottom-anchored) and
+              // fully contained (zoomed out) so the whole cut-out shows — a person
+              // reads smaller/centered, a crest sits centered over its full-bleed
+              // photo. Generic — applies to every detail hero.
               <EventArt
                 id={artId ?? name}
                 imageUrl={artImageUrl}
                 alt={imageAlt}
                 colorIndex={artColorIndex}
                 shapeIndex={artShapeIndex}
+                imageFit="contain"
+                bgFit={(artShapeIndex ?? 0) >= 6 ? "cover" : undefined}
+                // Person (blob) is bottom-anchored and scaled from the bottom so
+                // the cut-out's lower edge stays tucked at the circle's bottom
+                // curve (never floats mid-circle) while the person reads smaller /
+                // zoomed-out. A photo-bg crest just centers in its contain box.
+                imageClassName={
+                  (artShapeIndex ?? 0) >= 6
+                    ? "object-center"
+                    : "object-bottom origin-bottom scale-[0.8]"
+                }
                 priority
                 hoverZoom={false}
                 className="absolute inset-0 h-full w-full"
