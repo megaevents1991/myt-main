@@ -527,6 +527,13 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
             bgScale={team.fields.artBgScale}
             imageOffsetX={team.fields.artImageOffsetX}
             imageOffsetY={team.fields.artImageOffsetY}
+            // Photo-background cards (a crest over a stadium, shapeIndex 6-8) show
+            // the crest larger + centered so it doesn't float small in the card.
+            imageClassName={
+              (team.fields.artShapeIndex ?? 0) >= 6
+                ? "object-center scale-[1.35]"
+                : undefined
+            }
             priority
             className="h-full w-full"
           />
