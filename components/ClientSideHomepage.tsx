@@ -902,13 +902,15 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     const teamsForGrouping = allFootballTeams && allFootballTeams.length > 0 ? allFootballTeams : [];
     if (!hasArtistPages && teamsForGrouping.length === 0) return events;
 
-    // Build list of artist identifiers that have pages
-    const artistIdentifiersWithPages = new Set(
-      (artists ?? [])
-        .map(artist => artist.fields.nameDBenglish)
-        .filter(Boolean)
-        .map(name => normalizeName(name)) // Trim + lowercase
-    );
+    // Artist identifiers that have pages, longest-first so the most specific
+    // artist wins a whole-word match (see artistIdForEvent).
+    const artistIdsWithPages = Array.from(
+      new Set(
+        (artists ?? [])
+          .map(artist => normalizeName(artist.fields.nameDBenglish))
+          .filter(Boolean)
+      )
+    ).sort((a, b) => b.length - a.length);
 
     // Best representative for a collapsed group (prefer a real tag, then earliest date)
     const pickRepresentative = (groupEvents: Event[]) =>
@@ -920,17 +922,18 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       })[0];
 
-    // 1) Group by artist (exact english-name match)
+    // 1) Group by artist (whole-word name match — same rule as the artist page,
+    //    so "Bon Jovi London" collapses into the "Bon Jovi" card).
     const eventsByArtist = new Map<string, Event[]>();
     const afterArtistGrouping: Event[] = [];
 
     events.forEach(event => {
       if (isEventSoldOut(event)) return; // Skip sold-out events entirely
 
-      const eventArtistName = normalizeName(event.name_english);
-      if (eventArtistName && artistIdentifiersWithPages.has(eventArtistName)) {
-        if (!eventsByArtist.has(eventArtistName)) eventsByArtist.set(eventArtistName, []);
-        eventsByArtist.get(eventArtistName)!.push(event);
+      const matchedId = artistIdForEvent(event.name_english, event.name, artistIdsWithPages);
+      if (matchedId) {
+        if (!eventsByArtist.has(matchedId)) eventsByArtist.set(matchedId, []);
+        eventsByArtist.get(matchedId)!.push(event);
       } else {
         afterArtistGrouping.push(event);
       }
@@ -1610,6 +1613,23 @@ const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const wholeWordMatch = (haystack: string, id: string) =>
   id ? haystack.match(new RegExp(`(^|[^a-z0-9])${escapeRegExp(id)}([^a-z0-9]|$)`, "i")) : null;
 
+// Which artist page an event belongs to. The artist detail page lists events by
+// SUBSTRING (`eventsData.getEventsByName` → `name_english ILIKE %name%`), so the
+// homepage must use the same rule or an event like "Bon Jovi London" won't be
+// collapsed into the "Bon Jovi" card and won't get the "see all events" strip.
+// Whole-word containment (not raw substring) keeps a short name from matching
+// inside a longer word (e.g. "Sting" in "Stinger"). Pass artist ids sorted
+// longest-first so the most specific artist wins. Returns the matched id or null.
+const artistIdForEvent = (
+  nameEnglish: string | null | undefined,
+  name: string | null | undefined,
+  artistIdsLongestFirst: string[]
+): string | null => {
+  const hay = normalizeName(nameEnglish) || normalizeName(name);
+  if (!hay) return null;
+  return artistIdsLongestFirst.find((id) => wholeWordMatch(hay, id)) ?? null;
+};
+
 // Identify the HOME team of a fixture. Football collide is home-only: "Arsenal"
 // collects a match only when Arsenal hosts it ("Arsenal FC vs X"), never its away
 // games ("X vs Arsenal"). The home team is the side named to the LEFT of the
@@ -1640,11 +1660,23 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
   const packagePrice = computePackagePrice(event);
   const router = useRouter();
 
-  // Match a dedicated ARTIST page by exact english name.
+  // Match a dedicated ARTIST page by whole-word name match — same rule as the
+  // artist page's substring lookup, so "Bon Jovi London" resolves to Bon Jovi.
   const matchingArtist = useMemo(() => {
-    if (!artists || !event.name_english) return null;
-    const eventIdentifier = normalizeName(event.name_english);
-    return artists.find(artist => normalizeName(artist.fields.nameDBenglish) === eventIdentifier) ?? null;
+    if (!artists || (!event.name_english && !event.name)) return null;
+    // Longest name first so the most specific artist wins.
+    const sorted = [...artists].sort(
+      (a, b) =>
+        normalizeName(b.fields.nameDBenglish).length -
+        normalizeName(a.fields.nameDBenglish).length
+    );
+    const hay = normalizeName(event.name_english) || normalizeName(event.name);
+    return (
+      sorted.find(artist => {
+        const id = normalizeName(artist.fields.nameDBenglish);
+        return id && wholeWordMatch(hay, id);
+      }) ?? null
+    );
   }, [event, artists]);
 
   // If it's not an artist, match a FOOTBALL TEAM page by HOME team (home games only).
@@ -1669,11 +1701,13 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
     if (!allEvents || !collideTarget) return false;
 
     if (matchingArtist) {
-      // Artists: exact name match (these acts share one identical name).
-      const eventIdentifier = normalizeName(event.name_english) || normalizeName(event.name);
-      return allEvents.filter(
-        e => (normalizeName(e.name_english) || normalizeName(e.name)) === eventIdentifier && !isEventSoldOut(e)
-      ).length > 1;
+      // Artists: whole-word name match (same rule as the artist page), so all
+      // of "Bon Jovi", "Bon Jovi London", … count toward this artist.
+      const id = normalizeName(matchingArtist.fields.nameDBenglish);
+      return allEvents.filter(e => {
+        const hay = normalizeName(e.name_english) || normalizeName(e.name);
+        return !!wholeWordMatch(hay, id) && !isEventSoldOut(e);
+      }).length > 1;
     }
 
     // Teams: count this team's HOME games only.
