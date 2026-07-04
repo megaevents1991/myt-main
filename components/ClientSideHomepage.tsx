@@ -49,6 +49,10 @@ interface Props {
   carouselArtists?: Artist[];
   // Hero-gallery ring: every artist/team with an available event (זמין באתר).
   heroItems?: HeroCarouselItem[];
+  // Homepage "אמנים מובילים" / "כדורגל" slides — ALL entries, available first
+  // then the unavailable ones appended at the end.
+  homeArtists?: Artist[];
+  homeFootball?: FootballTeam[];
 }
 
 const SearchCombobox = React.forwardRef<HTMLInputElement, {
@@ -694,7 +698,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
@@ -1401,8 +1405,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             />
           </div>
 
-          {/* Sports Section */}
-          {footballTeams && footballTeams.length > 0 && (
+          {/* Sports Section — all teams, available (זמין באתר) first, rest at end */}
+          {homeFootball && homeFootball.length > 0 && (
             <section aria-labelledby="football-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div
@@ -1428,17 +1432,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               </div>
               {/* Mobile carousel for Sports events */}
               <div className="block sm:hidden mb-8">
-                <UniversalCarousel teams={footballTeams} variant="compact" />
+                <UniversalCarousel teams={homeFootball} variant="compact" />
               </div>
               {/* Desktop carousel for Sports events */}
               <div className="hidden sm:block mb-8">
-                <UniversalCarousel teams={footballTeams} variant="compact" />
+                <UniversalCarousel teams={homeFootball} variant="compact" />
               </div>
             </section>
           )}
 
-          {/* Artists Section */}
-          {carouselArtists && carouselArtists.length > 0 && (
+          {/* Artists Section — all artists, available (זמין באתר) first, rest at end */}
+          {homeArtists && homeArtists.length > 0 && (
             <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div
@@ -1464,11 +1468,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               </div>
               {/* Mobile carousel for Artists */}
               <div className="block sm:hidden mb-8">
-                <UniversalCarousel artists={carouselArtists} variant="compact" />
+                <UniversalCarousel artists={homeArtists} variant="compact" />
               </div>
               {/* Desktop carousel for Artists */}
               <div className="hidden sm:block mb-8">
-                <UniversalCarousel artists={carouselArtists} variant="compact" />
+                <UniversalCarousel artists={homeArtists} variant="compact" />
               </div>
             </section>
           )}
