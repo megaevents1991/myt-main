@@ -60,15 +60,17 @@ export const DetailHero = ({
   return (
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
+    {/* top-16: clears the floating corner buttons (hamburger sits in the
+        top-right corner over the hero). */}
     {ticketOnly && (
-      <TicketOnlyBadge className="absolute right-4 top-5 z-20 md:right-6" />
+      <TicketOnlyBadge className="absolute right-4 top-16 z-20 md:right-6" />
     )}
-    {/* Way home — the global header only appears after scroll, so the hero
-        carries its own wordmark link. Sits at the RTL end (far left) to match
-        the global header logo. */}
-    <div className="container relative z-10 mx-auto flex justify-end px-4 pt-5">
+    {/* Way home — the hero carries its own wordmark link, CENTERED so the
+        floating corner controls (hamburger right, quick-actions left) never
+        overlap it. */}
+    <div className="container relative z-10 mx-auto flex justify-center px-4 pt-4">
       <Link href="/" aria-label="חזרה לדף הבית" className="inline-block">
-        <MYT className="h-5 w-auto text-main-foreground md:h-6" />
+        <MYT className="h-6 w-auto text-main-foreground md:h-7" />
       </Link>
     </div>
     <div className="container relative z-10 mx-auto grid items-center gap-8 px-4 py-10 md:grid-cols-2 md:py-16">

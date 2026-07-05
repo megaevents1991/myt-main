@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Search, X } from "lucide-react";
+import { Ellipsis, Menu, Search, X } from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -31,6 +31,10 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Hero floating corner: the single left-corner button fans out to the
+  // theme/whatsapp/search icons while this is true.
+  const [cornerOpen, setCornerOpen] = useState(false);
+  const cornerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   // Inside the order flow the Stepper is the only chrome — hide the global
@@ -57,6 +61,21 @@ export const Header = () => {
     setMenuOpen(false);
     window.dispatchEvent(new CustomEvent("myt:open-search"));
   };
+
+  // Fan-out corner: close on outside click / Escape.
+  useEffect(() => {
+    if (!cornerOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!cornerRef.current?.contains(e.target as Node)) setCornerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setCornerOpen(false);
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [cornerOpen]);
 
   // Mobile menu: close on outside click / Escape (the hamburger only exists on
   // mobile, so this covers the only case where the slide-down is open).
@@ -135,6 +154,7 @@ export const Header = () => {
   const showFloating = overHero && !menuOpen;
   const floatBtn =
     "inline-flex size-9 md:size-11 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-colors hover:bg-secondary hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const cornerActive = showFloating && cornerOpen;
 
   return (
     <>
@@ -159,27 +179,54 @@ export const Header = () => {
           >
             <Menu className="size-4 md:size-5" aria-hidden />
           </button>
-          {/* LEFT corner: theme / whatsapp / search. */}
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <ThemeToggle className={floatBtn} />
-            <a
-              href="https://wa.me/972542002722"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="WhatsApp"
-              tabIndex={showFloating ? 0 : -1}
-              className={floatBtn}
+          {/* LEFT corner: one button that fans out to theme / whatsapp / search.
+              Fan-out sits BEFORE the toggle in DOM (= its right in RTL), so the
+              toggle stays pinned in the corner and the icons expand toward the
+              center. Collapsed, the fan-out takes no width. */}
+          <div ref={cornerRef} className="flex items-center gap-1.5 md:gap-2">
+            <div
+              aria-hidden={!cornerActive}
+              className={cn(
+                "flex items-center gap-1.5 overflow-hidden transition-all duration-300 md:gap-2",
+                cornerActive
+                  ? "max-w-[200px] opacity-100"
+                  : "pointer-events-none max-w-0 opacity-0"
+              )}
             >
-              <WhatsAppIcon className="size-4 md:size-5" />
-            </a>
+              <ThemeToggle className={floatBtn} />
+              <a
+                href="https://wa.me/972542002722"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                tabIndex={cornerActive ? 0 : -1}
+                className={floatBtn}
+              >
+                <WhatsAppIcon className="size-4 md:size-5" />
+              </a>
+              <button
+                type="button"
+                onClick={openSearch}
+                aria-label="חיפוש אירוע"
+                tabIndex={cornerActive ? 0 : -1}
+                className={floatBtn}
+              >
+                <Search className="size-4 md:size-5" aria-hidden />
+              </button>
+            </div>
             <button
               type="button"
-              onClick={openSearch}
-              aria-label="חיפוש אירוע"
+              aria-label={cornerOpen ? "סגירת פעולות" : "פעולות מהירות"}
+              aria-expanded={cornerOpen}
               tabIndex={showFloating ? 0 : -1}
+              onClick={() => setCornerOpen((v) => !v)}
               className={floatBtn}
             >
-              <Search className="size-4 md:size-5" aria-hidden />
+              {cornerOpen ? (
+                <X className="size-4 md:size-5" aria-hidden />
+              ) : (
+                <Ellipsis className="size-4 md:size-5" aria-hidden />
+              )}
             </button>
           </div>
         </div>

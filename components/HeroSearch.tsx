@@ -269,7 +269,9 @@ export const HeroSearch = ({
           }}
           placeholder="לאן טסים? אמן, קבוצה או עיר…"
           aria-label="חיפוש אירוע — הקלידו אירוע, אומן, קבוצה או עיר"
-          className="min-w-0 flex-1 bg-transparent px-2 text-base text-main-foreground placeholder:font-medium placeholder:text-main-foreground/80 focus:outline-none"
+          // placeholder:text-[15px] — the full sentence is 5px too wide for a
+          // 375px input at 16px; one size down fits without changing the copy.
+          className="min-w-0 flex-1 bg-transparent px-2 text-base text-main-foreground placeholder:font-medium placeholder:text-[15px] placeholder:text-main-foreground/80 focus:outline-none sm:placeholder:text-base"
           type="text"
           autoComplete="off"
         />
