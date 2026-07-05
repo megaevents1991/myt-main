@@ -35,6 +35,7 @@ export const Header = () => {
   // theme/whatsapp/search icons while this is true.
   const [cornerOpen, setCornerOpen] = useState(false);
   const cornerRef = useRef<HTMLDivElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
   // Shared-element hand-off: when the navbar appears, the two floating corner
   // units glide into the navbar's icon pill (and back). These hold the
   // measured translate deltas from each corner to its slot in the pill.
@@ -89,7 +90,13 @@ export const Header = () => {
   useEffect(() => {
     if (!menuOpen) return;
     const onClick = (e: MouseEvent) => {
-      if (!headerRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      // Ignore the floating corner layer — the hamburger there OPENS the menu
+      // on pointerdown, and this mousedown (same gesture) must not undo it.
+      if (
+        !headerRef.current?.contains(e.target as Node) &&
+        !floatingRef.current?.contains(e.target as Node)
+      )
+        setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
     document.addEventListener("mousedown", onClick);
@@ -208,7 +215,7 @@ export const Header = () => {
   // Same dark pill as the navbar cluster — in BOTH themes (the hero is always
   // dark, and the icons land inside the navbar's dark pill when scrolling).
   const floatBtn =
-    "inline-flex size-9 md:size-11 items-center justify-center rounded-full bg-main text-main-foreground shadow-card ring-1 ring-white/15 transition-colors hover:bg-secondary hover:text-black hover:ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "inline-flex size-9 shrink-0 touch-manipulation md:size-11 items-center justify-center rounded-full bg-main text-main-foreground shadow-card ring-1 ring-white/15 transition-colors hover:bg-secondary hover:text-black hover:ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
   // Flight styling shared by the two corner units: transform+opacity only
   // (GPU-friendly), interruptible, skipped under reduced-motion.
   const flyCls =
@@ -220,6 +227,7 @@ export const Header = () => {
     {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
     {!needsSpacer && (
       <div
+        ref={floatingRef}
         aria-hidden={!showFloating}
         className={cn(
           "fixed inset-x-0 top-0 z-50",
@@ -243,6 +251,13 @@ export const Header = () => {
               aria-label="פתיחת תפריט"
               aria-expanded={false}
               tabIndex={showFloating ? 0 : -1}
+              // pointerdown (not click): reacts on touch-start, so a tap while
+              // the left fan is open can't get lost in the fan's outside-close
+              // re-render. onClick kept for keyboard activation.
+              onPointerDown={() => {
+                setCornerOpen(false);
+                setMenuOpen(true);
+              }}
               onClick={() => setMenuOpen(true)}
               className={floatBtn}
             >
@@ -263,43 +278,22 @@ export const Header = () => {
                 : { transform: `translate(${fly.lx}px, ${fly.ly}px) scale(0.85)` }
             }
           >
-          <div ref={cornerRef} className="flex items-center gap-1.5 md:gap-2">
-            <div
-              aria-hidden={!cornerActive}
-              className={cn(
-                "flex items-center gap-1.5 overflow-hidden transition-all duration-300 md:gap-2",
-                cornerActive
-                  ? "max-w-[200px] opacity-100"
-                  : "pointer-events-none max-w-0 opacity-0"
-              )}
-            >
-              <ThemeToggle className={floatBtn} />
-              <a
-                href="https://wa.me/972542002722"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                tabIndex={cornerActive ? 0 : -1}
-                className={floatBtn}
-              >
-                <WhatsAppIcon className="size-4 md:size-5" />
-              </a>
-              <button
-                type="button"
-                onClick={openSearch}
-                aria-label="חיפוש אירוע"
-                tabIndex={cornerActive ? 0 : -1}
-                className={floatBtn}
-              >
-                <Search className="size-4 md:size-5" aria-hidden />
-              </button>
-            </div>
+          {/* Fan is ABSOLUTE (zero layout impact — the toggle never moves) and
+              animates transform+opacity only (GPU, no reflow → smooth on
+              phones). Buttons pop out with a small stagger, nearest first. */}
+          <div ref={cornerRef} className="relative">
             <button
               type="button"
               aria-label={cornerOpen ? "סגירת פעולות" : "פעולות מהירות"}
               aria-expanded={cornerOpen}
               tabIndex={showFloating ? 0 : -1}
-              onClick={() => setCornerOpen((v) => !v)}
+              // Toggle on touch-start — no click latency on mobile. The click
+              // handler only serves keyboard activation (detail === 0), so a
+              // tap never double-toggles.
+              onPointerDown={() => setCornerOpen((v) => !v)}
+              onClick={(e) => {
+                if (e.detail === 0) setCornerOpen((v) => !v);
+              }}
               className={floatBtn}
             >
               {cornerOpen ? (
@@ -308,6 +302,52 @@ export const Header = () => {
                 <Ellipsis className="size-4 md:size-5" aria-hidden />
               )}
             </button>
+            <div
+              aria-hidden={!cornerActive}
+              className="absolute left-full top-0 ml-1.5 flex items-center gap-1.5 md:ml-2 md:gap-2"
+            >
+              {(
+                [
+                  <ThemeToggle key="theme" className={floatBtn} />,
+                  <a
+                    key="wa"
+                    href="https://wa.me/972542002722"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="WhatsApp"
+                    tabIndex={cornerActive ? 0 : -1}
+                    className={floatBtn}
+                  >
+                    <WhatsAppIcon className="size-4 md:size-5" />
+                  </a>,
+                  <button
+                    key="search"
+                    type="button"
+                    onClick={openSearch}
+                    aria-label="חיפוש אירוע"
+                    tabIndex={cornerActive ? 0 : -1}
+                    className={floatBtn}
+                  >
+                    <Search className="size-4 md:size-5" aria-hidden />
+                  </button>,
+                ] as const
+              ).map((el, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "inline-flex transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
+                    cornerActive
+                      ? "translate-x-0 scale-100 opacity-100"
+                      : "pointer-events-none -translate-x-2 scale-75 opacity-0"
+                  )}
+                  // RTL row: first child is farthest from the toggle — it pops
+                  // last on open so the fan reads as growing outward.
+                  style={{ transitionDelay: cornerActive ? `${(2 - i) * 40}ms` : "0ms" }}
+                >
+                  {el}
+                </span>
+              ))}
+            </div>
           </div>
           </div>
         </div>
