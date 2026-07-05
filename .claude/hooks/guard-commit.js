@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
  * PreToolUse hook for Bash(git commit:*).
- * Blocks (exit 2) when:
- *   (a) current branch is main/master  -> force a feature branch
- *   (b) commit message carries an AI co-author / "Generated with Claude" line
+ * Blocks (exit 2) when the commit message carries an AI co-author /
+ * "Generated with Claude" line.
+ * (The main/master branch guard was removed 2026-07-05 at Dor's request —
+ * direct commits to main are allowed.)
  * Fails open: any parse/exec error -> allow (never block a legit commit).
  */
-const { execFileSync } = require("child_process");
-
 function readStdin() {
   try {
     return require("fs").readFileSync(0, "utf8");
@@ -35,22 +34,6 @@ function main() {
     process.exit(2);
   }
 
-  // (a) branch guard
-  let branch = "";
-  try {
-    branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    process.exit(0); // not a repo / detached — let git decide
-  }
-  if (branch === "main" || branch === "master") {
-    console.error(
-      `Blocked: on '${branch}'. Create a feature branch first ` +
-        "(e.g. `git switch -c fix/...`). Never commit to main/master."
-    );
-    process.exit(2);
-  }
   process.exit(0);
 }
 main();
