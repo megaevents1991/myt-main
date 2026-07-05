@@ -1237,7 +1237,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         </div>
         {/* The single search experience — assembles a package live as you type */}
         <div className="relative z-20 mt-6 md:mt-7">
-          <HeroSearch events={initialEvents} artists={artists} />
+          <HeroSearch events={initialEvents} artists={artists} overlay />
         </div>
         {/* Trust row — sits under the gallery, per Dor's layout note */}
         <TrustBadges className="relative z-10 mt-3 md:mt-8 justify-center text-main-foreground/80" />
