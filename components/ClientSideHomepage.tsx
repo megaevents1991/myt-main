@@ -1861,7 +1861,8 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               <PackageIcons cycle />
             </div>
 
-            <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black dark:bg-foreground dark:text-background dark:group-hover:bg-foreground/90 dark:group-hover:text-background dark:group-active:bg-foreground/90 dark:group-active:text-background">
+            {/* Same size as before — pill shape + font match the artist-page CTA. */}
+            <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-xs font-semibold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black dark:bg-foreground dark:text-background dark:group-hover:bg-foreground/90 dark:group-hover:text-background dark:group-active:bg-foreground/90 dark:group-active:text-background">
               {computedSold ? "אזל מהמלאי" : "לפרטים והזמנה"}
             </div>
           </div>

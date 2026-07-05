@@ -224,7 +224,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
         }
         steps += 1;
         setCurrent((c) => c + 1);
-      }, 750);
+      }, 1200);
     }, 900);
     return () => {
       clearTimeout(startT);

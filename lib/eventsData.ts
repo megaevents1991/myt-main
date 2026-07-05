@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
+import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 
 export const getCachedEvents = nextCache(getEvents, ["all-events"], {
   tags: ["events"],
@@ -60,7 +61,7 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     console.log(
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
-    return { events: events || [] };
+    return { events: await enrichEventsWithFallbackImages(events || []) };
   } catch (error) {
     const queryTime = Date.now() - startTime;
     console.error(`[EventsData] Unexpected error after ${queryTime}ms:`, {
@@ -88,5 +89,5 @@ export async function getEventsByName(
     .order("date", { ascending: true });
 
   if (error) return Promise.resolve({ events: [] as Event[] });
-  return { events };
+  return { events: await enrichEventsWithFallbackImages(events) };
 }

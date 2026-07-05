@@ -14,3 +14,5 @@ export const getFeaturedFootballTeams = (): Promise<FootballTeam[]> => r.listFea
 export const getFootballTeamBySlug = (slug: string): Promise<FootballTeam | null> =>
   r.getBySlug(slug);
 export const getFootballTeamSlugs = r.listSlugs;
+/** name_english → image_url index for the event-photo fallback. */
+export const getFootballTeamImageIndex = r.listImageIndex;

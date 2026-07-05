@@ -12,3 +12,5 @@ export const getAllArtists = r.listAll;
 export const getFeaturedArtists = r.listFeatured;
 export const getArtistBySlug = r.getBySlug;
 export const getArtistSlugs = r.listSlugs;
+/** name_english → image_url index for the event-photo fallback. */
+export const getArtistImageIndex = r.listImageIndex;

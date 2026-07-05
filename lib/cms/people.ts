@@ -153,6 +153,28 @@ export function makePeopleReaders(cfg: PeopleConfig) {
       }
     },
 
+    /**
+     * Lightweight name→image index for the event-photo fallback
+     * (docs/superpowers/specs/2026-07-01-event-photo-artist-fallback-design.md).
+     * Full https URLs as stored — events consume them directly in next/image.
+     * No Contentful fallback: on error return [] so enrichment is a no-op.
+     */
+    async listImageIndex(): Promise<{ name: string; url: string }[]> {
+      const { data, error } = await supabase
+        .from(table)
+        .select("name_english, image_url")
+        .eq("is_deleted", false)
+        .eq("is_active", true)
+        .not("image_url", "is", null);
+      if (error) {
+        console.error(`${table} listImageIndex failed:`, JSON.stringify(error));
+        return [];
+      }
+      return ((data ?? []) as Pick<PersonRow, "name_english" | "image_url">[])
+        .filter((r) => r.name_english && r.image_url)
+        .map((r) => ({ name: r.name_english as string, url: r.image_url as string }));
+    },
+
     /** Slugs for static params. Union of Supabase + Contentful (dedup). */
     async listSlugs(): Promise<string[]> {
       const slugs = new Set<string>();

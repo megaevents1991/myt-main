@@ -47,7 +47,7 @@ export const EventDataHeader = ({
         {artistHref && (
           <Link
             href={artistHref}
-            className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-forest"
+            className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-forest dark:text-glow dark:decoration-glow/40 dark:focus-visible:outline-glow"
           >
             לכל ההופעות של {event?.name?.trim()}
             <ChevronLeft className="size-4" aria-hidden />
