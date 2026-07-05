@@ -342,14 +342,21 @@ export const cleanupDuplicateSections = (container: HTMLElement): void => {
 
   for (const el of sectionEls) {
     const sectionId = el.getAttribute("data-section") || "";
-    const d = el.getAttribute("d") || "";
-    const points = el.getAttribute("points") || "";
-    const x = el.getAttribute("x") || "";
-    const y = el.getAttribute("y") || "";
-    const w = el.getAttribute("width") || "";
-    const h = el.getAttribute("height") || "";
-    const transform = el.getAttribute("transform") || "";
-    const sig = `${sectionId}|${el.tagName}|${d}|${points}|${x}|${y}|${w}|${h}|${transform}`;
+
+    // Geometry lives on the section's shape child (e.g. `.block`), not on
+    // the `[data-section]` wrapper group itself. Read it from the shape so
+    // sections that share an id (e.g. many `platea_` blocks) are not all
+    // collapsed to one signature and wrongly removed.
+    const shape =
+      el.querySelector(".block") || el.querySelector(SVG_SHAPE_SEL) || el;
+    const d = shape.getAttribute("d") || "";
+    const points = shape.getAttribute("points") || "";
+    const x = shape.getAttribute("x") || "";
+    const y = shape.getAttribute("y") || "";
+    const w = shape.getAttribute("width") || "";
+    const h = shape.getAttribute("height") || "";
+    const transform = shape.getAttribute("transform") || "";
+    const sig = `${sectionId}|${shape.tagName}|${d}|${points}|${x}|${y}|${w}|${h}|${transform}`;
 
     if (seen.has(sig)) {
       el.remove();
@@ -416,6 +423,9 @@ export const paintSection = (
     if (!node.dataset.origStrokeOpacity) {
       node.dataset.origStrokeOpacity = svgEl.style.strokeOpacity || "";
     }
+    if (!node.dataset.origFillOpacity) {
+      node.dataset.origFillOpacity = svgEl.style.fillOpacity || "";
+    }
   }
 
   /* ---- fill ---- */
@@ -434,21 +444,25 @@ export const paintSection = (
         break;
       case "available":
         svgEl.style.fill = TX_SECTION_FILL_LIGHT;
+        svgEl.style.fillOpacity = "1";
         svgEl.style.opacity = "1";
         svgEl.style.cursor = "pointer";
         break;
       case "hover":
         svgEl.style.fill = TX_HOVER_FILL;
+        svgEl.style.fillOpacity = "1";
         svgEl.style.opacity = "1";
         svgEl.style.cursor = "pointer";
         break;
       case "selected":
         svgEl.style.fill = TX_SELECTED_FILL;
+        svgEl.style.fillOpacity = "1";
         svgEl.style.opacity = "1";
         svgEl.style.cursor = "pointer";
         break;
       case "disabled":
         svgEl.style.fill = TX_DISABLED_FILL;
+        svgEl.style.fillOpacity = "1";
         svgEl.style.opacity = "0.6";
         svgEl.style.cursor = "not-allowed";
         break;

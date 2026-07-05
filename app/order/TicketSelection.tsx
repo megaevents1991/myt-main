@@ -18,6 +18,14 @@ import {
   type TixStockMatchableListing,
 } from "@/lib/tixstock-map";
 
+// Safety buffer applied to the static DB price ONLY when live TixStock pricing
+// is unavailable, so an outage never makes us sell below the live price.
+const TX_FALLBACK_BUFFER_PCT = Number(
+  process.env.NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT ?? "15",
+);
+const TX_FALLBACK_MULTIPLIER =
+  1 + (Number.isFinite(TX_FALLBACK_BUFFER_PCT) ? TX_FALLBACK_BUFFER_PCT : 15) / 100;
+
 
 export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, artistSlug } = useContext(OrderContext);
@@ -172,7 +180,21 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
    * quantity are filtered out entirely.
    */
   const ticketsWithLivePrices: EventTicket[] = useMemo(() => {
-    if (!isTxEvent || liveListings.length === 0) return availableTickets;
+    // Non-tx events never use live pricing — leave them untouched.
+    if (!isTxEvent) return availableTickets;
+
+    // tx_event with no live listings: live pricing is unavailable (API error,
+    // timeout, or zero listings). Once the fetch has settled, fall back to the
+    // static DB price WITH a safety buffer so an outage can't make us sell below
+    // the true live price. While still loading, the list is hidden by the loader.
+    if (liveListings.length === 0) {
+      if (isLoadingLiveTickets) return availableTickets;
+      return availableTickets.map((ticket) => ({
+        ...ticket,
+        price: Math.ceil(ticket.price * TX_FALLBACK_MULTIPLIER),
+      }));
+    }
+
     return availableTickets.reduce<EventTicket[]>((acc, ticket) => {
       const livePrice = getLivePriceForCategory(
         ticket.category,
@@ -185,6 +207,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   }, [
     isTxEvent,
     liveListings,
+    isLoadingLiveTickets,
     availableTickets,
     numberOfEventTickets,
     getLivePriceForCategory,
@@ -194,6 +217,21 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const effectiveTickets: EventTicket[] = isTxEvent
     ? ticketsWithLivePrices
     : availableTickets;
+
+  /** True when selling on buffered DB price because live TX pricing is down. */
+  const usingBufferedFallback =
+    isTxEvent &&
+    !isLoadingLiveTickets &&
+    liveListings.length === 0 &&
+    availableTickets.length > 0;
+
+  useEffect(() => {
+    if (usingBufferedFallback) {
+      console.warn(
+        `[TixStock] Live pricing unavailable for event ${event?.id} — selling on buffered DB price (×${TX_FALLBACK_MULTIPLIER}).`,
+      );
+    }
+  }, [usingBufferedFallback, event?.id]);
 
   useEffect(() => {
     if (!effectiveTickets || effectiveTickets.length === 0) {
