@@ -40,9 +40,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-        width: 306,
-        height: 200,
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "מגה איבנטס - אודותינו",
       },
     ],
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     description:
       "הכירו את מגה איבנטס מבית מגה תיירות - 30 שנות ניסיון בתחום התיירות והאירועים.",
     images: [
-      "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+      "/og-image.png",
     ],
   },
   robots: {
@@ -171,7 +171,7 @@ export default async function AboutPage() {
           </h2>
           <Link
             href="/"
-            className="bg-secondary text-white px-16 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
+            className="bg-secondary text-secondary-foreground px-16 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
             aria-label="עברו לעמוד הראשי להזמנת אירועים"
           >
             הזמינו עכשיו!

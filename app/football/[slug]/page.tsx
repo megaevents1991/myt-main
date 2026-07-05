@@ -1,21 +1,24 @@
-import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
-import { contentfulClient } from "@/lib/contentful";
-import { FootballFields } from "@/lib/app.types";
+import { getFootballTeamBySlug, getFootballTeamSlugs } from "@/lib/football";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
 import {
   documentToReactComponents,
   Options,
 } from "@contentful/rich-text-react-renderer";
 import { ReactNode } from "react";
-import dayjs from "dayjs";
-import Link from "next/link";
 import { getEventsByName } from "@/lib/eventsData";
-import ClientTracker from "../../../components/ClientTracker";
-import EventButton from "../../../components/EventButton";
-import { computePackagePrice } from "@/lib/events/price";
+import { documentToPlainText, firstSentence } from "@/lib/richText";
+import ClientTracker from "@/components/ClientTracker";
+import { HeaderTitle } from "@/components/HeaderTitle";
+import { DetailHero } from "@/components/DetailHero";
+import { ArtistEventsFilter } from "@/components/ArtistEventsFilter";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TrustSection } from "@/components/TrustSection";
+import { FAQ } from "@/components/ui/FAQ";
+import { ArtistBanners } from "@/components/ArtistBanners";
+import { ExperienceCarousel } from "@/components/ExperienceCarousel";
+import { ArtistVideos } from "@/components/ArtistVideos";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
@@ -28,7 +31,7 @@ export async function generateMetadata({
   const { slug } = await params;
 
   try {
-    const team = await contentfulClient.getEntry<FootballFields>(slug);
+    const team = await getFootballTeamBySlug(slug);
     if (!team?.fields?.name) {
       return { title: "Team Not Found - MYT" };
     }
@@ -63,18 +66,28 @@ export async function generateMetadata({
 
 export async function generateStaticParams() {
   try {
-    const { items } = await contentfulClient.getEntries({
-      content_type: "footballTeamTemplate",
-    });
-
-    return items.map((item) => ({
-      slug: item.sys.id,
-    }));
+    const slugs = await getFootballTeamSlugs();
+    return slugs.map((slug) => ({ slug }));
   } catch (error) {
     console.error('Error generating static params for football teams:', error);
     return [];
   }
 }
+
+const Bold = ({ children }: { children: ReactNode }) => (
+  <strong className="font-bold">{children}</strong>
+);
+
+const bioOptions: Options = {
+  renderMark: {
+    [MARKS.BOLD]: (text: ReactNode): ReactNode => <Bold>{text}</Bold>,
+  },
+  renderNode: {
+    [BLOCKS.PARAGRAPH]: (_node: unknown, children: ReactNode): ReactNode => (
+      <p className="mb-3 last:mb-0">{children}</p>
+    ),
+  },
+};
 
 export default async function FootballPage({
   params,
@@ -82,195 +95,79 @@ export default async function FootballPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  
-  // Add timestamp for cache validation
-  const timestamp = Date.now();
-  
+
   try {
-    const team = await contentfulClient.getEntry<FootballFields>(slug);
+    const team = await getFootballTeamBySlug(slug);
 
-  if (!team || !team.fields) {
-    notFound();
-  }
+    if (!team || !team.fields) {
+      notFound();
+    }
 
-  const { name, nameDBenglish, bio } = team.fields;
+    const { name, nameDBenglish, bio, heroBanner, heroVideoUrl, banners, gallery, videos } = team.fields;
 
-  const isMondial2026 = name === "מונדיאל 2026";
-  
-  // Defensive checks for required fields
-  if (!name || !nameDBenglish) {
-    console.error('Football team missing required fields:', { slug, name, nameDBenglish });
-    notFound();
-  }
-  
-  const bioDocument = bio as Document;
+    if (!name || !nameDBenglish) {
+      console.error('Football team missing required fields:', { slug, name, nameDBenglish });
+      notFound();
+    }
 
-  const { events } = await getEventsByName(String(nameDBenglish));
+    const { events } = await getEventsByName(String(nameDBenglish));
+    const imageUrl = heroBanner?.fields?.file?.url
+      ? "https:" + heroBanner.fields.file.url
+      : undefined;
 
-  const Bold = ({ children }: { children: ReactNode }) => (
-    <span className="font-bold">{children}</span>
-  );
+    // Mobile bio collapses to its first sentence with a "קרא עוד.." toggle.
+    const bioPlain = documentToPlainText(bio as Document);
+    const bioFirstSentence = firstSentence(bioPlain);
+    const bioCanExpand = bioFirstSentence.length < bioPlain.length;
 
-  const Text = ({ children }: { children: ReactNode }) => (
-    <p className="align-center">{children}</p>
-  );
+    return (
+      <>
+        <ClientTracker />
+        <HeaderTitle name={String(name)} />
+        <DetailHero
+          name={String(name)}
+          bio={documentToReactComponents(bio as Document, bioOptions)}
+          bioFirstSentence={bioFirstSentence}
+          bioCanExpand={bioCanExpand}
+          imageUrl={imageUrl}
+          imageAlt={`לוגו של קבוצת ${String(name)}`}
+          heroVideoUrl={heroVideoUrl}
+          artId={team.sys.id}
+          artImageUrl={team.fields.artImageUrl}
+          artColorIndex={team.fields.artColorIndex}
+          artShapeIndex={team.fields.artShapeIndex}
+        />
 
-  const options: Options = {
-    renderMark: {
-      [MARKS.BOLD]: (text: ReactNode): ReactNode => <Bold>{text}</Bold>,
-    },
-    renderNode: {
-      [BLOCKS.PARAGRAPH]: (_node: unknown, children: ReactNode): ReactNode => (
-        <Text>{children}</Text>
-      ),
-    },
-  };
+        <ArtistBanners banners={banners} />
 
-  return (
-    <main dir="rtl" className="container mx-auto py-8 px-4">
-      <ClientTracker />
-      {/* Add invisible element with timestamp for client checking */}
-      <div id="page-timestamp" data-timestamp={timestamp} style={{ display: 'none' }} />
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">{name}</h1>
-        <section className="prose max-w-none" aria-labelledby="team-bio">
-          <h2 id="team-bio" className="sr-only">מידע על הקבוצה</h2>
-          {documentToReactComponents(bioDocument, options)}
+        <section
+          id="upcoming-events"
+          className="container mx-auto scroll-mt-20 px-4 py-12"
+          aria-labelledby="upcoming-matches-heading"
+        >
+          <h2
+            id="upcoming-matches-heading"
+            className="mb-2 font-display text-2xl font-extrabold text-foreground"
+          >
+            אירועים קרובים
+          </h2>
+          <p className="mb-6 text-muted-foreground">
+            בחרו תאריך משחק והתחילו להרכיב את החבילה שלכם
+          </p>
+          {events.length > 0 ? (
+            <ArtistEventsFilter events={events} title={String(name)} showName />
+          ) : (
+            <EmptyState title="אין אירועים קרובים" />
+          )}
         </section>
-      </header>
-      {/* Event Card Section */}
-      <section className="mt-12" aria-labelledby="upcoming-matches">
-        <h2 id="upcoming-matches" className="text-2xl font-bold text-secondary mb-6">
-          אירועים קרובים
-        </h2>
-        {events.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="רשימת משחקים קרובים">
-            {events.map((event) => {
-              const hasAvailableTickets = (event.tickets_and_rates || []).some((t) => t?.available !== false);
-              const computedSold = !hasAvailableTickets || event.tags === "Sold";
-              const packagePrice = computePackagePrice(event);
-              return (
-              <Link
-                key={event.id}
-                href={computedSold ? "#no-op" : `/order/${event.id}`}
-                className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
-                aria-label={computedSold ? `משחק - אזל מהמלאי` : `הזמנת כרטיסים למשחק`}
-                role="listitem"
-              >
-                <EventButton event={event}>
-                  <div className="rounded-lg shadow-lg flex flex-row-reverse sm:flex-col hover:shadow-xl hover:outline hover:outline-main">
-                    <div
-                      className="relative group overflow-hidden rounded-l-lg sm:rounded-t-lg sm:rounded-b-none w-[48%] sm:w-auto"
-                      dir="rtl"
-                    >
-                      {event.tags === "LastTickets" && !computedSold && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="כרטיסים אחרונים">
-                          כרטיסים אחרונים!
-                        </div>
-                      )}
-                      {event.tags === "Popular" && !computedSold && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-secondary text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אירוע פופולרי">
-                          נמכר במהירות!
-                        </div>
-                      )}
-                      {event.tags === "Restock" && !computedSold && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-[#52C4A3] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חזר למלאי">
-                          חזר למלאי!
-                        </div>
-                      )}
-                      {event.tags === "VIPevent" && !computedSold && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="חבילת VIP זמינה">
-                          אירוח VIP
-                        </div>
-                      )}
-                      {event.tags === "VIPavailable" && !computedSold && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-black font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5" aria-label="אופציית VIP זמינה">
-                          אופציית VIP
-                        </div>
-                      )}
-                      {computedSold && (
-                        <div className="absolute top-0 left-0 w-64 h-10 bg-[#d63a59] text-white font-bold text-lg transform -translate-x-16 translate-y-7 rotate-[-45deg] flex items-center justify-center z-10 pr-5">
-                          אזלו הכרטיסים
-                        </div>
-                      )}
-                      {event.skip_flight && !computedSold && (
-                        <TicketOnlyBadge />
-                      )}
-                      <Image
-                        src={event.card_image_url}
-                        alt={name}
-                        priority={true}
-                        width={400}
-                        height={300}
-                        style={{
-                          objectPosition: 'center top' // or 'center center', '20% 30%', etc.
-                        }}
-                        className="object-cover w-full h-72 transition-transform group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="flex flex-col text-center w-[52%] sm:w-auto">
-                      <div
-                        className="p-2 text-2xl font-bold"
-                        style={{ lineHeight: "1.1" }}
-                      >
-                        {event.name}
-                      </div>
-                      <div className="py-1 px-2 bg-secondary font-semibold text-white flex flex-wrap justify-center items-center">
-                        <span>
-                          {event.date
-                            ? dayjs(event.date).format("DD/MM/YYYY")
-                            : "תאריך יפורסם בקרוב"}
-                        </span>
-                        <span className="sm:inline hidden mx-2">|</span>
-                        <span className="w-full sm:w-auto whitespace-nowrap">
-                          {event.location.name}
-                        </span>
-                      </div>
-                      <div className="p-2 text-center flex flex-col flex-grow">
-                        <div className="text-sm sm:text-base">
-                          מחיר חבילה ממוצע לאדם
-                        </div>
-                        <div className="text-2xl font-extrabold">
-                          {packagePrice !== null
-                            ? `$${packagePrice.toLocaleString("en-US")}`
-                            : "אזלו הכרטיסים"}
-                        </div>
-                        <div className="flex-grow min-h-[4px]"></div>
-                        <div
-                          className="text-[14px]"
-                          style={{ lineHeight: "1.1" }}
-                        >
-                          {isMondial2026
-                            ? "לנוסע, עבור טיסה וכרטיס לאירוע"
-                            : "לנוסע, עבור טיסה, מלון וכרטיס לאירוע (בהרכב זוגי)"}
-                        </div>
-                        {computedSold ? (
-                          <div className="my-2 py-2 flex-shrink-0 h-[22px] sm:h-[40px]"></div>
-                        ) : (
-                          <>
-                            <div className="bg-[#002240] text-[14px] font-bold mx-1 my-2 justify-center text-white rounded-lg px-4 py-2 flex items-center sm:hidden">
-                              הוזילו או שדרגו כאן {"  >"}
-                            </div>
-                            <u className="my-2 flex justify-center text-[#178189] text-[14px] font-bold hidden sm:flex">
-                              הוזילו או שדרגו כאן {"  >"}
-                            </u>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </EventButton>
-              </Link>
-            );})}
-          </div>
-        ) : (
-          <p className="text-center text-gray-500" role="status" aria-live="polite">אין אירועים קרובים</p>
-        )}
-      </section>
-    </main>
-  );
+
+        <ArtistVideos videos={videos} />
+        <ExperienceCarousel images={gallery} />
+        <TrustSection />
+        <FAQ />
+      </>
+    );
   } catch (error) {
-    // Log the error for debugging but don't crash the server
     console.error('Error fetching football team:', error);
     notFound();
   }

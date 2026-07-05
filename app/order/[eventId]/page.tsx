@@ -1,4 +1,5 @@
 import { getCachedEvents } from "@/lib/eventsData";
+import { getAllArtists } from "@/lib/artists";
 import OrderPageClient from "../OrderPageClient";
 import { Event } from "@/lib/app.types";
 import { Metadata } from "next";
@@ -6,13 +7,6 @@ import { OrderErrorBoundary } from "../OrderErrorBoundary";
 import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import {
-  getMondial2026OrderUrl,
-  isMondial2026Host,
-  isMondial2026Event,
-} from "@/lib/mondial2026Redirect";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
@@ -110,9 +104,7 @@ export default async function OrderPageWithId({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { eventId } = await params;
-  const queryParams = await searchParams;
-  const requestHeaders = await headers();
-  const isAlreadyOnMondial2026 = isMondial2026Host(requestHeaders.get("host"));
+  await searchParams;
 
   if (!eventId) {
     return <EventNotFoundNotice />;
@@ -130,10 +122,6 @@ export default async function OrderPageWithId({
 
   if (!event) {
     return <EventNotFoundNotice eventId={eventId} />;
-  }
-
-  if (!isAlreadyOnMondial2026 && isMondial2026Event(event)) {
-    redirect(getMondial2026OrderUrl(eventId, queryParams));
   }
 
   // Check if event has any available tickets
@@ -162,9 +150,30 @@ export default async function OrderPageWithId({
     );
   }
 
+  // Resolve the artist page (if any) this event belongs to, by english-name
+  // match — same rule the homepage uses to group events under artist pages.
+  // Lets the ticket-selection header + summary link the photo to the artist.
+  let artistSlug: string | undefined;
+  try {
+    const target = (event.name_english ?? "").trim().toLowerCase();
+    if (target) {
+      const artists = await getAllArtists();
+      const match = artists.find(
+        (a) => (a.fields.nameDBenglish ?? "").trim().toLowerCase() === target
+      );
+      artistSlug = match?.sys.id;
+    }
+  } catch (error) {
+    console.error("Failed to resolve artist slug for order page:", error);
+  }
+
   return (
     <OrderErrorBoundary>
-      <OrderPageClient initialEvent={event} eventId={eventId} />
+      <OrderPageClient
+        initialEvent={event}
+        eventId={eventId}
+        artistSlug={artistSlug}
+      />
     </OrderErrorBoundary>
   );
 }

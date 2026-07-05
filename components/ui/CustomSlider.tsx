@@ -2,7 +2,10 @@ import { FlightSearchCriteria } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
 import { Slider } from "@mantine/core";
 
-const themeColor = "#05203C";
+/* Adaptive: dark-forest on light surfaces, glow-mint on dark — the constant
+   forest was invisible on the dark order-flow cards. */
+const themeColor = "hsl(var(--brand-accent))";
+const themeColorForeground = "hsl(var(--brand-accent-foreground))";
 
 const formatTime = (value: number) => {
   const hours = Math.floor(value);
@@ -61,7 +64,7 @@ export const CustomSlider = ({
         ];
 
   return (
-    <div style={{ margin: "auto", maxWidth: "90%" }}>
+    <div className="mx-auto w-full">
       <Slider
         thumbSize={20}
         min={variant === "flightDuration" ? minValue : Math.ceil(minValue)}
@@ -75,7 +78,7 @@ export const CustomSlider = ({
         styles={{
           bar: { backgroundColor: themeColor },
           mark: { backgroundColor: "transparent", borderColor: "transparent" },
-          label: { backgroundColor: themeColor },
+          label: { backgroundColor: themeColor, color: themeColorForeground },
           thumb: { backgroundColor: themeColor, borderColor: themeColor },
         }}
         onChange={handleOnChange}
@@ -85,8 +88,11 @@ export const CustomSlider = ({
             ? formatTime(value)
             : Math.ceil(value / numOfPassengers - priceMinValue)
         }
-        marks={marks}
       />
+      <div dir="rtl" className="mt-1 flex justify-between gap-2 text-sm text-muted-foreground">
+        <span>{marks[0].label}</span>
+        <span>{marks[1].label}</span>
+      </div>
     </div>
   );
 };

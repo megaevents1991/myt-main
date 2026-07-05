@@ -33,30 +33,13 @@ export const PriceSummary = ({
   });
 
   return (
-    <div className="flex flex-row justify-between items-center py-4 px-6 border-b border-gray-400">
-      <div>
-        <div className="flex justify-between items-baseline w-full text-[18px] gap-2 font-bold">
-          <span className="text-xl" data-testid="order-total">
-            ${formattedFinalPurchasePrice}
-          </span>
-          {originalNoDiscount && (
-            <span className="line-through text-[red]">
-              ${originalNoDiscount}
-            </span>
-          )}
-        </div>
-        <div className="flex justify-left items-center w-full text-lg font-semibold text-gray-500 gap-1">
-            <span>(לאדם</span>
-            <span>${pricePerPerson})</span>
-        </div>
-        {/* <div dir="rtl" className="text-left">
-          {formattedFinalPurchasePriceILS} ש&quot;ח
-        </div> */}
-      </div>
-      <div className="flex flex-col items-start font-bold" dir="rtl">
+    // Explicit RTL: "סה"כ" (+ discount note) on the right, the amounts on the
+    // left — Hebrew-native layout regardless of the surrounding context.
+    <div dir="rtl" className="flex flex-row justify-between items-center py-4 px-6 border-b border-border">
+      <div className="flex flex-col items-start font-bold">
         <span className="text-[22px] ">סה&quot;כ</span>
         {agentCommission > 0 ? (
-          <span className="text-[14px]" style={{ color: "green" }}>
+          <span className="text-[14px] tabular-nums text-success">
             עמלה צפויה $
             {((agentCommission / 100) * finalPurchasePrice).toLocaleString(
               "en-US"
@@ -64,12 +47,32 @@ export const PriceSummary = ({
           </span>
         ) : (
           affDiscount > 0 && (
-            <span className="text-[14px]" style={{ color: "green" }}>
+            <span className="text-[14px] tabular-nums text-success">
               כולל הנחת $
               {affDiscount.toLocaleString("en-US")}
             </span>
           )
         )}
+      </div>
+      <div className="text-left">
+        <div className="flex justify-end items-baseline w-full text-[18px] gap-2 font-bold" dir="ltr">
+          {originalNoDiscount && (
+            <span className="line-through tabular-nums text-destructive">
+              ${originalNoDiscount}
+            </span>
+          )}
+          <span className="text-xl tabular-nums" data-testid="order-total">
+            ${formattedFinalPurchasePrice}
+          </span>
+        </div>
+        <div className="flex justify-end items-center w-full text-lg font-semibold text-muted-foreground gap-1">
+          <span>
+            (לאדם <span className="tabular-nums" dir="ltr">${pricePerPerson}</span>)
+          </span>
+        </div>
+        {/* <div dir="rtl" className="text-left">
+          {formattedFinalPurchasePriceILS} ש&quot;ח
+        </div> */}
       </div>
     </div>
   );

@@ -1,29 +1,38 @@
 import { Modal as MantineModal } from "@mantine/core";
 import React from "react";
-import { InfoIcon, Clock9, Plane, Beer } from "lucide-react";
+import { InfoIcon, Clock9, Plane, Beer, Gift } from "lucide-react";
 
 // Function to wrap icons with a styled background
 const IconWithBackground = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex mt-4 items-center justify-center w-16 h-16 rounded-lg bg-[#DBE8EA]">
+  <div className="flex mt-4 items-center justify-center w-16 h-16 rounded-2xl bg-accent text-primary">
     {children}
   </div>
 );
 
 const iconStyles = {
-  Info: <InfoIcon size={32} fill="grey" color="white" />,
+  Info: (
+    <IconWithBackground>
+      <InfoIcon size={32} />
+    </IconWithBackground>
+  ),
   Clock9: (
     <IconWithBackground>
-      <Clock9 size={32} color="black" />
+      <Clock9 size={32} />
     </IconWithBackground>
   ),
   Plane: (
     <IconWithBackground>
-      <Plane size={32} color="#277E89" />
+      <Plane size={32} />
     </IconWithBackground>
   ),
   Beer: (
     <IconWithBackground>
-      <Beer size={32} color="#277E89" />
+      <Beer size={32} />
+    </IconWithBackground>
+  ),
+  Gift: (
+    <IconWithBackground>
+      <Gift size={32} />
     </IconWithBackground>
   ),
 };
@@ -67,12 +76,9 @@ export const Modal = ({
       opened={opened}
       onClose={() => void 0}
     >
-      <div
-        className="flex flex-col items-center justify-center gap-3 text-center"
-        dir="rtl"
-      >
-        <h1 className="font-bold text-lg">{title}</h1>
-  <div className="text-md mb-4">{description}</div>
+      <div className="flex flex-col items-center justify-center gap-3 text-center">
+        <h1 className="font-display font-bold text-lg">{title}</h1>
+        <div className="text-md mb-4 text-muted-foreground">{description}</div>
         {action}
       </div>
     </MantineModal>

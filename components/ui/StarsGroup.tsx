@@ -24,13 +24,15 @@ export const StarsGroup = ({
           <div
             key={i}
             className={cn(
-              "flex  cursor-pointer border border-gray shadow-md rounded-md px-2  py-1 items-center flex-col",
-              isSelected ? "bg-main text-white" : "bg-white"
+              "flex  cursor-pointer border border-gray dark:border-border shadow-md rounded-md px-2  py-1 items-center flex-col",
+              isSelected
+                ? "bg-main text-white dark:bg-foreground dark:text-background"
+                : "bg-white text-foreground dark:bg-card"
             )}
             onClick={() => handleOnChange(i)}
           >
             <div>
-              <Star size={24} fill={isSelected ? "white" : "#05203C"} />
+              <Star size={24} fill="currentColor" />
             </div>
             <div className="text-[0.5rem]">{i + 1}</div>
           </div>

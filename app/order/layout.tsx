@@ -22,6 +22,7 @@ import OrderExpiredNotice from "@/components/OrderExpiredNotice";
 const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>(undefined);
+  const [artistSlug, setArtistSlug] = useState<string | undefined>(undefined);
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
@@ -70,13 +71,12 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="w-full">
-      {step !== 4 && (
-        <Stepper
-          currentStep={step}
-          onStepperClick={handleStepperClick}
-          steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
-        />
-      )}
+      <Stepper
+        currentStep={step}
+        onStepperClick={handleStepperClick}
+        steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
+        hideSteps={step === 4}
+      />
       <OrderContext.Provider
         value={{
           eventTicket,
@@ -84,6 +84,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setStep,
           step,
           setEvent,
+          artistSlug,
+          setArtistSlug,
           setFlight,
           setHotel,
           setPaymentMethod,

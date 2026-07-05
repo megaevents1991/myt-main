@@ -55,16 +55,16 @@ interface PrintableOrderSummaryProps {
 }
 
 const myColor: MantineColorsTuple = [
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
-  "#277E89",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
+  "#0A1A14",
 ];
 
 const theme = createTheme({

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useContext, useState, useEffect } from "react";
+import { Suspense, useContext, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
@@ -20,19 +20,20 @@ const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
   ),
 });
 
-const MegaEventsSection = dynamic(() => import("@/components/ui/aboutUsMega"), {
-  // This is supplemental content; avoid server render to keep above-the-fold smaller
-  ssr: false,
-});
-
 interface OrderPageClientProps {
   initialEvent?: Event;
   eventId?: string;
+  artistSlug?: string;
 }
 
-export default function OrderPageClient({ initialEvent, eventId }: OrderPageClientProps) {
-  const { event, setEvent, step } = useContext(OrderContext);
-  const [showAboutSection, setShowAboutSection] = useState(false);
+export default function OrderPageClient({ initialEvent, eventId, artistSlug }: OrderPageClientProps) {
+  const { event, setEvent, setArtistSlug } = useContext(OrderContext);
+
+  // Push the server-resolved artist slug into context so the header + summary
+  // photos can link to the artist page.
+  useEffect(() => {
+    setArtistSlug(artistSlug);
+  }, [artistSlug, setArtistSlug]);
 
   // Set the event from props when component mounts, or fetch it if we have eventId but no event
   useEffect(() => {
@@ -55,21 +56,6 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
       fetchData();
     }
   }, [initialEvent, eventId, event, setEvent]); // More stable order
-
-  // Delay rendering of MegaEventsSection until after main content
-  // Don't show MegaEventsSection on OrderReview step (step 4)
-  useEffect(() => {
-    if (event && step !== 4) {
-      const timer = setTimeout(() => {
-        setShowAboutSection(true);
-      }, 200); // Adjust delay as needed
-
-      return () => clearTimeout(timer);
-    } else {
-      // Hide the section when on step 4 (OrderReview)
-      setShowAboutSection(false);
-    }
-  }, [event, step]);
 
   return (
     <Suspense
@@ -101,12 +87,6 @@ export default function OrderPageClient({ initialEvent, eventId }: OrderPageClie
           );
         })()}
       </DatesProvider>
-
-      {showAboutSection && (
-        <div className="content-wrapper">
-          <MegaEventsSection />
-        </div>
-      )}
     </Suspense>
   );
 }

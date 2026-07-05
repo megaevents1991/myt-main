@@ -14,7 +14,7 @@ export function StructuredData({ events }: StructuredDataProps) {
     description:
       "מגה איבנטס מבית מגה תיירות - האתר היחיד בישראל לחבילות מותאמות אישית לאירועי מוזיקה וספורט בעולם",
     url: "https://www.mega-events.co.il",
-    logo: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+    logo: "https://www.mega-events.co.il/og-image.png",
     foundingDate: "1993",
     founder: {
       "@type": "Organization",

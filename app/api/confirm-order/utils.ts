@@ -66,47 +66,54 @@ export const validateOrderData = async (
 export const userEmail = (
   replacements: Record<string, string | number | boolean | undefined>,
 ) => {
+  const referralUrl = `https://mega-events.co.il/?utm_source=${replacements.promoCode}`;
+  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(
+    `הצטרפו למגה איבנטס דרך הקישור שלי וקבלו הטבה בלעדית: ${referralUrl}`,
+  )}`;
   const refer =
     replacements.promoCode !== "dummy_code" &&
     replacements.promoCode !== undefined
       ? `
       <!-- Refer Friend Component -->
-      <div style="background: linear-gradient(180deg, rgba(0,172,194,1) 31%, rgba(39,126,137,1) 100%); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
-          <div style="margin-bottom: 15px; direction: rtl;" dir="rtl">
-              <img src="https://mega-events.co.il/undraw_travelers_kud9.png" alt="Travelers" style="max-width: 150px; height: auto;" />
+      <div style="background-color: #0A1A14; border-radius: 18px; padding: 28px 22px; margin: 0 0 26px 0; text-align: center; direction: rtl;" dir="rtl">
+          <div style="margin-bottom: 12px; direction: rtl;" dir="rtl">
+              <img src="https://mega-events.co.il/undraw_travelers_kud9.png" alt="" width="128" style="width: 128px; max-width: 55%; height: auto;" />
           </div>
-          <div style="color: #ffffff; margin-bottom: 15px; direction: rtl;" dir="rtl">
-              <p style="font-size: 18px; margin: 0 0 10px 0; direction: rtl;" dir="rtl">הזמינו חברים לחופשה ותוכלו לקבל</p>
-              <p style="font-size: 24px; font-weight: bold; margin: 0 0 10px 0; direction: rtl;" dir="rtl">עד <span style="unicode-bidi: embed;">$800</span> החזר!</p>
-              <p style="font-size: 16px; margin: 0; direction: rtl;" dir="rtl">המליצו לחברים - <strong>תקבלו $40 על כל נוסע שיזמין דרך הלינק, </strong>וגם הם יהנו מהטבה בלעדית!</p>
+          <div style="margin-bottom: 18px; direction: rtl;" dir="rtl">
+              <p style="font-size: 13px; font-weight: 700; letter-spacing: .04em; color: #7FD8A6; margin: 0 0 4px 0; direction: rtl;" dir="rtl">הזמינו חברים לחופשה</p>
+              <p style="font-size: 30px; font-weight: 800; color: #5BFF95; margin: 0 0 10px 0; direction: rtl;" dir="rtl">עד <span style="unicode-bidi: embed;">$800</span> החזר!</p>
+              <p style="font-size: 14px; line-height: 1.6; color: #C7D8CF; margin: 0 auto; max-width: 380px; direction: rtl;" dir="rtl">על כל נוסע שיזמין דרך הקישור שלכם — <strong style="color: #5BFF95;">$40 החזר</strong>, והם יהנו מהטבה בלעדית.</p>
           </div>
           
           <!-- Referral Link (LTR content in RTL context) -->
-          <div style="background-color: #ffffff; border: 2px dashed rgba(255,255,255,0.6); border-radius: 12px; margin-bottom: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" dir="ltr">
-              <p style="color: #ffffff; font-size: 14px; margin: 5px 0 5px 0;">הקישור האישי שלך:</p>
+          <div style="background-color: #08130E; border: 1px solid rgba(91,255,149,0.45); border-radius: 12px; margin: 0 0 16px 0; padding: 4px 6px; text-align: center;" dir="ltr">
+              <p style="color: #7FD8A6; font-size: 12px; font-weight: 700; margin: 8px 0 2px 0; direction: rtl;" dir="rtl">הקישור האישי שלך</p>
               
-              <div style="background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,1) 100%); border-radius: 8px; padding: 12px; display: block; position: relative;">
-                  <p style="margin: 0; font-size: 16px; color: #277e89; font-weight: bold; word-break: break-all; direction: ltr;">https://mega-events.co.il/?utm_source=${replacements.promoCode}</p>
+              <div style="padding: 4px 8px 10px; display: block;">
+                  <a href="${referralUrl}" style="font-size: 14px; color: #5BFF95; font-weight: bold; text-decoration: none; word-break: break-all; direction: ltr;">${referralUrl}</a>
               </div>
           </div>                                      
+          <div style="text-align: center; margin: 4px 0 10px 0;" dir="rtl">
+              <a href="${waShareUrl}" style="display: inline-block; background-color: #5BFF95; color: #0A1A14; font-size: 15px; font-weight: 800; text-decoration: none; padding: 13px 30px; border-radius: 12px; direction: rtl;" dir="rtl">שתפו עם חברים ←</a>
+          </div>
           <div style="margin-bottom: 15px; margin-top: 15px; direction: rtl;" dir="rtl">
               <p style="font-weight: bold; color: #ffffff; font-size: 18px; margin: 0 0 15px 0; direction: rtl;" dir="rtl">איך זה עובד?</p>
               <table role="presentation" style="width: 100%; border-collapse: collapse; color: #ffffff; direction: rtl;" dir="rtl">
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #277e89; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">1</div>
+                          <div style="background-color: transparent; color: #5BFF95; border: 1px solid #5BFF95; border-radius: 50%; width: 24px; height: 24px; line-height: 22px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">1</div>
                       </td>
                       <td style="text-align: right; direction: rtl;" dir="rtl">העתיקו את הקישור ושלחו לחברים</td>
                   </tr>
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; padding: 5px 0; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #277e89; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">2</div>
+                          <div style="background-color: transparent; color: #5BFF95; border: 1px solid #5BFF95; border-radius: 50%; width: 24px; height: 24px; line-height: 22px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">2</div>
                       </td>
                       <td style="text-align: right; padding: 5px 0; direction: rtl;" dir="rtl">החברים מבצעים הזמנה באתר</td>
                   </tr>
                   <tr>
                       <td style="width: 30px; vertical-align: top; text-align: center; direction: rtl;" dir="rtl">
-                          <div style="background-color: #ffffff; color: #277e89; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">3</div>
+                          <div style="background-color: transparent; color: #5BFF95; border: 1px solid #5BFF95; border-radius: 50%; width: 24px; height: 24px; line-height: 22px; display: inline-block; text-align: center; font-weight: bold; margin-left: 10px;">3</div>
                       </td>
                       <td style="text-align: right; direction: rtl;" dir="rtl">אתם מקבלים החזר!</td>
                   </tr>
@@ -133,13 +140,13 @@ export const userEmail = (
             }
           </style>
       </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5; direction: rtl;" dir="rtl">
-          <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #ffffff; direction: rtl;" dir="rtl">
+      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #EEEDE6; direction: rtl;" dir="rtl">
+          <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #EEEDE6; direction: rtl;" dir="rtl">
               <tr>
-                  <td style="padding: 0; direction: rtl;" dir="rtl">
-                      <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse; direction: rtl;" dir="rtl">
+                  <td style="padding: 24px 12px; direction: rtl;" dir="rtl">
+                      <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(10,26,20,0.12); direction: rtl;" dir="rtl">
                           <tr>
-                              <td style="background-color: #05203c; padding: 20px; text-align: center; direction: rtl;" dir="rtl">
+                              <td style="background-color: #0A1A14; padding: 20px; text-align: center; direction: rtl;" dir="rtl">
                                 <svg width="184" height="54" viewBox="0 0 263 77" fill="none" xmlns="http://www.w3.org/2000/svg" alt="לוגו מגה איבנטס" style="max-width: 100%; height: auto;">
                                                               <path
                                 d="M154.658 70.7929C154.534 70.8177 154.41 70.8301 154.286 70.8301C153.873 70.8301 153.526 70.6979 153.245 70.4334C152.922 70.1359 152.761 69.7103 152.761 69.1566V59.2769C152.761 57.7893 152.079 56.996 150.716 56.8968V67.6443C150.716 68.1236 150.65 68.5575 150.518 68.9459C150.385 69.3343 150.195 69.6649 149.947 69.9376C149.699 70.2103 149.394 70.421 149.03 70.5698C148.675 70.7185 148.27 70.7929 147.815 70.7929H147.183C147.158 70.6855 147.146 70.5698 147.146 70.4458C147.146 70.1235 147.224 69.8591 147.381 69.6525C147.547 69.4376 147.724 69.3302 147.914 69.3302C148.518 69.3302 148.819 68.855 148.819 67.9046V55.62H150.691C151.823 55.62 152.741 55.9092 153.443 56.4877C154.253 57.1488 154.658 58.0868 154.658 59.3016V70.7929ZM160.377 70.7929C160.253 70.8177 160.129 70.8301 160.005 70.8301C159.591 70.8301 159.244 70.6979 158.963 70.4334C158.633 70.1359 158.467 69.7103 158.467 69.1566V55.62C158.591 55.5952 158.715 55.5828 158.839 55.5828C159.261 55.5828 159.612 55.7109 159.893 55.9671C160.215 56.2811 160.377 56.7108 160.377 57.2563V70.7929ZM168.859 70.7929C168.735 70.8177 168.612 70.8301 168.488 70.8301C168.074 70.8301 167.723 70.6979 167.434 70.4334C167.112 70.1359 166.95 69.7103 166.95 69.1566V60.5785C166.95 58.4876 166.161 57.3183 164.583 57.0703C163.889 56.9629 163.541 56.4795 163.541 55.62H163.876C167.198 55.62 168.859 57.2728 168.859 60.5785V70.7929ZM174.566 62.9585C174.566 63.5122 174.405 63.9378 174.082 64.2353C173.793 64.4998 173.442 64.632 173.029 64.632C172.905 64.632 172.781 64.6196 172.657 64.5948V55.62C172.781 55.5952 172.905 55.5828 173.029 55.5828C173.45 55.5828 173.801 55.7109 174.082 55.9671C174.405 56.2811 174.566 56.7108 174.566 57.2563V62.9585ZM180.272 62.9585C180.272 63.5122 180.111 63.9378 179.788 64.2353C179.499 64.4998 179.148 64.632 178.735 64.632C178.611 64.632 178.487 64.6196 178.363 64.5948V55.62C178.487 55.5952 178.611 55.5828 178.735 55.5828C179.156 55.5828 179.507 55.7109 179.788 55.9671C180.111 56.2811 180.272 56.7108 180.272 57.2563V62.9585ZM190.825 70.7929C190.701 70.8177 190.577 70.8301 190.453 70.8301C190.04 70.8301 189.693 70.6979 189.412 70.4334C189.09 70.1359 188.928 69.7103 188.928 69.1566V59.2769C188.928 57.7893 188.247 56.996 186.883 56.8968V67.6443C186.883 68.1236 186.817 68.5575 186.685 68.9459C186.552 69.3343 186.362 69.6649 186.114 69.9376C185.867 70.2103 185.561 70.421 185.197 70.5698C184.842 70.7185 184.437 70.7929 183.982 70.7929H183.35C183.325 70.6855 183.313 70.5698 183.313 70.4458C183.313 70.1235 183.391 69.8591 183.548 69.6525C183.714 69.4376 183.891 69.3302 184.081 69.3302C184.685 69.3302 184.986 68.855 184.986 67.9046V55.62H186.858C187.99 55.62 188.908 55.9092 189.61 56.4877C190.42 57.1488 190.825 58.0868 190.825 59.3016V70.7929ZM200.287 70.7929C200.163 70.8177 200.039 70.8301 199.915 70.8301C199.502 70.8301 199.151 70.6979 198.862 70.4334C198.539 70.1359 198.378 69.7103 198.378 69.1566V60.5785C198.378 58.4794 197.461 57.31 195.626 57.0703C194.849 56.9712 194.461 56.4877 194.461 55.62H195.044C196.647 55.62 197.903 56.0125 198.812 56.7976C199.796 57.6571 200.287 58.9174 200.287 60.5785V70.7929ZM196.556 69.1566C196.556 69.7103 196.395 70.1359 196.073 70.4334C195.783 70.6979 195.432 70.8301 195.019 70.8301C194.887 70.8301 194.767 70.8177 194.659 70.7929V58.8678C194.767 58.843 194.887 58.8306 195.019 58.8306C195.432 58.8306 195.783 58.9628 196.073 59.2273C196.395 59.5248 196.556 59.9504 196.556 60.5041V69.1566ZM208.832 70.7929C208.716 70.8177 208.597 70.8301 208.473 70.8301C208.059 70.8301 207.708 70.6979 207.419 70.4334C207.097 70.1359 206.936 69.7103 206.936 69.1566V62.19C206.192 62.8759 205.82 64.037 205.82 65.6733V69.1938C205.82 69.7144 205.675 70.1318 205.386 70.4458C205.122 70.7185 204.799 70.8549 204.419 70.8549C204.295 70.8549 204.151 70.8342 203.985 70.7929V65.9088C203.985 63.6775 204.969 62.1114 206.936 61.2107V59.7727C206.936 58.3678 206.332 57.4835 205.126 57.1199C204.44 56.9051 204.097 56.5001 204.097 55.9051C204.097 55.8142 204.109 55.7192 204.134 55.62H204.357C205.597 55.62 206.63 55.9753 207.456 56.6861C208.374 57.4959 208.832 58.624 208.832 60.0702V70.7929ZM218.778 65.9708C218.778 67.3592 218.439 68.5037 217.761 69.4045C217.059 70.3466 216.096 70.8425 214.873 70.8921C214.865 70.8508 214.861 70.7846 214.861 70.6937C214.861 70.1731 215.076 69.7888 215.505 69.5409C216.423 69.0203 216.881 67.8467 216.881 66.0204V57.3554C216.212 57.6943 215.675 58.3017 215.27 59.1777C214.823 60.1446 214.6 61.2933 214.6 62.6238V69.2434C214.6 69.764 214.447 70.1731 214.142 70.4706C213.877 70.7268 213.543 70.8549 213.138 70.8549C212.997 70.8549 212.853 70.8342 212.704 70.7929V63.0205C212.704 61.2602 213.072 59.8016 213.807 58.6447L213.1 57.7397C212.795 57.3596 212.642 56.9257 212.642 56.4381C212.642 55.8431 212.886 55.4506 213.373 55.2605L214.972 57.2315C216.071 56.1985 217.34 55.6117 218.778 55.4712V65.9708ZM235.694 70.7929C235.57 70.8177 235.446 70.8301 235.322 70.8301C234.909 70.8301 234.562 70.6979 234.281 70.4334C233.959 70.1359 233.798 69.7103 233.798 69.1566V59.2769C233.798 57.7893 233.116 56.996 231.752 56.8968V67.6443C231.752 68.1236 231.686 68.5575 231.554 68.9459C231.422 69.3343 231.232 69.6649 230.984 69.9376C230.736 70.2103 230.43 70.421 230.066 70.5698C229.711 70.7185 229.306 70.7929 228.852 70.7929H228.219C228.195 70.6855 228.182 70.5698 228.182 70.4458C228.182 70.1235 228.261 69.8591 228.418 69.6525C228.583 69.4376 228.761 69.3302 228.951 69.3302C229.554 69.3302 229.856 68.855 229.856 67.9046V55.62H231.727C232.86 55.62 233.777 55.9092 234.479 56.4877C235.289 57.1488 235.694 58.0868 235.694 59.3016V70.7929ZM241.413 62.9585C241.413 63.5122 241.252 63.9378 240.929 64.2353C240.64 64.4998 240.289 64.632 239.876 64.632C239.752 64.632 239.628 64.6196 239.504 64.5948V55.62C239.628 55.5952 239.752 55.5828 239.876 55.5828C240.297 55.5828 240.648 55.7109 240.929 55.9671C241.252 56.2811 241.413 56.7108 241.413 57.2563V62.9585ZM251.433 69.2682C251.433 69.7144 251.325 70.0822 251.111 70.3714C250.896 70.6524 250.615 70.7929 250.268 70.7929H244.702C244.702 70.3466 244.809 69.983 245.024 69.702C245.239 69.4128 245.52 69.2682 245.867 69.2682H248.854C248.466 68.7062 248.272 67.9129 248.272 66.8881V60.3181C248.272 58.219 247.483 57.1364 245.904 57.0703C245.21 57.0455 244.863 56.5621 244.863 55.62H245.446C248.602 55.62 250.181 57.186 250.181 60.3181V67.9294C250.181 68.8219 250.487 69.2682 251.098 69.2682H251.433ZM260.87 65.9708C260.87 67.3592 260.532 68.5037 259.854 69.4045C259.151 70.3466 258.189 70.8425 256.966 70.8921C256.957 70.8508 256.953 70.7846 256.953 70.6937C256.953 70.1731 257.168 69.7888 257.598 69.5409C258.515 69.0203 258.974 67.8467 258.974 66.0204V57.3554C258.304 57.6943 257.767 58.3017 257.362 59.1777C256.916 60.1446 256.693 61.2933 256.693 62.6238V69.2434C256.693 69.764 256.54 70.1731 256.234 70.4706C255.97 70.7268 255.635 70.8549 255.23 70.8549C255.09 70.8549 254.945 70.8342 254.796 70.7929V63.0205C254.796 61.2602 255.164 59.8016 255.899 58.6447L255.193 57.7397C254.887 57.3596 254.734 56.9257 254.734 56.4381C254.734 55.8431 254.978 55.4506 255.466 55.2605L257.065 57.2315C258.164 56.1985 259.432 55.6117 260.87 55.4712V65.9708Z"
@@ -217,14 +224,16 @@ export const userEmail = (
                           <tr>
                               <td style="padding: 20px 20px; text-align: right; direction: rtl;" dir="rtl">
                                   <!-- Success Icon -->
-                                  <div style="text-align: center; margin-bottom: 30px; direction: rtl;" dir="rtl">
-                                      <svg width="48" height="48" viewBox="0 0 24 24" style="fill: none; stroke: #22c55e; stroke-width: 2;">
-                                          <path d="M20 6L9 17l-5-5"></path>
-                                      </svg>
+                                  <div style="text-align: center; margin-bottom: 20px; direction: rtl;" dir="rtl">
+                                      <table role="presentation" align="center" style="margin: 0 auto;"><tr><td style="width: 64px; height: 64px; background-color: #5BFF95; border-radius: 50%; text-align: center; vertical-align: middle;">
+                                          <svg width="34" height="34" viewBox="0 0 24 24" style="fill: none; stroke: #0A1A14; stroke-width: 2.6;">
+                                              <path d="M20 6L9 17l-5-5"></path>
+                                          </svg>
+                                      </td></tr></table>
                                   </div>
   
                                   <div style="margin-bottom: 30px; text-align: center; direction: rtl;" dir="rtl">
-                                      <h1 style="color: #05203c; font-size: 24px; margin: 0 0 10px 0; direction: rtl;" dir="rtl">${replacements.title}</h1>
+                                      <h1 style="color: #0A1A14; font-size: 24px; margin: 0 0 10px 0; direction: rtl;" dir="rtl">${replacements.title}</h1>
                                       <p style="color: #666666; font-size: 16px; margin: 0; direction: rtl; width: 100%; max-width: 400px; margin: 0 auto;" dir="rtl">${replacements.message}</p>
                                   </div>
   
@@ -234,18 +243,18 @@ export const userEmail = (
                                     replacements.eventId
                                       ? `
                                   <!-- Order Recovery Section (Only for 24h Hold) -->
-                                  <div style="background-color: #f0f8f8; border: 1px solid #277e89; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
+                                  <div style="background-color: #E6FFEF; border: 1px solid #0A1A14; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
                                       <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px; direction: rtl;" dir="rtl">
-                                          <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: #277e89; stroke-width: 2; margin-left: 8px;">
+                                          <svg width="20" height="20" viewBox="0 0 24 24" style="fill: none; stroke: #0A1A14; stroke-width: 2; margin-left: 8px;">
                                               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                                               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"></path>
                                           </svg>
-                                          <h3 style="color: #277e89; font-size: 18px; margin: 0; direction: rtl;" dir="rtl">שחזור הזמנה</h3>
+                                          <h3 style="color: #0A1A14; font-size: 18px; margin: 0; direction: rtl;" dir="rtl">שחזור הזמנה</h3>
                                       </div>
-                                      <p style="color: #277e89; font-size: 14px; margin: 0 0 15px 0; text-align: center; direction: rtl;" dir="rtl">לשחזור ההזמנה והוספת פרטים נוספים, לחצו על הקישור:</p>
+                                      <p style="color: #0A1A14; font-size: 14px; margin: 0 0 15px 0; text-align: center; direction: rtl;" dir="rtl">לשחזור ההזמנה והוספת פרטים נוספים, לחצו על הקישור:</p>
                                       <div style="text-align: center; direction: rtl;" dir="rtl">
                                           <a href="https://mega-events.co.il/order/${replacements.eventId}?orderId=${replacements.orderId}" 
-                                             style="display: inline-block; background-color: #277e89; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; font-size: 14px; direction: rtl;" dir="rtl">
+                                             style="display: inline-block; background-color: #0A1A14; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; font-size: 14px; direction: rtl;" dir="rtl">
                                               שחזור הזמנה
                                           </a>
                                       </div>
@@ -254,58 +263,58 @@ export const userEmail = (
                                       : ""
                                   }
   
-                                  <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px; direction: rtl;" dir="rtl">
-                                      <h2 style="color: #05203c; font-size: 20px; margin: 0 0 20px 0; text-align: center; direction: rtl;" dir="rtl">פרטי ההזמנה</h2>
+                                  <div style="background-color: #FFFFFF; border: 1px solid #E7E5DC; border-radius: 14px; padding: 22px 20px; margin-bottom: 26px; direction: rtl;" dir="rtl">
+                                      <h2 style="color: #0A1A14; font-size: 19px; font-weight: 800; margin: 0 0 14px 0; padding-bottom: 12px; border-bottom: 2px solid #EEF6F0; text-align: right; direction: rtl;" dir="rtl">פרטי ההזמנה</h2>
                                       
                                       <table role="presentation" style="width: 100%; border-collapse: collapse; direction: rtl;" dir="rtl">
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">מספר הזמנה:</strong> <span style="unicode-bidi: embed;">${replacements.bookingReference}</span>
+                                                  <strong style="color: #0A1A14;">מספר הזמנה:</strong> <span style="unicode-bidi: embed;">${replacements.bookingReference}</span>
                                               </td>
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">אירוע:</strong> ${replacements.eventName}
+                                                  <strong style="color: #0A1A14;">אירוע:</strong> ${replacements.eventName}
                                               </td>
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">תאריך:</strong> <span style="unicode-bidi: embed;">${replacements.eventDate}</span>
+                                                  <strong style="color: #0A1A14;">תאריך:</strong> <span style="unicode-bidi: embed;">${replacements.eventDate}</span>
                                               </td>
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">מיקום:</strong> ${replacements.eventLocation}
+                                                  <strong style="color: #0A1A14;">מיקום:</strong> ${replacements.eventLocation}
                                               </td>
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">כרטיסים:</strong> ${replacements.ticketType}, (<span style="unicode-bidi: embed;">${replacements.quantity}</span>)
+                                                  <strong style="color: #0A1A14;">כרטיסים:</strong> ${replacements.ticketType}, (<span style="unicode-bidi: embed;">${replacements.quantity}</span>)
                                               </td>
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">חברת תעופה:</strong> ${replacements.airline}
+                                                  <strong style="color: #0A1A14;">חברת תעופה:</strong> ${replacements.airline}
                                               </td>
                                           </tr>
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">טיסת הלוך:</strong> <span style="unicode-bidi: embed;">${replacements.departFlight}, ${replacements.departFlightDate}</span>
-                                                  <br><strong style="color: #05203c;">טיסת חזור:</strong> <span style="unicode-bidi: embed;">${replacements.returnFlight}, ${replacements.returnFlightDate}</span>
+                                                  <strong style="color: #0A1A14;">טיסת הלוך:</strong> <span style="unicode-bidi: embed;">${replacements.departFlight}, ${replacements.departFlightDate}</span>
+                                                  <br><strong style="color: #0A1A14;">טיסת חזור:</strong> <span style="unicode-bidi: embed;">${replacements.returnFlight}, ${replacements.returnFlightDate}</span>
                                               </td>
                                           </tr>
                                           ${
                                             replacements.hotel !== "ללא מלון"
                                               ? `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">מלון:</strong> ${replacements.hotel}
+                                                  <strong style="color: #0A1A14;">מלון:</strong> ${replacements.hotel}
                                               </td>
                                           </tr>`
                                               : ""
                                           }
                                           <tr>
-                                              <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #05203c;">מחיר:</strong> ₪${(replacements.price || "").toLocaleString("he-IL")}
+                                              <td style="padding: 14px 0 4px; direction: rtl;" dir="rtl">
+                                                  <table role="presentation" width="100%" style="border-collapse: separate; direction: rtl;" dir="rtl"><tr><td style="background-color: #F2FBF5; border: 1px solid #D6F3E1; border-radius: 10px; padding: 13px 16px; text-align: right; direction: rtl;" dir="rtl"><strong style="color: #0A1A14; font-size: 15px;">מחיר כולל:</strong> <span style="color: #0A1A14; font-size: 18px; font-weight: 800; unicode-bidi: embed;">₪${(replacements.price || "").toLocaleString("he-IL")}</span></td></tr></table>
                                               </td>
                                           </tr>
                                       </table>
@@ -317,8 +326,8 @@ export const userEmail = (
                                   <div style="text-align: center; color: #666666; font-size: 14px; direction: rtl;" dir="rtl">
                                       <p style="margin: 0 0 10px 0; direction: rtl;" dir="rtl">לשאלות ובירורים:</p>
                                       <p style="margin: 0; direction: rtl;" dir="rtl">
-                                          טלפון: <a href="tel:+972-3-768-4800" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
-                                          אימייל: <a href="mailto:reservations@mega-events.co.il" style="color: #277e89; text-decoration: none; direction: rtl;" dir="rtl">reservations@mega-events.co.il</a>
+                                          טלפון: <a href="tel:+972-3-768-4800" style="color: #0A1A14; text-decoration: none; direction: rtl;" dir="rtl"><span style="unicode-bidi: embed;">03-768-4800</span></a><br>
+                                          אימייל: <a href="mailto:reservations@mega-events.co.il" style="color: #0A1A14; text-decoration: none; direction: rtl;" dir="rtl">reservations@mega-events.co.il</a>
                                       </p>
                                   </div>
                               </td>
@@ -326,7 +335,7 @@ export const userEmail = (
   
                           <!-- Footer -->
                           <tr>
-                              <td style="background-color: #05203c; padding: 20px; text-align: center; color: #ffffff; direction: rtl;" dir="rtl">
+                              <td style="background-color: #0A1A14; padding: 20px; text-align: center; color: #ffffff; direction: rtl;" dir="rtl">
                                   <p style="margin: 0; font-size: 12px; direction: rtl;" dir="rtl">© 2025 מגה איבנטס מבית מגה תיירות. כל הזכויות שמורות.</p>
                               </td>
                           </tr>

@@ -106,7 +106,7 @@ export const HotelCardHeader = ({
                   e.stopPropagation();
                   open();
                 }}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-foreground/10 rounded-full transition-colors"
                 aria-label="Show on map"
               >
                 <MapPin size={16} className="text-blue-500" />

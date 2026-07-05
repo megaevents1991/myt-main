@@ -3,7 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 
-export function TicketOnlyBadge() {
+export function TicketOnlyBadge({
+  className = "absolute top-2 right-2 z-20",
+}: {
+  /** Wrapper positioning. Default = corner overlay (for image cards). Pass a
+   * non-absolute value (e.g. "relative z-20") to flow it inline in a row. */
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLDivElement>(null);
@@ -102,7 +108,7 @@ export function TicketOnlyBadge() {
               top: tooltipPos.top,
               right: tooltipPos.right,
               zIndex: 99999,
-              background: "#05203C",
+              background: "hsl(var(--brand-forest))",
               color: "#fff",
               fontSize: "12px",
               fontWeight: 600,
@@ -127,7 +133,7 @@ export function TicketOnlyBadge() {
                 right: 12,
                 width: 9,
                 height: 9,
-                background: "#05203C",
+                background: "hsl(var(--brand-forest))",
                 transform: "rotate(45deg)",
                 display: "block",
               }}
@@ -147,15 +153,15 @@ export function TicketOnlyBadge() {
       `}</style>
 
       <div
-        className="absolute top-2 right-2 z-20"
+        className={className}
         style={{ WebkitTapHighlightColor: "transparent" }}
       >
         <div
           ref={btnRef}
           className="flex items-center justify-center rounded-full cursor-pointer transition-transform duration-150 hover:scale-110 active:scale-95 w-8 h-8 lg:w-11 lg:h-11"
           style={{
-            background: "#277E89",
-            boxShadow: "0 2px 10px rgba(39,126,137,.45)",
+            background: "hsl(var(--brand-glow))",
+            boxShadow: "0 2px 10px rgba(10,26,20,.35)",
             WebkitTapHighlightColor: "transparent",
             userSelect: "none",
           }}

@@ -144,14 +144,14 @@ export const Review = ({
                 <Accordion.Item key={item.id} value={item.id}>
                   <Accordion.Control>
                     <div className="flex items-center gap-3 w-full text-right" dir="rtl">
-                      <div className="text-main flex-shrink-0 text-[18px] flex items-center justify-center leading-none" aria-hidden>
+                      <div className="text-main dark:text-foreground flex-shrink-0 text-[18px] flex items-center justify-center leading-none" aria-hidden>
                           {item.icon}
                         </div>
                       <div className="flex flex-col flex-1 gap-[2px]">
-                        <div className="font-bold text-main text-[18px] leading-[18px]">{item.primary}</div>
+                        <div className="font-bold text-main dark:text-foreground text-[18px] leading-[18px]">{item.primary}</div>
                         <div
                           className={cn(
-                            "text-[14px] text-[#5A6475]", // grey secondary line
+                            "text-[14px] text-[#5A6475] dark:text-muted-foreground", // grey secondary line
                             isOpen ? "" : ""
                           )}
                           dir={item.id === "hotel-summary" ? "ltr" : "rtl"}

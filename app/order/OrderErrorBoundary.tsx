@@ -54,7 +54,7 @@ export class OrderErrorBoundary extends Component<Props, State> {
             <br />
             <Link
               href="/"
-              className="text-main hover:underline mt-4 inline-block"
+              className="text-main dark:text-foreground hover:underline mt-4 inline-block"
             >
               Return to Home
             </Link>

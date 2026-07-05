@@ -15,6 +15,13 @@ interface TimeBlockProps {
   onClick?: () => void;
 }
 
+/* Filter checkboxes use the dark brand green (adaptive: forest on light,
+   glow on dark) instead of the light Mantine primary green. */
+const checkboxColors = {
+  color: "hsl(var(--brand-accent))",
+  iconColor: "hsl(var(--brand-accent-foreground))",
+} as const;
+
 const timeRangeMap: { [key: string]: TimeRange } = {
   morning: [
     { hours: 0, minutes: 0 },
@@ -152,11 +159,11 @@ export const FlightFilters = ({
           }
         >
           <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="0" id="direct" />
+            <Checkbox value="0" id="direct" {...checkboxColors} />
             <label htmlFor="direct">טיסה ישירה</label>
           </div>
           <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="1" id="one-stop" />
+            <Checkbox value="1" id="one-stop" {...checkboxColors} />
             <label htmlFor="one-stop">עצירה אחת</label>
           </div>
         </Checkbox.Group>
@@ -171,11 +178,11 @@ export const FlightFilters = ({
           }
         >
           <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="withCheckedBags" id="withCheckedBags" />
+            <Checkbox value="withCheckedBags" id="withCheckedBags" {...checkboxColors} />
             <label htmlFor="withCheckedBags">כולל מזוודה</label>
           </div>
           <div className="flex items-center space-x-2 space-x-reverse">
-            <Checkbox value="withCabinBags" id="withCabinBags" />
+            <Checkbox value="withCabinBags" id="withCabinBags" {...checkboxColors} />
             <label htmlFor="withCabinBags">כולל טרולי</label>
           </div>
         </Checkbox.Group>
@@ -295,6 +302,7 @@ export const FlightFilters = ({
               label={label}
               key={i}
               className="my-2"
+              {...checkboxColors}
             />
           ))}
         </Checkbox.Group>

@@ -2,6 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **🚧 TODO — REMOVE CONTENTFUL (Phase 3, pending).**
+> Content (artists, football teams, blog, categories) was migrated to Supabase
+> tables and the site now reads Supabase. A **Contentful fallback** is still in
+> place as a safety net (`lib/cms/people.ts`, `lib/blog.ts`). Verified 100%
+> coverage (51 artists / 15 teams / 2 blog). When ready, remove:
+> the fallback in those readers, `lib/contentful.ts` + `contentfulClient`, the
+> `*Fields` Contentful types in `lib/app.types.ts`, the `contentful` dep, and
+> `scripts/migrate-contentful.mjs` + `scripts/verify-migration.mjs`. Backoffice
+> manages this content under **Templates** (תבניות).
+
+## Always-on rules (auto-loaded)
+
+Tech standards:
+@.claude/rules/standards/typescript.md
+@.claude/rules/standards/react.md
+@.claude/rules/standards/nextjs.md
+@.claude/rules/standards/supabase.md
+
+MYT domain rules:
+@.claude/rules/pricing.md
+@.claude/rules/order-flow.md
+@.claude/rules/cross-project.md
+@.claude/rules/conventions.md
+
 > **⚠ IMPORTANT: This project is part of a two-project platform.**
 > The sibling project `../MYT-backoffice-app` is the admin dashboard that manages the data this app displays.
 > See `../CLAUDE.md` for the full system architecture and shared database schema.
@@ -100,7 +124,6 @@ Events have a `type` field that determines ticket source:
 ### Middleware
 
 `middleware.ts` runs on all non-static routes:
-- Hard-redirects the legacy Mondial 2026 football page to an external subdomain
 - Sets `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` on HTML pages
 
 ### Pricing

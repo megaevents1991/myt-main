@@ -1,6 +1,6 @@
 import { getCachedEvents } from "@/lib/eventsData";
-import { contentfulClient } from "@/lib/contentful";
-import { ArtistFields, FootballFields } from "@/lib/app.types";
+import { getArtistSlugs } from "@/lib/artists";
+import { getFootballTeamSlugs } from "@/lib/football";
 
 export async function GET() {
   try {
@@ -65,13 +65,9 @@ export async function GET() {
       priority: number;
     }> = [];
     try {
-      const { items: artists } =
-        await contentfulClient.getEntries<ArtistFields>({
-          content_type: "artistTemplate",
-        });
-
-      artistPages = artists.map((artist) => ({
-        url: `${baseUrl}/artists/${artist.sys.id}`,
+      const slugs = await getArtistSlugs();
+      artistPages = slugs.map((slug) => ({
+        url: `${baseUrl}/artists/${slug}`,
         lastModified: new Date().toISOString(),
         changeFrequency: "weekly",
         priority: 0.8,
@@ -88,13 +84,9 @@ export async function GET() {
       priority: number;
     }> = [];
     try {
-      const { items: footballTeams } =
-        await contentfulClient.getEntries<FootballFields>({
-          content_type: "footballTeamTemplate",
-        });
-
-      footballPages = footballTeams.map((team) => ({
-        url: `${baseUrl}/football/${team.sys.id}`,
+      const slugs = await getFootballTeamSlugs();
+      footballPages = slugs.map((slug) => ({
+        url: `${baseUrl}/football/${slug}`,
         lastModified: new Date().toISOString(),
         changeFrequency: "weekly",
         priority: 0.8,

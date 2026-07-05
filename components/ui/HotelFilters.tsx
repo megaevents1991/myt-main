@@ -5,7 +5,14 @@ import { Search } from "lucide-react";
 import { HotelSearchCriteria } from "@/lib/app.types";
 import { HotelKind } from "@/lib/hotel.type";
 
-const themeColor = "#05203C";
+const themeColor = "#0A1A14";
+
+/* Filter checkboxes use the dark brand green (adaptive: forest on light,
+   glow on dark) instead of the light Mantine primary green. */
+const checkboxColors = {
+  color: "hsl(var(--brand-accent))",
+  iconColor: "hsl(var(--brand-accent-foreground))",
+} as const;
 
 const hotelKindOptionsNaming = {
   Resort: "Resort",
@@ -128,7 +135,7 @@ export const HotelFilters = ({
             }
           >
             <div className="flex items-center space-x-2 space-x-reverse">
-              <Checkbox value="withMeal" id="with-meal" />
+              <Checkbox value="withMeal" id="with-meal" {...checkboxColors} />
               <label htmlFor="withMeal">כולל ארוחת בוקר</label>
             </div>
           </Checkbox.Group>
@@ -170,6 +177,7 @@ export const HotelFilters = ({
                 label={hotelKindOptionsNaming[value]}
                 key={i}
                 className="my-2"
+                {...checkboxColors}
               />
             ))}
           </Checkbox.Group>
@@ -201,8 +209,11 @@ export const HotelFilters = ({
           }}
           onChange={handlePriceRangeChange}
           onChangeEnd={handlePriceRangeChangeEnd}
-          marks={marks}
         />
+        <div dir="rtl" className="mt-1 flex justify-between gap-2 text-sm text-muted-foreground">
+          <span>{marks[0].label}</span>
+          <span>{marks[1].label}</span>
+        </div>
       </div>
       <div className="m-auto w-full mt-2 px-2" dir="rtl">
         <Autocomplete
@@ -249,8 +260,11 @@ export const HotelFilters = ({
           }}
           onChange={handleDistanceFromCenterChange}
           onChangeEnd={handleDistanceFromCenterChangeEnd}
-          marks={distanceMarks}
         />
+        <div dir="rtl" className="mt-1 flex justify-between gap-2 text-sm text-muted-foreground">
+          <span>{distanceMarks[0].label}</span>
+          <span>{distanceMarks[1].label}</span>
+        </div>
         <div className="p-6"></div>
       </div>
       {onApply && (

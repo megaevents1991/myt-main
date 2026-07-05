@@ -29,6 +29,18 @@ const nextConfig: import("next").NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "fandqafngybfdyslofmr.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/art_blobs/**",
+      },
+      {
+        protocol: "https",
+        hostname: "fandqafngybfdyslofmr.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/templates/**",
+      },
+      {
+        protocol: "https",
         hostname: "www.avcodes.co.uk",
         port: "",
         pathname: "/images/logos/**",

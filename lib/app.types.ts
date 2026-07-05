@@ -6,6 +6,7 @@ export type EventType =
   | "sports_event"
   | "music_event"
   | "sports_event_dynamic"
+  | "sports_live_event_dynamic"
   | "music_live_event_dynamic"
   | "tx_event";
 
@@ -25,6 +26,19 @@ export type Event = {
   map_image_url: string;
   description: string;
   card_image_url: string;
+  // Card "blob" art (set in the backoffice). When art_image_url (a transparent
+  // cut-out PNG) is present the card renders it on a neon brand blob; otherwise
+  // it falls back to the full card_image_url photo. art_color_index (0–5) and
+  // art_shape_index (0–3) pick the blob colour + shape; omitted = derived from id.
+  art_image_url?: string | null;
+  art_color_index?: number | null;
+  art_shape_index?: number | null;
+  // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
+  art_image_scale?: number | null;
+  art_bg_scale?: number | null;
+  // Cut-out position, % of frame (null/0 = default bottom-center). X+ = right, Y+ = down.
+  art_image_offset_x?: number | null;
+  art_image_offset_y?: number | null;
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;
@@ -374,6 +388,85 @@ export type FootballFields = {
   };
 };
 
+/**
+ * Backoffice CMS templates — one typed table per content type (replacing
+ * Contentful). Every table shares `TemplateBase`. Shared DB shape: keep in sync
+ * with backoffice `types/template.types.ts` + per-type files.
+ */
+export interface TemplateBase {
+  id: number;
+  slug: string;
+  name: string;
+  name_english: string | null;
+  image_url: string | null;
+  // Blob card-art (optional). When art_image_url is set the site shows the
+  // cut-out over a neon blob; otherwise it falls back to image_url.
+  art_image_url: string | null;
+  art_color_index: number | null;
+  art_shape_index: number | null;
+  // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
+  art_image_scale: number | null;
+  art_bg_scale: number | null;
+  // Cut-out position, % of frame (null/0 = default bottom-center). X+ = right, Y+ = down.
+  art_image_offset_x: number | null;
+  art_image_offset_y: number | null;
+  display_order: number;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Category — typed row of the Supabase `categories` table. Managed in the
+ * backoffice, read by this app. Keep in sync with backoffice
+ * `types/category.types.ts`.
+ */
+export interface Category extends TemplateBase {
+  subtitle: string | null;
+  tag: string | null;
+  sport: string | null;
+  /** Artist/team page IDs grouped under this category (Contentful IDs for now). */
+  member_ids: string[];
+  link_url: string | null;
+}
+
+/**
+ * (Legacy / reference) Contentful-backed category type. Kept for reference;
+ * the live source is the Supabase `categories` table (see `Category` above).
+ */
+export type CategoryFields = {
+  contentTypeId: "categoryTemplate";
+  fields: {
+    name: string;
+    nameEnglish?: string;
+    /** Meta line under the title, e.g. "עונת 2025/26 · אירופה · שלב ההכרעה". */
+    subtitle?: string;
+    /** Grouping label for the homepage section, e.g. "כדורגל". */
+    sport?: string;
+    /** Optional badge text, e.g. "כרטיסים אחרונים". */
+    tag?: string;
+    heroBanner: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: { image?: { height?: number; width?: number } };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    /** Artist/team entries that belong to this category. */
+    members?: EntryFieldTypes.Array<
+      EntryFieldTypes.EntryLink<ArtistFields | FootballFields>
+    >;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
+    sys: EntryFieldTypes.Object<{ id: string }>;
+  };
+};
+
 export type BlogTemplateFields = {
   contentTypeId: "blogTemplate";
   fields: {
@@ -445,6 +538,23 @@ export type FootballTeam = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
+    artImageOffsetX?: number;
+    artImageOffsetY?: number;
+    // Backoffice-managed page enrichments (Supabase artists/football_teams).
+    /** #19b: YouTube URL that plays behind the hero circle. */
+    heroVideoUrl?: string;
+    /** #20: promo banners on the page. */
+    banners?: { image_url?: string; link_url?: string; title?: string }[];
+    /** #21: image gallery URLs. */
+    gallery?: string[];
+    /** #24: performance videos (YouTube). */
+    videos?: { url?: string; label?: string }[];
   };
 };
 
@@ -481,6 +591,23 @@ export type Artist = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
+    artImageOffsetX?: number;
+    artImageOffsetY?: number;
+    // Backoffice-managed page enrichments (Supabase artists/football_teams).
+    /** #19b: YouTube URL that plays behind the hero circle. */
+    heroVideoUrl?: string;
+    /** #20: promo banners on the page. */
+    banners?: { image_url?: string; link_url?: string; title?: string }[];
+    /** #21: image gallery URLs. */
+    gallery?: string[];
+    /** #24: performance videos (YouTube). */
+    videos?: { url?: string; label?: string }[];
   };
 };
 

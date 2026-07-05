@@ -22,13 +22,14 @@ export const SelectWithIcon = ({
             width={24}
             height={24}
             unoptimized
+            className="dark:invert"
           />
         )}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-10 pr-4 py-[6px] border border-gray-300 rounded-lg w-full text-xl appearance-none cursor-pointer bg-white"
+        className="pl-10 pr-4 py-[6px] border border-border rounded-lg w-full text-xl appearance-none cursor-pointer bg-card text-foreground"
       >
         <option value="1">1</option>
         <option value="2">2</option>
