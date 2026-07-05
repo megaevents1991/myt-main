@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Event } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { isMobile } from "react-device-detect";
+import { ChevronLeft } from "lucide-react";
 
 export const EventDataHeader = ({
   event,
@@ -43,6 +44,15 @@ export const EventDataHeader = ({
             {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
           </span>
         </h1>
+        {artistHref && (
+          <Link
+            href={artistHref}
+            className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-forest"
+          >
+            לכל ההופעות של {event?.name?.trim()}
+            <ChevronLeft className="size-4" aria-hidden />
+          </Link>
+        )}
         {!isMobile && (
           <span className="text-lg mt-1" style={{ lineHeight: "1.1" }}>
             {event?.description}
