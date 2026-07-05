@@ -1518,7 +1518,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                 />
                 <div>
                   <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    הופעות נוספות
+                   אירועים נוספים
                   </h2>
                 </div>
               </div>

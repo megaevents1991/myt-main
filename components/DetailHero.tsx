@@ -6,7 +6,6 @@ import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { MYT } from "@/components/ui/myt";
 import { EventArt } from "@/components/ui/EventArt";
-import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { BioReadMore } from "@/components/BioReadMore";
 import { youtubeId, youtubeEmbed } from "@/lib/youtube";
 
@@ -30,7 +29,6 @@ export const DetailHero = ({
   artShapeIndex,
   ctaHref = "#upcoming-events",
   ctaLabel = "לפרטים והזמנה",
-  ticketOnly = false,
 }: {
   name: string;
   nameEnglish?: string;
@@ -53,18 +51,11 @@ export const DetailHero = ({
   artShapeIndex?: number;
   ctaHref?: string;
   ctaLabel?: string;
-  /** Show the ticket-only marker (when this entity's events are ticket-only). */
-  ticketOnly?: boolean;
 }) => {
   const videoId = youtubeId(heroVideoUrl);
   return (
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
-    {/* top-16: clears the floating corner buttons (hamburger sits in the
-        top-right corner over the hero). */}
-    {ticketOnly && (
-      <TicketOnlyBadge className="absolute right-4 top-16 z-20 md:right-6" />
-    )}
     {/* Way home — the hero carries its own wordmark link, CENTERED so the
         floating corner controls (hamburger right, quick-actions left) never
         overlap it. */}

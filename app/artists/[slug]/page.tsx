@@ -137,7 +137,6 @@ export default async function ArtistPage({
           artImageUrl={artist.fields.artImageUrl}
           artColorIndex={artist.fields.artColorIndex}
           artShapeIndex={artist.fields.artShapeIndex}
-          ticketOnly={events.length > 0 && events.every((e) => e.skip_flight)}
         />
 
         <ArtistBanners banners={banners} />

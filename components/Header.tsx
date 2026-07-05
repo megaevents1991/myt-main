@@ -35,6 +35,13 @@ export const Header = () => {
   // theme/whatsapp/search icons while this is true.
   const [cornerOpen, setCornerOpen] = useState(false);
   const cornerRef = useRef<HTMLDivElement>(null);
+  // Shared-element hand-off: when the navbar appears, the two floating corner
+  // units glide into the navbar's icon pill (and back). These hold the
+  // measured translate deltas from each corner to its slot in the pill.
+  const clusterRef = useRef<HTMLDivElement>(null);
+  const flyLeftRef = useRef<HTMLDivElement>(null);
+  const flyRightRef = useRef<HTMLDivElement>(null);
+  const [fly, setFly] = useState({ lx: 0, ly: 0, rx: 0, ry: 0 });
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   // Inside the order flow the Stepper is the only chrome — hide the global
@@ -144,6 +151,52 @@ export const Header = () => {
     };
   }, [pathname]);
 
+  // Measure the corners' flight paths into the navbar pill. The pill's final
+  // viewport position is derived from layout offsets (transform-independent —
+  // the bar itself may be translated off-screen); the corners are measured
+  // while they sit at their natural spots.
+  useEffect(() => {
+    const measure = () => {
+      const cluster = clusterRef.current;
+      const L = flyLeftRef.current;
+      const R = flyRightRef.current;
+      const H = headerRef.current;
+      if (!cluster || !L || !R || !H) return;
+      let cx = 0;
+      let cy = 0;
+      let el: HTMLElement | null = cluster;
+      while (el && el !== H) {
+        cx += el.offsetLeft;
+        cy += el.offsetTop;
+        el = el.offsetParent as HTMLElement | null;
+      }
+      const l = L.getBoundingClientRect();
+      const r = R.getBoundingClientRect();
+      if (!l.width || !r.width) return;
+      setFly({
+        // Left unit → the pill's LEFT end (where search/theme/whatsapp live in RTL).
+        lx: cx + 4 - l.left,
+        ly: cy + cluster.offsetHeight / 2 - (l.top + l.height / 2),
+        // Hamburger → the pill's RIGHT end (its slot in the bar).
+        rx: cx + cluster.offsetWidth - 4 - r.right,
+        ry: cy + cluster.offsetHeight / 2 - (r.top + r.height / 2),
+      });
+    };
+    // Only measurable while the corners are at rest at their natural spots.
+    if (!(overHero && !menuOpen)) return;
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+    };
+  }, [overHero, menuOpen, pathname]);
+
+  // Leaving the hero folds the fan-out closed.
+  useEffect(() => {
+    if (!overHero) setCornerOpen(false);
+  }, [overHero]);
+
   if (hidden) return null;
 
   // Over the hero: no bar at all — floating corner controls (Claude-style).
@@ -152,8 +205,14 @@ export const Header = () => {
   // the solid bar in while the corners fade out (both stay mounted so the
   // hand-off animates instead of snapping).
   const showFloating = overHero && !menuOpen;
+  // Same dark pill as the navbar cluster — in BOTH themes (the hero is always
+  // dark, and the icons land inside the navbar's dark pill when scrolling).
   const floatBtn =
-    "inline-flex size-9 md:size-11 items-center justify-center rounded-full bg-card text-foreground shadow-card transition-colors hover:bg-secondary hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "inline-flex size-9 md:size-11 items-center justify-center rounded-full bg-main text-main-foreground shadow-card ring-1 ring-white/15 transition-colors hover:bg-secondary hover:text-black hover:ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  // Flight styling shared by the two corner units: transform+opacity only
+  // (GPU-friendly), interruptible, skipped under reduced-motion.
+  const flyCls =
+    "transition-[transform,opacity] duration-500 ease-in-out motion-reduce:transition-none";
   const cornerActive = showFloating && cornerOpen;
 
   return (
@@ -163,26 +222,47 @@ export const Header = () => {
       <div
         aria-hidden={!showFloating}
         className={cn(
-          "fixed inset-x-0 top-0 z-50 transition-opacity duration-300",
-          !showFloating && "pointer-events-none opacity-0"
+          "fixed inset-x-0 top-0 z-50",
+          !showFloating && "pointer-events-none"
         )}
       >
         <div className="flex items-start justify-between px-3 pt-3 md:px-5 md:pt-4">
-          {/* RTL: first child sits in the RIGHT corner — the hamburger. */}
-          <button
-            type="button"
-            aria-label="פתיחת תפריט"
-            aria-expanded={false}
-            tabIndex={showFloating ? 0 : -1}
-            onClick={() => setMenuOpen(true)}
-            className={floatBtn}
+          {/* RTL: first child sits in the RIGHT corner — the hamburger. It
+              flies into its slot at the pill's right end when the bar shows. */}
+          <div
+            ref={flyRightRef}
+            className={cn(flyCls, !showFloating && "opacity-0")}
+            style={
+              showFloating
+                ? undefined
+                : { transform: `translate(${fly.rx}px, ${fly.ry}px) scale(0.85)` }
+            }
           >
-            <Menu className="size-4 md:size-5" aria-hidden />
-          </button>
+            <button
+              type="button"
+              aria-label="פתיחת תפריט"
+              aria-expanded={false}
+              tabIndex={showFloating ? 0 : -1}
+              onClick={() => setMenuOpen(true)}
+              className={floatBtn}
+            >
+              <Menu className="size-4 md:size-5" aria-hidden />
+            </button>
+          </div>
           {/* LEFT corner: one button that fans out to theme / whatsapp / search.
               Fan-out sits BEFORE the toggle in DOM (= its right in RTL), so the
               toggle stays pinned in the corner and the icons expand toward the
-              center. Collapsed, the fan-out takes no width. */}
+              center. Collapsed, the fan-out takes no width. The whole unit
+              flies into the pill's left end when the bar shows. */}
+          <div
+            ref={flyLeftRef}
+            className={cn(flyCls, !showFloating && "opacity-0")}
+            style={
+              showFloating
+                ? undefined
+                : { transform: `translate(${fly.lx}px, ${fly.ly}px) scale(0.85)` }
+            }
+          >
           <div ref={cornerRef} className="flex items-center gap-1.5 md:gap-2">
             <div
               aria-hidden={!cornerActive}
@@ -229,13 +309,14 @@ export const Header = () => {
               )}
             </button>
           </div>
+          </div>
         </div>
       </div>
     )}
     <header
       ref={headerRef}
       className={cn(
-        "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground transition-transform duration-300",
+        "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground transition-transform duration-500 motion-reduce:transition-none",
         showFloating ? "-translate-y-full" : "translate-y-0"
       )}
     >
@@ -243,7 +324,7 @@ export const Header = () => {
         {/* Action cluster — RTL order (right→left): hamburger (mobile only),
             theme, whatsapp, search. Grouped in a subtle pill so it reads as one
             control, not a loaded row. First DOM child sits on the right in RTL. */}
-        <div className="flex shrink-0 items-center gap-0 rounded-full bg-main-foreground/[0.06] px-0.5">
+        <div ref={clusterRef} className="flex shrink-0 items-center gap-0 rounded-full bg-main-foreground/[0.06] px-0.5">
           <button
             type="button"
             aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
