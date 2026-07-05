@@ -188,10 +188,12 @@ export const OrderContinueBar = ({
                 disabled={primaryDisabled}
                 aria-label={primaryLabel}
                 className={cn(
-                  "flex-[1.4] whitespace-nowrap rounded-xl bg-forest text-white dark:bg-glow dark:text-forest px-5 py-2.5 text-sm font-bold transition-transform sm:flex-none sm:px-4 sm:py-1.5 sm:text-[13px]",
+                  // Same dark CTA as the artist-page cards ("לפרטים והזמנה") —
+                  // their shape (rounded-md) + font, sizes unchanged.
+                  "flex-[1.4] whitespace-nowrap rounded-md bg-main text-main-foreground dark:bg-foreground dark:text-background px-5 py-2.5 text-xs font-semibold transition-all sm:flex-none sm:px-4 sm:py-1.5",
                   primaryDisabled
                     ? "cursor-not-allowed opacity-40"
-                    : "hover:-translate-y-px hover:shadow-[0_12px_26px_-12px_rgba(10,26,20,.55)]"
+                    : "hover:bg-secondary hover:text-black dark:hover:bg-foreground/90 dark:hover:text-background hover:-translate-y-px hover:shadow-[0_12px_26px_-12px_rgba(10,26,20,.55)]"
                 )}
               >
                 {primaryLabel}

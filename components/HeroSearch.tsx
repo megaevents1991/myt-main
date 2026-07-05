@@ -61,11 +61,16 @@ export const HeroSearch = ({
   events,
   artists = [],
   autoFocus = false,
+  overlay = false,
 }: {
   events: Event[];
   artists?: Artist[];
   /** Focus the input on mount — used when rendered inside the search modal. */
   autoFocus?: boolean;
+  /** Float the results panel OVER the content below (homepage hero) instead of
+   * pushing it down. Keep false inside the search modal — there the modal box
+   * itself must grow with the results. */
+  overlay?: boolean;
 }) => {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -229,7 +234,7 @@ export const HeroSearch = ({
   }, [assembling, parts.length]);
 
   return (
-    <div ref={containerRef} id="search" className="mx-auto w-full max-w-xl scroll-mt-24 px-4" dir="rtl">
+    <div ref={containerRef} id="search" className="relative mx-auto w-full max-w-xl scroll-mt-24 px-4" dir="rtl">
       {/* Input bar */}
       <div className="flex items-center gap-2 rounded-2xl border border-main-foreground/15 bg-main-foreground/[0.07] p-2 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] backdrop-blur-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
         <input
@@ -280,7 +285,14 @@ export const HeroSearch = ({
 
       {/* Stage 1 — plain results list. Pick a row to assemble its package. */}
       {open && !selected && matches.length > 0 && (
-        <div className="mt-3 overflow-hidden rounded-2xl border border-main-foreground/15 bg-main-foreground/[0.07] backdrop-blur-sm">
+        <div
+          className={cn(
+            "mt-3 overflow-hidden rounded-2xl border border-main-foreground/15 backdrop-blur-md",
+            overlay
+              ? "absolute inset-x-4 top-full z-50 bg-main/95 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.65)]"
+              : "bg-main-foreground/[0.07]"
+          )}
+        >
           <p className="flex items-center justify-end gap-2 border-b border-main-foreground/10 px-4 py-2.5 text-xs font-medium text-main-foreground/60">
             אירועים תואמים · המחיר ממוצע וניתן לשינוי בהמשך
             <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
@@ -340,7 +352,14 @@ export const HeroSearch = ({
 
       {/* Stage 2 — chosen event pulled up; package assembles live. */}
       {open && selected && (
-        <div className="mt-3 rounded-2xl border border-main-foreground/15 bg-main-foreground/[0.07] p-4 text-right backdrop-blur-sm">
+        <div
+          className={cn(
+            "mt-3 rounded-2xl border border-main-foreground/15 p-4 text-right backdrop-blur-md",
+            overlay
+              ? "absolute inset-x-4 top-full z-50 bg-main/95 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.65)]"
+              : "bg-main-foreground/[0.07]"
+          )}
+        >
           <div className="flex items-center justify-between gap-2">
             <p className="flex items-center gap-2 text-xs font-medium text-main-foreground/60">
               מרכיבים את החבילה שלך…

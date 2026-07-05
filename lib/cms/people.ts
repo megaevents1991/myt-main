@@ -46,6 +46,23 @@ type PeopleConfig = {
   carouselId: string;
 };
 
+/** One row of the name→image fallback index (see listImageIndex). */
+export type PersonImageEntry = {
+  name: string;
+  /** Hero photo, full https URL (artist-page main image). */
+  url: string | null;
+  /** Blob card-art set — preferred fallback; null when the person has none. */
+  art: {
+    imageUrl: string;
+    colorIndex: number | null;
+    shapeIndex: number | null;
+    imageScale: number | null;
+    bgScale: number | null;
+    offsetX: number | null;
+    offsetY: number | null;
+  } | null;
+};
+
 // Consumers build the final src as `"https:" + url`, so return a
 // protocol-relative URL (strip the scheme) to keep that pattern working.
 const toPerson = (r: PersonRow): Artist => ({
@@ -151,6 +168,44 @@ export function makePeopleReaders(cfg: PeopleConfig) {
       } catch {
         return null;
       }
+    },
+
+    /**
+     * Lightweight name→image index for the event-image fallback
+     * (docs/superpowers/specs/2026-07-01-event-photo-artist-fallback-design.md).
+     * Carries the person's blob card-art (preferred fill) AND the hero photo.
+     * Full https URLs as stored — events consume them directly in next/image.
+     * No Contentful fallback: on error return [] so enrichment is a no-op.
+     */
+    async listImageIndex(): Promise<PersonImageEntry[]> {
+      const { data, error } = await supabase
+        .from(table)
+        .select(
+          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y"
+        )
+        .eq("is_deleted", false)
+        .eq("is_active", true);
+      if (error) {
+        console.error(`${table} listImageIndex failed:`, JSON.stringify(error));
+        return [];
+      }
+      return ((data ?? []) as PersonRow[])
+        .filter((r) => r.name_english && (r.image_url || r.art_image_url))
+        .map((r) => ({
+          name: r.name_english as string,
+          url: r.image_url ?? null,
+          art: r.art_image_url
+            ? {
+                imageUrl: r.art_image_url,
+                colorIndex: r.art_color_index ?? null,
+                shapeIndex: r.art_shape_index ?? null,
+                imageScale: r.art_image_scale ?? null,
+                bgScale: r.art_bg_scale ?? null,
+                offsetX: r.art_image_offset_x ?? null,
+                offsetY: r.art_image_offset_y ?? null,
+              }
+            : null,
+        }));
     },
 
     /** Slugs for static params. Union of Supabase + Contentful (dedup). */
