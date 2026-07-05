@@ -4,13 +4,17 @@ import { getArtistImageIndex } from "@/lib/artists";
 import { getFootballTeamImageIndex } from "@/lib/football";
 
 /**
- * Event photo → person photo fallback
+ * Event image → person image fallback
  * (docs/superpowers/specs/2026-07-01-event-photo-artist-fallback-design.md).
  *
- * An event with no photo of its own (`art_image_url` and `card_image_url` both
- * empty) borrows the hero image of its matching artist / football team by
- * filling `card_image_url` in place — the existing `art_image_url ? blob :
- * photo` card logic then renders it as a photo with zero component changes.
+ * An event with no image of its own (`art_image_url` and `card_image_url` both
+ * empty) borrows its matching artist's / football team's imagery in place:
+ * - the person's BLOB card-art (art_* set) — so event cards render the exact
+ *   same blob card as the artist catalog/carousel; and
+ * - the person's hero photo into `card_image_url` — used by the order-header
+ *   circle and OG image (and by cards when the person has no blob art).
+ * Zero component changes — the existing `art_image_url ? blob : photo` logic
+ * picks the right variant.
  */
 
 // Merged artist+team index, names lowercased once and sorted longest-first so
@@ -23,7 +27,7 @@ const getPersonImageIndex = nextCache(
       getFootballTeamImageIndex(),
     ]);
     return [...artists, ...teams]
-      .map(({ name, url }) => ({ name: name.toLowerCase(), url }))
+      .map((p) => ({ ...p, name: p.name.toLowerCase() }))
       .sort((a, b) => b.name.length - a.name.length);
   },
   ["person-image-index"],
@@ -49,7 +53,17 @@ export async function enrichEventsWithFallbackImages(
       // Same case-insensitive substring rule getEventsByName uses in reverse,
       // so an event shown on a person's page resolves to that same person.
       const match = index.find((p) => name.includes(p.name));
-      if (match) event.card_image_url = match.url;
+      if (!match) continue;
+      if (match.art) {
+        event.art_image_url = match.art.imageUrl;
+        event.art_color_index = match.art.colorIndex;
+        event.art_shape_index = match.art.shapeIndex;
+        event.art_image_scale = match.art.imageScale;
+        event.art_bg_scale = match.art.bgScale;
+        event.art_image_offset_x = match.art.offsetX;
+        event.art_image_offset_y = match.art.offsetY;
+      }
+      if (match.url) event.card_image_url = match.url;
     }
   } catch (error) {
     console.error("[fallbackImage] enrichment failed:", error);
