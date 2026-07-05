@@ -8,13 +8,16 @@ import {
 } from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
 
+/** Link to the artist/football-team page this event belongs to (resolved
+ *  server-side by name match) — href + ready-made Hebrew label. */
+export type PersonLink = { href: string; label: string };
+
 type AppContext = {
   flight?: Flight;
   event?: Event;
-  /** Slug of the artist page this event belongs to (resolved server-side by
-   *  name match). Undefined when the event has no artist page. */
-  artistSlug?: string;
-  setArtistSlug: (slug?: string) => void;
+  /** Undefined when the event has no artist/team page. */
+  personLink?: PersonLink;
+  setPersonLink: (link?: PersonLink) => void;
   hotel?: OrderHotel;
   eventTicket: OrderTicket;
   setEventTicket: (eventTicket: OrderTicket) => void;

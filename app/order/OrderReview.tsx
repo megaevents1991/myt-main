@@ -60,7 +60,7 @@ export default function OrderReview() {
     hotel: selectedHotel,
     eventTicket,
     event,
-    artistSlug,
+    personLink,
     setPaymentMethod,
     numberOfEventTickets,
     setStep,
@@ -992,9 +992,9 @@ export default function OrderReview() {
                   {/* RTL: title + photo sit on the right, timer on the left. */}
                   <div className="flex items-center gap-3">
                     {event?.card_image_url &&
-                      (artistSlug ? (
+                      (personLink ? (
                         <Link
-                          href={`/artists/${artistSlug}`}
+                          href={personLink.href}
                           aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
                           className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
                         >

@@ -19,7 +19,7 @@ import { MYT } from "./ui/myt";
 import { MYTMark } from "./ui/mytMark";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
-import { multiTermSearch } from "@/lib/search";
+import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
@@ -32,7 +32,7 @@ import { EventArt } from "@/components/ui/EventArt";
 import { PackageIcons } from "@/components/ui/PackageIcons";
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english"], // Fields to search in
+  keys: ["name", "location.name", "name_english", "categoryText"], // Fields to search in
   threshold: 0.3, // Lower = stricter match, Higher = more flexible
   findAllMatches: true, // Finds multiple matches
   ignoreLocation: true, // Ignore where the match is found in the string
@@ -77,7 +77,7 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
 
   // Filter out sold-out events from search (both tagged as "Sold" and those with no available tickets)
   const NonSoldOutEvents4Search = useMemo(
-    () => events.filter(event => !isEventSoldOut(event)),
+    () => withCategoryText(events.filter(event => !isEventSoldOut(event))),
     [events]
   );
 
@@ -1197,7 +1197,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           </form>
         )}
       </Modal>
-      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-3 py-8 md:py-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
+      {/* pt clears the always-visible fixed navbar so the hero logo isn't covered. */}
+      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-3 pt-16 pb-8 md:pt-20 md:pb-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
         {/* Soft ambient fill across the mid-hero so the Aurora-lit top and the
             carousel glow below read as one continuous wash (no dark mid-band). */}
@@ -1872,7 +1873,7 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
     {hasMultipleDates && (
       <div
         data-strip-click="true"
-        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:hover:bg-main/90 dark:hover:text-main-foreground dark:active:bg-main/90 dark:active:text-main-foreground"
+        className="w-full bg-background text-foreground border border-border text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:bg-forest dark:text-white dark:border-white/15 dark:hover:bg-forest/90 dark:hover:text-white dark:active:bg-forest/90 dark:active:text-white"
         role="button"
         aria-label={`לחץ כדי לראות את כל האירועים של ${collideTarget?.label ?? event.name}`}
         onClick={handleStripClick}

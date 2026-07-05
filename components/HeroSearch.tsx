@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dayjs from "dayjs";
@@ -18,12 +18,12 @@ import {
 
 import type { Event, Artist } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
-import { multiTermSearch } from "@/lib/search";
+import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english"],
+  keys: ["name", "location.name", "name_english", "categoryText"],
   threshold: 0.35,
   ignoreLocation: true,
 };
@@ -40,6 +40,19 @@ type SpeechRecognitionLike = {
   onend: (() => void) | null;
   start: () => void;
 };
+/** Small on-brand tooltip (desktop hover/focus only) — Tailwind, no library. */
+const HoverTip = ({ label, children }: { label: string; children: ReactNode }) => (
+  <span className="group/tip relative inline-flex shrink-0">
+    {children}
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute right-1/2 top-full z-50 mt-2 hidden translate-x-1/2 whitespace-nowrap rounded-full bg-main-foreground px-3.5 py-1.5 text-xs font-bold text-main opacity-0 shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] transition-opacity duration-150 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 sm:block"
+    >
+      {label}
+    </span>
+  </span>
+);
+
 const getSpeechRecognition = ():
   | (new () => SpeechRecognitionLike)
   | undefined => {
@@ -81,7 +94,7 @@ export const HeroSearch = ({
   const [speechSupported, setSpeechSupported] = useState(false);
 
   const available = useMemo(
-    () => events.filter((e) => !isEventSoldOut(e)),
+    () => withCategoryText(events.filter((e) => !isEventSoldOut(e))),
     [events]
   );
   const fuse = useMemo(() => new Fuse(available, fuseOptions), [available]);
@@ -254,33 +267,37 @@ export const HeroSearch = ({
             if (selected) goTo(selected);
             else goToSearch();
           }}
-          placeholder="לאן טסים? אירוע, אומן או עיר…"
-          aria-label="חיפוש אירוע — הקלידו אירוע, אומן או עיר"
-          className="min-w-0 flex-1 bg-transparent px-2 text-base text-main-foreground placeholder:text-main-foreground/50 focus:outline-none"
+          placeholder="לאן טסים? אמן, קבוצה או עיר…"
+          aria-label="חיפוש אירוע — הקלידו אירוע, אומן, קבוצה או עיר"
+          className="min-w-0 flex-1 bg-transparent px-2 text-base text-main-foreground placeholder:font-medium placeholder:text-main-foreground/80 focus:outline-none"
           type="text"
           autoComplete="off"
         />
         {speechSupported && (
+          <HoverTip label="פשוט תגידו">
+            <button
+              type="button"
+              onClick={startVoice}
+              aria-label="חיפוש קולי"
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl text-main-foreground/70 transition-colors hover:bg-main-foreground/10",
+                listening && "animate-pulse text-primary"
+              )}
+            >
+              <Mic className="size-5" aria-hidden />
+            </button>
+          </HoverTip>
+        )}
+        <HoverTip label={selected ? "ממשיכים להזמנה" : "מצאו את האירוע הבא שלכם"}>
           <button
             type="button"
-            onClick={startVoice}
-            aria-label="חיפוש קולי"
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-xl text-main-foreground/70 transition-colors hover:bg-main-foreground/10",
-              listening && "animate-pulse text-primary"
-            )}
+            onClick={() => (selected ? goTo(selected) : goToSearch())}
+            aria-label={selected ? "המשך להזמנה" : "הצגת כל התוצאות"}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
           >
-            <Mic className="size-5" aria-hidden />
+            <ArrowUp className="size-5" aria-hidden />
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => (selected ? goTo(selected) : goToSearch())}
-          aria-label={selected ? "המשך להזמנה" : "הצגת כל התוצאות"}
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
-        >
-          <ArrowUp className="size-5" aria-hidden />
-        </button>
+        </HoverTip>
       </div>
 
       {/* Stage 1 — plain results list. Pick a row to assemble its package. */}
@@ -315,8 +332,11 @@ export const HeroSearch = ({
                         </span>
                       </span>
                     )}
-                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                      <span className="min-w-0 truncate text-base font-bold text-main-foreground">
+                    {/* Mobile: name wraps in full with the meta stacked under it
+                        (long football fixtures were truncated); desktop keeps
+                        the inline single-line row. */}
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+                      <span className="min-w-0 text-base font-bold leading-snug text-main-foreground sm:truncate">
                         {m.name}
                       </span>
                       <span className="shrink-0 text-xs text-main-foreground/60">
@@ -466,7 +486,7 @@ export const HeroSearch = ({
                               ${mPrice.toLocaleString("en-US")}
                             </span>
                           )}
-                          <span className="min-w-0 flex-1 truncate text-sm text-main-foreground/80">
+                          <span className="min-w-0 flex-1 text-sm leading-snug text-main-foreground/80 sm:truncate">
                             {m.name}
                             <span className="text-main-foreground/50">
                               {m.location?.name ? ` · ${m.location.name}` : ""}

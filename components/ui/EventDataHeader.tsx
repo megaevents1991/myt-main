@@ -8,10 +8,14 @@ import { ChevronLeft } from "lucide-react";
 export const EventDataHeader = ({
   event,
   artistHref,
+  artistLinkLabel,
 }: {
   event?: Event;
-  /** When set, the round photo links to the artist page. */
+  /** When set, the round photo links to the artist/team page. */
   artistHref?: string;
+  /** Text for the person-page link (e.g. "לכל המשחקים של ארסנל");
+   *  defaults to the concerts wording with the event name. */
+  artistLinkLabel?: string;
 }) => {
   const imageUrl = event?.card_image_url;
   const photo = imageUrl && (
@@ -49,7 +53,7 @@ export const EventDataHeader = ({
             href={artistHref}
             className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-forest dark:text-glow dark:decoration-glow/40 dark:focus-visible:outline-glow"
           >
-            לכל ההופעות של {event?.name?.trim()}
+            {artistLinkLabel ?? `לכל ההופעות של ${event?.name?.trim() ?? ""}`}
             <ChevronLeft className="size-4" aria-hidden />
           </Link>
         )}

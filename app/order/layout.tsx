@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { OrderContext } from "../app.context";
+import { OrderContext, PersonLink } from "../app.context";
 import {
   Event,
   OrderTicket,
@@ -22,7 +22,7 @@ import OrderExpiredNotice from "@/components/OrderExpiredNotice";
 const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
   const [event, setEvent] = useState<Event | undefined>(undefined);
-  const [artistSlug, setArtistSlug] = useState<string | undefined>(undefined);
+  const [personLink, setPersonLink] = useState<PersonLink | undefined>(undefined);
   const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
@@ -84,8 +84,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setStep,
           step,
           setEvent,
-          artistSlug,
-          setArtistSlug,
+          personLink,
+          setPersonLink,
           setFlight,
           setHotel,
           setPaymentMethod,

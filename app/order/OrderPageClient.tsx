@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
-import { OrderContext } from "../app.context";
+import { OrderContext, PersonLink } from "../app.context";
 // Code-split heavy components
 const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
   // Keep SSR to preserve SSG/ISR HTML for SEO-critical content
@@ -23,17 +23,17 @@ const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
 interface OrderPageClientProps {
   initialEvent?: Event;
   eventId?: string;
-  artistSlug?: string;
+  personLink?: PersonLink;
 }
 
-export default function OrderPageClient({ initialEvent, eventId, artistSlug }: OrderPageClientProps) {
-  const { event, setEvent, setArtistSlug } = useContext(OrderContext);
+export default function OrderPageClient({ initialEvent, eventId, personLink }: OrderPageClientProps) {
+  const { event, setEvent, setPersonLink } = useContext(OrderContext);
 
-  // Push the server-resolved artist slug into context so the header + summary
-  // photos can link to the artist page.
+  // Push the server-resolved artist/team link into context so the header +
+  // summary photos can link to the person page.
   useEffect(() => {
-    setArtistSlug(artistSlug);
-  }, [artistSlug, setArtistSlug]);
+    setPersonLink(personLink);
+  }, [personLink, setPersonLink]);
 
   // Set the event from props when component mounts, or fetch it if we have eventId but no event
   useEffect(() => {

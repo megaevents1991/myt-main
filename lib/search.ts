@@ -1,4 +1,36 @@
 import type Fuse from "fuse.js";
+import type { Event } from "@/lib/app.types";
+
+const SPORTS_TYPES = new Set<Event["type"]>([
+  "sports_event",
+  "sports_event_dynamic",
+  "sports_live_event_dynamic",
+]);
+
+// tx_event is a mixed feed (football + concerts). Football rows always read
+// "TeamA vs TeamB" (english) or are World Cup / מונדיאל; concerts never do.
+const isFootballTx = (e: Event): boolean =>
+  e.type === "tx_event" &&
+  (/ vs /i.test(e.name_english ?? "") ||
+    /world cup/i.test(e.name_english ?? "") ||
+    e.name?.includes("מונדיאל"));
+
+/** Sports events vs everything else (concerts). Shared by search + filters. */
+export const isSportsEvent = (e: Event): boolean =>
+  SPORTS_TYPES.has(e.type) || isFootballTx(e);
+
+const SPORTS_WORDS = "כדורגל ספורט משחק משחקים football";
+const MUSIC_WORDS = "הופעה הופעות קונצרט מוזיקה מוסיקה אומן concert music";
+
+/** Event + a searchable category-words field, so queries like "כדורגל" or
+ *  "הופעות" match events by kind — not only by name/city. Add "categoryText"
+ *  to the Fuse keys wherever this is used. */
+export type SearchableEvent = Event & { categoryText: string };
+export const withCategoryText = (events: Event[]): SearchableEvent[] =>
+  events.map((e) => ({
+    ...e,
+    categoryText: `${isSportsEvent(e) ? SPORTS_WORDS : MUSIC_WORDS} ${e.tags ?? ""}`.trim(),
+  }));
 
 /**
  * Multi-term fuzzy search over a Fuse index.
