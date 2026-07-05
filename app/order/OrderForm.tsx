@@ -367,7 +367,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   return (
     <>
       <div className="max-w-7xl mx-auto px-2 pt-3">
-        {step === 1 && <TicketSelection />}
+        {step === 1 && <TicketSelection initialEvent={event} />}
         {step === 2 && <FlightSelection />}
         {step === 3 && <HotelSelection />}
         {step === 4 && <OrderReview />}

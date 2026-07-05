@@ -9,7 +9,7 @@ import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle, Loader2 } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { useMediaQuery } from "@mantine/hooks";
-import type { EventTicket } from "@/lib/app.types";
+import type { Event, EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import {
@@ -19,8 +19,13 @@ import {
 } from "@/lib/tixstock-map";
 
 
-export const TicketSelection = () => {
+export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, artistSlug } = useContext(OrderContext);
+  // Context `event` is only populated client-side (useEffect in OrderPageClient),
+  // so it's empty during SSR. Fall back to the server-provided `initialEvent`
+  // so the header — including the <h1> — renders real HTML in the initial
+  // response (SEO). Same data, so no visual change or hydration mismatch.
+  const headerEvent = event ?? initialEvent;
   const eventRef = useRef(event);
   const isDebugMode = useSearchParams().get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
@@ -408,13 +413,13 @@ export const TicketSelection = () => {
   return (
     <div>
       <div className="sr-only">
-        <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{event?.location?.name}</p>
+        <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{headerEvent?.location?.name}</p>
       </div>
       <div className="flex flex-col items-center ">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-muted ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader
-              event={event}
+              event={headerEvent}
               artistHref={artistSlug ? `/artists/${artistSlug}` : undefined}
             />
           </div>
