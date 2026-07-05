@@ -556,6 +556,7 @@ export const TicketSelection = () => {
                         category={ticket.category}
                         categoryDescription={ticket.description}
                         colorOnTheMap={ticket.colorOnTheMap || ""}
+                        useMapColor={!isTxEvent}
                         isSelected={selectedTicket === ticket.id}
                         price={ticket.price}
                         basePrice={cheapestTicket?.price ?? 0}
