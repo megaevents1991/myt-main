@@ -302,6 +302,17 @@ export const Header = () => {
             />
             <label
               htmlFor="hero-quick-actions"
+              // Hydrated: toggle on touch-start (one tap, zero latency — iOS
+              // label activation sometimes needs two taps). The native label
+              // click is then suppressed so it can't double-toggle. Before
+              // hydration neither handler exists → the native label works.
+              onPointerDown={() => {
+                const box = fanCheckRef.current;
+                if (!box) return;
+                box.checked = !box.checked;
+                setCornerOpen(box.checked);
+              }}
+              onClick={(e) => e.preventDefault()}
               className={cn(
                 floatBtn,
                 "cursor-pointer select-none active:scale-95",
