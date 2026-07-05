@@ -36,6 +36,13 @@ export const Header = () => {
   const [cornerOpen, setCornerOpen] = useState(false);
   const cornerRef = useRef<HTMLDivElement>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
+  // The fan's real source of truth is a CSS checkbox (works pre-hydration);
+  // closing programmatically must clear BOTH the box and the mirrored state.
+  const fanCheckRef = useRef<HTMLInputElement>(null);
+  const closeFan = () => {
+    if (fanCheckRef.current) fanCheckRef.current.checked = false;
+    setCornerOpen(false);
+  };
   // Shared-element hand-off: when the navbar appears, the two floating corner
   // units glide into the navbar's icon pill (and back). These hold the
   // measured translate deltas from each corner to its slot in the pill.
@@ -74,9 +81,9 @@ export const Header = () => {
   useEffect(() => {
     if (!cornerOpen) return;
     const onDown = (e: PointerEvent) => {
-      if (!cornerRef.current?.contains(e.target as Node)) setCornerOpen(false);
+      if (!cornerRef.current?.contains(e.target as Node)) closeFan();
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setCornerOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeFan();
     document.addEventListener("pointerdown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -201,7 +208,7 @@ export const Header = () => {
 
   // Leaving the hero folds the fan-out closed.
   useEffect(() => {
-    if (!overHero) setCornerOpen(false);
+    if (!overHero) closeFan();
   }, [overHero]);
 
   if (hidden) return null;
@@ -278,75 +285,60 @@ export const Header = () => {
                 : { transform: `translate(${fly.lx}px, ${fly.ly}px) scale(0.85)` }
             }
           >
-          {/* Fan is ABSOLUTE (zero layout impact — the toggle never moves) and
-              animates transform+opacity only (GPU, no reflow → smooth on
-              phones). Buttons pop out with a small stagger, nearest first. */}
+          {/* Fan toggle is a PURE-CSS checkbox (peer) — it opens the instant
+              the page paints, BEFORE React hydrates (on phones hydration takes
+              seconds and a JS-driven toggle feels dead until then). React only
+              mirrors the state (onChange) for outside-click/scroll close.
+              Animation is transform+opacity only — GPU, no reflow. */}
           <div ref={cornerRef} className="relative">
-            <button
-              type="button"
-              aria-label={cornerOpen ? "סגירת פעולות" : "פעולות מהירות"}
-              aria-expanded={cornerOpen}
+            <input
+              ref={fanCheckRef}
+              type="checkbox"
+              id="hero-quick-actions"
+              className="peer absolute -z-10 size-px overflow-hidden opacity-0"
+              aria-label="פעולות מהירות"
               tabIndex={showFloating ? 0 : -1}
-              // Toggle on touch-start — no click latency on mobile. The click
-              // handler only serves keyboard activation (detail === 0), so a
-              // tap never double-toggles.
-              onPointerDown={() => setCornerOpen((v) => !v)}
-              onClick={(e) => {
-                if (e.detail === 0) setCornerOpen((v) => !v);
-              }}
-              className={floatBtn}
-            >
-              {cornerOpen ? (
-                <X className="size-4 md:size-5" aria-hidden />
-              ) : (
-                <Ellipsis className="size-4 md:size-5" aria-hidden />
+              onChange={(e) => setCornerOpen(e.currentTarget.checked)}
+            />
+            <label
+              htmlFor="hero-quick-actions"
+              className={cn(
+                floatBtn,
+                "cursor-pointer select-none active:scale-95",
+                "peer-checked:[&_.i-dots]:hidden peer-checked:[&_.i-x]:block",
+                "peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
               )}
-            </button>
-            <div
-              aria-hidden={!cornerActive}
-              className="absolute left-full top-0 ml-1.5 flex items-center gap-1.5 md:ml-2 md:gap-2"
             >
-              {(
-                [
-                  <ThemeToggle key="theme" className={floatBtn} />,
-                  <a
-                    key="wa"
-                    href="https://wa.me/972542002722"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="WhatsApp"
-                    tabIndex={cornerActive ? 0 : -1}
-                    className={floatBtn}
-                  >
-                    <WhatsAppIcon className="size-4 md:size-5" />
-                  </a>,
-                  <button
-                    key="search"
-                    type="button"
-                    onClick={openSearch}
-                    aria-label="חיפוש אירוע"
-                    tabIndex={cornerActive ? 0 : -1}
-                    className={floatBtn}
-                  >
-                    <Search className="size-4 md:size-5" aria-hidden />
-                  </button>,
-                ] as const
-              ).map((el, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "inline-flex transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
-                    cornerActive
-                      ? "translate-x-0 scale-100 opacity-100"
-                      : "pointer-events-none -translate-x-2 scale-75 opacity-0"
-                  )}
-                  // RTL row: first child is farthest from the toggle — it pops
-                  // last on open so the fan reads as growing outward.
-                  style={{ transitionDelay: cornerActive ? `${(2 - i) * 40}ms` : "0ms" }}
-                >
-                  {el}
-                </span>
-              ))}
+              <Ellipsis className="i-dots size-4 md:size-5" aria-hidden />
+              <X className="i-x hidden size-4 md:size-5" aria-hidden />
+            </label>
+            <div
+              className={cn(
+                "pointer-events-none absolute left-full top-0 ml-1.5 flex items-center gap-1.5 peer-checked:pointer-events-auto md:ml-2 md:gap-2",
+                "[&>*]:-translate-x-2 [&>*]:scale-75 [&>*]:opacity-0 [&>*]:transition-[transform,opacity] [&>*]:duration-200 [&>*]:ease-out motion-reduce:[&>*]:transition-none",
+                "peer-checked:[&>*]:translate-x-0 peer-checked:[&>*]:scale-100 peer-checked:[&>*]:opacity-100"
+              )}
+            >
+              <ThemeToggle className={floatBtn} />
+              <a
+                href="https://wa.me/972542002722"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                tabIndex={cornerActive ? 0 : -1}
+                className={floatBtn}
+              >
+                <WhatsAppIcon className="size-4 md:size-5" />
+              </a>
+              <button
+                type="button"
+                onClick={openSearch}
+                aria-label="חיפוש אירוע"
+                tabIndex={cornerActive ? 0 : -1}
+                className={floatBtn}
+              >
+                <Search className="size-4 md:size-5" aria-hidden />
+              </button>
             </div>
           </div>
           </div>
