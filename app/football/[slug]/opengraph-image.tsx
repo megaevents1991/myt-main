@@ -25,5 +25,6 @@ export default async function Image({
     cutoutUrl: team?.fields.artImageUrl ?? null,
     photoUrl: hero ? `https:${hero}` : null,
     colorIndex: team?.fields.artColorIndex ?? getEventArt(slug).colorIndex,
+    shapeIndex: team?.fields.artShapeIndex ?? getEventArt(slug).shapeIndex,
   });
 }

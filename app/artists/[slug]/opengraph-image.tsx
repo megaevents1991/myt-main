@@ -26,5 +26,7 @@ export default async function Image({
     photoUrl: hero ? `https:${hero}` : null,
     colorIndex:
       artist?.fields.artColorIndex ?? getEventArt(slug).colorIndex,
+    shapeIndex:
+      artist?.fields.artShapeIndex ?? getEventArt(slug).shapeIndex,
   });
 }
