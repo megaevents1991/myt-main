@@ -232,21 +232,24 @@ export const Header = () => {
   return (
     <>
     {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
+    {/* The floating strip is click-transparent — only the corner units accept
+        input, so the hero logo underneath (centered, same band) stays
+        clickable. */}
     {!needsSpacer && (
       <div
         ref={floatingRef}
         aria-hidden={!showFloating}
-        className={cn(
-          "fixed inset-x-0 top-0 z-50",
-          !showFloating && "pointer-events-none"
-        )}
+        className="pointer-events-none fixed inset-x-0 top-0 z-50"
       >
         <div className="flex items-start justify-between px-3 pt-3 md:px-5 md:pt-4">
           {/* RTL: first child sits in the RIGHT corner — the hamburger. It
               flies into its slot at the pill's right end when the bar shows. */}
           <div
             ref={flyRightRef}
-            className={cn(flyCls, !showFloating && "opacity-0")}
+            className={cn(
+              flyCls,
+              showFloating ? "pointer-events-auto" : "opacity-0"
+            )}
             style={
               showFloating
                 ? undefined
@@ -278,7 +281,10 @@ export const Header = () => {
               flies into the pill's left end when the bar shows. */}
           <div
             ref={flyLeftRef}
-            className={cn(flyCls, !showFloating && "opacity-0")}
+            className={cn(
+              flyCls,
+              showFloating ? "pointer-events-auto" : "opacity-0"
+            )}
             style={
               showFloating
                 ? undefined
