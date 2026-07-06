@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Ellipsis, Menu, Search, X } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -31,25 +31,13 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  // Hero floating corner: the single left-corner button fans out to the
-  // theme/whatsapp/search icons while this is true.
-  const [cornerOpen, setCornerOpen] = useState(false);
-  const cornerRef = useRef<HTMLDivElement>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
-  // The fan's real source of truth is a CSS checkbox (works pre-hydration);
-  // closing programmatically must clear BOTH the box and the mirrored state.
-  const fanCheckRef = useRef<HTMLInputElement>(null);
-  const closeFan = () => {
-    if (fanCheckRef.current) fanCheckRef.current.checked = false;
-    setCornerOpen(false);
-  };
-  // Shared-element hand-off: when the navbar appears, the two floating corner
-  // units glide into the navbar's icon pill (and back). These hold the
-  // measured translate deltas from each corner to its slot in the pill.
+  // Shared-element hand-off: when the navbar appears, the floating corner
+  // hamburger glides into the navbar's icon pill (and back). Holds the
+  // measured translate delta from the corner to its slot in the pill.
   const clusterRef = useRef<HTMLDivElement>(null);
-  const flyLeftRef = useRef<HTMLDivElement>(null);
   const flyRightRef = useRef<HTMLDivElement>(null);
-  const [fly, setFly] = useState({ lx: 0, ly: 0, rx: 0, ry: 0 });
+  const [fly, setFly] = useState({ rx: 0, ry: 0 });
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   // Inside the order flow the Stepper is the only chrome — hide the global
@@ -76,21 +64,6 @@ export const Header = () => {
     setMenuOpen(false);
     window.dispatchEvent(new CustomEvent("myt:open-search"));
   };
-
-  // Fan-out corner: close on outside click / Escape.
-  useEffect(() => {
-    if (!cornerOpen) return;
-    const onDown = (e: PointerEvent) => {
-      if (!cornerRef.current?.contains(e.target as Node)) closeFan();
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeFan();
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [cornerOpen]);
 
   // Mobile menu: close on outside click / Escape (the hamburger only exists on
   // mobile, so this covers the only case where the slide-down is open).
@@ -165,17 +138,16 @@ export const Header = () => {
     };
   }, [pathname]);
 
-  // Measure the corners' flight paths into the navbar pill. The pill's final
-  // viewport position is derived from layout offsets (transform-independent —
-  // the bar itself may be translated off-screen); the corners are measured
-  // while they sit at their natural spots.
+  // Measure the corner hamburger's flight path into the navbar pill. The
+  // pill's final viewport position is derived from layout offsets
+  // (transform-independent — the bar itself may be translated off-screen); the
+  // corner is measured while it sits at its natural spot.
   useEffect(() => {
     const measure = () => {
       const cluster = clusterRef.current;
-      const L = flyLeftRef.current;
       const R = flyRightRef.current;
       const H = headerRef.current;
-      if (!cluster || !L || !R || !H) return;
+      if (!cluster || !R || !H) return;
       let cx = 0;
       let cy = 0;
       let el: HTMLElement | null = cluster;
@@ -184,19 +156,15 @@ export const Header = () => {
         cy += el.offsetTop;
         el = el.offsetParent as HTMLElement | null;
       }
-      const l = L.getBoundingClientRect();
       const r = R.getBoundingClientRect();
-      if (!l.width || !r.width) return;
+      if (!r.width) return;
       setFly({
-        // Left unit → the pill's LEFT end (where search/theme/whatsapp live in RTL).
-        lx: cx + 4 - l.left,
-        ly: cy + cluster.offsetHeight / 2 - (l.top + l.height / 2),
         // Hamburger → the pill's RIGHT end (its slot in the bar).
         rx: cx + cluster.offsetWidth - 4 - r.right,
         ry: cy + cluster.offsetHeight / 2 - (r.top + r.height / 2),
       });
     };
-    // Only measurable while the corners are at rest at their natural spots.
+    // Only measurable while the corner is at rest at its natural spot.
     if (!(overHero && !menuOpen)) return;
     const raf = requestAnimationFrame(measure);
     window.addEventListener("resize", measure);
@@ -206,28 +174,21 @@ export const Header = () => {
     };
   }, [overHero, menuOpen, pathname]);
 
-  // Leaving the hero folds the fan-out closed.
-  useEffect(() => {
-    if (!overHero) closeFan();
-  }, [overHero]);
-
   if (hidden) return null;
 
-  // Over the hero: no bar at all — floating corner controls (Claude-style).
-  // Hamburger in the top-right corner, theme/whatsapp/search in the top-left,
-  // on every screen size. Opening the menu / scrolling past the hero slides
-  // the solid bar in while the corners fade out (both stay mounted so the
-  // hand-off animates instead of snapping).
+  // Over the hero: no bar at all — a floating corner hamburger (Claude-style)
+  // in the top-right corner, on every screen size. Opening the menu /
+  // scrolling past the hero slides the solid bar in while the corner fades
+  // out (both stay mounted so the hand-off animates instead of snapping).
   const showFloating = overHero && !menuOpen;
   // Same dark pill as the navbar cluster — in BOTH themes (the hero is always
-  // dark, and the icons land inside the navbar's dark pill when scrolling).
+  // dark, and the icon lands inside the navbar's dark pill when scrolling).
   const floatBtn =
     "inline-flex size-9 shrink-0 touch-manipulation md:size-11 items-center justify-center rounded-full bg-main text-main-foreground shadow-card ring-1 ring-white/15 transition-colors hover:bg-secondary hover:text-black hover:ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-  // Flight styling shared by the two corner units: transform+opacity only
+  // Flight styling for the corner unit: transform+opacity only
   // (GPU-friendly), interruptible, skipped under reduced-motion.
   const flyCls =
     "transition-[transform,opacity] duration-500 ease-in-out motion-reduce:transition-none";
-  const cornerActive = showFloating && cornerOpen;
 
   return (
     <>
@@ -261,103 +222,14 @@ export const Header = () => {
               aria-label="פתיחת תפריט"
               aria-expanded={false}
               tabIndex={showFloating ? 0 : -1}
-              // pointerdown (not click): reacts on touch-start, so a tap while
-              // the left fan is open can't get lost in the fan's outside-close
-              // re-render. onClick kept for keyboard activation.
-              onPointerDown={() => {
-                setCornerOpen(false);
-                setMenuOpen(true);
-              }}
+              // pointerdown (not click): reacts on touch-start for zero
+              // latency. onClick kept for keyboard activation.
+              onPointerDown={() => setMenuOpen(true)}
               onClick={() => setMenuOpen(true)}
               className={floatBtn}
             >
               <Menu className="size-4 md:size-5" aria-hidden />
             </button>
-          </div>
-          {/* LEFT corner: one button that fans out to theme / whatsapp / search.
-              Fan-out sits BEFORE the toggle in DOM (= its right in RTL), so the
-              toggle stays pinned in the corner and the icons expand toward the
-              center. Collapsed, the fan-out takes no width. The whole unit
-              flies into the pill's left end when the bar shows. */}
-          <div
-            ref={flyLeftRef}
-            className={cn(
-              flyCls,
-              showFloating ? "pointer-events-auto" : "opacity-0"
-            )}
-            style={
-              showFloating
-                ? undefined
-                : { transform: `translate(${fly.lx}px, ${fly.ly}px) scale(0.85)` }
-            }
-          >
-          {/* Fan toggle is a PURE-CSS checkbox (peer) — it opens the instant
-              the page paints, BEFORE React hydrates (on phones hydration takes
-              seconds and a JS-driven toggle feels dead until then). React only
-              mirrors the state (onChange) for outside-click/scroll close.
-              Animation is transform+opacity only — GPU, no reflow. */}
-          <div ref={cornerRef} className="relative">
-            <input
-              ref={fanCheckRef}
-              type="checkbox"
-              id="hero-quick-actions"
-              className="peer absolute -z-10 size-px overflow-hidden opacity-0"
-              aria-label="פעולות מהירות"
-              tabIndex={showFloating ? 0 : -1}
-              onChange={(e) => setCornerOpen(e.currentTarget.checked)}
-            />
-            <label
-              htmlFor="hero-quick-actions"
-              // Hydrated: toggle on touch-start (one tap, zero latency — iOS
-              // label activation sometimes needs two taps). The native label
-              // click is then suppressed so it can't double-toggle. Before
-              // hydration neither handler exists → the native label works.
-              onPointerDown={() => {
-                const box = fanCheckRef.current;
-                if (!box) return;
-                box.checked = !box.checked;
-                setCornerOpen(box.checked);
-              }}
-              onClick={(e) => e.preventDefault()}
-              className={cn(
-                floatBtn,
-                "cursor-pointer select-none active:scale-95",
-                "peer-checked:[&_.i-dots]:hidden peer-checked:[&_.i-x]:block",
-                "peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
-              )}
-            >
-              <Ellipsis className="i-dots size-4 md:size-5" aria-hidden />
-              <X className="i-x hidden size-4 md:size-5" aria-hidden />
-            </label>
-            <div
-              className={cn(
-                "pointer-events-none absolute left-full top-0 ml-1.5 flex items-center gap-1.5 peer-checked:pointer-events-auto md:ml-2 md:gap-2",
-                "[&>*]:-translate-x-2 [&>*]:scale-75 [&>*]:opacity-0 [&>*]:transition-[transform,opacity] [&>*]:duration-200 [&>*]:ease-out motion-reduce:[&>*]:transition-none",
-                "peer-checked:[&>*]:translate-x-0 peer-checked:[&>*]:scale-100 peer-checked:[&>*]:opacity-100"
-              )}
-            >
-              <ThemeToggle className={floatBtn} />
-              <a
-                href="https://wa.me/972542002722"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                tabIndex={cornerActive ? 0 : -1}
-                className={floatBtn}
-              >
-                <WhatsAppIcon className="size-4 md:size-5" />
-              </a>
-              <button
-                type="button"
-                onClick={openSearch}
-                aria-label="חיפוש אירוע"
-                tabIndex={cornerActive ? 0 : -1}
-                className={floatBtn}
-              >
-                <Search className="size-4 md:size-5" aria-hidden />
-              </button>
-            </div>
-          </div>
           </div>
         </div>
       </div>
