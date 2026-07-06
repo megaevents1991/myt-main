@@ -8,7 +8,12 @@ import {
   shortenAirlineName,
 } from "./order-review.utils";
 import { superTrack } from "@/lib/mixpanel";
-import { getTotalMarkup } from "@/lib/events/price";
+import {
+  getComponentMarkups,
+  getEventAdditionalMarkup,
+  getTotalMarkup,
+  hasComponentMarkups,
+} from "@/lib/events/price";
 
 export function useOrderVars() {
   const {
@@ -32,7 +37,10 @@ export function useOrderVars() {
 
   const hotelPriceAddition = useMemo(() => {
     if (skipHotel && event) {
-      // When skipping hotel, add profit. Tunable via env vars.
+      // Composed pricing: the hotel-skip fee is the event's own
+      // skip_hotel_markup, charged in calculateBaseTotal — no env fee here.
+      if (hasComponentMarkups(event)) return 0;
+      // Legacy: when skipping hotel, add profit. Tunable via env vars.
       const HOTEL_SKIP_FLIGHT_THRESHOLD = 550;
       const hotelSkipMarkupLow =
         Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_LOW) || 100;
@@ -125,8 +133,21 @@ export function useOrderVars() {
     // When customer skips flight, exclude base flight price from the
     // strikethrough/recommended total so the price reflects "no flight" mode.
     const flightComponent = flightSkipped ? 0 : event.base_flight_price;
+    // Composed pricing mirrors the real charge: flight markup swaps for the
+    // skip-flight fee when the flight is skipped. Legacy keeps the flat markup.
+    const recommendedMarkup = hasComponentMarkups(event)
+      ? (() => {
+          const m = getComponentMarkups(event);
+          return (
+            m.ticket +
+            (flightSkipped ? m.skipFlight : m.flight) +
+            m.hotel +
+            getEventAdditionalMarkup(event)
+          );
+        })()
+      : markup;
     return Math.ceil(
-      flightComponent + event.base_hotel_price + minTicketPrice + markup
+      flightComponent + event.base_hotel_price + minTicketPrice + recommendedMarkup
     );
   }, [event, minTicketPrice, markup, flightSkipped]);
 
@@ -147,6 +168,24 @@ export function useOrderVars() {
     const flightComponent = flightSkipped
       ? 0
       : (flightPriceAddition + event.base_flight_price) * numTravelers;
+
+    // ── Composed pricing (any markup_* set in the backoffice) ──────────────
+    // Per ticket: ticket markup always; flight/hotel markup when included,
+    // their skip fee when skipped. Costs (bases + upgrade deltas) unchanged.
+    if (hasComponentMarkups(event)) {
+      const m = getComponentMarkups(event);
+      const perTicketMarkup =
+        m.ticket +
+        getEventAdditionalMarkup(event) +
+        (flightSkipped ? m.skipFlight : m.flight) +
+        (skipHotel ? m.skipHotel : m.hotel);
+      return Math.ceil(
+        ((eventTicket.price || 0) + perTicketMarkup) * numberOfEventTickets +
+          flightComponent +
+          hotelComponent
+      );
+    }
+    // ── Legacy pricing (no component markups) — unchanged ──────────────────
 
     // When skipping flight, add admin-set per-ticket markup to keep margin
     const skipFlightMarkupValue = Math.max(0, Number(event.skip_flight_markup ?? 0));

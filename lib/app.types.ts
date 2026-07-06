@@ -54,6 +54,15 @@ export type Event = {
   tags: string;
   tx_excluded_sections?: string[];
   event_additional_markup?: number | null;
+  // Per-event component markups (USD, backoffice-set). When ANY of the three
+  // markup_* fields is set the event uses composed pricing: markup_ticket is
+  // always charged; markup_flight/markup_hotel only when that component is
+  // included; skip_flight_markup/skip_hotel_markup only when it's skipped.
+  // All null → legacy pricing (global 175 + env hotel-skip fee), unchanged.
+  markup_ticket?: number | null;
+  markup_flight?: number | null;
+  markup_hotel?: number | null;
+  skip_hotel_markup?: number | null;
 };
 
 export type Flight = {

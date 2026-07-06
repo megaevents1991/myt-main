@@ -19,7 +19,54 @@ export function getEventAdditionalMarkup(event: Event): number {
   return Number.isFinite(additionalMarkup) ? additionalMarkup : 0;
 }
 
+/** Per-event component markups, all per ticket (USD). */
+export type ComponentMarkups = {
+  ticket: number;
+  flight: number;
+  hotel: number;
+  skipFlight: number;
+  skipHotel: number;
+};
+
+const asAmount = (v: number | null | undefined): number => {
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+/**
+ * Composed pricing is ON for an event when ANY of the three component
+ * markups is set in the backoffice. With all three empty the event prices
+ * exactly as before (global markup + env hotel-skip fee + skip_flight_markup).
+ */
+export function hasComponentMarkups(event: Event): boolean {
+  return (
+    event.markup_ticket != null ||
+    event.markup_flight != null ||
+    event.markup_hotel != null
+  );
+}
+
+export function getComponentMarkups(event: Event): ComponentMarkups {
+  return {
+    ticket: asAmount(event.markup_ticket),
+    flight: asAmount(event.markup_flight),
+    hotel: asAmount(event.markup_hotel),
+    skipFlight: asAmount(event.skip_flight_markup),
+    skipHotel: asAmount(event.skip_hotel_markup),
+  };
+}
+
+/**
+ * FULL-PACK markup per ticket (catalog cards, package base price).
+ * Composed mode: ticket + flight + hotel markups. Legacy: the global 175.
+ * `event_additional_markup` adds on top in both modes. An explicit `markup`
+ * argument forces the legacy formula with that value (test/override hook).
+ */
 export function getTotalMarkup(event: Event, markup?: number): number {
+  if (markup == null && hasComponentMarkups(event)) {
+    const m = getComponentMarkups(event);
+    return m.ticket + m.flight + m.hotel + getEventAdditionalMarkup(event);
+  }
   return (markup ?? getMarkup()) + getEventAdditionalMarkup(event);
 }
 
