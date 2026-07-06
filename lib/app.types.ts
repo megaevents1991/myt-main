@@ -173,6 +173,29 @@ export type AffiliateTracking = {
   timestamp: string;
 };
 
+/**
+ * Customer-facing discount code (shared `coupons` table — backoffice writes,
+ * this app validates + applies). Does NOT stack with the affiliate discount:
+ * the bigger single discount wins.
+ */
+export type Coupon = {
+  id: number;
+  /** Stored UPPERCASE; matched case-insensitively. */
+  code: string;
+  /** 'percent' = % off package total; 'fixed' = USD off package total. */
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  /** null = valid on every event. */
+  event_id: number | null;
+  /** ISO date; null = never expires. */
+  valid_until: string | null;
+  /** null = unlimited. */
+  max_uses: number | null;
+  times_used: number;
+  is_active: boolean;
+  created_at: string;
+};
+
 export type SortOptions = "price_asc" | "rating" | "distance_asc";
 
 export type HotelSearchCriteria =
@@ -313,6 +336,10 @@ export type OrderData = {
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
   status?: string;
+  /** Coupon redeemed on this order (only when it beat the affiliate discount). */
+  coupon_code?: string | null;
+  /** Pre-discount package total USD — server recomputes the coupon discount from it. */
+  coupon_base_total_usd?: number | null;
 };
 
 export type ArtistFields = {
