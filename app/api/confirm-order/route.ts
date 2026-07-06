@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
-import { OrderData } from "@/lib/app.types";
+import { Coupon, OrderData } from "@/lib/app.types";
+import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
+import { getCouponDiscountUsd } from "@/lib/coupon.utils";
 import { validateOrderData } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
 import {
@@ -89,6 +91,35 @@ export async function POST(req: Request) {
   }
 
 
+  // Coupon: re-validate against the DB at order time (never trust a
+  // client-computed discount). A coupon that expired / ran out between
+  // "apply" and "pay" rejects the order so the customer re-checks the price.
+  let coupon: Coupon | null = null;
+  let couponDiscountUsd = 0;
+  if (validatedData.coupon_code) {
+    coupon = await findValidCoupon(
+      validatedData.coupon_code,
+      validatedData.event_id,
+    );
+    if (!coupon) {
+      console.error(
+        "Coupon rejected at confirm-order:",
+        JSON.stringify({
+          code: validatedData.coupon_code,
+          eventId: validatedData.event_id,
+        }),
+      );
+      return NextResponse.json({ error: "COUPON_INVALID" }, { status: 409 });
+    }
+    couponDiscountUsd = getCouponDiscountUsd(
+      {
+        discountType: coupon.discount_type,
+        discountValue: coupon.discount_value,
+      },
+      validatedData.coupon_base_total_usd ?? 0,
+    );
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("reservations")
@@ -119,6 +150,8 @@ export async function POST(req: Request) {
       offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
       offline_hotel_ids: offlineHotelIdsForLink,
       offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
+      coupon_code: coupon ? coupon.code : null,
+      coupon_discount_usd: coupon ? couponDiscountUsd : null,
     })
     .select()
     .single();
@@ -142,6 +175,9 @@ export async function POST(req: Request) {
 
   // Hold offline inventory immediately — released only on cancellation.
   await holdOfflineInventory(validatedData);
+
+  // Order saved — count the redemption (soft limit; failure is non-fatal).
+  if (coupon) await incrementCouponUse(coupon);
 
   // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";

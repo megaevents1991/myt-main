@@ -52,6 +52,8 @@ export const validateOrderData = async (
       final_purchase_price_ils: yup.number().required(),
       aff_partner_tracking_code: yup.string(),
       is_agent_booking: yup.boolean(),
+      coupon_code: yup.string().nullable(),
+      coupon_base_total_usd: yup.number().nullable(),
     });
 
     await dynamicOrderSchema.validate(data);
