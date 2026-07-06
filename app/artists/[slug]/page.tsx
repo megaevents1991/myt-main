@@ -36,13 +36,10 @@ export async function generateMetadata({
       return { title: "Artist Not Found - MYT" };
     }
 
-    const { name, previewText, seoTitle, metaDescription, metaTags, heroBanner } = artist.fields;
+    const { name, previewText, seoTitle, metaDescription, metaTags } = artist.fields;
     const title = String(seoTitle || "") || `${name} - כרטיסים וחבילות | MYT`;
     const description = String(metaDescription || previewText || "") || `הזמינו כרטיסים וחבילות טיסה + מלון לאירועים של ${name}`;
     const keywords = metaTags || `${name}, כרטיסים, אירועים, MYT`;
-    const imageUrl = heroBanner?.fields?.file?.url
-      ? `https:${heroBanner.fields.file.url}`
-      : undefined;
 
     return {
       title,
@@ -51,12 +48,11 @@ export async function generateMetadata({
       alternates: {
         canonical: `https://www.mega-events.co.il/artists/${slug}`,
       },
+      // og:image intentionally NOT set here — the branded card from
+      // opengraph-image.tsx is the preview (explicit images would override it).
       openGraph: {
         title,
         description,
-        ...(imageUrl && {
-          images: [{ url: imageUrl, width: 800, height: 600, alt: String(name) }],
-        }),
       },
     };
   } catch {
