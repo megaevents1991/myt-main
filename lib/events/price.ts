@@ -46,6 +46,28 @@ export function hasComponentMarkups(event: Event): boolean {
   );
 }
 
+/**
+ * Ticket-only override amount, or null when not configured. When non-null AND
+ * the customer skips BOTH flight and hotel, the price is exactly
+ * ticket_cost + this value — no other markup of any kind. Wins over legacy
+ * and composed pricing. 0 is a valid value (sell at cost + 0).
+ */
+export function getTicketOnlyMarkup(event: Event): number | null {
+  const v = event.ticket_only_markup;
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** The ticket-only override applies only when BOTH components are skipped. */
+export function isTicketOnlyOverride(
+  event: Event,
+  flightSkipped: boolean,
+  hotelSkipped: boolean,
+): boolean {
+  return flightSkipped && hotelSkipped && getTicketOnlyMarkup(event) != null;
+}
+
 export function getComponentMarkups(event: Event): ComponentMarkups {
   return {
     ticket: asAmount(event.markup_ticket),

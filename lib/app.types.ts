@@ -63,6 +63,12 @@ export type Event = {
   markup_flight?: number | null;
   markup_hotel?: number | null;
   skip_hotel_markup?: number | null;
+  // Ticket-only override (USD per ticket). When set AND the customer skips
+  // BOTH flight and hotel, the price is exactly ticket_cost + this value —
+  // no global markup, no event_additional_markup, no skip fees, no component
+  // markups. Absolute, wins over everything. Only the both-skipped scenario;
+  // every other path untouched. Empty/null = no override.
+  ticket_only_markup?: number | null;
 };
 
 export type Flight = {

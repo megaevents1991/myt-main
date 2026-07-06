@@ -11,8 +11,10 @@ import { superTrack } from "@/lib/mixpanel";
 import {
   getComponentMarkups,
   getEventAdditionalMarkup,
+  getTicketOnlyMarkup,
   getTotalMarkup,
   hasComponentMarkups,
+  isTicketOnlyOverride,
 } from "@/lib/events/price";
 
 export function useOrderVars() {
@@ -130,6 +132,11 @@ export function useOrderVars() {
     if (!event) {
       return 0;
     }
+    // Ticket-only override: the recommended total is just ticket + the
+    // override markup, matching the real charge (no bases/markups).
+    if (isTicketOnlyOverride(event, flightSkipped, skipHotel)) {
+      return Math.ceil(minTicketPrice + (getTicketOnlyMarkup(event) ?? 0));
+    }
     // When customer skips flight, exclude base flight price from the
     // strikethrough/recommended total so the price reflects "no flight" mode.
     const flightComponent = flightSkipped ? 0 : event.base_flight_price;
@@ -149,13 +156,24 @@ export function useOrderVars() {
     return Math.ceil(
       flightComponent + event.base_hotel_price + minTicketPrice + recommendedMarkup
     );
-  }, [event, minTicketPrice, markup, flightSkipped]);
+  }, [event, minTicketPrice, markup, flightSkipped, skipHotel]);
 
   const recommendedPriceAllPax = packRecommendedPrice * numberOfPersons;
 
   const calculateBaseTotal = useCallback(() => {
     if (!eventTicket || !event || (!selectedFlight && !flightSkipped)) {
       return 0;
+    }
+
+    // ── Ticket-only override (wins over everything) ────────────────────────
+    // Customer skipped BOTH flight and hotel and the event has a ticket-only
+    // markup set → price is exactly ticket cost + that markup. No global
+    // markup, no additional, no skip fees, no component markups.
+    if (isTicketOnlyOverride(event, flightSkipped, skipHotel)) {
+      const ticketOnly = getTicketOnlyMarkup(event) ?? 0;
+      return Math.ceil(
+        ((eventTicket.price || 0) + ticketOnly) * numberOfEventTickets,
+      );
     }
 
     // Calculate hotel component based on skip status
