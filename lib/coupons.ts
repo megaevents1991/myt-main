@@ -20,13 +20,25 @@ export const findValidCoupon = async (
   // so escape it here — otherwise it's an ILIKE single-char wildcard and
   // "SUMMER_1" would also match "SUMMER21" (coupon guessing/bypass).
   const escaped = normalized.replace(/([\\%_])/g, "\\$1");
-  const { data, error } = await supabase
+  // times_paid / partner_tracking_code may not exist until the v2 migration
+  // runs; on 42703 (undefined column) retry without them so coupons keep
+  // working either way (same pattern as affiliate checkCode).
+  let { data, error } = await supabase
     .from("coupons")
     .select(
-      "id, code, discount_type, discount_value, event_id, valid_until, max_uses, times_used, is_active, created_at",
+      "id, code, discount_type, discount_value, event_id, valid_until, max_uses, times_used, times_paid, partner_tracking_code, is_active, created_at",
     )
     .ilike("code", escaped)
     .maybeSingle();
+  if (error && error.code === "42703") {
+    ({ data, error } = await supabase
+      .from("coupons")
+      .select(
+        "id, code, discount_type, discount_value, event_id, valid_until, max_uses, times_used, is_active, created_at",
+      )
+      .ilike("code", escaped)
+      .maybeSingle());
+  }
 
   if (error) {
     console.error("Coupon lookup failed:", JSON.stringify(error));

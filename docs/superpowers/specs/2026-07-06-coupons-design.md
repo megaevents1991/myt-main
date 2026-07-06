@@ -71,6 +71,25 @@ on margin). Read-then-write, not atomic — max_uses is a soft marketing limit.
 Alternative rejected for now: increment on payment-success callback (accurate,
 but misses phone orders).
 
+## v2 (same day): paid counter + affiliate attribution
+
+Migration: `docs/sql/2026-07-06-coupons-v2-paid-counter-affiliate.sql`.
+
+- **`times_paid`** — counts redemptions whose reservation reached status
+  'Paid'. Incremented by DB trigger `coupon_paid_counter` on the status
+  transition into 'Paid' (catches the CreditGuard callback AND manual
+  backoffice status changes; atomic; no double-count on repeat callbacks).
+  `times_used` unchanged — still counts all confirmed orders and enforces
+  `max_uses`. Backoffice table shows both (Uses + Paid columns).
+- **`coupons.partner_tracking_code`** (FK → partners, on delete set null) —
+  links a coupon to an affiliate. confirm-order sets the reservation's
+  `aff_partner_tracking_code` to the coupon's partner ONLY when the order has
+  no affiliate of its own (existing link/utm attribution wins — Dor's call).
+  Backoffice dialog: "Attribute to affiliate" dropdown; table: Affiliate
+  column.
+- `findValidCoupon` retries without the v2 columns on 42703 so coupons keep
+  working if code deploys before the migration runs.
+
 ## Cross-project impact
 
 Shared table `coupons` (backoffice writes / main reads), two new

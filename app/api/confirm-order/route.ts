@@ -135,7 +135,13 @@ export async function POST(req: Request) {
       user_shown_price: validatedData.user_shown_price,
       event_id: validatedData.event_id,
       payment_info: payNow ? {} : null,
-      aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
+      // Coupon-to-affiliate attribution: a coupon linked to a partner credits
+      // that partner, but only when the order has no affiliate of its own
+      // (existing link/utm attribution wins).
+      aff_partner_tracking_code:
+        validatedData.aff_partner_tracking_code ||
+        coupon?.partner_tracking_code ||
+        "",
       final_purchase_price_ils: validatedData.final_purchase_price_ils,
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
       gtmIdnts: gtmIdnts || null,
