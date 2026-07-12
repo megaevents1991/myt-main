@@ -729,7 +729,6 @@ const UniversalCarousel = ({
 };
 
 export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball }: Props) {
-  const [isMounted, setIsMounted] = useState(false);
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -745,7 +744,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   const [visibleMusicCount, setVisibleMusicCount] = useState(5);
 
   useEffect(() => {
-    setIsMounted(true);
     // Scroll to top when component mounts (page load/navigation)
     window.scrollTo(0, 0);
   }, []);
@@ -880,31 +878,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     );
   }
 
-  // Prevent hydration mismatches by showing a loading state instead of null
-  if (!isMounted) {
-    return (
-      <div style={{ minHeight: '60vh' }}>
-        {/* Basic layout structure to prevent content jump */}
-        <section className="bg-main relative overflow-hidden">
-          <div className="container mx-auto flex flex-col lg:flex-row items-center justify-between py-12 px-4 md:px-8 min-h-[400px]">
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="animate-pulse bg-main-foreground/20 h-8 w-64 rounded"></div>
-            </div>
-          </div>
-        </section>
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-8">
-            <div className="h-6 bg-muted rounded w-48"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-64 bg-muted rounded-2xl"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: This component renders its real content on the server (no isMounted
+  // gate). That's deliberate — gating behind mount kept every card image out of
+  // the SSR HTML, so `priority`/`loading="eager"` couldn't preload the LCP and
+  // "המבוקשים ביותר" only started loading after hydration (broken on first
+  // scroll). Client-only values here (`matches`, `isMobile`) are false-first, so
+  // they hydrate consistently and only update post-mount — no mismatch.
 
   // Separate VIP events
   // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
