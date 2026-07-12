@@ -58,6 +58,7 @@ export const EventArt = ({
   imageOffsetX,
   imageOffsetY,
   priority,
+  sizes = "(max-width: 640px) 90vw, 400px",
   variant = "blob",
   blobFit = "cover",
   bgFit = "contain",
@@ -79,6 +80,9 @@ export const EventArt = ({
   imageOffsetX?: number | null;
   imageOffsetY?: number | null;
   priority?: boolean;
+  /** `next/image` sizes hint. Default assumes a near-full-width card; pass a
+   *  tighter value for small grid/carousel cards so mobile doesn't over-fetch. */
+  sizes?: string;
   /** "blob" = neon brand blob + cut-out artist (contain); "photo" = full image (cover). */
   variant?: "blob" | "photo";
   /**
@@ -160,7 +164,7 @@ export const EventArt = ({
               src={photoBg}
               alt=""
               fill
-              sizes="(max-width: 640px) 90vw, 400px"
+              sizes={sizes}
               aria-hidden="true"
               className={bgFit === "cover" ? "object-cover" : "object-contain"}
               style={bgStyle}
@@ -200,7 +204,7 @@ export const EventArt = ({
             src={imageUrl}
             alt={alt}
             fill
-            sizes="(max-width: 640px) 90vw, 400px"
+            sizes={sizes}
             priority={priority}
             className={cn(
               fit === "contain" ? "object-contain" : "object-cover",

@@ -535,7 +535,11 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
             imageOffsetX={isPhotoBg ? undefined : team.fields.artImageOffsetX}
             imageOffsetY={isPhotoBg ? undefined : team.fields.artImageOffsetY}
             imageClassName={isPhotoBg ? "object-center scale-[1.4]" : undefined}
-            priority
+            // No `priority`: this carousel is below the fold and renders every
+            // team at once — eager-loading them all saturated mobile networks
+            // and made cards trickle in on scroll. Native lazy-load + a slot-
+            // accurate `sizes` loads only what's visible, at the right size.
+            sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
           {/* Dark bottom-edge gradient — grounds the image against the white name
@@ -591,7 +595,11 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
             bgScale={artist.fields.artBgScale}
             imageOffsetX={artist.fields.artImageOffsetX}
             imageOffsetY={artist.fields.artImageOffsetY}
-            priority
+            // No `priority`: this carousel is below the fold and renders every
+            // artist at once — eager-loading them all saturated mobile networks
+            // and made cards trickle in on scroll. Native lazy-load + a slot-
+            // accurate `sizes` loads only what's visible, at the right size.
+            sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
           {/* Dark bottom-edge gradient — grounds the art against the white name
