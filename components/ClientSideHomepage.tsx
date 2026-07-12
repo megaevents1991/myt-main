@@ -1455,12 +1455,10 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </h2>
                 </div>
               </div>
-              {/* Mobile carousel for Sports events */}
-              <div className="block sm:hidden mb-8">
-                <UniversalCarousel teams={homeFootball} variant="compact" />
-              </div>
-              {/* Desktop carousel for Sports events */}
-              <div className="hidden sm:block mb-8">
+              {/* One responsive carousel (was two identical mobile+desktop copies
+                  — the component is already responsive, so the duplicate just
+                  doubled the DOM/hydration cost and helped starve paint on scroll). */}
+              <div className="mb-8">
                 <UniversalCarousel teams={homeFootball} variant="compact" />
               </div>
             </section>
@@ -1491,12 +1489,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </h2>
                 </div>
               </div>
-              {/* Mobile carousel for Artists */}
-              <div className="block sm:hidden mb-8">
-                <UniversalCarousel artists={homeArtists} variant="compact" />
-              </div>
-              {/* Desktop carousel for Artists */}
-              <div className="hidden sm:block mb-8">
+              {/* One responsive carousel (was two identical mobile+desktop copies). */}
+              <div className="mb-8">
                 <UniversalCarousel artists={homeArtists} variant="compact" />
               </div>
             </section>
