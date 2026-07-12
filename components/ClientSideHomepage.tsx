@@ -634,17 +634,15 @@ const UniversalCarousel = ({
   artists?: Artist[];
   variant?: "default" | "compact";
 }) => {
-  const [isMounted, setIsMounted] = useState(false);
-  const { isMobile } = useIsMobile();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const items = teams || artists || events || [];
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted || items.length === 0) {
+  // Render on the server (no isMounted gate) so the row — and its card images —
+  // ship in the SSR HTML instead of flashing blank until hydration. This is a
+  // plain native-scroll row, so it's SSR-safe; the scroll refs/arrows just wire
+  // up after mount.
+  if (items.length === 0) {
     return null;
   }
 
