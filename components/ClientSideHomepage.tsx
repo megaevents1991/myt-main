@@ -1414,9 +1414,21 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8" 
                  role="list" 
                  aria-label="רשימת האירועים המבוקשים ביותר">
-              {prioritized_events.map((event) => (
+              {prioritized_events.map((event, i) => (
                 <div key={event.id} role="listitem">
-                  <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
+                  <EventCard
+                    event={event}
+                    allEvents={initialEvents}
+                    artists={artists}
+                    footballTeams={allFootballTeams}
+                    // First cards are the mobile LCP (1-col grid). Eager-load them
+                    // so they paint immediately instead of waiting for hydration +
+                    // IntersectionObserver; the rest stay lazy.
+                    priority={i < 2}
+                    // Actual rendered width per breakpoint (1 / 2 / 4 cols) so the
+                    // optimizer doesn't ship a ~90vw image into a 23vw slot.
+                    sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
+                  />
                 </div>
               ))}
             </div>
@@ -1662,7 +1674,7 @@ const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam |
   return best;
 };
 
-function EventCard({ event, allEvents, artists, footballTeams }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[] }) {
+function EventCard({ event, allEvents, artists, footballTeams, priority, sizes }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; sizes?: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
   const computedSold = isEventSoldOut(event);
@@ -1827,6 +1839,8 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               bgScale={event.art_bg_scale}
               imageOffsetX={event.art_image_offset_x}
               imageOffsetY={event.art_image_offset_y}
+              priority={priority}
+              sizes={sizes}
               className="h-52 w-full sm:h-56"
             />
           </div>
