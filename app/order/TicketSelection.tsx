@@ -1,7 +1,7 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { OrderContext } from "../app.context";
 import { EventTicketCard } from "@/components/ui/EventTicketCard";
@@ -25,6 +25,117 @@ const TX_FALLBACK_BUFFER_PCT = Number(
 );
 const TX_FALLBACK_MULTIPLIER =
   1 + (Number.isFinite(TX_FALLBACK_BUFFER_PCT) ? TX_FALLBACK_BUFFER_PCT : 15) / 100;
+
+/**
+ * Group-order rescue for the "can't supply N tickets together" dead-end:
+ * WhatsApp (prefilled) or leave name+phone → lead email to the sales rep via
+ * /api/more-events (same channel the homepage "more events" form uses) — we
+ * come back with a tailored offer instead of losing a high-value group buyer.
+ */
+const GroupTicketsInquiry = ({
+  eventName,
+  eventId,
+  quantity,
+}: {
+  eventName: string;
+  eventId?: number;
+  quantity: number;
+}) => {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+    "idle",
+  );
+
+  const waText = encodeURIComponent(
+    `היי, אני מעוניין ב-${quantity} כרטיסים לאירוע ${eventName} (הזמנה קבוצתית)`,
+  );
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || phone.trim().length < 8) {
+      setStatus("error");
+      return;
+    }
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/more-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "group_tickets_request",
+          event: eventName,
+          eventId,
+          requestedQuantity: quantity,
+          name: name.trim(),
+          phone: phone.trim(),
+        }),
+      });
+      setStatus(res.ok ? "sent" : "error");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  if (status === "sent") {
+    return (
+      <Text size="md" fw={700} c="green" role="status">
+        קיבלנו את הפרטים! נציג יחזור אליכם בהקדם עם הצעה לקבוצה.
+      </Text>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-4 text-right" dir="rtl">
+      <Text size="md" fw={700} mb={4}>
+        מזמינים לקבוצה גדולה?
+      </Text>
+      <Text size="sm" c="dimmed" mb={12}>
+        השאירו פרטים ונחזור אליכם עם הצעה משתלמת לקבוצה, או דברו איתנו עכשיו.
+      </Text>
+      <form onSubmit={submit} className="flex flex-col gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="שם מלא"
+          aria-label="שם מלא"
+          className="h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="טלפון"
+          aria-label="טלפון"
+          className="h-10 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {status === "error" && (
+          <Text size="xs" c="red" role="alert">
+            נא למלא שם וטלפון תקינים ולנסות שוב.
+          </Text>
+        )}
+        <div className="mt-1 flex gap-2">
+          <button
+            type="submit"
+            disabled={status === "sending"}
+            className="flex-1 rounded-lg bg-main px-4 py-2 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90 disabled:opacity-50"
+          >
+            {status === "sending" ? "שולח..." : "חזרו אליי עם הצעה"}
+          </button>
+          <a
+            href={`https://wa.me/972542002722?text=${waText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 rounded-lg border border-forest px-4 py-2 text-center text-sm font-bold text-forest transition-colors hover:bg-forest/5 dark:border-glow dark:text-glow dark:hover:bg-glow/10"
+          >
+            WhatsApp עכשיו
+          </a>
+        </div>
+      </form>
+    </div>
+  );
+};
 
 
 export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
@@ -50,8 +161,13 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   /** Is this a TixStock dynamic-map event? */
   const isTxEvent = event?.type === "tx_event";
 
-  const { numberOfEventTickets, setNumberOfEventTickets, setPlaneTickets } =
-    useContext(OrderContext);
+  const {
+    numberOfEventTickets,
+    setNumberOfEventTickets,
+    setPlaneTickets,
+    setFlight,
+    setHotel,
+  } = useContext(OrderContext);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -218,6 +334,31 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     ? ticketsWithLivePrices
     : availableTickets;
 
+  /**
+   * Largest quantity (below the requested one) that at least one category can
+   * still supply — powers the one-tap "reduce quantity" suggestion when the
+   * requested amount can't be fulfilled. null when nothing smaller works.
+   */
+  const maxFeasibleQty: number | null = useMemo(() => {
+    if (!isTxEvent || liveListings.length === 0) return null;
+    for (let q = numberOfEventTickets - 1; q >= 1; q--) {
+      if (
+        availableTickets.some(
+          (t) => getLivePriceForCategory(t.category, q) !== null,
+        )
+      ) {
+        return q;
+      }
+    }
+    return null;
+  }, [
+    isTxEvent,
+    liveListings,
+    numberOfEventTickets,
+    availableTickets,
+    getLivePriceForCategory,
+  ]);
+
   /** True when selling on buffered DB price because live TX pricing is down. */
   const usingBufferedFallback =
     isTxEvent &&
@@ -321,6 +462,13 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       return;
     }
     setErrorMessage("");
+    // Party size changed → any flight/hotel already picked (user navigated back
+    // from a later step) was priced for the OLD pax count. Clear them so the
+    // customer re-picks and can never pay a stale mismatched price.
+    if (+value !== numberOfEventTickets) {
+      setFlight(undefined);
+      setHotel(undefined);
+    }
     setNumberOfEventTickets(+value);
     // Keep traveler count (flights + hotel) in sync with the chosen party size.
     // Without this, the hotel search defaults to 2 guests when the flight step
@@ -558,19 +706,46 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                     </Text>
                   </div>
                 ) : effectiveTickets.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
-                    <Text size="xl" fw={700} c="red" aria-live="polite">
-                      אין כרטיסים זמינים כרגע
-                    </Text>
-                    <Text size="md" c="dimmed">
-                      {isTxEvent && availableTickets.length > 0
-                        ? `אין קטגוריות שיכולות לספק ${numberOfEventTickets} כרטיסים יחד. נסו להפחית את הכמות.`
-                        : "כל הכרטיסים לאירוע זה אזלו או אינם זמינים למכירה."}
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      אנא נסו אירוע אחר או צרו קשר עם שירות הלקוחות לקבלת עזרה.
-                    </Text>
-                  </div>
+                  isTxEvent && availableTickets.length > 0 ? (
+                    // Quantity dead-end: the event HAS tickets, just not N together.
+                    // Rescue instead of a wall — one-tap reduce to the max that
+                    // works, or leave details / WhatsApp for a group offer.
+                    <div className="flex flex-col items-center justify-center p-6 text-center gap-4">
+                      <Text size="xl" fw={700} c="red" aria-live="polite">
+                        אין {numberOfEventTickets} כרטיסים ביחד כרגע
+                      </Text>
+                      {maxFeasibleQty ? (
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(maxFeasibleQty)}
+                          className="rounded-xl bg-main px-5 py-2.5 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90"
+                        >
+                          יש עד {maxFeasibleQty} כרטיסים ביחד — עדכנו את הכמות
+                        </button>
+                      ) : (
+                        <Text size="md" c="dimmed">
+                          נסו להפחית את כמות הכרטיסים.
+                        </Text>
+                      )}
+                      <GroupTicketsInquiry
+                        eventName={headerEvent?.name || ""}
+                        eventId={headerEvent?.id}
+                        quantity={numberOfEventTickets}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
+                      <Text size="xl" fw={700} c="red" aria-live="polite">
+                        אין כרטיסים זמינים כרגע
+                      </Text>
+                      <Text size="md" c="dimmed">
+                        כל הכרטיסים לאירוע זה אזלו או אינם זמינים למכירה.
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        אנא נסו אירוע אחר או צרו קשר עם שירות הלקוחות לקבלת עזרה.
+                      </Text>
+                    </div>
+                  )
                 ) : (
                   [...displayedTickets]
                     .sort((a: EventTicket, b: EventTicket) => a.price - b.price)

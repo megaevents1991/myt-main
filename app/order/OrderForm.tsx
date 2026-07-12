@@ -312,6 +312,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
         ? `-$${Math.abs(delta).toLocaleString("en-US")}`
         : "כלול";
 
+  // Pills are navigation: completed steps (behind the current one) tap back to
+  // modify; the IMMEDIATE next step taps forward — exactly like the primary
+  // continue button (same guard + side effects). Never further: steps must be
+  // completed in order (1 → 2 → 3).
+  const slotNav = (target: number) => {
+    if (target < step) return () => setStep(target); // back to a done step
+    if (target === step + 1 && !buttonDisabled) return () => nextStep(); // continue
+    return undefined;
+  };
+
   const continueSlots: ContinueSlot[] = [
     {
       icon: "ticket",
@@ -319,6 +329,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       filled: !!eventTicket.id,
       value: eventTicket.id ? shortenTicketCategory(ticketCategory || "") : "",
       delta: eventTicket.id ? priceNote(ticketRelativePrice) : undefined,
+      onClick: slotNav(1),
     },
     {
       icon: "flight",
@@ -326,6 +337,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       filled: flightSkipped || !!flight?.id,
       value: flightSkipped ? "ללא טיסה" : flight?.id ? airline : "",
       delta: !flightSkipped && flight?.id ? priceNote(flightDelta) : undefined,
+      onClick: slotNav(2),
     },
   ];
   if (!isUS) {
@@ -335,6 +347,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
       filled: skipHotel || !!hotel?.id,
       value: skipHotel ? "ללא מלון" : hotel?.id ? hotel?.name || "מלון" : "",
       delta: !skipHotel && hotel?.id ? priceNote(hotelPriceAddition) : undefined,
+      onClick: slotNav(3),
     });
   }
 

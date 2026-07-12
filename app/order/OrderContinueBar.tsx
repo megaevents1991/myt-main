@@ -22,6 +22,10 @@ export type ContinueSlot = {
   value: string;
   /** Small price note, e.g. "+$120" or "כלול". Optional. */
   delta?: string;
+  /** Set for steps behind the current one (tap = go back to modify) and for
+   *  the immediate next step when the current one is complete (tap = continue,
+   *  same as the primary button). Further steps stay non-interactive. */
+  onClick?: () => void;
 };
 
 type Props = {
@@ -113,14 +117,27 @@ export const OrderContinueBar = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 sm:px-3 sm:py-2">
         {/* Slots */}
         <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2 sm:min-w-0 sm:flex-1 sm:border-b-0 sm:bg-transparent sm:p-0">
-          {slots.map((s) => (
-            <div
+          {slots.map((s) => {
+            // Completed steps are clickable buttons — tap navigates back to
+            // that step to modify. Future steps stay plain (no skipping ahead).
+            const Tag = s.onClick ? "button" : "div";
+            return (
+            <Tag
               key={s.label}
+              {...(s.onClick
+                ? {
+                    type: "button" as const,
+                    onClick: s.onClick,
+                    "aria-label": `מעבר לשלב ${s.label}`,
+                  }
+                : {})}
               className={cn(
-                "flex min-w-0 flex-1 items-center gap-2 rounded-xl border-[1.5px] px-2.5 py-2 transition-colors duration-300",
+                "flex min-w-0 flex-1 items-center gap-2 rounded-xl border-[1.5px] px-2.5 py-2 text-right transition-colors duration-300",
                 s.filled
                   ? "border-forest/70 bg-glow/[0.13] dark:border-glow/60"
-                  : "border-dashed border-border bg-card"
+                  : "border-dashed border-border bg-card",
+                s.onClick &&
+                  "cursor-pointer hover:border-forest hover:bg-glow/[0.22] active:scale-[0.98] dark:hover:border-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               )}
             >
               <span className={cn(s.filled ? ACCENT_FG : "text-muted-foreground")}>
@@ -144,8 +161,9 @@ export const OrderContinueBar = ({
                   <CheckIcon />
                 </span>
               )}
-            </div>
-          ))}
+            </Tag>
+            );
+          })}
         </div>
 
         {/* Price + actions — `sm:contents` folds them into the desktop row. */}

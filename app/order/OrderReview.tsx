@@ -1182,6 +1182,9 @@ export default function OrderReview() {
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
                   flightSkipped={flightSkipped}
+                  // Back-navigation from the summary: each section can jump to
+                  // its step (1 ticket / 2 flight / 3 hotel) to modify the pick.
+                  onEdit={(target) => setStep(target)}
                 />
                 {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
                 {agentCommission <= 0 && (
