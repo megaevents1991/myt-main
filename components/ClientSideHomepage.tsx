@@ -700,10 +700,11 @@ const UniversalCarousel = ({
             key = (item as Event).id.toString();
           }
 
-          // Eager-load the first row's worth so the carousel is populated the
-          // moment it's scrolled to (no on-scroll pop-in); the rest stay lazy so
-          // we don't fetch dozens of off-screen images up front.
-          const loading = idx < 6 ? "eager" : "lazy";
+          // All carousel cards lazy: only the few horizontally-visible ones
+          // decode. Eager-loading even the first row added to iOS's image-memory
+          // pressure (which evicts + re-decodes on scroll). Native lazy loads the
+          // visible cards fast enough; the rest load as you swipe.
+          const loading = "lazy" as const;
 
           return (
             <div key={key} className={cn("snap-start", itemWidth)}>
@@ -746,20 +747,24 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     window.scrollTo(0, 0);
   }, []);
 
-  // "Load the whole page up front, not on scroll." Card images below the fold
-  // ship as loading="lazy" so they don't compete with first paint — but that
-  // means fresh cards fetch as you scroll into them (the brief blank). Once the
-  // page is idle, flip every still-lazy image to eager so the browser loads them
-  // all in the background at normal priority. By the time you scroll, they're
-  // already fetched — no on-scroll pop-in — without a preload flood on first load.
+
+  // Warm ONLY the vertical-scroll images (the grids you scroll down through) once
+  // the page is idle, so they're ready before you reach them. Deliberately SKIP
+  // the horizontal carousels: warming all ~120 images forced iOS Safari to decode
+  // them all at once, blowing its image-memory budget so it evicted + re-decoded
+  // on every scroll (the "cards reload" bug). Carousel cards stay lazy — only the
+  // few horizontally-visible ones decode — keeping total decoded images low.
   useEffect(() => {
     let cancelled = false;
     const warmImages = () => {
       if (cancelled) return;
       document
-        .querySelectorAll<HTMLImageElement>('img[loading="lazy"]')
+        .querySelectorAll<HTMLImageElement>('main img[loading="lazy"]')
         .forEach((img) => {
           if (img.complete) return;
+          // Skip images inside a horizontal carousel (its scroll track is
+          // .overflow-x-auto) — those load on swipe, not up front.
+          if (img.closest(".overflow-x-auto")) return;
           // Warm the browser cache with a throwaway request (same srcset/sizes so
           // it picks the exact candidate the real <img> will use). When the card
           // is later scrolled into view it's a cache hit → paints instantly. This
@@ -1232,7 +1237,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         )}
       </Modal>
       {/* pt clears the always-visible fixed navbar so the hero logo isn't covered. */}
-      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-3 pt-16 pb-8 md:pt-20 md:pb-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
+      {/* min-h in `svh` (small viewport height), NOT `dvh`: `dvh` changes every
+          time the iOS address bar shows/hides on scroll, which resized this hero
+          and reflowed the entire page below it on every scroll (seconds of jank
+          on mobile). `svh` is stable — it never changes as you scroll. */}
+      <section className="w-full flex min-h-[92svh] flex-col justify-center gap-3 pt-16 pb-8 md:pt-20 md:pb-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
         {/* Soft ambient fill across the mid-hero so the Aurora-lit top and the
             carousel glow below read as one continuous wash (no dark mid-band). */}

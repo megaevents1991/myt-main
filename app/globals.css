@@ -277,6 +277,22 @@
   0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
   50% { transform: translate3d(16%, -12%, 0) scale(1.25); }
 }
+/* Aurora blob visuals, split by device power.
+   MOBILE (default): softness baked into the gradient — NO live blur, NO
+   blend-mode. iOS re-composited five 56px-blurred blended layers on every
+   scroll, repainting the whole page for seconds (bisected on a real iPhone:
+   killing filters fixed the jank; killing box-shadows did not).
+   DESKTOP (lg+): the original look — real blur + screen blend. */
+.aurora-blob {
+  background: radial-gradient(circle at center, hsl(var(--ab-color) / 0.5), hsl(var(--ab-color) / 0) 60%);
+}
+@media (min-width: 1024px) {
+  .aurora-blob {
+    background: radial-gradient(circle at center, hsl(var(--ab-color) / 0.9), hsl(var(--ab-color) / 0) 70%);
+    filter: blur(56px) saturate(var(--mesh-saturation));
+    mix-blend-mode: screen;
+  }
+}
 
 /* Footer wordmark marquee (Elevation #7) */
 @keyframes marquee-scroll {

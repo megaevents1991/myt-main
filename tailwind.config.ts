@@ -3,6 +3,13 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
+  future: {
+    // hover: styles only on devices with a real pointer. On iOS, dragging a
+    // finger to scroll fires :hover on the touched card — its hover shadow +
+    // lift + image zoom then repaint on EVERY scroll gesture (the "cards
+    // reload while scrolling" bug, real devices only). Desktop is unchanged.
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
