@@ -58,6 +58,7 @@ export const EventArt = ({
   imageOffsetX,
   imageOffsetY,
   priority,
+  loading,
   sizes = "(max-width: 640px) 90vw, 400px",
   variant = "blob",
   blobFit = "cover",
@@ -80,6 +81,11 @@ export const EventArt = ({
   imageOffsetX?: number | null;
   imageOffsetY?: number | null;
   priority?: boolean;
+  /** `next/image` loading. Pass "eager" to fetch at page load (normal priority,
+   *  not preloaded like `priority`) so a card is ready before it's scrolled to
+   *  — avoids the on-scroll "half-loaded" pop-in without hurting first paint.
+   *  Ignored when `priority` is set (priority already implies eager). */
+  loading?: "eager" | "lazy";
   /** `next/image` sizes hint. Default assumes a near-full-width card; pass a
    *  tighter value for small grid/carousel cards so mobile doesn't over-fetch. */
   sizes?: string;
@@ -206,6 +212,7 @@ export const EventArt = ({
             fill
             sizes={sizes}
             priority={priority}
+            loading={priority ? undefined : loading}
             className={cn(
               fit === "contain" ? "object-contain" : "object-cover",
               variant === "photo" ? "object-top" : "object-bottom",

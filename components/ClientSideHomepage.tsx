@@ -393,7 +393,7 @@ const MobileCarousel = ({ events, allEvents, artists, footballTeams }: { events:
 };
 
 // Compact Event Card for Sports Section
-function CompactEventCard({ event }: { event: Event }) {
+function CompactEventCard({ event, loading }: { event: Event; loading?: "eager" | "lazy" }) {
   const computedSold = isEventSoldOut(event);
   const packagePrice = computePackagePrice(event);
   
@@ -474,6 +474,8 @@ function CompactEventCard({ event }: { event: Event }) {
             bgScale={event.art_bg_scale}
             imageOffsetX={event.art_image_offset_x}
             imageOffsetY={event.art_image_offset_y}
+            loading={loading}
+            sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
         </div>
@@ -493,7 +495,7 @@ function CompactEventCard({ event }: { event: Event }) {
 }
 
 // Compact Team Card for Football Section
-function CompactTeamCard({ team }: { team: FootballTeam }) {
+function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eager" | "lazy" }) {
   // A crest over a stadium photo (shapeIndex 6-8). On these cards we ignore the
   // backoffice image dials (they shrink the crest to ~0.8 and, being an inline
   // style transform, would OVERRIDE the class scale) and size the crest purely
@@ -535,10 +537,10 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
             imageOffsetX={isPhotoBg ? undefined : team.fields.artImageOffsetX}
             imageOffsetY={isPhotoBg ? undefined : team.fields.artImageOffsetY}
             imageClassName={isPhotoBg ? "object-center scale-[1.4]" : undefined}
-            // No `priority`: this carousel is below the fold and renders every
-            // team at once — eager-loading them all saturated mobile networks
-            // and made cards trickle in on scroll. Native lazy-load + a slot-
-            // accurate `sizes` loads only what's visible, at the right size.
+            // No `priority` (that preloads at high priority and saturated the
+            // mobile network). The first few cards load eagerly so the row is
+            // populated when scrolled to; the rest stay lazy. Slot-accurate sizes.
+            loading={loading}
             sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
@@ -562,7 +564,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
 }
 
 // Compact Artist Card for Artists Section
-function CompactArtistCard({ artist }: { artist: Artist }) {
+function CompactArtistCard({ artist, loading }: { artist: Artist; loading?: "eager" | "lazy" }) {
   return (
     <Link
       href={`/artists/${artist.sys?.id}`}
@@ -595,10 +597,10 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
             bgScale={artist.fields.artBgScale}
             imageOffsetX={artist.fields.artImageOffsetX}
             imageOffsetY={artist.fields.artImageOffsetY}
-            // No `priority`: this carousel is below the fold and renders every
-            // artist at once — eager-loading them all saturated mobile networks
-            // and made cards trickle in on scroll. Native lazy-load + a slot-
-            // accurate `sizes` loads only what's visible, at the right size.
+            // No `priority` (that preloads at high priority and saturated the
+            // mobile network). The first few cards load eagerly so the row is
+            // populated when scrolled to; the rest stay lazy. Slot-accurate sizes.
+            loading={loading}
             sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
@@ -690,7 +692,7 @@ const UniversalCarousel = ({
         ref={scrollRef}
         className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-6"
       >
-        {items.map((item) => {
+        {items.map((item, idx) => {
           let key: string;
           if (teams) {
             key = (item as FootballTeam).sys.id;
@@ -700,15 +702,20 @@ const UniversalCarousel = ({
             key = (item as Event).id.toString();
           }
 
+          // Eager-load the first row's worth so the carousel is populated the
+          // moment it's scrolled to (no on-scroll pop-in); the rest stay lazy so
+          // we don't fetch dozens of off-screen images up front.
+          const loading = idx < 6 ? "eager" : "lazy";
+
           return (
             <div key={key} className={cn("snap-start", itemWidth)}>
               {variant === "compact" ? (
                 teams ? (
-                  <CompactTeamCard team={item as FootballTeam} />
+                  <CompactTeamCard team={item as FootballTeam} loading={loading} />
                 ) : artists ? (
-                  <CompactArtistCard artist={item as Artist} />
+                  <CompactArtistCard artist={item as Artist} loading={loading} />
                 ) : (
-                  <CompactEventCard event={item as Event} />
+                  <CompactEventCard event={item as Event} loading={loading} />
                 )
               ) : (
                 <EventCard event={item as Event} />
@@ -1421,10 +1428,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                     allEvents={initialEvents}
                     artists={artists}
                     footballTeams={allFootballTeams}
-                    // First cards are the mobile LCP (1-col grid). Eager-load them
-                    // so they paint immediately instead of waiting for hydration +
-                    // IntersectionObserver; the rest stay lazy.
+                    // First cards are the mobile LCP (1-col grid) → preload them.
+                    // The rest load eagerly (at page load, normal priority) so the
+                    // whole section is ready before it's scrolled into view instead
+                    // of half-loading on scroll.
                     priority={i < 2}
+                    loading="eager"
                     // Actual rendered width per breakpoint (1 / 2 / 4 cols) so the
                     // optimizer doesn't ship a ~90vw image into a 23vw slot.
                     sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
@@ -1549,7 +1558,16 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                    aria-label="רשימת הופעות נוספות">
                 {musicEvents.slice(0, visibleMusicCount).map((event) => (
                   <div key={event.id} role="listitem">
-                    <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
+                    <EventCard
+                      event={event}
+                      allEvents={initialEvents}
+                      artists={artists}
+                      footballTeams={allFootballTeams}
+                      // Eager (page load, not on-scroll) so this grid is ready
+                      // before it's reached; grid-accurate sizes cut mobile bytes.
+                      loading="eager"
+                      sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
+                    />
                   </div>
                 ))}
                 {/* Search-prompt card — smaller, same design, appended at the end */}
@@ -1674,7 +1692,7 @@ const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam |
   return best;
 };
 
-function EventCard({ event, allEvents, artists, footballTeams, priority, sizes }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; sizes?: string }) {
+function EventCard({ event, allEvents, artists, footballTeams, priority, loading, sizes }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; loading?: "eager" | "lazy"; sizes?: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
   const computedSold = isEventSoldOut(event);
@@ -1840,6 +1858,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, sizes }
               imageOffsetX={event.art_image_offset_x}
               imageOffsetY={event.art_image_offset_y}
               priority={priority}
+              loading={loading}
               sizes={sizes}
               className="h-52 w-full sm:h-56"
             />
