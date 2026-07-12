@@ -746,6 +746,48 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     window.scrollTo(0, 0);
   }, []);
 
+  // "Load the whole page up front, not on scroll." Card images below the fold
+  // ship as loading="lazy" so they don't compete with first paint — but that
+  // means fresh cards fetch as you scroll into them (the brief blank). Once the
+  // page is idle, flip every still-lazy image to eager so the browser loads them
+  // all in the background at normal priority. By the time you scroll, they're
+  // already fetched — no on-scroll pop-in — without a preload flood on first load.
+  useEffect(() => {
+    let cancelled = false;
+    const warmImages = () => {
+      if (cancelled) return;
+      document
+        .querySelectorAll<HTMLImageElement>('img[loading="lazy"]')
+        .forEach((img) => {
+          if (img.complete) return;
+          // Warm the browser cache with a throwaway request (same srcset/sizes so
+          // it picks the exact candidate the real <img> will use). When the card
+          // is later scrolled into view it's a cache hit → paints instantly. This
+          // works on iOS Safari, which ignores flipping `loading` post-insert.
+          const warm = new Image();
+          if (img.sizes) warm.sizes = img.sizes;
+          if (img.srcset) warm.srcset = img.srcset;
+          if (img.currentSrc || img.src) warm.src = img.currentSrc || img.src;
+        });
+    };
+    const w = window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId = 0;
+    let timerId = 0;
+    if (typeof w.requestIdleCallback === "function") {
+      idleId = w.requestIdleCallback(warmImages, { timeout: 3000 });
+    } else {
+      timerId = window.setTimeout(warmImages, 1500);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId && w.cancelIdleCallback) w.cancelIdleCallback(idleId);
+      if (timerId) clearTimeout(timerId);
+    };
+  }, []);
+
   // Desktop starts with a fuller grid (20); mobile keeps the compact 5.
   useEffect(() => {
     if (window.innerWidth >= 640) setVisibleMusicCount((c) => (c < 20 ? 20 : c));
