@@ -3,6 +3,7 @@ import {
   futureDateISO,
   AVAILABILITY_WINDOW_DAYS,
 } from "@/lib/eventsData";
+import { eventBelongsToTeam } from "@/lib/eventNameMatch";
 
 /**
  * Builds a predicate that answers "do we currently have an available event for
@@ -28,11 +29,16 @@ export async function getAvailabilityChecker(): Promise<
 
   const availableNames = events
     .filter((e) => !e.is_deleted && e.name_english && e.date >= futureDate)
-    .map((e) => (e.name_english as string).toLowerCase());
+    .map((e) => e.name_english as string);
 
   return (nameEnglish?: string): boolean => {
-    const needle = nameEnglish?.trim().toLowerCase();
+    const needle = nameEnglish?.trim();
     if (!needle) return false;
-    return availableNames.some((n) => n.includes(needle));
+    const low = needle.toLowerCase();
+    // Substring gate + fixture-aware refinement, matching getEventsByName, so a
+    // team isn't marked On-Tour by another club's games (Milan vs Inter Milan).
+    return availableNames.some(
+      (n) => n.toLowerCase().includes(low) && eventBelongsToTeam(n, needle),
+    );
   };
 }

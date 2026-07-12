@@ -2,6 +2,7 @@ import { unstable_cache as nextCache } from "next/cache";
 import { Event } from "@/lib/app.types";
 import { getArtistImageIndex } from "@/lib/artists";
 import { getFootballTeamImageIndex } from "@/lib/football";
+import { eventBelongsToTeam } from "@/lib/eventNameMatch";
 
 /**
  * Event image → person image fallback
@@ -52,7 +53,11 @@ export async function enrichEventsWithFallbackImages(
       if (!name) continue;
       // Same case-insensitive substring rule getEventsByName uses in reverse,
       // so an event shown on a person's page resolves to that same person.
-      const match = index.find((p) => name.includes(p.name));
+      // eventBelongsToTeam refines it for football fixtures so an "Inter Milan"
+      // game doesn't borrow AC Milan's ("Milan") imagery.
+      const match = index.find(
+        (p) => name.includes(p.name) && eventBelongsToTeam(name, p.name),
+      );
       if (!match) continue;
       if (match.art) {
         event.art_image_url = match.art.imageUrl;
