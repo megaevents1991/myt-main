@@ -14,6 +14,7 @@ import {
   Building2,
   Ticket,
   ChevronLeft,
+  Search,
 } from "lucide-react";
 
 import type { Event, Artist } from "@/lib/app.types";
@@ -297,7 +298,7 @@ export const HeroSearch = ({
             aria-label={selected ? "המשך להזמנה" : "הצגת כל התוצאות"}
             className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
           >
-            <ArrowUp className="size-5" aria-hidden />
+            <Search className="size-5" aria-hidden />
           </button>
         </HoverTip>
       </div>
