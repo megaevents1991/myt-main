@@ -8,6 +8,7 @@ import {
 } from "@contentful/rich-text-react-renderer";
 import { ReactNode } from "react";
 import { getEventsByName } from "@/lib/eventsData";
+import { teamFixtureRole } from "@/lib/eventNameMatch";
 import { documentToPlainText, firstSentence } from "@/lib/richText";
 import ClientTracker from "@/components/ClientTracker";
 import { HeaderTitle } from "@/components/HeaderTitle";
@@ -107,6 +108,20 @@ export default async function FootballPage({
     }
 
     const { events } = await getEventsByName(String(nameDBenglish));
+
+    // Split fixtures by the team's role — "X vs Y" naming, first side hosts.
+    // Unclassified = competition-hub pages ("Champions League", where sides
+    // never equal the page's name) and non-fixture events → shown as one plain
+    // list exactly like before the split.
+    const homeEvents = events.filter(
+      (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === "home"
+    );
+    const awayEvents = events.filter(
+      (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === "away"
+    );
+    const unclassifiedEvents = events.filter(
+      (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === null
+    );
     const imageUrl = heroBanner?.fields?.file?.url
       ? "https:" + heroBanner.fields.file.url
       : undefined;
@@ -150,10 +165,45 @@ export default async function FootballPage({
           <p className="mb-6 text-muted-foreground">
             בחרו תאריך משחק והתחילו להרכיב את החבילה שלכם
           </p>
-          {events.length > 0 ? (
+          {events.length === 0 ? (
+            <EmptyState title="אין אירועים קרובים" />
+          ) : homeEvents.length === 0 && awayEvents.length === 0 ? (
+            // Hub pages (e.g. ליגת האלופות) — no home/away notion, one list.
             <ArtistEventsFilter events={events} title={String(name)} showName />
           ) : (
-            <EmptyState title="אין אירועים קרובים" />
+            <div className="flex flex-col gap-10">
+              {homeEvents.length > 0 && (
+                <div>
+                  <h3 className="mb-4 font-display text-xl font-extrabold text-foreground">
+                    משחקי בית
+                  </h3>
+                  <ArtistEventsFilter
+                    events={homeEvents}
+                    title={String(name)}
+                    showName
+                  />
+                </div>
+              )}
+              {awayEvents.length > 0 && (
+                <div>
+                  <h3 className="mb-4 font-display text-xl font-extrabold text-foreground">
+                    משחקי חוץ
+                  </h3>
+                  <ArtistEventsFilter
+                    events={awayEvents}
+                    title={String(name)}
+                    showName
+                  />
+                </div>
+              )}
+              {unclassifiedEvents.length > 0 && (
+                <ArtistEventsFilter
+                  events={unclassifiedEvents}
+                  title={String(name)}
+                  showName
+                />
+              )}
+            </div>
           )}
         </section>
 

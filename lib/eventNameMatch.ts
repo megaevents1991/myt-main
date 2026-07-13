@@ -90,3 +90,45 @@ export function eventBelongsToTeam(eventName: string, teamName: string): boolean
   if (tokensStrictSuperset(homeTokens, teamTokens)) return false;
   return rest.some((side) => sideIsTeam(side, teamName));
 }
+
+/**
+ * The team's role in a fixture: "home" when it's the first side, "away" when
+ * it's any other side (INCLUDING derbies hosted by a containing-name club —
+ * "Inter Milan vs AC Milan" is a Milan AWAY game here). null for non-fixtures
+ * (artists) and fixtures the team doesn't play in (incl. competition-hub
+ * matches like the "Champions League" page, where sides never equal the team).
+ */
+export function teamFixtureRole(
+  eventName: string,
+  teamName: string,
+): "home" | "away" | null {
+  if (!eventName || !teamName) return null;
+  const sides = fixtureSides(eventName);
+  if (!sides) return null;
+  const [home, ...rest] = sides;
+  if (sideIsTeam(home, teamName)) return "home";
+  if (rest.some((side) => sideIsTeam(side, teamName))) return "away";
+  return null;
+}
+
+/**
+ * Looser page-level gate than eventBelongsToTeam: keeps EVERY fixture the team
+ * plays in — home AND away, derbies included — plus hub-prefix events and
+ * non-fixtures. Used by the team page (which splits home/away visually) and
+ * the catalog's on-tour check, so "has events on its page" ⇔ "on tour".
+ * eventBelongsToTeam stays stricter for the event-art fallback (an away derby
+ * must not wear the visiting team's imagery).
+ */
+export function eventRelatesToTeam(eventName: string, teamName: string): boolean {
+  if (!eventName || !teamName) return true;
+  const prefixMatch = eventName.match(/^([^:]+):\s*/);
+  if (
+    prefixMatch &&
+    tokensEqual(significantTokens(prefixMatch[1]), significantTokens(teamName))
+  ) {
+    return true;
+  }
+  const sides = fixtureSides(eventName);
+  if (!sides) return true; // artists/concerts — substring match stands
+  return sides.some((side) => sideIsTeam(side, teamName));
+}

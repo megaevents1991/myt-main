@@ -3,7 +3,7 @@ import {
   futureDateISO,
   AVAILABILITY_WINDOW_DAYS,
 } from "@/lib/eventsData";
-import { eventBelongsToTeam } from "@/lib/eventNameMatch";
+import { eventRelatesToTeam } from "@/lib/eventNameMatch";
 
 /**
  * Builds a predicate that answers "do we currently have an available event for
@@ -35,10 +35,11 @@ export async function getAvailabilityChecker(): Promise<
     const needle = nameEnglish?.trim();
     if (!needle) return false;
     const low = needle.toLowerCase();
-    // Substring gate + fixture-aware refinement, matching getEventsByName, so a
-    // team isn't marked On-Tour by another club's games (Milan vs Inter Milan).
+    // Substring gate + fixture-aware refinement, matching getEventsByName —
+    // home AND away games both count (the detail page shows both), but another
+    // club's own fixtures don't (Milan isn't on-tour off Inter's home games).
     return availableNames.some(
-      (n) => n.toLowerCase().includes(low) && eventBelongsToTeam(n, needle),
+      (n) => n.toLowerCase().includes(low) && eventRelatesToTeam(n, needle),
     );
   };
 }
