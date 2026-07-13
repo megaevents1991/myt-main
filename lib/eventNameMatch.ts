@@ -35,6 +35,15 @@ function tokensEqual(a: string[], b: string[]): boolean {
   return a.length > 0 && a.length === b.length && a.every((t, i) => t === b[i]);
 }
 
+/** `sup` strictly contains every token of `sub` (e.g. ["inter","milan"] ⊃ ["milan"]). */
+function tokensStrictSuperset(sup: string[], sub: string[]): boolean {
+  return (
+    sub.length > 0 &&
+    sup.length > sub.length &&
+    sub.every((t) => sup.includes(t))
+  );
+}
+
 /** One fixture side (e.g. "AC Milan") denotes exactly the given team. */
 function sideIsTeam(side: string, team: string): boolean {
   return tokensEqual(significantTokens(side), significantTokens(team));
@@ -50,7 +59,10 @@ function fixtureSides(eventName: string): string[] | null {
 /**
  * Whether an event legitimately belongs to a team's page.
  * - Competition hub pages (team name == the "Champions League:" prefix) keep all their events.
- * - Football fixtures are kept only when the team is one of the two sides.
+ * - Football fixtures are kept when the team is one of the two sides — EXCEPT
+ *   an away game hosted by a club whose name strictly contains the team's
+ *   ("Inter Milan vs AC Milan" is Inter's home derby, not a Milan-page event).
+ *   Regular away games (Arsenal at Tottenham) still count.
  * - Non-fixture events (no " vs ") are trusted as-is (the substring match stands).
  */
 export function eventBelongsToTeam(eventName: string, teamName: string): boolean {
@@ -67,5 +79,14 @@ export function eventBelongsToTeam(eventName: string, teamName: string): boolean
 
   const sides = fixtureSides(eventName);
   if (!sides) return true; // artists/concerts — not a fixture, leave untouched
-  return sides.some((side) => sideIsTeam(side, teamName));
+
+  const [home, ...rest] = sides;
+  if (sideIsTeam(home, teamName)) return true; // team hosts → always its event
+
+  // Away side: belongs unless the HOME club's name strictly contains the
+  // team's name — then the fixture is the home club's (derby disambiguation).
+  const teamTokens = significantTokens(teamName);
+  const homeTokens = significantTokens(home);
+  if (tokensStrictSuperset(homeTokens, teamTokens)) return false;
+  return rest.some((side) => sideIsTeam(side, teamName));
 }
