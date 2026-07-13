@@ -75,6 +75,20 @@ const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
 );
 
+/** Green-cube section heading — same look as the catalog's "זמין באתר" rows. */
+const CubeHeading = ({ children }: { children: ReactNode }) => (
+  <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
+    <div aria-hidden className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} />
+    <div aria-hidden className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 23 }} />
+    <div aria-hidden className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} />
+    <div>
+      <h3 className="mx-2 font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+        {children}
+      </h3>
+    </div>
+  </div>
+);
+
 const bioOptions: Options = {
   renderMark: {
     [MARKS.BOLD]: (text: ReactNode): ReactNode => <Bold>{text}</Bold>,
@@ -174,9 +188,7 @@ export default async function FootballPage({
             <div className="flex flex-col gap-10">
               {homeEvents.length > 0 && (
                 <div>
-                  <h3 className="mb-4 font-display text-xl font-extrabold text-foreground">
-                    משחקי בית
-                  </h3>
+                  <CubeHeading>משחקי בית</CubeHeading>
                   <ArtistEventsFilter
                     events={homeEvents}
                     title={String(name)}
@@ -186,9 +198,7 @@ export default async function FootballPage({
               )}
               {awayEvents.length > 0 && (
                 <div>
-                  <h3 className="mb-4 font-display text-xl font-extrabold text-foreground">
-                    משחקי חוץ
-                  </h3>
+                  <CubeHeading>משחקי חוץ</CubeHeading>
                   <ArtistEventsFilter
                     events={awayEvents}
                     title={String(name)}
