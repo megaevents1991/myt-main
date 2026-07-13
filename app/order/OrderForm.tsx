@@ -367,7 +367,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
       label: "טיסה",
       filled: flightSkipped || !!flight?.id,
       value: flightSkipped ? "ללא טיסה" : flight?.id ? airline : "",
-      delta: !flightSkipped && flight?.id ? priceNote(flightDelta) : undefined,
+      // Skipped = still bookable — invite the tap instead of a dead ✓.
+      delta: flightSkipped
+        ? "+ להוספה"
+        : flight?.id
+          ? priceNote(flightDelta)
+          : undefined,
       onClick: slotNav(2),
     },
   ];
@@ -377,7 +382,11 @@ export const OrderForm = ({ event }: { event: Event }) => {
       label: "מלון",
       filled: skipHotel || !!hotel?.id,
       value: skipHotel ? "ללא מלון" : hotel?.id ? hotel?.name || "מלון" : "",
-      delta: !skipHotel && hotel?.id ? priceNote(hotelPriceAddition) : undefined,
+      delta: skipHotel
+        ? "+ להוספה"
+        : hotel?.id
+          ? priceNote(hotelPriceAddition)
+          : undefined,
       onClick: slotNav(3),
     });
   }
@@ -393,8 +402,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
     (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
 
   const isFinalStep = isUS ? step === 2 : step === 3;
-  const primaryLabel =
-    step === 1
+  // Editing from the summary (and the flow is still complete) → the primary
+  // action returns to the summary, so say that instead of "המשך למלון".
+  const editReturnActive =
+    returnToSummary &&
+    !!eventTicket.id &&
+    (flightSkipped || !!flight?.id || step === 2) &&
+    (isUS || skipHotel || !!hotel?.id || step === 3);
+  const primaryLabel = editReturnActive
+    ? "שמור וחזור לסיכום"
+    : step === 1
       ? "בחר והמשך לטיסה"
       : step === 2
         ? isUS

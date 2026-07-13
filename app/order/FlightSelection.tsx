@@ -98,7 +98,17 @@ export const FlightSelection = () => {
     setPlaneTickets,
     planeTickets,
     setSelectedPlaneTicketsFilters,
+    flightSkipped,
+    setFlightSkipped,
   } = useContext(OrderContext);
+
+  // A customer who skipped the flight can come back and add one ("+ להוספה").
+  // Any flight landing in the order (manual pick, best-flight auto-pick, filter
+  // re-pick) cancels the skip — otherwise the review would still say "ללא טיסה"
+  // and ignore the chosen flight.
+  useEffect(() => {
+    if (flightSkipped && orderFlight?.id) setFlightSkipped(false);
+  }, [flightSkipped, orderFlight?.id, setFlightSkipped]);
   const { getHotels } = useContext(HotelFetchContext);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [filteredFlights, setFilteredFlights] = useState<Flight[]>([]);

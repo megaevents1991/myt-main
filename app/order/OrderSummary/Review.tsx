@@ -119,6 +119,45 @@ export const Review = ({
   // For mobile we control opened state to adjust font sizes & styles
   const [opened, setOpened] = useState<string[]>([]);
 
+  // Skipped steps stay bookable — offer a compact "add it" row instead of
+  // hiding them entirely (US events are sold without a hotel, so no hotel row).
+  const isUS = event?.location?.country_code === "US";
+  const addRows = onEdit
+    ? [
+        ...(flightSkipped
+          ? [{ step: 2 as const, icon: <FaPlane />, text: "עדיין אפשר להזמין טיסה" }]
+          : []),
+        ...(skipHotel && !isUS
+          ? [{ step: 3 as const, icon: <FaHotel />, text: "עדיין אפשר להזמין מלון" }]
+          : []),
+      ]
+    : [];
+
+  const addRowsBlock = addRows.length > 0 && (
+    <div className="flex flex-col gap-2" dir="rtl">
+      {addRows.map((r) => (
+        <button
+          key={r.step}
+          type="button"
+          onClick={() => onEdit?.(r.step)}
+          className="flex items-center justify-between rounded-xl border border-dashed border-border px-3 py-2.5 text-right transition-colors hover:border-forest hover:bg-forest/5 dark:hover:border-glow dark:hover:bg-glow/10"
+        >
+          <span className="flex items-center gap-3">
+            <span className="text-main dark:text-foreground text-[16px]" aria-hidden>
+              {r.icon}
+            </span>
+            <span className="text-[14px] font-semibold text-muted-foreground">
+              {r.text}
+            </span>
+          </span>
+          <span className="rounded-lg border border-forest px-2.5 py-1 text-[12px] font-bold text-forest dark:border-glow dark:text-glow">
+            + להוספה
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className={cn("py-4 px-6 space-y-3 text-right", isMobile && "px-4")}>
       {isMobile ? (
@@ -190,6 +229,7 @@ export const Review = ({
               );
             })}
           </Accordion>
+          {addRowsBlock}
         </>
       ) : (
         <>
@@ -218,6 +258,7 @@ export const Review = ({
               {item.component}
             </div>
           ))}
+          {addRowsBlock}
         </>
       )}
     </div>
