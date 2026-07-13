@@ -148,6 +148,8 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const eventRef = useRef(event);
   const isDebugMode = useSearchParams().get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
+  /** Quantity the customer ASKED for above MAX_TICKETS — shows the group form. */
+  const [overMaxRequest, setOverMaxRequest] = useState<number | null>(null);
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
     undefined
@@ -393,9 +395,19 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       return;
     }
 
-    const cheapt = effectiveTickets.reduce<EventTicket>((min, ticket) =>
+    // Auto-select from the tickets the customer actually SEES: on tx events the
+    // list is filtered to map-matched tickets, and picking the global cheapest
+    // used to select a hidden (unmapped) ticket — so no card looked selected
+    // and the map showed no dark-green section until a manual click.
+    const mappedPool =
+      isTxEvent && matchedTicketIds
+        ? effectiveTickets.filter((t) => matchedTicketIds.has(t.id))
+        : effectiveTickets;
+    const pool = mappedPool.length > 0 ? mappedPool : effectiveTickets;
+
+    const cheapt = pool.reduce<EventTicket>((min, ticket) =>
       ticket.price < min.price ? ticket : min,
-      effectiveTickets[0]
+      pool[0]
     );
 
     setCheapestTicket(cheapt);
@@ -411,7 +423,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       quantity: numberOfEventTickets,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTickets, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
+  }, [effectiveTickets, matchedTicketIds, isTxEvent, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
 
   useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)
@@ -458,10 +470,14 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
-      setErrorMessage("ניתן לרכוש עד 9 כרטיס בשלב זה");
+      // 10+ tickets = a group order — instead of just a red wall, offer the
+      // group-lead form (details / WhatsApp) with a way back to the picker.
+      setErrorMessage("ניתן לרכוש עד 9 כרטיסים באתר");
+      setOverMaxRequest(+value);
       return;
     }
     setErrorMessage("");
+    setOverMaxRequest(null);
     // Party size changed → any flight/hotel already picked (user navigated back
     // from a later step) was priced for the OLD pax count. Clear them so the
     // customer re-picks and can never pay a stale mismatched price.
@@ -689,6 +705,26 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                 <Text c="red" ta="right" mb="xs" role="alert" aria-live="polite">
                   {errorMessage}
                 </Text>
+              )}
+              {overMaxRequest && (
+                // Over-the-cap ask (10+): group-lead rescue + a way back.
+                <div className="mb-4 flex flex-col items-center gap-3">
+                  <GroupTicketsInquiry
+                    eventName={headerEvent?.name || ""}
+                    eventId={headerEvent?.id}
+                    quantity={overMaxRequest}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage("");
+                      setOverMaxRequest(null);
+                    }}
+                    className="text-sm font-bold text-forest underline underline-offset-4 hover:opacity-80 dark:text-glow"
+                  >
+                    חזרה לבחירת כרטיסים
+                  </button>
+                </div>
               )}
               <div
                 className="flex flex-col gap-2"

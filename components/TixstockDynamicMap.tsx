@@ -302,6 +302,29 @@ export function TixstockDynamicMap({
     ticketCategoryOrSectionMatches,
   ]);
 
+  // Self-heal: React re-applies `dangerouslySetInnerHTML` whenever `paintedSvg`
+  // recomputes (live listings landing, quantity changes…), replacing the SVG
+  // children and WIPING every runtime style repaint applied — including the
+  // dark-green selected section. When that replacement lands after the last
+  // repaint (verified with a MutationObserver trace), the initial selection
+  // stayed unpainted until the next interaction. Watch for child replacements
+  // and re-run the (idempotent) repaint on the fresh nodes.
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    let scheduled = false;
+    const obs = new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        repaint();
+      });
+    });
+    obs.observe(root, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [domReady, repaint]);
+
   // Run repaint for dynamic changes (selection, hover).
   // The initial available/inactive painting is already baked into
   // `paintedSvg`, so even if this effect is delayed the map looks correct.

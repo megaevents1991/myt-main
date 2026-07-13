@@ -59,7 +59,12 @@ const TermsError = () => (
 );
 
 // One line shift down, imports
-export default function OrderReview() {
+export default function OrderReview({
+  onEditStep,
+}: {
+  /** Navigate to an order step to edit it; arms return-to-summary in OrderForm. */
+  onEditStep?: (step: 1 | 2 | 3) => void;
+} = {}) {
   const {
     flight: selectedFlight,
     hotel: selectedHotel,
@@ -1182,9 +1187,10 @@ export default function OrderReview() {
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
                   flightSkipped={flightSkipped}
-                  // Back-navigation from the summary: each section can jump to
-                  // its step (1 ticket / 2 flight / 3 hotel) to modify the pick.
-                  onEdit={(target) => setStep(target)}
+                  // Back-navigation from the summary: each section jumps to its
+                  // step (1 ticket / 2 flight / 3 hotel); via onEditStep the
+                  // flow returns HERE right after the edited step is confirmed.
+                  onEdit={(target) => (onEditStep ?? setStep)(target)}
                 />
                 {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
                 {agentCommission <= 0 && (
