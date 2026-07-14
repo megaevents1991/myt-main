@@ -21,6 +21,11 @@ export async function POST(request: Request) {
   if (typeof affId !== "string" || affId.length === 0 || affId.length > 200) {
     return NextResponse.json({ error: "Invalid affId" }, { status: 400 });
   }
+  // The tracker sends a UUID; cap it so the endpoint can't be used to stuff
+  // arbitrarily large junk into the table.
+  if (userId != null && (typeof userId !== "string" || userId.length > 200)) {
+    return NextResponse.json({ error: "Invalid userId" }, { status: 400 });
+  }
   if (stage != null && !VALID_STAGES.has(stage)) {
     return NextResponse.json({ error: "Invalid stage" }, { status: 400 });
   }

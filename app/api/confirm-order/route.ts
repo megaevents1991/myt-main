@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Coupon, OrderData } from "@/lib/app.types";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
-import { validateOrderData } from "./utils";
+import { validateOrderData, validatePurchasePriceFloor } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
 import {
   trackServerSideEvent,
@@ -20,21 +20,6 @@ export async function POST(req: Request) {
     orderDetails,
     payNow,
   );
-
-  // Reject grossly-tampered totals before persisting — the stored
-  // final_purchase_price_ils is what /api/payment later charges. Fails open, so
-  // it never blocks a legitimate order (see validatePurchasePriceFloor).
-  const priceError = await validatePurchasePriceFloor(validatedData);
-  if (priceError) {
-    console.error(
-      "Rejected order — purchase-price floor:",
-      JSON.stringify({ event_id: validatedData.event_id, reason: priceError }),
-    );
-    return NextResponse.json(
-      { error: "PRICE_VALIDATION_FAILED" },
-      { status: 400 },
-    );
-  }
 
   // Surface offline inventory linkage as top-level columns so the backoffice
   // can query / JOIN without unpacking the order JSON blobs.
@@ -131,6 +116,23 @@ export async function POST(req: Request) {
         discountValue: coupon.discount_value,
       },
       validatedData.coupon_base_total_usd ?? 0,
+    );
+  }
+
+  // Reject grossly-tampered totals before persisting — the stored
+  // final_purchase_price_ils is what /api/payment later charges. Runs after the
+  // coupon re-check so the floor can be relaxed by the DB-trusted coupon row.
+  // Fails open, so it never blocks a legitimate order (see
+  // validatePurchasePriceFloor).
+  const priceError = await validatePurchasePriceFloor(validatedData, coupon);
+  if (priceError) {
+    console.error(
+      "Rejected order — purchase-price floor:",
+      JSON.stringify({ event_id: validatedData.event_id, reason: priceError }),
+    );
+    return NextResponse.json(
+      { error: "PRICE_VALIDATION_FAILED" },
+      { status: 400 },
     );
   }
 

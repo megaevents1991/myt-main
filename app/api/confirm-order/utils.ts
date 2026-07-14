@@ -1,8 +1,15 @@
-import { OrderData } from "@/lib/app.types";
+import { Coupon, Event, OrderData } from "@/lib/app.types";
 import * as yup from "yup";
 import { getEvents } from "@/lib/eventsData";
 import { exchangeRateService } from "@/lib/exchangeRateService";
-import { getTotalMarkup } from "@/lib/events/price";
+import {
+  getComponentMarkups,
+  getEventAdditionalMarkup,
+  getMarkup,
+  getTicketOnlyMarkup,
+  hasComponentMarkups,
+} from "@/lib/events/price";
+import { supabase } from "@/lib/supabase";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -69,6 +76,31 @@ export const validateOrderData = async (
 };
 
 /**
+ * The SMALLEST markup a legitimate order flow can charge for this event. The
+ * floor must undercut EVERY real pricing path (see calculateBaseTotal in
+ * app/order/hooks.tsx), so take the minimum across:
+ * - composed mode, where a skipped flight/hotel swaps its markup for the
+ *   (possibly zero) skip fee;
+ * - legacy mode (flat global markup);
+ * - the ticket-only override, which replaces everything and can be 0.
+ */
+const minMandatoryMarkupUsd = (event: Event): number => {
+  const modeMarkup = hasComponentMarkups(event)
+    ? (() => {
+        const m = getComponentMarkups(event);
+        return (
+          m.ticket +
+          getEventAdditionalMarkup(event) +
+          Math.min(m.flight, m.skipFlight) +
+          Math.min(m.hotel, m.skipHotel)
+        );
+      })()
+    : getMarkup() + getEventAdditionalMarkup(event);
+  const ticketOnly = getTicketOnlyMarkup(event);
+  return ticketOnly != null ? Math.min(modeMarkup, ticketOnly) : modeMarkup;
+};
+
+/**
  * Server-side guard against purchase-price tampering.
  *
  * `final_purchase_price_ils` is computed in the browser and is the amount later
@@ -77,25 +109,44 @@ export const validateOrderData = async (
  * package and be charged ₪1.
  *
  * This recomputes a TRUSTED minimum from server-held data (cheapest available
- * ticket + markup, straight from the events table) times the server exchange
- * rate, and rejects only amounts grossly below it. The floor intentionally counts
- * ONLY the always-present, mandatory components (ticket + markup — never the
- * flight/hotel, which can be skipped) and keeps a wide 40% slack, so a legitimate
- * order — including affiliate/percentage discounts and hotel/flight-skip flows —
- * can never trip it; it only catches gross underpayment.
+ * ticket + the smallest legit markup, straight from the events table) times the
+ * server exchange rate, and rejects only amounts grossly below it. The floor
+ * counts ONLY always-present components (never the flight/hotel, which can be
+ * skipped), is relaxed by DB-trusted coupon/affiliate discounts, and keeps a
+ * wide 40% slack — so a legitimate order can never trip it; it only catches
+ * gross underpayment.
  *
  * Fails OPEN: any missing trusted input (unknown event, last-minute event outside
  * the availability window, no exchange rate, agent booking) skips the check rather
  * than block a real customer.
  *
+ * @param coupon the coupon row the caller already re-fetched from the DB for
+ *   this order (trusted), or null when the order carries no valid coupon.
  * @returns a reason string when the order must be rejected, otherwise null.
  */
 export const validatePurchasePriceFloor = async (
   data: OrderData,
+  coupon: Coupon | null = null,
 ): Promise<string | null> => {
   try {
-    // Agents book with custom, rep-approved pricing — never gate them.
-    if (data.is_agent_booking) return null;
+    // Partner row backs both the agent check and the discount relaxation below.
+    let partner: {
+      user_discount?: number | null;
+      commission?: number | null;
+    } | null = null;
+    if (data.aff_partner_tracking_code) {
+      ({ data: partner } = await supabase
+        .from("partners")
+        .select("user_discount, commission")
+        .eq("partner_tracking_code", data.aff_partner_tracking_code)
+        .maybeSingle());
+    }
+
+    // Agents book with custom, rep-approved pricing — never gate them. The
+    // client flag alone is a one-line floor bypass, so only honor it when the
+    // order's partner really is an agent (commission > 0, mirroring
+    // `is_agent_booking: agentCommission > 0` in OrderReview).
+    if (data.is_agent_booking && Number(partner?.commission) > 0) return null;
 
     const charged = Number(data.final_purchase_price_ils);
     if (!Number.isFinite(charged) || charged <= 0) {
@@ -120,17 +171,33 @@ export const validatePurchasePriceFloor = async (
     const trustedMinTicket = available.length
       ? Math.min(...available.map((t) => t.price))
       : 0;
-    const markup = getTotalMarkup(event);
 
     const qtyRaw = Number(data.event_order_info?.number_of_ticket);
     const qty = Number.isFinite(qtyRaw) && qtyRaw >= 1 ? Math.floor(qtyRaw) : 1;
 
-    const mandatoryUsd = (trustedMinTicket + markup) * qty;
-    if (mandatoryUsd <= 0) return null;
+    let floorUsd = (trustedMinTicket + minMandatoryMarkupUsd(event)) * qty;
+    if (floorUsd <= 0) return null;
+
+    // Relax the floor by discounts a legit order can carry, using ONLY
+    // DB-trusted values (never the client's numbers). The client applies
+    // best-one-wins, so subtracting both can only relax further — safe side.
+    if (coupon) {
+      floorUsd =
+        coupon.discount_type === "percent"
+          ? floorUsd *
+            (1 - Math.min(100, Number(coupon.discount_value) || 0) / 100)
+          : floorUsd - (Number(coupon.discount_value) || 0);
+    }
+    const d = Number(partner?.user_discount) || 0;
+    // Same normalization as finalPurchasePriceCalc (app/order/hooks.tsx):
+    // 1..10 = percent of the total, anything else = absolute USD per ticket.
+    if (d >= 1 && d <= 10) floorUsd *= 1 - d / 100;
+    else if (d > 0) floorUsd -= d * qty;
+    if (floorUsd <= 0) return null;
 
     // 40% slack: legitimate totals always exceed this because they also carry the
     // (excluded) flight + hotel components on top of ticket + markup.
-    const minAcceptableIls = Math.floor(mandatoryUsd * rate * 0.6);
+    const minAcceptableIls = Math.floor(floorUsd * rate * 0.6);
 
     if (charged < minAcceptableIls) {
       return `Charged ${charged} ILS below trusted floor ${minAcceptableIls} ILS`;
