@@ -157,9 +157,14 @@ export function makePeopleReaders(cfg: PeopleConfig) {
       }
     },
 
-    /** One row by slug (= Contentful id). Falls back to the Contentful entry. */
+    /** One row by slug (= Contentful id). Falls back to the Contentful entry.
+     *  Inactive rows (is_active=false) are logo-only records for the
+     *  backoffice creative generator — they must not get a public page. */
     async getBySlug(slug: string): Promise<Artist | null> {
-      const { data, error } = await base().eq("slug", slug).maybeSingle();
+      const { data, error } = await base()
+        .eq("slug", slug)
+        .eq("is_active", true)
+        .maybeSingle();
       if (!error && data) return toPerson(data as PersonRow);
       if (error) console.error(`${table} getBySlug failed:`, JSON.stringify(error));
       try {
@@ -208,10 +213,11 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         }));
     },
 
-    /** Slugs for static params. Union of Supabase + Contentful (dedup). */
+    /** Slugs for static params. Union of Supabase + Contentful (dedup).
+     *  Inactive (logo-only) rows excluded — no page, no sitemap entry. */
     async listSlugs(): Promise<string[]> {
       const slugs = new Set<string>();
-      const { data, error } = await base().select("slug");
+      const { data, error } = await base().select("slug").eq("is_active", true);
       if (!error && data) for (const r of data as { slug: string }[]) slugs.add(r.slug);
       try {
         const { items } = await contentfulClient.getEntries({ content_type: contentType, limit: 1000 });
