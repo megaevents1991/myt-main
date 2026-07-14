@@ -6,53 +6,58 @@ export async function GET() {
   try {
     const events = await getCachedEvents();
     const baseUrl = "https://www.mega-events.co.il";
+    // Stable date for static pages — bump manually on meaningful content changes.
+    // A per-request `new Date()` made every lastmod fake, so Google ignored them all.
+    const STATIC_LASTMOD = "2026-07-01T00:00:00.000Z";
     const staticPages = [
       {
         url: baseUrl,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "daily",
         priority: 1.0,
       },
       {
         url: `${baseUrl}/about`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "monthly",
         priority: 0.8,
       },
       {
         url: `${baseUrl}/faq`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "monthly",
         priority: 0.8,
       },
       {
         url: `${baseUrl}/artists`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "weekly",
         priority: 0.8,
       },
       {
         url: `${baseUrl}/football`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "weekly",
         priority: 0.8,
       },
       {
         url: `${baseUrl}/terms`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "monthly",
         priority: 0.3,
       },
       {
         url: `${baseUrl}/cancellation`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "monthly",
         priority: 0.3,
       },
     ];
     const eventPages = events.events.map((event) => ({
       url: `${baseUrl}/order/${event.id}`,
-      lastModified: new Date().toISOString(),
+      // Real signal: row creation time (rows come from select("*")).
+      lastModified:
+        (event as { created_at?: string }).created_at ?? STATIC_LASTMOD,
       changeFrequency: "daily",
       priority: 0.9,
     }));
@@ -68,7 +73,7 @@ export async function GET() {
       const slugs = await getArtistSlugs();
       artistPages = slugs.map((slug) => ({
         url: `${baseUrl}/artists/${slug}`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "weekly",
         priority: 0.8,
       }));
@@ -87,7 +92,7 @@ export async function GET() {
       const slugs = await getFootballTeamSlugs();
       footballPages = slugs.map((slug) => ({
         url: `${baseUrl}/football/${slug}`,
-        lastModified: new Date().toISOString(),
+        lastModified: STATIC_LASTMOD,
         changeFrequency: "weekly",
         priority: 0.8,
       }));
@@ -132,7 +137,7 @@ ${allPages
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${baseUrl}</loc>
-    <lastmod>${new Date().toISOString()}</lastmod>
+    <lastmod>2026-07-01T00:00:00.000Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
