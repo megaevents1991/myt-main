@@ -42,6 +42,11 @@ import PrintableOrderSummary from "@/components/PrintableOrderSummary";
 import usePrintableWindow from "../hooks/usePrintableWindow";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { formatPhoneNumber, getPenText, TIMEOUT } from "./utils";
+import {
+  type AppliedCoupon,
+  getCouponDiscountUsd,
+  normalizeCouponCode,
+} from "@/lib/coupon.utils";
 import { Review } from "./OrderSummary/Review";
 import { PriceSummary } from "./OrderSummary/PriceSummary";
 import { ButtonSummary } from "./OrderSummary/ButtonSummary";
@@ -54,13 +59,18 @@ const TermsError = () => (
 );
 
 // One line shift down, imports
-export default function OrderReview() {
+export default function OrderReview({
+  onEditStep,
+}: {
+  /** Navigate to an order step to edit it; arms return-to-summary in OrderForm. */
+  onEditStep?: (step: 1 | 2 | 3) => void;
+} = {}) {
   const {
     flight: selectedFlight,
     hotel: selectedHotel,
     eventTicket,
     event,
-    artistSlug,
+    personLink,
     setPaymentMethod,
     numberOfEventTickets,
     setStep,
@@ -117,6 +127,17 @@ export default function OrderReview() {
     getAffiliateDiscountTotalUsd,
     getAffiliateDiscountPerTicketUsd,
   } = useOrderVars();
+
+  // Coupon (customer-entered code). Validated by /api/coupons/validate and
+  // re-validated server-side in confirm-order. Never stacks with the
+  // affiliate discount — the bigger one wins.
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(
+    null
+  );
+  const [couponStatus, setCouponStatus] = useState<
+    "idle" | "checking" | "invalid" | "applied" | "expired"
+  >("idle");
 
   useEffect(() => {
     return () => {
@@ -191,9 +212,35 @@ export default function OrderReview() {
     }
   };
 
+  // Pre-discount package total (the calc with a zero discount).
+  const baseTotalUsd = useMemo(
+    () => finalPurchasePriceCalc(0),
+    [finalPurchasePriceCalc]
+  );
+
+  const couponDiscountUsd = useMemo(
+    () => (appliedCoupon ? getCouponDiscountUsd(appliedCoupon, baseTotalUsd) : 0),
+    [appliedCoupon, baseTotalUsd]
+  );
+
+  // No stacking: coupon applies only when it beats the affiliate discount.
+  const couponWins = useMemo(
+    () => couponDiscountUsd > getAffiliateDiscountTotalUsd(affDiscount),
+    [couponDiscountUsd, getAffiliateDiscountTotalUsd, affDiscount]
+  );
+
   const finalPurchasePrice = useMemo(
-    () => finalPurchasePriceCalc(affDiscount),
-    [finalPurchasePriceCalc, affDiscount]
+    () =>
+      couponWins
+        ? Math.max(0, Math.ceil(baseTotalUsd - couponDiscountUsd))
+        : finalPurchasePriceCalc(affDiscount),
+    [
+      couponWins,
+      baseTotalUsd,
+      couponDiscountUsd,
+      finalPurchasePriceCalc,
+      affDiscount,
+    ]
   );
 
   const trackFormStart = useCallback(() => {
@@ -244,6 +291,54 @@ export default function OrderReview() {
     () => affDiscount >= 1 && affDiscount <= 10,
     [affDiscount]
   );
+
+  // What the price summary shows as "the" discount (best one wins).
+  const effectiveDiscountTotalUsd = couponWins
+    ? couponDiscountUsd
+    : affiliateDiscountTotalUsd;
+
+  const applyCoupon = useCallback(async () => {
+    const code = normalizeCouponCode(couponInput);
+    if (!code || couponStatus === "checking") {
+      if (!code && couponInput.trim()) setCouponStatus("invalid");
+      return;
+    }
+    setCouponStatus("checking");
+    try {
+      const response = await fetch(
+        `/api/coupons/validate?code=${encodeURIComponent(code)}&eventId=${
+          event?.id ?? ""
+        }`
+      );
+      const data = await response.json();
+      if (data?.discountType) {
+        setAppliedCoupon({
+          code: data.code || code,
+          discountType: data.discountType,
+          discountValue: data.discountValue,
+        });
+        setCouponStatus("applied");
+      } else {
+        setAppliedCoupon(null);
+        setCouponStatus("invalid");
+      }
+    } catch (e) {
+      console.error("Coupon validation request failed:", e);
+      setAppliedCoupon(null);
+      setCouponStatus("invalid");
+    }
+    try {
+      trackEvent("couponApply", { code, eventId: event?.id });
+    } catch {
+      /* analytics must never break the flow */
+    }
+  }, [couponInput, couponStatus, event?.id]);
+
+  const removeCoupon = useCallback(() => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponStatus("idle");
+  }, []);
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
   const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.5);
 
@@ -665,6 +760,12 @@ export default function OrderReview() {
     }
 
     if (!response.ok) {
+      // Coupon died between "apply" and "pay" (expired/exhausted) — surface
+      // it so the customer sees the corrected price instead of a silent fail.
+      if (response.status === 409) {
+        const body = await response.json().catch(() => null);
+        if (body?.error === "COUPON_INVALID") throw new Error("COUPON_INVALID");
+      }
       throw new Error("Failed to submit order");
     }
     return await response.json(); // response.newPromoterCode
@@ -785,6 +886,10 @@ export default function OrderReview() {
       event_id: event?.id || 0,
       aff_partner_tracking_code: affId || utmParams.source || "",
       is_agent_booking: agentCommission > 0,
+      // Only send the coupon when it actually won (server re-validates and
+      // recomputes the discount from the pre-discount total).
+      coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
+      coupon_base_total_usd: couponWins && appliedCoupon ? baseTotalUsd : null,
     };
 
     try {
@@ -807,6 +912,8 @@ export default function OrderReview() {
         paymentMethod: payNow ? "credit_card" : "phone_order",
         affiliateDiscount: affiliateDiscountTotalUsd,
         affiliateId: affId,
+        couponCode: couponWins && appliedCoupon ? appliedCoupon.code : null,
+        couponDiscount: couponWins ? couponDiscountUsd : 0,
         isAgentBooking: agentCommission > 0,
         eventTags: event.tags,
         eventId: event.id,
@@ -828,6 +935,13 @@ export default function OrderReview() {
         router.push(targetPath);
       }
     } catch (error) {
+      if (error instanceof Error && error.message === "COUPON_INVALID") {
+        // Server rejected the coupon at order time — drop it so the summary
+        // shows the real price, and tell the customer why.
+        setAppliedCoupon(null);
+        setCouponInput("");
+        setCouponStatus("expired");
+      }
       // TO DO: Handle error (e.g., show error message)
       console.error("Order submission failed:", error);
 
@@ -992,9 +1106,9 @@ export default function OrderReview() {
                   {/* RTL: title + photo sit on the right, timer on the left. */}
                   <div className="flex items-center gap-3">
                     {event?.card_image_url &&
-                      (artistSlug ? (
+                      (personLink ? (
                         <Link
-                          href={`/artists/${artistSlug}`}
+                          href={personLink.href}
                           aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
                           className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
                         >
@@ -1054,7 +1168,8 @@ export default function OrderReview() {
                     recommendedPriceAllPax={recommendedPriceAllPax}
                     numberOfPersons={numberOfPersons}
                     agentCommission={agentCommission}
-                    affDiscount={affiliateDiscountTotalUsd}
+                    affDiscount={effectiveDiscountTotalUsd}
+                    isCouponDiscount={couponWins}
                     isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                   />
                 )}
@@ -1072,7 +1187,87 @@ export default function OrderReview() {
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
                   flightSkipped={flightSkipped}
+                  // Back-navigation from the summary: each section jumps to its
+                  // step (1 ticket / 2 flight / 3 hotel); via onEditStep the
+                  // flow returns HERE right after the edited step is confirmed.
+                  onEdit={(target) => (onEditStep ?? setStep)(target)}
                 />
+                {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
+                {agentCommission <= 0 && (
+                  <div dir="rtl" className="px-6 py-4 border-t border-border">
+                    {appliedCoupon && couponStatus === "applied" ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-success">
+                          {couponWins ? (
+                            <>
+                              קופון {appliedCoupon.code} הופעל — הנחת{" "}
+                              <span dir="ltr" className="tabular-nums">
+                                ${couponDiscountUsd.toLocaleString("en-US")}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              קופון {appliedCoupon.code} נקלט, אך הנחה קיימת
+                              גבוהה יותר כבר חלה על ההזמנה
+                            </>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={removeCoupon}
+                          className="text-sm text-muted-foreground underline shrink-0"
+                        >
+                          הסרה
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex gap-2">
+                          <Input
+                            value={couponInput}
+                            onChange={(e) => {
+                              setCouponInput(e.target.value);
+                              if (couponStatus !== "idle")
+                                setCouponStatus("idle");
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                applyCoupon();
+                              }
+                            }}
+                            placeholder="קוד קופון"
+                            aria-label="קוד קופון"
+                            className="h-10"
+                            maxLength={64}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 shrink-0"
+                            onClick={applyCoupon}
+                            disabled={
+                              couponStatus === "checking" ||
+                              !couponInput.trim()
+                            }
+                          >
+                            {couponStatus === "checking" ? "בודק..." : "החל"}
+                          </Button>
+                        </div>
+                        {couponStatus === "invalid" && (
+                          <p className="text-sm text-red-500 mt-1">
+                            קוד הקופון אינו תקף
+                          </p>
+                        )}
+                        {couponStatus === "expired" && (
+                          <p className="text-sm text-red-500 mt-1">
+                            הקופון כבר אינו בתוקף — המחיר עודכן
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </Card>
 
               {/* Mobile: Payment security logos moved directly after summary (before passenger details) */}
@@ -1912,7 +2107,8 @@ export default function OrderReview() {
                   agentCommission={agentCommission}
                   isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                   isSticky={false}
-                    affDiscount={affiliateDiscountTotalUsd}
+                    affDiscount={effectiveDiscountTotalUsd}
+                  isCouponDiscount={couponWins}
                 />
               </Button>
 
@@ -2007,7 +2203,8 @@ export default function OrderReview() {
                 agentCommission={agentCommission}
                 isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                 isSticky
-                affDiscount={affiliateDiscountTotalUsd}
+                affDiscount={effectiveDiscountTotalUsd}
+                isCouponDiscount={couponWins}
               />
             </Button>
           </div>

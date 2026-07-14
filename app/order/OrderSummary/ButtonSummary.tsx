@@ -11,6 +11,7 @@ export const ButtonSummary = ({
   isNumberOfPersonsEqual,
   isSticky = false,
   affDiscount = 0,
+  isCouponDiscount = false,
 }: {
   finalPurchasePrice: number;
   finalPurchasePriceILS: number;
@@ -20,6 +21,8 @@ export const ButtonSummary = ({
   isNumberOfPersonsEqual: boolean;
   isSticky?: boolean; // when true show shorter label
   affDiscount?: number;
+  // true when the winning discount came from a coupon (changes the label)
+  isCouponDiscount?: boolean;
 }) => {
   const {
     finalPurchasePrice: finalPurchasePriceFormatted,
@@ -50,7 +53,8 @@ export const ButtonSummary = ({
           <div className="flex items-center gap-1 text-xs">
             {affDiscount > 0 && (
               <span className="text-[10px] font-bold whitespace-nowrap">
-                כולל הנחת ${affDiscount}
+                {isCouponDiscount ? "כולל הנחת קופון" : "כולל הנחת"} $
+                {affDiscount}
               </span>
             )}
             {originalNoDiscount && (

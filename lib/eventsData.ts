@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
+import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
+import { eventRelatesToTeam } from "@/lib/eventNameMatch";
 
 export const getCachedEvents = nextCache(getEvents, ["all-events"], {
   tags: ["events"],
@@ -60,7 +62,7 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     console.log(
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
-    return { events: events || [] };
+    return { events: await enrichEventsWithFallbackImages(events || []) };
   } catch (error) {
     const queryTime = Date.now() - startTime;
     console.error(`[EventsData] Unexpected error after ${queryTime}ms:`, {
@@ -88,5 +90,14 @@ export async function getEventsByName(
     .order("date", { ascending: true });
 
   if (error) return Promise.resolve({ events: [] as Event[] });
-  return { events };
+
+  // The ILIKE substring is deliberately fuzzy, so a club whose name is a
+  // substring of another's over-matches (team "Milan" pulls in ALL "Inter
+  // Milan" fixtures). Keep only fixtures the team actually plays in — home and
+  // away both (the page splits them visually); non-fixture events (artists)
+  // pass through untouched.
+  const matched = events.filter((e) =>
+    eventRelatesToTeam(e.name_english ?? "", searchName),
+  );
+  return { events: await enrichEventsWithFallbackImages(matched) };
 }

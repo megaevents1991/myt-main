@@ -91,6 +91,7 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_GTM` — Google Tag Manager
 - `NEXT_PUBLIC_MIXPANEL_TOKEN` — Mixpanel analytics
 - `NEXT_PUBLIC_MARKUP` — Price markup (currently 175)
+- `NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT` — Safety buffer % added to the static DB price for `tx_event` tickets **only when live TixStock pricing is unavailable** (default 15). Prevents selling below the live price during a TX outage. Applied in `app/order/TicketSelection.tsx`.
 - `NEXT_PUBLIC_API_URL` — Base URL for internal API calls
 
 ## Architecture

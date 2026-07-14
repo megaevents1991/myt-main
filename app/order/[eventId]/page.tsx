@@ -1,5 +1,6 @@
 import { getCachedEvents } from "@/lib/eventsData";
 import { getAllArtists } from "@/lib/artists";
+import { getAllFootballTeams } from "@/lib/football";
 import OrderPageClient from "../OrderPageClient";
 import { Event } from "@/lib/app.types";
 import { Metadata } from "next";
@@ -150,21 +151,46 @@ export default async function OrderPageWithId({
     );
   }
 
-  // Resolve the artist page (if any) this event belongs to, by english-name
+  // Resolve the person page (if any) this event belongs to, by english-name
   // match — same rule the homepage uses to group events under artist pages.
-  // Lets the ticket-selection header + summary link the photo to the artist.
-  let artistSlug: string | undefined;
+  // Artists match exactly; football teams match as a substring of the event
+  // name ("Arsenal - Chelsea"), earliest hit = home team. Lets the
+  // ticket-selection header + summary link the photo to the person page.
+  let personLink: { href: string; label: string } | undefined;
   try {
     const target = (event.name_english ?? "").trim().toLowerCase();
     if (target) {
       const artists = await getAllArtists();
-      const match = artists.find(
+      const artist = artists.find(
         (a) => (a.fields.nameDBenglish ?? "").trim().toLowerCase() === target
       );
-      artistSlug = match?.sys.id;
+      if (artist) {
+        personLink = {
+          href: `/artists/${artist.sys.id}`,
+          label: `לכל ההופעות של ${artist.fields.name ?? event.name}`,
+        };
+      } else {
+        const teams = await getAllFootballTeams();
+        const team = teams
+          .map((t) => ({
+            t,
+            name: (t.fields.nameDBenglish ?? "").trim().toLowerCase(),
+          }))
+          .filter((x) => x.name && target.includes(x.name))
+          .map((x) => ({ ...x, pos: target.indexOf(x.name) }))
+          // Earliest in the event name wins (home team); longer name breaks ties
+          // so "Manchester United" beats "Manchester".
+          .sort((a, b) => a.pos - b.pos || b.name.length - a.name.length)[0]?.t;
+        if (team?.fields.name) {
+          personLink = {
+            href: `/football/${team.sys.id}`,
+            label: `לכל המשחקים של ${team.fields.name}`,
+          };
+        }
+      }
     }
   } catch (error) {
-    console.error("Failed to resolve artist slug for order page:", error);
+    console.error("Failed to resolve person link for order page:", error);
   }
 
   return (
@@ -172,7 +198,7 @@ export default async function OrderPageWithId({
       <OrderPageClient
         initialEvent={event}
         eventId={eventId}
-        artistSlug={artistSlug}
+        personLink={personLink}
       />
     </OrderErrorBoundary>
   );

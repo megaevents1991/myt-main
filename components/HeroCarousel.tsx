@@ -224,7 +224,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
         }
         steps += 1;
         setCurrent((c) => c + 1);
-      }, 750);
+      }, 1200);
     }, 900);
     return () => {
       clearTimeout(startT);
@@ -548,7 +548,13 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
               role="listitem"
               aria-hidden={!visible}
               className={cn(
-                "absolute left-1/2 top-1/2 h-64 w-44 will-change-transform [backface-visibility:hidden] sm:h-80 sm:w-56 lg:h-96 lg:w-64",
+                "absolute left-1/2 top-1/2 h-64 w-44 [backface-visibility:hidden] sm:h-80 sm:w-56 lg:h-96 lg:w-64",
+                // will-change only on the visible band — leaving it on all 21
+                // cards permanently allocated a GPU layer each, blowing iOS
+                // Safari's layer-memory budget and making it re-rasterize (white
+                // flash) the rest of the page on scroll. Off-screen cards are
+                // opacity:0 and don't need the hint.
+                visible && "will-change-transform",
                 // No transition while dragging or mid-fling (rAF drives the
                 // motion frame-by-frame), nor for the far cards that wrap around
                 // the ring (avoid a cross-screen slide).

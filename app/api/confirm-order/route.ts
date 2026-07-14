@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
-import { OrderData } from "@/lib/app.types";
-import { validateOrderData, validatePurchasePriceFloor } from "./utils";
+import { Coupon, OrderData } from "@/lib/app.types";
+import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
+import { getCouponDiscountUsd } from "@/lib/coupon.utils";
+import { validateOrderData } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
 import {
   trackServerSideEvent,
@@ -53,8 +55,8 @@ export async function POST(req: Request) {
     hotelInfoForLink?.offlineIds && hotelInfoForLink.offlineIds.length > 0
       ? hotelInfoForLink.offlineIds
       : hotelInfoForLink?.offlineId != null
-      ? [hotelInfoForLink.offlineId]
-      : null;
+        ? [hotelInfoForLink.offlineId]
+        : null;
 
   // Defense-in-depth: offline hotel inventory has fixed dates. Reject the order
   // if any linked offline_hotels row doesn't EXACTLY match the booked stay
@@ -103,6 +105,34 @@ export async function POST(req: Request) {
     }
   }
 
+  // Coupon: re-validate against the DB at order time (never trust a
+  // client-computed discount). A coupon that expired / ran out between
+  // "apply" and "pay" rejects the order so the customer re-checks the price.
+  let coupon: Coupon | null = null;
+  let couponDiscountUsd = 0;
+  if (validatedData.coupon_code) {
+    coupon = await findValidCoupon(
+      validatedData.coupon_code,
+      validatedData.event_id,
+    );
+    if (!coupon) {
+      console.error(
+        "Coupon rejected at confirm-order:",
+        JSON.stringify({
+          code: validatedData.coupon_code,
+          eventId: validatedData.event_id,
+        }),
+      );
+      return NextResponse.json({ error: "COUPON_INVALID" }, { status: 409 });
+    }
+    couponDiscountUsd = getCouponDiscountUsd(
+      {
+        discountType: coupon.discount_type,
+        discountValue: coupon.discount_value,
+      },
+      validatedData.coupon_base_total_usd ?? 0,
+    );
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
@@ -119,7 +149,13 @@ export async function POST(req: Request) {
       user_shown_price: validatedData.user_shown_price,
       event_id: validatedData.event_id,
       payment_info: payNow ? {} : null,
-      aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
+      // Coupon-to-affiliate attribution: a coupon linked to a partner credits
+      // that partner, but only when the order has no affiliate of its own
+      // (existing link/utm attribution wins).
+      aff_partner_tracking_code:
+        validatedData.aff_partner_tracking_code ||
+        coupon?.partner_tracking_code ||
+        "",
       final_purchase_price_ils: validatedData.final_purchase_price_ils,
       exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
       gtmIdnts: gtmIdnts || null,
@@ -129,11 +165,16 @@ export async function POST(req: Request) {
       // semantics (already a booking-level total) so profit calc is correct.
       offline_flight_cost:
         flightInfoForLink?.offlineRawPrice != null
-          ? flightInfoForLink.offlineRawPrice * (flightInfoForLink.numOfTravelers ?? 1)
+          ? flightInfoForLink.offlineRawPrice *
+            (flightInfoForLink.numOfTravelers ?? 1)
           : null,
-      offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
+      offline_hotel_id: offlineHotelIdsForLink
+        ? offlineHotelIdsForLink[0]
+        : null,
       offline_hotel_ids: offlineHotelIdsForLink,
       offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
+      coupon_code: coupon ? coupon.code : null,
+      coupon_discount_usd: coupon ? couponDiscountUsd : null,
     })
     .select()
     .single();
@@ -157,6 +198,9 @@ export async function POST(req: Request) {
 
   // Hold offline inventory immediately — released only on cancellation.
   await holdOfflineInventory(validatedData);
+
+  // Order saved — count the redemption (soft limit; failure is non-fatal).
+  if (coupon) await incrementCouponUse(coupon);
 
   // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";
@@ -252,7 +296,10 @@ export async function POST(req: Request) {
         text: repEmailContent,
       });
     } catch (emailError) {
-      console.warn("Sales rep email failed (non-fatal):", JSON.stringify(emailError));
+      console.warn(
+        "Sales rep email failed (non-fatal):",
+        JSON.stringify(emailError),
+      );
     }
 
     const bookingReference = `ME${new Date().getDate()}${id}`;
@@ -313,7 +360,10 @@ export async function POST(req: Request) {
           })
           .eq("id", id);
       } catch (userEmailError) {
-        console.warn("User confirmation email failed (non-fatal):", JSON.stringify(userEmailError));
+        console.warn(
+          "User confirmation email failed (non-fatal):",
+          JSON.stringify(userEmailError),
+        );
       }
     }
 
@@ -358,7 +408,8 @@ async function holdOfflineInventory(orderData: OrderData) {
           .from("flights")
           .update({
             consumed_quantity:
-              (flightRow.consumed_quantity || 0) + (flightInfo.numOfTravelers || 0),
+              (flightRow.consumed_quantity || 0) +
+              (flightInfo.numOfTravelers || 0),
           })
           .eq("id", flightInfo.offlineId);
       }
@@ -371,8 +422,8 @@ async function holdOfflineInventory(orderData: OrderData) {
       hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
         ? hotelInfo.offlineIds
         : hotelInfo?.offlineId
-        ? [hotelInfo.offlineId]
-        : [];
+          ? [hotelInfo.offlineId]
+          : [];
     if (offlineHotelIds.length > 0) {
       const counts = new Map<number, number>();
       for (const rowId of offlineHotelIds) {

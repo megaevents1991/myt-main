@@ -3,14 +3,19 @@ import Link from "next/link";
 import { Event } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { isMobile } from "react-device-detect";
+import { ChevronLeft } from "lucide-react";
 
 export const EventDataHeader = ({
   event,
   artistHref,
+  artistLinkLabel,
 }: {
   event?: Event;
-  /** When set, the round photo links to the artist page. */
+  /** When set, the round photo links to the artist/team page. */
   artistHref?: string;
+  /** Text for the person-page link (e.g. "לכל המשחקים של ארסנל");
+   *  defaults to the concerts wording with the event name. */
+  artistLinkLabel?: string;
 }) => {
   const imageUrl = event?.card_image_url;
   const photo = imageUrl && (
@@ -43,6 +48,15 @@ export const EventDataHeader = ({
             {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
           </span>
         </h1>
+        {artistHref && (
+          <Link
+            href={artistHref}
+            className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-forest dark:text-glow dark:decoration-glow/40 dark:focus-visible:outline-glow"
+          >
+            {artistLinkLabel ?? `לכל ההופעות של ${event?.name?.trim() ?? ""}`}
+            <ChevronLeft className="size-4" aria-hidden />
+          </Link>
+        )}
         {!isMobile && (
           <span className="text-lg mt-1" style={{ lineHeight: "1.1" }}>
             {event?.description}

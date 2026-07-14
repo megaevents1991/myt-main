@@ -58,6 +58,8 @@ export const EventArt = ({
   imageOffsetX,
   imageOffsetY,
   priority,
+  loading,
+  sizes = "(max-width: 640px) 90vw, 400px",
   variant = "blob",
   blobFit = "cover",
   bgFit = "contain",
@@ -79,6 +81,14 @@ export const EventArt = ({
   imageOffsetX?: number | null;
   imageOffsetY?: number | null;
   priority?: boolean;
+  /** `next/image` loading. Pass "eager" to fetch at page load (normal priority,
+   *  not preloaded like `priority`) so a card is ready before it's scrolled to
+   *  — avoids the on-scroll "half-loaded" pop-in without hurting first paint.
+   *  Ignored when `priority` is set (priority already implies eager). */
+  loading?: "eager" | "lazy";
+  /** `next/image` sizes hint. Default assumes a near-full-width card; pass a
+   *  tighter value for small grid/carousel cards so mobile doesn't over-fetch. */
+  sizes?: string;
   /** "blob" = neon brand blob + cut-out artist (contain); "photo" = full image (cover). */
   variant?: "blob" | "photo";
   /**
@@ -146,18 +156,28 @@ export const EventArt = ({
     >
       {variant === "blob" &&
         (photoBg ? (
-          // object-contain: the whole photo stays visible while zooming — no
-          // corner cropped unless the editor zooms past the frame on purpose.
-          <Image
-            src={photoBg}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 90vw, 400px"
-            aria-hidden="true"
-            className={bgFit === "cover" ? "object-cover" : "object-contain"}
-            style={bgStyle}
-          />
+          // Photo background (shapeIndex 6-8). Wrapped so it zooms with the
+          // cut-out on hover. The base bgScale stays on the image and composes
+          // with the wrapper's hover scale (ancestor) instead of being
+          // overridden by it on the same element.
+          <div
+            className={cn(
+              "absolute inset-0",
+              hoverZoom && "transition-transform duration-300 group-hover:scale-[1.07]"
+            )}
+          >
+            <Image
+              src={photoBg}
+              alt=""
+              fill
+              sizes={sizes}
+              aria-hidden="true"
+              className={bgFit === "cover" ? "object-cover" : "object-contain"}
+              style={bgStyle}
+            />
+          </div>
         ) : (
+          // Blob shape stays put on hover — only the artist cut-out zooms.
           <svg
             className="absolute inset-0 h-full w-full"
             viewBox={`0 0 ${shape.w} ${shape.h}`}
@@ -174,21 +194,33 @@ export const EventArt = ({
         ))}
 
       {imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt={alt}
-          fill
-          sizes="(max-width: 640px) 90vw, 400px"
-          priority={priority}
+        // Hover zoom lives on this wrapper (an ancestor) so it composes with the
+        // cut-out's own base transform — the backoffice imageScale/offset (via
+        // `style`) or a per-card `imageClassName` scale. The old approach put the
+        // hover scale on the same element and had to drop it whenever a base
+        // transform was set, so backoffice-zoomed and photo-bg cards never
+        // animated (and could even shrink on hover).
+        <div
           className={cn(
-            "transition-transform duration-300",
-            hoverZoom && !imgStyle && "group-hover:scale-105",
-            fit === "contain" ? "object-contain" : "object-cover",
-            variant === "photo" ? "object-top" : "object-bottom",
-            imageClassName
+            "absolute inset-0",
+            hoverZoom && "transition-transform duration-300 group-hover:scale-[1.07]"
           )}
-          style={imgStyle}
-        />
+        >
+          <Image
+            src={imageUrl}
+            alt={alt}
+            fill
+            sizes={sizes}
+            priority={priority}
+            loading={priority ? undefined : loading}
+            className={cn(
+              fit === "contain" ? "object-contain" : "object-cover",
+              variant === "photo" ? "object-top" : "object-bottom",
+              imageClassName
+            )}
+            style={imgStyle}
+          />
+        </div>
       ) : null}
     </div>
   );

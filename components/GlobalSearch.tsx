@@ -67,13 +67,18 @@ export const GlobalSearch = () => {
           "!text-main-foreground !bg-transparent hover:!bg-main-foreground/15 !rounded-full",
       }}
       styles={{
-        content: { backgroundColor: "hsl(var(--surface-inverse))" },
+        // No modal scrollbars — the modal grows with its content and the
+        // results lists inside HeroSearch scroll themselves.
+        content: {
+          backgroundColor: "hsl(var(--surface-inverse))",
+          overflow: "hidden",
+        },
         header: {
           backgroundColor: "hsl(var(--surface-inverse))",
           color: "hsl(var(--surface-inverse-foreground))",
         },
         title: { fontWeight: 700 },
-        body: { paddingBottom: "1.5rem" },
+        body: { paddingBottom: "1.5rem", overflow: "hidden" },
       }}
     >
       <div className="bg-main text-main-foreground">

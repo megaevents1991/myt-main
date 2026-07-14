@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
@@ -20,7 +19,7 @@ import { MYT } from "./ui/myt";
 import { MYTMark } from "./ui/mytMark";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
-import { multiTermSearch } from "@/lib/search";
+import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
@@ -33,7 +32,7 @@ import { EventArt } from "@/components/ui/EventArt";
 import { PackageIcons } from "@/components/ui/PackageIcons";
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english"], // Fields to search in
+  keys: ["name", "location.name", "name_english", "categoryText"], // Fields to search in
   threshold: 0.3, // Lower = stricter match, Higher = more flexible
   findAllMatches: true, // Finds multiple matches
   ignoreLocation: true, // Ignore where the match is found in the string
@@ -49,6 +48,10 @@ interface Props {
   carouselArtists?: Artist[];
   // Hero-gallery ring: every artist/team with an available event (זמין באתר).
   heroItems?: HeroCarouselItem[];
+  // Homepage "אמנים מובילים" / "כדורגל" slides — ALL entries, available first
+  // then the unavailable ones appended at the end.
+  homeArtists?: Artist[];
+  homeFootball?: FootballTeam[];
 }
 
 const SearchCombobox = React.forwardRef<HTMLInputElement, {
@@ -74,7 +77,7 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
 
   // Filter out sold-out events from search (both tagged as "Sold" and those with no available tickets)
   const NonSoldOutEvents4Search = useMemo(
-    () => events.filter(event => !isEventSoldOut(event)),
+    () => withCategoryText(events.filter(event => !isEventSoldOut(event))),
     [events]
   );
 
@@ -390,7 +393,7 @@ const MobileCarousel = ({ events, allEvents, artists, footballTeams }: { events:
 };
 
 // Compact Event Card for Sports Section
-function CompactEventCard({ event }: { event: Event }) {
+function CompactEventCard({ event, loading }: { event: Event; loading?: "eager" | "lazy" }) {
   const computedSold = isEventSoldOut(event);
   const packagePrice = computePackagePrice(event);
   
@@ -471,6 +474,8 @@ function CompactEventCard({ event }: { event: Event }) {
             bgScale={event.art_bg_scale}
             imageOffsetX={event.art_image_offset_x}
             imageOffsetY={event.art_image_offset_y}
+            loading={loading}
+            sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
         </div>
@@ -490,7 +495,12 @@ function CompactEventCard({ event }: { event: Event }) {
 }
 
 // Compact Team Card for Football Section
-function CompactTeamCard({ team }: { team: FootballTeam }) {
+function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eager" | "lazy" }) {
+  // A crest over a stadium photo (shapeIndex 6-8). On these cards we ignore the
+  // backoffice image dials (they shrink the crest to ~0.8 and, being an inline
+  // style transform, would OVERRIDE the class scale) and size the crest purely
+  // via the class below so it reads big and centered.
+  const isPhotoBg = (team.fields.artShapeIndex ?? 0) >= 6;
   return (
     <Link
       href={`/football/${team.sys?.id}`}
@@ -505,20 +515,35 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
         }}
       >
         <div className="relative group overflow-hidden rounded-t-2xl flex-1">
-          {/* Accessibility: Enhanced alt text with descriptive team information */}
-          {team.fields.heroBanner?.fields?.file?.url && (
-            <Image
-              src={"https:" + team.fields.heroBanner.fields.file.url}
-              alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של הקבוצה`}
-              priority={true}
-              width={240}
-              height={180}
-              style={{
-                objectPosition: 'center top' // or 'center center', '20% 30%', etc.
-              }}
-              className="object-cover w-full h-full transition-transform group-hover:scale-105"
-            />
-          )}
+          {/* Brand blob behind the team crest (color + shape per team), falling
+              back to the flat hero photo when no blob art is set — same treatment
+              as the artist cards. */}
+          <EventArt
+            id={team.sys.id}
+            imageUrl={
+              team.fields.artImageUrl ||
+              (team.fields.heroBanner?.fields?.file?.url
+                ? "https:" + team.fields.heroBanner.fields.file.url
+                : undefined)
+            }
+            alt={`לוגו של קבוצת כדורגל ${team.fields.name || "לא ידוע"} - לחצו לצפייה באירועים של הקבוצה`}
+            variant={team.fields.artImageUrl ? "blob" : "photo"}
+            colorIndex={team.fields.artColorIndex ?? undefined}
+            shapeIndex={team.fields.artShapeIndex ?? undefined}
+            // On photo-bg cards, skip the backoffice image dials so the class
+            // scale below actually takes effect (an inline transform would win).
+            imageScale={isPhotoBg ? undefined : team.fields.artImageScale}
+            bgScale={team.fields.artBgScale}
+            imageOffsetX={isPhotoBg ? undefined : team.fields.artImageOffsetX}
+            imageOffsetY={isPhotoBg ? undefined : team.fields.artImageOffsetY}
+            imageClassName={isPhotoBg ? "object-center scale-[1.4]" : undefined}
+            // No `priority` (that preloads at high priority and saturated the
+            // mobile network). The first few cards load eagerly so the row is
+            // populated when scrolled to; the rest stay lazy. Slot-accurate sizes.
+            loading={loading}
+            sizes="(max-width: 640px) 45vw, 240px"
+            className="h-full w-full"
+          />
           {/* Dark bottom-edge gradient — grounds the image against the white name
               panel in light mode (matches the קטגוריות CategoryCard treatment). */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
@@ -539,7 +564,7 @@ function CompactTeamCard({ team }: { team: FootballTeam }) {
 }
 
 // Compact Artist Card for Artists Section
-function CompactArtistCard({ artist }: { artist: Artist }) {
+function CompactArtistCard({ artist, loading }: { artist: Artist; loading?: "eager" | "lazy" }) {
   return (
     <Link
       href={`/artists/${artist.sys?.id}`}
@@ -572,7 +597,11 @@ function CompactArtistCard({ artist }: { artist: Artist }) {
             bgScale={artist.fields.artBgScale}
             imageOffsetX={artist.fields.artImageOffsetX}
             imageOffsetY={artist.fields.artImageOffsetY}
-            priority
+            // No `priority` (that preloads at high priority and saturated the
+            // mobile network). The first few cards load eagerly so the row is
+            // populated when scrolled to; the rest stay lazy. Slot-accurate sizes.
+            loading={loading}
+            sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
           {/* Dark bottom-edge gradient — grounds the art against the white name
@@ -605,17 +634,15 @@ const UniversalCarousel = ({
   artists?: Artist[];
   variant?: "default" | "compact";
 }) => {
-  const [isMounted, setIsMounted] = useState(false);
-  const { isMobile } = useIsMobile();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const items = teams || artists || events || [];
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted || items.length === 0) {
+  // Render on the server (no isMounted gate) so the row — and its card images —
+  // ship in the SSR HTML instead of flashing blank until hydration. This is a
+  // plain native-scroll row, so it's SSR-safe; the scroll refs/arrows just wire
+  // up after mount.
+  if (items.length === 0) {
     return null;
   }
 
@@ -663,7 +690,7 @@ const UniversalCarousel = ({
         ref={scrollRef}
         className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-6"
       >
-        {items.map((item) => {
+        {items.map((item, idx) => {
           let key: string;
           if (teams) {
             key = (item as FootballTeam).sys.id;
@@ -673,15 +700,21 @@ const UniversalCarousel = ({
             key = (item as Event).id.toString();
           }
 
+          // All carousel cards lazy: only the few horizontally-visible ones
+          // decode. Eager-loading even the first row added to iOS's image-memory
+          // pressure (which evicts + re-decodes on scroll). Native lazy loads the
+          // visible cards fast enough; the rest load as you swipe.
+          const loading = "lazy" as const;
+
           return (
             <div key={key} className={cn("snap-start", itemWidth)}>
               {variant === "compact" ? (
                 teams ? (
-                  <CompactTeamCard team={item as FootballTeam} />
+                  <CompactTeamCard team={item as FootballTeam} loading={loading} />
                 ) : artists ? (
-                  <CompactArtistCard artist={item as Artist} />
+                  <CompactArtistCard artist={item as Artist} loading={loading} />
                 ) : (
-                  <CompactEventCard event={item as Event} />
+                  <CompactEventCard event={item as Event} loading={loading} />
                 )
               ) : (
                 <EventCard event={item as Event} />
@@ -694,8 +727,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems }: Props) {
-  const [isMounted, setIsMounted] = useState(false);
+export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball }: Props) {
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -711,9 +743,54 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   const [visibleMusicCount, setVisibleMusicCount] = useState(5);
 
   useEffect(() => {
-    setIsMounted(true);
     // Scroll to top when component mounts (page load/navigation)
     window.scrollTo(0, 0);
+  }, []);
+
+
+  // Warm ONLY the vertical-scroll images (the grids you scroll down through) once
+  // the page is idle, so they're ready before you reach them. Deliberately SKIP
+  // the horizontal carousels: warming all ~120 images forced iOS Safari to decode
+  // them all at once, blowing its image-memory budget so it evicted + re-decoded
+  // on every scroll (the "cards reload" bug). Carousel cards stay lazy — only the
+  // few horizontally-visible ones decode — keeping total decoded images low.
+  useEffect(() => {
+    let cancelled = false;
+    const warmImages = () => {
+      if (cancelled) return;
+      document
+        .querySelectorAll<HTMLImageElement>('main img[loading="lazy"]')
+        .forEach((img) => {
+          if (img.complete) return;
+          // Skip images inside a horizontal carousel (its scroll track is
+          // .overflow-x-auto) — those load on swipe, not up front.
+          if (img.closest(".overflow-x-auto")) return;
+          // Warm the browser cache with a throwaway request (same srcset/sizes so
+          // it picks the exact candidate the real <img> will use). When the card
+          // is later scrolled into view it's a cache hit → paints instantly. This
+          // works on iOS Safari, which ignores flipping `loading` post-insert.
+          const warm = new Image();
+          if (img.sizes) warm.sizes = img.sizes;
+          if (img.srcset) warm.srcset = img.srcset;
+          if (img.currentSrc || img.src) warm.src = img.currentSrc || img.src;
+        });
+    };
+    const w = window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId = 0;
+    let timerId = 0;
+    if (typeof w.requestIdleCallback === "function") {
+      idleId = w.requestIdleCallback(warmImages, { timeout: 3000 });
+    } else {
+      timerId = window.setTimeout(warmImages, 1500);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId && w.cancelIdleCallback) w.cancelIdleCallback(idleId);
+      if (timerId) clearTimeout(timerId);
+    };
   }, []);
 
   // Desktop starts with a fuller grid (20); mobile keeps the compact 5.
@@ -846,31 +923,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     );
   }
 
-  // Prevent hydration mismatches by showing a loading state instead of null
-  if (!isMounted) {
-    return (
-      <div style={{ minHeight: '60vh' }}>
-        {/* Basic layout structure to prevent content jump */}
-        <section className="bg-main relative overflow-hidden">
-          <div className="container mx-auto flex flex-col lg:flex-row items-center justify-between py-12 px-4 md:px-8 min-h-[400px]">
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="animate-pulse bg-main-foreground/20 h-8 w-64 rounded"></div>
-            </div>
-          </div>
-        </section>
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-8">
-            <div className="h-6 bg-muted rounded w-48"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-64 bg-muted rounded-2xl"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: This component renders its real content on the server (no isMounted
+  // gate). That's deliberate — gating behind mount kept every card image out of
+  // the SSR HTML, so `priority`/`loading="eager"` couldn't preload the LCP and
+  // "המבוקשים ביותר" only started loading after hydration (broken on first
+  // scroll). Client-only values here (`matches`, `isMobile`) are false-first, so
+  // they hydrate consistently and only update post-mount — no mismatch.
 
   // Separate VIP events
   // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
@@ -883,13 +941,15 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     const teamsForGrouping = allFootballTeams && allFootballTeams.length > 0 ? allFootballTeams : [];
     if (!hasArtistPages && teamsForGrouping.length === 0) return events;
 
-    // Build list of artist identifiers that have pages
-    const artistIdentifiersWithPages = new Set(
-      (artists ?? [])
-        .map(artist => artist.fields.nameDBenglish)
-        .filter(Boolean)
-        .map(name => normalizeName(name)) // Trim + lowercase
-    );
+    // Artist identifiers that have pages, longest-first so the most specific
+    // artist wins a whole-word match (see artistIdForEvent).
+    const artistIdsWithPages = Array.from(
+      new Set(
+        (artists ?? [])
+          .map(artist => normalizeName(artist.fields.nameDBenglish))
+          .filter(Boolean)
+      )
+    ).sort((a, b) => b.length - a.length);
 
     // Best representative for a collapsed group (prefer a real tag, then earliest date)
     const pickRepresentative = (groupEvents: Event[]) =>
@@ -901,17 +961,18 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       })[0];
 
-    // 1) Group by artist (exact english-name match)
+    // 1) Group by artist (whole-word name match — same rule as the artist page,
+    //    so "Bon Jovi London" collapses into the "Bon Jovi" card).
     const eventsByArtist = new Map<string, Event[]>();
     const afterArtistGrouping: Event[] = [];
 
     events.forEach(event => {
       if (isEventSoldOut(event)) return; // Skip sold-out events entirely
 
-      const eventArtistName = normalizeName(event.name_english);
-      if (eventArtistName && artistIdentifiersWithPages.has(eventArtistName)) {
-        if (!eventsByArtist.has(eventArtistName)) eventsByArtist.set(eventArtistName, []);
-        eventsByArtist.get(eventArtistName)!.push(event);
+      const matchedId = artistIdForEvent(event.name_english, event.name, artistIdsWithPages);
+      if (matchedId) {
+        if (!eventsByArtist.has(matchedId)) eventsByArtist.set(matchedId, []);
+        eventsByArtist.get(matchedId)!.push(event);
       } else {
         afterArtistGrouping.push(event);
       }
@@ -1175,7 +1236,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           </form>
         )}
       </Modal>
-      <section className="w-full flex min-h-[92dvh] flex-col justify-center gap-3 py-8 md:py-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
+      {/* pt clears the always-visible fixed navbar so the hero logo isn't covered. */}
+      {/* min-h in `svh` (small viewport height), NOT `dvh`: `dvh` changes every
+          time the iOS address bar shows/hides on scroll, which resized this hero
+          and reflowed the entire page below it on every scroll (seconds of jank
+          on mobile). `svh` is stable — it never changes as you scroll. */}
+      <section className="w-full flex min-h-[92svh] flex-col justify-center gap-3 pt-16 pb-8 md:pt-20 md:pb-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
         {/* Soft ambient fill across the mid-hero so the Aurora-lit top and the
             carousel glow below read as one continuous wash (no dark mid-band). */}
@@ -1215,7 +1281,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         </div>
         {/* The single search experience — assembles a package live as you type */}
         <div className="relative z-20 mt-6 md:mt-7">
-          <HeroSearch events={initialEvents} artists={artists} />
+          <HeroSearch events={initialEvents} artists={artists} overlay />
         </div>
         {/* Trust row — sits under the gallery, per Dor's layout note */}
         <TrustBadges className="relative z-10 mt-3 md:mt-8 justify-center text-main-foreground/80" />
@@ -1383,9 +1449,23 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8" 
                  role="list" 
                  aria-label="רשימת האירועים המבוקשים ביותר">
-              {prioritized_events.map((event) => (
+              {prioritized_events.map((event, i) => (
                 <div key={event.id} role="listitem">
-                  <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
+                  <EventCard
+                    event={event}
+                    allEvents={initialEvents}
+                    artists={artists}
+                    footballTeams={allFootballTeams}
+                    // First cards are the mobile LCP (1-col grid) → preload them.
+                    // The rest load eagerly (at page load, normal priority) so the
+                    // whole section is ready before it's scrolled into view instead
+                    // of half-loading on scroll.
+                    priority={i < 2}
+                    loading="eager"
+                    // Actual rendered width per breakpoint (1 / 2 / 4 cols) so the
+                    // optimizer doesn't ship a ~90vw image into a 23vw slot.
+                    sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
+                  />
                 </div>
               ))}
             </div>
@@ -1401,8 +1481,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             />
           </div>
 
-          {/* Sports Section */}
-          {footballTeams && footballTeams.length > 0 && (
+          {/* Sports Section — all teams, available (זמין באתר) first, rest at end */}
+          {homeFootball && homeFootball.length > 0 && (
             <section aria-labelledby="football-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div
@@ -1426,19 +1506,17 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </h2>
                 </div>
               </div>
-              {/* Mobile carousel for Sports events */}
-              <div className="block sm:hidden mb-8">
-                <UniversalCarousel teams={footballTeams} variant="compact" />
-              </div>
-              {/* Desktop carousel for Sports events */}
-              <div className="hidden sm:block mb-8">
-                <UniversalCarousel teams={footballTeams} variant="compact" />
+              {/* One responsive carousel (was two identical mobile+desktop copies
+                  — the component is already responsive, so the duplicate just
+                  doubled the DOM/hydration cost and helped starve paint on scroll). */}
+              <div className="mb-8">
+                <UniversalCarousel teams={homeFootball} variant="compact" />
               </div>
             </section>
           )}
 
-          {/* Artists Section */}
-          {carouselArtists && carouselArtists.length > 0 && (
+          {/* Artists Section — all artists, available (זמין באתר) first, rest at end */}
+          {homeArtists && homeArtists.length > 0 && (
             <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
                 <div
@@ -1462,13 +1540,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </h2>
                 </div>
               </div>
-              {/* Mobile carousel for Artists */}
-              <div className="block sm:hidden mb-8">
-                <UniversalCarousel artists={carouselArtists} variant="compact" />
-              </div>
-              {/* Desktop carousel for Artists */}
-              <div className="hidden sm:block mb-8">
-                <UniversalCarousel artists={carouselArtists} variant="compact" />
+              {/* One responsive carousel (was two identical mobile+desktop copies). */}
+              <div className="mb-8">
+                <UniversalCarousel artists={homeArtists} variant="compact" />
               </div>
             </section>
           )}
@@ -1495,7 +1569,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                 />
                 <div>
                   <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    הופעות נוספות
+                   אירועים נוספים
                   </h2>
                 </div>
               </div>
@@ -1506,7 +1580,16 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                    aria-label="רשימת הופעות נוספות">
                 {musicEvents.slice(0, visibleMusicCount).map((event) => (
                   <div key={event.id} role="listitem">
-                    <EventCard event={event} allEvents={initialEvents} artists={artists} footballTeams={allFootballTeams} />
+                    <EventCard
+                      event={event}
+                      allEvents={initialEvents}
+                      artists={artists}
+                      footballTeams={allFootballTeams}
+                      // Eager (page load, not on-scroll) so this grid is ready
+                      // before it's reached; grid-accurate sizes cut mobile bytes.
+                      loading="eager"
+                      sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
+                    />
                   </div>
                 ))}
                 {/* Search-prompt card — smaller, same design, appended at the end */}
@@ -1591,6 +1674,23 @@ const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const wholeWordMatch = (haystack: string, id: string) =>
   id ? haystack.match(new RegExp(`(^|[^a-z0-9])${escapeRegExp(id)}([^a-z0-9]|$)`, "i")) : null;
 
+// Which artist page an event belongs to. The artist detail page lists events by
+// SUBSTRING (`eventsData.getEventsByName` → `name_english ILIKE %name%`), so the
+// homepage must use the same rule or an event like "Bon Jovi London" won't be
+// collapsed into the "Bon Jovi" card and won't get the "see all events" strip.
+// Whole-word containment (not raw substring) keeps a short name from matching
+// inside a longer word (e.g. "Sting" in "Stinger"). Pass artist ids sorted
+// longest-first so the most specific artist wins. Returns the matched id or null.
+const artistIdForEvent = (
+  nameEnglish: string | null | undefined,
+  name: string | null | undefined,
+  artistIdsLongestFirst: string[]
+): string | null => {
+  const hay = normalizeName(nameEnglish) || normalizeName(name);
+  if (!hay) return null;
+  return artistIdsLongestFirst.find((id) => wholeWordMatch(hay, id)) ?? null;
+};
+
 // Identify the HOME team of a fixture. Football collide is home-only: "Arsenal"
 // collects a match only when Arsenal hosts it ("Arsenal FC vs X"), never its away
 // games ("X vs Arsenal"). The home team is the side named to the LEFT of the
@@ -1614,18 +1714,30 @@ const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam |
   return best;
 };
 
-function EventCard({ event, allEvents, artists, footballTeams }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[] }) {
+function EventCard({ event, allEvents, artists, footballTeams, priority, loading, sizes }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; loading?: "eager" | "lazy"; sizes?: string }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
   const computedSold = isEventSoldOut(event);
   const packagePrice = computePackagePrice(event);
   const router = useRouter();
 
-  // Match a dedicated ARTIST page by exact english name.
+  // Match a dedicated ARTIST page by whole-word name match — same rule as the
+  // artist page's substring lookup, so "Bon Jovi London" resolves to Bon Jovi.
   const matchingArtist = useMemo(() => {
-    if (!artists || !event.name_english) return null;
-    const eventIdentifier = normalizeName(event.name_english);
-    return artists.find(artist => normalizeName(artist.fields.nameDBenglish) === eventIdentifier) ?? null;
+    if (!artists || (!event.name_english && !event.name)) return null;
+    // Longest name first so the most specific artist wins.
+    const sorted = [...artists].sort(
+      (a, b) =>
+        normalizeName(b.fields.nameDBenglish).length -
+        normalizeName(a.fields.nameDBenglish).length
+    );
+    const hay = normalizeName(event.name_english) || normalizeName(event.name);
+    return (
+      sorted.find(artist => {
+        const id = normalizeName(artist.fields.nameDBenglish);
+        return id && wholeWordMatch(hay, id);
+      }) ?? null
+    );
   }, [event, artists]);
 
   // If it's not an artist, match a FOOTBALL TEAM page by HOME team (home games only).
@@ -1650,11 +1762,13 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
     if (!allEvents || !collideTarget) return false;
 
     if (matchingArtist) {
-      // Artists: exact name match (these acts share one identical name).
-      const eventIdentifier = normalizeName(event.name_english) || normalizeName(event.name);
-      return allEvents.filter(
-        e => (normalizeName(e.name_english) || normalizeName(e.name)) === eventIdentifier && !isEventSoldOut(e)
-      ).length > 1;
+      // Artists: whole-word name match (same rule as the artist page), so all
+      // of "Bon Jovi", "Bon Jovi London", … count toward this artist.
+      const id = normalizeName(matchingArtist.fields.nameDBenglish);
+      return allEvents.filter(e => {
+        const hay = normalizeName(e.name_english) || normalizeName(e.name);
+        return !!wholeWordMatch(hay, id) && !isEventSoldOut(e);
+      }).length > 1;
     }
 
     // Teams: count this team's HOME games only.
@@ -1765,6 +1879,9 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               bgScale={event.art_bg_scale}
               imageOffsetX={event.art_image_offset_x}
               imageOffsetY={event.art_image_offset_y}
+              priority={priority}
+              loading={loading}
+              sizes={sizes}
               className="h-52 w-full sm:h-56"
             />
           </div>
@@ -1808,7 +1925,8 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
               <PackageIcons cycle />
             </div>
 
-            <div className="mt-4 w-full rounded-full bg-main py-3 text-center text-sm font-bold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black dark:bg-foreground dark:text-background dark:group-hover:bg-foreground/90 dark:group-hover:text-background dark:group-active:bg-foreground/90 dark:group-active:text-background">
+            {/* Same size as before — shape (rounded-md) + font match the artist-page CTA. */}
+            <div className="mt-4 w-full rounded-md bg-main py-3 text-center text-xs font-semibold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black dark:bg-foreground dark:text-background dark:group-hover:bg-foreground/90 dark:group-hover:text-background dark:group-active:bg-foreground/90 dark:group-active:text-background">
               {computedSold ? "אזל מהמלאי" : "לפרטים והזמנה"}
             </div>
           </div>
@@ -1818,7 +1936,7 @@ function EventCard({ event, allEvents, artists, footballTeams }: { event: Event;
     {hasMultipleDates && (
       <div
         data-strip-click="true"
-        className="w-full bg-main text-main-foreground text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:hover:bg-main/90 dark:hover:text-main-foreground dark:active:bg-main/90 dark:active:text-main-foreground"
+        className="w-full bg-background text-foreground border border-border text-center py-3.5 px-3 rounded-b-2xl cursor-pointer hover:bg-secondary hover:text-black active:bg-secondary active:text-black transition-colors duration-200 shadow-card dark:bg-forest dark:text-white dark:border-white/15 dark:hover:bg-forest/90 dark:hover:text-white dark:active:bg-forest/90 dark:active:text-white"
         role="button"
         aria-label={`לחץ כדי לראות את כל האירועים של ${collideTarget?.label ?? event.name}`}
         onClick={handleStripClick}

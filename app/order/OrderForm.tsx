@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
@@ -77,6 +77,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const isUS = event?.location?.country_code === "US";
 
+  // "Edit from summary" mode: entering a step via the summary's עריכה button
+  // arms this flag; confirming that step jumps straight back to the summary
+  // (step 4) instead of walking the rest of the flow again. Cleared on arrival
+  // — and ignored when the flow is no longer complete (e.g. a quantity change
+  // wiped the flight/hotel), which falls back to the normal 1→2→3 walk.
+  const [returnToSummary, setReturnToSummary] = useState(false);
+  useEffect(() => {
+    if (step === 4) setReturnToSummary(false);
+  }, [step]);
+
   // Preload hotels as soon as the order flow starts so they're ready
   // by the time the customer reaches step 3 (especially after skip flight).
   useEffect(() => {
@@ -142,7 +152,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
     (flight?.price || 0) / planeTickets.adults - event.base_flight_price
   );
 
-  const nextStep = (skipHotel = false) =>
+  // NOTE: param renamed from `skipHotel` — it shadowed the context flag of the
+  // same name, which the edit-return check below needs to read.
+  const nextStep = (skipHotelChosen = false) =>
     setStep((prev) => {
       if (prev === 1) {
         orderStage("TICKET_SELECTED", {
@@ -210,13 +222,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
         }
       } else if (prev === 3) {
         // Handle both hotel selection AND skip
-        if (skipHotel) {
+        if (skipHotelChosen) {
           setSkipHotel(true);
           setHotel(undefined);
         }
-        
+
         // Use skipHotel flag to determine if hotel data should be included
-        const isHotelSkipped = skipHotel || !hotel;
+        const isHotelSkipped = skipHotelChosen || !hotel;
         
         if (!flightSkipped) {
           fetch(`/api/flights/pricing`, {
@@ -273,6 +285,19 @@ export const OrderForm = ({ event }: { event: Event }) => {
           eventTags: event.tags,
         });
       }
+      // Edit-from-summary: once the edited step is confirmed, jump straight
+      // back to the summary — but only when every step is still satisfied
+      // (a quantity change clears flight/hotel → walk the flow normally).
+      if (returnToSummary && prev < 4) {
+        const flowComplete =
+          !!eventTicket.id &&
+          (flightSkipped || !!flight?.id) &&
+          (isUS || skipHotelChosen || skipHotel || !!hotel?.id);
+        if (flowComplete) {
+          setReturnToSummary(false);
+          return 4;
+        }
+      }
       return prev + 1;
     });
 
@@ -299,6 +324,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
         { immediate: true }
       );
     }
+    // Edit-from-summary: skipping the flight during an edit completes it too.
+    if (returnToSummary && (isUS || skipHotel || !!hotel?.id)) {
+      setReturnToSummary(false);
+      setStep(4);
+      return;
+    }
     setStep((prev) => prev + 1);
   };
 
@@ -312,6 +343,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
         ? `-$${Math.abs(delta).toLocaleString("en-US")}`
         : "כלול";
 
+  // Pills are navigation: completed steps (behind the current one) tap back to
+  // modify; the IMMEDIATE next step taps forward — exactly like the primary
+  // continue button (same guard + side effects). Never further: steps must be
+  // completed in order (1 → 2 → 3).
+  const slotNav = (target: number) => {
+    if (target < step) return () => setStep(target); // back to a done step
+    if (target === step + 1 && !buttonDisabled) return () => nextStep(); // continue
+    return undefined;
+  };
+
   const continueSlots: ContinueSlot[] = [
     {
       icon: "ticket",
@@ -319,13 +360,20 @@ export const OrderForm = ({ event }: { event: Event }) => {
       filled: !!eventTicket.id,
       value: eventTicket.id ? shortenTicketCategory(ticketCategory || "") : "",
       delta: eventTicket.id ? priceNote(ticketRelativePrice) : undefined,
+      onClick: slotNav(1),
     },
     {
       icon: "flight",
       label: "טיסה",
       filled: flightSkipped || !!flight?.id,
       value: flightSkipped ? "ללא טיסה" : flight?.id ? airline : "",
-      delta: !flightSkipped && flight?.id ? priceNote(flightDelta) : undefined,
+      // Skipped = still bookable — invite the tap instead of a dead ✓.
+      delta: flightSkipped
+        ? "+ להוספה"
+        : flight?.id
+          ? priceNote(flightDelta)
+          : undefined,
+      onClick: slotNav(2),
     },
   ];
   if (!isUS) {
@@ -334,7 +382,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
       label: "מלון",
       filled: skipHotel || !!hotel?.id,
       value: skipHotel ? "ללא מלון" : hotel?.id ? hotel?.name || "מלון" : "",
-      delta: !skipHotel && hotel?.id ? priceNote(hotelPriceAddition) : undefined,
+      delta: skipHotel
+        ? "+ להוספה"
+        : hotel?.id
+          ? priceNote(hotelPriceAddition)
+          : undefined,
+      onClick: slotNav(3),
     });
   }
 
@@ -349,8 +402,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
     (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
 
   const isFinalStep = isUS ? step === 2 : step === 3;
-  const primaryLabel =
-    step === 1
+  // Editing from the summary (and the flow is still complete) → the primary
+  // action returns to the summary, so say that instead of "המשך למלון".
+  const editReturnActive =
+    returnToSummary &&
+    !!eventTicket.id &&
+    (flightSkipped || !!flight?.id || step === 2) &&
+    (isUS || skipHotel || !!hotel?.id || step === 3);
+  const primaryLabel = editReturnActive
+    ? "שמור וחזור לסיכום"
+    : step === 1
       ? "בחר והמשך לטיסה"
       : step === 2
         ? isUS
@@ -367,10 +428,19 @@ export const OrderForm = ({ event }: { event: Event }) => {
   return (
     <>
       <div className="max-w-7xl mx-auto px-2 pt-3">
-        {step === 1 && <TicketSelection />}
+        {step === 1 && <TicketSelection initialEvent={event} />}
         {step === 2 && <FlightSelection />}
         {step === 3 && <HotelSelection />}
-        {step === 4 && <OrderReview />}
+        {step === 4 && (
+          <OrderReview
+            // Summary עריכה: arm return-to-summary so confirming the edited
+            // step jumps straight back here instead of re-walking the flow.
+            onEditStep={(target) => {
+              setReturnToSummary(true);
+              setStep(target);
+            }}
+          />
+        )}
         {/* Floating ContactUs - separate from footer */}
         {step !== 4 && (
           <div className="fixed bottom-24 left-2 z-50 sm:hidden">

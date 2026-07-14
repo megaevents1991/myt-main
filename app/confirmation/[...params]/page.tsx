@@ -12,6 +12,26 @@ import { trackEvent } from "@/lib/mixpanel";
 
 type PaymentStatus = "success" | "error" | "pending";
 
+// One order-details line. Flex in an RTL container puts the label flush right
+// and the value flowing left of it — consistent RTL layout even when the whole
+// line is English (a right-aligned LTR run leaves the labels ragged). `ltr`
+// isolates values that start with neutrals/digits ("(x2) …", flight numbers)
+// so bidi can't reorder them.
+const DetailRow = ({
+  label,
+  value,
+  ltr,
+}: {
+  label: string;
+  value: string;
+  ltr?: boolean;
+}) => (
+  <p className="flex flex-wrap gap-x-1">
+    <strong>{label}</strong>
+    <span dir={ltr ? "ltr" : undefined}>{value}</span>
+  </p>
+);
+
 type OrderConfirmationData = {
   bookingReference: string;
   eventName: string;
@@ -280,6 +300,68 @@ export default function ConfirmationPage() {
     partnerTrackingCode,
   } = orderConfirmationData;
 
+  const orderSummary = (
+    <>
+      {!isHold && (
+        <>
+          {isPaid === "success" ? (
+            <p className="my-2 text-lg text-green-600" dir="rtl">
+              התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
+            </p>
+          ) : isPaid === "error" ? (
+            <p className="my-2 text-lg text-red-600" dir="rtl">
+              אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
+            </p>
+          ) : (
+            <p className="my-2 text-green-600 font-bold" dir="rtl">
+              ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
+            </p>
+          )}
+        </>
+      )}
+
+      {isHold && <OrderRecoverySection />}
+
+      <div
+        dir="rtl"
+        className="bg-card border border-[#E7E5DC] shadow-sm rounded-2xl p-6 my-6 text-right"
+      >
+        <h2 className="text-xl font-extrabold text-forest mb-4 pb-3 border-b-2 border-[#EEF6F0] text-right">
+          פרטי ההזמנה
+        </h2>
+        <div className="space-y-3">
+          <DetailRow label="Booking Reference:" value={bookingReference} ltr />
+          <DetailRow label="Event:" value={eventName} />
+          <DetailRow
+            label="Date:"
+            value={
+              eventDate
+                ? new Date(eventDate).toLocaleDateString("he-IL")
+                : "N/A"
+            }
+            ltr
+          />
+          <DetailRow label="Location:" value={eventLocation} />
+          <DetailRow label="Tickets:" value={`(x${quantity}) ${ticketType}`} ltr />
+          {flights ? (
+            <>
+              <DetailRow label="Airline:" value={airline} ltr />
+              <DetailRow label="Flight Numbers:" value={flights} ltr />
+              <DetailRow label="Flight Schedule:" value={dates} ltr />
+            </>
+          ) : (
+            <DetailRow label="Flight:" value="ללא טיסה" />
+          )}
+          {hotel !== "ללא מלון" && <DetailRow label="Hotel:" value={hotel} />}
+        </div>
+      </div>
+
+      <Link href="/" className="mt-6">
+        <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
+      </Link>
+    </>
+  );
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
       <div className="flex flex-col items-center" dir="rtl">
@@ -294,166 +376,23 @@ export default function ConfirmationPage() {
         </p>
       </div>
       {partnerTrackingCode ? (
+        // RTL flex-row: first child sits on the RIGHT — summary right, promo left.
         <div className="md:flex md:flex-row md:gap-8 md:items-start md:max-w-4xl w-full flex flex-col">
           <div
+            id="order_summary_confirmation"
+            className="max-w-md w-full mt-6 text-center"
+          >
+            {orderSummary}
+          </div>
+          <div
             id="refer_a_friend_confirmation"
-            className="md:w-2/5 text-sm text-gray-500 mt-6 sm:mt-6 order-2 md:order-1"
+            className="md:w-2/5 text-sm text-gray-500 mt-6 sm:mt-6"
           >
             <ReferFriend promoCode={promoCode || ""} />
           </div>
-          <div
-            id="order_summary_confirmation"
-            className="max-w-md w-full mt-6 text-center order-1 md:order-2"
-          >
-            {!isHold && (
-              <>
-                {isPaid === "success" ? (
-                  <p className="my-2 text-lg text-green-600" dir="rtl">
-                    התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
-                  </p>
-                ) : isPaid === "error" ? (
-                  <p className="my-2 text-lg text-red-600" dir="rtl">
-                    אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
-                  </p>
-                ) : (
-                  <p className="my-2 text-green-600 font-bold" dir="rtl">
-                    ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
-                  </p>
-                )}
-              </>
-            )}
-            
-            {isHold && <OrderRecoverySection />}
-            
-            <div className="bg-card border border-[#E7E5DC] shadow-sm rounded-2xl p-6 my-6 text-right">
-              <h2 className="text-xl font-extrabold text-forest mb-4 pb-3 border-b-2 border-[#EEF6F0] text-right">
-                פרטי ההזמנה
-              </h2>
-              <div className="space-y-3">
-                <p>
-                  <strong>Booking Reference:</strong> {bookingReference}
-                </p>
-                <p>
-                  <strong>Event:</strong> {eventName}
-                </p>
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {eventDate
-                    ? new Date(eventDate).toLocaleDateString("he-IL")
-                    : "N/A"}
-                </p>
-                <p>
-                  <strong>Location:</strong> {eventLocation}
-                </p>
-                <p>
-                  <strong>Tickets:</strong> (x{quantity}) {ticketType}
-                </p>
-                {flights ? (
-                  <>
-                    <p>
-                      <strong>Airline:</strong> {airline}
-                    </p>
-                    <p>
-                      <strong>Flight Numbers-</strong> {flights}
-                    </p>
-                    <p>
-                      <strong>Flight Schedule-</strong> {dates}
-                    </p>
-                  </>
-                ) : (
-                  <p>
-                    <strong>Flight:</strong> ללא טיסה
-                  </p>
-                )}
-                {hotel !== "ללא מלון" && (
-                  <p>
-                    <strong>Hotel:</strong> {hotel}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <Link href="/" className="mt-6">
-              <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
-            </Link>
-          </div>
         </div>
       ) : (
-        <div>
-          <div className="max-w-md w-full mt-6 text-center">
-            {!isHold && (
-              <>
-                {isPaid === "success" ? (
-                  <p className="my-2 text-lg text-green-600" dir="rtl">
-                    התשלום התקבל בהצלחה, קבלה ואישור הזמנה ישלחו במייל ביום העסקים הבא.
-                  </p>
-                ) : isPaid === "error" ? (
-                  <p className="my-2 text-lg text-red-600" dir="rtl">
-                    אופס, משהו לא עבד עם התשלום, נציגינו יצרו עימך קשר ביום העסקים הבא.
-                  </p>
-                ) : (
-                  <p className="my-2 text-green-600 font-bold" dir="rtl">
-                    ההזמנה שלך נשלחה לנציגינו ואלו יצרו עימך קשר תוך יום עסקים לקבלת תשלום ואישור הרכישה.
-                  </p>
-                )}
-              </>
-            )}
-            
-            {isHold && <OrderRecoverySection />}
-            
-            <div className="bg-card border border-[#E7E5DC] shadow-sm rounded-2xl p-6 my-6 text-right">
-              <h2 className="text-xl font-extrabold text-forest mb-4 pb-3 border-b-2 border-[#EEF6F0] text-right">
-                פרטי ההזמנה
-              </h2>
-              <div className="space-y-3">
-                <p>
-                  <strong>Booking Reference:</strong> {bookingReference}
-                </p>
-                <p>
-                  <strong>Event:</strong> {eventName}
-                </p>
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {eventDate
-                    ? new Date(eventDate).toLocaleDateString("he-IL")
-                    : "N/A"}
-                </p>
-                <p>
-                  <strong>Location:</strong> {eventLocation}
-                </p>
-                <p>
-                  <strong>Tickets:</strong> (x{quantity}) {ticketType}
-                </p>
-                {flights ? (
-                  <>
-                    <p>
-                      <strong>Airline:</strong> {airline}
-                    </p>
-                    <p>
-                      <strong>Flight Numbers-</strong> {flights}
-                    </p>
-                    <p>
-                      <strong>Flight Schedule-</strong> {dates}
-                    </p>
-                  </>
-                ) : (
-                  <p>
-                    <strong>Flight:</strong> ללא טיסה
-                  </p>
-                )}
-                {hotel !== "ללא מלון" && (
-                  <p>
-                    <strong>Hotel:</strong> {hotel}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <Link href="/" className="mt-6">
-              <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>
-            </Link>
-          </div>
-        </div>
+        <div className="max-w-md w-full mt-6 text-center">{orderSummary}</div>
       )}
     </div>
   );

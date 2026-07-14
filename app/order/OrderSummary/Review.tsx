@@ -23,6 +23,7 @@ export const Review = ({
   event,
   skipHotel,
   flightSkipped,
+  onEdit,
 }: {
   agentCommission: number;
   hotelPriceAddition: number;
@@ -40,11 +41,14 @@ export const Review = ({
   event: Event;
   skipHotel?: boolean;
   flightSkipped?: boolean;
+  /** Navigate back to an order step (1 ticket / 2 flight / 3 hotel) to modify. */
+  onEdit?: (step: 1 | 2 | 3) => void;
 }) => {
   const items = useMemo(
     () => [
       {
         id: "event-summary",
+        editStep: 1 as const,
         primary: `כרטיסים (${numberOfEventTickets})`,
         secondary: `קטגוריה: ${eventTicket.category}`,
         icon: <FaTicketAlt />,
@@ -61,6 +65,7 @@ export const Review = ({
       // Conditionally include hotel only if not skipped
       ...(!skipHotel && selectedHotel ? [{
         id: "hotel-summary",
+        editStep: 3 as const,
         primary: `לינה (${selectedHotel.guests.reduce(
           (ppl, room) => ppl + room.children.length + room.adults,
           0
@@ -80,6 +85,7 @@ export const Review = ({
       // Conditionally include flight only if not skipped
       ...(!flightSkipped && selectedFlight ? [{
         id: "flight-summary",
+        editStep: 2 as const,
         primary: `טיסה (${selectedFlight.numOfTravelers} נוסעים)`,
         secondary: airlineFullName || selectedFlight.airline,
         icon: <FaPlane />,
@@ -113,6 +119,45 @@ export const Review = ({
   // For mobile we control opened state to adjust font sizes & styles
   const [opened, setOpened] = useState<string[]>([]);
 
+  // Skipped steps stay bookable — offer a compact "add it" row instead of
+  // hiding them entirely (US events are sold without a hotel, so no hotel row).
+  const isUS = event?.location?.country_code === "US";
+  const addRows = onEdit
+    ? [
+        ...(flightSkipped
+          ? [{ step: 2 as const, icon: <FaPlane />, text: "עדיין אפשר להזמין טיסה" }]
+          : []),
+        ...(skipHotel && !isUS
+          ? [{ step: 3 as const, icon: <FaHotel />, text: "עדיין אפשר להזמין מלון" }]
+          : []),
+      ]
+    : [];
+
+  const addRowsBlock = addRows.length > 0 && (
+    <div className="flex flex-col gap-2" dir="rtl">
+      {addRows.map((r) => (
+        <button
+          key={r.step}
+          type="button"
+          onClick={() => onEdit?.(r.step)}
+          className="flex items-center justify-between rounded-xl border border-dashed border-border px-3 py-2.5 text-right transition-colors hover:border-forest hover:bg-forest/5 dark:hover:border-glow dark:hover:bg-glow/10"
+        >
+          <span className="flex items-center gap-3">
+            <span className="text-main dark:text-foreground text-[16px]" aria-hidden>
+              {r.icon}
+            </span>
+            <span className="text-[14px] font-semibold text-muted-foreground">
+              {r.text}
+            </span>
+          </span>
+          <span className="rounded-lg border border-forest px-2.5 py-1 text-[12px] font-bold text-forest dark:border-glow dark:text-glow">
+            + להוספה
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className={cn("py-4 px-6 space-y-3 text-right", isMobile && "px-4")}>
       {isMobile ? (
@@ -142,25 +187,39 @@ export const Review = ({
               const isOpen = opened.includes(item.id);
               return (
                 <Accordion.Item key={item.id} value={item.id}>
-                  <Accordion.Control>
-                    <div className="flex items-center gap-3 w-full text-right" dir="rtl">
-                      <div className="text-main dark:text-foreground flex-shrink-0 text-[18px] flex items-center justify-center leading-none" aria-hidden>
-                          {item.icon}
-                        </div>
-                      <div className="flex flex-col flex-1 gap-[2px]">
-                        <div className="font-bold text-main dark:text-foreground text-[18px] leading-[18px]">{item.primary}</div>
-                        <div
-                          className={cn(
-                            "text-[14px] text-[#5A6475] dark:text-muted-foreground", // grey secondary line
-                            isOpen ? "" : ""
-                          )}
-                          dir={item.id === "hotel-summary" ? "ltr" : "rtl"}
-                        >
-                          {item.secondary}
+                  {/* Edit sits BESIDE the control (Accordion.Control renders a
+                      <button>, so a nested button would be invalid HTML). */}
+                  <div className="flex items-center gap-1" dir="rtl">
+                    <Accordion.Control>
+                      <div className="flex items-center gap-3 w-full text-right" dir="rtl">
+                        <div className="text-main dark:text-foreground flex-shrink-0 text-[18px] flex items-center justify-center leading-none" aria-hidden>
+                            {item.icon}
+                          </div>
+                        <div className="flex flex-col flex-1 gap-[2px]">
+                          <div className="font-bold text-main dark:text-foreground text-[18px] leading-[18px]">{item.primary}</div>
+                          <div
+                            className={cn(
+                              "text-[14px] text-[#5A6475] dark:text-muted-foreground", // grey secondary line
+                              isOpen ? "" : ""
+                            )}
+                            dir={item.id === "hotel-summary" ? "ltr" : "rtl"}
+                          >
+                            {item.secondary}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Accordion.Control>
+                    </Accordion.Control>
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(item.editStep)}
+                        aria-label={`עריכת ${item.primary}`}
+                        className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-bold text-muted-foreground transition-colors hover:border-forest hover:text-forest dark:hover:border-glow dark:hover:text-glow"
+                      >
+                        עריכה
+                      </button>
+                    )}
+                  </div>
                   <Accordion.Panel>
                     <div className="text-[14px] leading-[20px] space-y-2">
                       {item.component}
@@ -170,6 +229,7 @@ export const Review = ({
               );
             })}
           </Accordion>
+          {addRowsBlock}
         </>
       ) : (
         <>
@@ -183,7 +243,22 @@ export const Review = ({
                 dayjs(event.date).format("DD/MM/YYYY")}
             </p>
           </div>
-          {items.map((item) => item.component)}
+          {items.map((item) => (
+            <div key={item.id} className="relative">
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(item.editStep)}
+                  aria-label={`עריכת ${item.primary}`}
+                  className="absolute left-0 top-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-bold text-muted-foreground transition-colors hover:border-forest hover:text-forest dark:hover:border-glow dark:hover:text-glow"
+                >
+                  עריכה
+                </button>
+              )}
+              {item.component}
+            </div>
+          ))}
+          {addRowsBlock}
         </>
       )}
     </div>

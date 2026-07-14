@@ -7,13 +7,13 @@ import { ArrowUp, Search, SlidersHorizontal, X } from "lucide-react";
 
 import type { Event } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
-import { multiTermSearch } from "@/lib/search";
+import { isSportsEvent, multiTermSearch, withCategoryText } from "@/lib/search";
 import { EventCard } from "@/components/EventCard";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english"],
+  keys: ["name", "location.name", "name_english", "categoryText"],
   threshold: 0.35,
   ignoreLocation: true,
 };
@@ -34,23 +34,9 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "date-asc", label: "תאריך: הקרוב" },
 ];
 
-const SPORTS_TYPES = new Set<Event["type"]>([
-  "sports_event",
-  "sports_event_dynamic",
-  "sports_live_event_dynamic",
-]);
-
-// tx_event is a mixed feed (football + concerts). Football rows always read
-// "TeamA vs TeamB" (english) or are World Cup / מונדיאל; concerts never do.
-const isFootballTx = (e: Event): boolean =>
-  e.type === "tx_event" &&
-  (/ vs /i.test(e.name_english ?? "") ||
-    /world cup/i.test(e.name_english ?? "") ||
-    e.name.includes("מונדיאל"));
-
-// Sports events vs everything else (concerts).
+// Sports events vs everything else (concerts). Heuristic lives in lib/search.
 const categoryOf = (e: Event): Exclude<Category, "all"> =>
-  SPORTS_TYPES.has(e.type) || isFootballTx(e) ? "sports" : "music";
+  isSportsEvent(e) ? "sports" : "music";
 
 export type SearchInitial = {
   q?: string;
@@ -80,7 +66,7 @@ export const SearchResults = ({
   const [sort, setSort] = useState<SortKey>(initial.sort ?? "relevance");
   const [showFilters, setShowFilters] = useState(false);
 
-  const fuse = useMemo(() => new Fuse(events, fuseOptions), [events]);
+  const fuse = useMemo(() => new Fuse(withCategoryText(events), fuseOptions), [events]);
 
   // Price (USD) cached once per event for filtering + sorting.
   const priceOf = useMemo(() => {

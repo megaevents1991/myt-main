@@ -8,6 +8,7 @@ import {
 } from "@contentful/rich-text-react-renderer";
 import { ReactNode } from "react";
 import { getEventsByName } from "@/lib/eventsData";
+import { teamFixtureRole } from "@/lib/eventNameMatch";
 import { documentToPlainText, firstSentence } from "@/lib/richText";
 import ClientTracker from "@/components/ClientTracker";
 import { HeaderTitle } from "@/components/HeaderTitle";
@@ -36,13 +37,10 @@ export async function generateMetadata({
       return { title: "Team Not Found - MYT" };
     }
 
-    const { name, previewText, seoTitle, metaDescription, metaTags, heroBanner } = team.fields;
+    const { name, previewText, seoTitle, metaDescription, metaTags } = team.fields;
     const title = String(seoTitle || "") || `${name} - כרטיסים וחבילות | MYT`;
     const description = String(metaDescription || previewText || "") || `הזמינו כרטיסים וחבילות טיסה + מלון למשחקים של ${name}`;
     const keywords = metaTags || `${name}, כרטיסים, כדורגל, MYT`;
-    const imageUrl = heroBanner?.fields?.file?.url
-      ? `https:${heroBanner.fields.file.url}`
-      : undefined;
 
     return {
       title,
@@ -51,12 +49,11 @@ export async function generateMetadata({
       alternates: {
         canonical: `https://www.mega-events.co.il/football/${slug}`,
       },
+      // og:image intentionally NOT set here — the branded card from
+      // opengraph-image.tsx is the preview (explicit images would override it).
       openGraph: {
         title,
         description,
-        ...(imageUrl && {
-          images: [{ url: imageUrl, width: 800, height: 600, alt: String(name) }],
-        }),
       },
     };
   } catch {
@@ -76,6 +73,20 @@ export async function generateStaticParams() {
 
 const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
+);
+
+/** Green-cube section heading — same look as the catalog's "זמין באתר" rows. */
+const CubeHeading = ({ children }: { children: ReactNode }) => (
+  <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
+    <div aria-hidden className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} />
+    <div aria-hidden className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 23 }} />
+    <div aria-hidden className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} />
+    <div>
+      <h3 className="mx-2 font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+        {children}
+      </h3>
+    </div>
+  </div>
 );
 
 const bioOptions: Options = {
@@ -111,6 +122,20 @@ export default async function FootballPage({
     }
 
     const { events } = await getEventsByName(String(nameDBenglish));
+
+    // Split fixtures by the team's role — "X vs Y" naming, first side hosts.
+    // Unclassified = competition-hub pages ("Champions League", where sides
+    // never equal the page's name) and non-fixture events → shown as one plain
+    // list exactly like before the split.
+    const homeEvents = events.filter(
+      (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === "home"
+    );
+    const awayEvents = events.filter(
+      (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === "away"
+    );
+    const unclassifiedEvents = events.filter(
+      (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === null
+    );
     const imageUrl = heroBanner?.fields?.file?.url
       ? "https:" + heroBanner.fields.file.url
       : undefined;
@@ -154,10 +179,41 @@ export default async function FootballPage({
           <p className="mb-6 text-muted-foreground">
             בחרו תאריך משחק והתחילו להרכיב את החבילה שלכם
           </p>
-          {events.length > 0 ? (
+          {events.length === 0 ? (
+            <EmptyState title="אין אירועים קרובים" />
+          ) : homeEvents.length === 0 && awayEvents.length === 0 ? (
+            // Hub pages (e.g. ליגת האלופות) — no home/away notion, one list.
             <ArtistEventsFilter events={events} title={String(name)} showName />
           ) : (
-            <EmptyState title="אין אירועים קרובים" />
+            <div className="flex flex-col gap-10">
+              {homeEvents.length > 0 && (
+                <div>
+                  <CubeHeading>משחקי בית</CubeHeading>
+                  <ArtistEventsFilter
+                    events={homeEvents}
+                    title={String(name)}
+                    showName
+                  />
+                </div>
+              )}
+              {awayEvents.length > 0 && (
+                <div>
+                  <CubeHeading>משחקי חוץ</CubeHeading>
+                  <ArtistEventsFilter
+                    events={awayEvents}
+                    title={String(name)}
+                    showName
+                  />
+                </div>
+              )}
+              {unclassifiedEvents.length > 0 && (
+                <ArtistEventsFilter
+                  events={unclassifiedEvents}
+                  title={String(name)}
+                  showName
+                />
+              )}
+            </div>
           )}
         </section>
 

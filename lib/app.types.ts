@@ -54,6 +54,21 @@ export type Event = {
   tags: string;
   tx_excluded_sections?: string[];
   event_additional_markup?: number | null;
+  // Per-event component markups (USD, backoffice-set). When ANY of the three
+  // markup_* fields is set the event uses composed pricing: markup_ticket is
+  // always charged; markup_flight/markup_hotel only when that component is
+  // included; skip_flight_markup/skip_hotel_markup only when it's skipped.
+  // All null → legacy pricing (global 175 + env hotel-skip fee), unchanged.
+  markup_ticket?: number | null;
+  markup_flight?: number | null;
+  markup_hotel?: number | null;
+  skip_hotel_markup?: number | null;
+  // Ticket-only override (USD per ticket). When set AND the customer skips
+  // BOTH flight and hotel, the price is exactly ticket_cost + this value —
+  // no global markup, no event_additional_markup, no skip fees, no component
+  // markups. Absolute, wins over everything. Only the both-skipped scenario;
+  // every other path untouched. Empty/null = no override.
+  ticket_only_markup?: number | null;
 };
 
 export type Flight = {
@@ -162,6 +177,36 @@ export type AffiliateTracking = {
     | "CONFIRMED";
   data: object;
   timestamp: string;
+};
+
+/**
+ * Customer-facing discount code (shared `coupons` table — backoffice writes,
+ * this app validates + applies). Does NOT stack with the affiliate discount:
+ * the bigger single discount wins.
+ */
+export type Coupon = {
+  id: number;
+  /** Stored UPPERCASE; matched case-insensitively. */
+  code: string;
+  /** 'percent' = % off package total; 'fixed' = USD off package total. */
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  /** null = valid on every event. */
+  event_id: number | null;
+  /** ISO date; null = never expires. */
+  valid_until: string | null;
+  /** null = unlimited. */
+  max_uses: number | null;
+  times_used: number;
+  /** Redemptions whose reservation reached status 'Paid' (DB trigger). */
+  times_paid: number;
+  /**
+   * Partner (affiliate) this coupon is attributed to. Orders redeeming the
+   * coupon credit this partner only when they have no affiliate of their own.
+   */
+  partner_tracking_code: string | null;
+  is_active: boolean;
+  created_at: string;
 };
 
 export type SortOptions = "price_asc" | "rating" | "distance_asc";
@@ -304,6 +349,10 @@ export type OrderData = {
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
   status?: string;
+  /** Coupon redeemed on this order (only when it beat the affiliate discount). */
+  coupon_code?: string | null;
+  /** Pre-discount package total USD — server recomputes the coupon discount from it. */
+  coupon_base_total_usd?: number | null;
 };
 
 export type ArtistFields = {

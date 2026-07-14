@@ -8,6 +8,7 @@ export const PriceSummary = ({
   numberOfPersons,
   agentCommission,
   affDiscount,
+  isCouponDiscount = false,
   isNumberOfPersonsEqual,
 }: {
   finalPurchasePrice: number;
@@ -15,8 +16,10 @@ export const PriceSummary = ({
   recommendedPriceAllPax: number;
   numberOfPersons: number;
   agentCommission: number;
-  // Total affiliate discount in USD (already normalized for percentage discounts)
+  // Total winning discount in USD (affiliate or coupon — best one wins)
   affDiscount: number;
+  // true when the winning discount came from a coupon (changes the label)
+  isCouponDiscount?: boolean;
   isNumberOfPersonsEqual: boolean;
 }) => {
   const {
@@ -48,7 +51,7 @@ export const PriceSummary = ({
         ) : (
           affDiscount > 0 && (
             <span className="text-[14px] tabular-nums text-success">
-              כולל הנחת $
+              {isCouponDiscount ? "כולל הנחת קופון $" : "כולל הנחת $"}
               {affDiscount.toLocaleString("en-US")}
             </span>
           )

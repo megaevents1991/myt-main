@@ -95,6 +95,22 @@ function buildHeroItems(
   return items;
 }
 
+// Homepage artist/football slides: EVERY entry, ordered with the ones we have
+// an available event for ("זמין באתר") FIRST and the rest appended at the end.
+// (The hero carousel, by contrast, shows only the available ones.)
+function availableFirst<T extends Artist | FootballTeam>(
+  list: T[],
+  isAvailable: (nameEnglish?: string) => boolean
+): T[] {
+  const avail: T[] = [];
+  const rest: T[] = [];
+  for (const item of list) {
+    if (isAvailable(String(item.fields.nameDBenglish ?? ""))) avail.push(item);
+    else rest.push(item);
+  }
+  return [...avail, ...rest];
+}
+
 export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
@@ -117,6 +133,10 @@ export default async function Home() {
     isAvailable
   );
 
+  // Homepage "אמנים מובילים" / "כדורגל" slides — all entries, available first.
+  const homeArtists = availableFirst(artists, isAvailable);
+  const homeFootball = availableFirst(allFootballTeams, isAvailable);
+
   return (
     <main>
       {/* Add invisible element with timestamp for client checking */}
@@ -136,8 +156,11 @@ export default async function Home() {
         artists={artists}
         carouselArtists={carouselArtists}
         heroItems={heroItems}
+        homeArtists={homeArtists}
+        homeFootball={homeFootball}
       />
-      <CategorySection categories={categories} />
+      {/* קטגוריות (categories) visual hidden for now — needs rework before re-enabling. */}
+      {/* <CategorySection categories={categories} /> */}
       {/* AirlinesStrip + MegaEventsSection (about / "שותפים לדרך") hidden for now — re-add later */}
       <TrustSection />
       <FAQ />

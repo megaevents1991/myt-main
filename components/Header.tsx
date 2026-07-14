@@ -31,6 +31,13 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const floatingRef = useRef<HTMLDivElement>(null);
+  // Shared-element hand-off: when the navbar appears, the floating corner
+  // hamburger glides into the navbar's icon pill (and back). Holds the
+  // measured translate delta from the corner to its slot in the pill.
+  const clusterRef = useRef<HTMLDivElement>(null);
+  const flyRightRef = useRef<HTMLDivElement>(null);
+  const [fly, setFly] = useState({ rx: 0, ry: 0 });
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   // Inside the order flow the Stepper is the only chrome — hide the global
@@ -63,7 +70,13 @@ export const Header = () => {
   useEffect(() => {
     if (!menuOpen) return;
     const onClick = (e: MouseEvent) => {
-      if (!headerRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      // Ignore the floating corner layer — the hamburger there OPENS the menu
+      // on pointerdown, and this mousedown (same gesture) must not undo it.
+      if (
+        !headerRef.current?.contains(e.target as Node) &&
+        !floatingRef.current?.contains(e.target as Node)
+      )
+        setMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
     document.addEventListener("mousedown", onClick);
@@ -73,35 +86,36 @@ export const Header = () => {
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
-  // Header stays hidden over a page's own hero (homepage search / detail hero)
-  // and slides in once the user scrolls past it, keeping the top clean. On
-  // pages with no such hero it's visible from the top so nav is always there.
-  const [shown, setShown] = useState(false);
+  // The header is always visible. Over a page's own hero (homepage search /
+  // detail hero) it goes translucent + blurred so the hero keeps its wow
+  // factor; once the hero scrolls away it turns solid bg-main.
+  const [overHero, setOverHero] = useState(false);
   // Plain pages (catalog/text) have no overlay hero — reserve a spacer so the
   // fixed header never covers the page's first content.
   const [needsSpacer, setNeedsSpacer] = useState(false);
 
   useEffect(() => {
     setPageTitle(null); // reset on navigation; the new page re-sets it if any
-    // Which pages carry their own top hero that the header should defer to:
-    // the homepage (its search bar) and artist/football detail pages (their
+    // Which pages carry their own top hero the header floats over: the
+    // homepage (its search bar) and artist/football detail pages (their
     // DetailHero). Decided by route — not DOM presence — so a slow-loading
     // hero never makes us mistake the page for a plain one.
     const hasOwnHero =
       pathname === "/" || /^\/(artists|football)\/[^/]+$/.test(pathname ?? "");
 
     if (!hasOwnHero) {
-      // Plain page (e.g. /football, /artists, /faq): keep nav available from
-      // the top and push content down so the fixed bar never covers it.
-      setShown(true);
+      // Plain page (e.g. /football, /artists, /faq): solid header from the
+      // top and push content down so the fixed bar never covers it.
+      setOverHero(false);
       setNeedsSpacer(true);
       return;
     }
 
-    // Hero page: reveal the header only once that hero scrolls away, so the
-    // two never overlap. The sentinel may mount after this effect (loading
-    // skeleton first), so wait for it via rAF before observing.
+    // Hero page: translucent while the hero is on screen, solid after. The
+    // sentinel may mount after this effect (loading skeleton first), so wait
+    // for it via rAF before observing.
     setNeedsSpacer(false);
+    setOverHero(true);
     let raf = 0;
     let io: IntersectionObserver | null = null;
     const attach = () => {
@@ -112,7 +126,7 @@ export const Header = () => {
         raf = requestAnimationFrame(attach);
         return;
       }
-      io = new IntersectionObserver(([e]) => setShown(!e.isIntersecting), {
+      io = new IntersectionObserver(([e]) => setOverHero(e.isIntersecting), {
         threshold: 0,
       });
       io.observe(sentinel);
@@ -124,31 +138,123 @@ export const Header = () => {
     };
   }, [pathname]);
 
-  const visible = shown || menuOpen;
+  // Measure the corner hamburger's flight path into the navbar pill. The
+  // pill's final viewport position is derived from layout offsets
+  // (transform-independent — the bar itself may be translated off-screen); the
+  // corner is measured while it sits at its natural spot.
+  useEffect(() => {
+    const measure = () => {
+      const cluster = clusterRef.current;
+      const R = flyRightRef.current;
+      const H = headerRef.current;
+      if (!cluster || !R || !H) return;
+      let cx = 0;
+      let cy = 0;
+      let el: HTMLElement | null = cluster;
+      while (el && el !== H) {
+        cx += el.offsetLeft;
+        cy += el.offsetTop;
+        el = el.offsetParent as HTMLElement | null;
+      }
+      const r = R.getBoundingClientRect();
+      if (!r.width) return;
+      setFly({
+        // Hamburger → the pill's RIGHT end (its slot in the bar).
+        rx: cx + cluster.offsetWidth - 4 - r.right,
+        ry: cy + cluster.offsetHeight / 2 - (r.top + r.height / 2),
+      });
+    };
+    // Only measurable while the corner is at rest at its natural spot.
+    if (!(overHero && !menuOpen)) return;
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+    };
+  }, [overHero, menuOpen, pathname]);
 
   if (hidden) return null;
+
+  // Over the hero: no bar at all — a floating corner hamburger (Claude-style)
+  // in the top-right corner, on every screen size. Opening the menu /
+  // scrolling past the hero slides the solid bar in while the corner fades
+  // out (both stay mounted so the hand-off animates instead of snapping).
+  const showFloating = overHero && !menuOpen;
+  // Same dark pill as the navbar cluster — in BOTH themes (the hero is always
+  // dark, and the icon lands inside the navbar's dark pill when scrolling).
+  const floatBtn =
+    "inline-flex size-9 shrink-0 touch-manipulation md:size-11 items-center justify-center rounded-full bg-main text-main-foreground shadow-card ring-1 ring-white/15 transition-colors hover:bg-secondary hover:text-black hover:ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  // Flight styling for the corner unit: transform+opacity only
+  // (GPU-friendly), interruptible, skipped under reduced-motion.
+  const flyCls =
+    "transition-[transform,opacity] duration-500 ease-in-out motion-reduce:transition-none";
 
   return (
     <>
     {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
+    {/* The floating strip is click-transparent — only the corner units accept
+        input, so the hero logo underneath (centered, same band) stays
+        clickable. */}
+    {!needsSpacer && (
+      <div
+        ref={floatingRef}
+        aria-hidden={!showFloating}
+        className="pointer-events-none fixed inset-x-0 top-0 z-50"
+      >
+        <div className="flex items-start justify-between px-3 pt-3 md:px-5 md:pt-4">
+          {/* RTL: first child sits in the RIGHT corner — the hamburger. It
+              flies into its slot at the pill's right end when the bar shows. */}
+          <div
+            ref={flyRightRef}
+            className={cn(
+              flyCls,
+              showFloating ? "pointer-events-auto" : "opacity-0"
+            )}
+            style={
+              showFloating
+                ? undefined
+                : { transform: `translate(${fly.rx}px, ${fly.ry}px) scale(0.85)` }
+            }
+          >
+            <button
+              type="button"
+              aria-label="פתיחת תפריט"
+              aria-expanded={false}
+              tabIndex={showFloating ? 0 : -1}
+              // pointerdown (not click): reacts on touch-start for zero
+              // latency. onClick kept for keyboard activation.
+              onPointerDown={() => setMenuOpen(true)}
+              onClick={() => setMenuOpen(true)}
+              className={floatBtn}
+            >
+              <Menu className="size-4 md:size-5" aria-hidden />
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <header
       ref={headerRef}
       className={cn(
-        "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground transition-transform duration-300",
-        visible ? "translate-y-0" : "-translate-y-full"
+        "fixed inset-x-0 top-0 z-50 bg-main text-main-foreground transition-transform duration-500 motion-reduce:transition-none",
+        showFloating ? "-translate-y-full" : "translate-y-0"
       )}
     >
       <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-3">
         {/* Action cluster — RTL order (right→left): hamburger (mobile only),
             theme, whatsapp, search. Grouped in a subtle pill so it reads as one
             control, not a loaded row. First DOM child sits on the right in RTL. */}
-        <div className="flex shrink-0 items-center gap-0 rounded-full bg-main-foreground/[0.06] px-0.5">
+        <div ref={clusterRef} className="flex shrink-0 items-center gap-0 rounded-full bg-main-foreground/[0.06] px-0.5">
           <button
             type="button"
             aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            className={cn(iconBtn, "md:hidden")}
+            // Desktop normally has the inline nav — but when the menu was
+            // opened from the hero's floating hamburger, keep the X visible
+            // on every size so it can be closed.
+            className={cn(iconBtn, !menuOpen && "md:hidden")}
           >
             {menuOpen ? (
               <X className="size-[18px]" aria-hidden />
@@ -179,7 +285,7 @@ export const Header = () => {
         {/* Desktop inline nav — replaces the hamburger on ≥md. Centred like the
             page title; hidden on detail pages where the sticky title takes the
             centre slot instead. */}
-        {!pageTitle && (
+        {!pageTitle && !menuOpen && (
           <nav
             aria-label="ניווט"
             className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 md:flex"
@@ -240,10 +346,11 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Slide-down menu — mobile only; desktop nav is inline above */}
+      {/* Slide-down menu — all sizes (desktop reaches it via the hero's
+          floating hamburger; the inline nav hides while it's open). */}
       <div
         className={cn(
-          "overflow-hidden border-t border-main-foreground/10 transition-[max-height] md:hidden",
+          "overflow-hidden border-t border-main-foreground/10 transition-[max-height]",
           menuOpen ? "max-h-96" : "max-h-0 border-t-0"
         )}
       >
