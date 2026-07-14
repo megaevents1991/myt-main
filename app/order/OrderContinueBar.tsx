@@ -115,7 +115,8 @@ export const OrderContinueBar = ({
         {/* Mobile: two stacked rows (slots / price+actions). Desktop (sm+):
             one inline row — slots · price · buttons — like the summary bar. */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 sm:px-3 sm:py-2">
-        {/* Slots */}
+        {/* Slots (hidden entirely in edit-from-summary mode — slots=[]) */}
+        {slots.length > 0 && (
         <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2 sm:min-w-0 sm:flex-1 sm:border-b-0 sm:bg-transparent sm:p-0">
           {slots.map((s) => {
             // Completed steps are clickable buttons — tap navigates back to
@@ -165,6 +166,7 @@ export const OrderContinueBar = ({
             );
           })}
         </div>
+        )}
 
         {/* Price + actions — `sm:contents` folds them into the desktop row. */}
         <div className="flex flex-col gap-2 px-4 py-2.5 sm:contents">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
@@ -52,6 +52,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
     setSkipFlight,
     flightSkipped,
     setFlightSkipped,
+    returnToSummary,
+    setReturnToSummary,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -77,15 +79,15 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const isUS = event?.location?.country_code === "US";
 
-  // "Edit from summary" mode: entering a step via the summary's עריכה button
-  // arms this flag; confirming that step jumps straight back to the summary
-  // (step 4) instead of walking the rest of the flow again. Cleared on arrival
-  // — and ignored when the flow is no longer complete (e.g. a quantity change
-  // wiped the flight/hotel), which falls back to the normal 1→2→3 walk.
-  const [returnToSummary, setReturnToSummary] = useState(false);
+  // "Edit from summary" mode (flag lives in OrderContext so the layout's
+  // Stepper can hide too): entering a step via the summary's עריכה button arms
+  // it; confirming that step jumps straight back to the summary (step 4)
+  // instead of walking the rest of the flow again. Cleared on arrival — and
+  // ignored when the flow is no longer complete (e.g. a quantity change wiped
+  // the flight/hotel), which falls back to the normal 1→2→3 walk.
   useEffect(() => {
     if (step === 4) setReturnToSummary(false);
-  }, [step]);
+  }, [step, setReturnToSummary]);
 
   // Preload hotels as soon as the order flow starts so they're ready
   // by the time the customer reaches step 3 (especially after skip flight).
@@ -401,6 +403,18 @@ export const OrderForm = ({ event }: { event: Event }) => {
     (flight?.id && !flightSkipped ? flightDelta : 0) +
     (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
 
+  // Once the package is COMPLETE (finalPurchasePriceCalc > 0 — flight picked or
+  // skipped), show EXACTLY the summary's per-traveler price (the real
+  // calculateBaseTotal chain: skip fees, composed markups, ticket-only
+  // override, affiliate discount). The additive preview above only serves the
+  // in-progress steps — keeping it after completion made the edit-mode bar
+  // drift a few dollars from the summary.
+  const realTotalAllPax = finalPurchasePriceCalc(affDiscount);
+  const barTotal =
+    realTotalAllPax > 0
+      ? Math.ceil(realTotalAllPax / numberOfPersons)
+      : displayTotal;
+
   const isFinalStep = isUS ? step === 2 : step === 3;
   // Editing from the summary (and the flow is still complete) → the primary
   // action returns to the summary, so say that instead of "המשך למלון".
@@ -454,8 +468,9 @@ export const OrderForm = ({ event }: { event: Event }) => {
       {step < 4 && (
         <div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur">
           <OrderContinueBar
-            slots={continueSlots}
-            total={displayTotal}
+            // Edit mode: hide the flow pills — a focused "pick → save" task.
+            slots={returnToSummary ? [] : continueSlots}
+            total={barTotal}
             primaryLabel={primaryLabel}
             primaryDisabled={buttonDisabled}
             onPrimary={() => nextStep()}

@@ -57,6 +57,11 @@ type AppContext = {
   setSkipFlight: (skip: boolean) => void;
   flightSkipped: boolean;
   setFlightSkipped: (skip: boolean) => void;
+  /** Edit-from-summary mode: the customer jumped to a step via the summary's
+   *  עריכה / +להוספה buttons. The flow chrome (stepper, pills) hides and the
+   *  primary action saves back to the summary. */
+  returnToSummary: boolean;
+  setReturnToSummary: (on: boolean) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

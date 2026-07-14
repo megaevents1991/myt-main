@@ -42,12 +42,15 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [skipHotel, setSkipHotel] = useState(false);
   const [skipFlight, setSkipFlight] = useState(false);
   const [flightSkipped, setFlightSkipped] = useState(false);
+  const [returnToSummary, setReturnToSummary] = useState(false);
 
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";
 
   const handleStepperClick = (index: number) => {
+    // Edit-from-summary is a focused task — no wandering the flow mid-edit.
+    if (returnToSummary) return;
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
@@ -75,7 +78,9 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
         currentStep={step}
         onStepperClick={handleStepperClick}
         steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
-        hideSteps={step === 4}
+        // Hidden on the summary AND during edit-from-summary — an edit is a
+        // focused single-step task, not a walk through the flow.
+        hideSteps={step === 4 || returnToSummary}
       />
       <OrderContext.Provider
         value={{
@@ -113,6 +118,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setSkipFlight,
           flightSkipped,
           setFlightSkipped,
+          returnToSummary,
+          setReturnToSummary,
         }}
       >
         <HotelFetchProvider>
