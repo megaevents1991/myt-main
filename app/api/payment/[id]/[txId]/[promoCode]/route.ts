@@ -29,8 +29,6 @@ export async function GET(
   formData.append("password", password);
   formData.append("int_in", xml);
 
-  console.log("XML:", xml);
-
   const response = await fetch(url, {
     method: "POST",
     body: formData,
@@ -79,8 +77,6 @@ export async function GET(
     .eq("id", id)
     .select()
     .single();
-
-  console.log(JSON.stringify(result));
 
   return NextResponse.json({
     isSuccess,
