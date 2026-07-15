@@ -4,6 +4,7 @@ import { Event } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { isMobile } from "react-device-detect";
 import { ChevronLeft } from "lucide-react";
+import { EventArt } from "@/components/ui/EventArt";
 
 export const EventDataHeader = ({
   event,
@@ -17,16 +18,34 @@ export const EventDataHeader = ({
    *  defaults to the concerts wording with the event name. */
   artistLinkLabel?: string;
 }) => {
-  const imageUrl = event?.card_image_url;
-  const photo = imageUrl && (
+  const alt = artistHref ? `${event?.name ?? ""} — לעמוד האמן` : "";
+  // Blob card-art wins when set (backoffice art_* fields, or borrowed from the
+  // matching artist/team by the fallback enrichment); otherwise the plain photo.
+  const photo = event?.art_image_url ? (
+    <EventArt
+      id={event.id}
+      imageUrl={event.art_image_url}
+      alt={alt}
+      colorIndex={event.art_color_index ?? undefined}
+      shapeIndex={event.art_shape_index ?? undefined}
+      imageScale={event.art_image_scale}
+      bgScale={event.art_bg_scale}
+      imageOffsetX={event.art_image_offset_x}
+      imageOffsetY={event.art_image_offset_y}
+      bgFit={(event.art_shape_index ?? 0) >= 6 ? "cover" : undefined}
+      sizes="80px"
+      hoverZoom={false}
+      className="size-16 shrink-0 rounded-full border-2 border-white shadow-md md:size-20"
+    />
+  ) : event?.card_image_url ? (
     <Image
-      src={imageUrl}
-      alt={artistHref ? `${event?.name ?? ""} — לעמוד האמן` : ""}
+      src={event.card_image_url}
+      alt={alt}
       width={80}
       height={80}
       className="size-16 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-20"
     />
-  );
+  ) : null;
   return (
     <div className="flex w-full flex-row items-center gap-4 lg:w-[30%]">
       {photo &&
