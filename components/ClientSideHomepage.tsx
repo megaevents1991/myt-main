@@ -11,7 +11,6 @@ import { Combobox, Modal, useCombobox } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { ArrowLeftIcon, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { HeroSearch } from "@/components/HeroSearch";
-import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { Dispatch, SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -459,9 +458,6 @@ function CompactEventCard({ event, loading }: { event: Event; loading?: "eager" 
           <div className="absolute top-2 right-2 z-10">
             <EventStatusBadge event={event} />
           </div>
-          {event.skip_flight && event.tags !== "Sold" && (
-            <TicketOnlyBadge />
-          )}
           {/* Brand swoosh background behind the artist image (color + shape per event) */}
           <EventArt
             id={event.id}
@@ -1694,8 +1690,11 @@ const artistIdForEvent = (
 // Identify the HOME team of a fixture. Football collide is home-only: "Arsenal"
 // collects a match only when Arsenal hosts it ("Arsenal FC vs X"), never its away
 // games ("X vs Arsenal"). The home team is the side named to the LEFT of the
-// "vs"/"-" separator; we take the rightmost match within that side so competition
-// prefixes like "Champions League: Arsenal vs ..." still resolve to Arsenal.
+// "vs"/"-" separator. The LONGEST team-name match within that side wins, so
+// "Inter Milan vs Napoli" resolves to "Inter Milan" and never to "Milan" (whose
+// name is contained in Inter's). Rightmost position only breaks length ties,
+// keeping competition prefixes like "Champions League: Arsenal vs ..." resolving
+// to Arsenal even if the prefix happens to contain a team name.
 const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam | null => {
   if (!teams || teams.length === 0) return null;
   const full = normalizeName(event.name_english) || normalizeName(event.name);
@@ -1703,10 +1702,14 @@ const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam |
   const sep = full.match(/\s(?:vs\.?|v\.?|[-–—])\s/i);
   const homeSide = sep && sep.index !== undefined ? full.slice(0, sep.index) : full;
   let best: FootballTeam | null = null;
+  let bestLen = -1;
   let bestIndex = -1;
   for (const team of teams) {
-    const match = wholeWordMatch(homeSide, normalizeName(team.fields.nameDBenglish));
-    if (match && match.index !== undefined && match.index > bestIndex) {
+    const id = normalizeName(team.fields.nameDBenglish);
+    const match = wholeWordMatch(homeSide, id);
+    if (match?.index === undefined) continue;
+    if (id.length > bestLen || (id.length === bestLen && match.index > bestIndex)) {
+      bestLen = id.length;
       bestIndex = match.index;
       best = team;
     }
@@ -1867,7 +1870,6 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
         <article className={`group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
           {/* Image — neon blob + cut-out for artists, full photo for sports */}
           <div className="relative">
-            {event.skip_flight && !computedSold && <TicketOnlyBadge />}
             <EventArt
               id={event.id}
               imageUrl={event.art_image_url || event.card_image_url}
