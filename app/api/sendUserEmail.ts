@@ -79,11 +79,11 @@ export const sendUserEmail = async ({
     departFlight: orderData.flight_order_info?.outbound.flightNumber,
     departFlightDate: dayjs(
       orderData.flight_order_info?.outbound.departureTime,
-    ).format("DD/MM/YYYY HH:MM"),
+    ).format("DD/MM/YYYY HH:mm"),
     returnFlight: orderData.flight_order_info?.inbound.flightNumber,
     returnFlightDate: dayjs(
       orderData.flight_order_info?.inbound.departureTime,
-    ).format("DD/MM/YYYY HH:MM"),
+    ).format("DD/MM/YYYY HH:mm"),
     hotel:
       orderData.hotel_order_info &&
       Object.keys(orderData.hotel_order_info).length > 0

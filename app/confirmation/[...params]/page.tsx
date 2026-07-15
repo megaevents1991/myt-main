@@ -157,9 +157,9 @@ export default function ConfirmationPage() {
           dates: hasFlight
             ? `Outbound: ${dayjs(
                 flightInfo.outbound.departureTime
-              ).format("DD/MM/YYYY HH:MM")}, Return: ${dayjs(
+              ).format("DD/MM/YYYY HH:mm")}, Return: ${dayjs(
                 flightInfo.inbound.departureTime
-              ).format("DD/MM/YYYY HH:MM")}`
+              ).format("DD/MM/YYYY HH:mm")}`
             : "",
           hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
