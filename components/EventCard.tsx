@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { Button } from "@/components/ui/button";
 import { PackageIcons } from "@/components/ui/PackageIcons";
-import { TicketOnlyBadge } from "@/components/TicketOnlyBadge";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import EventButton from "@/components/EventButton";
 
@@ -48,19 +47,9 @@ export const EventCard = ({
     >
       <EventButton event={event}>
         <article className="group relative flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-[0_4px_16px_-6px_rgb(0_0_0/0.12)] ring-1 ring-black/[0.03] transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_14px_36px_-10px_hsl(var(--brand-mint)/0.4)]">
-          {/* Ticket-only marker — pinned in the top-right corner; the date row
-              below gets right-side room so the badge never sits on the date. */}
-          {!sold && event.skip_flight && (
-            <TicketOnlyBadge className="absolute right-3 top-3 z-20" />
-          )}
           {/* Date on the right, price on the left (swapped per mock) */}
           <div className="flex items-start justify-between gap-3">
-            <div
-              className={cn(
-                "flex flex-col items-start",
-                !sold && event.skip_flight && "ps-12"
-              )}
-            >
+            <div className="flex flex-col items-start">
               <span className="text-xl font-extrabold tabular-nums text-foreground">
                 {dateLabel}
               </span>
