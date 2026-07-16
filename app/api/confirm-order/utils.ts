@@ -442,7 +442,9 @@ export const userEmail = (
                                                   <strong style="color: #0A1A14;">כרטיסים:</strong> ${replacements.ticketType}, (<span style="unicode-bidi: embed;">${replacements.quantity}</span>)
                                               </td>
                                           </tr>
-                                          <tr>
+                                          ${
+                                            replacements.departFlight
+                                              ? `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
                                                   <strong style="color: #0A1A14;">חברת תעופה:</strong> ${replacements.airline}
                                               </td>
@@ -452,7 +454,13 @@ export const userEmail = (
                                                   <strong style="color: #0A1A14;">טיסת הלוך:</strong> <span style="unicode-bidi: embed;">${replacements.departFlight}, ${replacements.departFlightDate}</span>
                                                   <br><strong style="color: #0A1A14;">טיסת חזור:</strong> <span style="unicode-bidi: embed;">${replacements.returnFlight}, ${replacements.returnFlightDate}</span>
                                               </td>
-                                          </tr>
+                                          </tr>`
+                                              : `<tr>
+                                              <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
+                                                  <strong style="color: #0A1A14;">טיסה:</strong> ללא טיסה
+                                              </td>
+                                          </tr>`
+                                          }
                                           ${
                                             replacements.hotel !== "ללא מלון"
                                               ? `<tr>

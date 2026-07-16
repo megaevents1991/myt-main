@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateAndRecordPayment } from "@/app/api/payment/validateAndRecord";
 
 export async function POST(
   request: NextRequest,
@@ -35,8 +36,26 @@ export async function POST(
       timestamp: new Date().toISOString(),
     });
 
-    // Optional: You can add any server-side processing here before redirecting
-    // For example: logging, analytics, webhook calls, etc.
+    // Record the payment outcome SERVER-SIDE, before the browser redirect.
+    // The confirmation page re-validates too (idempotent), but this is the
+    // reliable write: it runs even when the customer closes the tab / loses
+    // network after paying — previously those paid orders stayed Pending and
+    // the backoffice flagged them Lost. Failure here must not break the
+    // redirect: the page's own validation is the fallback.
+    if (paymentData.txId) {
+      try {
+        await validateAndRecordPayment({
+          orderId,
+          txId: paymentData.txId,
+          promoCode,
+        });
+      } catch (validationError) {
+        console.error(
+          "Server-side payment recording failed (page will retry):",
+          JSON.stringify({ orderId, error: String(validationError) }),
+        );
+      }
+    }
 
     // Redirect to your existing confirmation page with all form data as query parameters
     return NextResponse.redirect(redirectUrl);

@@ -121,17 +121,25 @@ export default function ConfirmationPage() {
 
   const handlePageOpen = async () => {
     setIsLoading(true);
-    try {
-      const orderData = await getOrderData();
-      const resultObject = Object.fromEntries(searchParams.entries());
 
-      let isPaid: PaymentStatus = "pending";
-
-      if (status && resultObject.txId) {
+    // Validate the payment FIRST and independently — this call is what marks
+    // the order Paid (with the server callback as its twin). It must never be
+    // skipped because the display fetch below failed.
+    // useSearchParams can be null before hydration completes — never throw here.
+    const resultObject = Object.fromEntries(searchParams?.entries() ?? []);
+    let isPaid: PaymentStatus = "pending";
+    if (status && resultObject.txId) {
+      try {
         const { isSuccess } = await validatePayment(resultObject.txId);
         isPaid = isSuccess ? "success" : "error";
+      } catch (error) {
+        console.error("Payment validation call failed:", error);
       }
-      if (orderData) {
+    }
+
+    try {
+      const orderData = await getOrderData();
+      if (orderData && orderData.event_order_info) {
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
         }
@@ -146,10 +154,11 @@ export default function ConfirmationPage() {
 
         const orderDataToShow: OrderConfirmationData = {
           eventName: orderData.event_order_info.name,
-          eventDate: orderData.event_order_info.date.toString(),
+          eventDate: orderData.event_order_info.date?.toString() ?? "",
           eventLocation: orderData.event_order_info.location_name,
           ticketType: orderData.event_order_info.category,
-          quantity: orderData.event_order_info.number_of_ticket.toString(),
+          quantity:
+            orderData.event_order_info.number_of_ticket?.toString() ?? "",
           airline: hasFlight ? flightInfo.metadata?.name ?? "" : "",
           flights: hasFlight
             ? `Outbound: ${flightInfo.outbound.flightNumber}, Return: ${flightInfo.inbound.flightNumber}`
