@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { createFeedAuthClient, type CookieToSet } from "@/lib/feed/feedAuth";
+import {
+  createFeedAuthClient,
+  STAFF_ROLES,
+  type CookieToSet,
+} from "@/lib/feed/feedAuth";
 
 /**
  * Google OAuth callback for /product-feed. Exchanges the PKCE code, verifies
@@ -31,9 +35,7 @@ export async function GET(request: Request) {
       .eq("id", data.user.id)
       .maybeSingle();
     const isStaff =
-      !profErr &&
-      profile?.is_active &&
-      ["superadmin", "admin", "editor"].includes(profile.role);
+      !profErr && profile?.is_active && STAFF_ROLES.includes(profile.role);
 
     if (!isStaff) {
       await supabaseAuth.auth.signOut().catch(() => {});
