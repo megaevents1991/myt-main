@@ -32,7 +32,7 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     description: "",
     card_image_url: "https://example.com/bryan.jpg",
     tickets_and_rates: [
-      { category: "A", price: 120, id: "t1", description: "", available: true },
+      { category: "A", price: 120, id: "t1", description: "", available: true, colorOnTheMap: "" },
     ],
     def_date_depart: "2026-10-01",
     def_date_return: "2026-10-03",
@@ -77,7 +77,7 @@ assert.strictEqual(formatPriceUSD(1811), "1811.00 USD");
 /* price fallback: sold out (no available tickets) still uses cheapest ticket */
 const soldOut = baseEvent({
   tickets_and_rates: [
-    { category: "A", price: 120, id: "t1", description: "", available: false },
+    { category: "A", price: 120, id: "t1", description: "", available: false, colorOnTheMap: "" },
   ],
 });
 assert.strictEqual(feedPriceUSD(soldOut), 1811);
