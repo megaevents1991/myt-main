@@ -443,12 +443,14 @@ export default function OrderReview({
 
   // Inactivity detection for special offer (desktop + mobile)
   useEffect(() => {
-    // Only for non-agent bookings, only when initial info modal is closed, and if offer is allowed
+    // Only for non-agent bookings, only when initial info modal is closed, and if offer is allowed.
+    // Ticket-only orders (flight skipped) never get the extra inactivity discount.
     if (
       agentCommission > 0 ||
       openModal ||
       !isSpecialOfferAllowed ||
-      isPercentageAffiliateDiscount
+      isPercentageAffiliateDiscount ||
+      flightSkipped
     )
       return;
 
@@ -492,6 +494,7 @@ export default function OrderReview({
     isSpecialOfferAllowed,
     affiliateDiscountPerTicketUsd,
     isPercentageAffiliateDiscount,
+    flightSkipped,
   ]);
 
   const setErrors = (requireAllPassengers = false) => {
@@ -982,7 +985,8 @@ export default function OrderReview({
 
   const handleSpecialOfferAccept = () => {
     // Guard in case modal state changes mid-flight
-    if (!isSpecialOfferAllowed || isPercentageAffiliateDiscount) return;
+    if (!isSpecialOfferAllowed || isPercentageAffiliateDiscount || flightSkipped)
+      return;
 
     setSpecialOfferOpen(false);
     if (agentCommission <= 0) {
@@ -1053,7 +1057,8 @@ export default function OrderReview({
           agentCommission <= 0 &&
           specialOfferOpen &&
           isSpecialOfferAllowed &&
-          !isPercentageAffiliateDiscount
+          !isPercentageAffiliateDiscount &&
+          !flightSkipped
         }
         iconType="Gift"
       />
