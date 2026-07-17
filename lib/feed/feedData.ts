@@ -7,7 +7,7 @@
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/lib/app.types";
 import type { EventCategory, EventTag } from "@/lib/taxonomy.types";
-import { getAllCategories, getAllTags } from "@/lib/taxonomy";
+import { getAllTags } from "@/lib/taxonomy";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
 import {
@@ -69,7 +69,10 @@ async function getTaxonomyByEvent(
   if (!eventIds.length) return map;
 
   const [cats, tags, catLinks, tagLinks] = await Promise.all([
-    getAllCategories(),
+    // ALL non-deleted categories, hidden included — product_type describes
+    // what the event IS; a category hidden from the site (is_active=false,
+    // page 404s) must still label its events in the Meta catalog.
+    fetchAllCategories(),
     getAllTags(),
     fetchLinks("event_category_links", "category_id", eventIds),
     fetchLinks("event_tag_links", "tag_id", eventIds),
@@ -107,6 +110,18 @@ async function getTaxonomyByEvent(
   for (const info of map.values()) info.tagSlugs.sort();
 
   return map;
+}
+
+async function fetchAllCategories(): Promise<EventCategory[]> {
+  const { data, error } = await supabase
+    .from("event_categories")
+    .select("*")
+    .eq("is_deleted", false);
+  if (error) {
+    console.error("[feed] event_categories query failed:", JSON.stringify(error));
+    return [];
+  }
+  return (data ?? []) as EventCategory[];
 }
 
 async function fetchLinks(

@@ -23,6 +23,8 @@ export const metadata: Metadata = {
 const ERRORS: Record<string, string> = {
   oauth: "ההתחברות נכשלה. נסו שוב.",
   "no-account": "אין לחשבון הזה הרשאת צוות. יש להתחבר עם משתמש הבקאופיס.",
+  credentials: "אימייל או סיסמה שגויים.",
+  missing: "יש למלא אימייל וסיסמה.",
 };
 
 export default async function ProductFeedPage({
@@ -48,9 +50,39 @@ export default async function ProductFeedPage({
               {ERRORS[error] ?? "שגיאה. נסו שוב."}
             </p>
           )}
+          {/* Same backoffice credentials — Supabase Auth email+password */}
+          <form method="post" action="/api/feed-auth/login" className="space-y-3">
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="אימייל"
+              dir="ltr"
+              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
+            />
+            <input
+              name="password"
+              type="password"
+              required
+              placeholder="סיסמה"
+              dir="ltr"
+              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-main px-4 py-3 font-bold text-white transition-opacity hover:opacity-90"
+            >
+              כניסה
+            </button>
+          </form>
+          <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            או
+            <span className="h-px flex-1 bg-border" />
+          </div>
           <a
             href="/api/feed-auth/google"
-            className="inline-block w-full rounded-xl bg-main px-4 py-3 font-bold text-white transition-opacity hover:opacity-90"
+            className="inline-block w-full rounded-xl border border-border bg-white px-4 py-3 font-bold text-foreground transition-colors hover:bg-gray-50"
           >
             התחברות עם Google
           </a>

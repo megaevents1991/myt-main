@@ -12,8 +12,8 @@ import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { supabase } from "@/lib/supabase";
 
-/** Mirrors backoffice `types/auth.types.ts` STAFF_ROLES. */
-const STAFF_ROLES = ["superadmin", "admin", "editor"];
+/** Mirrors backoffice `types/auth.types.ts` STAFF_ROLES — the ONLY roles allowed in. */
+export const STAFF_ROLES = ["superadmin", "admin", "editor"];
 
 export type FeedUser = {
   id: string;
