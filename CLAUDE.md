@@ -94,6 +94,21 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT` — Safety buffer % added to the static DB price for `tx_event` tickets **only when live TixStock pricing is unavailable** (default 15). Prevents selling below the live price during a TX outage. Applied in `app/order/TicketSelection.tsx`.
 - `NEXT_PUBLIC_API_URL` — Base URL for internal API calls
 
+## Meta Product Feed
+
+- `GET /feeds/meta-catalog.xml` — public RSS 2.0 catalog feed Meta fetches hourly (one item per
+  `/order/{id}`; sold-out marked `out of stock`, never deleted; World Cup 2026 items link to the
+  mondial subdomain). `GET /feeds/meta-catalog.csv` — same rows as CSV. Built live in
+  `lib/feed/feedData.ts` + serialized by `lib/feed/metaCatalog.ts` (pure — test:
+  `npx tsx lib/feed/__tests__/metaCatalog.test.ts`).
+- `/product-feed` — internal admin page (counts, preview, CSV export). Gated by the SAME
+  Supabase-Auth Google SSO + `user_profiles` staff roles as the backoffice (`lib/feed/feedAuth.ts`,
+  routes under `app/api/feed-auth/`). Requires this app's callback URL
+  (`https://www.mega-events.co.il/api/feed-auth/callback`) in the Supabase Auth redirect allowlist.
+- `product_type` / `custom_label_0-3` come from the backoffice event taxonomy
+  (`event_categories` path + `event_tags` slugs); `custom_label_4` = `available`/`sold_out`.
+- Middleware skips `/feeds/` so the routes' own `Cache-Control` applies.
+
 ## Architecture
 
 ### Tech Stack

@@ -10,8 +10,10 @@ export function middleware(request: NextRequest) {
   
   // For HTML pages (not static assets), set reasonable cache control
   if (
-    !pathname.startsWith('/_next/') && 
+    !pathname.startsWith('/_next/') &&
     !pathname.startsWith('/api/') &&
+    // Feed routes set their own Cache-Control (Meta fetches them on a schedule).
+    !pathname.startsWith('/feeds/') &&
     !pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)
   ) {
     // Allow browser to cache but must revalidate with server

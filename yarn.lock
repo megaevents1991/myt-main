@@ -1745,6 +1745,13 @@
     tslib "2.8.1"
     ws "^8.18.2"
 
+"@supabase/ssr@^0.12.3":
+  version "0.12.3"
+  resolved "https://registry.yarnpkg.com/@supabase/ssr/-/ssr-0.12.3.tgz#114f149fa89a2d2e152f19c4b6f6553dc7889397"
+  integrity sha512-qWXJ/dI7CiYDKyTgIPqJ4Qkh8y5edh2LdF/nkN48z47mmEVzAO2OE+YErYeQ/UemVfonn/F4kFz+lhLqoVMdpw==
+  dependencies:
+    cookie "^1.0.2"
+
 "@supabase/storage-js@2.86.0":
   version "2.86.0"
   resolved "https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.86.0.tgz"
@@ -2590,6 +2597,11 @@ contrast-color@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmjs.org/contrast-color/-/contrast-color-1.0.1.tgz"
   integrity sha512-XeTV/LiyWrf/OWnODTqve2YGBfg32N6zlLqQjJKmEY+ffDqIfecgdmluVz7tky1D4VEaweZgoeRJJT87gDSDCQ==
+
+cookie@^1.0.2:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/cookie/-/cookie-1.1.1.tgz#3bb9bdfc82369db9c2f69c93c9c3ceb310c88b3c"
+  integrity sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==
 
 cross-spawn@^7.0.2, cross-spawn@^7.0.3:
   version "7.0.6"

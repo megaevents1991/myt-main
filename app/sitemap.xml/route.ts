@@ -1,6 +1,8 @@
 import { getCachedEvents } from "@/lib/eventsData";
 import { getArtistSlugs } from "@/lib/artists";
 import { getFootballTeamSlugs } from "@/lib/football";
+import { getAllCategories } from "@/lib/taxonomy";
+import { slugPathOf } from "@/lib/taxonomy-tree";
 
 export async function GET() {
   try {
@@ -100,11 +102,32 @@ export async function GET() {
       console.error("Error fetching football teams for sitemap:", error);
     }
 
+    // Taxonomy category pages (/c/football/premier-league...) — canonical
+    // nested paths only, active categories only.
+    let categoryPages: Array<{
+      url: string;
+      lastModified: string;
+      changeFrequency: string;
+      priority: number;
+    }> = [];
+    try {
+      const cats = await getAllCategories();
+      categoryPages = cats.map((cat) => ({
+        url: `${baseUrl}/c/${slugPathOf(cat, cats).join("/")}`,
+        lastModified: cat.updated_at || STATIC_LASTMOD,
+        changeFrequency: "weekly",
+        priority: 0.8,
+      }));
+    } catch (error) {
+      console.error("Error fetching taxonomy categories for sitemap:", error);
+    }
+
     const allPages = [
       ...staticPages,
       ...eventPages,
       ...artistPages,
       ...footballPages,
+      ...categoryPages,
     ];
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
