@@ -53,7 +53,7 @@ export async function getFeedUser(): Promise<FeedUser | null> {
     const { data, error } = await auth.auth.getUser();
     if (error || !data.user?.email) return null;
 
-    const { data: profile, error: profErr } = await (supabase as any)
+    const { data: profile, error: profErr } = await supabase
       .from("user_profiles")
       .select("id,email,display_name,role,is_active")
       .eq("id", data.user.id)

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/product-feed?error=oauth", request.url));
     }
 
-    const { data: profile, error: profErr } = await (supabase as any)
+    const { data: profile, error: profErr } = await supabase
       .from("user_profiles")
       .select("id,role,is_active")
       .eq("id", data.user.id)
