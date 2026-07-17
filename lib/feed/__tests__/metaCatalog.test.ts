@@ -98,7 +98,7 @@ assert.strictEqual(
 /* buildFeedItem: full item */
 const item = buildFeedItem(ev, TAX, CUTOFF, TODAY) as FeedItem;
 assert.strictEqual(item.id, 607);
-assert.strictEqual(item.title, "בריאן אדמס · ברלין · 2.10 · טיסה+מלון+כרטיס");
+assert.strictEqual(item.title, "בריאן אדמס · ברלין · 2.10");
 assert.strictEqual(item.availability, "in stock");
 assert.strictEqual(item.price, "1811.00 USD");
 assert.strictEqual(item.link, "https://www.mega-events.co.il/order/607");
@@ -124,9 +124,9 @@ assert.strictEqual(taggedSold.availability, "out of stock");
 const tooSoon = buildFeedItem(baseEvent({ date: "2026-07-20" }), TAX, CUTOFF, TODAY) as FeedItem;
 assert.strictEqual(tooSoon.availability, "out of stock");
 
-/* skip_flight event → hotel+ticket composition */
+/* skip_flight event → title unaffected by composition (removed from title) */
 const noFlight = buildFeedItem(baseEvent({ skip_flight: true }), TAX, CUTOFF, TODAY) as FeedItem;
-assert.ok(noFlight.title.endsWith("מלון+כרטיס") && !noFlight.title.includes("טיסה"));
+assert.strictEqual(noFlight.title, "בריאן אדמס · ברלין · 2.10");
 
 /* campaign creative wins over card image; banner rides along */
 const withCampaign = buildFeedItem(

@@ -187,6 +187,7 @@ export default async function ProductFeedPage({
           <thead>
             <tr className="border-b border-border bg-gray-50 text-right text-xs text-muted-foreground">
               <th className="px-3 py-2">id</th>
+              <th className="px-3 py-2">image</th>
               <th className="px-3 py-2">title</th>
               <th className="px-3 py-2">price</th>
               <th className="px-3 py-2">availability</th>
@@ -207,6 +208,25 @@ export default async function ProductFeedPage({
                     dir="ltr"
                   >
                     {it.id}
+                  </a>
+                </td>
+                <td className="px-3 py-2">
+                  <a href={it.image_link} target="_blank" rel="noopener" className="relative block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={it.image_link}
+                      alt=""
+                      className="h-16 w-16 rounded-md border border-border object-cover"
+                    />
+                    <span
+                      className={
+                        it.has_campaign
+                          ? "absolute -bottom-1 -right-1 rounded-full bg-main px-1.5 py-0.5 text-[9px] font-bold text-white"
+                          : "absolute -bottom-1 -right-1 rounded-full bg-gray-400 px-1.5 py-0.5 text-[9px] font-bold text-white"
+                      }
+                    >
+                      {it.has_campaign ? "קמפיין" : "מקורי"}
+                    </span>
                   </a>
                 </td>
                 <td className="max-w-[320px] px-3 py-2">{it.title}</td>

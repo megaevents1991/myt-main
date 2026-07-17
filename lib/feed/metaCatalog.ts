@@ -157,13 +157,7 @@ export function buildFeedItem(
   const city = event.location?.name ?? "";
 
   const soldOut = isEventSoldOut(event) || eventDate < availabilityCutoffISO;
-  const composition = event.skip_flight ? "מלון+כרטיס" : "טיסה+מלון+כרטיס";
-  const title = [
-    event.name,
-    city,
-    `${d.getUTCDate()}.${d.getUTCMonth() + 1}`,
-    composition,
-  ]
+  const title = [event.name, city, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
     .filter(Boolean)
     .join(" · ")
     .slice(0, 200);
