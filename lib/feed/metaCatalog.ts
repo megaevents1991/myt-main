@@ -35,6 +35,10 @@ export type FeedItem = {
   price: string;
   link: string;
   image_link: string;
+  /** Banner-format campaign creative, when one exists (Meta shows extras). */
+  additional_image_link: string | null;
+  /** True when image_link is the auto-generated campaign creative. */
+  has_campaign: boolean;
   brand: string;
   /** Day after the event, YYYY-MM-DD — Meta auto-hides past events. */
   expiration_date: string;
@@ -143,7 +147,10 @@ export function buildFeedItem(
 ): FeedItem | { skipped: string } {
   const price = feedPriceUSD(event);
   if (price == null) return { skipped: "no computable price" };
-  if (!event.card_image_url) return { skipped: "no image" };
+  // Campaign creative (backoffice nightly cron) wins; original card image is
+  // the fallback for events the auto-derivation couldn't handle cleanly.
+  const imageLink = event.campaign_image_url || event.card_image_url;
+  if (!imageLink) return { skipped: "no image" };
 
   const eventDate = event.date.split("T")[0];
   const d = new Date(`${eventDate}T00:00:00Z`);
@@ -194,7 +201,9 @@ export function buildFeedItem(
     condition: "new",
     price: formatPriceUSD(price),
     link: orderLink(event),
-    image_link: event.card_image_url,
+    image_link: imageLink,
+    additional_image_link: event.campaign_image_url ? (event.campaign_banner_url ?? null) : null,
+    has_campaign: Boolean(event.campaign_image_url),
     brand: FEED_BRAND,
     expiration_date: expirationDateOf(eventDate),
     product_type: taxonomy.categoryPath.join(" > "),
@@ -236,7 +245,7 @@ export function toXml(items: FeedItem[]): string {
       <g:price>${it.price}</g:price>
       <g:link>${escapeXml(it.link)}</g:link>
       <g:image_link>${escapeXml(it.image_link)}</g:image_link>
-      <g:brand>${escapeXml(it.brand)}</g:brand>
+${it.additional_image_link ? `      <g:additional_image_link>${escapeXml(it.additional_image_link)}</g:additional_image_link>\n` : ""}      <g:brand>${escapeXml(it.brand)}</g:brand>
       <g:expiration_date>${it.expiration_date}</g:expiration_date>
 ${it.product_type ? `      <g:product_type>${escapeXml(it.product_type)}</g:product_type>\n` : ""}${labels ? labels + "\n" : ""}${customLabels}
 ${customNumbers}
@@ -258,7 +267,7 @@ ${itemXml}
 
 const CSV_HEADERS = [
   "id", "title", "description", "availability", "condition", "price", "link",
-  "image_link", "brand", "expiration_date", "product_type",
+  "image_link", "additional_image_link", "brand", "expiration_date", "product_type",
   "custom_label_0", "custom_label_1", "custom_label_2", "custom_label_3", "custom_label_4",
   "custom_number_0", "custom_number_1", "custom_number_2",
 ];
@@ -273,7 +282,8 @@ export function toCsv(items: FeedItem[]): string {
   const rows = items.map((it) =>
     [
       it.id, it.title, it.description, it.availability, it.condition, it.price,
-      it.link, it.image_link, it.brand, it.expiration_date, it.product_type,
+      it.link, it.image_link, it.additional_image_link ?? "", it.brand,
+      it.expiration_date, it.product_type,
       ...it.custom_labels, ...it.custom_numbers,
     ]
       .map(csvCell)

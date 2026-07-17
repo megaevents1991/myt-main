@@ -147,11 +147,12 @@ export default async function ProductFeedPage({
       </div>
 
       {/* Counts */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
         {[
           { label: "פריטים בפיד", value: items.length },
           { label: "במלאי (in stock)", value: inStock },
           { label: "אזל (out of stock)", value: items.length - inStock },
+          { label: "עם קריאייטיב קמפיין", value: items.filter((i) => i.has_campaign).length },
           { label: "לא נכנסו לפיד", value: skipped.length },
         ].map((s) => (
           <div

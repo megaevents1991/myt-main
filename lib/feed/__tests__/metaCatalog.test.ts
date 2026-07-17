@@ -128,6 +128,42 @@ assert.strictEqual(tooSoon.availability, "out of stock");
 const noFlight = buildFeedItem(baseEvent({ skip_flight: true }), TAX, CUTOFF, TODAY) as FeedItem;
 assert.ok(noFlight.title.endsWith("מלון+כרטיס") && !noFlight.title.includes("טיסה"));
 
+/* campaign creative wins over card image; banner rides along */
+const withCampaign = buildFeedItem(
+  baseEvent({
+    campaign_image_url: "https://cdn.example.com/auto/event-607-square.png?v=abc",
+    campaign_banner_url: "https://cdn.example.com/auto/event-607-banner.png?v=abc",
+  }),
+  TAX, CUTOFF, TODAY
+) as FeedItem;
+assert.strictEqual(
+  withCampaign.image_link,
+  "https://cdn.example.com/auto/event-607-square.png?v=abc"
+);
+assert.strictEqual(
+  withCampaign.additional_image_link,
+  "https://cdn.example.com/auto/event-607-banner.png?v=abc"
+);
+assert.strictEqual(withCampaign.has_campaign, true);
+const campaignXml = toXml([withCampaign]);
+assert.ok(campaignXml.includes("<g:additional_image_link>"));
+
+/* no campaign → original card image, no additional link */
+assert.strictEqual(item.image_link, "https://example.com/bryan.jpg");
+assert.strictEqual(item.additional_image_link, null);
+assert.strictEqual(item.has_campaign, false);
+assert.ok(!toXml([item]).includes("additional_image_link"));
+
+/* campaign image works even when the event has no card image */
+const campaignOnly = buildFeedItem(
+  baseEvent({
+    card_image_url: "",
+    campaign_image_url: "https://cdn.example.com/auto/event-607-square.png?v=abc",
+  }),
+  TAX, CUTOFF, TODAY
+) as FeedItem;
+assert.strictEqual(campaignOnly.has_campaign, true);
+
 /* skips: no price / no image */
 assert.deepStrictEqual(
   buildFeedItem(baseEvent({ tickets_and_rates: [], usual_price: 0 }), TAX, CUTOFF, TODAY),
