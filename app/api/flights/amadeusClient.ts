@@ -25,8 +25,8 @@ type AmadeusEnv = "test" | "enterprise";
 const ENV = (process.env.AMADEUS_ENV as AmadeusEnv) || "test";
 
 // Default hosts per environment. `test` is the Enterprise SANDBOX gateway
-// (test.travel.*) — the host the NEW_AMADEUS_* credentials authenticate against.
-// `enterprise` is the production gateway, used once we flip to real prod.
+// (test.travel.*). `enterprise` is the production gateway (travel.*) — the host
+// the production keys authenticate against (verified live 2026-07-18).
 // Both can be overridden via AMADEUS_AUTH_HOST / AMADEUS_API_HOST.
 const DEFAULT_HOSTS: Record<AmadeusEnv, { auth: string; api: string }> = {
   test: {
@@ -34,8 +34,8 @@ const DEFAULT_HOSTS: Record<AmadeusEnv, { auth: string; api: string }> = {
     api: "https://test.travel.api.amadeus.com",
   },
   enterprise: {
-    auth: "https://api.amadeus.com",
-    api: "https://api.amadeus.com",
+    auth: "https://travel.api.amadeus.com",
+    api: "https://travel.api.amadeus.com",
   },
 };
 
