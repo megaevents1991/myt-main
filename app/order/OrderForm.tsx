@@ -238,6 +238,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
             body: JSON.stringify({
               flightOffer: flight?.offer,
               virtual: flight?.virtualOfferType || false,
+              eventId: event?.id,
             }),
           }).then((res) => {
             if (res.ok) {

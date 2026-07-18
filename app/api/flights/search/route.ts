@@ -258,17 +258,24 @@ export async function POST(request: Request) {
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
 
-    const response = await retryAmadeusCall(() => 
-      amadeus.shopping.flightOffersSearch.get({
-        originLocationCode,
-        destinationLocationCode: event.location.city_iata,
-        departureDate,
-        returnDate,
-        adults: adults || 1,
-        max: 250,
-        nonStop,
-        currencyCode,
-      })
+    // Amadeus per-request client reference (ama-Client-Ref) — required by the
+    // production-certification checklist. Ties the call to the event + time.
+    const clientRef = `MYT-${event.id}-${Math.floor(Date.now() / 1000)}`;
+
+    const response = await retryAmadeusCall(() =>
+      amadeus.shopping.flightOffersSearch.get(
+        {
+          originLocationCode,
+          destinationLocationCode: event.location.city_iata,
+          departureDate,
+          returnDate,
+          adults: adults || 1,
+          max: 250,
+          nonStop,
+          currencyCode,
+        },
+        clientRef
+      )
     );
 
     const flights = await getOfflineFlightsFromDB(
@@ -282,8 +289,8 @@ export async function POST(request: Request) {
     const baseId = flights.length + 1;
 
     // Transform Amadeus response to match our flight data structure
-    const moreFlights: Flight[] = response.result.data.reduce(
-      (acc, offer) => {
+    const moreFlights: Flight[] = (response.result.data as FlightOffer[]).reduce(
+      (acc: Flight[], offer: FlightOffer) => {
         const { validatingAirlineCodes, price, itineraries, travelerPricings } =
           offer;
         const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
@@ -492,6 +499,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ flights, debug });
   } catch (error) {
     console.error("Error fetching flights:", error);
+    // Surface the actual Amadeus error detail (otherwise node prints `[Object]`)
+    const amErr = (error as AmadeusError)?.response?.result?.errors;
+    if (amErr) {
+      console.error("Amadeus error detail:", JSON.stringify(amErr, null, 2));
+    }
     return NextResponse.json(
       {
         error:

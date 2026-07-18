@@ -4,9 +4,28 @@
     {
       "name": "myt-main-dev",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "-H", "0.0.0.0"],
+      "runtimeArgs": [
+        "node_modules/next/dist/bin/next",
+        "dev",
+        "-H",
+        "0.0.0.0"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "backoffice-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "../myt-backoffice",
+        "--",
+        "-p",
+        "3005"
+      ],
+      "port": 3005
     }
   ]
 }
