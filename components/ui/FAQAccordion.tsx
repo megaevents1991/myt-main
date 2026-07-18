@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { trackEvent } from "@/lib/mixpanel";
+import { FaqShape } from "@/components/ui/FaqShape";
 
 type FAQItem = {
   question: string;
@@ -15,6 +16,7 @@ export default function FAQAccordion({ items }: { items: FAQItem[] }) {
       {items.map((item, index) => (
         <FAQItem
           key={index}
+          index={index}
           question={item.question}
           answer={item.answer}
           hasRichText={item.hasRichText}
@@ -25,10 +27,12 @@ export default function FAQAccordion({ items }: { items: FAQItem[] }) {
 }
 
 function FAQItem({
+  index,
   question,
   answer,
   hasRichText = false,
 }: {
+  index: number;
   question: string;
   answer: string;
   hasRichText?: boolean;
@@ -37,9 +41,9 @@ function FAQItem({
   const contentId = `faq-content-${question.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
-        className="w-full flex justify-between items-center p-4 text-right bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex justify-between items-center p-4 text-right bg-muted hover:bg-accent transition-colors"
         onClick={() => {
           if (isOpen === false) {
             trackEvent("buttonClick", {
@@ -54,14 +58,17 @@ function FAQItem({
         aria-controls={contentId}
         type="button"
       >
-        <span className="font-bold">{question}</span>
-        <span className="text-xl font-bold text-gray-500" aria-hidden="true">
+        <span className="flex items-center gap-3">
+          <FaqShape index={index} />
+          <span className="font-bold">{question}</span>
+        </span>
+        <span className="text-xl font-bold text-muted-foreground" aria-hidden="true">
           {isOpen ? "−" : "+"}
         </span>
       </button>
 
       {isOpen && (
-        <div className="p-4 bg-white" id={contentId} role="region" aria-labelledby={contentId}>
+        <div className="p-4 bg-card text-card-foreground" id={contentId} role="region" aria-labelledby={contentId}>
           {hasRichText ? (
             <div
               dangerouslySetInnerHTML={{ __html: answer }}

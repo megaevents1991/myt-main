@@ -1,5 +1,4 @@
-import { contentfulClient } from "@/lib/contentful";
-import { BlogTemplateFields } from "@/lib/app.types";
+import { getBlogPostBySlug, getBlogPostSlugs } from "@/lib/blog";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -21,7 +20,7 @@ export async function generateMetadata({
   const { slug } = await params;
 
   try {
-    const post = await contentfulClient.getEntry<BlogTemplateFields>(slug);
+    const post = await getBlogPostBySlug(slug);
     if (!post?.fields?.title) {
       return { title: "Blog Post Not Found - MYT" };
     }
@@ -56,13 +55,8 @@ export async function generateMetadata({
 
 export async function generateStaticParams() {
   try {
-    const { items } = await contentfulClient.getEntries({
-      content_type: "blogTemplate",
-    });
-
-    return items.map((item) => ({
-      slug: item.sys.id,
-    }));
+    const slugs = await getBlogPostSlugs();
+    return slugs.map((slug) => ({ slug }));
   } catch (error) {
     console.error('Error generating static params for blog:', error);
     return [];
@@ -78,7 +72,7 @@ export default async function BlogPostPage({
   const timestamp = Date.now();
 
   try {
-    const post = await contentfulClient.getEntry<BlogTemplateFields>(slug);
+    const post = await getBlogPostBySlug(slug);
 
     if (!post || !post.fields) {
       notFound();

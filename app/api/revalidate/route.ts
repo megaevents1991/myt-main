@@ -47,6 +47,15 @@ export async function GET(request: Request) {
       revalidatePath("/artists", "layout");
       console.log("[Revalidation] ✓ Artists pages");
 
+      // Blog pages
+      revalidatePath("/blog", "page");
+      revalidatePath("/blog", "layout");
+      console.log("[Revalidation] ✓ Blog pages");
+
+      // Category pages
+      revalidatePath("/category", "layout");
+      console.log("[Revalidation] ✓ Category pages");
+
       // Get events count for logging
       const { events } = await getCachedEvents();
       console.log(

@@ -64,26 +64,33 @@ export const sendUserEmail = async ({
         : emailtemplates.failedPurchase
       : emailtemplates.phoneOrder;
 
+  // Skipped flights are saved as an EMPTY OBJECT (truthy!) — `?.` on
+  // flight_order_info alone doesn't protect the inner accesses. A missing
+  // outbound/inbound must not throw: this email runs inside the payment
+  // flow, and a crash here used to leave paid orders stuck un-Paid.
+  const outbound = orderData.flight_order_info?.outbound;
+  const inbound = orderData.flight_order_info?.inbound;
+
   const replacements = {
     bookingReference: orderData.booking_reference,
     title: emailTemplate.title,
     message: emailTemplate.message,
-    eventName: orderData.event_order_info.name,
-    eventDate: new Date(orderData.event_order_info.date).toLocaleDateString(
-      "he-IL",
-    ),
+    eventName: orderData.event_order_info?.name,
+    eventDate: orderData.event_order_info?.date
+      ? new Date(orderData.event_order_info.date).toLocaleDateString("he-IL")
+      : "",
     eventLocation: orderData.event_order_info?.location_name || "",
-    ticketType: orderData.event_order_info.category,
-    quantity: orderData.event_order_info.number_of_ticket,
+    ticketType: orderData.event_order_info?.category,
+    quantity: orderData.event_order_info?.number_of_ticket,
     airline: orderData.flight_order_info?.metadata?.name,
-    departFlight: orderData.flight_order_info?.outbound.flightNumber,
-    departFlightDate: dayjs(
-      orderData.flight_order_info?.outbound.departureTime,
-    ).format("DD/MM/YYYY HH:MM"),
-    returnFlight: orderData.flight_order_info?.inbound.flightNumber,
-    returnFlightDate: dayjs(
-      orderData.flight_order_info?.inbound.departureTime,
-    ).format("DD/MM/YYYY HH:MM"),
+    departFlight: outbound?.flightNumber,
+    departFlightDate: outbound?.departureTime
+      ? dayjs(outbound.departureTime).format("DD/MM/YYYY HH:mm")
+      : "",
+    returnFlight: inbound?.flightNumber,
+    returnFlightDate: inbound?.departureTime
+      ? dayjs(inbound.departureTime).format("DD/MM/YYYY HH:mm")
+      : "",
     hotel:
       orderData.hotel_order_info &&
       Object.keys(orderData.hotel_order_info).length > 0

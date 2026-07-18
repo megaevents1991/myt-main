@@ -5,12 +5,10 @@ import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
+import { OrderContinueBar, type ContinueSlot } from "./OrderContinueBar";
 import { Event, Flight } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
-import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/price.utils";
-import Image from "next/image";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
@@ -20,13 +18,6 @@ import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup } from "@/lib/events/price";
-
-const buttonText: Record<number, string> = {
-  1: "לבחירת טיסה",
-  2: "לבחירת מלון",
-  3: "לסיכום הזמנה",
-  4: "שלח הזמנה",
-} as const;
 
 const shortenTicketCategory = (category: string): string => {
   // Return text up to the first comma if comma exists
@@ -61,6 +52,8 @@ export const OrderForm = ({ event }: { event: Event }) => {
     setSkipFlight,
     flightSkipped,
     setFlightSkipped,
+    returnToSummary,
+    setReturnToSummary,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -85,6 +78,16 @@ export const OrderForm = ({ event }: { event: Event }) => {
   }, [step]);
 
   const isUS = event?.location?.country_code === "US";
+
+  // "Edit from summary" mode (flag lives in OrderContext so the layout's
+  // Stepper can hide too): entering a step via the summary's עריכה button arms
+  // it; confirming that step jumps straight back to the summary (step 4)
+  // instead of walking the rest of the flow again. Cleared on arrival — and
+  // ignored when the flow is no longer complete (e.g. a quantity change wiped
+  // the flight/hotel), which falls back to the normal 1→2→3 walk.
+  useEffect(() => {
+    if (step === 4) setReturnToSummary(false);
+  }, [step, setReturnToSummary]);
 
   // Preload hotels as soon as the order flow starts so they're ready
   // by the time the customer reaches step 3 (especially after skip flight).
@@ -140,14 +143,20 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   const ticketRelativePrice = (eventTicket.price || 0) - minTicketPrice;
 
-  const basePrice = Math.ceil(
+  const basePriceNum = Math.ceil(
     event.base_flight_price +
       event.base_hotel_price +
       minTicketPrice +
       getTotalMarkup(event)
-  ).toLocaleString("en-US");
+  );
 
-  const nextStep = (skipHotel = false) =>
+  const flightDelta = Math.ceil(
+    (flight?.price || 0) / planeTickets.adults - event.base_flight_price
+  );
+
+  // NOTE: param renamed from `skipHotel` — it shadowed the context flag of the
+  // same name, which the edit-return check below needs to read.
+  const nextStep = (skipHotelChosen = false) =>
     setStep((prev) => {
       if (prev === 1) {
         orderStage("TICKET_SELECTED", {
@@ -215,13 +224,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
         }
       } else if (prev === 3) {
         // Handle both hotel selection AND skip
-        if (skipHotel) {
+        if (skipHotelChosen) {
           setSkipHotel(true);
           setHotel(undefined);
         }
-        
+
         // Use skipHotel flag to determine if hotel data should be included
-        const isHotelSkipped = skipHotel || !hotel;
+        const isHotelSkipped = skipHotelChosen || !hotel;
         
         if (!flightSkipped) {
           fetch(`/api/flights/pricing`, {
@@ -279,6 +288,19 @@ export const OrderForm = ({ event }: { event: Event }) => {
           eventTags: event.tags,
         });
       }
+      // Edit-from-summary: once the edited step is confirmed, jump straight
+      // back to the summary — but only when every step is still satisfied
+      // (a quantity change clears flight/hotel → walk the flow normally).
+      if (returnToSummary && prev < 4) {
+        const flowComplete =
+          !!eventTicket.id &&
+          (flightSkipped || !!flight?.id) &&
+          (isUS || skipHotelChosen || skipHotel || !!hotel?.id);
+        if (flowComplete) {
+          setReturnToSummary(false);
+          return 4;
+        }
+      }
       return prev + 1;
     });
 
@@ -305,167 +327,159 @@ export const OrderForm = ({ event }: { event: Event }) => {
         { immediate: true }
       );
     }
+    // Edit-from-summary: skipping the flight during an edit completes it too.
+    if (returnToSummary && (isUS || skipHotel || !!hotel?.id)) {
+      setReturnToSummary(false);
+      setStep(4);
+      return;
+    }
     setStep((prev) => prev + 1);
   };
 
+  /* ── Continue-bar model (steps 1–3) ─────────────────────────────────
+     Slots fill as the customer picks; the last step folds into the
+     summary with a short "building the package" animation. */
+  const priceNote = (delta: number) =>
+    delta > 0
+      ? `+$${delta.toLocaleString("en-US")}`
+      : delta < 0
+        ? `-$${Math.abs(delta).toLocaleString("en-US")}`
+        : "כלול";
+
+  // Pills are navigation: completed steps (behind the current one) tap back to
+  // modify; the IMMEDIATE next step taps forward — exactly like the primary
+  // continue button (same guard + side effects). Never further: steps must be
+  // completed in order (1 → 2 → 3).
+  const slotNav = (target: number) => {
+    if (target < step) return () => setStep(target); // back to a done step
+    if (target === step + 1 && !buttonDisabled) return () => nextStep(); // continue
+    return undefined;
+  };
+
+  const continueSlots: ContinueSlot[] = [
+    {
+      icon: "ticket",
+      label: "כרטיס",
+      filled: !!eventTicket.id,
+      value: eventTicket.id ? shortenTicketCategory(ticketCategory || "") : "",
+      delta: eventTicket.id ? priceNote(ticketRelativePrice) : undefined,
+      onClick: slotNav(1),
+    },
+    {
+      icon: "flight",
+      label: "טיסה",
+      filled: flightSkipped || !!flight?.id,
+      value: flightSkipped ? "ללא טיסה" : flight?.id ? airline : "",
+      // Skipped = still bookable — invite the tap instead of a dead ✓.
+      delta: flightSkipped
+        ? "+ להוספה"
+        : flight?.id
+          ? priceNote(flightDelta)
+          : undefined,
+      onClick: slotNav(2),
+    },
+  ];
+  if (!isUS) {
+    continueSlots.push({
+      icon: "hotel",
+      label: "מלון",
+      filled: skipHotel || !!hotel?.id,
+      value: skipHotel ? "ללא מלון" : hotel?.id ? hotel?.name || "מלון" : "",
+      delta: skipHotel
+        ? "+ להוספה"
+        : hotel?.id
+          ? priceNote(hotelPriceAddition)
+          : undefined,
+      onClick: slotNav(3),
+    });
+  }
+
+  // Running total = base package + the same upgrade deltas shown per slot
+  // (no new price math — just sums figures already derived above).
+  const displayTotal =
+    basePriceNum +
+    (ticketRelativePrice > 0 ? ticketRelativePrice : 0) +
+    // Flight/hotel deltas may be negative (pick cheaper than base) → reduce the
+    // live total, mirroring the real charge in calculateBaseTotal (hooks.tsx).
+    (flight?.id && !flightSkipped ? flightDelta : 0) +
+    (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
+
+  // Once the package is COMPLETE (finalPurchasePriceCalc > 0 — flight picked or
+  // skipped), show EXACTLY the summary's per-traveler price (the real
+  // calculateBaseTotal chain: skip fees, composed markups, ticket-only
+  // override, affiliate discount). The additive preview above only serves the
+  // in-progress steps — keeping it after completion made the edit-mode bar
+  // drift a few dollars from the summary.
+  const realTotalAllPax = finalPurchasePriceCalc(affDiscount);
+  const barTotal =
+    realTotalAllPax > 0
+      ? Math.ceil(realTotalAllPax / numberOfPersons)
+      : displayTotal;
+
+  const isFinalStep = isUS ? step === 2 : step === 3;
+  // Editing from the summary (and the flow is still complete) → the primary
+  // action returns to the summary, so say that instead of "המשך למלון".
+  const editReturnActive =
+    returnToSummary &&
+    !!eventTicket.id &&
+    (flightSkipped || !!flight?.id || step === 2) &&
+    (isUS || skipHotel || !!hotel?.id || step === 3);
+  const primaryLabel = editReturnActive
+    ? "שמור וחזור לסיכום"
+    : step === 1
+      ? "בחר והמשך לטיסה"
+      : step === 2
+        ? isUS
+          ? "בחר והמשך לסיכום"
+          : "בחר והמשך למלון"
+        : "בחר והמשך לסיכום";
+  const skipAction =
+    step === 3
+      ? { label: "לא צריך מלון", onSkip: handleSkipHotel }
+      : step === 2 && skipFlight
+        ? { label: "לא צריך טיסה", onSkip: handleSkipFlight }
+        : undefined;
+
   return (
-    <div className="max-w-7xl mx-auto px-2 pt-3">
-      {step === 1 && <TicketSelection />}
-      {step === 2 && <FlightSelection />}
-      {step === 3 && <HotelSelection />}
-      {step === 4 && <OrderReview />}
-      {/* Floating ContactUs - separate from footer */}
-      {step !== 4 && (
-        <div className="fixed bottom-24 left-2 z-50 sm:hidden">
-          <ContactUs inHeader={false} />
+    <>
+      <div className="max-w-7xl mx-auto px-2 pt-3">
+        {step === 1 && <TicketSelection initialEvent={event} />}
+        {step === 2 && <FlightSelection />}
+        {step === 3 && <HotelSelection />}
+        {step === 4 && (
+          <OrderReview
+            // Summary עריכה: arm return-to-summary so confirming the edited
+            // step jumps straight back here instead of re-walking the flow.
+            onEditStep={(target) => {
+              setReturnToSummary(true);
+              setStep(target);
+            }}
+          />
+        )}
+        {/* Floating ContactUs - separate from footer */}
+        {step !== 4 && (
+          <div className="fixed bottom-24 left-2 z-50 sm:hidden">
+            <ContactUs inHeader={false} />
+          </div>
+        )}
+      </div>
+      {/* Sticky continue bar (steps 1–3) — full-width strip, inner card
+         viewport-centered via its own `mx-auto max-w-5xl`. Lives OUTSIDE the
+         max-w-7xl wrapper so `w-full` = viewport, not the centered container. */}
+      {step < 4 && (
+        <div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur">
+          <OrderContinueBar
+            // Edit mode: hide the flow pills — a focused "pick → save" task.
+            slots={returnToSummary ? [] : continueSlots}
+            total={barTotal}
+            primaryLabel={primaryLabel}
+            primaryDisabled={buttonDisabled}
+            onPrimary={() => nextStep()}
+            skip={skipAction}
+            isFinalStep={isFinalStep}
+          />
         </div>
       )}
-      {/* Sticky Footer */}
-      <div className="flex w-full flex-col items-center bottom-0 sticky z-40">
-        <div className="mt-4 w-screen bg-gray-200">
-          <div className="w-full">
-            {step < 4 && (
-              <div className="flex flex-col lg:flex-row p-2 m-auto max-w-7xl justify-between items-center gap-2">
-                <div className="flex flex-row-reverse lg:flex-row w-full justify-between items-center">
-                  {/* Button Section - Split on step 3 (hotel) and step 2 when skipFlight enabled */}
-                  {step === 3 ? (
-                    // Hotel Selection Step: Show split buttons (desktop) or stacked (mobile)
-                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
-                      <button
-                        disabled={buttonDisabled}
-                        onClick={() => nextStep()}
-                        className={cn(
-                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
-                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                        )}
-                        type="button"
-                        aria-label="בחר והמשך לסיכום"
-                        >
-                        <span className="min-[400px]:inline hidden">בחר והמשך לסיכום</span>
-                        <span className="min-[400px]:hidden">בחר והמשך</span>
-                      </button>
-                      <button
-                        onClick={handleSkipHotel}
-                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
-                        type="button"
-                        aria-label="המשך ללא מלון"
-                      >
-                        לא צריך מלון
-                      </button>
-                    </div>
-                  ) : step === 2 && skipFlight ? (
-                    // Flight Selection Step with skip enabled: Show split buttons
-                    <div className="w-[40%] lg:w-[30%] ml-4 lg:ml-0 flex flex-col lg:flex-row gap-2">
-                      <button
-                        disabled={buttonDisabled}
-                        onClick={() => nextStep()}
-                        className={cn(
-                          "bg-main text-white tracking-wide rounded-lg p-2 font-bold flex-[3]",
-                          buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                        )}
-                        type="button"
-                        aria-label="בחר והמשך לבחירת מלון"
-                      >
-                        <span className="min-[400px]:inline hidden">בחר והמשך לבחירת מלון</span>
-                        <span className="min-[400px]:hidden">בחר והמשך</span>
-                      </button>
-                      <button
-                        onClick={handleSkipFlight}
-                        className="border-2 border-main text-main tracking-wide rounded-lg p-2 font-bold flex-[2] hover:bg-main/5 transition-colors text-sm lg:text-base"
-                        type="button"
-                        aria-label="המשך ללא טיסה"
-                      >
-                        לא צריך טיסה
-                      </button>
-                    </div>
-                  ) : (
-                    // Other steps: Show single button
-                    <button
-                      disabled={buttonDisabled}
-                      onClick={() => nextStep()}
-                      className={cn(
-                        "bg-main text-white tracking-wide rounded-lg p-2 font-bold",
-                        "w-[40%] lg:w-[30%] ml-4 lg:ml-0",
-                        buttonDisabled && "opacity-50 disabled:cursor-not-allowed"
-                      )}
-                      type="button"
-                      aria-label={
-                        step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]
-                      }
-                    >
-                      {step === 2 && isUS ? "לסיכום הזמנה" : buttonText[step]}
-                    </button>
-                  )}
-
-                  {/* Order Summary Section */}
-                  <div className="flex flex-col-reverse w-[60%] lg:w-[70%] lg:flex-row lg:justify-end text-secondary text-md">
-                    {step > 2 && !flightSkipped && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
-                          {formatPrice(
-                            Math.ceil(
-                              (flight?.price || 0) / planeTickets.adults -
-                                event.base_flight_price
-                            )
-                          )}
-                        </span>
-                        <div className="flex items-center justify-end">
-                          <span className="text-right mr-2 lg:ml-2">
-                            {airline}
-                          </span>
-                          <Image
-                            alt="plane icon"
-                            src={`/plane.svg`}
-                            width={16}
-                            height={16}
-                            unoptimized
-                          />
-                        </div>
-                        <span className="hidden lg:inline ml-2">|</span>
-                      </div>
-                    )}
-                    {step > 1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto -mb-1">
-                        <span className="text-left lg:ml-2">
-                          {ticketRelativePrice > 0
-                            ? formatPrice(ticketRelativePrice)
-                            : "(כלול במחיר)"}
-                        </span>
-                        <div className="flex items-center justify-end">
-                          <span className="text-right mr-2 lg:ml-2">
-                            <span className="lg:hidden">{shortenTicketCategory(ticketCategory)}</span>
-                            <span className="hidden lg:inline">{ticketCategory}</span>
-                          </span>
-                          <Image
-                            alt="ticket icon"
-                            src={`/ticket.svg`}
-                            width={16}
-                            height={16}
-                            unoptimized
-                          />
-                        </div>
-                        <span className="hidden lg:inline ml-2">|</span>
-                      </div>
-                    )}
-                    {step > -1 && (
-                      <div className="flex justify-between lg:justify-start items-center w-full lg:w-auto">
-                        <span className="text-left lg:ml-2 font-bold tracking-wide">
-                          ${basePrice}
-                        </span>
-                        <div className="flex items-center justify-end lg:ml-2">
-                          <span className="text-right font-bold">
-                            {event.name}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 };

@@ -46,7 +46,10 @@ const StopsString = (
     <span>
       <span
         style={{
-          color: stops.length - 1 > 0 ? "#FF3B30" : "#277E89",
+          color:
+            stops.length - 1 > 0
+              ? "hsl(var(--destructive))"
+              : "hsl(var(--success))",
           textDecoration:
             stops.length - 1 > 0 && isMobile ? "underline" : "none",
         }}
@@ -105,8 +108,8 @@ const LuggageButton = ({
   return (
     <button
       className={cn(
-        "bg-gray-200 rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
-        isSelected && "bg-[#277E892e]"
+        "bg-muted rounded-l-md absolute h-full px-2 left-0 block lg:hidden",
+        isSelected && "bg-primary/15"
       )}
       type="button"
       aria-label={`מידע על מזוודות: תיק יד כלול, ${
@@ -159,7 +162,7 @@ const LuggageButton = ({
           <div className="border-b w-full border-gray-400"></div>
 
         <div className="text-xs font-bold flex items-center justify-center gap-1 w-full ">
-          <InfoIcon fill={isSelected ? "#277E89" : "grey"} />
+          <InfoIcon fill={isSelected ? "#5BFF95" : "grey"} />
         </div>
            */}
       </div>
@@ -233,8 +236,8 @@ export const FlightTicketCard = memo(
             {/* Mobile pricing element */}
             <div
               className={cn(
-                "absolute bg-white border lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 text-secondary rounded-2xl px-3 py-1 text-sm",
-                isSelected && "bg-secondary text-white"
+                "absolute bg-card border border-forest text-forest dark:border-glow dark:text-glow lg:hidden right-2 top-0 whitespace-nowrap font-bold transform -translate-y-1/2 rounded-2xl px-3 py-1 text-sm",
+                isSelected && "bg-main text-main-foreground border-main dark:bg-foreground dark:text-background dark:border-foreground"
               )}
             >
               {priceOutsidePackBoundries ? (
@@ -317,7 +320,9 @@ const FlightCard = ({
   return (
     <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
       <div className="w-[20%] lg:w-[20%] flex flex-col items-center">
-        <div className="mb-2">
+        {/* Airline logos are dark-ink PNGs — on the dark card they vanish, so on
+            dark we seat them on a white chip to keep the brand legible. */}
+        <div className="mb-2 rounded-md dark:bg-white/95 dark:p-1.5">
           {metadata.logo ? (
             <Image
               src={metadata.logo}
@@ -475,7 +480,7 @@ export const FlightMeta = ({
           {String(new Date(arrivalTime).getHours()).padStart(2, "0")}:
           {String(new Date(arrivalTime).getMinutes()).padStart(2, "0")}
           <Tooltip label="נחיתה ביום למחרת" position="top">
-            <span className="text-xs mr-1 text-secondary absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
+            <span className="text-xs mr-1 text-success absolute top-0 left-0 transform translate-x-[-100%] translate-y-[-30%]">
               {plusOne ? "1+" : ""}
             </span>
           </Tooltip>

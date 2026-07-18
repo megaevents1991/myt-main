@@ -65,6 +65,10 @@ export function TixstockDynamicMap({
   const [error, setError] = useState<string | null>(null);
   const [hoveredMapTicket, setHoveredMapTicket] =
     useState<TixStockMatchableListing | null>(null);
+  // Hover preview only on true hover devices (desktop mouse). On touch, a tap
+  // fires mouseover before click and the hover paint sticks on the section —
+  // so hover highlighting is disabled entirely on mobile.
+  const [canHover, setCanHover] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // Monotonically increasing counter – bumped every time the ref callback
   // fires (container div is mounted).  Used as a dependency in effects
@@ -75,6 +79,12 @@ export function TixstockDynamicMap({
   const setContainerRef = useCallback((node: HTMLDivElement | null) => {
     containerRef.current = node;
     if (node) setDomReady((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    setCanHover(
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches,
+    );
   }, []);
 
   const ticketMatchesSection = useCallback(
@@ -239,12 +249,29 @@ export function TixstockDynamicMap({
         }
       });
 
-      const activeHoverTicket = hoveredTicket ?? hoveredMapTicket;
+      const activeHoverTicket = canHover
+        ? hoveredTicket ?? hoveredMapTicket
+        : null;
 
-      // Highlight the selected ticket only when no ticket/card hover is active.
-      // During hover, the hovered category should be the only emphasized group;
-      // when hover clears, the selected state is restored by this same repaint.
-      if (selectedTicketId && !activeHoverTicket) {
+      // Hover highlight — light glow preview on the hovered category.
+      if (activeHoverTicket) {
+        sectionEls.forEach((el) => {
+          const sec = el.getAttribute("data-section") || "";
+          if (excludedSections?.includes(sec)) return; // never highlight disabled
+          const cat = getCategoryIdFromSectionEl(el);
+
+          const match =
+            !disabledTicketIds?.has(activeHoverTicket.id) &&
+            ticketCategoryOrSectionMatches(activeHoverTicket, sec, cat);
+
+          if (match) paintSection(el, "hover");
+        });
+      }
+
+      // Selected ticket paints LAST and always wins: the picked area stays
+      // dark forest green even while a hover is active (hovering the selected
+      // card used to repaint it light glow).
+      if (selectedTicketId) {
         const selTicket = tickets.find((t) => t.id === selectedTicketId);
         if (selTicket) {
           sectionEls.forEach((el) => {
@@ -260,21 +287,6 @@ export function TixstockDynamicMap({
           });
         }
       }
-
-      // Hover highlight (overrides selection)
-      if (activeHoverTicket) {
-        sectionEls.forEach((el) => {
-          const sec = el.getAttribute("data-section") || "";
-          if (excludedSections?.includes(sec)) return; // never highlight disabled
-          const cat = getCategoryIdFromSectionEl(el);
-
-          const match =
-            !disabledTicketIds?.has(activeHoverTicket.id) &&
-            ticketCategoryOrSectionMatches(activeHoverTicket, sec, cat);
-
-          if (match) paintSection(el, "hover");
-        });
-      }
     } catch (e) {
       console.error("[TixstockDynamicMap] repaint error:", e);
     }
@@ -282,12 +294,36 @@ export function TixstockDynamicMap({
     svgContent,
     hoveredTicket,
     hoveredMapTicket,
+    canHover,
     selectedTicketId,
     tickets,
     excludedSections,
     disabledTicketIds,
     ticketCategoryOrSectionMatches,
   ]);
+
+  // Self-heal: React re-applies `dangerouslySetInnerHTML` whenever `paintedSvg`
+  // recomputes (live listings landing, quantity changes…), replacing the SVG
+  // children and WIPING every runtime style repaint applied — including the
+  // dark-green selected section. When that replacement lands after the last
+  // repaint (verified with a MutationObserver trace), the initial selection
+  // stayed unpainted until the next interaction. Watch for child replacements
+  // and re-run the (idempotent) repaint on the fresh nodes.
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    let scheduled = false;
+    const obs = new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        repaint();
+      });
+    });
+    obs.observe(root, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [domReady, repaint]);
 
   // Run repaint for dynamic changes (selection, hover).
   // The initial available/inactive painting is already baked into
@@ -342,7 +378,7 @@ export function TixstockDynamicMap({
 
   useEffect(() => {
     const root = containerRef.current;
-    if (!root) return;
+    if (!root || !canHover) return;
 
     const onMouseOver = (ev: MouseEvent) => {
       const target = ev.target as Element | null;
@@ -381,7 +417,7 @@ export function TixstockDynamicMap({
       root.removeEventListener("mouseover", onMouseOver);
       root.removeEventListener("mouseout", onMouseOut);
     };
-  }, [svgContent, excludedSections, findBestTicketForSection]);
+  }, [svgContent, excludedSections, findBestTicketForSection, canHover]);
 
   /* ---------- Render --------------------------------------------------- */
 
@@ -408,10 +444,12 @@ export function TixstockDynamicMap({
 
   return (
     <div className="w-full" dir="ltr">
+      {/* Map always sits on a white panel — the venue SVG (stage, outlines) is
+          authored for a light background, so keep it white in dark mode too. */}
       <div
         ref={setContainerRef}
         dangerouslySetInnerHTML={{ __html: paintedSvg }}
-        className="flex justify-center rounded-lg overflow-hidden [&_svg]:max-w-full [&_svg]:w-auto [&_svg]:h-auto [&_svg]:max-h-[45svh] lg:[&_svg]:max-h-[calc(100vh-10rem)]"
+        className="flex justify-center overflow-hidden rounded-xl border border-black/5 bg-[#f5f6f7] p-3 shadow-sm [&_svg]:max-w-full [&_svg]:w-auto [&_svg]:h-auto [&_svg]:max-h-[45svh] lg:[&_svg]:max-h-[calc(100vh-10rem)]"
       />
     </div>
   );

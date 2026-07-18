@@ -8,9 +8,16 @@ import {
 } from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
 
+/** Link to the artist/football-team page this event belongs to (resolved
+ *  server-side by name match) — href + ready-made Hebrew label. */
+export type PersonLink = { href: string; label: string };
+
 type AppContext = {
   flight?: Flight;
   event?: Event;
+  /** Undefined when the event has no artist/team page. */
+  personLink?: PersonLink;
+  setPersonLink: (link?: PersonLink) => void;
   hotel?: OrderHotel;
   eventTicket: OrderTicket;
   setEventTicket: (eventTicket: OrderTicket) => void;
@@ -50,6 +57,11 @@ type AppContext = {
   setSkipFlight: (skip: boolean) => void;
   flightSkipped: boolean;
   setFlightSkipped: (skip: boolean) => void;
+  /** Edit-from-summary mode: the customer jumped to a step via the summary's
+   *  עריכה / +להוספה buttons. The flow chrome (stepper, pills) hides and the
+   *  primary action saves back to the summary. */
+  returnToSummary: boolean;
+  setReturnToSummary: (on: boolean) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

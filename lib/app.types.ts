@@ -6,6 +6,7 @@ export type EventType =
   | "sports_event"
   | "music_event"
   | "sports_event_dynamic"
+  | "sports_live_event_dynamic"
   | "music_live_event_dynamic"
   | "tx_event";
 
@@ -25,6 +26,19 @@ export type Event = {
   map_image_url: string;
   description: string;
   card_image_url: string;
+  // Card "blob" art (set in the backoffice). When art_image_url (a transparent
+  // cut-out PNG) is present the card renders it on a neon brand blob; otherwise
+  // it falls back to the full card_image_url photo. art_color_index (0–5) and
+  // art_shape_index (0–3) pick the blob colour + shape; omitted = derived from id.
+  art_image_url?: string | null;
+  art_color_index?: number | null;
+  art_shape_index?: number | null;
+  // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
+  art_image_scale?: number | null;
+  art_bg_scale?: number | null;
+  // Cut-out position, % of frame (null/0 = default bottom-center). X+ = right, Y+ = down.
+  art_image_offset_x?: number | null;
+  art_image_offset_y?: number | null;
   tickets_and_rates: EventTicket[];
   def_date_depart: string;
   def_date_return: string;
@@ -40,6 +54,26 @@ export type Event = {
   tags: string;
   tx_excluded_sections?: string[];
   event_additional_markup?: number | null;
+  // Per-event component markups (USD, backoffice-set). When ANY of the three
+  // markup_* fields is set the event uses composed pricing: markup_ticket is
+  // always charged; markup_flight/markup_hotel only when that component is
+  // included; skip_flight_markup/skip_hotel_markup only when it's skipped.
+  // All null → legacy pricing (global 175 + env hotel-skip fee), unchanged.
+  markup_ticket?: number | null;
+  markup_flight?: number | null;
+  markup_hotel?: number | null;
+  skip_hotel_markup?: number | null;
+  // Ticket-only override (USD per ticket). When set AND the customer skips
+  // BOTH flight and hotel, the price is exactly ticket_cost + this value —
+  // no global markup, no event_additional_markup, no skip fees, no component
+  // markups. Absolute, wins over everything. Only the both-skipped scenario;
+  // every other path untouched. Empty/null = no override.
+  ticket_only_markup?: number | null;
+  // Auto-generated campaign creative (backoffice nightly cron). Feed uses
+  // campaign_image_url as image_link (fallback card_image_url), banner as
+  // additional_image_link. Synced with backoffice types/app.types.ts.
+  campaign_image_url?: string | null;
+  campaign_banner_url?: string | null;
 };
 
 export type Flight = {
@@ -148,6 +182,36 @@ export type AffiliateTracking = {
     | "CONFIRMED";
   data: object;
   timestamp: string;
+};
+
+/**
+ * Customer-facing discount code (shared `coupons` table — backoffice writes,
+ * this app validates + applies). Does NOT stack with the affiliate discount:
+ * the bigger single discount wins.
+ */
+export type Coupon = {
+  id: number;
+  /** Stored UPPERCASE; matched case-insensitively. */
+  code: string;
+  /** 'percent' = % off package total; 'fixed' = USD off package total. */
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  /** null = valid on every event. */
+  event_id: number | null;
+  /** ISO date; null = never expires. */
+  valid_until: string | null;
+  /** null = unlimited. */
+  max_uses: number | null;
+  times_used: number;
+  /** Redemptions whose reservation reached status 'Paid' (DB trigger). */
+  times_paid: number;
+  /**
+   * Partner (affiliate) this coupon is attributed to. Orders redeeming the
+   * coupon credit this partner only when they have no affiliate of their own.
+   */
+  partner_tracking_code: string | null;
+  is_active: boolean;
+  created_at: string;
 };
 
 export type SortOptions = "price_asc" | "rating" | "distance_asc";
@@ -290,6 +354,10 @@ export type OrderData = {
   is_agent_booking: boolean;
   confirmation_email_sent: boolean;
   status?: string;
+  /** Coupon redeemed on this order (only when it beat the affiliate discount). */
+  coupon_code?: string | null;
+  /** Pre-discount package total USD — server recomputes the coupon discount from it. */
+  coupon_base_total_usd?: number | null;
 };
 
 export type ArtistFields = {
@@ -374,6 +442,85 @@ export type FootballFields = {
   };
 };
 
+/**
+ * Backoffice CMS templates — one typed table per content type (replacing
+ * Contentful). Every table shares `TemplateBase`. Shared DB shape: keep in sync
+ * with backoffice `types/template.types.ts` + per-type files.
+ */
+export interface TemplateBase {
+  id: number;
+  slug: string;
+  name: string;
+  name_english: string | null;
+  image_url: string | null;
+  // Blob card-art (optional). When art_image_url is set the site shows the
+  // cut-out over a neon blob; otherwise it falls back to image_url.
+  art_image_url: string | null;
+  art_color_index: number | null;
+  art_shape_index: number | null;
+  // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
+  art_image_scale: number | null;
+  art_bg_scale: number | null;
+  // Cut-out position, % of frame (null/0 = default bottom-center). X+ = right, Y+ = down.
+  art_image_offset_x: number | null;
+  art_image_offset_y: number | null;
+  display_order: number;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Category — typed row of the Supabase `categories` table. Managed in the
+ * backoffice, read by this app. Keep in sync with backoffice
+ * `types/category.types.ts`.
+ */
+export interface Category extends TemplateBase {
+  subtitle: string | null;
+  tag: string | null;
+  sport: string | null;
+  /** Artist/team page IDs grouped under this category (Contentful IDs for now). */
+  member_ids: string[];
+  link_url: string | null;
+}
+
+/**
+ * (Legacy / reference) Contentful-backed category type. Kept for reference;
+ * the live source is the Supabase `categories` table (see `Category` above).
+ */
+export type CategoryFields = {
+  contentTypeId: "categoryTemplate";
+  fields: {
+    name: string;
+    nameEnglish?: string;
+    /** Meta line under the title, e.g. "עונת 2025/26 · אירופה · שלב ההכרעה". */
+    subtitle?: string;
+    /** Grouping label for the homepage section, e.g. "כדורגל". */
+    sport?: string;
+    /** Optional badge text, e.g. "כרטיסים אחרונים". */
+    tag?: string;
+    heroBanner: EntryFieldTypes.Object<{
+      fields?: {
+        file?: {
+          url?: string;
+          details?: { image?: { height?: number; width?: number } };
+        };
+        description?: string;
+        title?: string;
+      };
+    }>;
+    /** Artist/team entries that belong to this category. */
+    members?: EntryFieldTypes.Array<
+      EntryFieldTypes.EntryLink<ArtistFields | FootballFields>
+    >;
+    seoTitle?: string;
+    metaDescription?: string;
+    metaTags?: string;
+    sys: EntryFieldTypes.Object<{ id: string }>;
+  };
+};
+
 export type BlogTemplateFields = {
   contentTypeId: "blogTemplate";
   fields: {
@@ -445,6 +592,23 @@ export type FootballTeam = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
+    artImageOffsetX?: number;
+    artImageOffsetY?: number;
+    // Backoffice-managed page enrichments (Supabase artists/football_teams).
+    /** #19b: YouTube URL that plays behind the hero circle. */
+    heroVideoUrl?: string;
+    /** #20: promo banners on the page. */
+    banners?: { image_url?: string; link_url?: string; title?: string }[];
+    /** #21: image gallery URLs. */
+    gallery?: string[];
+    /** #24: performance videos (YouTube). */
+    videos?: { url?: string; label?: string }[];
   };
 };
 
@@ -481,6 +645,23 @@ export type Artist = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
+    artImageUrl?: string;
+    artColorIndex?: number;
+    artShapeIndex?: number;
+    artImageScale?: number;
+    artBgScale?: number;
+    artImageOffsetX?: number;
+    artImageOffsetY?: number;
+    // Backoffice-managed page enrichments (Supabase artists/football_teams).
+    /** #19b: YouTube URL that plays behind the hero circle. */
+    heroVideoUrl?: string;
+    /** #20: promo banners on the page. */
+    banners?: { image_url?: string; link_url?: string; title?: string }[];
+    /** #21: image gallery URLs. */
+    gallery?: string[];
+    /** #24: performance videos (YouTube). */
+    videos?: { url?: string; label?: string }[];
   };
 };
 

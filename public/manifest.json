@@ -5,11 +5,17 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#277E89",
+  "theme_color": "#0A1A14",
   "orientation": "portrait-primary",
   "lang": "he",
   "dir": "rtl",
   "icons": [
+    {
+      "src": "/brand/logo-mark-ME.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/favicon.ico",
       "sizes": "16x16 32x32",

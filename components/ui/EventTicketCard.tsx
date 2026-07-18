@@ -19,6 +19,10 @@ export type TicketCardProps = {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   disabled?: boolean;
+  /** Static-map (non-TX) events: paint the accent strip with the section's
+   *  `colorOnTheMap` so the card matches the colored area on the event map.
+   *  TX events keep the brand green strip (they have their own live map). */
+  useMapColor?: boolean;
 };
 
 export const EventTicketCard = ({
@@ -36,10 +40,16 @@ export const EventTicketCard = ({
   onMouseEnter,
   onMouseLeave,
   disabled = false,
+  useMapColor = false,
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
   const isVip = vip?.enabled === true;
   const hasVipDetails = isVip && vip?.details && vip.details.trim().length > 0;
+  // Only honour a real hex color from the backoffice; otherwise fall back to
+  // the brand green strip so a missing/garbage value never shows raw.
+  const mapColor = colorOnTheMap?.trim() ?? "";
+  const showMapColor =
+    useMapColor && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(mapColor);
   
   return (
     <CardWrapper
@@ -62,19 +72,22 @@ export const EventTicketCard = ({
       
       <div className="flex items-center justify-between w-full lg:flex-row flex-col">
         <div className="flex items-center justify-between w-full">
+          {/* Accent strip. For static-map (non-TX) events it mirrors the
+              section's `colorOnTheMap` so the card ↔ event map correlate.
+              Otherwise brand Glow Green at rest, dark forest when selected. */}
           <div
+            aria-hidden
             className={cn(
-              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md"
+              "absolute top-0 right-0 bottom-0 w-[20px] rounded-r-md transition-colors",
+              !showMapColor && (isSelected ? "bg-forest dark:bg-glow" : "bg-glow")
             )}
-            style={{
-              backgroundColor: colorOnTheMap,
-            }}
+            style={showMapColor ? { backgroundColor: mapColor } : undefined}
           ></div>
           <div className="w-2/3 lg:w-5/9 flex items-center gap-4">
             <Radio
               onChange={() => void 0}
               checked={!disabled && isSelected}
-              color="#05203C"
+              color="hsl(var(--brand-forest))"
               style={{ pointerEvents: "none" }}
               disabled={disabled}
             />
@@ -137,7 +150,7 @@ export const EventTicketCard = ({
           </div>
         </div>
         {isSelected && !disabled && (
-          <div className="w-full block lg:hidden border-t-2 pt-2 border-white mt-2">
+          <div className="w-full block lg:hidden border-t-2 pt-2 border-border mt-2">
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}
@@ -162,7 +175,7 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
       <button
         onClick={() => onChange(value - 1)}
         disabled={+value <= minValue}
-        className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
+        className="bg-background rounded-full p-1 hover:border-main dark:hover:border-foreground border border-border border-solid border-1"
         type="button"
         aria-label="הפחת כמות כרטיסים"
       >
@@ -171,7 +184,7 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
       <div className="w-8 text-xl font-bold text-center" role="status" aria-live="polite" aria-label={`${value} כרטיסים נבחרו`}>{value}</div>
       <button
         onClick={() => onChange(value + 1)}
-        className="bg-white rounded-full p-1 hover:border-main border border-solid border-1"
+        className="bg-background rounded-full p-1 hover:border-main dark:hover:border-foreground border border-border border-solid border-1"
         type="button"
         aria-label="הוסף כמות כרטיסים"
       >

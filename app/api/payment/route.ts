@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { PaymentRequest } from "@/lib/app.types";
 import { NextResponse } from "next/server";
 import { buildDoDealXML } from "./buildDoDealXML";
+import { supabase } from "@/lib/supabase";
 
 const url = process.env.NEXT_SECRET_CG_GATEWAY_URL || "";
 const terminalNumber = process.env.NEXT_SECRET_CG_TERMINAL || "";
@@ -16,14 +17,38 @@ const returnUrl = process.env.VERCEL_ENV
   : process.env.NEXT_PUBLIC_API_URL;
 
 export async function POST(request: Request) {
-  const { amount, email, orderId, promoCode }: PaymentRequest =
-    await request.json();
+  const { email, orderId, promoCode }: PaymentRequest = await request.json();
+
+  if (!orderId) {
+    return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
+  }
+
+  // Charge the price PERSISTED for this order, never a client-supplied amount —
+  // the request body used to control the charge, so anyone could pay ₪1.
+  const { data: reservation, error: reservationError } = await supabase
+    .from("reservations")
+    .select("final_purchase_price_ils")
+    .eq("id", orderId)
+    .single();
+
+  if (reservationError || !reservation) {
+    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+
+  const amountIls = Number(reservation.final_purchase_price_ils);
+  if (!Number.isFinite(amountIls) || amountIls <= 0) {
+    return NextResponse.json(
+      { error: "Order has no valid amount" },
+      { status: 400 },
+    );
+  }
 
   const xml = buildDoDealXML({
     terminalNumber,
     mid,
     uniqueid: uuidv4(),
-    total: amount * 100,
+    // CreditGuard expects the total in agorot (ILS * 100).
+    total: Math.round(amountIls * 100),
     successUrl: `${returnUrl}/api/confirmation/${orderId}/${promoCode}/success`,
     errorUrl: `${returnUrl}/api/confirmation/${orderId}/${promoCode}/error`,
     cancelUrl: `${returnUrl}/api/confirmation/${orderId}/${promoCode}/cancel`,

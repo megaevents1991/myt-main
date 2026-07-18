@@ -44,7 +44,7 @@ const AgentMode: React.FC<AgentModeProps> = ({
           </p>
           <button
             onClick={onPrintForClient}
-            className="flex items-center px-4 py-2 bg-secondary text-white rounded hover:bg-grey-700 transition-colors"
+            className="flex items-center px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 transition-colors"
             aria-label="Print for client"
           >
             <Printer size={16} className="mr-2" />

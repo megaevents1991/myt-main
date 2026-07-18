@@ -2,70 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body {
-  background-color: white;
-  color: black;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 .faq-rich-content strong {
   font-weight: 700;
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    /* MegaEvents 2.0 — light theme. HSL triplets converted exactly from the
+       Figma brand book (off-white base, neon brand palette, deep-forest bands). */
+    --background: 60 33% 97%; /* off-white #FAFAF5 — page background */
+    --foreground: 244 81% 4%; /* black-900 #030213 — text */
+    --card: 0 0% 100%; /* white cards */
+    --card-foreground: 244 81% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --popover-foreground: 244 81% 4%;
+    --primary: 141 100% 68%; /* pulse-mint-green #5BFF95 — CTAs, accents */
+    --primary-foreground: 244 81% 4%; /* dark text on neon mint (AA) */
+    --secondary: 141 100% 68%;
+    --secondary-foreground: 244 81% 4%;
+    --surface-inverse: 158 44% 7%; /* deep-forest-black #0A1A14 — dark hero/bands/pills */
+    --surface-inverse-foreground: 60 33% 97%;
+    --muted: 60 20% 95%;
+    --muted-foreground: 240 7% 48%; /* gray-500 #717182 — secondary text */
+    --accent: 141 70% 92%; /* pale mint */
+    --accent-foreground: 244 81% 4%;
+    --destructive: 354 100% 65%; /* neon-coral #FF4F61 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 141 70% 42%;
+    --warning: 48 96% 53%; /* golden-beam-yellow #FACC15 */
+    --info: 189 100% 64%; /* aero-aqua #45E2FF */
+    --border: 0 0% 85%; /* gray-100 #D9D9D9 */
+    --input: 0 0% 85%;
+    --ring: 141 100% 60%; /* mint focus ring (deepened for visibility) */
+    --badge-urgent: 354 100% 65%; /* coral — last tickets */
+    --badge-new: 257 100% 82%; /* soft-aura-violet #BBA1FF — new date / live */
+    --badge-vip: 48 96% 53%; /* golden — VIP package */
+    --badge-soldout: 240 7% 48%; /* gray-500 — sold out */
+    --badge-foreground: 244 81% 6%;
+    --chart-1: 141 100% 68%; /* mint */
+    --chart-2: 257 100% 82%; /* violet */
+    --chart-3: 48 96% 53%; /* gold */
+    --chart-4: 354 100% 65%; /* coral */
+    --chart-5: 189 100% 64%; /* aqua */
+    --radius: 0.75rem;
+
+    /* Core brand greens — CONSTANT across light/dark (single source of truth
+       for the palette: Dark Forest Green + Glow Green). Use via Tailwind
+       `forest`/`glow` or `hsl(var(--brand-forest|glow))` in inline styles. */
+    --brand-forest: 158 44% 7%; /* #0A1A14 — structural / dark green */
+    --brand-glow: 141 100% 68%; /* #5BFF95 — active / light green */
+
+    /* Adaptive brand accent — the brand green that must stay legible as a
+       FOREGROUND / interactive color on the current surface: dark-forest ink on
+       light, glow-mint on dark. `-foreground` is the text that sits ON the
+       accent fill (white on forest / forest on glow). Use for inline styles &
+       Mantine; Tailwind classes can just do `text-forest dark:text-glow`. */
+    --brand-accent: var(--brand-forest);
+    --brand-accent-foreground: 0 0% 100%;
+
+    /* Brand neon accents (category coding, blobs, glows) — Figma brand palette */
+    --brand-mint: 141 100% 68%; /* #5BFF95 */
+    --brand-aqua: 189 100% 64%; /* #45E2FF */
+    --brand-violet: 257 100% 82%; /* #BBA1FF */
+    --brand-coral: 354 100% 65%; /* #FF4F61 */
+    --brand-gold: 48 96% 53%; /* #FACC15 */
+    --brand-orange: 27 100% 65%; /* #FF9D4D */
+
+    /* Aurora mesh — flowing gradient background motif (Elevation #1) */
+    --mesh-1: var(--brand-mint);
+    --mesh-2: var(--brand-aqua);
+    --mesh-3: var(--brand-violet);
+    --mesh-4: var(--brand-coral);
+    --mesh-5: var(--brand-gold);
+    --mesh-6: var(--brand-orange);
+    --flow-duration: 10s;
+    --mesh-saturation: 1.2;
+
+    /* Motion tokens — micro-interactions, page-load orchestration */
+    --dur-micro: 200ms;
+    --dur-enter: 320ms;
+    --dur-exit: 200ms; /* exit < enter */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --stagger: 40ms;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* MegaEvents 2.0 — dark theme. Deep-forest/black surfaces, neon kept at full
+       chroma (reads well on dark — the Aurora intent). */
+    --background: 158 40% 6%; /* deep-forest, darkened */
+    --foreground: 60 33% 97%;
+    --card: 158 30% 10%;
+    --card-foreground: 60 33% 97%;
+    --popover: 158 30% 10%;
+    --popover-foreground: 60 33% 97%;
+    --primary: 141 100% 68%; /* full neon mint on dark */
+    --primary-foreground: 158 44% 6%;
+    --secondary: 141 100% 68%;
+    --secondary-foreground: 158 44% 6%;
+    --surface-inverse: 244 60% 6%; /* near-black band on dark */
+    --surface-inverse-foreground: 60 33% 97%;
+    --muted: 158 18% 16%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 158 25% 18%;
+    --accent-foreground: 60 33% 97%;
+    --destructive: 354 90% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 141 70% 50%;
+    --warning: 48 90% 55%;
+    --info: 189 90% 64%;
+    --border: 158 18% 20%;
+    --input: 158 18% 20%;
+    --ring: 141 100% 64%;
+    /* On dark surfaces the legible brand accent flips to glow-mint. */
+    --brand-accent: var(--brand-glow);
+    --brand-accent-foreground: 158 44% 7%;
+    --badge-urgent: 354 90% 64%;
+    --badge-new: 257 100% 82%;
+    --badge-vip: 48 90% 58%;
+    --badge-soldout: 240 7% 55%;
+    --badge-foreground: 244 60% 8%; /* dark text on bright neon badges */
+    --chart-1: 141 100% 68%;
+    --chart-2: 257 100% 82%;
+    --chart-3: 48 90% 58%;
+    --chart-4: 354 90% 64%;
+    --chart-5: 189 90% 64%;
+    --radius: 0.75rem;
   }
 }
 
@@ -73,18 +133,217 @@ body {
   * {
     @apply border-border;
   }
+  html {
+    background-color: hsl(var(--background));
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), "Arial Hebrew", Arial, sans-serif;
+    /* Mantine's global stylesheet re-colors <body> via its own vars
+       (--mantine-color-text: #000, --mantine-color-body: #fff), which loads
+       after Tailwind base and wins — in dark mode every inheriting element
+       turned black. Redefining the vars at body level beats Mantine's
+       :root-level definitions regardless of stylesheet order. */
+    --mantine-color-text: hsl(var(--foreground));
+    --mantine-color-body: hsl(var(--background));
   }
 
   body::-webkit-scrollbar {
     display: none;
   }
+
+  /* Tabular figures — prices, timers, countdowns (Elevation #6) */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Global reduced-motion off-ramp — every animation must degrade here */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 .selected-flight {
-  border-color: hsl(var(--primary));
-  background-color: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--success));
+  background-color: hsl(var(--success) / 0.08);
+}
+
+/* ── Custom themed scrollbar ───────────────────────────────────────────────
+   Body scrollbar is hidden globally; scrollable panels (search dropdowns, etc.)
+   would otherwise fall back to the default browser bar. Apply `.myt-scroll` to
+   opt into a thin, brand-tinted bar that matches the panel border/hover tones. */
+.myt-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: hsl(var(--surface-inverse-foreground) / 0.25) transparent;
+}
+.myt-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.myt-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.myt-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--surface-inverse-foreground) / 0.25);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.myt-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--surface-inverse-foreground) / 0.4);
+}
+
+/* ── Elfsight Google Reviews — dark-mode theming ──────────────────────────
+   The widget renders in the LIGHT DOM (no iframe / no shadow root) with stable
+   `es-*` class hooks and near-black (#111) text meant for a light page. In dark
+   mode we recolor its text + carousel controls to the theme's light tones so it
+   blends into the dark page instead of needing a forced white island. The star
+   rating, the "read more" link and the reviewer avatars keep their own colors. */
+.dark .es-embed-root,
+.dark .es-embed-root * {
+  /* Text only — stars, the Google logo and avatars paint via SVG `fill` /
+     images, which `color` doesn't touch, so recoloring every node is safe. */
+  color: hsl(var(--foreground)) !important;
+}
+/* Carousel bullets/arrows were near-black — lift them onto the dark surface. */
+.dark .es-embed-root .es-bullets-control-item {
+  background-color: hsl(var(--foreground) / 0.3) !important;
+}
+.dark .es-embed-root .es-bullets-control-item-active {
+  background-color: hsl(var(--foreground)) !important;
+}
+.dark .es-embed-root .es-carousel-arrow-control {
+  background-color: hsl(var(--foreground) / 0.12) !important;
+  color: hsl(var(--foreground)) !important;
+}
+/* Review cards, if the layout paints a light surface, go to the dark card tone. */
+.dark .es-embed-root [class*="ReviewCard"],
+.dark .es-embed-root [class*="es-review"] {
+  background-color: transparent !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Order stepper — keep all 4 steps on one line on phones (Mantine wraps by
+   default; !important because Mantine's own .m_* rules load after ours) */
+@media (max-width: 40em) {
+  .mantine-Stepper-root {
+    --stepper-icon-size: 28px !important;
+    --stepper-fz: 13px !important;
+    --stepper-spacing: 0.25rem !important;
+  }
+  .mantine-Stepper-steps {
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+  .mantine-Stepper-step {
+    padding: 0 !important;
+  }
+  .mantine-Stepper-stepBody {
+    margin-inline-start: 6px !important;
+  }
+  .mantine-Stepper-stepLabel {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap;
+  }
+  .mantine-Stepper-separator {
+    display: none !important;
+  }
+}
+
+/* Aurora — flowing neon gradient-mesh background (signature motif, Elevation #1).
+   Each blob drifts on its own slow loop; mix-blend-mode: screen makes the neons
+   glow on dark surfaces. GPU-friendly (transform/opacity only). */
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(12%, 8%, 0) scale(1.18); }
+  66% { transform: translate3d(-8%, 14%, 0) scale(0.92); }
+}
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  40% { transform: translate3d(-14%, -10%, 0) scale(0.88); }
+  75% { transform: translate3d(10%, -6%, 0) scale(1.2); }
+}
+@keyframes aurora-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50% { transform: translate3d(16%, -12%, 0) scale(1.25); }
+}
+/* Aurora blob visuals, split by device power.
+   MOBILE (default): softness baked into the gradient — NO live blur, NO
+   blend-mode. iOS re-composited five 56px-blurred blended layers on every
+   scroll, repainting the whole page for seconds (bisected on a real iPhone:
+   killing filters fixed the jank; killing box-shadows did not).
+   DESKTOP (lg+): the original look — real blur + screen blend. */
+.aurora-blob {
+  background: radial-gradient(circle at center, hsl(var(--ab-color) / 0.5), hsl(var(--ab-color) / 0) 60%);
+}
+@media (min-width: 1024px) {
+  .aurora-blob {
+    background: radial-gradient(circle at center, hsl(var(--ab-color) / 0.9), hsl(var(--ab-color) / 0) 70%);
+    filter: blur(56px) saturate(var(--mesh-saturation));
+    mix-blend-mode: screen;
+  }
+}
+
+/* Footer wordmark marquee (Elevation #7) */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Hero center logo card — layered brand animation (CSS stand-in for the Figma
+   animated logo until a Lottie source exists). */
+@keyframes logo-breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.05) rotate(-1deg); }
+}
+/* Neon sheen sweeping diagonally across the card */
+@keyframes logo-sheen {
+  0% { transform: translateX(-180%) rotate(18deg); }
+  45%, 100% { transform: translateX(260%) rotate(18deg); }
+}
+/* Wordmark ⇄ MΣ-mark morph: each layer is visible half the loop, hands over
+   with a soft scale + blur crossfade. Second layer runs the same animation
+   with a -50% phase delay. */
+@keyframes logo-swap {
+  0%, 38% { opacity: 1; transform: scale(1); filter: blur(0); }
+  46%, 90% { opacity: 0; transform: scale(0.78); filter: blur(8px); }
+  98%, 100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* Highlighted package icon on event cards — soft breathing neon glow */
+@keyframes icon-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); opacity: 0.85; }
+  50% { filter: drop-shadow(0 0 6px hsl(var(--brand-orange) / 0.85)); opacity: 1; }
+}
+
+/* Package icons (טיסה / מלון / כרטיס) — orange highlight travels between the
+   three labels. Each item runs this with a 1/3-cycle stagger via animation-delay,
+   so the accent steps flight → hotel → ticket and loops. */
+@keyframes pkg-cycle {
+  0%, 27% {
+    color: hsl(var(--brand-orange));
+    filter: drop-shadow(0 0 6px hsl(var(--brand-orange) / 0.7));
+  }
+  34%, 100% {
+    color: hsl(var(--muted-foreground));
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+/* Pulsing dot on the "last tickets" tag */
+@keyframes tag-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.4; }
 }
 
 /* Screen reader only content */
@@ -110,4 +369,3 @@ body {
   clip: auto;
   white-space: normal;
 }
-

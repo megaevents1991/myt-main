@@ -33,19 +33,21 @@ export type TixStockMatchableListing = {
 /*  Colours                                                            */
 /* ------------------------------------------------------------------ */
 
-export const TX_TICKET_COLOR = "rgb(5, 32, 60)";
-/** Light solid fill for sections with available tickets (opaque equivalent of ~20 % teal on white – avoids stacking artefacts from overlapping shapes) */
-export const TX_SECTION_FILL_LIGHT = "#D4E5E7";
-/** Base/available section stroke — secondary DEFAULT */
-export const TX_SECTION_FILL = "#277E89";
+export const TX_TICKET_COLOR = "hsl(var(--brand-forest))";
+/** Light solid fill for sections with available tickets — light Glow-Green
+ *  tint (brand ramp), opaque to avoid stacking artefacts from overlaps. */
+export const TX_SECTION_FILL_LIGHT = "#C2FFD8"; /* glow tint (brand ramp shade 1) */
+/** Base/available section stroke — Glow Green */
+export const TX_SECTION_FILL = "hsl(var(--brand-glow))";
 /** Hover/highlighted stroke & text — secondary foreground */
 export const TX_HOVER_STROKE = "#F0F0F2";
 /** Text shadow on hover */
 export const TX_TEXT_SHADOW = "#000000";
-/** Slightly brighter teal for hover feedback */
-export const TX_HOVER_FILL = "#2F97A3";
-/** Stronger teal for selected state */
-export const TX_SELECTED_FILL = "#277E89";
+/** Hover feedback — solid Glow Green (brighter than the available tint) */
+export const TX_HOVER_FILL = "hsl(var(--brand-glow))";
+/** Brand Dark Forest Green for the selected section — clearly darker than
+ *  the hover/available greens so a locked-in pick reads at a glance. */
+export const TX_SELECTED_FILL = "hsl(var(--brand-forest))";
 /** Fill for explicitly disabled/excluded sections */
 export const TX_DISABLED_FILL = "#D8D8D8";
 /** Stroke for explicitly disabled/excluded sections */
@@ -433,17 +435,10 @@ export const paintSection = (
 
     switch (mode) {
       case "base":
-        svgEl.style.fill = node.dataset.origFill || "";
-        svgEl.style.fillOpacity = node.dataset.origFillOpacity || "";
-        svgEl.style.opacity = "1";
-        svgEl.style.cursor = "";
-        break;
       case "inactive":
-        // Sections with no tickets still render as a muted teal so the
-        // full venue shape is visible (mirrors the backoffice map, where
-        // every section is painted regardless of availability).
-        svgEl.style.fill = TX_SECTION_FILL;
-        svgEl.style.fillOpacity = "0.35";
+        // Reset + no-ticket sections: neutral light gray, never the map's raw
+        // (often black) fill — keeps the plan on-brand / off-white.
+        svgEl.style.fill = "#E8E6E0";
         svgEl.style.opacity = "1";
         svgEl.style.cursor = "";
         break;
@@ -481,8 +476,8 @@ export const paintSection = (
 
     switch (mode) {
       case "base":
-        svgEl.style.stroke = node.dataset.origStroke || "";
-        svgEl.style.strokeOpacity = node.dataset.origStrokeOpacity || "";
+        svgEl.style.stroke = "#D3D1CA";
+        svgEl.style.strokeOpacity = "0.8";
         break;
       case "available":
         svgEl.style.stroke = TX_SECTION_FILL;
@@ -497,8 +492,8 @@ export const paintSection = (
         svgEl.style.strokeOpacity = "";
         break;
       case "inactive":
-        svgEl.style.stroke = TX_SECTION_FILL;
-        svgEl.style.strokeOpacity = "0.9";
+        svgEl.style.stroke = "#D3D1CA";
+        svgEl.style.strokeOpacity = "0.8";
         break;
       case "disabled":
         svgEl.style.stroke = TX_DISABLED_STROKE;

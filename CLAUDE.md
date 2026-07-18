@@ -2,6 +2,50 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **🚧 TODO — REMOVE CONTENTFUL (Phase 3, pending).**
+> Content (artists, football teams, blog, categories) was migrated to Supabase
+> tables and the site now reads Supabase. A **Contentful fallback** is still in
+> place as a safety net (`lib/cms/people.ts`, `lib/blog.ts`). Verified 100%
+> coverage (51 artists / 15 teams / 2 blog). When ready, remove:
+> the fallback in those readers, `lib/contentful.ts` + `contentfulClient`, the
+> `*Fields` Contentful types in `lib/app.types.ts`, the `contentful` dep, and
+> `scripts/migrate-contentful.mjs` + `scripts/verify-migration.mjs`. Backoffice
+> manages this content under **Templates** (תבניות).
+
+> **🔒 TODO — SECURITY HARDENING (deferred, do carefully after redesign ships).**
+> A 2026-07 audit fixed the top breaches on branch `fix/security-hardening`
+> (payment ₪1 price-tampering floor in `app/api/confirm-order/utils.ts`; order-read
+> IDOR narrowed in `app/api/confirm-order/[id]/route.ts`). **Still open — fix
+> carefully later:**
+> - **User management / auth overhaul.** No real user layer. Partner passwords are
+>   PLAINTEXT (`partners.password`, compared via `.eq()` in
+>   `app/api/affiliate/login/route.ts`); every order auto-creates a partner with a
+>   guessable `<code>_pass` password (`app/api/confirm-order/route.ts`). Backoffice
+>   admins share ONE hardcoded env credential. Plan: unify on Supabase Auth, hash +
+>   migrate, add roles. Candidate approach + file refs in Claude memory
+>   (`auth-user-management-todo`).
+> - **Unauthenticated affiliate data leak.** `GET /api/affiliate/stats` &
+>   `/api/affiliate/checkCode` take a guessable `?affiliateId=` with no auth → leak
+>   revenue/commission. Gate on the partner session once auth exists.
+> - **Order-read still keyed by sequential id** — move to an unguessable per-order token.
+> - **Revalidation secret in URL** (`/api/revalidate`, `/api/hotels`) — move to a
+>   header + rotate (cross-project: backoffice calls these).
+> - **No rate limiting** on `/api/confirm-order` (inventory-exhaustion / inbox flood).
+
+## Always-on rules (auto-loaded)
+
+Tech standards:
+@.claude/rules/standards/typescript.md
+@.claude/rules/standards/react.md
+@.claude/rules/standards/nextjs.md
+@.claude/rules/standards/supabase.md
+
+MYT domain rules:
+@.claude/rules/pricing.md
+@.claude/rules/order-flow.md
+@.claude/rules/cross-project.md
+@.claude/rules/conventions.md
+
 > **⚠ IMPORTANT: This project is part of a two-project platform.**
 > The sibling project `../MYT-backoffice-app` is the admin dashboard that manages the data this app displays.
 > See `../CLAUDE.md` for the full system architecture and shared database schema.
@@ -49,6 +93,21 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_MARKUP` — Price markup (currently 175)
 - `NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT` — Safety buffer % added to the static DB price for `tx_event` tickets **only when live TixStock pricing is unavailable** (default 15). Prevents selling below the live price during a TX outage. Applied in `app/order/TicketSelection.tsx`.
 - `NEXT_PUBLIC_API_URL` — Base URL for internal API calls
+
+## Meta Product Feed
+
+- `GET /feeds/meta-catalog.xml` — public RSS 2.0 catalog feed Meta fetches hourly (one item per
+  `/order/{id}`; sold-out marked `out of stock`, never deleted; World Cup 2026 items link to the
+  mondial subdomain). `GET /feeds/meta-catalog.csv` — same rows as CSV. Built live in
+  `lib/feed/feedData.ts` + serialized by `lib/feed/metaCatalog.ts` (pure — test:
+  `npx tsx lib/feed/__tests__/metaCatalog.test.ts`).
+- `/product-feed` — internal admin page (counts, preview, CSV export). Gated by the SAME
+  Supabase-Auth Google SSO + `user_profiles` staff roles as the backoffice (`lib/feed/feedAuth.ts`,
+  routes under `app/api/feed-auth/`). Requires this app's callback URL
+  (`https://www.mega-events.co.il/api/feed-auth/callback`) in the Supabase Auth redirect allowlist.
+- `product_type` / `custom_label_0-3` come from the backoffice event taxonomy
+  (`event_categories` path + `event_tags` slugs); `custom_label_4` = `available`/`sold_out`.
+- Middleware skips `/feeds/` so the routes' own `Cache-Control` applies.
 
 ## Architecture
 
@@ -100,7 +159,6 @@ Events have a `type` field that determines ticket source:
 ### Middleware
 
 `middleware.ts` runs on all non-static routes:
-- Hard-redirects the legacy Mondial 2026 football page to an external subdomain
 - Sets `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` on HTML pages
 
 ### Pricing

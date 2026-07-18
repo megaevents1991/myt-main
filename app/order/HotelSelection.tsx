@@ -704,7 +704,7 @@ export const HotelSelection = () => {
       <div className="flex flex-col w-full items-center">
         <div
           dir="rtl"
-          className="w-screen gap-2 flex flex-col lg:flex-row justify-center px-4 py-2 lg:p-4 bg-gray-200 items-center"
+          className="w-screen gap-2 flex flex-col lg:flex-row justify-center px-4 py-2 lg:p-4 bg-muted items-center"
         >
           <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader event={event} />
@@ -722,7 +722,7 @@ export const HotelSelection = () => {
                   keepMounted={false}
                 >
                   <Popover.Target>
-                    <div className="w-full p-3 text-center bg-white rounded-lg border border-gray-300 text-[1rem] cursor-pointer">
+                    <div className="w-full p-3 text-center bg-card rounded-lg border border-border text-[1rem] cursor-pointer">
                       <span className="whitespace-nowrap">
                         {" "}
                         {`${getTotalPersons(roomParams)} אורחים`}
@@ -760,7 +760,7 @@ export const HotelSelection = () => {
                         </div>
                       ))}
                       <button
-                        className="text-secondary px-2 text-left"
+                        className="text-success px-2 text-left"
                         onClick={() =>
                           setRoomParams((prev) => [
                             ...prev,
@@ -789,11 +789,13 @@ export const HotelSelection = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
+                  showTooltip={true}
+                  tooltipText="רוצים תאריכים אחרים? בחרו כאן"
                 />
                 <button
                   disabled={isFetching}
                   onClick={() => fetchHotels()}
-                  className="p-2 px-4 bg-secondary text-white rounded-l-lg h-[40px] flex items-center justify-center r"
+                  className="p-2 px-4 bg-main text-main-foreground rounded-l-lg h-[40px] flex items-center justify-center r"
                   type="button"
                   aria-label="חפש מלונות"
                 >
@@ -834,28 +836,28 @@ export const HotelSelection = () => {
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-md border-[1.5px] text-right transition-colors outline-none",
                     isActive
-                      ? "border-secondary bg-secondary/10"
-                      : "border-gray-200 bg-white hover:border-secondary"
+                      ? "border-main bg-main/10 dark:border-foreground/40"
+                      : "border-border bg-card hover:border-main"
                   )}
                 >
                   <span
                     className={cn(
                       "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
-                      isActive ? "bg-secondary" : "bg-gray-100"
+                      isActive ? "bg-main dark:bg-foreground" : "bg-muted"
                     )}
                   >
                     <Icon
                       className={cn(
                         "w-[18px] h-[18px] transition-colors",
-                        isActive ? "text-white" : "text-gray-500"
+                        isActive ? "text-white dark:text-background" : "text-muted-foreground"
                       )}
                       strokeWidth={1.8}
                       aria-hidden="true"
                     />
                   </span>
                   <span className="flex flex-col items-end flex-1 min-w-0">
-                    <span className="font-bold text-sm text-gray-900">{title}</span>
-                    <span className="text-[11px] text-gray-500 mt-0.5">{sub}</span>
+                    <span className="font-bold text-sm text-foreground">{title}</span>
+                    <span className="text-[11px] text-muted-foreground mt-0.5">{sub}</span>
                   </span>
                 </button>
               );
@@ -868,14 +870,14 @@ export const HotelSelection = () => {
               type="button"
               aria-label="פתח פילטרים"
               onClick={() => setShowFilters(true)}
-              className="w-[38px] flex-shrink-0 bg-white border border-gray-200 rounded-md flex items-center justify-center hover:border-secondary hover:bg-secondary/10 transition-colors"
+              className="w-[38px] flex-shrink-0 bg-card border border-border rounded-md flex items-center justify-center hover:border-success hover:bg-success/10 transition-colors"
             >
-              <SlidersHorizontal className="w-4 h-4 text-gray-900" strokeWidth={1.8} aria-hidden="true" />
+              <SlidersHorizontal className="w-4 h-4 text-foreground" strokeWidth={1.8} aria-hidden="true" />
             </button>
             <div
               role="tablist"
               aria-label="מיון מלונות"
-              className="flex-1 flex bg-white border border-gray-200 rounded-md p-[3px] gap-[2px] min-w-0"
+              className="flex-1 flex bg-card border border-border rounded-md p-[3px] gap-[2px] min-w-0"
             >
               {([
                 { key: "price_asc" as const, label: "הזול ביותר", Icon: DollarSign },
@@ -897,13 +899,13 @@ export const HotelSelection = () => {
                     }
                     className={cn(
                       "flex-1 px-1 py-2 rounded flex flex-col items-center justify-center gap-1 leading-tight min-w-0 transition-colors",
-                      isActive ? "bg-secondary" : "hover:bg-gray-50"
+                      isActive ? "bg-main dark:bg-foreground" : "hover:bg-muted"
                     )}
                   >
                     <Icon
                       className={cn(
                         "w-3.5 h-3.5 flex-shrink-0",
-                        isActive ? "text-white" : "text-gray-500"
+                        isActive ? "text-white dark:text-background" : "text-muted-foreground"
                       )}
                       strokeWidth={1.8}
                       aria-hidden="true"
@@ -911,7 +913,7 @@ export const HotelSelection = () => {
                     <span
                       className={cn(
                         "text-[11px] font-bold whitespace-nowrap",
-                        isActive ? "text-white" : "text-gray-900"
+                        isActive ? "text-white dark:text-background" : "text-foreground"
                       )}
                     >
                       {label}
@@ -925,7 +927,7 @@ export const HotelSelection = () => {
       </div>
       <div
         className={cn(
-          "flex flex-row lg:gap-4 gap-2 flex-row-reverse items-start w-full",
+          "flex flex-row lg:gap-4 gap-2 items-start w-full",
           !matches && "flex-col"
         )}
       >

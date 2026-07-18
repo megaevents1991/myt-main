@@ -1,11 +1,23 @@
 import { supabase } from "@/lib/supabase";
 import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
+import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
+import { eventRelatesToTeam } from "@/lib/eventNameMatch";
 
 export const getCachedEvents = nextCache(getEvents, ["all-events"], {
   tags: ["events"],
   revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
 });
+
+/** Number of days an event must be in the future to count as "available". */
+export const AVAILABILITY_WINDOW_DAYS = 7;
+
+/** `YYYY-MM-DD` for `daysAhead` from now — the DB-comparable availability cutoff. */
+export function futureDateISO(daysAhead: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().split("T")[0];
+}
 
 export async function getEvents(id?: number): Promise<{ events: Event[] }> {
   const startTime = Date.now();
@@ -50,7 +62,7 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     console.log(
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
-    return { events: events || [] };
+    return { events: await enrichEventsWithFallbackImages(events || []) };
   } catch (error) {
     const queryTime = Date.now() - startTime;
     console.error(`[EventsData] Unexpected error after ${queryTime}ms:`, {
@@ -65,13 +77,9 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
 export async function getEventsByName(
   searchName: string,
 ): Promise<{ events: Event[] }> {
-  // Calculate date 7 days from now
-  const today = new Date();
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(today.getDate() + 7);
-
-  // Format to YYYY-MM-DD for database comparison
-  const futureDate = sevenDaysFromNow.toISOString().split("T")[0]; // Format: 2025-04-32
+  // Only events at least AVAILABILITY_WINDOW_DAYS out count (shared with the
+  // catalog's on-tour check in lib/tourStatus.ts — keep them on one threshold).
+  const futureDate = futureDateISO(AVAILABILITY_WINDOW_DAYS);
 
   const { data: events, error } = await supabase
     .from("events")
@@ -82,5 +90,14 @@ export async function getEventsByName(
     .order("date", { ascending: true });
 
   if (error) return Promise.resolve({ events: [] as Event[] });
-  return { events };
+
+  // The ILIKE substring is deliberately fuzzy, so a club whose name is a
+  // substring of another's over-matches (team "Milan" pulls in ALL "Inter
+  // Milan" fixtures). Keep only fixtures the team actually plays in — home and
+  // away both (the page splits them visually); non-fixture events (artists)
+  // pass through untouched.
+  const matched = events.filter((e) =>
+    eventRelatesToTeam(e.name_english ?? "", searchName),
+  );
+  return { events: await enrichEventsWithFallbackImages(matched) };
 }

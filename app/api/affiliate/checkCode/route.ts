@@ -10,13 +10,27 @@ export async function GET(request: Request) {
   }
   
   try {
-    const { data, error } = await supabase
+    // Explicit allowlist — never select * here (the table holds credentials).
+    // `is_active` may not exist until the migration runs; on 42703 (undefined
+    // column) retry without it so affiliate links keep working either way.
+    let { data, error } = await supabase
       .from('partners')
-      .select("partner_tracking_code, user_discount, commission, type")
+      .select("partner_tracking_code, user_discount, commission, type, is_active")
       .eq('partner_tracking_code', affiliateId)
       .single();
-    if (error) throw error;    
-    
+    if (error && error.code === "42703") {
+      ({ data, error } = await supabase
+        .from('partners')
+        .select("partner_tracking_code, user_discount, commission, type")
+        .eq('partner_tracking_code', affiliateId)
+        .single());
+    }
+    if (error) throw error;
+
+    // Disabled affiliate — behave like an unknown code (no discount/tracking).
+    if ((data as { is_active?: boolean } | null)?.is_active === false)
+      return NextResponse.json({ });
+
     // Return data if it has either discount OR commission (for agents)
     if (data && (data?.user_discount || data?.commission))
       return NextResponse.json({

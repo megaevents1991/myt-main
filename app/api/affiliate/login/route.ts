@@ -11,7 +11,10 @@ export async function POST(request: Request) {
       .eq('email', user)
       .eq('password', pass)
       .single();
-    if (error) throw error;    
+    if (error) throw error;
+    // Disabled affiliate — login rejected (only an explicit false blocks).
+    if (data?.is_active === false)
+      return NextResponse.json({ success: false });
     if (data && data?.email === user)
       return NextResponse.json({
         success: true,

@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote -v)",
+      "Bash(git remote show:*)",
+      "Bash(git branch:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(node .claude/hooks/:*)",
+      "WebFetch(domain:javascript.info)",
+      "PowerShell(npx tsc --noEmit 2>&1 | Select-String -Pattern \"HeroCarousel\" -Context 0,1; if \\($LASTEXITCODE -eq 0\\) { \"TSC CLEAN\" } else { \"TSC done \\(exit $LASTEXITCODE\\) — see any HeroCarousel lines above\" })"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-commit.js\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/typesync-reminder.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint-check.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

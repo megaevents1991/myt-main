@@ -1,4 +1,6 @@
 import { getCachedEvents } from "@/lib/eventsData";
+import { getAllArtists } from "@/lib/artists";
+import { getAllFootballTeams } from "@/lib/football";
 import OrderPageClient from "../OrderPageClient";
 import { Event } from "@/lib/app.types";
 import { Metadata } from "next";
@@ -6,13 +8,6 @@ import { OrderErrorBoundary } from "../OrderErrorBoundary";
 import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import {
-  getMondial2026OrderUrl,
-  isMondial2026Host,
-  isMondial2026Event,
-} from "@/lib/mondial2026Redirect";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
@@ -110,9 +105,7 @@ export default async function OrderPageWithId({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { eventId } = await params;
-  const queryParams = await searchParams;
-  const requestHeaders = await headers();
-  const isAlreadyOnMondial2026 = isMondial2026Host(requestHeaders.get("host"));
+  await searchParams;
 
   if (!eventId) {
     return <EventNotFoundNotice />;
@@ -130,10 +123,6 @@ export default async function OrderPageWithId({
 
   if (!event) {
     return <EventNotFoundNotice eventId={eventId} />;
-  }
-
-  if (!isAlreadyOnMondial2026 && isMondial2026Event(event)) {
-    redirect(getMondial2026OrderUrl(eventId, queryParams));
   }
 
   // Check if event has any available tickets
@@ -162,9 +151,55 @@ export default async function OrderPageWithId({
     );
   }
 
+  // Resolve the person page (if any) this event belongs to, by english-name
+  // match — same rule the homepage uses to group events under artist pages.
+  // Artists match exactly; football teams match as a substring of the event
+  // name ("Arsenal - Chelsea"), earliest hit = home team. Lets the
+  // ticket-selection header + summary link the photo to the person page.
+  let personLink: { href: string; label: string } | undefined;
+  try {
+    const target = (event.name_english ?? "").trim().toLowerCase();
+    if (target) {
+      const artists = await getAllArtists();
+      const artist = artists.find(
+        (a) => (a.fields.nameDBenglish ?? "").trim().toLowerCase() === target
+      );
+      if (artist) {
+        personLink = {
+          href: `/artists/${artist.sys.id}`,
+          label: `לכל ההופעות של ${artist.fields.name ?? event.name}`,
+        };
+      } else {
+        const teams = await getAllFootballTeams();
+        const team = teams
+          .map((t) => ({
+            t,
+            name: (t.fields.nameDBenglish ?? "").trim().toLowerCase(),
+          }))
+          .filter((x) => x.name && target.includes(x.name))
+          .map((x) => ({ ...x, pos: target.indexOf(x.name) }))
+          // Earliest in the event name wins (home team); longer name breaks ties
+          // so "Manchester United" beats "Manchester".
+          .sort((a, b) => a.pos - b.pos || b.name.length - a.name.length)[0]?.t;
+        if (team?.fields.name) {
+          personLink = {
+            href: `/football/${team.sys.id}`,
+            label: `לכל המשחקים של ${team.fields.name}`,
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to resolve person link for order page:", error);
+  }
+
   return (
     <OrderErrorBoundary>
-      <OrderPageClient initialEvent={event} eventId={eventId} />
+      <OrderPageClient
+        initialEvent={event}
+        eventId={eventId}
+        personLink={personLink}
+      />
     </OrderErrorBoundary>
   );
 }

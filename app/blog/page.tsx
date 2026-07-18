@@ -1,8 +1,8 @@
-import { contentfulClient } from "@/lib/contentful";
-import { BlogTemplateFields } from "@/lib/app.types";
+import { getAllBlogPosts } from "@/lib/blog";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { EventArt } from "@/components/ui/EventArt";
 
 export const revalidate = 3600;
 
@@ -17,9 +17,7 @@ export default async function BlogPage() {
   const timestamp = Date.now();
 
   try {
-    const { items } = await contentfulClient.getEntries<BlogTemplateFields>({
-      content_type: "blogTemplate",
-    });
+    const items = await getAllBlogPosts();
 
     return (
       <main dir="rtl" className="container mx-auto py-8 px-4">
@@ -41,8 +39,22 @@ export default async function BlogPage() {
               aria-label={`עמוד הבלוג ${post.fields.title || "ללא כותרת"}`}
             >
               <article className="border rounded-lg overflow-hidden h-full flex flex-col">
-                <div className="relative w-full aspect-[16/9] bg-gradient-to-br from-[#05203C] to-[#178189]">
-                  {post.fields.heroBanner?.fields?.file?.url ? (
+                <div className="relative w-full aspect-[16/9] bg-gradient-to-br from-[#0A1A14] to-[#178189]">
+                  {post.fields.artImageUrl ? (
+                    <EventArt
+                      id={post.sys.id}
+                      imageUrl={post.fields.artImageUrl}
+                      alt={`תמונה לבלוג ${String(post.fields.title)}`}
+                      colorIndex={post.fields.artColorIndex}
+                      shapeIndex={post.fields.artShapeIndex}
+                      imageScale={post.fields.artImageScale}
+                      bgScale={post.fields.artBgScale}
+                      imageOffsetX={post.fields.artImageOffsetX}
+                      imageOffsetY={post.fields.artImageOffsetY}
+                      priority
+                      className="h-full w-full"
+                    />
+                  ) : post.fields.heroBanner?.fields?.file?.url ? (
                     <Image
                       src={"https:" + post.fields.heroBanner.fields.file.url}
                       alt={`תמונה לבלוג ${String(post.fields.title)}`}

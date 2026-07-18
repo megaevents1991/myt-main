@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
-        width: 306,
-        height: 200,
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
         alt: "מגה איבנטס - הצהרת נגישות",
       },
     ],
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     description:
       "הצהרת הנגישות של MegaEvents - מחויבות לנגישות דיגיטלית ועמידה בתקנות הנגישות.",
     images: [
-      "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources//logo200_300.png",
+      "/og-image.png",
     ],
   },
   robots: {
@@ -198,7 +198,7 @@ export default async function AccessibilityPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <a
               href="tel:03-768-4800"
-              className="bg-secondary text-white px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
+              className="bg-secondary text-secondary-foreground px-8 py-3 rounded-lg font-bold hover:bg-secondary/80 transition-colors inline-block focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-secondary"
               aria-label="התקשרו לרכז הנגישות: 03-768-4800"
             >
               התקשרו: 03-768-4800
