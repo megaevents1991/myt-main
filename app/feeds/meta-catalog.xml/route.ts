@@ -1,4 +1,3 @@
-import { gzipSync } from "node:zlib";
 import { getFeedItems } from "@/lib/feed/feedData";
 import { toXml } from "@/lib/feed/metaCatalog";
 
@@ -9,15 +8,17 @@ import { toXml } from "@/lib/feed/metaCatalog";
  * application/xml), never an HTML page. Middleware skips /feeds/ so these
  * cache headers are authoritative.
  *
- * Explicitly gzipped here (not left to Vercel's edge to negotiate): Vercel
- * auto-compresses with Brotli whenever a client's Accept-Encoding includes
- * "br" — but Meta's fetcher advertises br support while apparently not
- * actually decoding it, so it received raw Brotli bytes and rejected the feed
- * as "file format isn't supported" (confirmed via direct testing — a client
- * advertising br gets undecodable binary from this route otherwise). Meta's
- * own docs only list gzip/zip/bz2 as supported compressed formats. Setting
- * Content-Encoding ourselves means the origin response is already encoded,
- * so Vercel's edge passes it through instead of re-negotiating Brotli.
+ * `no-transform`: Vercel's edge auto-compresses with Brotli whenever a
+ * client's Accept-Encoding includes "br" — but Meta's fetcher advertises br
+ * support while apparently not actually decoding it, so it received raw
+ * Brotli bytes and rejected the feed as "file format isn't supported"
+ * (confirmed via direct testing). Meta's own docs only list gzip/zip/bz2 as
+ * supported compressed formats — br isn't one. A first attempt set
+ * Content-Encoding: gzip on the origin response, assuming Vercel's edge
+ * would pass through an already-encoded body — it doesn't: verified live
+ * that Vercel re-compresses with Brotli regardless, ignoring the origin's
+ * own Content-Encoding. `no-transform` is the actual HTTP-standard directive
+ * (RFC 7234) telling any cache/CDN not to alter the payload encoding at all.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -25,14 +26,12 @@ export const maxDuration = 60;
 export async function GET() {
   try {
     const { items } = await getFeedItems();
-    const gzipped = gzipSync(Buffer.from(toXml(items), "utf-8"));
-    return new Response(gzipped, {
+    return new Response(toXml(items), {
       status: 200,
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
-        "Content-Encoding": "gzip",
         // Fresh enough for Meta's hourly fetch; CDN may hold it 15 min.
-        "Cache-Control": "public, s-maxage=900, must-revalidate",
+        "Cache-Control": "public, s-maxage=900, must-revalidate, no-transform",
       },
     });
   } catch (e) {
