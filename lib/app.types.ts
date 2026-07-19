@@ -592,6 +592,9 @@ export type FootballTeam = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    /** Homepage section-carousel position (backoffice Templates → Homepage
+     *  Order); absent = unordered, sorts last. */
+    displayOrder?: number;
     // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
     artImageUrl?: string;
     artColorIndex?: number;
@@ -645,6 +648,9 @@ export type Artist = {
     seoTitle?: string;
     metaDescription?: string;
     metaTags?: string;
+    /** Homepage section-carousel position (backoffice Templates → Homepage
+     *  Order); absent = unordered, sorts last. */
+    displayOrder?: number;
     // Blob card-art (Supabase art_* columns; absent on Contentful-fallback rows).
     artImageUrl?: string;
     artColorIndex?: number;

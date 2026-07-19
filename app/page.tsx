@@ -97,7 +97,10 @@ function buildHeroItems(
 
 // Homepage artist/football slides: EVERY entry, ordered with the ones we have
 // an available event for ("זמין באתר") FIRST and the rest appended at the end.
-// (The hero carousel, by contrast, shows only the available ones.)
+// Within each group: backoffice manual order (Templates → Homepage Order,
+// `display_order`), unordered entries after it alphabetically (stable sort
+// keeps the DB name order). (The hero carousel, by contrast, shows only the
+// available ones and is ordered by `featured_order`.)
 function availableFirst<T extends Artist | FootballTeam>(
   list: T[],
   isAvailable: (nameEnglish?: string) => boolean
@@ -108,6 +111,11 @@ function availableFirst<T extends Artist | FootballTeam>(
     if (isAvailable(String(item.fields.nameDBenglish ?? ""))) avail.push(item);
     else rest.push(item);
   }
+  const byDisplayOrder = (a: T, b: T) =>
+    (a.fields.displayOrder ?? Number.MAX_SAFE_INTEGER) -
+    (b.fields.displayOrder ?? Number.MAX_SAFE_INTEGER);
+  avail.sort(byDisplayOrder);
+  rest.sort(byDisplayOrder);
   return [...avail, ...rest];
 }
 

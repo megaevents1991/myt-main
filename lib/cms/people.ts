@@ -26,6 +26,7 @@ type PersonRow = {
   meta_description: string | null;
   meta_tags: string | null;
   featured_order: number | null;
+  display_order?: number | null;
   art_image_url?: string | null;
   art_color_index?: number | null;
   art_shape_index?: number | null;
@@ -88,6 +89,7 @@ const toPerson = (r: PersonRow): Artist => ({
     seoTitle: r.seo_title ?? undefined,
     metaDescription: r.meta_description ?? undefined,
     metaTags: r.meta_tags ?? undefined,
+    displayOrder: r.display_order ?? undefined,
     heroVideoUrl: r.hero_video_url ?? undefined,
     banners: r.banners?.length ? r.banners : undefined,
     gallery: r.gallery?.length ? r.gallery : undefined,
