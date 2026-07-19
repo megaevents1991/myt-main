@@ -20,8 +20,12 @@ import { NextResponse } from "next/server";
  * redirects there, so the branded mega-events.co.il URL stays the one
  * registered with Meta while delivery bypasses the problem completely.
  */
+// "-feed" suffix deliberately avoids "feeds/meta-catalog.xml" — that path
+// got Cloudflare-cache-poisoned during testing (identical content → same
+// weak etag every run → Cloudflare kept serving a stale cached response
+// from before the octet-stream fix, regardless of TTL or re-uploads).
 const STORAGE_FEED_URL =
-  "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources/feeds/meta-catalog.xml";
+  "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/public_resources/feeds/meta-catalog-feed.xml";
 
 export async function GET() {
   return NextResponse.redirect(STORAGE_FEED_URL, 307);
