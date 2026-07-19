@@ -37,7 +37,7 @@ export default async function ProductFeedPage({
 
   if (!user) {
     return (
-      <div dir="rtl" className="flex min-h-[70vh] items-center justify-center px-4">
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gray-50 px-4 text-gray-900">
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-card">
           <h1 className="mb-2 font-display text-2xl font-extrabold text-gray-900">
             Product Feed
@@ -96,7 +96,8 @@ export default async function ProductFeedPage({
   const xmlUrl = `${FEED_SITE_ORIGIN}/feeds/meta-catalog.xml`;
 
   return (
-    <div dir="rtl" className="container mx-auto max-w-6xl px-4 py-8">
+    <div dir="rtl" className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="container mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-gray-900">
@@ -229,8 +230,8 @@ export default async function ProductFeedPage({
                     </span>
                   </a>
                 </td>
-                <td className="max-w-[320px] px-3 py-2">{it.title}</td>
-                <td className="whitespace-nowrap px-3 py-2" dir="ltr">
+                <td className="max-w-[320px] px-3 py-2 text-gray-900">{it.title}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
                   {it.price}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">
@@ -244,13 +245,13 @@ export default async function ProductFeedPage({
                     {it.availability}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-2" dir="ltr">
+                <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
                   {it.expiration_date}
                 </td>
-                <td className="max-w-[200px] px-3 py-2" dir="ltr">
+                <td className="max-w-[200px] px-3 py-2 text-gray-900" dir="ltr">
                   {it.product_type || "—"}
                 </td>
-                <td className="max-w-[220px] px-3 py-2" dir="ltr">
+                <td className="max-w-[220px] px-3 py-2 text-gray-900" dir="ltr">
                   {it.custom_labels.filter(Boolean).join(", ")}
                 </td>
               </tr>
@@ -263,6 +264,7 @@ export default async function ProductFeedPage({
           </p>
         )}
       </div>
+    </div>
     </div>
   );
 }
