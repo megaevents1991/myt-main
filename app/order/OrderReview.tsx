@@ -82,6 +82,7 @@ export default function OrderReview({
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitFailed, setSubmitFailed] = useState(false);
   const { affId, affDiscount, agentCommission, setAffDiscount } =
     useFetchAffiliate();
   const passengerCount = flightSkipped
@@ -944,8 +945,9 @@ export default function OrderReview({
         setAppliedCoupon(null);
         setCouponInput("");
         setCouponStatus("expired");
+      } else {
+        setSubmitFailed(true);
       }
-      // TO DO: Handle error (e.g., show error message)
       console.error("Order submission failed:", error);
 
       setIsSubmitting(false);
@@ -1061,6 +1063,40 @@ export default function OrderReview({
           !flightSkipped
         }
         iconType="Gift"
+      />
+      {/* Order submission failed — nothing was charged; offer retry + WhatsApp */}
+      <Modal
+        title="אופס, ההזמנה לא נשלחה"
+        description={
+          <>
+            משהו השתבש אצלנו בדרך — לא חויבתם ושום דבר לא אבד.
+            <br />
+            נסו שוב עוד רגע, ואם זה חוזר על עצמו דברו איתנו בוואטסאפ{" "}
+            <a
+              href={`https://wa.me/972542002722?text=${encodeURIComponent(
+                `היי, ניסיתי להשלים הזמנה לאירוע ${event?.name || ""} וקיבלתי שגיאה. אשמח לעזרה :)`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold underline"
+            >
+              כאן
+            </a>{" "}
+            ונסגור את ההזמנה יחד.
+          </>
+        }
+        action={
+          <Button
+            variant="secondary"
+            className="font-bold w-full"
+            onClick={() => setSubmitFailed(false)}
+            aria-label="סגירת הודעת השגיאה וניסיון חוזר"
+          >
+            נסו שוב
+          </Button>
+        }
+        opened={submitFailed}
+        iconType="Info"
       />
       <LoaderWrapper
         isLoading={isSubmitting}

@@ -34,6 +34,7 @@ import { HotelFetchContext, HotelsData } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
+import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import dayjs from "dayjs";
 
 export const HotelSelection = () => {
@@ -984,9 +985,12 @@ export const HotelSelection = () => {
               offlineHotels.length === 0 &&
               !isProcessingHotels &&
               !isFetching && (
-                <div className="text-center w-full items-center text-gray-500 min-h-64 flex">
-                  No hotels found. Please adjust your search criteria.
-                </div>
+                <OrderIssueState
+                  className="min-h-64"
+                  title="לא מצאנו מלונות שמתאימים לחיפוש"
+                  subtitle="נסו לשנות את התאריכים, להגדיל את המרחק מהאירוע או לשחרר קצת את המסננים — ואם אתם צריכים עזרה, אנחנו כאן."
+                  whatsAppText="היי, אני מחפש מלון להזמנה באתר ולא מצאתי תוצאות. אשמח לעזרה :)"
+                />
               )}
           </div>
         </ScrollArea.Autosize>

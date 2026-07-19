@@ -8,6 +8,7 @@ import { EventTicketCard } from "@/components/ui/EventTicketCard";
 import Image from "next/image";
 import { ChevronDownCircle, ChevronUpCircle, Loader2 } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
+import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import { useMediaQuery } from "@mantine/hooks";
 import type { Event, EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
@@ -770,17 +771,12 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                       />
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
-                      <Text size="xl" fw={700} c="red" aria-live="polite">
-                        אין כרטיסים זמינים כרגע
-                      </Text>
-                      <Text size="md" c="dimmed">
-                        כל הכרטיסים לאירוע זה אזלו או אינם זמינים למכירה.
-                      </Text>
-                      <Text size="sm" c="dimmed">
-                        אנא נסו אירוע אחר או צרו קשר עם שירות הלקוחות לקבלת עזרה.
-                      </Text>
-                    </div>
+                    <OrderIssueState
+                      className="border-0 bg-transparent"
+                      title="הכרטיסים אזלו בינתיים"
+                      subtitle="זה קורה באירועים מבוקשים — לפעמים חוזרים כרטיסים למכירה. דברו איתנו ונעדכן אתכם ברגע שיש, או שנמצא לכם אירוע אחר מדליק."
+                      whatsAppText={`היי, רציתי כרטיסים לאירוע ${headerEvent?.name || ""} וראיתי שאזלו. אשמח לעדכון אם חוזרים כרטיסים :)`}
+                    />
                   )
                 ) : (
                   [...displayedTickets]

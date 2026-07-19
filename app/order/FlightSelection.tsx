@@ -11,7 +11,7 @@ import {
 } from "@/lib/app.types";
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { SortOptions } from "@/lib/flightSort";
-import { Button, ScrollArea } from "@mantine/core";
+import { ScrollArea } from "@mantine/core";
 import { Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import {
   useCallback,
@@ -28,6 +28,7 @@ import { MemoizedFlightCard } from "@/components/ui/FlightCard";
 import { SelectWithIcon } from "@/components/ui/inputWithIcon";
 import { FlightFilters } from "@/components/ui/FlightFilters";
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
+import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
@@ -489,12 +490,14 @@ export const FlightSelection = () => {
 
   if (error) {
     return (
-      <div className="text-center text-red-500">
-        <p>{error}</p>
-        <Button onClick={() => window.location.reload()} className="mt-4" aria-label="נסה שוב לטעון טיסות">
-          Try Again
-        </Button>
-      </div>
+      <OrderIssueState
+        variant="error"
+        title="אופס, חיפוש הטיסות נתקע לרגע"
+        subtitle={error}
+        onRetry={() => fetchFlights()}
+        retryLabel="נסו שוב"
+        whatsAppText="היי, ניסיתי לחפש טיסות באתר וקיבלתי שגיאה. אשמח לעזרה :)"
+      />
     );
   }
 
@@ -776,13 +779,11 @@ export const FlightSelection = () => {
             >
               {flightTicketCards}
               {filteredFlights.length === 0 && (
-                <div 
-                  className="text-center w-full items-center lg:w-2/3 text-gray-500 min-h-64 flex"
-                  role="status"
-                  aria-live="polite"
-                >
-                  לא נמצאו טיסות התואמות לקריטריונים שלכם. אנא התאימו את המסננים.
-                </div>
+                <OrderIssueState
+                  className="min-h-64 lg:w-2/3"
+                  title="לא מצאנו טיסות שמתאימות למסננים"
+                  subtitle="נסו לשחרר קצת את המסננים או לשנות את התאריכים — לפעמים גמישות של יום פותחת המון אפשרויות."
+                />
               )}
             </div>
           )}

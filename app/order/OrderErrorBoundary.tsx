@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, ReactNode } from "react";
-import Link from "next/link";
+import { OrderIssueState } from "@/components/ui/OrderIssueState";
 
 interface Props {
   children: ReactNode;
@@ -35,30 +35,16 @@ export class OrderErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center p-8">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">
-              Something went wrong
-            </h2>
-            <p className="text-gray-600 mb-4">
-              We&apos;re having trouble loading this event. Please try again.
-            </p>
-            <button
-              onClick={() => this.setState({ hasError: false })}
-              className="bg-main text-white px-6 py-2 rounded-lg hover:bg-secondary transition-colors"
-              type="button"
-              aria-label="Try loading the page again"
-            >
-              Try Again
-            </button>
-            <br />
-            <Link
-              href="/"
-              className="text-main dark:text-foreground hover:underline mt-4 inline-block"
-            >
-              Return to Home
-            </Link>
-          </div>
+        <div className="min-h-[60vh] flex items-center justify-center p-4">
+          <OrderIssueState
+            variant="error"
+            className="max-w-xl border-0 bg-transparent"
+            title="אופס, משהו השתבש אצלנו"
+            subtitle="לא הצלחנו לטעון את האירוע. אנחנו על זה — נסו שוב עוד רגע, ואם זה חוזר על עצמו דברו איתנו ונעזור."
+            onRetry={() => this.setState({ hasError: false })}
+            whatsAppText="היי, ניסיתי לפתוח אירוע באתר וקיבלתי שגיאה. אשמח לעזרה :)"
+            showHomeLink
+          />
         </div>
       );
     }
