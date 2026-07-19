@@ -38,11 +38,11 @@ export default async function ProductFeedPage({
   if (!user) {
     return (
       <div dir="rtl" className="flex min-h-[70vh] items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-8 text-center shadow-card">
-          <h1 className="mb-2 font-display text-2xl font-extrabold text-foreground">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-card">
+          <h1 className="mb-2 font-display text-2xl font-extrabold text-gray-900">
             Product Feed
           </h1>
-          <p className="mb-6 text-sm text-muted-foreground">
+          <p className="mb-6 text-sm text-gray-500">
             עמוד פנימי לניהול פיד המוצרים למטא. כניסה עם משתמש הבקאופיס בלבד.
           </p>
           {error && (
@@ -58,7 +58,7 @@ export default async function ProductFeedPage({
               required
               placeholder="אימייל"
               dir="ltr"
-              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm"
             />
             <input
               name="password"
@@ -66,7 +66,7 @@ export default async function ProductFeedPage({
               required
               placeholder="סיסמה"
               dir="ltr"
-              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm"
             />
             <button
               type="submit"
@@ -75,14 +75,14 @@ export default async function ProductFeedPage({
               כניסה
             </button>
           </form>
-          <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="my-4 flex items-center gap-3 text-xs text-gray-500">
             <span className="h-px flex-1 bg-border" />
             או
             <span className="h-px flex-1 bg-border" />
           </div>
           <a
             href="/api/feed-auth/google"
-            className="inline-block w-full rounded-xl border border-border bg-white px-4 py-3 font-bold text-foreground transition-colors hover:bg-gray-50"
+            className="inline-block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-bold text-gray-900 transition-colors hover:bg-gray-50"
           >
             התחברות עם Google
           </a>
@@ -99,28 +99,28 @@ export default async function ProductFeedPage({
     <div dir="rtl" className="container mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-foreground">
+          <h1 className="font-display text-3xl font-extrabold text-gray-900">
             Meta Product Feed
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             מחובר: {user.display_name || user.email} ({user.role})
           </p>
         </div>
         <a
           href="/api/feed-auth/logout"
-          className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-gray-50"
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50"
         >
           התנתקות
         </a>
       </div>
 
       {/* Feed URL + exports */}
-      <div className="mb-6 rounded-2xl border border-border bg-white p-5 shadow-card">
-        <h2 className="mb-3 text-lg font-bold text-foreground">כתובת הפיד (למטא)</h2>
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
+        <h2 className="mb-3 text-lg font-bold text-gray-900">כתובת הפיד (למטא)</h2>
         <div className="flex flex-wrap items-center gap-3">
           <code
             dir="ltr"
-            className="rounded-lg bg-gray-100 px-3 py-2 text-sm text-foreground"
+            className="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900"
           >
             {xmlUrl}
           </code>
@@ -129,18 +129,18 @@ export default async function ProductFeedPage({
             href="/feeds/meta-catalog.xml"
             target="_blank"
             rel="noopener"
-            className="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
           >
             פתח XML
           </a>
           <a
             href="/feeds/meta-catalog.csv"
-            className="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
           >
             הורד CSV
           </a>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="mt-3 text-xs text-gray-500">
           הפיד נבנה חי מה־DB בכל בקשה. במטא: Commerce Manager ← Data Sources ←
           Scheduled Feed, רענון שעתי.
         </p>
@@ -157,10 +157,10 @@ export default async function ProductFeedPage({
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl border border-border bg-white p-4 text-center shadow-card"
+            className="rounded-2xl border border-gray-200 bg-white p-4 text-center shadow-card"
           >
-            <div className="text-3xl font-extrabold text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground">{s.label}</div>
+            <div className="text-3xl font-extrabold text-gray-900">{s.value}</div>
+            <div className="text-xs text-gray-500">{s.label}</div>
           </div>
         ))}
       </div>
@@ -182,10 +182,10 @@ export default async function ProductFeedPage({
       )}
 
       {/* Preview */}
-      <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-card">
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-card">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
-            <tr className="border-b border-border bg-gray-50 text-right text-xs text-muted-foreground">
+            <tr className="border-b border-gray-200 bg-gray-50 text-right text-xs text-gray-500">
               <th className="px-3 py-2">id</th>
               <th className="px-3 py-2">image</th>
               <th className="px-3 py-2">title</th>
@@ -198,7 +198,7 @@ export default async function ProductFeedPage({
           </thead>
           <tbody>
             {items.map((it) => (
-              <tr key={it.id} className="border-b border-border/50 align-top">
+              <tr key={it.id} className="border-b border-gray-200/50 align-top">
                 <td className="px-3 py-2">
                   <a
                     href={it.link}
@@ -216,7 +216,7 @@ export default async function ProductFeedPage({
                     <img
                       src={it.image_link}
                       alt=""
-                      className="h-16 w-16 rounded-md border border-border object-cover"
+                      className="h-16 w-16 rounded-md border border-gray-200 object-cover"
                     />
                     <span
                       className={
@@ -258,7 +258,7 @@ export default async function ProductFeedPage({
           </tbody>
         </table>
         {items.length === 0 && (
-          <p className="p-6 text-center text-sm text-muted-foreground">
+          <p className="p-6 text-center text-sm text-gray-500">
             אין פריטים בפיד.
           </p>
         )}

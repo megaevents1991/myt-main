@@ -16,7 +16,7 @@ export function CopyButton({ text }: { text: string }) {
           /* clipboard unavailable — user can select the text manually */
         }
       }}
-      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-gray-50"
+      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
     >
       {copied ? "הועתק ✓" : "העתק כתובת"}
     </button>
