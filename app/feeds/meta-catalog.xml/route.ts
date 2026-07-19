@@ -8,19 +8,20 @@ import { toXml } from "@/lib/feed/metaCatalog";
  * application/xml), never an HTML page. Middleware skips /feeds/ so these
  * cache headers are authoritative.
  *
- * `no-transform`: Vercel's edge auto-compresses with Brotli whenever a
- * client's Accept-Encoding includes "br" — but Meta's fetcher advertises br
- * support while apparently not actually decoding it, so it received raw
- * Brotli bytes and rejected the feed as "file format isn't supported"
- * (confirmed via direct testing). Meta's own docs only list gzip/zip/bz2 as
- * supported compressed formats — br isn't one. A first attempt set
- * Content-Encoding: gzip on the origin response, assuming Vercel's edge
- * would pass through an already-encoded body — it doesn't: verified live
- * that Vercel re-compresses with Brotli regardless, ignoring the origin's
- * own Content-Encoding. `no-transform` is the actual HTTP-standard directive
- * (RFC 7234) telling any cache/CDN not to alter the payload encoding at all.
+ * Vercel's edge auto-compresses with Brotli whenever a client's
+ * Accept-Encoding includes "br" — but Meta's fetcher advertises br support
+ * while apparently not actually decoding it, so it received raw Brotli bytes
+ * and rejected the feed as "file format isn't supported" (confirmed via
+ * direct testing). Meta's own docs only list gzip/zip/bz2 as supported
+ * compressed formats — br isn't one. Two prior attempts (origin
+ * Content-Encoding: gzip, then Cache-Control: no-transform) were both
+ * verified live to make no difference — Vercel re-compresses with Brotli
+ * regardless on a force-dynamic route. Trying ISR (revalidate, no
+ * force-dynamic) instead: static/ISR responses may go through a different
+ * serving pipeline than dynamic function invocations. 900s matches the
+ * freshness this route already targets for Meta's hourly fetch.
  */
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 export const maxDuration = 60;
 
 export async function GET() {
