@@ -18,13 +18,15 @@ export const dynamic = "force-static";
 export const revalidate = 3600; // Revalidate every hour (reduced from 24h for fresher content)
 
 async function getEventsForPage() {
-  try {
-    const events = await getCachedEvents();
-    return events;
-  } catch (error) {
-    console.error("Page: Failed to get events for rendering:", error);
-    return { events: [] };
+  const events = await getCachedEvents();
+  // Never publish a homepage snapshot with zero events — a transient DB
+  // failure during ISR regeneration used to bake an empty page (site-wide
+  // "sold out") into the static cache for an hour (2026-07-19). Throwing makes
+  // the regeneration fail, so Next keeps serving the last good page instead.
+  if (!events.events.length) {
+    throw new Error("Homepage: events unavailable — keeping last good static page");
   }
+  return events;
 }
 
 // Featured football teams (carousel order via `featured_order`), falling back

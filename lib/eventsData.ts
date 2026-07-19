@@ -4,10 +4,35 @@ import { unstable_cache as nextCache } from "next/cache";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { eventRelatesToTeam } from "@/lib/eventNameMatch";
 
-export const getCachedEvents = nextCache(getEvents, ["all-events"], {
-  tags: ["events"],
-  revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
-});
+// Inner cached reader THROWS on a failed/empty query so unstable_cache never
+// stores the failure — a transient Supabase hiccup during revalidation used to
+// cache {events: []} for a full hour and the whole site rendered "sold out"
+// (2026-07-19). A thrown error is not cached, so the next request re-queries.
+const cachedNonEmptyEvents = nextCache(
+  async (): Promise<{ events: Event[] }> => {
+    const res = await getEvents();
+    if (!res.events.length) {
+      throw new Error("[EventsData] query failed or returned 0 events — not caching");
+    }
+    return res;
+  },
+  ["all-events"],
+  {
+    tags: ["events"],
+    revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
+  }
+);
+
+/** Same contract as before (never throws, empty on failure) — but an empty
+ *  result is served for THIS request only, never written to the shared cache. */
+export async function getCachedEvents(): Promise<{ events: Event[] }> {
+  try {
+    return await cachedNonEmptyEvents();
+  } catch (error) {
+    console.error("[EventsData] events unavailable — serving empty, uncached:", error);
+    return { events: [] };
+  }
+}
 
 /** Number of days an event must be in the future to count as "available". */
 export const AVAILABILITY_WINDOW_DAYS = 7;
