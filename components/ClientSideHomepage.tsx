@@ -495,8 +495,12 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
   // A crest over a stadium photo (shapeIndex 6-8). On these cards we ignore the
   // backoffice image dials (they shrink the crest to ~0.8 and, being an inline
   // style transform, would OVERRIDE the class scale) and size the crest purely
-  // via the class below so it reads big and centered.
+  // via the class below so it reads big and centered. That assumes a padded
+  // "cutout" source (the art_blobs pipeline) — the football-logos library
+  // (bulk-uploaded, tightly-cropped badges) has no such padding, so a flat
+  // 1.4x blowup fills the whole card. Those honor the backoffice dial instead.
   const isPhotoBg = (team.fields.artShapeIndex ?? 0) >= 6;
+  const isLogoLibraryCrest = team.fields.artImageUrl?.includes("/football-logos/") ?? false;
   return (
     <Link
       href={`/football/${team.sys?.id}`}
@@ -526,13 +530,30 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
             variant={team.fields.artImageUrl ? "blob" : "photo"}
             colorIndex={team.fields.artColorIndex ?? undefined}
             shapeIndex={team.fields.artShapeIndex ?? undefined}
-            // On photo-bg cards, skip the backoffice image dials so the class
-            // scale below actually takes effect (an inline transform would win).
-            imageScale={isPhotoBg ? undefined : team.fields.artImageScale}
+            // On legacy photo-bg cards, skip the backoffice image dials so the
+            // class scale below actually takes effect (an inline transform
+            // would win). Logo-library crests honor the dial directly instead.
+            imageScale={
+              isPhotoBg
+                ? (isLogoLibraryCrest ? team.fields.artImageScale ?? undefined : undefined)
+                : team.fields.artImageScale
+            }
             bgScale={team.fields.artBgScale}
-            imageOffsetX={isPhotoBg ? undefined : team.fields.artImageOffsetX}
-            imageOffsetY={isPhotoBg ? undefined : team.fields.artImageOffsetY}
-            imageClassName={isPhotoBg ? "object-center scale-[1.4]" : undefined}
+            imageOffsetX={
+              isPhotoBg
+                ? (isLogoLibraryCrest ? team.fields.artImageOffsetX ?? undefined : undefined)
+                : team.fields.artImageOffsetX
+            }
+            imageOffsetY={
+              isPhotoBg
+                ? (isLogoLibraryCrest ? team.fields.artImageOffsetY ?? undefined : undefined)
+                : team.fields.artImageOffsetY
+            }
+            imageClassName={
+              isPhotoBg
+                ? (isLogoLibraryCrest ? "object-center" : "object-center scale-[1.4]")
+                : undefined
+            }
             // No `priority` (that preloads at high priority and saturated the
             // mobile network). The first few cards load eagerly so the row is
             // populated when scrolled to; the rest stay lazy. Slot-accurate sizes.
