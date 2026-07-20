@@ -161,6 +161,9 @@ export default async function FootballPage({
           artImageUrl={team.fields.artImageUrl}
           artColorIndex={team.fields.artColorIndex}
           artShapeIndex={team.fields.artShapeIndex}
+          artImageScale={team.fields.artImageScale}
+          artImageOffsetX={team.fields.artImageOffsetX}
+          artImageOffsetY={team.fields.artImageOffsetY}
         />
 
         <ArtistBanners banners={banners} />
