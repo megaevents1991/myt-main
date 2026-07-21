@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
-import { eventRelatesToTeam } from "@/lib/eventNameMatch";
+import { eventRelatesToTeam, normalizeName } from "@/lib/eventNameMatch";
 
 // Inner cached reader THROWS on a failed/empty query so unstable_cache never
 // stores the failure — a transient Supabase hiccup during revalidation used to
@@ -105,24 +105,30 @@ export async function getEventsByName(
   // Only events at least AVAILABILITY_WINDOW_DAYS out count (shared with the
   // catalog's on-tour check in lib/tourStatus.ts — keep them on one threshold).
   const futureDate = futureDateISO(AVAILABILITY_WINDOW_DAYS);
+  const needle = normalizeName(searchName);
+  if (!needle) return { events: [] };
 
+  // The substring match happens in JS (not SQL ILIKE) so it can be accent- and
+  // punctuation-insensitive via normalizeName — backoffice-entered events
+  // ("Andre Rieu") must still land on the accented template page ("André Rieu").
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
     .is("is_deleted", null)
-    .ilike("name_english", `%${searchName}%`)
     .gte("date", futureDate) // Only get events 7+ days in the future
     .order("date", { ascending: true });
 
   if (error) return Promise.resolve({ events: [] as Event[] });
 
-  // The ILIKE substring is deliberately fuzzy, so a club whose name is a
+  // The substring gate is deliberately fuzzy, so a club whose name is a
   // substring of another's over-matches (team "Milan" pulls in ALL "Inter
-  // Milan" fixtures). Keep only fixtures the team actually plays in — home and
-  // away both (the page splits them visually); non-fixture events (artists)
-  // pass through untouched.
-  const matched = events.filter((e) =>
-    eventRelatesToTeam(e.name_english ?? "", searchName),
+  // Milan" fixtures). eventRelatesToTeam keeps only fixtures the team actually
+  // plays in — home and away both (the page splits them visually); non-fixture
+  // events (artists) pass through untouched.
+  const matched = (events ?? []).filter(
+    (e) =>
+      normalizeName(e.name_english).includes(needle) &&
+      eventRelatesToTeam(e.name_english ?? "", searchName),
   );
   return { events: await enrichEventsWithFallbackImages(matched) };
 }

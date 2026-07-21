@@ -7,6 +7,7 @@ import { Metadata } from "next";
 import { OrderErrorBoundary } from "../OrderErrorBoundary";
 import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
+import { normalizeName } from "@/lib/eventNameMatch";
 import Link from "next/link";
 
 export const revalidate = 3600; // 1 hour
@@ -158,11 +159,11 @@ export default async function OrderPageWithId({
   // ticket-selection header + summary link the photo to the person page.
   let personLink: { href: string; label: string } | undefined;
   try {
-    const target = (event.name_english ?? "").trim().toLowerCase();
+    const target = normalizeName(event.name_english);
     if (target) {
       const artists = await getAllArtists();
       const artist = artists.find(
-        (a) => (a.fields.nameDBenglish ?? "").trim().toLowerCase() === target
+        (a) => normalizeName(a.fields.nameDBenglish) === target
       );
       if (artist) {
         personLink = {
@@ -174,7 +175,7 @@ export default async function OrderPageWithId({
         const team = teams
           .map((t) => ({
             t,
-            name: (t.fields.nameDBenglish ?? "").trim().toLowerCase(),
+            name: normalizeName(t.fields.nameDBenglish),
           }))
           .filter((x) => x.name && target.includes(x.name))
           .map((x) => ({ ...x, pos: target.indexOf(x.name) }))

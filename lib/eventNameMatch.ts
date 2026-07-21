@@ -15,6 +15,27 @@ const GENERIC_TOKENS = new Set([
   "ca", "rc", "rcd", "sl", "bc", "de", "del", "calcio", "club", "balompie",
 ]);
 
+/**
+ * Case-, accent- and whitespace-insensitive canonical form of a person/event
+ * name, for substring matching. Backoffice-entered names drift on exactly
+ * these axes ("André Rieu " vs "Andre Rieu"), so EVERY name↔event substring
+ * comparison in the app must go through this — raw `.toLowerCase().includes`
+ * silently drops accented artists.
+ *
+ * Quotes/apostrophes/commas/periods are dropped too ("Guns N' Roses" ≡
+ * "Guns N Roses"). Hyphens are kept: the homepage splits fixture names on
+ * " - " AFTER normalizing, so eating hyphens would merge the two sides.
+ */
+export function normalizeName(s?: string | null): string {
+  return (s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip accents ("André" → "andre")
+    .replace(/['‘’`´"“”,.׳״]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function normalizeToken(t: string): string {
   return t
     .toLowerCase()

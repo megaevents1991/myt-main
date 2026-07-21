@@ -2,7 +2,7 @@ import { unstable_cache as nextCache } from "next/cache";
 import { Event } from "@/lib/app.types";
 import { getArtistImageIndex } from "@/lib/artists";
 import { getFootballTeamImageIndex } from "@/lib/football";
-import { eventBelongsToTeam } from "@/lib/eventNameMatch";
+import { eventBelongsToTeam, normalizeName } from "@/lib/eventNameMatch";
 
 /**
  * Event image → person image fallback
@@ -18,9 +18,10 @@ import { eventBelongsToTeam } from "@/lib/eventNameMatch";
  * picks the right variant.
  */
 
-// Merged artist+team index, names lowercased once and sorted longest-first so
-// the most specific person wins when several match (keeps "Sia" from grabbing
-// an "Asia" event). Cached once per ISR window, invalidated with `events`.
+// Merged artist+team index, names normalized once (case/accent/punctuation —
+// same normalizeName as getEventsByName) and sorted longest-first so the most
+// specific person wins when several match (keeps "Sia" from grabbing an
+// "Asia" event). Cached once per ISR window, invalidated with `events`.
 const getPersonImageIndex = nextCache(
   async () => {
     const [artists, teams] = await Promise.all([
@@ -28,7 +29,7 @@ const getPersonImageIndex = nextCache(
       getFootballTeamImageIndex(),
     ]);
     return [...artists, ...teams]
-      .map((p) => ({ ...p, name: p.name.toLowerCase() }))
+      .map((p) => ({ ...p, name: normalizeName(p.name) }))
       .sort((a, b) => b.name.length - a.name.length);
   },
   ["person-image-index"],
@@ -49,7 +50,7 @@ export async function enrichEventsWithFallbackImages(
     if (!index.length) return events;
     for (const event of events) {
       if (hasOwnPhoto(event)) continue;
-      const name = event.name_english?.toLowerCase();
+      const name = normalizeName(event.name_english);
       if (!name) continue;
       // Same case-insensitive substring rule getEventsByName uses in reverse,
       // so an event shown on a person's page resolves to that same person.

@@ -20,6 +20,7 @@ import {
 import type { Event, Artist } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { multiTermSearch, withCategoryText } from "@/lib/search";
+import { normalizeName } from "@/lib/eventNameMatch";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
 
@@ -124,10 +125,10 @@ export const HeroSearch = ({
   // the homepage cards). Used for the "all shows of <artist>" footer link.
   const artistFor = (event?: Event | null): Artist | null => {
     if (!event?.name_english || artists.length === 0) return null;
-    const id = event.name_english.trim().toLowerCase();
+    const id = normalizeName(event.name_english);
     return (
       artists.find(
-        (a) => a.fields.nameDBenglish?.trim().toLowerCase() === id
+        (a) => normalizeName(a.fields.nameDBenglish) === id
       ) ?? null
     );
   };

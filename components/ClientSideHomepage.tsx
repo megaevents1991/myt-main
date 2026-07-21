@@ -19,6 +19,7 @@ import { MYTMark } from "./ui/mytMark";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
 import { multiTermSearch, withCategoryText } from "@/lib/search";
+import { normalizeName } from "@/lib/eventNameMatch";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { ElfsightWidget } from "@/components/ui/elfReviews";
@@ -1680,8 +1681,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   );
 }
 
-// Normalize a name for case/whitespace-insensitive comparison.
-const normalizeName = (s?: string | null) => (s ?? "").trim().toLowerCase();
+// Name comparison uses the shared normalizeName (lib/eventNameMatch) —
+// case/accent/punctuation-insensitive, same rule as getEventsByName — so the
+// homepage collapses exactly the events the artist/team detail page lists.
 
 // Escape a string for safe use inside a RegExp.
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1692,7 +1694,7 @@ const wholeWordMatch = (haystack: string, id: string) =>
   id ? haystack.match(new RegExp(`(^|[^a-z0-9])${escapeRegExp(id)}([^a-z0-9]|$)`, "i")) : null;
 
 // Which artist page an event belongs to. The artist detail page lists events by
-// SUBSTRING (`eventsData.getEventsByName` → `name_english ILIKE %name%`), so the
+// normalized SUBSTRING (`eventsData.getEventsByName` over `name_english`), so the
 // homepage must use the same rule or an event like "Bon Jovi London" won't be
 // collapsed into the "Bon Jovi" card and won't get the "see all events" strip.
 // Whole-word containment (not raw substring) keeps a short name from matching
