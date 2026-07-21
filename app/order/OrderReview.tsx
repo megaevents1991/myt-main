@@ -1150,6 +1150,10 @@ export default function OrderReview({
                       (personLink ? (
                         <Link
                           href={personLink.href}
+                          // New tab — same-tab navigation would lose the
+                          // in-progress order (state lives in OrderContext).
+                          target="_blank"
+                          rel="noopener"
                           aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
                           className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
                         >

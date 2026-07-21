@@ -52,6 +52,10 @@ export const EventDataHeader = ({
         (artistHref ? (
           <Link
             href={artistHref}
+            // New tab: the order flow's state lives in OrderContext — same-tab
+            // navigation away would lose the in-progress order.
+            target="_blank"
+            rel="noopener"
             aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
             className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
           >
@@ -70,6 +74,8 @@ export const EventDataHeader = ({
         {artistHref && (
           <Link
             href={artistHref}
+            target="_blank"
+            rel="noopener"
             className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-forest dark:text-glow dark:decoration-glow/40 dark:focus-visible:outline-glow"
           >
             {artistLinkLabel ?? `לכל ההופעות של ${event?.name?.trim() ?? ""}`}

@@ -140,7 +140,7 @@ const GroupTicketsInquiry = ({
 
 
 export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
-  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink } = useContext(OrderContext);
+  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary } = useContext(OrderContext);
   // Context `event` is only populated client-side (useEffect in OrderPageClient),
   // so it's empty during SSR. Fall back to the server-provided `initialEvent`
   // so the header — including the <h1> — renders real HTML in the initial
@@ -623,8 +623,9 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader
               event={headerEvent}
-              artistHref={personLink?.href}
-              artistLinkLabel={personLink?.label}
+              // Edit-from-summary is a focused task — no person-page links.
+              artistHref={returnToSummary ? undefined : personLink?.href}
+              artistLinkLabel={returnToSummary ? undefined : personLink?.label}
             />
           </div>
         </div>

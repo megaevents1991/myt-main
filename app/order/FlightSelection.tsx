@@ -101,6 +101,8 @@ export const FlightSelection = () => {
     setSelectedPlaneTicketsFilters,
     flightSkipped,
     setFlightSkipped,
+    personLink,
+    returnToSummary,
   } = useContext(OrderContext);
 
   // A customer who skipped the flight can come back and add one ("+ להוספה").
@@ -570,7 +572,12 @@ export const FlightSelection = () => {
       <div className="flex flex-col items-center">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-muted ">
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <EventDataHeader event={event} />
+            <EventDataHeader
+              event={event}
+              // Edit-from-summary is a focused task — no person-page links.
+              artistHref={returnToSummary ? undefined : personLink?.href}
+              artistLinkLabel={returnToSummary ? undefined : personLink?.label}
+            />
             <div className="flex w-full lg:w-[60%] flex-row gap-2 text-xs justify-start lg:justify-center items-center margin-auto">
               {matches && (
                 <span className="text-center text-xl">כמה טסים?</span>

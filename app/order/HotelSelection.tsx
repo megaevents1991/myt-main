@@ -47,6 +47,8 @@ export const HotelSelection = () => {
     setSkipHotel,
     flightSkipped,
     numberOfEventTickets,
+    personLink,
+    returnToSummary,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -708,7 +710,12 @@ export const HotelSelection = () => {
           className="w-screen gap-2 flex flex-col lg:flex-row justify-center px-4 py-2 lg:p-4 bg-muted items-center"
         >
           <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
-            <EventDataHeader event={event} />
+            <EventDataHeader
+              event={event}
+              // Edit-from-summary is a focused task — no person-page links.
+              artistHref={returnToSummary ? undefined : personLink?.href}
+              artistLinkLabel={returnToSummary ? undefined : personLink?.label}
+            />
             <div className="flex w-full lg:w-[60%] justify-start lg:justify-center flex-row gap-2 text-xs items-center margin-auto">
               {matches && (
                 <span className="text-center text-xl">כמה תהיו?</span>
