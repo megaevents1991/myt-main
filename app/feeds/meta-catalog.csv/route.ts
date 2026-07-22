@@ -9,10 +9,16 @@ import { toCsv } from "@/lib/feed/metaCatalog";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { items } = await getFeedItems();
-    return new Response(toCsv(items), {
+    // Default output is byte-exact to the Meta-verified feed_ready.csv shape:
+    // NO BOM. Excel misreads BOM-less UTF-8 Hebrew as ANSI, so human
+    // downloads (?excel=1, the /product-feed button) get a BOM prepended —
+    // never the cron/Meta path.
+    const forExcel = new URL(request.url).searchParams.get("excel") === "1";
+    const body = (forExcel ? "﻿" : "") + toCsv(items);
+    return new Response(body, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

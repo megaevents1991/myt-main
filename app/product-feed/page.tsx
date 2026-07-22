@@ -135,7 +135,7 @@ export default async function ProductFeedPage({
             פתח XML
           </a>
           <a
-            href="/feeds/meta-catalog.csv"
+            href="/feeds/meta-catalog.csv?excel=1"
             className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
           >
             הורד CSV
