@@ -211,10 +211,20 @@ const ampXml = toXml([amp]);
 assert.ok(ampXml.includes("AC/DC &amp; Friends &lt;live&gt;"));
 assert.ok(!ampXml.includes("<g:product_type>"), "empty product_type omitted");
 
-/* CSV: BOM, header, quoting */
-const csv = toCsv([amp]);
-assert.ok(csv.charCodeAt(0) === 0xfeff, "UTF-8 BOM present");
-assert.ok(csv.includes("id,title,description,availability"));
-assert.ok(csv.includes('"'), "title with comma/quote-worthy chars gets quoted");
+/* CSV: proven-working feed_ready.csv shape — NO BOM, exact header, quoting,
+   internal_label as one ['a','b']-style cell */
+const csv = toCsv([item]);
+assert.ok(csv.charCodeAt(0) !== 0xfeff, "no BOM (verified working file has none)");
+assert.ok(
+  csv.startsWith(
+    "id,title,description,availability,condition,price,link,image_link,brand," +
+      "expiration_date,product_type,internal_label,custom_label_0,custom_label_1," +
+      "custom_label_2,custom_label_3,custom_label_4,custom_number_0,custom_number_1,custom_number_2\r\n"
+  ),
+  "header matches verified file exactly"
+);
+assert.ok(csv.includes("\"['berlin','music','rock','status:available']\""));
+assert.ok(!csv.includes("additional_image_link"), "column absent from verified file");
+assert.ok(toCsv([amp]).includes('"'), "comma/quote-worthy cells get quoted");
 
 console.log("metaCatalog: all assertions passed ✅");

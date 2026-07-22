@@ -17,6 +17,9 @@ export async function GET() {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": 'attachment; filename="meta-catalog.csv"',
+        // Lets the backoffice publish cron prove it got a live build (same
+        // anti-snapshot-loop guard as the XML route's ?source=1 path).
+        "X-Feed-Generated": new Date().toISOString(),
         "Cache-Control": "no-store",
       },
     });

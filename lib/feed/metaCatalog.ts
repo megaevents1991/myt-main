@@ -273,9 +273,12 @@ ${itemXml}
 `;
 }
 
+// EXACT column set + order of the CMO's verified-working Meta CSV
+// ("feed_ready.csv" — imported into Commerce Manager with 0 errors). Do not
+// add/remove/reorder columns without re-verifying an import in Meta.
 const CSV_HEADERS = [
   "id", "title", "description", "availability", "condition", "price", "link",
-  "image_link", "additional_image_link", "brand", "expiration_date", "product_type",
+  "image_link", "brand", "expiration_date", "product_type", "internal_label",
   "custom_label_0", "custom_label_1", "custom_label_2", "custom_label_3", "custom_label_4",
   "custom_number_0", "custom_number_1", "custom_number_2",
 ];
@@ -285,18 +288,21 @@ function csvCell(v: string | number): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** CSV export (same rows as the XML; internal_labels omitted — XML-only field). */
+/**
+ * CSV feed in the proven-working shape: same rows as the XML, internal_labels
+ * as one `['a','b']`-style cell (matches the verified file). UTF-8 WITHOUT a
+ * BOM and CRLF rows — byte-format mirrors the file Meta demonstrably accepts.
+ */
 export function toCsv(items: FeedItem[]): string {
   const rows = items.map((it) =>
     [
       it.id, it.title, it.description, it.availability, it.condition, it.price,
-      it.link, it.image_link, it.additional_image_link ?? "", it.brand,
-      it.expiration_date, it.product_type,
+      it.link, it.image_link, it.brand, it.expiration_date, it.product_type,
+      `[${it.internal_labels.map((l) => `'${l}'`).join(",")}]`,
       ...it.custom_labels, ...it.custom_numbers,
     ]
       .map(csvCell)
       .join(",")
   );
-  // BOM so Excel opens the Hebrew text as UTF-8.
-  return "﻿" + [CSV_HEADERS.join(","), ...rows].join("\r\n") + "\r\n";
+  return [CSV_HEADERS.join(","), ...rows].join("\r\n") + "\r\n";
 }
