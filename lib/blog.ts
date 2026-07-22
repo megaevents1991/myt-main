@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { contentfulClient } from "@/lib/contentful";
 
 /** Runtime shape for a blog post (mirrors the old Contentful entry shape). */
 export type BlogPost = {
@@ -88,61 +87,33 @@ const toBlog = (r: BlogRow): BlogPost => ({
   },
 });
 
-// Contentful entry → same runtime shape (migration fallback).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const cfToBlog = (e: any): BlogPost => ({
-  sys: { id: e.sys.id },
-  fields: {
-    name: e.fields?.name,
-    title: e.fields?.title,
-    previewText: e.fields?.previewText,
-    byWho: e.fields?.byWho,
-    heroBanner: e.fields?.heroBanner,
-    mainContent: e.fields?.mainContent,
-    seoTitleTag: e.fields?.seoTitleTag,
-    metaDescription: e.fields?.metaDescription,
-    metaTags: e.fields?.metaTags,
-  },
-});
-
 const base = () => supabase.from("blog_posts").select("*").eq("is_deleted", false);
 
 export async function getAllBlogPosts(): Promise<BlogPost[]> {
   const { data, error } = await base()
     .eq("is_active", true)
     .order("display_order", { ascending: true });
-  if (!error && data && data.length) return (data as BlogRow[]).map(toBlog);
-  if (error) console.error("getAllBlogPosts failed:", JSON.stringify(error));
-  try {
-    const { items } = await contentfulClient.getEntries({ content_type: "blogTemplate", limit: 1000 });
-    return items.map(cfToBlog);
-  } catch (e) {
-    console.error("blog CF fallback failed:", e);
+  if (error) {
+    console.error("getAllBlogPosts failed:", JSON.stringify(error));
     return [];
   }
+  return ((data ?? []) as BlogRow[]).map(toBlog);
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   const { data, error } = await base().eq("slug", slug).maybeSingle();
-  if (!error && data) return toBlog(data as BlogRow);
-  if (error) console.error("getBlogPostBySlug failed:", JSON.stringify(error));
-  try {
-    const entry = await contentfulClient.getEntry(slug);
-    return entry ? cfToBlog(entry) : null;
-  } catch {
+  if (error) {
+    console.error("getBlogPostBySlug failed:", JSON.stringify(error));
     return null;
   }
+  return data ? toBlog(data as BlogRow) : null;
 }
 
 export async function getBlogPostSlugs(): Promise<string[]> {
-  const slugs = new Set<string>();
   const { data, error } = await base().select("slug");
-  if (!error && data) for (const r of data as { slug: string }[]) slugs.add(r.slug);
-  try {
-    const { items } = await contentfulClient.getEntries({ content_type: "blogTemplate", limit: 1000 });
-    for (const it of items) slugs.add(it.sys.id);
-  } catch {
-    /* ignore */
+  if (error) {
+    console.error("getBlogPostSlugs failed:", JSON.stringify(error));
+    return [];
   }
-  return [...slugs];
+  return ((data ?? []) as { slug: string }[]).map((r) => r.slug);
 }

@@ -1,6 +1,5 @@
 import { Airline } from "aircodes";
 import { Guest, Rate } from "./hotel.type";
-import { EntryFieldTypes } from "contentful";
 
 export type EventType =
   | "sports_event"
@@ -360,88 +359,6 @@ export type OrderData = {
   coupon_base_total_usd?: number | null;
 };
 
-export type ArtistFields = {
-  contentTypeId: "artistTemplate";
-  fields: {
-    bio: EntryFieldTypes.Object<{
-      content: {
-        content: {
-          value?: string;
-        }[];
-      }[];
-    }>;
-    previewText: string;
-    heroBanner: EntryFieldTypes.Object<{
-      fields?: {
-        file?: {
-          url?: string;
-          details?: {
-            image?: {
-              height?: number;
-              width?: number;
-            };
-          };
-        };
-        description?: string;
-        title?: string;
-      };
-    }>;
-    name: string;
-    nameDBenglish: string;
-    seoTitle?: string;
-    metaDescription?: string;
-    metaTags?: string;
-    sys: EntryFieldTypes.Object<{
-      id: string;
-    }>;
-  };
-};
-
-export type CarouselFields = {
-  contentTypeId: "carousel";
-  fields: {
-    title?: string;
-    items: EntryFieldTypes.Array<EntryFieldTypes.EntryLink<ArtistFields>>;
-  };
-};
-
-export type FootballFields = {
-  contentTypeId: "footballTeamTemplate";
-  fields: {
-    bio: EntryFieldTypes.Object<{
-      content: {
-        content: {
-          value?: string;
-        }[];
-      }[];
-    }>;
-    previewText: string;
-    heroBanner: EntryFieldTypes.Object<{
-      fields?: {
-        file?: {
-          url?: string;
-          details?: {
-            image?: {
-              height?: number;
-              width?: number;
-            };
-          };
-        };
-        description?: string;
-        title?: string;
-      };
-    }>;
-    name: string;
-    nameDBenglish: string;
-    seoTitle?: string;
-    metaDescription?: string;
-    metaTags?: string;
-    sys: EntryFieldTypes.Object<{
-      id: string;
-    }>;
-  };
-};
-
 /**
  * Backoffice CMS templates — one typed table per content type (replacing
  * Contentful). Every table shares `TemplateBase`. Shared DB shape: keep in sync
@@ -480,84 +397,11 @@ export interface Category extends TemplateBase {
   subtitle: string | null;
   tag: string | null;
   sport: string | null;
-  /** Artist/team page IDs grouped under this category (Contentful IDs for now). */
+  /** Artist/team page slugs grouped under this category (pre-migration rows
+   *  still use their old Contentful entry-id string as the slug). */
   member_ids: string[];
   link_url: string | null;
 }
-
-/**
- * (Legacy / reference) Contentful-backed category type. Kept for reference;
- * the live source is the Supabase `categories` table (see `Category` above).
- */
-export type CategoryFields = {
-  contentTypeId: "categoryTemplate";
-  fields: {
-    name: string;
-    nameEnglish?: string;
-    /** Meta line under the title, e.g. "עונת 2025/26 · אירופה · שלב ההכרעה". */
-    subtitle?: string;
-    /** Grouping label for the homepage section, e.g. "כדורגל". */
-    sport?: string;
-    /** Optional badge text, e.g. "כרטיסים אחרונים". */
-    tag?: string;
-    heroBanner: EntryFieldTypes.Object<{
-      fields?: {
-        file?: {
-          url?: string;
-          details?: { image?: { height?: number; width?: number } };
-        };
-        description?: string;
-        title?: string;
-      };
-    }>;
-    /** Artist/team entries that belong to this category. */
-    members?: EntryFieldTypes.Array<
-      EntryFieldTypes.EntryLink<ArtistFields | FootballFields>
-    >;
-    seoTitle?: string;
-    metaDescription?: string;
-    metaTags?: string;
-    sys: EntryFieldTypes.Object<{ id: string }>;
-  };
-};
-
-export type BlogTemplateFields = {
-  contentTypeId: "blogTemplate";
-  fields: {
-    name: string;
-    title: string;
-    previewText: string;
-    byWho?: string;
-    heroBanner?: EntryFieldTypes.Object<{
-      fields?: {
-        file?: {
-          url?: string;
-          details?: {
-            image?: {
-              height?: number;
-              width?: number;
-            };
-          };
-        };
-        description?: string;
-        title?: string;
-      };
-    }>;
-    mainContent: EntryFieldTypes.Object<{
-      content: {
-        content: {
-          value?: string;
-        }[];
-      }[];
-    }>;
-    seoTitleTag?: string;
-    metaDescription?: string;
-    metaTags?: string;
-    sys: EntryFieldTypes.Object<{
-      id: string;
-    }>;
-  };
-};
 
 export type FootballTeam = {
   sys: {

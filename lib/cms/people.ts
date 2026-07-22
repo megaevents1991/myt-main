@@ -1,17 +1,13 @@
 import { supabase } from "@/lib/supabase";
-import { contentfulClient } from "@/lib/contentful";
 import type { Artist } from "@/lib/app.types";
 
 /**
  * Readers for the "people" CMS tables (artists, football_teams) — typed rows in
- * Supabase that are replacing Contentful. Each reader maps a row back to the
- * exact `Artist`/`FootballTeam` runtime shape the UI already consumes, so no
- * component changes are needed. (Artist and FootballTeam are structurally
- * identical.)
- *
- * MIGRATION SAFETY: Supabase is the primary source; if it returns nothing
- * (empty / missing row), we fall back to Contentful so the live site never
- * loses content mid-migration. Remove the Contentful fallback once verified.
+ * Supabase (managed by the backoffice Templates section). Each reader maps a
+ * row back to the exact `Artist`/`FootballTeam` runtime shape the UI already
+ * consumes, so no component changes are needed. (Artist and FootballTeam are
+ * structurally identical.) Slugs of pre-migration rows are old Contentful
+ * entry ids — that's just a string format, there is no Contentful at runtime.
  */
 type PersonRow = {
   slug: string;
@@ -43,8 +39,6 @@ type PersonRow = {
 
 type PeopleConfig = {
   table: "artists" | "football_teams";
-  contentType: "artistTemplate" | "footballTeamTemplate";
-  carouselId: string;
 };
 
 /** One row of the name→image fallback index (see listImageIndex). */
@@ -104,62 +98,35 @@ const toPerson = (r: PersonRow): Artist => ({
   },
 });
 
-// Contentful entry → same runtime shape. Contentful asset URLs are already
-// protocol-relative ("//images.ctfassets.net/…"), so pass them through as-is.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const cfToPerson = (e: any): Artist => ({
-  sys: { id: e.sys.id },
-  fields: {
-    name: e.fields?.name,
-    nameDBenglish: e.fields?.nameDBenglish,
-    previewText: e.fields?.previewText,
-    heroBanner: e.fields?.heroBanner,
-    bio: e.fields?.bio,
-    seoTitle: e.fields?.seoTitle,
-    metaDescription: e.fields?.metaDescription,
-    metaTags: e.fields?.metaTags,
-  },
-});
-
 export function makePeopleReaders(cfg: PeopleConfig) {
-  const { table, contentType, carouselId } = cfg;
+  const { table } = cfg;
   const base = () => supabase.from(table).select("*").eq("is_deleted", false);
 
   return {
-    /** All active rows (catalog). Falls back to Contentful when empty. */
+    /** All active rows (catalog). */
     async listAll(): Promise<Artist[]> {
       const { data, error } = await base().eq("is_active", true).order("name");
-      if (!error && data && data.length) return (data as PersonRow[]).map(toPerson);
-      if (error) console.error(`${table} listAll failed:`, JSON.stringify(error));
-      try {
-        const { items } = await contentfulClient.getEntries({ content_type: contentType, limit: 1000 });
-        return items.map(cfToPerson);
-      } catch (e) {
-        console.error(`${table} CF fallback failed:`, e);
+      if (error) {
+        console.error(`${table} listAll failed:`, JSON.stringify(error));
         return [];
       }
+      return ((data ?? []) as PersonRow[]).map(toPerson);
     },
 
-    /** Featured rows in carousel order. Falls back to the Contentful carousel. */
+    /** Featured rows in carousel order. */
     async listFeatured(): Promise<Artist[]> {
       const { data, error } = await base()
         .eq("is_active", true)
         .not("featured_order", "is", null)
         .order("featured_order", { ascending: true });
-      if (!error && data && data.length) return (data as PersonRow[]).map(toPerson);
-      if (error) console.error(`${table} listFeatured failed:`, JSON.stringify(error));
-      try {
-        const entry = await contentfulClient.getEntry(carouselId, { include: 2 });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items = ((entry.fields as any)?.items ?? []) as any[];
-        return items.filter((i) => i && "fields" in i).map(cfToPerson);
-      } catch (e) {
-        console.error(`${table} CF carousel fallback failed:`, e);
+      if (error) {
+        console.error(`${table} listFeatured failed:`, JSON.stringify(error));
         return [];
       }
+      return ((data ?? []) as PersonRow[]).map(toPerson);
     },
 
-    /** One row by slug (= Contentful id). Falls back to the Contentful entry.
+    /** One row by slug (pre-migration rows use the old Contentful id string).
      *  Inactive rows (is_active=false) are logo-only records for the
      *  backoffice creative generator — they must not get a public page. */
     async getBySlug(slug: string): Promise<Artist | null> {
@@ -167,14 +134,11 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         .eq("slug", slug)
         .eq("is_active", true)
         .maybeSingle();
-      if (!error && data) return toPerson(data as PersonRow);
-      if (error) console.error(`${table} getBySlug failed:`, JSON.stringify(error));
-      try {
-        const entry = await contentfulClient.getEntry(slug);
-        return entry ? cfToPerson(entry) : null;
-      } catch {
+      if (error) {
+        console.error(`${table} getBySlug failed:`, JSON.stringify(error));
         return null;
       }
+      return data ? toPerson(data as PersonRow) : null;
     },
 
     /**
@@ -215,19 +179,15 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         }));
     },
 
-    /** Slugs for static params. Union of Supabase + Contentful (dedup).
+    /** Slugs for static params.
      *  Inactive (logo-only) rows excluded — no page, no sitemap entry. */
     async listSlugs(): Promise<string[]> {
-      const slugs = new Set<string>();
       const { data, error } = await base().select("slug").eq("is_active", true);
-      if (!error && data) for (const r of data as { slug: string }[]) slugs.add(r.slug);
-      try {
-        const { items } = await contentfulClient.getEntries({ content_type: contentType, limit: 1000 });
-        for (const it of items) slugs.add(it.sys.id);
-      } catch {
-        /* ignore */
+      if (error) {
+        console.error(`${table} listSlugs failed:`, JSON.stringify(error));
+        return [];
       }
-      return [...slugs];
+      return ((data ?? []) as { slug: string }[]).map((r) => r.slug);
     },
   };
 }

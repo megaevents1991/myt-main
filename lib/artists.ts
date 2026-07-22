@@ -1,10 +1,6 @@
 import { makePeopleReaders } from "@/lib/cms/people";
 
-const r = makePeopleReaders({
-  table: "artists",
-  contentType: "artistTemplate",
-  carouselId: "3RxzAgWZi26FSbBYhgMmVO",
-});
+const r = makePeopleReaders({ table: "artists" });
 
 /** All artists (catalog). */
 export const getAllArtists = r.listAll;

@@ -2,15 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **🚧 TODO — REMOVE CONTENTFUL (Phase 3, pending).**
-> Content (artists, football teams, blog, categories) was migrated to Supabase
-> tables and the site now reads Supabase. A **Contentful fallback** is still in
-> place as a safety net (`lib/cms/people.ts`, `lib/blog.ts`). Verified 100%
-> coverage (51 artists / 15 teams / 2 blog). When ready, remove:
-> the fallback in those readers, `lib/contentful.ts` + `contentfulClient`, the
-> `*Fields` Contentful types in `lib/app.types.ts`, the `contentful` dep, and
-> `scripts/migrate-contentful.mjs` + `scripts/verify-migration.mjs`. Backoffice
-> manages this content under **Templates** (תבניות).
+> **✅ CONTENTFUL RETIRED (Phase 3 done, 2026-07-22).**
+> All CMS content (artists, football teams, blog, categories) lives in Supabase
+> tables managed by the backoffice under **Templates** (תבניות); the readers
+> (`lib/cms/people.ts`, `lib/blog.ts`) are Supabase-only. The Contentful SDK,
+> client, fallback branches, `*Fields` types, and migration scripts were
+> removed. Coverage verified pre-removal (52 artists / all teams / 4 blog; the
+> only Contentful-only entries were an intentionally deleted team and a
+> superseded duplicate). `@contentful/rich-text-react-renderer` stays — it
+> renders the rich-text JSON documents stored in Supabase columns. Pre-migration
+> rows keep their old Contentful entry id as `slug`; that's just a string.
+> `CONTENTFUL_*` env vars are unused — safe to delete locally and on Vercel.
 
 > **🔒 TODO — SECURITY HARDENING (deferred, do carefully after redesign ships).**
 > A 2026-07 audit fixed the top breaches on branch `fix/security-hardening`
