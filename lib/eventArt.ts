@@ -52,6 +52,13 @@ export const FOOTBALL_CREST_ART = {
   imageScale: 0.6,
   imageOffsetX: 0,
   imageOffsetY: -12,
+  /**
+   * Hero-carousel-only vertical position. The hero card is much taller than
+   * the catalog cards, so the shared -12% reads low there; the crest sits a
+   * bit higher to look centered (the "like Arsenal" look). Applies ONLY in
+   * HeroCarousel — every other surface uses imageOffsetY above.
+   */
+  heroImageOffsetY: -20,
 } as const;
 
 /**
