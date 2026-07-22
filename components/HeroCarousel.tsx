@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Artist, FootballTeam } from "@/lib/app.types";
+import { isTightCrest } from "@/lib/eventArt";
 import { MYT } from "@/components/ui/myt";
 import { MYTMark } from "@/components/ui/mytMark";
 import { EventArt } from "@/components/ui/EventArt";
@@ -399,11 +400,15 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
       kind === "team" ? `עמוד הקבוצה ${name}` : `עמוד האומן ${name}`;
     const cta = kind === "team" ? "למשחקים" : "לאירועים";
     // Blob cut-outs: the whole image must stay visible on these TALL portrait
-    // cards — `contain`, centered, no zoom. The backoffice zoom/offset dials
-    // are tuned on the near-square catalog cards; replayed here (especially
-    // with `cover`) they cropped heads and sides, so blob cards ignore them.
+    // cards — `contain`, centered. Legacy art_blobs cutouts carry their own
+    // padding and read right at plain contain size, so they ignore the
+    // backoffice zoom/offset dials (tuned on near-square catalog cards, they
+    // cropped heads and sides here). Tight crests (any other bucket) have NO
+    // padding — contain alone fills the whole card, so they honor the dial,
+    // same as the catalog cards and detail hero.
     // Flat photos keep `cover` (a real photo can crop safely).
     const blob = Boolean(artImageUrl);
+    const tightCrest = isTightCrest(artImageUrl);
     // ⬇️ BLOB ZOOM DIAL. The shapes vary a lot — some paths flood their whole
     // viewBox (any "cover" crop shows flat color, the Backstreet/Pitbull bug),
     // others leave margins. So the ring uses blobFit="contain" (whole shape
@@ -426,14 +431,26 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
           variant={blob ? "blob" : "photo"}
           colorIndex={entry.fields.artColorIndex}
           shapeIndex={entry.fields.artShapeIndex}
-          imageScale={blob ? undefined : entry.fields.artImageScale}
+          imageScale={
+            blob
+              ? (tightCrest ? entry.fields.artImageScale ?? undefined : undefined)
+              : entry.fields.artImageScale
+          }
           bgScale={
             blob ? (photoBgCard ? undefined : HERO_BLOB_SCALE) : entry.fields.artBgScale
           }
           blobFit={blob && !photoBgCard ? "contain" : undefined}
           bgFit={photoBgCard ? "cover" : undefined}
-          imageOffsetX={blob ? undefined : entry.fields.artImageOffsetX}
-          imageOffsetY={blob ? undefined : entry.fields.artImageOffsetY}
+          imageOffsetX={
+            blob
+              ? (tightCrest ? entry.fields.artImageOffsetX ?? undefined : undefined)
+              : entry.fields.artImageOffsetX
+          }
+          imageOffsetY={
+            blob
+              ? (tightCrest ? entry.fields.artImageOffsetY ?? undefined : undefined)
+              : entry.fields.artImageOffsetY
+          }
           imageFit={blob ? "contain" : "cover"}
           // object-center beats EventArt's default object-bottom (twMerge) —
           // the cut-out floats centered in the card instead of hugging one edge.
