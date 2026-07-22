@@ -52,8 +52,6 @@ export const FOOTBALL_CREST_ART = {
   imageScale: 0.6,
   imageOffsetX: 0,
   imageOffsetY: -12,
-  /** Stadium-photo zoom — standardized too, same reason. */
-  bgScale: 1.55,
 } as const;
 
 /**

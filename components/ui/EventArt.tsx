@@ -62,7 +62,7 @@ export const EventArt = ({
   sizes = "(max-width: 640px) 90vw, 400px",
   variant = "blob",
   blobFit = "cover",
-  bgFit = "contain",
+  bgFit = "cover",
   imageFit,
   imageClassName,
   hoverZoom = true,
@@ -99,10 +99,12 @@ export const EventArt = ({
    */
   blobFit?: "cover" | "contain";
   /**
-   * How a PHOTO background (shapeIndex 6-8) fills the box. Default "contain"
-   * keeps the whole photo visible (backoffice-editor parity on the square
-   * catalog cards). Use "cover" on tall cards (hero carousel) so a landscape
-   * photo bleeds full-card instead of leaving dark bands above and below.
+   * How a PHOTO background (shapeIndex 6-8) fills the box. Default (and the
+   * only sane value) is "cover": the box aspect varies per surface AND per
+   * viewport (240×180 desktop card, ~170×185 mobile card, square catalog
+   * card), so contain + a bgScale zoom hack can never fill all of them — the
+   * mobile football cards showed dark bands at any single scale. `bgScale`
+   * is therefore a BLOB-only dial and is ignored for photo backgrounds.
    */
   bgFit?: "cover" | "contain";
   /**
@@ -173,7 +175,9 @@ export const EventArt = ({
               sizes={sizes}
               aria-hidden="true"
               className={bgFit === "cover" ? "object-cover" : "object-contain"}
-              style={bgStyle}
+              // bgScale deliberately NOT applied: legacy rows carry 1.55-1.7
+              // dials that faked "cover" back when this was contain-fit —
+              // applied on top of a real cover they'd overzoom the stadium.
             />
           </div>
         ) : (

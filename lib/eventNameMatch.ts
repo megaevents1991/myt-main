@@ -70,6 +70,17 @@ function sideIsTeam(side: string, team: string): boolean {
   return tokensEqual(significantTokens(side), significantTokens(team));
 }
 
+/**
+ * Same-club check for crest-library lookups: identifying tokens equal, so
+ * qualifier drift between the teams table and the football_logos library
+ * ("AFC Ajax" ≡ "Ajax", "Tottenham Hotspur FC" ≡ "Tottenham Hotspur",
+ * "Barcelona" ≡ "FC Barcelona") still resolves. Hebrew names have no latin
+ * tokens and never match here — compare those exactly instead.
+ */
+export function clubNamesMatch(a: string, b: string): boolean {
+  return tokensEqual(significantTokens(a), significantTokens(b));
+}
+
 /** Split "X vs Y" (after any "Competition:" prefix) into sides, else null. */
 function fixtureSides(eventName: string): string[] | null {
   const noPrefix = eventName.replace(/^[^:]+:\s*/, "");
