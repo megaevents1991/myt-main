@@ -16,6 +16,10 @@ import {
 export const FEED_SITE_ORIGIN = "https://www.mega-events.co.il";
 export const MONDIAL_ORIGIN = "https://mondial2026.mega-events.co.il";
 export const FEED_BRAND = "Mega Events";
+/** Google taxonomy id for "Arts & Entertainment > Event Tickets" — every item
+ * is a ticket package, so one constant. Meta ignores the field; Google (GMC)
+ * needs it + identifier_exists=no to accept GTIN-less custom goods. */
+export const GOOGLE_PRODUCT_CATEGORY = "499969";
 
 /** Taxonomy info for one event, prepared by feedData from the link tables. */
 export type EventTaxonomyInfo = {
@@ -154,16 +158,18 @@ export function buildFeedItem(
 
   const eventDate = event.date.split("T")[0];
   const d = new Date(`${eventDate}T00:00:00Z`);
-  const city = event.location?.name ?? "";
+  const city = (event.location?.name ?? "").trim();
+  // DB names sometimes carry trailing spaces → "name  · city" in titles.
+  const name = event.name.trim();
 
   const soldOut = isEventSoldOut(event) || eventDate < availabilityCutoffISO;
-  const title = [event.name, city, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
+  const title = [name, city, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
     .filter(Boolean)
     .join(" · ")
     .slice(0, 200);
 
   const fromCms = plainText(event.description || "");
-  const generated = `${event.name} ב${city || "חו״ל"}, ${d.getUTCDate()} ${
+  const generated = `${name} ב${city || "חו״ל"}, ${d.getUTCDate()} ${
     HEB_MONTHS[d.getUTCMonth()]
   } ${d.getUTCFullYear()}. כרטיס רשמי לאירוע${
     event.skip_flight ? " ומלון" : ", טיסה ומלון"
@@ -218,7 +224,13 @@ export function nightsOf(event: Pick<Event, "def_date_depart" | "def_date_return
 
 /* ---------------- serializers ---------------- */
 
-export function toXml(items: FeedItem[]): string {
+/**
+ * @param generatedAtISO when set, stamped as a comment after the XML
+ *   declaration — lets the publish cron + health check tell a fresh build
+ *   from a stale republished snapshot, and makes every publish byte-unique
+ *   (avoids the identical-content weak-etag Cloudflare cache poisoning).
+ */
+export function toXml(items: FeedItem[], generatedAtISO?: string): string {
   const itemXml = items
     .map((it) => {
       const labels = it.internal_labels
@@ -240,6 +252,8 @@ export function toXml(items: FeedItem[]): string {
       <g:link>${escapeXml(it.link)}</g:link>
       <g:image_link>${escapeXml(it.image_link)}</g:image_link>
 ${it.additional_image_link ? `      <g:additional_image_link>${escapeXml(it.additional_image_link)}</g:additional_image_link>\n` : ""}      <g:brand>${escapeXml(it.brand)}</g:brand>
+      <g:identifier_exists>no</g:identifier_exists>
+      <g:google_product_category>${GOOGLE_PRODUCT_CATEGORY}</g:google_product_category>
       <g:expiration_date>${it.expiration_date}</g:expiration_date>
 ${it.product_type ? `      <g:product_type>${escapeXml(it.product_type)}</g:product_type>\n` : ""}${labels ? labels + "\n" : ""}${customLabels}
 ${customNumbers}
@@ -248,7 +262,7 @@ ${customNumbers}
     .join("\n");
 
   return `<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+${generatedAtISO ? `<!-- generated ${generatedAtISO} -->\n` : ""}<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
     <title>Mega Events - Product Catalog</title>
     <link>${FEED_SITE_ORIGIN}</link>

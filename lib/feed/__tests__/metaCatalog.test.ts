@@ -188,6 +188,19 @@ assert.ok(xml.includes("<g:price>1811.00 USD</g:price>"));
 assert.ok(xml.includes("<g:custom_label_4>available</g:custom_label_4>"));
 assert.ok(xml.includes("<custom_number_0>2026</custom_number_0>"));
 assert.ok(xml.includes("<internal_label>status:available</internal_label>"));
+/* Google Merchant compat: GTIN-less custom goods + Event Tickets category */
+assert.ok(xml.includes("<g:identifier_exists>no</g:identifier_exists>"));
+assert.ok(xml.includes("<g:google_product_category>499969</g:google_product_category>"));
+
+/* generated-at stamp: emitted only when passed, right after the declaration */
+const stamped = toXml([item], "2026-07-22T08:00:00.000Z");
+assert.ok(stamped.includes('?>\n<!-- generated 2026-07-22T08:00:00.000Z -->\n<rss'));
+assert.ok(!xml.includes("<!-- generated"), "no stamp when param omitted");
+
+/* trailing spaces in DB name/city don't leak into title or description */
+const padded = buildFeedItem(baseEvent({ name: "בריאן אדמס " }), TAX, CUTOFF, TODAY) as FeedItem;
+assert.strictEqual(padded.title, "בריאן אדמס · ברלין · 2.10");
+assert.ok(!padded.description.includes("  "));
 const amp = buildFeedItem(
   baseEvent({ name: "AC/DC & Friends <live>" }),
   { categoryPath: [], tagSlugs: [] },
