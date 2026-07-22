@@ -39,6 +39,24 @@ export const isTightCrest = (url?: string | null): boolean =>
   Boolean(url && !url.includes("/art_blobs/"));
 
 /**
+ * THE cross-site standard for football LOGO (crest) cards. Every crest —
+ * template-uploaded or resolved from the football-logos library — renders
+ * with this exact background and size on the homepage card, team hero and OG
+ * image. Per-team zoom dials are deliberately IGNORED for crests: three
+ * production bugs (Inter, Bayern/Roma, PSG) came from per-team drift. One
+ * knob, changed here, moves every crest together.
+ */
+export const FOOTBALL_CREST_ART = {
+  /** EventArt photo-background index for the football stadium photo. */
+  shapeIndex: 8,
+  imageScale: 0.6,
+  imageOffsetX: 0,
+  imageOffsetY: -12,
+  /** Stadium-photo zoom — standardized too, same reason. */
+  bgScale: 1.55,
+} as const;
+
+/**
  * Deterministic color + shape for an event. `id` keeps it stable per card.
  * `overrides` (future backoffice fields) win when provided.
  */

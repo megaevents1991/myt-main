@@ -504,6 +504,11 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
   // the whole card. Those honor the backoffice dial instead.
   const isPhotoBg = (team.fields.artShapeIndex ?? 0) >= 6;
   const tightCrest = isTightCrest(team.fields.artImageUrl);
+  // A tight crest with NO dial set would contain-fit at 100% and fill the
+  // card edge-to-edge (the recurring Inter/Bayern/PSG bug). Default to the
+  // sizing every hand-tuned crest row converged on (~0.65, nudged up).
+  const crestScale = team.fields.artImageScale ?? 0.65;
+  const crestOffsetY = team.fields.artImageOffsetY ?? -12;
   return (
     <Link
       href={`/football/${team.sys?.id}`}
@@ -538,7 +543,7 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
             // would win). Tight (non-art_blobs) crests honor the dial instead.
             imageScale={
               isPhotoBg
-                ? (tightCrest ? team.fields.artImageScale ?? undefined : undefined)
+                ? (tightCrest ? crestScale : undefined)
                 : team.fields.artImageScale
             }
             bgScale={team.fields.artBgScale}
@@ -549,7 +554,7 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
             }
             imageOffsetY={
               isPhotoBg
-                ? (tightCrest ? team.fields.artImageOffsetY ?? undefined : undefined)
+                ? (tightCrest ? crestOffsetY : undefined)
                 : team.fields.artImageOffsetY
             }
             imageClassName={
