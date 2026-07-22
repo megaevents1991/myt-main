@@ -2,7 +2,11 @@ import { unstable_cache as nextCache } from "next/cache";
 import { Event } from "@/lib/app.types";
 import { getArtistImageIndex } from "@/lib/artists";
 import { getFootballTeamImageIndex } from "@/lib/football";
-import { eventBelongsToTeam, normalizeName } from "@/lib/eventNameMatch";
+import {
+  eventBelongsToTeam,
+  normalizeName,
+  teamFixtureRole,
+} from "@/lib/eventNameMatch";
 
 /**
  * Event image → person image fallback
@@ -56,9 +60,16 @@ export async function enrichEventsWithFallbackImages(
       // so an event shown on a person's page resolves to that same person.
       // eventBelongsToTeam refines it for football fixtures so an "Inter Milan"
       // game doesn't borrow AC Milan's ("Milan") imagery.
-      const match = index.find(
+      const candidates = index.filter(
         (p) => name.includes(p.name) && eventBelongsToTeam(name, p.name),
       );
+      // A fixture matches BOTH clubs ("AS Roma vs Inter Milan") and the
+      // longest-first order would hand the art to whichever club has the longer
+      // name (Inter). The event is the HOME team's game — its crest wins;
+      // non-fixtures (artists) have no home side and keep longest-first.
+      const match =
+        candidates.find((p) => teamFixtureRole(name, p.name) === "home") ??
+        candidates[0];
       if (!match) continue;
       if (match.art) {
         event.art_image_url = match.art.imageUrl;
