@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { isTightCrest } from "@/lib/eventArt";
+
 /**
  * Branded Open-Graph card for artist / football-team pages (WhatsApp & social
  * link previews) — the new card-art design: dark brand canvas, the person's
@@ -78,8 +80,7 @@ export async function personOgImage(p: {
   imageScale?: number | null;
 }) {
   const color = BLOB_HEX[Math.abs(p.colorIndex ?? 0) % BLOB_HEX.length];
-  const isTightCrest = p.cutoutUrl ? !p.cutoutUrl.includes("/art_blobs/") : false;
-  const cutoutScale = isTightCrest ? p.imageScale ?? 1 : 1;
+  const cutoutScale = isTightCrest(p.cutoutUrl) ? p.imageScale ?? 1 : 1;
   const si = Math.abs(p.shapeIndex ?? 0);
   const shape = BLOB_SHAPES[si % BLOB_SHAPES.length];
   const mirrored = si >= 3 && si <= 5;

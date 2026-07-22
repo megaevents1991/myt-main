@@ -27,6 +27,18 @@ const hash = (s: string): number => {
 export type EventArt = { colorIndex: number; shapeIndex: number };
 
 /**
+ * Crest/cut-out source classifier — the ONE place that knows which art sources
+ * honor the backoffice zoom/offset dial. Legacy art_blobs pipeline images are
+ * padded cutouts that read right at plain contain-fit size, so they ignore the
+ * dial. Every other source (football-logos library, templates bucket, any
+ * future bucket) is a tightly-cropped image with no built-in padding — it MUST
+ * honor the dial or it blows up to fill the card. Never re-check the URL
+ * inline; use this so every surface treats a new bucket the same way.
+ */
+export const isTightCrest = (url?: string | null): boolean =>
+  Boolean(url && !url.includes("/art_blobs/"));
+
+/**
  * Deterministic color + shape for an event. `id` keeps it stable per card.
  * `overrides` (future backoffice fields) win when provided.
  */

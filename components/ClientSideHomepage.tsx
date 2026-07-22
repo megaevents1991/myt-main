@@ -29,6 +29,7 @@ import { HeroCarousel, type HeroCarouselItem } from "@/components/HeroCarousel";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { Aurora } from "@/components/ui/Aurora";
 import { EventArt } from "@/components/ui/EventArt";
+import { isTightCrest } from "@/lib/eventArt";
 import { PackageIcons } from "@/components/ui/PackageIcons";
 
 const fuseOptions = {
@@ -502,8 +503,7 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
   // tightly-cropped badge with no such padding, so a flat 1.4x blowup fills
   // the whole card. Those honor the backoffice dial instead.
   const isPhotoBg = (team.fields.artShapeIndex ?? 0) >= 6;
-  const isLegacyCutout = team.fields.artImageUrl?.includes("/art_blobs/") ?? true;
-  const isTightCrest = !isLegacyCutout;
+  const tightCrest = isTightCrest(team.fields.artImageUrl);
   return (
     <Link
       href={`/football/${team.sys?.id}`}
@@ -538,23 +538,23 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
             // would win). Tight (non-art_blobs) crests honor the dial instead.
             imageScale={
               isPhotoBg
-                ? (isTightCrest ? team.fields.artImageScale ?? undefined : undefined)
+                ? (tightCrest ? team.fields.artImageScale ?? undefined : undefined)
                 : team.fields.artImageScale
             }
             bgScale={team.fields.artBgScale}
             imageOffsetX={
               isPhotoBg
-                ? (isTightCrest ? team.fields.artImageOffsetX ?? undefined : undefined)
+                ? (tightCrest ? team.fields.artImageOffsetX ?? undefined : undefined)
                 : team.fields.artImageOffsetX
             }
             imageOffsetY={
               isPhotoBg
-                ? (isTightCrest ? team.fields.artImageOffsetY ?? undefined : undefined)
+                ? (tightCrest ? team.fields.artImageOffsetY ?? undefined : undefined)
                 : team.fields.artImageOffsetY
             }
             imageClassName={
               isPhotoBg
-                ? (isTightCrest ? "object-center" : "object-center scale-[1.4]")
+                ? (tightCrest ? "object-center" : "object-center scale-[1.4]")
                 : undefined
             }
             // No `priority` (that preloads at high priority and saturated the

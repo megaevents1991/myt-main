@@ -8,6 +8,7 @@ import { MYT } from "@/components/ui/myt";
 import { EventArt } from "@/components/ui/EventArt";
 import { BioReadMore } from "@/components/BioReadMore";
 import { youtubeId, youtubeEmbed } from "@/lib/youtube";
+import { isTightCrest } from "@/lib/eventArt";
 
 /**
  * Split detail-hero for artist / football pages — dark surface, cutout image
@@ -62,7 +63,7 @@ export const DetailHero = ({
   ctaHref?: string;
   ctaLabel?: string;
 }) => {
-  const isTightCrest = artImageUrl ? !artImageUrl.includes("/art_blobs/") : false;
+  const tightCrest = isTightCrest(artImageUrl);
   const videoId = youtubeId(heroVideoUrl);
   return (
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
@@ -104,9 +105,9 @@ export const DetailHero = ({
                 shapeIndex={artShapeIndex}
                 imageFit="contain"
                 bgFit={(artShapeIndex ?? 0) >= 6 ? "cover" : undefined}
-                imageScale={isTightCrest ? artImageScale ?? undefined : undefined}
-                imageOffsetX={isTightCrest ? artImageOffsetX ?? undefined : undefined}
-                imageOffsetY={isTightCrest ? artImageOffsetY ?? undefined : undefined}
+                imageScale={tightCrest ? artImageScale ?? undefined : undefined}
+                imageOffsetX={tightCrest ? artImageOffsetX ?? undefined : undefined}
+                imageOffsetY={tightCrest ? artImageOffsetY ?? undefined : undefined}
                 // Person (blob) is bottom-anchored and scaled from the bottom so
                 // the cut-out's lower edge stays tucked at the circle's bottom
                 // curve (never floats mid-circle) while the person reads smaller /
