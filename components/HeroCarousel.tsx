@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Artist, FootballTeam } from "@/lib/app.types";
-import { isTightCrest } from "@/lib/eventArt";
+import { isTightCrest, FOOTBALL_CREST_ART } from "@/lib/eventArt";
 import { MYT } from "@/components/ui/myt";
 import { MYTMark } from "@/components/ui/mytMark";
 import { EventArt } from "@/components/ui/EventArt";
@@ -448,7 +448,10 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
           }
           imageOffsetY={
             blob
-              ? (tightCrest ? entry.fields.artImageOffsetY ?? undefined : undefined)
+              ? // Tight crests sit a bit HIGHER here than the shared standard:
+                // on this tall card the -12% offset reads low, so the hero uses
+                // its own dial (the "like Arsenal" centered look).
+                (tightCrest ? FOOTBALL_CREST_ART.heroImageOffsetY : undefined)
               : entry.fields.artImageOffsetY
           }
           imageFit={blob ? "contain" : "cover"}
