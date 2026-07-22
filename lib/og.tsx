@@ -71,15 +71,15 @@ export async function personOgImage(p: {
   photoUrl?: string | null;
   colorIndex?: number | null;
   shapeIndex?: number | null;
-  /** Backoffice zoom dial — only honored for football-logos-library crests
-   *  (tight badges with no built-in padding); art_blobs cutouts already
-   *  read right at the fixed CARD_W-30/CARD_H-60 box, so callers simply
-   *  don't pass this for them. */
+  /** Backoffice zoom dial — honored for every tightly-cropped crest source
+   *  (football-logos library, ad-hoc templates-bucket uploads — no built-in
+   *  padding); art_blobs cutouts already read right at the fixed
+   *  CARD_W-30/CARD_H-60 box, so callers simply don't pass this for them. */
   imageScale?: number | null;
 }) {
   const color = BLOB_HEX[Math.abs(p.colorIndex ?? 0) % BLOB_HEX.length];
-  const isLogoLibraryCrest = p.cutoutUrl?.includes("/football-logos/") ?? false;
-  const cutoutScale = isLogoLibraryCrest ? p.imageScale ?? 1 : 1;
+  const isTightCrest = p.cutoutUrl ? !p.cutoutUrl.includes("/art_blobs/") : false;
+  const cutoutScale = isTightCrest ? p.imageScale ?? 1 : 1;
   const si = Math.abs(p.shapeIndex ?? 0);
   const shape = BLOB_SHAPES[si % BLOB_SHAPES.length];
   const mirrored = si >= 3 && si <= 5;

@@ -497,11 +497,13 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
   // backoffice image dials (they shrink the crest to ~0.8 and, being an inline
   // style transform, would OVERRIDE the class scale) and size the crest purely
   // via the class below so it reads big and centered. That assumes a padded
-  // "cutout" source (the art_blobs pipeline) — the football-logos library
-  // (bulk-uploaded, tightly-cropped badges) has no such padding, so a flat
-  // 1.4x blowup fills the whole card. Those honor the backoffice dial instead.
+  // "cutout" source (the art_blobs pipeline) — every other source (the
+  // football-logos library, ad-hoc templates-bucket uploads) is a
+  // tightly-cropped badge with no such padding, so a flat 1.4x blowup fills
+  // the whole card. Those honor the backoffice dial instead.
   const isPhotoBg = (team.fields.artShapeIndex ?? 0) >= 6;
-  const isLogoLibraryCrest = team.fields.artImageUrl?.includes("/football-logos/") ?? false;
+  const isLegacyCutout = team.fields.artImageUrl?.includes("/art_blobs/") ?? true;
+  const isTightCrest = !isLegacyCutout;
   return (
     <Link
       href={`/football/${team.sys?.id}`}
@@ -533,26 +535,26 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
             shapeIndex={team.fields.artShapeIndex ?? undefined}
             // On legacy photo-bg cards, skip the backoffice image dials so the
             // class scale below actually takes effect (an inline transform
-            // would win). Logo-library crests honor the dial directly instead.
+            // would win). Tight (non-art_blobs) crests honor the dial instead.
             imageScale={
               isPhotoBg
-                ? (isLogoLibraryCrest ? team.fields.artImageScale ?? undefined : undefined)
+                ? (isTightCrest ? team.fields.artImageScale ?? undefined : undefined)
                 : team.fields.artImageScale
             }
             bgScale={team.fields.artBgScale}
             imageOffsetX={
               isPhotoBg
-                ? (isLogoLibraryCrest ? team.fields.artImageOffsetX ?? undefined : undefined)
+                ? (isTightCrest ? team.fields.artImageOffsetX ?? undefined : undefined)
                 : team.fields.artImageOffsetX
             }
             imageOffsetY={
               isPhotoBg
-                ? (isLogoLibraryCrest ? team.fields.artImageOffsetY ?? undefined : undefined)
+                ? (isTightCrest ? team.fields.artImageOffsetY ?? undefined : undefined)
                 : team.fields.artImageOffsetY
             }
             imageClassName={
               isPhotoBg
-                ? (isLogoLibraryCrest ? "object-center" : "object-center scale-[1.4]")
+                ? (isTightCrest ? "object-center" : "object-center scale-[1.4]")
                 : undefined
             }
             // No `priority` (that preloads at high priority and saturated the

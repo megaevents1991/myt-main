@@ -52,17 +52,17 @@ export const DetailHero = ({
   artImageUrl?: string;
   artColorIndex?: number;
   artShapeIndex?: number;
-  /** Backoffice zoom/offset dial — only honored for football-logos-library
-   *  crests (tightly-cropped badges with no built-in padding). Legacy
-   *  art_blobs cutouts already read right at the default contain-fit size,
-   *  so they keep ignoring it exactly as before. */
+  /** Backoffice zoom/offset dial — honored for every tightly-cropped crest
+   *  source (football-logos library, ad-hoc templates-bucket uploads — no
+   *  built-in padding). Legacy art_blobs cutouts already read right at the
+   *  default contain-fit size, so they keep ignoring it exactly as before. */
   artImageScale?: number | null;
   artImageOffsetX?: number | null;
   artImageOffsetY?: number | null;
   ctaHref?: string;
   ctaLabel?: string;
 }) => {
-  const isLogoLibraryCrest = artImageUrl?.includes("/football-logos/") ?? false;
+  const isTightCrest = artImageUrl ? !artImageUrl.includes("/art_blobs/") : false;
   const videoId = youtubeId(heroVideoUrl);
   return (
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
@@ -104,9 +104,9 @@ export const DetailHero = ({
                 shapeIndex={artShapeIndex}
                 imageFit="contain"
                 bgFit={(artShapeIndex ?? 0) >= 6 ? "cover" : undefined}
-                imageScale={isLogoLibraryCrest ? artImageScale ?? undefined : undefined}
-                imageOffsetX={isLogoLibraryCrest ? artImageOffsetX ?? undefined : undefined}
-                imageOffsetY={isLogoLibraryCrest ? artImageOffsetY ?? undefined : undefined}
+                imageScale={isTightCrest ? artImageScale ?? undefined : undefined}
+                imageOffsetX={isTightCrest ? artImageOffsetX ?? undefined : undefined}
+                imageOffsetY={isTightCrest ? artImageOffsetY ?? undefined : undefined}
                 // Person (blob) is bottom-anchored and scaled from the bottom so
                 // the cut-out's lower edge stays tucked at the circle's bottom
                 // curve (never floats mid-circle) while the person reads smaller /
