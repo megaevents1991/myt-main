@@ -1,4 +1,8 @@
 import { logger } from "./logger";
+import {
+  USD_ILS_FALLBACK_RATE,
+  TRAVEL_RATE_MULTIPLIER,
+} from "./exchangeRate.constants";
 
 interface ExchangeRateData {
   rate: number;
@@ -31,7 +35,7 @@ const CURRENCY_CONFIG: Record<
     target: "ils",
     min: 2.7,
     max: 3.65,
-    fallback: 2.95,
+    fallback: USD_ILS_FALLBACK_RATE,
   },
   eurUsd: {
     pair: "EUR/USD",
@@ -224,7 +228,8 @@ class ExchangeRateService {
   // --- Public API ---
 
   public getTravelRate(): number {
-    return this.roundUp(this.currentRates.usdIls.rate * 1.015); // +1.5% for travel expenses
+    // TRAVEL_RATE_MULTIPLIER = margin for travel expenses
+    return this.roundUp(this.currentRates.usdIls.rate * TRAVEL_RATE_MULTIPLIER);
   }
 
   public getUsdIlsRate(): ExchangeRateData {

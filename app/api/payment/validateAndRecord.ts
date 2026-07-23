@@ -60,8 +60,15 @@ export async function validateAndRecordPayment({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = convert(body, { format: "object" }) as any;
 
-  const isSuccess =
-    result.ashrait.response.inquireTransactions.row.statusText === "SUCCEEDED";
+  // xmlbuilder2 gives a single object for one <row> but an ARRAY for several —
+  // a paid tx must be recognized in both shapes, and a missing/error envelope
+  // must not throw (it would abort before the status update below).
+  const rowRaw = result?.ashrait?.response?.inquireTransactions?.row;
+  const rows = Array.isArray(rowRaw) ? rowRaw : rowRaw ? [rowRaw] : [];
+  const isSuccess = rows.some(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (r: any) => r?.statusText === "SUCCEEDED",
+  );
 
   // 1. Record the payment outcome BEFORE anything that can fail.
   const { error: updateError } = await supabase

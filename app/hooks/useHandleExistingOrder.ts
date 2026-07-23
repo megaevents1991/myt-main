@@ -15,6 +15,7 @@ export const useHandleExistingOrder = () => {
     setPassengers,
     event: currentEvent,
     setSkipHotel,
+    setFlightSkipped,
   } = useContext(OrderContext);
 
   const searchParams = useSearchParams();
@@ -109,7 +110,17 @@ export const useHandleExistingOrder = () => {
       ];
 
       setPassengers(passengers);
-      setFlight(data.flight_order_info);
+
+      // Skipped flight is saved as {} (truthy!) — check the inner field, same
+      // as the hotel below, or the review step renders a phantom flight and
+      // crashes on selectedFlight.outbound.
+      if (!data.flight_order_info?.outbound) {
+        setFlightSkipped(true);
+        setFlight(undefined);
+      } else {
+        setFlightSkipped(false);
+        setFlight(data.flight_order_info);
+      }
 
       // Check if hotel was skipped (hotel_order_info is empty object {})
       if (

@@ -17,7 +17,12 @@ const returnUrl = process.env.VERCEL_ENV
   : process.env.NEXT_PUBLIC_API_URL;
 
 export async function POST(request: Request) {
-  const { email, orderId, promoCode }: PaymentRequest = await request.json();
+  let email, orderId, promoCode;
+  try {
+    ({ email, orderId, promoCode } = (await request.json()) as PaymentRequest);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
   if (!orderId) {
     return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
@@ -61,23 +66,34 @@ export async function POST(request: Request) {
   formData.append("password", password);
   formData.append("int_in", xml);
 
-  const response = await fetch(url, {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Error from payment gateway:", errorText);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error from payment gateway:", errorText);
+      return NextResponse.json({ error: "Payment failed" }, { status: 500 });
+    }
+
+    const body = await response.text();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = convert(body, { format: "object" }) as any;
+
+    // A gateway HTTP 200 can still carry an error envelope (auth failure,
+    // terminal error) with no doDeal — surface it instead of throwing.
+    const hostedPageUrl = result?.ashrait?.response?.doDeal?.mpiHostedPageUrl;
+    if (!hostedPageUrl) {
+      console.error("Payment gateway returned no hosted page URL:", body);
+      return NextResponse.json({ error: "Payment failed" }, { status: 500 });
+    }
+
+    return NextResponse.json({ url: hostedPageUrl });
+  } catch (error) {
+    console.error("Payment gateway request failed:", error);
     return NextResponse.json({ error: "Payment failed" }, { status: 500 });
   }
-
-  const body = await response.text();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = convert(body, { format: "object" }) as any;
-
-  return NextResponse.json({
-    url: result.ashrait.response.doDeal.mpiHostedPageUrl,
-  });
 }

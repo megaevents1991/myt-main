@@ -34,8 +34,13 @@ export async function getCachedEvents(): Promise<{ events: Event[] }> {
   }
 }
 
-/** Number of days an event must be in the future to count as "available". */
-export const AVAILABILITY_WINDOW_DAYS = 7;
+/**
+ * Number of days an event must be in the future to count as "available".
+ * 3 matches the order page's deliberate sell window (commit dbdc8aa "3 days");
+ * the catalog, taxonomy and Meta feed share it so nothing is listed as
+ * sold-out/hidden while its order page still sells.
+ */
+export const AVAILABILITY_WINDOW_DAYS = 3;
 
 /** `YYYY-MM-DD` for `daysAhead` from now — the DB-comparable availability cutoff. */
 export function futureDateISO(daysAhead: number): string {
@@ -48,11 +53,9 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
   const startTime = Date.now();
 
   try {
-    // Calculate date 7 days from now
-    const sevenDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-
-    // Format to YYYY-MM-DD for database comparison
-    const futureDate = sevenDaysFromNow.toISOString().split("T")[0]; // Format: 2025-04-32
+    // Availability cutoff — shared with catalog/taxonomy/feed so all surfaces
+    // agree on what is bookable.
+    const futureDate = futureDateISO(AVAILABILITY_WINDOW_DAYS);
 
     console.log(
       `[EventsData] Starting query - ID: ${id || "all"}, futureDate: ${futureDate}`,
@@ -62,7 +65,7 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
       .from("events")
       .select("*")
       .is("is_deleted", null)
-      .gte("date", futureDate) // Only get events 7+ days in the future
+      .gte("date", futureDate) // Only events AVAILABILITY_WINDOW_DAYS+ out
       .order("date", { ascending: true });
 
     if (id !== undefined) {
