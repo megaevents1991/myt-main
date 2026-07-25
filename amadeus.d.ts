@@ -61,6 +61,21 @@ declare module "amadeus" {
   }
 }
 
+/**
+ * A baggage allowance as Amadeus actually returns it. The carrier decides
+ * whether the allowance is expressed as a piece count OR as a weight — they are
+ * mutually exclusive in practice, and BOTH mean "a bag is included". Verified
+ * live on the Enterprise gateway: Arkia sends `{weight: 8, weightUnit: "KG"}`
+ * for its cabin bag and Emirates sends `{weight: 30, weightUnit: "KG"}` for its
+ * checked bag, while Aegean sends `{quantity: 2}`. A `quantity: 0` (Israair,
+ * Blue Bird) genuinely means no bag. The field can also be absent entirely.
+ */
+type BagAllowance = {
+  quantity?: number;
+  weight?: number;
+  weightUnit?: string;
+};
+
 type FlightOffer = {
   type: string;
   id: string;
@@ -140,12 +155,8 @@ type FlightOffer = {
       brandedFare?: string;
       brandedFareLabel?: string;
       class: string;
-      includedCheckedBags: {
-        quantity: number;
-      };
-      includedCabinBags: {
-        quantity: number;
-      };
+      includedCheckedBags?: BagAllowance;
+      includedCabinBags?: BagAllowance;
       amenities?: Array<{
         description: string;
         isChargeable: boolean;

@@ -1,4 +1,5 @@
 import { Flight, TimeRange } from "./app.types";
+import { getFlightCarrierCodes } from "./flightCarriers";
 import { SortOptions, flightSort } from "./flightSort";
 import { parseDuration } from "./parseDuration";
 
@@ -61,7 +62,12 @@ export const applyFiltersAndSorting = (
         return returnDepartureTime >= start && returnDepartureTime <= end;
       });
 
-    const matchesAirline = airline.includes(flight.airline);
+    // Match on the ticketing carrier OR the airline actually operating the
+    // outbound — Blue Bird flights are ticketed by Hahn Air, so `flight.airline`
+    // alone never matches a "BZ" selection. See lib/flightCarriers.ts.
+    const matchesAirline = getFlightCarrierCodes(flight).some((code) =>
+      airline.includes(code)
+    );
     const matchesStops =
       flight.stops < 2 && options.numOfStops.includes(flight.stops.toString());
     const matchesFlightDuration =
@@ -71,15 +77,13 @@ export const applyFiltersAndSorting = (
 
     let matchesLuggage = false;
 
-    if (options.luggage.length === 2) {
-      //Return all options except those with backpack only
-      matchesLuggage =
-        flight.outbound.checkBagsIncluded || flight.outbound.cabinBagsIncluded;
-    } else if (options.luggage.length === 0) {
-      //Return only backpack options
-      matchesLuggage =
-        !flight.outbound.checkBagsIncluded &&
-        !flight.outbound.cabinBagsIncluded;
+    if (options.luggage.length === 2 || options.luggage.length === 0) {
+      // Both boxes checked (the default) or neither is not a real narrowing —
+      // it means "no luggage restriction". The previous semantics ("at least
+      // one bag" when both were checked) made backpack-only fares unreachable
+      // from any UI state, which silently hid EVERY Arkia / Blue Bird / Israair
+      // basic fare — consistently the cheapest flights out of TLV.
+      matchesLuggage = true;
     } else if (options.luggage.includes("withCheckedBags")) {
       matchesLuggage = flight.outbound.checkBagsIncluded;
     } else if (options.luggage.includes("withCabinBags")) {

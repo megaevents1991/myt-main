@@ -69,6 +69,15 @@ const currencyCode = "USD";
 const MAX_STOP_DURATION_HOURS = 4;
 const MAX_STOPS = 1; // Maximum allowed stops per journey
 
+// A baggage allowance counts as "included" whether Amadeus expresses it as a
+// piece count or as a weight — which form arrives depends entirely on the
+// carrier. Reading `quantity` alone reported "no bag" for fares that plainly
+// include one (Arkia's 8kg cabin bag, Cyprus Airways' 10kg, Emirates' 30kg
+// checked), which both mislabelled the card and fed the client's luggage filter
+// a false negative. `quantity: 0` still correctly means no bag.
+const hasBagAllowance = (bag?: BagAllowance): boolean =>
+  Boolean(bag && ((bag.quantity ?? 0) > 0 || (bag.weight ?? 0) > 0));
+
 const PTfunction = (duration: string): string => {
   const parts = duration.split(":").map(Number);
   const hours = parts[0];
@@ -293,11 +302,14 @@ export async function POST(request: Request) {
       (acc: Flight[], offer: FlightOffer) => {
         const { validatingAirlineCodes, price, itineraries, travelerPricings } =
           offer;
+        // `aircodes` has gaps (unknown codes return undefined — "W6"/Wizz Air,
+        // "X3"/TUIfly) and stubs (an empty `logo` — "GP"/APG Airlines). Neither
+        // is a reason to throw away a bookable flight, and the old
+        // `!airlineByIata.logo` guard did both: it dropped every APG-ticketed
+        // offer, and on an unknown code it threw, which the outer catch turned
+        // into a 500 for the WHOLE search. FlightCard already falls back to a
+        // plane glyph when `metadata.logo` is empty.
         const airlineByIata = getAirlineByIata(validatingAirlineCodes[0]);
-
-        if (!airlineByIata.logo) {
-          return acc;
-        }
 
         // Filter flights with too many stops (early check)
         const outboundStops = itineraries[0].segments.length - 1;
@@ -352,7 +364,7 @@ export async function POST(request: Request) {
           travelerPricings[0].fareDetailsBySegment.some(
             (fare) =>
               fare.segmentId === segment.id &&
-              fare.includedCheckedBags?.quantity
+              hasBagAllowance(fare.includedCheckedBags)
           )
         );
         const fromCabinBagsIncluded = itineraries[0].segments.every(
@@ -360,7 +372,7 @@ export async function POST(request: Request) {
             return travelerPricings[0].fareDetailsBySegment.some((fare) => {
               return (
                 fare.segmentId === segment.id &&
-                fare.includedCabinBags?.quantity
+                hasBagAllowance(fare.includedCabinBags)
               );
             });
           }
@@ -370,7 +382,7 @@ export async function POST(request: Request) {
           return travelerPricings[0].fareDetailsBySegment.some((fare) => {
             return (
               fare.segmentId === segment.id &&
-              fare.includedCheckedBags?.quantity
+              hasBagAllowance(fare.includedCheckedBags)
             );
           });
         });
@@ -378,7 +390,8 @@ export async function POST(request: Request) {
         const toCabinBagsIncluded = itineraries[1].segments.every((segment) => {
           return travelerPricings[0].fareDetailsBySegment.some((fare) => {
             return (
-              fare.segmentId === segment.id && fare.includedCabinBags?.quantity
+              fare.segmentId === segment.id &&
+              hasBagAllowance(fare.includedCabinBags)
             );
           });
         });
@@ -428,10 +441,17 @@ export async function POST(request: Request) {
           outbound,
           inbound,
           metadata: {
-            ...airlineByIata,
-            name: response.result.dictionaries.carriers[
-              validatingAirlineCodes[0]
-            ],
+            // Built field-by-field rather than spread, so a carrier missing
+            // from `aircodes` still yields a complete, renderable Airline.
+            iata: airlineByIata?.iata ?? validatingAirlineCodes[0],
+            country: airlineByIata?.country ?? "",
+            logo: airlineByIata?.logo ?? "",
+            name:
+              response.result.dictionaries.carriers[
+                validatingAirlineCodes[0]
+              ] ??
+              airlineByIata?.name ??
+              validatingAirlineCodes[0],
           },
         });
 
