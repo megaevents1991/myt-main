@@ -16,40 +16,16 @@ const nextConfig: import("next").NextConfig = {
         pathname: "/**",
       },
       {
+        // Every PUBLIC bucket of our own Supabase project. Was an explicit
+        // per-bucket allowlist, which silently broke images whenever the
+        // backoffice started writing a new bucket — the generated campaign
+        // creatives (`creatives/output/*`, set as `events.card_image_url`)
+        // 400'd in the image optimizer and rendered as a black/broken card.
+        // Private buckets are unreachable without a signed URL anyway.
         protocol: "https",
         hostname: "fandqafngybfdyslofmr.supabase.co",
         port: "",
-        pathname: "/storage/v1/object/public/card_images/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fandqafngybfdyslofmr.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/map_images/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fandqafngybfdyslofmr.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/art_blobs/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fandqafngybfdyslofmr.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/templates/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fandqafngybfdyslofmr.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/football-logos/**",
-      },
-      {
-        protocol: "https",
-        hostname: "fandqafngybfdyslofmr.supabase.co",
-        port: "",
-        pathname: "/storage/v1/object/public/public_resources/**",
+        pathname: "/storage/v1/object/public/**",
       },
       {
         protocol: "https",

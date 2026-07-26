@@ -7,9 +7,7 @@ import { Event } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventArt } from "@/components/ui/EventArt";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
-
-// Tags that mark an event worth surfacing as a promo banner.
-const FEATURED_TAGS = ["VIPevent", "LastTickets", "Popular", "Restock"];
+import { isFeaturedTag } from "@/lib/eventTags";
 
 /**
  * Promo "package" banners on the homepage — wide cards highlighting featured
@@ -19,7 +17,7 @@ const FEATURED_TAGS = ["VIPevent", "LastTickets", "Popular", "Restock"];
  */
 export const PackageBanners = ({ events }: { events: Event[] }) => {
   const live = events.filter((e) => !isEventSoldOut(e));
-  const tagged = live.filter((e) => FEATURED_TAGS.includes(e.tags ?? ""));
+  const tagged = live.filter((e) => isFeaturedTag(e.tags));
   const featured = (tagged.length >= 3 ? tagged : live).slice(0, 4);
 
   if (featured.length === 0) return null;
