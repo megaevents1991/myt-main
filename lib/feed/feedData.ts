@@ -15,10 +15,6 @@ import {
   type EventTaxonomyInfo,
   type FeedBuildResult,
 } from "@/lib/feed/metaCatalog";
-import {
-  buildActivityItem,
-  type ActivityBuildResult,
-} from "@/lib/feed/activitiesCatalog";
 
 /**
  * Every sellable product, sold-out included (Meta guidance: mark "out of
@@ -28,7 +24,20 @@ import {
 export async function getFeedItems(): Promise<FeedBuildResult> {
   const todayISO = futureDateISO(0);
   const cutoffISO = futureDateISO(AVAILABILITY_WINDOW_DAYS);
-  const { events: enriched, taxonomyByEvent } = await getFeedEvents();
+
+  const { data: events, error } = await supabase
+    .from("events")
+    .select("*")
+    .is("is_deleted", null)
+    .gte("date", todayISO)
+    .order("date", { ascending: true });
+  if (error) {
+    console.error("[feed] events query failed:", JSON.stringify(error));
+    return { items: [], skipped: [] };
+  }
+
+  const enriched = await enrichEventsWithFallbackImages((events ?? []) as Event[]);
+  const taxonomyByEvent = await getTaxonomyByEvent(enriched.map((e) => e.id));
 
   const result: FeedBuildResult = { items: [], skipped: [] };
   for (const event of enriched) {
@@ -45,55 +54,6 @@ export async function getFeedItems(): Promise<FeedBuildResult> {
     }
   }
   return result;
-}
-
-/**
- * Same events, mapped to Meta's ACTIVITIES catalog schema — the vertical our
- * Meta catalog actually is (see `activitiesCatalog.ts`). Activities feeds have
- * no availability field, so sold-out and unbookable events are dropped here
- * instead of being marked out of stock.
- */
-export async function getActivityItems(): Promise<ActivityBuildResult> {
-  const cutoffISO = futureDateISO(AVAILABILITY_WINDOW_DAYS);
-  const { events, taxonomyByEvent } = await getFeedEvents();
-
-  const result: ActivityBuildResult = { items: [], skipped: [] };
-  for (const event of events) {
-    const built = buildActivityItem(
-      event,
-      taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [] },
-      cutoffISO
-    );
-    if ("skipped" in built) {
-      result.skipped.push({ id: event.id, name: event.name, reason: built.skipped });
-    } else {
-      result.items.push(built);
-    }
-  }
-  return result;
-}
-
-/** Shared fetch for both feed shapes: sellable events + their taxonomy. */
-async function getFeedEvents(): Promise<{
-  events: Event[];
-  taxonomyByEvent: Map<number, EventTaxonomyInfo>;
-}> {
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("*")
-    .is("is_deleted", null)
-    .gte("date", futureDateISO(0))
-    .order("date", { ascending: true });
-  if (error) {
-    console.error("[feed] events query failed:", JSON.stringify(error));
-    return { events: [], taxonomyByEvent: new Map() };
-  }
-
-  const enriched = await enrichEventsWithFallbackImages((events ?? []) as Event[]);
-  return {
-    events: enriched,
-    taxonomyByEvent: await getTaxonomyByEvent(enriched.map((e) => e.id)),
-  };
 }
 
 /**
