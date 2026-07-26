@@ -15,6 +15,114 @@ import {
   type EventTaxonomyInfo,
   type FeedBuildResult,
 } from "@/lib/feed/metaCatalog";
+import {
+  buildActivityItem,
+  type ActivityBuildResult,
+  type DomainHint,
+} from "@/lib/feed/activitiesCatalog";
+import { normalizeName } from "@/lib/eventNameMatch";
+
+/**
+ * Classifier for events the taxonomy doesn't cover: does the event name match
+ * a CMS artist or a football team? Most `tx_event` rows have no category link,
+ * and Meta's activity_category ("Concert"/"Sports") drives who sees the ad —
+ * so falling back to "Other" for a Shakira concert is a real targeting loss.
+ * Fixture names ("Bayern - RB Leipzig") are matched side by side.
+ */
+async function peopleClassifier(): Promise<(eventName: string) => DomainHint> {
+  const [artists, teams] = await Promise.all([
+    fetchPeopleNames("artists"),
+    fetchPeopleNames("football_teams"),
+  ]);
+
+  return (eventName: string): DomainHint => {
+    const whole = normalizeName(eventName);
+    if (!whole) return null;
+    // Sides of a fixture, plus a "Competition: A vs B" prefix stripped off.
+    const sides = eventName
+      .replace(/^[^:]+:\s*/, "")
+      .split(/\s+-\s+|\s+vs\.?\s+/i)
+      .map((s) => normalizeName(s))
+      .filter(Boolean);
+
+    if (teams.has(whole) || sides.some((s) => teams.has(s))) return "football-team";
+    if (artists.has(whole) || sides.some((s) => artists.has(s))) return "artist";
+    return null;
+  };
+}
+
+async function fetchPeopleNames(
+  table: "artists" | "football_teams"
+): Promise<Set<string>> {
+  // artists/football_teams use a BOOLEAN is_deleted (events use a date string).
+  const { data, error } = await supabase
+    .from(table)
+    .select("name, name_english")
+    .eq("is_deleted", false);
+  if (error) {
+    console.error(`[feed] ${table} query failed:`, JSON.stringify(error));
+    return new Set();
+  }
+  const names = new Set<string>();
+  for (const row of (data ?? []) as { name?: string; name_english?: string }[]) {
+    for (const n of [row.name, row.name_english]) {
+      const normalized = normalizeName(n);
+      if (normalized) names.add(normalized);
+    }
+  }
+  return names;
+}
+
+/** Shared fetch for both feed shapes: sellable events + their taxonomy. */
+async function getFeedEvents(): Promise<{
+  events: Event[];
+  taxonomyByEvent: Map<number, EventTaxonomyInfo>;
+}> {
+  const { data: events, error } = await supabase
+    .from("events")
+    .select("*")
+    .is("is_deleted", null)
+    .gte("date", futureDateISO(0))
+    .order("date", { ascending: true });
+  if (error) {
+    console.error("[feed] events query failed:", JSON.stringify(error));
+    return { events: [], taxonomyByEvent: new Map() };
+  }
+
+  const enriched = await enrichEventsWithFallbackImages((events ?? []) as Event[]);
+  return {
+    events: enriched,
+    taxonomyByEvent: await getTaxonomyByEvent(enriched.map((e) => e.id)),
+  };
+}
+
+/**
+ * Same events in Meta's ACTIVITIES schema — the vertical our Meta catalog
+ * actually is (see `activitiesCatalog.ts`). Activities feeds have no
+ * availability field, so sold-out and unbookable events are dropped here
+ * rather than marked out of stock.
+ */
+export async function getActivityItems(): Promise<ActivityBuildResult> {
+  const cutoffISO = futureDateISO(AVAILABILITY_WINDOW_DAYS);
+  const { events, taxonomyByEvent } = await getFeedEvents();
+  const classify = await peopleClassifier();
+
+  const result: ActivityBuildResult = { items: [], skipped: [] };
+  for (const event of events) {
+    const built = buildActivityItem(
+      event,
+      taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [] },
+      cutoffISO,
+      classify(event.name)
+    );
+    if ("skipped" in built) {
+      result.skipped.push({ id: event.id, name: event.name, reason: built.skipped });
+    } else {
+      result.items.push(built);
+    }
+  }
+  return result;
+}
 
 /**
  * Every sellable product, sold-out included (Meta guidance: mark "out of
@@ -24,20 +132,7 @@ import {
 export async function getFeedItems(): Promise<FeedBuildResult> {
   const todayISO = futureDateISO(0);
   const cutoffISO = futureDateISO(AVAILABILITY_WINDOW_DAYS);
-
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("*")
-    .is("is_deleted", null)
-    .gte("date", todayISO)
-    .order("date", { ascending: true });
-  if (error) {
-    console.error("[feed] events query failed:", JSON.stringify(error));
-    return { items: [], skipped: [] };
-  }
-
-  const enriched = await enrichEventsWithFallbackImages((events ?? []) as Event[]);
-  const taxonomyByEvent = await getTaxonomyByEvent(enriched.map((e) => e.id));
+  const { events: enriched, taxonomyByEvent } = await getFeedEvents();
 
   const result: FeedBuildResult = { items: [], skipped: [] };
   for (const event of enriched) {

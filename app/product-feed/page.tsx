@@ -140,6 +140,12 @@ export default async function ProductFeedPage({
           >
             הורד CSV
           </a>
+          <a
+            href="/feeds/meta-activities.csv?excel=1"
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
+          >
+            הורד CSV למטא (Activities)
+          </a>
         </div>
         <p className="mt-3 text-xs text-gray-500">
           הפיד נבנה חי מה־DB בכל בקשה. במטא: Commerce Manager ← Data Sources ←
