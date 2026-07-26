@@ -1,0 +1,130 @@
+/**
+ * Validation script for the Meta ACTIVITIES catalog builders/serializer.
+ * Run with: npx tsx lib/feed/__tests__/activitiesCatalog.test.ts
+ */
+import assert from "node:assert";
+import type { Event } from "../../app.types";
+import {
+  activityCategoryOf,
+  buildActivityItem,
+  cityOnly,
+  toActivitiesCsv,
+  type ActivityItem,
+} from "../activitiesCatalog";
+
+const baseEvent = (over: Partial<Event> = {}): Event =>
+  ({
+    id: 329,
+    name: "גאנס אנד רוזס",
+    name_english: "Guns N' Roses",
+    type: "music_event",
+    date: "2026-10-02",
+    location: { latitude: 0, longitude: 0, name: "ברלין, גרמניה", city_iata: "BER" },
+    map_image_url: "",
+    description: "",
+    card_image_url: "https://example.com/gnr.jpg",
+    tickets_and_rates: [
+      { category: "A", price: 120, id: "t1", description: "", available: true, colorOnTheMap: "" },
+    ],
+    def_date_depart: "2026-10-01",
+    def_date_return: "2026-10-03",
+    usual_price: 2000,
+    base_flight_price: 900,
+    base_hotel_price: 616,
+    is_prioritized: false,
+    is_deleted: null as unknown as string,
+    tags: "",
+    ...over,
+  }) as Event;
+
+const MUSIC = { categoryPath: ["Music", "Rock"], tagSlugs: ["berlin", "music", "rock"] };
+const SPORT = { categoryPath: ["Sports", "Football"], tagSlugs: ["world-cup"] };
+const CUTOFF = "2026-07-23";
+
+/* city strips the country */
+assert.strictEqual(cityOnly("ברלין, גרמניה"), "ברלין");
+assert.strictEqual(cityOnly(undefined), "");
+
+/* activity_category from event type, then taxonomy for tx_event */
+assert.strictEqual(activityCategoryOf({ type: "music_event" }, MUSIC), "Concert");
+assert.strictEqual(activityCategoryOf({ type: "sports_event" }, SPORT), "Sports");
+assert.strictEqual(activityCategoryOf({ type: "sports_live_event_dynamic" }, SPORT), "Sports");
+assert.strictEqual(activityCategoryOf({ type: "tx_event" }, MUSIC), "Concert");
+assert.strictEqual(activityCategoryOf({ type: "tx_event" }, SPORT), "Sports");
+assert.strictEqual(
+  activityCategoryOf({ type: "tx_event" }, { categoryPath: [], tagSlugs: [] }),
+  "Other"
+);
+
+/* concert item: full mapping, package suffix, city-only location */
+const item = buildActivityItem(baseEvent(), MUSIC, CUTOFF) as ActivityItem;
+assert.strictEqual(item.id, 329);
+assert.strictEqual(item.title, "גאנס אנד רוזס · ברלין · 2.10 · טיסה+מלון+כרטיס");
+assert.strictEqual(item.price, "1811.00 USD"); // 900 + 616 + 120 + 175
+assert.strictEqual(item.link, "https://www.mega-events.co.il/order/329");
+assert.strictEqual(item.brand, "Mega Events");
+assert.strictEqual(item.activity_category, "Concert");
+assert.strictEqual(item.performers, "גאנס אנד רוזס");
+assert.strictEqual(item.location_names, "ברלין");
+assert.strictEqual(item.activity_sub_categories, "Rock");
+assert.strictEqual(item.activity_date, "2026-10-02");
+assert.strictEqual(item.custom_label_0, "music");
+assert.strictEqual(item.custom_label_1, "rock");
+assert.ok(item.description.length > 0 && item.description !== item.title);
+/* no invented social proof — we have no ratings system */
+assert.strictEqual(item.rating_count, 0);
+assert.strictEqual(item.user_rating, 0);
+
+/* sports item: no package suffix (matches the verified file) */
+const sport = buildActivityItem(
+  baseEvent({ id: 530, name: "אנגליה", type: "sports_event", location: { latitude: 0, longitude: 0, name: "ארלינגטון-דאלאס", city_iata: "DFW" } }),
+  SPORT,
+  CUTOFF
+) as ActivityItem;
+assert.strictEqual(sport.title, "אנגליה · ארלינגטון-דאלאס · 2.10");
+assert.strictEqual(sport.activity_category, "Sports");
+assert.strictEqual(sport.activity_sub_categories, "Football");
+
+/* activities feeds have no availability field → drop instead of marking */
+assert.deepStrictEqual(
+  buildActivityItem(baseEvent({ tags: "Sold" }), MUSIC, CUTOFF),
+  { skipped: "sold out" }
+);
+assert.deepStrictEqual(
+  buildActivityItem(baseEvent({ date: "2026-07-20" }), MUSIC, CUTOFF),
+  { skipped: "inside booking window" }
+);
+assert.deepStrictEqual(
+  buildActivityItem(baseEvent({ tickets_and_rates: [], usual_price: 0 }), MUSIC, CUTOFF),
+  { skipped: "no computable price" }
+);
+assert.deepStrictEqual(
+  buildActivityItem(baseEvent({ card_image_url: "" }), MUSIC, CUTOFF),
+  { skipped: "no image" }
+);
+
+/* campaign creative wins over the card image */
+const withCampaign = buildActivityItem(
+  baseEvent({ campaign_image_url: "https://cdn.example.com/auto/event-329-square.png" }),
+  MUSIC,
+  CUTOFF
+) as ActivityItem;
+assert.strictEqual(
+  withCampaign.image_link,
+  "https://cdn.example.com/auto/event-329-square.png"
+);
+
+/* CSV: exact verified header, no BOM, CRLF, quoting */
+const csv = toActivitiesCsv([item]);
+assert.strictEqual(
+  csv.split("\r\n")[0],
+  "id,image_link,brand,description,title,price,link,rating_count,user_rating," +
+    "activity_category,performers,location_names,activity_sub_categories," +
+    "activity_date,custom_label_0,custom_label_1"
+);
+assert.ok(csv.charCodeAt(0) !== 0xfeff, "no BOM");
+assert.ok(csv.endsWith("\r\n"));
+assert.ok(csv.includes('"'), "description with commas is quoted");
+assert.ok(!csv.includes("availability"), "no e-commerce columns");
+
+console.log("activitiesCatalog: all assertions passed ✅");

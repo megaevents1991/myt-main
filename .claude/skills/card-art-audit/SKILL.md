@@ -43,11 +43,26 @@ Every one renders through `components/ui/EventArt.tsx`. Fix bugs there, not per 
 6. **No event image → artist image.** `lib/events/fallbackImage.ts` fills from the matching
    artist/team. A black card usually means no person row exists, not a code bug.
 
+## Where this is already enforced
+
+- **Upload guard (backoffice).** `ArtBlobPicker` trims every image assigned to a card-art
+  field — the file upload, a pasted URL, and browsing storage all funnel through
+  `handlePickedUrl` / `trimTransparent`. Padded art is re-cropped to `templates` and the
+  field takes the new URL. `autoTrim={false}` (football teams) and photo-background cards
+  (shapeIndex ≥ 6) opt out, because crest margin is intentional.
+- **CI.** `.github/workflows/card-art-audit.yml` runs this script weekly and on demand, and
+  fails on findings. It needs the repo secrets `NEXT_SECRET_SUPABASE_URL` and
+  `NEXT_SECRET_SUPABASE_SERVICE_KEY`; without them it warns and stays green.
+
+Neither covers a row edited straight in the Supabase dashboard — that is what the manual run
+below is for.
+
 ## Procedure
 
 ```bash
 python .claude/skills/card-art-audit/audit_card_art.py            # report only
 python .claude/skills/card-art-audit/audit_card_art.py --sheet    # + contact sheet PNG
+python .claude/skills/card-art-audit/audit_card_art.py --fail-on-issues   # CI mode
 ```
 
 Needs `.env.local` (`NEXT_SECRET_SUPABASE_URL`, `NEXT_SECRET_SUPABASE_SERVICE_KEY`) and

@@ -1,0 +1,55 @@
+name: Card Art Audit
+
+# Catches card art that would render badly on the site — a padded cut-out (small
+# artist floating in the card), a multi-MB image, or a URL next/image will reject
+# (black card + broken icon). Checks live Supabase DATA, so it runs on a schedule
+# and on demand rather than per commit.
+#
+# Needs repo secrets NEXT_SECRET_SUPABASE_URL and NEXT_SECRET_SUPABASE_SERVICE_KEY.
+# Without them the job reports that and stops green — it never fails for missing
+# config, only for real findings.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pillow numpy
+
+      - name: Write .env.local
+        id: env
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_SECRET_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.NEXT_SECRET_SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::warning::Supabase secrets not set — skipping the audit."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "NEXT_SECRET_SUPABASE_URL=$SUPABASE_URL"
+            echo "NEXT_SECRET_SUPABASE_SERVICE_KEY=$SUPABASE_KEY"
+          } > .env.local
+
+      - name: Audit
+        if: steps.env.outputs.skip != 'true'
+        run: python .claude/skills/card-art-audit/audit_card_art.py --sheet --fail-on-issues
+
+      - name: Upload contact sheet
+        if: always() && steps.env.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: card-art-surfaces
+          path: card-art-surfaces.png
+          if-no-files-found: ignore

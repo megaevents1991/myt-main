@@ -76,6 +76,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sheet", action="store_true", help="render the contact sheet")
     ap.add_argument("--out", default=".", help="where to write the sheet")
+    ap.add_argument(
+        "--fail-on-issues",
+        action="store_true",
+        help="exit 1 when anything is flagged (used by CI)",
+    )
     args = ap.parse_args()
 
     root = os.getcwd()
@@ -167,6 +172,9 @@ def main():
         out = os.path.join(args.out, "card-art-surfaces.png")
         sheet.convert("RGB").save(out)
         print(f"\ncontact sheet: {out}  (hero | catalog | circle — READ IT)")
+
+    if problems and args.fail_on_issues:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
