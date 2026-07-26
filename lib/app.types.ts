@@ -73,6 +73,9 @@ export type Event = {
   // additional_image_link. Synced with backoffice types/app.types.ts.
   campaign_image_url?: string | null;
   campaign_banner_url?: string | null;
+  // Direct video FILE url (mp4/mov/…) for the Meta activities feed's
+  // video[0].url. Player/YouTube links are rejected by Meta and filtered out.
+  campaign_video_url?: string | null;
 };
 
 export type Flight = {

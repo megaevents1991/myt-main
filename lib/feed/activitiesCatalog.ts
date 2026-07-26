@@ -62,7 +62,33 @@ export type ActivityItem = {
   activity_date: string;
   custom_label_0: string;
   custom_label_1: string;
+  /** Direct video FILE url, or "" — never a player/YouTube link. */
+  video_url: string;
 };
+
+/**
+ * Meta's supported video containers (product data spec). A player page
+ * (YouTube/Vimeo/Instagram) is rejected by Meta, so we only pass through URLs
+ * that point at an actual file — a bad link would fail the whole feed row.
+ */
+const VIDEO_EXTENSIONS = [
+  "3g2", "3gp", "3gpp", "asf", "avi", "dat", "divx", "dv", "f4v", "flv", "gif",
+  "m2ts", "m4v", "mkv", "mod", "mov", "mp4", "mpe", "mpeg", "mpeg4", "mpg",
+  "mts", "nsv", "ogm", "ogv", "qt", "tod", "ts", "vob", "wmv",
+];
+
+/** https URL whose path ends in a Meta-supported video extension. */
+export function isDirectVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const ext = parsed.pathname.split(".").pop()?.toLowerCase() ?? "";
+    return VIDEO_EXTENSIONS.includes(ext);
+  } catch {
+    return false;
+  }
+}
 
 export type ActivityBuildResult = {
   items: ActivityItem[];
@@ -173,6 +199,9 @@ export function buildActivityItem(
     activity_date: eventDate,
     custom_label_0: domainLabel,
     custom_label_1: subCategory.toLowerCase(),
+    video_url: isDirectVideoUrl(event.campaign_video_url)
+      ? (event.campaign_video_url as string)
+      : "",
   };
 }
 
@@ -182,23 +211,31 @@ const CSV_HEADERS = [
   "location_names", "activity_sub_categories", "activity_date",
   "custom_label_0", "custom_label_1",
 ];
+/** Meta's optional video column (up to video[19].url; we publish one). */
+const VIDEO_HEADER = "video[0].url";
 
 function csvCell(v: string | number): string {
   const s = String(v);
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** CSV in the verified-working byte format: no BOM, CRLF rows, UTF-8. */
+/**
+ * CSV in the verified-working byte format: no BOM, CRLF rows, UTF-8.
+ * The video column appears only when at least one event actually has a video,
+ * so a catalog with none stays byte-identical to the shape Meta accepted.
+ */
 export function toActivitiesCsv(items: ActivityItem[]): string {
-  const rows = items.map((it) =>
-    [
+  const withVideo = items.some((it) => it.video_url);
+  const headers = withVideo ? [...CSV_HEADERS, VIDEO_HEADER] : CSV_HEADERS;
+  const rows = items.map((it) => {
+    const cells: (string | number)[] = [
       it.id, it.image_link, it.brand, it.description, it.title, it.price, it.link,
       it.rating_count, it.user_rating, it.activity_category, it.performers,
       it.location_names, it.activity_sub_categories, it.activity_date,
       it.custom_label_0, it.custom_label_1,
-    ]
-      .map(csvCell)
-      .join(",")
-  );
-  return [CSV_HEADERS.join(","), ...rows].join("\r\n") + "\r\n";
+    ];
+    if (withVideo) cells.push(it.video_url);
+    return cells.map(csvCell).join(",");
+  });
+  return [headers.join(","), ...rows].join("\r\n") + "\r\n";
 }

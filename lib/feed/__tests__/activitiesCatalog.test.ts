@@ -8,6 +8,7 @@ import {
   activityCategoryOf,
   buildActivityItem,
   cityOnly,
+  isDirectVideoUrl,
   toActivitiesCsv,
   type ActivityItem,
 } from "../activitiesCatalog";
@@ -158,6 +159,36 @@ assert.strictEqual(
   withCampaign.image_link,
   "https://cdn.example.com/auto/event-329-square.png"
 );
+
+/* video: only direct FILE urls — player links would fail the row in Meta */
+assert.ok(isDirectVideoUrl("https://cdn.example.com/v/ariana-london.mp4"));
+assert.ok(isDirectVideoUrl("https://cdn.example.com/v/clip.MOV"));
+assert.ok(isDirectVideoUrl("https://cdn.example.com/v/clip.mp4?v=abc123"));
+assert.ok(!isDirectVideoUrl("https://www.youtube.com/watch?v=abc123"));
+assert.ok(!isDirectVideoUrl("https://vimeo.com/123456"));
+assert.ok(!isDirectVideoUrl("http://cdn.example.com/v/clip.mp4"), "https only");
+assert.ok(!isDirectVideoUrl("not a url"));
+assert.ok(!isDirectVideoUrl(""));
+assert.ok(!isDirectVideoUrl(null));
+
+const withVideo = buildActivityItem(
+  baseEvent({ campaign_video_url: "https://cdn.example.com/v/gnr.mp4" }),
+  MUSIC,
+  CUTOFF
+) as ActivityItem;
+assert.strictEqual(withVideo.video_url, "https://cdn.example.com/v/gnr.mp4");
+const playerLink = buildActivityItem(
+  baseEvent({ campaign_video_url: "https://youtu.be/abc123" }),
+  MUSIC,
+  CUTOFF
+) as ActivityItem;
+assert.strictEqual(playerLink.video_url, "", "player link dropped, row still valid");
+
+/* video column appears ONLY when some event has one (keeps the proven shape) */
+const videoCsv = toActivitiesCsv([item, withVideo]);
+assert.ok(videoCsv.split("\r\n")[0].endsWith(",video[0].url"));
+assert.ok(videoCsv.split("\r\n")[1].endsWith(","), "item without video → empty cell");
+assert.ok(videoCsv.split("\r\n")[2].endsWith(",https://cdn.example.com/v/gnr.mp4"));
 
 /* CSV: exact verified header, no BOM, CRLF, quoting */
 const csv = toActivitiesCsv([item]);
