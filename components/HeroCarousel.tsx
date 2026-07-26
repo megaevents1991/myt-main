@@ -400,15 +400,18 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
       kind === "team" ? `עמוד הקבוצה ${name}` : `עמוד האומן ${name}`;
     const cta = kind === "team" ? "למשחקים" : "לאירועים";
     // Blob cut-outs: the whole image must stay visible on these TALL portrait
-    // cards — `contain`, centered. Legacy art_blobs cutouts carry their own
-    // padding and read right at plain contain size, so they ignore the
-    // backoffice zoom/offset dials (tuned on near-square catalog cards, they
-    // cropped heads and sides here). Tight crests (any other bucket) have NO
-    // padding — contain alone fills the whole card, so they honor the dial,
-    // same as the catalog cards and detail hero.
+    // cards — `contain`, centered. No zoom/offset dial is applied to a PERSON
+    // here whatever bucket the cut-out sits in: legacy art_blobs cut-outs carry
+    // their own padding, and cut-outs from the picker are trimmed tight, so both
+    // read right at plain contain size. The dials are tuned on the near-square
+    // catalog cards and cropped heads/sides on this card (A$AP Rocky lost his
+    // head to a 1.4 zoom + the crest offset below).
     // Flat photos keep `cover` (a real photo can crop safely).
     const blob = Boolean(artImageUrl);
-    const tightCrest = isTightCrest(artImageUrl);
+    // Crest treatment is for football CRESTS only. It used to key off the
+    // bucket (`isTightCrest`), which quietly swept up every artist cut-out the
+    // picker writes to `templates` and gave people the crest's lift.
+    const crest = kind === "team" && isTightCrest(artImageUrl);
     // ⬇️ BLOB ZOOM DIAL. The shapes vary a lot — some paths flood their whole
     // viewBox (any "cover" crop shows flat color, the Backstreet/Pitbull bug),
     // others leave margins. So the ring uses blobFit="contain" (whole shape
@@ -433,7 +436,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
           shapeIndex={entry.fields.artShapeIndex}
           imageScale={
             blob
-              ? (tightCrest ? entry.fields.artImageScale ?? undefined : undefined)
+              ? (crest ? entry.fields.artImageScale ?? undefined : undefined)
               : entry.fields.artImageScale
           }
           bgScale={
@@ -443,15 +446,16 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
           bgFit={photoBgCard ? "cover" : undefined}
           imageOffsetX={
             blob
-              ? (tightCrest ? entry.fields.artImageOffsetX ?? undefined : undefined)
+              ? (crest ? entry.fields.artImageOffsetX ?? undefined : undefined)
               : entry.fields.artImageOffsetX
           }
           imageOffsetY={
             blob
-              ? // Tight crests sit a bit HIGHER here than the shared standard:
-                // on this tall card the -12% offset reads low, so the hero uses
-                // its own dial (the "like Arsenal" centered look).
-                (tightCrest ? FOOTBALL_CREST_ART.heroImageOffsetY : undefined)
+              ? // Crests sit a bit HIGHER here than the shared standard: on this
+                // tall card the -12% offset reads low, so the hero uses its own
+                // dial (the "like Arsenal" centered look). People get no lift —
+                // it pushed their heads out through the top of the card.
+                (crest ? FOOTBALL_CREST_ART.heroImageOffsetY : undefined)
               : entry.fields.artImageOffsetY
           }
           imageFit={blob ? "contain" : "cover"}
