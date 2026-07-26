@@ -14,7 +14,12 @@ declare module "aircodes" {
   /**
    * Retrieves airline information by its IATA code.
    * @param iataCode - The IATA code of the airline.
-   * @returns A Promise that resolves to the airline's information or null if not found.
+   * @returns The airline's information, or `null` when the code is not in the
+   *          dataset (the implementation ends in `return airline || null`). The
+   *          gaps are real and include large carriers — "W6" (Wizz Air) and
+   *          "X3" (TUIfly) both miss — so this MUST stay nullable: reading a
+   *          property off the result unguarded previously threw and turned an
+   *          entire flight search into a 500.
    */
-  export function getAirlineByIata(iataCode: string): Airline;
+  export function getAirlineByIata(iataCode: string): Airline | null;
 }

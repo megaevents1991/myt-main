@@ -154,8 +154,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Validate required parameters
-  if (!latitude || !longitude || !checkin || !checkout) {
+  // Validate required parameters (isFinite, not truthiness — 0 is a valid coordinate)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !checkin || !checkout) {
     return NextResponse.json(
       { 
         error: "latitude, longitude, checkin, and checkout are required",

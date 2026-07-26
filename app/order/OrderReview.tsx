@@ -340,8 +340,11 @@ export default function OrderReview({
     setCouponInput("");
     setCouponStatus("idle");
   }, []);
+  // Both start at 0 = "not loaded yet" — submit is blocked until the async
+  // rate fetch fills them, so a plausible-looking hardcoded init (the old 3.5)
+  // must never leak into an order.
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
-  const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(3.5);
+  const [usd_ils_rate, setUSD_ILS_RATE] = useState<number>(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -665,14 +668,18 @@ export default function OrderReview({
     [passengers, validationErrors]
   );
 
-  // Calculate the special offer discount amount (per person)
+  // Calculate the special offer discount amount (per person). Never below the
+  // discount the customer ALREADY has — accepting the offer must not raise the
+  // price (an affiliate at $100/ticket used to be replaced by the flat 80).
   const specialOfferDiscountPerPerson = useMemo(() => {
     if (agentCommission > 0) return 0;
-    return affiliateDiscountPerTicketUsd > 50
-      ? 80
-      : affiliateDiscountPerTicketUsd > 10
-        ? affiliateDiscountPerTicketUsd * 1.5
-        : 50;
+    const offer =
+      affiliateDiscountPerTicketUsd > 50
+        ? 80
+        : affiliateDiscountPerTicketUsd > 10
+          ? affiliateDiscountPerTicketUsd * 1.5
+          : 50;
+    return Math.max(offer, affiliateDiscountPerTicketUsd);
   }, [affiliateDiscountPerTicketUsd, agentCommission]);
 
   // Calculate total discount for all tickets
@@ -846,6 +853,13 @@ export default function OrderReview({
           block: "start",
         });
       }
+      return;
+    }
+
+    // The ILS total is computed async (finalPurchasePriceILSCalc effect) —
+    // submitting before it resolves would persist/charge a 0 amount.
+    if (!Number.isFinite(finalPurchasePriceILS) || finalPurchasePriceILS <= 0) {
+      console.error("ILS total not ready yet — submit blocked, try again");
       return;
     }
 

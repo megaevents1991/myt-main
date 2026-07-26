@@ -303,11 +303,12 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     if (!isTxEvent) return availableTickets;
 
     // tx_event with no live listings: live pricing is unavailable (API error,
-    // timeout, or zero listings). Once the fetch has settled, fall back to the
-    // static DB price WITH a safety buffer so an outage can't make us sell below
-    // the true live price. While still loading, the list is hidden by the loader.
+    // timeout, zero listings — or the fetch still in flight). Fall back to the
+    // static DB price WITH the safety buffer so neither an outage nor a fast
+    // "continue" during the fetch can sell below the true live price — the
+    // auto-select effect commits this memo's price straight into the order
+    // context, so the unbuffered DB price must never appear here.
     if (liveListings.length === 0) {
-      if (isLoadingLiveTickets) return availableTickets;
       return availableTickets.map((ticket) => ({
         ...ticket,
         price: Math.ceil(ticket.price * TX_FALLBACK_MULTIPLIER),
@@ -326,7 +327,6 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   }, [
     isTxEvent,
     liveListings,
-    isLoadingLiveTickets,
     availableTickets,
     numberOfEventTickets,
     getLivePriceForCategory,

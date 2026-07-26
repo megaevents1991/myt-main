@@ -247,6 +247,15 @@ export const HotelSelection = () => {
     const arraysEqual = <T,>(a: T[], b: T[]) =>
       a.length === b.length && a.every((value, index) => value === b[index]);
 
+    // No hotels at all (0-result search / all dropped for missing rates):
+    // bail to the empty state — Math.max(...[]) below is -Infinity and
+    // hotelsToSet[0] would throw.
+    if (!data.data.hotels.length) {
+      setFilteredHotels([]);
+      setHotel(undefined);
+      return;
+    }
+
     // Calculate all values first
     let maxDistance = Math.max(
       ...Object.values(hotelsInfo).map(
@@ -326,16 +335,34 @@ export const HotelSelection = () => {
       });
     }
 
-    const hotelInformation = {
-      hotelName: hotelsInfo[0]?.metadata?.hotelName,
-      roomName: hotelsInfo[0]?.rooms[0]?.name,
-      stars: hotelsInfo[0]?.metadata?.rating,
-      amenities: hotelsInfo[0]?.general?.amenities,
-      distance: hotelsInfo[0]?.metadata?.distanceFromCenter,
-    };
+    // Every hotel filtered out even after the relax pass: keep the computed
+    // filter ranges so the customer can widen them, show the empty state.
+    if (!hotelsToSet.length) {
+      setBasePricePerPerson(basePricePerPerson);
+      setMaxDistance(maxDistance);
+      setDistanceRange(distanceRangeToSet);
+      setPriceRange([0, Math.ceil(maxPrice)]);
+      setMaxPrice(maxPrice / totalPersons);
+      setMinPrice(Math.floor(minPrice / totalPersons));
+      setFilteredHotels([]);
+      setHotel(undefined);
+      return;
+    }
 
     // Batch all state updates together using React's automatic batching
     const selectedHotelId = hotelsToSet[0].id;
+
+    // Info of the AUTO-SELECTED hotel — hotelsInfo is keyed by hotel id, so
+    // the old hotelsInfo[0] was always undefined and orders accepted with the
+    // default hotel saved an empty hotelInformation.
+    const selectedInfo = hotelsInfo[selectedHotelId];
+    const hotelInformation = {
+      hotelName: selectedInfo?.metadata?.hotelName,
+      roomName: selectedInfo?.rooms?.[0]?.name,
+      stars: selectedInfo?.metadata?.rating,
+      amenities: selectedInfo?.general?.amenities,
+      distance: selectedInfo?.metadata?.distanceFromCenter,
+    };
 
     setBasePricePerPerson(basePricePerPerson);
     setMaxDistance(maxDistance);
@@ -358,10 +385,10 @@ export const HotelSelection = () => {
 
     // Set hotel last as it depends on the selectedHotelId
     setHotel({
-      address: hotelsInfo[selectedHotelId]?.metadata.address,
+      address: selectedInfo?.metadata?.address,
       guests: data.debug.request.guests,
       id: selectedHotelId || "",
-      name: hotelsInfo[selectedHotelId].metadata.hotelName,
+      name: selectedInfo?.metadata?.hotelName,
       hotelInformation,
       price:
         hotelsToSet[0].rates[0].payment_options?.payment_types[0]?.show_amount,

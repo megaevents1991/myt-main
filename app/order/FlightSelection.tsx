@@ -585,9 +585,14 @@ export const FlightSelection = () => {
               <div className="w-fit">
                 <SelectWithIcon
                   value={planeTickets.adults}
-                  onChange={(value) =>
-                    setPlaneTickets({ adults: +(value || 0), children: 0 })
-                  }
+                  onChange={(value) => {
+                    const adults = +(value || 0);
+                    setPlaneTickets({ adults, children: 0 });
+                    // Flight list + auto-picked flight are priced per party
+                    // size — a count change invalidates both, so refetch
+                    // (fetchFlights also clears the selected flight).
+                    if (adults > 0) fetchFlights({ adults });
+                  }}
                   icon={null}
                   aria-label="בחר כמות נוסעים"
                 />

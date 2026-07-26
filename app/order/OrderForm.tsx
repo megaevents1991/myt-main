@@ -6,7 +6,7 @@ import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
 import OrderReview from "./OrderReview";
 import { OrderContinueBar, type ContinueSlot } from "./OrderContinueBar";
-import { Event, Flight } from "@/lib/app.types";
+import { Event } from "@/lib/app.types";
 import { OrderContext } from "../app.context";
 import { orderStage } from "../hooks/Affiliate";
 import { ContactUs } from "@/components/ui/ContactUs";
@@ -156,8 +156,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
 
   // NOTE: param renamed from `skipHotel` — it shadowed the context flag of the
   // same name, which the edit-return check below needs to read.
-  const nextStep = (skipHotelChosen = false) =>
-    setStep((prev) => {
+  // Runs OUTSIDE the setStep updater: updaters must be pure (StrictMode/
+  // concurrent React may replay them — analytics and the pricing fetch used to
+  // double-fire). `step` is fresh here — nextStep only runs from click handlers.
+  const nextStep = (skipHotelChosen = false) => {
+    const prev = step;
+    let next = prev + 1;
+    {
       if (prev === 1) {
         orderStage("TICKET_SELECTED", {
           data: {
@@ -220,7 +225,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
             skipped: true,
           });
 
-          return prev + 2;
+          next = prev + 2;
         }
       } else if (prev === 3) {
         // Handle both hotel selection AND skip
@@ -243,11 +248,13 @@ export const OrderForm = ({ event }: { event: Event }) => {
           }).then((res) => {
             if (res.ok) {
               res.json().then((data) => {
-                setFlight((prev = {} as Flight) => ({
-                  ...prev,
-                  penalties: data?.penalties,
-                  bags: data?.bags,
-                }));
+                // If the flight was cleared meanwhile (skip / back-nav), stay
+                // cleared — never resurrect a truthy id-less flight object.
+                setFlight((prev) =>
+                  prev
+                    ? { ...prev, penalties: data?.penalties, bags: data?.bags }
+                    : prev,
+                );
               });
             }
           });
@@ -298,11 +305,12 @@ export const OrderForm = ({ event }: { event: Event }) => {
           (isUS || skipHotelChosen || skipHotel || !!hotel?.id);
         if (flowComplete) {
           setReturnToSummary(false);
-          return 4;
+          next = 4;
         }
       }
-      return prev + 1;
-    });
+    }
+    setStep(next);
+  };
 
   const handleSkipHotel = () => {
     nextStep(true);

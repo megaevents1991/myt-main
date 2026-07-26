@@ -20,10 +20,12 @@ import { OrderExpiryProvider, useOrderExpiry } from "../hooks/useOrderExpiry";
 import OrderExpiredNotice from "@/components/OrderExpiredNotice";
 
 const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
-  const [flight, setFlight] = useState<Flight | undefined>({} as Flight);
+  // flight/hotel start undefined, NOT {} — an empty object is truthy and every
+  // "is there a flight/hotel?" guard downstream must not need Object.keys().
+  const [flight, setFlight] = useState<Flight | undefined>(undefined);
   const [event, setEvent] = useState<Event | undefined>(undefined);
   const [personLink, setPersonLink] = useState<PersonLink | undefined>(undefined);
-  const [hotel, setHotel] = useState<OrderHotel | undefined>({} as OrderHotel);
+  const [hotel, setHotel] = useState<OrderHotel | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [numberOfEventTickets, setNumberOfEventTickets] = useState(2);
   const [currentMinTicketPrice, setCurrentMinTicketPrice] = useState(0);

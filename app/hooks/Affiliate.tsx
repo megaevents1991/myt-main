@@ -55,8 +55,15 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
     return;
   }
 
-  // Parse stored data or initialize empty object
-  const affiliateData = storedData ? JSON.parse(storedData) : {};
+  // Parse stored data or initialize empty object (corrupt JSON → start fresh)
+  let affiliateData: { userId?: string; affiliateId?: string | null } = {};
+  if (storedData) {
+    try {
+      affiliateData = JSON.parse(storedData);
+    } catch (error) {
+      console.error("Corrupt mytData in localStorage:", error);
+    }
+  }
   let flagSave = !!affParam;
 
   // Assign userId if not exists

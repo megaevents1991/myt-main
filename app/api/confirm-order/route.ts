@@ -13,13 +13,23 @@ import {
 } from "@/lib/gtmAnalytics";
 
 export async function POST(req: Request) {
-  const { payNow, onlySave, gtmIdnts, skipAnalytics, ...orderDetails } =
-    await req.json();
-
-  const validatedData: OrderData = await validateOrderData(
-    orderDetails,
-    payNow,
-  );
+  // Bad JSON / failed validation is a client error — return 400 before any
+  // side effect (an uncaught throw here used to surface as a 500).
+  let payNow, onlySave, gtmIdnts, skipAnalytics, orderDetails;
+  let validatedData: OrderData;
+  try {
+    ({ payNow, onlySave, gtmIdnts, skipAnalytics, ...orderDetails } =
+      await req.json());
+    validatedData = await validateOrderData(orderDetails, payNow);
+  } catch (validationError) {
+    console.error(
+      "Order validation failed:",
+      validationError instanceof Error
+        ? validationError.message
+        : JSON.stringify(validationError),
+    );
+    return NextResponse.json({ error: "Invalid order data" }, { status: 400 });
+  }
 
   // Surface offline inventory linkage as top-level columns so the backoffice
   // can query / JOIN without unpacking the order JSON blobs.
@@ -270,8 +280,8 @@ export async function POST(req: Request) {
               ? "Flight: SKIPPED BY CUSTOMER"
               : `Flight Outbound Number: ${validatedData.flight_order_info.outbound.flightNumber}
           Flight Outbound Date: ${validatedData.flight_order_info.outbound.departureTime}
-          Flight Inbound Number: ${validatedData.flight_order_info.inbound.flightNumber}
-          Flight Inbound Date: ${validatedData.flight_order_info.inbound.departureTime}`
+          Flight Inbound Number: ${validatedData.flight_order_info.inbound?.flightNumber ?? "N/A"}
+          Flight Inbound Date: ${validatedData.flight_order_info.inbound?.departureTime ?? "N/A"}`
           }
 
           ******* Hotel Details *********
@@ -280,7 +290,7 @@ export async function POST(req: Request) {
             Object.keys(validatedData.hotel_order_info).length === 0
               ? "Hotel: SKIPPED BY CUSTOMER"
               : `Hotel: ${validatedData.hotel_order_info.name}
-          Room Type: ${validatedData.hotel_order_info.rate.room_name}`
+          Room Type: ${validatedData.hotel_order_info.rate?.room_name ?? "N/A"}`
           }
 
           ******************

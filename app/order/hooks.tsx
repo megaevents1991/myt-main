@@ -8,6 +8,7 @@ import {
   shortenAirlineName,
 } from "./order-review.utils";
 import { superTrack } from "@/lib/mixpanel";
+import { FALLBACK_TRAVEL_RATE } from "@/lib/exchangeRate.constants";
 import {
   getComponentMarkups,
   getEventAdditionalMarkup,
@@ -285,26 +286,36 @@ export function useOrderVars() {
     [getAffiliateDiscountTotalUsd, numberOfEventTickets]
   );
   const finalPurchasePriceILSCalc = useCallback(async (USDprice: number) => {
-    try {
-      const response = await fetch("/api/events-info");
-      if (!response.ok) {
-        throw new Error("Failed to fetch exchange rate from server");
+    // Two attempts against our own API before touching any fallback — an
+    // /api/events-info blip should never decide the customer's exchange rate.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await fetch("/api/events-info");
+        if (!response.ok) {
+          throw new Error("Failed to fetch exchange rate from server");
+        }
+        const data = await response.json();
+        const travelRate = Number(data.travelRate);
+        if (!Number.isFinite(travelRate) || travelRate <= 0) {
+          throw new Error("Invalid travelRate from server");
+        }
+        return {
+          ils: Math.ceil(USDprice * travelRate),
+          travelRate,
+        };
+      } catch (error) {
+        console.error(
+          `Exchange rate fetch failed (attempt ${attempt}/2):`,
+          error,
+        );
       }
-      const data = await response.json();
-
-      return {
-        ils: Math.ceil(USDprice * data.travelRate),
-        travelRate: data.travelRate,
-      };
-    } catch (error) {
-      console.error("General error fetching exchange rate:", error);
-      // Fallback to a hardcoded rate
-      const fallbackRate = 3.7;
-      return {
-        ils: Math.ceil(USDprice * fallbackRate),
-        travelRate: fallbackRate,
-      };
     }
+    // Same last-resort rate the server-side service falls back to — the old
+    // ad-hoc 3.7 here sat ABOVE the service's own validity ceiling (3.65).
+    return {
+      ils: Math.ceil(USDprice * FALLBACK_TRAVEL_RATE),
+      travelRate: FALLBACK_TRAVEL_RATE,
+    };
   }, []);
 
   const numOfNights = useMemo(() => {
@@ -367,7 +378,14 @@ export function useFetchAffiliate() {
       // add statsig event
     }
     if (affiliateData) {
-      const parsedAffiliateData = JSON.parse(affiliateData);
+      // Corrupt mytData must not take down the whole order flow on every visit.
+      let parsedAffiliateData;
+      try {
+        parsedAffiliateData = JSON.parse(affiliateData);
+      } catch (error) {
+        console.error("Corrupt mytData in localStorage:", error);
+        return;
+      }
       if (parsedAffiliateData.affiliateId) {
         fetch(
           `/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`
