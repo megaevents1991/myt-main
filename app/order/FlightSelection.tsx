@@ -129,6 +129,10 @@ export const FlightSelection = () => {
   const [sortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // LOCKFLIGHT — the event is pinned to one offline flight, so there is nothing
+  // to choose between and no Amadeus search behind it.
+  const [isLockedPackage, setIsLockedPackage] = useState(false);
+  const [isLockedSoldOut, setIsLockedSoldOut] = useState(false);
   const [selectedFlightDuration, setSelectedFlightDuration] =
     useState(MAX_FLIGHT_DURATION);
   const [flightsMeta, setFlightsMeta] = useState({
@@ -263,15 +267,25 @@ export const FlightSelection = () => {
       const {
         flights,
         debug,
+        locked,
+        lockedSoldOut,
       }: {
         flights: Flight[];
         debug: { departureDate: string; returnDate: string };
+        // LOCKFLIGHT: this package sells one fixed offline flight and the API
+        // skipped Amadeus entirely. `lockedSoldOut` means that flight has no
+        // seats left for this party — there is deliberately no fallback search.
+        locked?: boolean;
+        lockedSoldOut?: boolean;
       } = await res.json();
 
       // The customer may have skipped the flight (or otherwise left this
       // step) while the search was in flight — drop stale results so they
       // can't re-populate `flight` after a skip.
       if (!isMountedRef.current) return;
+
+      setIsLockedPackage(Boolean(locked));
+      setIsLockedSoldOut(Boolean(lockedSoldOut));
 
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);
@@ -499,6 +513,20 @@ export const FlightSelection = () => {
         onRetry={() => fetchFlights()}
         retryLabel="נסו שוב"
         whatsAppText="היי, ניסיתי לחפש טיסות באתר וקיבלתי שגיאה. אשמח לעזרה :)"
+      />
+    );
+  }
+
+  // LOCKFLIGHT sold out — the package is pinned to one offline flight that has
+  // no seats left for this party. There is deliberately no Amadeus fallback:
+  // falling back would silently re-price the package. If the event allows it,
+  // the "continue without a flight" control in OrderForm is still available.
+  if (isLockedSoldOut && !isLoading) {
+    return (
+      <OrderIssueState
+        title="החבילה אזלה"
+        subtitle="כל המקומות בטיסה של החבילה הזו נתפסו. דברו איתנו ונשמח לבדוק אפשרויות נוספות."
+        whatsAppText="היי, ראיתי שהחבילה אזלה. אשמח לבדוק אפשרויות נוספות :)"
       />
     );
   }
@@ -742,10 +770,16 @@ export const FlightSelection = () => {
         )}
       >
         <div
-          className={cn("w-1/4 space-y-4", !matches && "w-full")}
+          className={cn(
+            "w-1/4 space-y-4",
+            !matches && "w-full",
+            // A locked package offers exactly one flight — there is nothing to
+            // filter or sort between, so the sidebar would only be noise.
+            isLockedPackage && "hidden"
+          )}
           ref={filterRef}
         >
-          {matches && (
+          {matches && !isLockedPackage && (
             <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
               <FlightFilters
                 handleFlightSearchCriteriaChange={
@@ -778,7 +812,10 @@ export const FlightSelection = () => {
             </div>
           )}
         </div>
-        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
+        <ScrollArea.Autosize
+          mah={scrollerHeight}
+          className={cn("w-full", !isLockedPackage && "lg:w-3/4")}
+        >
           {isLoading ? (
             <FlightLoadingTransition />
           ) : (
