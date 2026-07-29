@@ -39,7 +39,7 @@ export async function generateMetadata({
   const canonicalPath = slugPathOf(cat, all).join("/");
   return {
     title: `${cat.name} - כרטיסים וחבילות | MYT`,
-    description: cat.description || `כרטיסים וחבילות ל${cat.name}`,
+    description: cat.subtitle || `כרטיסים וחבילות ל${cat.name}`,
     alternates: { canonical: `https://www.mega-events.co.il/c/${canonicalPath}` },
     openGraph: {
       title: cat.name,
@@ -76,7 +76,7 @@ export default async function TaxonomyCategoryPage({
       <ClientTracker />
       <DetailHero
         name={cat.name}
-        bio={cat.description ? <p>{cat.description}</p> : null}
+        bio={cat.subtitle ? <p>{cat.subtitle}</p> : null}
         imageUrl={cat.image_url ?? undefined}
         imageAlt={`באנר ${cat.name}`}
       />

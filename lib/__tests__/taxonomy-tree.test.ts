@@ -27,7 +27,7 @@ const cat = (
   name,
   name_english: null,
   image_url: null,
-  description: null,
+  subtitle: null,
   display_order,
   is_active: true,
   is_deleted: false,

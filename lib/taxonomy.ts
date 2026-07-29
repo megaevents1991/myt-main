@@ -6,16 +6,18 @@ import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
 
 /**
- * Event taxonomy readers. The backoffice manages the category tree
- * (`event_categories`, self-referencing parent_id) + curated feed tags
- * (`event_tags`); events attach via junction tables that store only the
- * DIRECTLY-assigned nodes. Ancestors are inferred here at read time — an event
- * linked to "ליגה אנגלית" automatically appears on the "כדורגל" page.
+ * Event taxonomy readers.
+ *
+ * ONE category table: `categories` — the card the backoffice team builds
+ * (image, subtitle, blob art) which also carries the tree (`parent_id`) and
+ * the tags that compose it. Events are never assigned to a category by hand;
+ * they are tagged, and `event_category_links` is the VIEW that derives
+ * membership from the category's tags.
  */
 
 export async function getAllCategories(): Promise<EventCategory[]> {
   const { data, error } = await supabase
-    .from("event_categories")
+    .from("categories")
     .select("*")
     .eq("is_active", true)
     .eq("is_deleted", false)
@@ -33,7 +35,7 @@ export async function getCategoryTree(): Promise<EventCategoryNode[]> {
 
 export async function getCategoryBySlug(slug: string): Promise<EventCategory | null> {
   const { data, error } = await supabase
-    .from("event_categories")
+    .from("categories")
     .select("*")
     .eq("slug", slug)
     .eq("is_deleted", false)
