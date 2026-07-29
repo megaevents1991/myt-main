@@ -174,12 +174,17 @@ export const FlightSelection = () => {
   }, []);
 
   useLayoutEffect(() => {
+    // A locked package hides the filter sidebar, so measuring it yields 0 and
+    // would clamp the flight list to zero height — the one flight on offer
+    // would render and then be clipped out of sight. The JSX drops `mah`
+    // entirely in that case, so there is nothing to measure here.
+    if (isLockedPackage) return;
     if (filterRef.current && matches) {
       setScrollerHeight(filterRef.current.offsetHeight);
     } else if (!matches) {
       setScrollerHeight(600);
     }
-  }, [matches, flights]);
+  }, [matches, flights, isLockedPackage]);
 
   useEffect(() => {
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
@@ -631,8 +636,11 @@ export const FlightSelection = () => {
                 </span>
               )}
               <div className="flex flex-row w-min items-center">
+                {/* On a locked package the dates ARE the flight's. Letting them
+                    be changed would search a window the locked flight can't
+                    match and strand the customer on an empty result. */}
                 <DateRange
-                  disabled={isLoading}
+                  disabled={isLoading || isLockedPackage}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
@@ -642,7 +650,7 @@ export const FlightSelection = () => {
                 />
                 <button
                   onClick={handleFlightSearch}
-                  disabled={isLoading}
+                  disabled={isLoading || isLockedPackage}
                   className="p-2 px-4 bg-main text-main-foreground rounded-l-lg h-[40px] flex items-center justify-center r"
                   type="button"
                   aria-label={isLoading ? "מחפש טיסות..." : "חפש טיסות"}
@@ -655,7 +663,19 @@ export const FlightSelection = () => {
           </div>
         </div>
       </div>
-      {!isLoading && flights.length > 0 && (
+      {/* Sorting and filtering exist to choose between flights. A locked package
+          has exactly one, so the whole row is dropped rather than shown inert. */}
+      {isLockedPackage && !isLoading && flights.length > 0 && (
+        <div dir="rtl" className="px-4 lg:px-6">
+          <div className="rounded-md border border-main/40 bg-main/5 px-4 py-3">
+            <p className="text-sm font-bold text-foreground">הטיסה של החבילה</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              החבילה הזו כוללת טיסה קבועה — הפרטים המלאים למטה.
+            </p>
+          </div>
+        </div>
+      )}
+      {!isLockedPackage && !isLoading && flights.length > 0 && (
         <div dir="rtl" className="px-4 lg:px-6">
           {/* Desktop: 3 cards in a row */}
           <div
@@ -813,7 +833,7 @@ export const FlightSelection = () => {
           )}
         </div>
         <ScrollArea.Autosize
-          mah={scrollerHeight}
+          mah={isLockedPackage ? undefined : scrollerHeight}
           className={cn("w-full", !isLockedPackage && "lg:w-3/4")}
         >
           {isLoading ? (
@@ -827,7 +847,9 @@ export const FlightSelection = () => {
               aria-relevant="additions removals"
             >
               {flightTicketCards}
-              {filteredFlights.length === 0 && (
+              {/* Never on a locked package — it has no filters to loosen, and
+                  the sold-out panel above already handles "nothing to sell". */}
+              {filteredFlights.length === 0 && !isLockedPackage && (
                 <OrderIssueState
                   className="min-h-64 lg:w-2/3"
                   title="לא מצאנו טיסות שמתאימות למסננים"
