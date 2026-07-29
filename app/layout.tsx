@@ -154,16 +154,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script id="scroll-restoration" strategy="beforeInteractive">
           {`
           if (typeof window !== 'undefined') {
-            // Disable automatic scroll restoration
+            // Every page starts at the top: 'manual' tells the browser not to
+            // restore the previous scroll offset on reload / history nav, so
+            // the document simply renders at y=0.
+            //
+            // DON'T add a window 'load' handler that calls scrollTo(0,0) here.
+            // 'load' fires only after EVERY image, iframe and third-party
+            // widget has finished — on the homepage that was ~20s — by which
+            // time the visitor has long since scrolled down, and they got
+            // yanked back to the top mid-read (2026-07 bug).
             if ('scrollRestoration' in history) {
               history.scrollRestoration = 'manual';
             }
-            // Ensure page starts at top on load
-            window.addEventListener('load', function() {
-              setTimeout(() => {
-                window.scrollTo(0, 0);
-              }, 0);
-            });
           }
           `}
         </Script>

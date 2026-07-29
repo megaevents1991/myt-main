@@ -767,11 +767,11 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   // Mobile shows 5 events up-front; desktop bumps to 20 on mount (below).
   const [visibleMusicCount, setVisibleMusicCount] = useState(5);
 
-  useEffect(() => {
-    // Scroll to top when component mounts (page load/navigation)
-    window.scrollTo(0, 0);
-  }, []);
-
+  // NOTE: no scroll-to-top on mount. This page hydrates late (big client tree,
+  // ~120 images), and a visitor who had already started scrolling got thrown
+  // back to the top the moment hydration finished (2026-07 bug). Fresh loads
+  // already start at y=0 via history.scrollRestoration='manual' (app/layout.tsx)
+  // and the App Router scrolls to top on navigation.
 
   // Warm ONLY the vertical-scroll images (the grids you scroll down through) once
   // the page is idle, so they're ready before you reach them. Deliberately SKIP
