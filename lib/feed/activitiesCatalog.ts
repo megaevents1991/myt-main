@@ -149,7 +149,11 @@ export function buildActivityItem(
 
   const price = feedPriceUSD(event);
   if (price == null) return { skipped: "no computable price" };
-  const image_link = event.campaign_image_url || event.card_image_url;
+  // art_image_url last: it's the transparent cut-out the site puts on a blob,
+  // so it reads worse as a standalone catalog image than a real photo — but an
+  // event that HAS one is not imageless, and dropping it lost 12 live products
+  // (fallbackImage.ts only fills card_image_url for events with no art either).
+  const image_link = event.campaign_image_url || event.card_image_url || event.art_image_url;
   if (!image_link) return { skipped: "no image" };
 
   const d = new Date(`${eventDate}T00:00:00Z`);

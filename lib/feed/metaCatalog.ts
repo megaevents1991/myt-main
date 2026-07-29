@@ -153,7 +153,9 @@ export function buildFeedItem(
   if (price == null) return { skipped: "no computable price" };
   // Campaign creative (backoffice nightly cron) wins; original card image is
   // the fallback for events the auto-derivation couldn't handle cleanly.
-  const imageLink = event.campaign_image_url || event.card_image_url;
+  // Same order as the activities feed: the cut-out is a last resort, but an
+  // event that has one is not imageless (see activitiesCatalog.ts).
+  const imageLink = event.campaign_image_url || event.card_image_url || event.art_image_url;
   if (!imageLink) return { skipped: "no image" };
 
   const eventDate = event.date.split("T")[0];
