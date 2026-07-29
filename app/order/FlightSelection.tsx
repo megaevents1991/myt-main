@@ -129,6 +129,10 @@ export const FlightSelection = () => {
   const [sortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // LOCKFLIGHT — the event is pinned to one offline flight, so there is nothing
+  // to choose between and no Amadeus search behind it.
+  const [isLockedPackage, setIsLockedPackage] = useState(false);
+  const [isLockedSoldOut, setIsLockedSoldOut] = useState(false);
   const [selectedFlightDuration, setSelectedFlightDuration] =
     useState(MAX_FLIGHT_DURATION);
   const [flightsMeta, setFlightsMeta] = useState({
@@ -170,12 +174,17 @@ export const FlightSelection = () => {
   }, []);
 
   useLayoutEffect(() => {
+    // A locked package hides the filter sidebar, so measuring it yields 0 and
+    // would clamp the flight list to zero height — the one flight on offer
+    // would render and then be clipped out of sight. The JSX drops `mah`
+    // entirely in that case, so there is nothing to measure here.
+    if (isLockedPackage) return;
     if (filterRef.current && matches) {
       setScrollerHeight(filterRef.current.offsetHeight);
     } else if (!matches) {
       setScrollerHeight(600);
     }
-  }, [matches, flights]);
+  }, [matches, flights, isLockedPackage]);
 
   useEffect(() => {
     setPlaneTickets({ adults: numberOfEventTickets, children: 0 });
@@ -263,15 +272,25 @@ export const FlightSelection = () => {
       const {
         flights,
         debug,
+        locked,
+        lockedSoldOut,
       }: {
         flights: Flight[];
         debug: { departureDate: string; returnDate: string };
+        // LOCKFLIGHT: this package sells one fixed offline flight and the API
+        // skipped Amadeus entirely. `lockedSoldOut` means that flight has no
+        // seats left for this party — there is deliberately no fallback search.
+        locked?: boolean;
+        lockedSoldOut?: boolean;
       } = await res.json();
 
       // The customer may have skipped the flight (or otherwise left this
       // step) while the search was in flight — drop stale results so they
       // can't re-populate `flight` after a skip.
       if (!isMountedRef.current) return;
+
+      setIsLockedPackage(Boolean(locked));
+      setIsLockedSoldOut(Boolean(lockedSoldOut));
 
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);
@@ -503,6 +522,20 @@ export const FlightSelection = () => {
     );
   }
 
+  // LOCKFLIGHT sold out — the package is pinned to one offline flight that has
+  // no seats left for this party. There is deliberately no Amadeus fallback:
+  // falling back would silently re-price the package. If the event allows it,
+  // the "continue without a flight" control in OrderForm is still available.
+  if (isLockedSoldOut && !isLoading) {
+    return (
+      <OrderIssueState
+        title="החבילה אזלה"
+        subtitle="כל המקומות בטיסה של החבילה הזו נתפסו. דברו איתנו ונשמח לבדוק אפשרויות נוספות."
+        whatsAppText="היי, ראיתי שהחבילה אזלה. אשמח לבדוק אפשרויות נוספות :)"
+      />
+    );
+  }
+
   const handleDatePopoverClose = () => {
     if (!dateRange[0] || !dateRange[1]) {
       const defaultDates: [Date, Date] = [
@@ -603,8 +636,11 @@ export const FlightSelection = () => {
                 </span>
               )}
               <div className="flex flex-row w-min items-center">
+                {/* On a locked package the dates ARE the flight's. Letting them
+                    be changed would search a window the locked flight can't
+                    match and strand the customer on an empty result. */}
                 <DateRange
-                  disabled={isLoading}
+                  disabled={isLoading || isLockedPackage}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
@@ -614,7 +650,7 @@ export const FlightSelection = () => {
                 />
                 <button
                   onClick={handleFlightSearch}
-                  disabled={isLoading}
+                  disabled={isLoading || isLockedPackage}
                   className="p-2 px-4 bg-main text-main-foreground rounded-l-lg h-[40px] flex items-center justify-center r"
                   type="button"
                   aria-label={isLoading ? "מחפש טיסות..." : "חפש טיסות"}
@@ -627,7 +663,19 @@ export const FlightSelection = () => {
           </div>
         </div>
       </div>
-      {!isLoading && flights.length > 0 && (
+      {/* Sorting and filtering exist to choose between flights. A locked package
+          has exactly one, so the whole row is dropped rather than shown inert. */}
+      {isLockedPackage && !isLoading && flights.length > 0 && (
+        <div dir="rtl" className="px-4 lg:px-6">
+          <div className="rounded-md border border-main/40 bg-main/5 px-4 py-3">
+            <p className="text-sm font-bold text-foreground">הטיסה של החבילה</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              החבילה הזו כוללת טיסה קבועה — הפרטים המלאים למטה.
+            </p>
+          </div>
+        </div>
+      )}
+      {!isLockedPackage && !isLoading && flights.length > 0 && (
         <div dir="rtl" className="px-4 lg:px-6">
           {/* Desktop: 3 cards in a row */}
           <div
@@ -742,10 +790,16 @@ export const FlightSelection = () => {
         )}
       >
         <div
-          className={cn("w-1/4 space-y-4", !matches && "w-full")}
+          className={cn(
+            "w-1/4 space-y-4",
+            !matches && "w-full",
+            // A locked package offers exactly one flight — there is nothing to
+            // filter or sort between, so the sidebar would only be noise.
+            isLockedPackage && "hidden"
+          )}
           ref={filterRef}
         >
-          {matches && (
+          {matches && !isLockedPackage && (
             <div className={cn(isLoading && "opacity-50 pointer-events-none")}>
               <FlightFilters
                 handleFlightSearchCriteriaChange={
@@ -778,7 +832,10 @@ export const FlightSelection = () => {
             </div>
           )}
         </div>
-        <ScrollArea.Autosize mah={scrollerHeight} className="w-full lg:w-3/4">
+        <ScrollArea.Autosize
+          mah={isLockedPackage ? undefined : scrollerHeight}
+          className={cn("w-full", !isLockedPackage && "lg:w-3/4")}
+        >
           {isLoading ? (
             <FlightLoadingTransition />
           ) : (
@@ -790,7 +847,9 @@ export const FlightSelection = () => {
               aria-relevant="additions removals"
             >
               {flightTicketCards}
-              {filteredFlights.length === 0 && (
+              {/* Never on a locked package — it has no filters to loosen, and
+                  the sold-out panel above already handles "nothing to sell". */}
+              {filteredFlights.length === 0 && !isLockedPackage && (
                 <OrderIssueState
                   className="min-h-64 lg:w-2/3"
                   title="לא מצאנו טיסות שמתאימות למסננים"

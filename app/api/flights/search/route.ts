@@ -11,6 +11,9 @@ import { getEvents } from "@/lib/eventsData";
 import dayjs from "dayjs";
 import { supabase } from "@/lib/supabase";
 import { serialize } from 'tinyduration';
+import { buildSeatQuota, hasSeatsForEvent } from "@/lib/flights/offlineSeatQuota";
+import { buildOfflineStops, isoDurationToHours } from "@/lib/flights/offlineStops";
+import { resolveLockedFlight } from "@/lib/flights/lockedFlight";
 import { 
   trackServerSideEvent, 
   extractIpFromRequest, 
@@ -94,7 +97,8 @@ const transformDbFlightToFlight = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dbFlight: any,
   id: number,
-  num_of_travelers: number
+  num_of_travelers: number,
+  eventSeatQuota: Map<number, number>
 ): Flight | null => {
   // Not enough remaining inventory for this party size — hide the flight
   // entirely. Returning a placeholder ({}) here would propagate an invalid
@@ -106,21 +110,25 @@ const transformDbFlightToFlight = (
   ) {
     return null;
   }
+  // Hard cap: when this event has its own seat allocation on the flight, it may
+  // not sell past it even if the flight still has unallocated seats.
+  if (!hasSeatsForEvent(eventSeatQuota, dbFlight.id, num_of_travelers)) {
+    return null;
+  }
   return {
     offer: {} as Flight["offer"],
     id: (id + 1).toString(),
     numOfTravelers: num_of_travelers,
     price: parseFloat(dbFlight.price) * num_of_travelers,
     duration: PTfunction(dbFlight.duration),
-    stops: dbFlight.stops,
+    stops: Number(dbFlight.stops) || 0,
     airline: dbFlight.airline_code,
     outbound: {
-      stops: [
-        {
-          iataCode: dbFlight.outbound_arrival_airport,
-          duration: null,
-        },
-      ],
+      stops: buildOfflineStops(
+        dbFlight.outbound_arrival_airport,
+        dbFlight.outbound_stop_airport ?? null,
+        isoDurationToHours(dbFlight.outbound_stop_duration)
+      ),
       departureTime: dbFlight.outbound_departure_time,
       departureAirport: dbFlight.outbound_departure_airport,
       arrivalAirport: dbFlight.outbound_arrival_airport,
@@ -128,15 +136,16 @@ const transformDbFlightToFlight = (
       duration: PTfunction(dbFlight.outbound_duration),
       checkBagsIncluded: dbFlight.outbound_check_bags_included,
       cabinBagsIncluded: dbFlight.outbound_cabin_bags_included,
+      checkedBagKg: dbFlight.checked_bag_kg ?? null,
+      cabinBagKg: dbFlight.cabin_bag_kg ?? null,
       flightNumber: dbFlight.outbound_flight_number,
     },
     inbound: {
-      stops: [
-        {
-          iataCode: dbFlight.inbound_arrival_airport,
-          duration: null,
-        },
-      ],
+      stops: buildOfflineStops(
+        dbFlight.inbound_arrival_airport,
+        dbFlight.inbound_stop_airport ?? null,
+        isoDurationToHours(dbFlight.inbound_stop_duration)
+      ),
       departureTime: dbFlight.inbound_departure_time,
       departureAirport: dbFlight.inbound_departure_airport,
       arrivalAirport: dbFlight.inbound_arrival_airport,
@@ -144,6 +153,8 @@ const transformDbFlightToFlight = (
       duration: PTfunction(dbFlight.inbound_duration),
       checkBagsIncluded: dbFlight.inbound_check_bags_included,
       cabinBagsIncluded: dbFlight.inbound_cabin_bags_included,
+      checkedBagKg: dbFlight.checked_bag_kg ?? null,
+      cabinBagKg: dbFlight.cabin_bag_kg ?? null,
       flightNumber: dbFlight.inbound_flight_number,
     },
     metadata: {
@@ -158,12 +169,39 @@ const transformDbFlightToFlight = (
   };
 };
 
+/**
+ * Seats still sellable to THIS event, per flight. Empty map = no allocations,
+ * so every flight falls back to the flight-level global check — the
+ * pre-allocation behaviour, deliberately preserved.
+ *
+ * Both queries throw on error. The caller's try/catch turns that into "no
+ * offline flights this search", which is the safe direction: a transient
+ * database error must never let a sold-out block oversell.
+ */
+const getEventSeatQuota = async (eventId: number): Promise<Map<number, number>> => {
+  const { data: allocations, error: allocError } = await supabase
+    .from("flight_event_allocations")
+    .select("flight_id, allocated_seats")
+    .eq("event_id", eventId);
+  if (allocError) throw allocError;
+  if (!allocations || allocations.length === 0) return new Map();
+
+  const { data: consumed, error: consumedError } = await supabase
+    .from("flight_event_consumed")
+    .select("flight_id, consumed_seats")
+    .eq("event_id", eventId);
+  if (consumedError) throw consumedError;
+
+  return buildSeatQuota(allocations, consumed ?? []);
+};
+
 const getOfflineFlightsFromDB = async (
   eventId: number,
   depart_date: string,
   return_date: string,
   indexShift: number,
-  num_of_travelers: number
+  num_of_travelers: number,
+  lockedFlightId: number | null
 ): Promise<Flight[]> => {
   try {
     // Offline flights are explicitly assigned to events via `event_ids` in the
@@ -171,7 +209,9 @@ const getOfflineFlightsFromDB = async (
     // NOT on the arrival airport. The event stores a city/metro code (e.g.
     // "LON") while a flight row stores a specific airport (e.g. "LTN"), so an
     // airport `.eq` would silently drop every London flight.
-    const { data: flights, error } = await supabase
+    const eventSeatQuota = await getEventSeatQuota(eventId);
+
+    let query = supabase
       .from("flights")
       .select("*")
       .contains("event_ids", [eventId])
@@ -180,6 +220,12 @@ const getOfflineFlightsFromDB = async (
       .lt("outbound_departure_time", `${depart_date}T23:59:59`)
       .gte("inbound_departure_time", `${return_date}T00:00:00`)
       .lt("inbound_departure_time", `${return_date}T23:59:59`);
+
+    // A locked package narrows the result to its one flight. Every other check
+    // above still applies — locking restricts, it never loosens.
+    if (lockedFlightId) query = query.eq("id", lockedFlightId);
+
+    const { data: flights, error } = await query;
 
     if (error) throw error;
 
@@ -190,7 +236,8 @@ const getOfflineFlightsFromDB = async (
             transformDbFlightToFlight(
               flight,
               index + indexShift,
-              num_of_travelers
+              num_of_travelers,
+              eventSeatQuota
             )
           )
           .filter((f): f is Flight => f !== null)
@@ -266,6 +313,51 @@ export async function POST(request: Request) {
   try {
     const departureDate = dayjs(departureDateFromUi).format("YYYY-MM-DD");
     const returnDate = dayjs(returnDateFromUi).format("YYYY-MM-DD");
+    const debugDates = {
+      departureDate: departureDateFromUi,
+      returnDate: returnDateFromUi,
+    };
+
+    // LOCKFLIGHT — a locked package sells one offline flight and never queries
+    // Amadeus. Resolved before the Amadeus call so a locked event never pays
+    // for a search whose results it would throw away.
+    const seatQuota = await getEventSeatQuota(event.id).catch((error) => {
+      console.error("Failed to load offline seat allocations:", error);
+      // Empty map = fall back to the flight-level global check, which is what
+      // ran before allocations existed.
+      return new Map<number, number>();
+    });
+    const lock = resolveLockedFlight(event.locked_flight_id, seatQuota, adults || 1);
+
+    if (lock.mode === "sold_out") {
+      // No Amadeus fallback by design: falling back would quietly re-price the
+      // package and defeat the point of locking it.
+      return NextResponse.json({
+        flights: [],
+        locked: true,
+        lockedSoldOut: true,
+        debug: debugDates,
+      });
+    }
+
+    if (lock.mode === "locked") {
+      const lockedFlights = await getOfflineFlightsFromDB(
+        event.id,
+        departureDate,
+        returnDate,
+        0,
+        adults || 1,
+        lock.flightId
+      );
+      return NextResponse.json({
+        flights: lockedFlights,
+        locked: true,
+        // The flight can still vanish on the global inventory check or the date
+        // window even when the allocation looks healthy. Nothing to sell = sold out.
+        lockedSoldOut: lockedFlights.length === 0,
+        debug: debugDates,
+      });
+    }
 
     // Amadeus per-request client reference (ama-Client-Ref) — required by the
     // production-certification checklist. Ties the call to the event + time.
@@ -292,7 +384,8 @@ export async function POST(request: Request) {
       departureDate,
       returnDate,
       0,
-      adults || 1
+      adults || 1,
+      null
     );
 
     const baseId = flights.length + 1;
@@ -509,14 +602,9 @@ export async function POST(request: Request) {
       [] as Flight[]
     );
 
-    const debug = {
-      departureDate: departureDateFromUi,
-      returnDate: returnDateFromUi,
-    };
-
     flights.push(...moreFlights);
 
-    return NextResponse.json({ flights, debug });
+    return NextResponse.json({ flights, debug: debugDates });
   } catch (error) {
     console.error("Error fetching flights:", error);
     // Surface the actual Amadeus error detail (otherwise node prints `[Object]`)
