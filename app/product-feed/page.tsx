@@ -107,6 +107,8 @@ export default async function ProductFeedPage({
     "sold out": "אזלו הכרטיסים",
     "inside booking window": "בתוך חלון ההזמנה (פחות מ-3 ימים)",
     "no computable price": "אין מחיר לחישוב",
+    "no campaign creative":
+      "אין קריאטיב קמפיין — מוצר מתפרסם רק עם המיתוג שלנו. הרץ 'סנכרן הכל' בבקאופיס",
     "no image": "אין תמונה — לא כרטיס, לא cutout ולא קריאטיב",
   };
   const activityDrops = activities.skipped.reduce<Record<string, typeof activities.skipped>>(
@@ -206,7 +208,7 @@ export default async function ProductFeedPage({
           <ul className="list-inside list-disc text-sm text-amber-900">
             {skipped.map((s) => (
               <li key={s.id}>
-                #{s.id} {s.name} — {s.reason === "no image" ? "חסרה תמונה" : "אין מחיר"}
+                #{s.id} {s.name} — {REASON_LABELS[s.reason] ?? s.reason}
               </li>
             ))}
           </ul>

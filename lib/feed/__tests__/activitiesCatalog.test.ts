@@ -24,6 +24,9 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     map_image_url: "",
     description: "",
     card_image_url: "https://example.com/gnr.jpg",
+    // A product only reaches the catalogue with a campaign creative, so the
+    // baseline event carries one — see the "branded or not at all" rule.
+    campaign_image_url: "https://cdn.example.com/auto/event-329-square.png",
     tickets_and_rates: [
       { category: "A", price: 120, id: "t1", description: "", available: true, colorOnTheMap: "" },
     ],
@@ -144,26 +147,24 @@ assert.deepStrictEqual(
 );
 // (the "no computable price" branch is defensive — any event that reaches it
 // has already been caught by the sold-out check; priced in metaCatalog.test)
+/* branded or not at all: neither a card photo nor a cut-out substitutes for
+   the campaign creative — a raw provider image in a Meta ad is worth less than
+   the product being withheld */
 assert.deepStrictEqual(
-  buildActivityItem(baseEvent({ card_image_url: "" }), MUSIC, CUTOFF),
-  { skipped: "no image" }
+  buildActivityItem(baseEvent({ campaign_image_url: null }), MUSIC, CUTOFF),
+  { skipped: "no campaign creative" }
 );
-
-/* a cut-out is a valid image of last resort: fallbackImage.ts only fills
-   card_image_url for events with NO art either, so requiring a card image
-   dropped 12 live products that had a perfectly good transparent cut-out */
-assert.strictEqual(
-  (
-    buildActivityItem(
-      baseEvent({
-        card_image_url: "",
-        art_image_url: "https://cdn.example.com/art/sam-smith.png",
-      }),
-      MUSIC,
-      CUTOFF
-    ) as ActivityItem
-  ).image_link,
-  "https://cdn.example.com/art/sam-smith.png"
+assert.deepStrictEqual(
+  buildActivityItem(
+    baseEvent({
+      campaign_image_url: null,
+      card_image_url: "",
+      art_image_url: "https://cdn.example.com/art/sam-smith.png",
+    }),
+    MUSIC,
+    CUTOFF
+  ),
+  { skipped: "no campaign creative" }
 );
 
 /* campaign creative wins over the card image */
