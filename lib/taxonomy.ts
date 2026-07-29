@@ -46,8 +46,14 @@ export async function getCategoryBySlug(slug: string): Promise<EventCategory | n
 }
 
 /**
- * Events under a category node. includeDescendants (default true) walks DOWN
- * the tree: the node's own links + every descendant node's links.
+ * Events under a category node.
+ *
+ * A category is COMPOSED OF TAGS (backoffice: Templates → category form): every
+ * event carrying one of its tags is pulled in, and that is the whole rule — so
+ * a parent collects only what its own tags collect, and `includeDescendants`
+ * defaults to FALSE. Roll "כדורגל" into "ספורט" by giving ספורט those tags, not
+ * by nesting. Pass `includeDescendants: true` to walk the tree anyway.
+ *
  * Same availability rules as the rest of the catalog: not deleted, at least
  * AVAILABILITY_WINDOW_DAYS in the future, soonest first.
  */
@@ -55,7 +61,7 @@ export async function getEventsInCategory(
   slug: string,
   opts: { includeDescendants?: boolean } = {}
 ): Promise<{ category: EventCategory | null; events: Event[] }> {
-  const includeDescendants = opts.includeDescendants ?? true;
+  const includeDescendants = opts.includeDescendants ?? false;
   const all = await getAllCategories();
   const category = all.find((c) => c.slug === slug) ?? null;
   if (!category) return { category: null, events: [] };
