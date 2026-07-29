@@ -149,6 +149,23 @@ assert.deepStrictEqual(
   { skipped: "no image" }
 );
 
+/* a cut-out is a valid image of last resort: fallbackImage.ts only fills
+   card_image_url for events with NO art either, so requiring a card image
+   dropped 12 live products that had a perfectly good transparent cut-out */
+assert.strictEqual(
+  (
+    buildActivityItem(
+      baseEvent({
+        card_image_url: "",
+        art_image_url: "https://cdn.example.com/art/sam-smith.png",
+      }),
+      MUSIC,
+      CUTOFF
+    ) as ActivityItem
+  ).image_link,
+  "https://cdn.example.com/art/sam-smith.png"
+);
+
 /* campaign creative wins over the card image */
 const withCampaign = buildActivityItem(
   baseEvent({ campaign_image_url: "https://cdn.example.com/auto/event-329-square.png" }),
