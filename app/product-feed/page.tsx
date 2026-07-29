@@ -4,6 +4,7 @@ import { getFeedUser } from "@/lib/feed/feedAuth";
 import { getActivityItems, getFeedItems } from "@/lib/feed/feedData";
 import { FEED_SITE_ORIGIN } from "@/lib/feed/metaCatalog";
 import { CopyButton } from "./CopyButton";
+import { FeedTable } from "./FeedTable";
 
 /**
  * Internal admin page for the Meta product feed — live counts and a row
@@ -285,87 +286,7 @@ export default async function ProductFeedPage({
       </div>
 
       {/* Preview */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-card">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50 text-right text-xs text-gray-500">
-              <th className="px-3 py-2">id</th>
-              <th className="px-3 py-2">image</th>
-              <th className="px-3 py-2">title</th>
-              <th className="px-3 py-2">price</th>
-              <th className="px-3 py-2">availability</th>
-              <th className="px-3 py-2">expiration</th>
-              <th className="px-3 py-2">product_type</th>
-              <th className="px-3 py-2">labels</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => (
-              <tr key={it.id} className="border-b border-gray-200/50 align-top">
-                <td className="px-3 py-2">
-                  <a
-                    href={it.link}
-                    target="_blank"
-                    rel="noopener"
-                    className="font-semibold text-main hover:underline"
-                    dir="ltr"
-                  >
-                    {it.id}
-                  </a>
-                </td>
-                <td className="px-3 py-2">
-                  <a href={it.image_link} target="_blank" rel="noopener" className="relative block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={it.image_link}
-                      alt=""
-                      className="h-16 w-16 rounded-md border border-gray-200 object-cover"
-                    />
-                    <span
-                      className={
-                        it.has_campaign
-                          ? "absolute -bottom-1 -right-1 rounded-full bg-main px-1.5 py-0.5 text-[9px] font-bold text-white"
-                          : "absolute -bottom-1 -right-1 rounded-full bg-gray-400 px-1.5 py-0.5 text-[9px] font-bold text-white"
-                      }
-                    >
-                      {it.has_campaign ? "קמפיין" : "מקורי"}
-                    </span>
-                  </a>
-                </td>
-                <td className="max-w-[320px] px-3 py-2 text-gray-900">{it.title}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
-                  {it.price}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  <span
-                    className={
-                      it.availability === "in stock"
-                        ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800"
-                        : "rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800"
-                    }
-                  >
-                    {it.availability}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
-                  {it.expiration_date}
-                </td>
-                <td className="max-w-[200px] px-3 py-2 text-gray-900" dir="ltr">
-                  {it.product_type || "—"}
-                </td>
-                <td className="max-w-[220px] px-3 py-2 text-gray-900" dir="ltr">
-                  {it.custom_labels.filter(Boolean).join(", ")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {items.length === 0 && (
-          <p className="p-6 text-center text-sm text-gray-500">
-            אין פריטים בפיד.
-          </p>
-        )}
-      </div>
+      <FeedTable items={items} />
     </div>
     </div>
   );
