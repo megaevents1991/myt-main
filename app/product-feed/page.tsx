@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { getFeedUser } from "@/lib/feed/feedAuth";
-import { getFeedItems } from "@/lib/feed/feedData";
+import { getActivityItems, getFeedItems } from "@/lib/feed/feedData";
 import { FEED_SITE_ORIGIN } from "@/lib/feed/metaCatalog";
 import { CopyButton } from "./CopyButton";
 
@@ -91,9 +91,30 @@ export default async function ProductFeedPage({
     );
   }
 
-  const { items, skipped } = await getFeedItems();
+  // Two different feeds: the e-commerce shape below (Google Merchant) and the
+  // ACTIVITIES shape Meta actually consumes. They drop different events — the
+  // activities feed also drops sold-out ones and anything inside the booking
+  // window — so a product can be present here and still be missing from Meta.
+  const [{ items, skipped }, activities] = await Promise.all([
+    getFeedItems(),
+    getActivityItems(),
+  ]);
   const inStock = items.filter((i) => i.availability === "in stock").length;
   const xmlUrl = `${FEED_SITE_ORIGIN}/feeds/meta-catalog.xml`;
+
+  const REASON_LABELS: Record<string, string> = {
+    "sold out": "אזלו הכרטיסים",
+    "inside booking window": "בתוך חלון ההזמנה (פחות מ-3 ימים)",
+    "no computable price": "אין מחיר לחישוב",
+    "no image": "אין תמונה — לא כרטיס, לא cutout ולא קריאטיב",
+  };
+  const activityDrops = activities.skipped.reduce<Record<string, typeof activities.skipped>>(
+    (acc, s) => {
+      (acc[s.reason] ??= []).push(s);
+      return acc;
+    },
+    {}
+  );
 
   return (
     <div dir="rtl" className="min-h-screen bg-gray-50 text-gray-900">
@@ -153,7 +174,10 @@ export default async function ProductFeedPage({
         </p>
       </div>
 
-      {/* Counts */}
+      {/* Counts — e-commerce shape (Google Merchant), NOT what Meta reads */}
+      <h2 className="mb-2 text-lg font-bold text-gray-900">
+        פיד ה-e-commerce (Google Merchant)
+      </h2>
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
         {[
           { label: "פריטים בפיד", value: items.length },
@@ -176,7 +200,7 @@ export default async function ProductFeedPage({
       {skipped.length > 0 && (
         <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
           <h2 className="mb-2 text-lg font-bold text-amber-900">
-            אירועים שלא נכנסו לפיד
+            אירועים שלא נכנסו לפיד ה-e-commerce
           </h2>
           <ul className="list-inside list-disc text-sm text-amber-900">
             {skipped.map((s) => (
@@ -187,6 +211,78 @@ export default async function ProductFeedPage({
           </ul>
         </div>
       )}
+
+      {/* What Meta actually receives — the activities feed, and everything it drops */}
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold text-gray-900">
+            הפיד שמטא קוראת (Activities)
+          </h2>
+          <a
+            href="/feeds/meta-activities.csv?excel=1"
+            className="text-sm font-semibold text-main hover:underline"
+          >
+            הורד CSV
+          </a>
+        </div>
+        <p className="mb-4 text-sm text-gray-500">
+          זה הקובץ הרשום ב-Commerce Manager. הוא מפיל אירועים שהטבלה למטה כן
+          מכילה: אזלו הכרטיסים, אירועים קרובים מדי, וכל אירוע בלי תמונה.
+        </p>
+
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {activities.items.length}
+            </div>
+            <div className="text-xs text-gray-500">נשלחים למטא</div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {activities.skipped.length}
+            </div>
+            <div className="text-xs text-gray-500">נופלים מהפיד</div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {activities.items.length + activities.skipped.length}
+            </div>
+            <div className="text-xs text-gray-500">אירועים שנבדקו</div>
+          </div>
+        </div>
+
+        {activities.skipped.length === 0 ? (
+          <p className="text-sm font-semibold text-green-700">
+            כל האירועים נכנסו לפיד.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {Object.entries(activityDrops)
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([reason, list]) => (
+                <details
+                  key={reason}
+                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                >
+                  <summary className="cursor-pointer text-sm font-bold text-gray-900">
+                    {REASON_LABELS[reason] ?? reason}{" "}
+                    <span className="font-normal text-gray-500">({list.length})</span>
+                  </summary>
+                  <ul className="mt-2 space-y-0.5 text-sm text-gray-900">
+                    {list.map((s) => (
+                      <li key={s.id}>
+                        <span className="text-gray-500" dir="ltr">
+                          #{s.id}
+                        </span>{" "}
+                        {s.name}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+          </div>
+        )}
+      </div>
 
       {/* Preview */}
       <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-card">
