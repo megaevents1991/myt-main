@@ -31,6 +31,9 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     map_image_url: "",
     description: "",
     card_image_url: "https://example.com/bryan.jpg",
+    // A product only reaches the catalogue with a campaign creative, so the
+    // baseline event carries one — see the "branded or not at all" rule.
+    campaign_image_url: "https://cdn.example.com/auto/event-607-square.png?v=abc",
     tickets_and_rates: [
       { category: "A", price: 120, id: "t1", description: "", available: true, colorOnTheMap: "" },
     ],
@@ -148,11 +151,29 @@ assert.strictEqual(withCampaign.has_campaign, true);
 const campaignXml = toXml([withCampaign]);
 assert.ok(campaignXml.includes("<g:additional_image_link>"));
 
-/* no campaign → original card image, no additional link */
-assert.strictEqual(item.image_link, "https://example.com/bryan.jpg");
+/* the creative IS the product image, and a square without a banner publishes
+   no additional link */
+assert.strictEqual(
+  item.image_link,
+  "https://cdn.example.com/auto/event-607-square.png?v=abc"
+);
 assert.strictEqual(item.additional_image_link, null);
-assert.strictEqual(item.has_campaign, false);
+assert.strictEqual(item.has_campaign, true);
 assert.ok(!toXml([item]).includes("additional_image_link"));
+
+/* branded or not at all: a card image or a cut-out is NOT a substitute —
+   publishing a raw provider photo is worse than withholding the product */
+assert.deepStrictEqual(
+  buildFeedItem(baseEvent({ campaign_image_url: null }), TAX, CUTOFF, TODAY),
+  { skipped: "no campaign creative" }
+);
+assert.deepStrictEqual(
+  buildFeedItem(
+    baseEvent({ campaign_image_url: null, art_image_url: "https://example.com/cutout.png" }),
+    TAX, CUTOFF, TODAY
+  ),
+  { skipped: "no campaign creative" }
+);
 
 /* campaign image works even when the event has no card image */
 const campaignOnly = buildFeedItem(
@@ -164,14 +185,10 @@ const campaignOnly = buildFeedItem(
 ) as FeedItem;
 assert.strictEqual(campaignOnly.has_campaign, true);
 
-/* skips: no price / no image */
+/* skips: no price */
 assert.deepStrictEqual(
   buildFeedItem(baseEvent({ tickets_and_rates: [], usual_price: 0 }), TAX, CUTOFF, TODAY),
   { skipped: "no computable price" }
-);
-assert.deepStrictEqual(
-  buildFeedItem(baseEvent({ card_image_url: "" }), TAX, CUTOFF, TODAY),
-  { skipped: "no image" }
 );
 
 /* nightsOf */
