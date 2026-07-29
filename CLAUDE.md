@@ -92,6 +92,14 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_MAPBOX_TOKEN` — Mapbox maps
 - `NEXT_PUBLIC_GTM` — Google Tag Manager
 - `NEXT_PUBLIC_MIXPANEL_TOKEN` — Mixpanel analytics
+- `NEXT_SECRET_SESSION_SECRET` — **Required for the `/agent` partner area.** Signs the
+  partner session cookie (HMAC-SHA256). Unset → nobody can sign in and every partner
+  session fails closed. Rotating it invalidates all outstanding partner sessions, and
+  because middleware runs on the Edge the value is inlined at build time — rotating on
+  Vercel needs a redeploy, not just a restart.
+- `NEXT_SECRET_SUPABASE_ANON_KEY` — **Required for the `/agent` partner area.** Partner
+  sign-in verifies the password through Supabase Auth with the anon key; the service key
+  cannot do `signInWithPassword`. Server-side only — never expose it as `NEXT_PUBLIC_`.
 - `NEXT_PUBLIC_MARKUP` — Price markup (currently 175)
 - `NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT` — Safety buffer % added to the static DB price for `tx_event` tickets **only when live TixStock pricing is unavailable** (default 15). Prevents selling below the live price during a TX outage. Applied in `app/order/TicketSelection.tsx`.
 - `NEXT_PUBLIC_API_URL` — Base URL for internal API calls

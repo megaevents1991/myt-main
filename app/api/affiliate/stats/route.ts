@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getPartnerSession } from "@/lib/partner-auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const affiliateId = searchParams.get('affiliateId');
-  console.log('Affiliate ID:', affiliateId);
-  
+
+  // This returned a partner's full revenue, commission and visit log to anyone
+  // who could name their tracking code — and that code is public by design: it
+  // rides in every `?utm_source=` link they hand out. A partner may now read
+  // only their own.
+  const session = await getPartnerSession();
+  if (!session || !affiliateId || session.partner_code !== affiliateId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     // Get tracking data from Supabase
     const pageSize = 1000;
