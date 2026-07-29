@@ -12,7 +12,7 @@ import {
 import { applyFiltersAndSorting } from "@/lib/flightFilter";
 import { SortOptions } from "@/lib/flightSort";
 import { ScrollArea } from "@mantine/core";
-import { Search, Star, DollarSign, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Search, Star, DollarSign, ShieldCheck, SlidersHorizontal, Lock } from "lucide-react";
 import {
   useCallback,
   useContext,
@@ -635,10 +635,21 @@ export const FlightSelection = () => {
                   ובאיזה תאריכים?
                 </span>
               )}
-              <div className="flex flex-row w-min items-center">
+              <div
+                className={cn(
+                  "flex flex-row w-min items-center",
+                  isLockedPackage && "opacity-60"
+                )}
+                title={
+                  isLockedPackage
+                    ? "תאריכי החבילה קבועים לפי הטיסה"
+                    : undefined
+                }
+              >
                 {/* On a locked package the dates ARE the flight's. Letting them
                     be changed would search a window the locked flight can't
-                    match and strand the customer on an empty result. */}
+                    match and strand the customer on an empty result. Dimmed and
+                    explained rather than silently inert. */}
                 <DateRange
                   disabled={isLoading || isLockedPackage}
                   dateRange={dateRange}
@@ -667,10 +678,16 @@ export const FlightSelection = () => {
           has exactly one, so the whole row is dropped rather than shown inert. */}
       {isLockedPackage && !isLoading && flights.length > 0 && (
         <div dir="rtl" className="px-4 lg:px-6">
-          <div className="rounded-md border border-main/40 bg-main/5 px-4 py-3">
-            <p className="text-sm font-bold text-foreground">הטיסה של החבילה</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              החבילה הזו כוללת טיסה קבועה — הפרטים המלאים למטה.
+          {/* Deliberately quiet and sized to the card below it: this is a status
+              label, not a second thing to read. Announced politely so a screen
+              reader explains the missing sort/filter controls. */}
+          <div className="w-full lg:w-3/4 lg:mx-auto">
+            <p
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+              role="status"
+            >
+              <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              טיסה זו אינה ניתנת לשינוי
             </p>
           </div>
         </div>
@@ -786,7 +803,10 @@ export const FlightSelection = () => {
       <div
         className={cn(
           "flex lg:gap-4 justify-between items-start w-full",
-          !matches && "flex-col gap-2"
+          !matches && "flex-col gap-2",
+          // No sidebar when locked — center the card column rather than leaving
+          // a dead quarter beside it.
+          isLockedPackage && "lg:justify-center"
         )}
       >
         <div
@@ -832,9 +852,13 @@ export const FlightSelection = () => {
             </div>
           )}
         </div>
+        {/* Same width locked or not: a full-bleed card reads as a different
+            component and makes the customer re-scan something they already
+            understand. The row centers it so the hidden sidebar leaves no
+            orphaned column instead. */}
         <ScrollArea.Autosize
           mah={isLockedPackage ? undefined : scrollerHeight}
-          className={cn("w-full", !isLockedPackage && "lg:w-3/4")}
+          className="w-full lg:w-3/4"
         >
           {isLoading ? (
             <FlightLoadingTransition />
