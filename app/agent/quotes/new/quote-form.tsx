@@ -4,12 +4,9 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createQuote, type QuoteEventOption, type QuoteLineItem } from "@/lib/quote-actions";
+import { round2, type CommissionTerms as SharedCommissionTerms } from "@/lib/partner-commission";
 
-type CommissionTerms = { type: "fixed_per_ticket" | "percent_of_sale"; rate: number } | null;
-
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
+type CommissionTerms = SharedCommissionTerms | null;
 
 export function QuoteForm({
   events,
@@ -45,8 +42,9 @@ export function QuoteForm({
     const quoted = round2(Number(unitPrice));
     const discountPerTraveller = round2(suggestedPrice - quoted);
     if (discountPerTraveller <= 0) return null;
+    const rate = terms.rate ?? 0;
     const commissionPerTraveller = round2(
-      terms.type === "percent_of_sale" ? (quoted * terms.rate) / 100 : terms.rate,
+      terms.type === "percent_of_sale" ? (quoted * rate) / 100 : rate,
     );
     if (discountPerTraveller > commissionPerTraveller + 0.001) {
       return `ההנחה המקסימלית שלכם היא $${commissionPerTraveller} לנוסע. הורדתם $${discountPerTraveller}.`;

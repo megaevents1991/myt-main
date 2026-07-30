@@ -1,9 +1,10 @@
 "use server";
 
-import { requireAgent, type PartnerSession } from "@/lib/partner-auth";
+import { requireAgent, requirePartner, type PartnerSession } from "@/lib/partner-auth";
 import { supabase } from "@/lib/supabase";
 import { getEvents, getCachedEvents } from "@/lib/eventsData";
 import { computePackagePrice } from "@/lib/events/price";
+import { round2, type CommissionTerms, type CommissionType } from "@/lib/partner-commission";
 
 /**
  * Quotes for the agent/influencer area — ported from the backoffice partner
@@ -43,13 +44,6 @@ export interface AgentQuote {
   valid_until: string | null;
   status: string;
   event_id: number | null;
-}
-
-type CommissionType = "fixed_per_ticket" | "percent_of_sale";
-type CommissionTerms = { type: CommissionType; rate: number };
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 /**
@@ -115,7 +109,10 @@ async function suggestedPackageFor(
 }
 
 export async function getQuoteEvents(): Promise<QuoteEventOption[]> {
-  await requireAgent();
+  // Both roles — this is a plain event listing with no pricing decision
+  // baked in (unlike createQuote, which is agent-only). /agent/links reuses
+  // this for its per-event tracking link, and an influencer needs that too.
+  await requirePartner();
   // The same ISR-cached reader /agent's own search page uses — never a raw
   // query for a plain listing.
   const { events } = await getCachedEvents();
