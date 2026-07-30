@@ -216,10 +216,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               >
                 דלג לתוכן הראשי
               </a>
-              <Header />
-              <GlobalSearch />
+              <div className="print:hidden">
+                <Header />
+                <GlobalSearch />
+              </div>
               <main id="main-content">{children}</main>
-              <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6">
+              <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6 print:hidden">
                 <FooterMarquee />
                 <div className="container mx-auto">
                   <p className="mb-6 text-sm text-main-foreground/80">

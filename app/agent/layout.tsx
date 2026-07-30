@@ -17,7 +17,7 @@ export default async function AgentLayout({ children }: { children: ReactNode })
   return (
     <div dir="rtl" className="mx-auto w-full max-w-6xl px-4 py-6">
       {session && (
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b pb-4 print:hidden">
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">
               {session.display_name || session.email}

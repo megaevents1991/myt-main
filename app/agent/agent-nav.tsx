@@ -7,8 +7,10 @@ type NavItem = { name: string; href: string; agentOnly?: boolean };
 
 const items: NavItem[] = [
   { name: "חיפוש חבילות", href: "/agent" },
-  // TODO: quotes tab goes here once /agent/quotes exists. An influencer never
-  // gets it — they share a link, they do not price for a named customer.
+  // Agent-only — an influencer shares a link and never prices for a named
+  // customer (same rule requireAgent() enforces server-side for the routes
+  // themselves; this is just the tab, not the gate).
+  { name: "הצעות מחיר", href: "/agent/quotes", agentOnly: true },
 ];
 
 export function AgentNav({ role }: { role: "agent" | "affiliate" }) {
