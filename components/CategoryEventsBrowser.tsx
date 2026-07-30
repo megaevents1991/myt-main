@@ -125,14 +125,11 @@ function Dropdown({
 export function CategoryEventsBrowser({
   events,
   tagsByEvent = {},
-  ownTags = [],
   headingId,
 }: {
   events: Event[];
-  /** Tag names per event id — the sharpest slice of a category (see below). */
+  /** Feed tag names per event id — the sharpest slice of a category. */
   tagsByEvent?: Record<number, string[]>;
-  /** The tags this category is MADE of — never offered as a filter inside it. */
-  ownTags?: string[];
   headingId?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -197,25 +194,27 @@ export function CategoryEventsBrowser({
   }, [events]);
 
   /**
-   * Tag chips lead the filter bar because tags are what a category IS made of
-   * — inside כדורגל, "ליגה אנגלית" is the cut people actually want. Only tags
-   * carried by the events on screen appear, ordered by how many they cover.
+   * The feed tags carried by the events on screen — the same tags the Meta
+   * catalogue targets on. Inside כדורגל these are "ליגה אנגלית", "ליגה
+   * איטלקית" and so on, which is the cut people actually want.
+   *
+   * A tag is dropped only when it cannot narrow anything: carried by one event
+   * or by (nearly) all of them. Note what is NOT excluded — the tags that
+   * COMPOSE this category. They looked redundant, but in כדורגל those are
+   * exactly the league tags, and excluding them left the bar with nothing
+   * useful on it.
    */
   const tagOptions = useMemo(() => {
-    const own = new Set(ownTags);
     const counts = new Map<string, number>();
     events.forEach((e) => {
-      (tagsByEvent[e.id] ?? []).forEach((t) => {
-        // A "כדורגל" chip inside כדורגל cuts nothing — that tag is the category.
-        if (own.has(t)) return;
-        counts.set(t, (counts.get(t) ?? 0) + 1);
-      });
+      (tagsByEvent[e.id] ?? []).forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
     });
+    const coversAll = Math.max(1, Math.floor(events.length * 0.95));
     return [...counts.entries()]
-      .filter(([, n]) => n > 1 && n < events.length) // a tag on all or one slices nothing
+      .filter(([, n]) => n > 1 && n < coversAll)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, 10);
-  }, [events, tagsByEvent, ownTags]);
+      .slice(0, 12);
+  }, [events, tagsByEvent]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -313,7 +312,7 @@ export function CategoryEventsBrowser({
       >
         {tagOptions.length > 0 && (
           <div className="mb-4">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">קטגוריות משנה</p>
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">תגיות</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי תגית">
               {tagOptions.map(([tag, count]) => {
                 const on = tags.includes(tag);

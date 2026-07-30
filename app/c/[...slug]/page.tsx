@@ -3,12 +3,7 @@ import Image from "next/image";
 import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import {
-  getAllCategories,
-  getCategoryTagNames,
-  getEventsInCategory,
-  getTagsForEvents,
-} from "@/lib/taxonomy";
+import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
 import { DetailHero } from "@/components/DetailHero";
 import { HeaderTitle } from "@/components/HeaderTitle";
@@ -76,10 +71,7 @@ export default async function TaxonomyCategoryPage({
     .filter((c) => c.parent_id === cat.id)
     .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
   const { events } = await getEventsInCategory(cat.slug);
-  const [tagsByEvent, ownTags] = await Promise.all([
-    getTagsForEvents(events.map((e) => e.id)),
-    getCategoryTagNames(cat.id),
-  ]);
+  const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
   return (
     <>
@@ -171,7 +163,6 @@ export default async function TaxonomyCategoryPage({
             <CategoryEventsBrowser
               events={events}
               tagsByEvent={tagsByEvent}
-              ownTags={ownTags}
               headingId="category-events-heading"
             />
           ) : (
