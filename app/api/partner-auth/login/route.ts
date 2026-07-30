@@ -8,6 +8,11 @@ import {
   createPartnerSession,
   PARTNER_SESSION_MAX_AGE,
 } from "@/lib/partner-auth/session";
+import {
+  checkLoginRateLimit,
+  getRequestIp,
+  recordFailedLogin,
+} from "@/lib/partner-auth/rate-limit";
 
 /**
  * Partner sign-in for the agent/influencer area.
@@ -34,6 +39,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "יש להזין אימייל וסיסמה" }, { status: 400 });
   }
 
+  const ip = getRequestIp(request);
+  const rateLimit = await checkLoginRateLimit(email, ip);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "יותר מדי ניסיונות התחברות. נסו שוב מאוחר יותר." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
+
   const verified = await verifyPassword(email, password);
   if (!verified.ok) {
     if (verified.reason === "transient") {
@@ -43,6 +57,7 @@ export async function POST(request: Request) {
         { status: 429 },
       );
     }
+    await recordFailedLogin(email, ip);
     return NextResponse.json({ error: "אימייל או סיסמה שגויים" }, { status: 401 });
   }
 
@@ -50,6 +65,7 @@ export async function POST(request: Request) {
   // Same message for "not a partner", "no profile" and "disabled": a login form
   // must not confirm which accounts exist or what role they hold.
   if (!profile || !profile.is_active) {
+    await recordFailedLogin(email, ip);
     return NextResponse.json({ error: "אימייל או סיסמה שגויים" }, { status: 401 });
   }
 

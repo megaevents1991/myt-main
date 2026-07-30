@@ -7,7 +7,6 @@ import { Suspense, ReactNode } from "react";
 import Script from "next/script";
 import { MantineThemeProvider } from "@/components/MantineThemeProvider";
 import Link from "next/link";
-import { AuthProvider } from "./hooks/AuthContext";
 import MixpanelProvider from "./hooks/Mixpanel";
 import { Header } from "@/components/Header";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -209,64 +208,62 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             so decorative overflow never causes sideways scrolling on mobile */}
         <div className="w-full relative min-h-screen overflow-x-clip">
           <MixpanelProvider />
-          <AuthProvider>
-            <Suspense>
-              <MantineThemeProvider>
-                <a
-                  href="#main-content"
-                  className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-                >
-                  דלג לתוכן הראשי
-                </a>
-                <Header />
-                <GlobalSearch />
-                <main id="main-content">{children}</main>
-                <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6">
-                  <FooterMarquee />
-                  <div className="container mx-auto">
-                    <p className="mb-6 text-sm text-main-foreground/80">
-                      לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
-                      מהווה הסכמה לשימוש זה. למידע נוסף ניתן לעיין במדיניות
-                      הפרטיות של האתר.
-                    </p>
-                    <div className="flex flex-col items-center gap-y-6 sm:flex-row sm:justify-between sm:gap-0">
-                      <nav
-                        aria-label="ניווט תחתון"
-                        className="flex flex-wrap justify-center gap-x-4 gap-y-3 font-bold sm:justify-start sm:gap-x-6"
-                      >
-                        {[
-                          { href: "/about", label: "אודותינו" },
-                          { href: "/faq", label: "שאלות נפוצות" },
-                          { href: "/artists", label: "האומנים שלנו" },
-                          { href: "/blog", label: "הבלוגים שלנו" },
-                          { href: "/football", label: "הקבוצות שלנו" },
-                          { href: "/terms", label: "תנאי שימוש" },
-                          { href: "/privacy", label: "מדיניות פרטיות" },
-                          { href: "/accessibility", label: "הצהרת נגישות" },
-                          { href: "/cancellation", label: "ביטול הזמנה" },
-                        ].map((link) => (
-                          <Link
-                            key={link.href}
-                            href={link.href}
-                            className="whitespace-nowrap text-xs underline-offset-4 hover:underline sm:text-sm"
-                          >
-                            {link.label}
-                          </Link>
-                        ))}
-                      </nav>
-                      <div className="flex flex-col items-center gap-4 sm:flex-row">
-                        <SocialLinks />
-                        <p className="text-center text-xs sm:text-start sm:text-sm">
-                          © {new Date().getFullYear()} מגה איבנטס מבית מגה
-                          תיירות. כל הזכויות שמורות.
-                        </p>
-                      </div>
+          <Suspense>
+            <MantineThemeProvider>
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+              >
+                דלג לתוכן הראשי
+              </a>
+              <Header />
+              <GlobalSearch />
+              <main id="main-content">{children}</main>
+              <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6">
+                <FooterMarquee />
+                <div className="container mx-auto">
+                  <p className="mb-6 text-sm text-main-foreground/80">
+                    לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
+                    מהווה הסכמה לשימוש זה. למידע נוסף ניתן לעיין במדיניות
+                    הפרטיות של האתר.
+                  </p>
+                  <div className="flex flex-col items-center gap-y-6 sm:flex-row sm:justify-between sm:gap-0">
+                    <nav
+                      aria-label="ניווט תחתון"
+                      className="flex flex-wrap justify-center gap-x-4 gap-y-3 font-bold sm:justify-start sm:gap-x-6"
+                    >
+                      {[
+                        { href: "/about", label: "אודותינו" },
+                        { href: "/faq", label: "שאלות נפוצות" },
+                        { href: "/artists", label: "האומנים שלנו" },
+                        { href: "/blog", label: "הבלוגים שלנו" },
+                        { href: "/football", label: "הקבוצות שלנו" },
+                        { href: "/terms", label: "תנאי שימוש" },
+                        { href: "/privacy", label: "מדיניות פרטיות" },
+                        { href: "/accessibility", label: "הצהרת נגישות" },
+                        { href: "/cancellation", label: "ביטול הזמנה" },
+                      ].map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="whitespace-nowrap text-xs underline-offset-4 hover:underline sm:text-sm"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </nav>
+                    <div className="flex flex-col items-center gap-4 sm:flex-row">
+                      <SocialLinks />
+                      <p className="text-center text-xs sm:text-start sm:text-sm">
+                        © {new Date().getFullYear()} מגה איבנטס מבית מגה
+                        תיירות. כל הזכויות שמורות.
+                      </p>
                     </div>
                   </div>
-                </footer>
-              </MantineThemeProvider>
-            </Suspense>
-          </AuthProvider>
+                </div>
+              </footer>
+            </MantineThemeProvider>
+          </Suspense>
         </div>
       </body>
     </html>
