@@ -125,18 +125,28 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
     .single();
 
   if (error || !data) {
-    // error?.message/.code/etc all came back undefined last round, which
-    // only happens if error itself is null/undefined (optional chaining
-    // short-circuits every property the same way) — meaning !data, not
-    // error, is what's tripping this branch. Dump everything raw, including
-    // non-enumerable own properties, to settle it in one shot.
+    // error={} with zero own properties (last round) rules out a normal
+    // PostgrestError entirely — that always carries at least a message.
+    // Two things left to tell apart: (a) the insert never actually landed
+    // (permissions/RLS/schema), or (b) it landed fine but reading the row
+    // back is what's failing (response handling, not the write). A
+    // follow-up read by the same share_token settles which one it is.
+    const check = await supabase
+      .from("prepared_packages")
+      .select("share_token")
+      .eq("share_token", shareToken)
+      .maybeSingle();
     console.error(
       "savePreparedPackage: error=",
       error ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : error,
       "data=",
       JSON.stringify(data),
-      "row=",
-      JSON.stringify(row),
+      "rowSize=",
+      JSON.stringify(row).length,
+      "rowActuallyInserted=",
+      JSON.stringify(check.data),
+      "checkError=",
+      check.error ? JSON.stringify(check.error, Object.getOwnPropertyNames(check.error)) : check.error,
     );
     return { ok: false, error: "שמירת החבילה נכשלה. נסו שוב." };
   }
