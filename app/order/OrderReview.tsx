@@ -38,6 +38,8 @@ import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import AgentMode from "@/components/AgentMode";
 import AgentPrintSettings from "@/components/AgentPrintSettings";
+import { SavePackageLink } from "@/components/SavePackageLink";
+import type { PartnerSession } from "@/lib/partner-auth/session";
 import PrintableOrderSummary from "@/components/PrintableOrderSummary";
 import usePrintableWindow from "../hooks/usePrintableWindow";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -61,9 +63,14 @@ const TermsError = () => (
 // One line shift down, imports
 export default function OrderReview({
   onEditStep,
+  partnerSession,
 }: {
   /** Navigate to an order step to edit it; arms return-to-summary in OrderForm. */
   onEditStep?: (step: 1 | 2 | 3) => void;
+  /** Real, cookie-verified /agent session — gates "save as a package link",
+   * unlike agentCommission (below), which is only the unauthenticated
+   * localStorage/utm_source signal the print-price feature reads. */
+  partnerSession?: PartnerSession | null;
 } = {}) {
   const {
     flight: selectedFlight,
@@ -1172,6 +1179,18 @@ export default function OrderReview({
             showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24")
           )}
         >
+          {partnerSession && event && (
+            <SavePackageLink
+              eventId={event.id}
+              ticket={eventTicket}
+              numberOfEventTickets={numberOfEventTickets}
+              flight={selectedFlight}
+              flightSkipped={flightSkipped}
+              hotel={selectedHotel}
+              hotelSkipped={skipHotel}
+            />
+          )}
+
           {agentCommission > 0 && (
             <div>
               <AgentMode

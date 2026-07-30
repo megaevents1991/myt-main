@@ -6,6 +6,7 @@ import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
 import { OrderContext, PersonLink } from "../app.context";
+import type { PartnerSession } from "@/lib/partner-auth/session";
 // Code-split heavy components
 const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
   // Keep SSR to preserve SSG/ISR HTML for SEO-critical content
@@ -24,9 +25,15 @@ interface OrderPageClientProps {
   initialEvent?: Event;
   eventId?: string;
   personLink?: PersonLink;
+  partnerSession?: PartnerSession | null;
 }
 
-export default function OrderPageClient({ initialEvent, eventId, personLink }: OrderPageClientProps) {
+export default function OrderPageClient({
+  initialEvent,
+  eventId,
+  personLink,
+  partnerSession,
+}: OrderPageClientProps) {
   const { event, setEvent, setPersonLink } = useContext(OrderContext);
 
   // Push the server-resolved artist/team link into context so the header +
@@ -76,7 +83,7 @@ export default function OrderPageClient({ initialEvent, eventId, personLink }: O
         {(() => {
           const currentEvent = event || initialEvent;
           return currentEvent && currentEvent.tickets_and_rates?.length > 0 ? (
-            <OrderForm event={currentEvent} />
+            <OrderForm event={currentEvent} partnerSession={partnerSession} />
           ) : (
             <div className="min-h-[60vh] flex items-center justify-center">
               <div className="text-center">

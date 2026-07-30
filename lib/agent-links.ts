@@ -15,7 +15,18 @@
  */
 const SITE_ORIGIN = "https://www.mega-events.co.il";
 
-export function partnerLink(trackingCode: string, eventId?: number | null): string {
+export function partnerLink(
+  trackingCode: string,
+  eventId?: number | null,
+  shareToken?: string | null,
+): string {
   const path = eventId == null ? "/" : `/order/${eventId}`;
-  return `${SITE_ORIGIN}${path}?utm_source=${encodeURIComponent(trackingCode)}`;
+  const params = new URLSearchParams({ utm_source: trackingCode });
+  // A prepared-package link always carries utm_source too — the existing
+  // affiliate/orderStage mechanism already attributes off that param alone,
+  // so this piggybacks on it rather than needing a second attribution path.
+  // The opaque share_token (not the row's sequential id) keeps packages from
+  // being walked/enumerated.
+  if (shareToken) params.set("pkg", shareToken);
+  return `${SITE_ORIGIN}${path}?${params.toString()}`;
 }
