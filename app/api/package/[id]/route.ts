@@ -62,7 +62,7 @@ export async function GET(
     .maybeSingle();
 
   if (error) {
-    console.error("GET /api/package/[id]:", JSON.stringify(error));
+    console.error("GET /api/package/[id]:", error.message, error.code, error.details, error.hint);
     return NextResponse.json({ error: "Failed to load package" }, { status: 500 });
   }
   if (!data) {
