@@ -315,7 +315,7 @@ export async function createQuote(input: {
     ({ data, error } = await supabase.from("quotes").insert(row).select("id").single());
   }
 
-  if (error) {
+  if (error || !data) {
     console.error("createQuote:", JSON.stringify(error));
     return { ok: false, error: "יצירת ההצעה נכשלה" };
   }
