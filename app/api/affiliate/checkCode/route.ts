@@ -11,11 +11,14 @@ export async function GET(request: Request) {
   
   try {
     // Explicit allowlist — never select * here (the table holds credentials).
-    // `is_active` may not exist until the migration runs; on 42703 (undefined
-    // column) retry without it so affiliate links keep working either way.
+    // `is_active`/`voucher_payment_allowed` may not exist until their migration
+    // runs; on 42703 (undefined column) retry without them so affiliate links
+    // keep working either way.
     let { data, error } = await supabase
       .from('partners')
-      .select("partner_tracking_code, user_discount, commission, type, is_active")
+      .select(
+        "partner_tracking_code, user_discount, commission, type, is_active, voucher_payment_allowed",
+      )
       .eq('partner_tracking_code', affiliateId)
       .single();
     if (error && error.code === "42703") {
@@ -37,6 +40,12 @@ export async function GET(request: Request) {
         discount: data.user_discount || 0,
         commission: data.commission || 0,
         type: data.type,
+        // Agent-only, and only meaningful once the order flow's own agent-mode
+        // gate is on — see lib/partner-auth's requireAgent doc comment on why
+        // this exists at all (booking on a customer's behalf, voucher payment).
+        voucherPaymentAllowed:
+          (data as { voucher_payment_allowed?: boolean }).voucher_payment_allowed ===
+          true,
       });
     else
     return NextResponse.json({ });

@@ -368,6 +368,7 @@ export function useFetchAffiliate() {
   const [agentCommission, setAgentCommission] = useState(0);
   const [affId, setAffId] = useState<string | null>(null);
   const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
+  const [voucherPaymentAllowed, setVoucherPaymentAllowed] = useState(false);
 
   useEffect(() => {
     let affiliateData;
@@ -396,6 +397,7 @@ export function useFetchAffiliate() {
               if (data.type === "agent") {
                 setAgentCommission(data.commission);
                 setAffType("agent");
+                setVoucherPaymentAllowed(data.voucherPaymentAllowed === true);
                 superTrack({
                   isAgent: true,
                   agentId: parsedAffiliateData.affiliateId,
@@ -417,6 +419,7 @@ export function useFetchAffiliate() {
     affId,
     affType,
     agentCommission,
+    voucherPaymentAllowed,
     // expose setter to allow contextual promos (e.g., inactivity special offer)
     setAffDiscount,
   };
