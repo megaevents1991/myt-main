@@ -125,11 +125,19 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
     .single();
 
   if (error || !data) {
-    // JSON.stringify(error) alone prints "{}" — PostgrestError extends
-    // Error, and Error's own "message" property is non-enumerable, so
-    // stringify silently drops the one field that actually explains what
-    // went wrong. Log the fields directly instead.
-    console.error("savePreparedPackage:", error?.message, error?.code, error?.details, error?.hint);
+    // error?.message/.code/etc all came back undefined last round, which
+    // only happens if error itself is null/undefined (optional chaining
+    // short-circuits every property the same way) — meaning !data, not
+    // error, is what's tripping this branch. Dump everything raw, including
+    // non-enumerable own properties, to settle it in one shot.
+    console.error(
+      "savePreparedPackage: error=",
+      error ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : error,
+      "data=",
+      JSON.stringify(data),
+      "row=",
+      JSON.stringify(row),
+    );
     return { ok: false, error: "שמירת החבילה נכשלה. נסו שוב." };
   }
 
