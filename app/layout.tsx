@@ -210,18 +210,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             so decorative overflow never causes sideways scrolling on mobile */}
         <div className="w-full relative min-h-screen overflow-x-clip">
           <MixpanelProvider />
-          <AuthProvider>
-            <Suspense>
-              <MantineThemeProvider>
-                <a
-                  href="#main-content"
-                  className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-                >
-                  דלג לתוכן הראשי
-                </a>
-                <Header categories={navCategories} />
-                <GlobalSearch />
-              </div>
+          <Suspense>
+            <MantineThemeProvider>
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+              >
+                דלג לתוכן הראשי
+              </a>
+              <Header categories={navCategories} />
+              <GlobalSearch />
               <main id="main-content">{children}</main>
               <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6 print:hidden">
                 <FooterMarquee />
