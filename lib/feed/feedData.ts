@@ -209,11 +209,11 @@ async function getTaxonomyByEvent(
 
 async function fetchAllCategories(): Promise<EventCategory[]> {
   const { data, error } = await supabase
-    .from("event_categories")
+    .from("categories")
     .select("*")
     .eq("is_deleted", false);
   if (error) {
-    console.error("[feed] event_categories query failed:", JSON.stringify(error));
+    console.error("[feed] categories query failed:", JSON.stringify(error));
     return [];
   }
   return (data ?? []) as EventCategory[];

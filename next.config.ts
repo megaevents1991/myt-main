@@ -77,6 +77,16 @@ const nextConfig: import("next").NextConfig = {
       },
     ],
   },
+  // One category URL. /category/<slug> used to be its own page listing member
+  // pages and no events; /c/ is the category page. Redirecting in config rather
+  // than from a route handler keeps it independent of any data lookup — and /c/
+  // resolves a category by its LAST path segment, so the flat destination lands
+  // on the canonical nested path by itself.
+  async redirects() {
+    return [
+      { source: "/category/:slug", destination: "/c/:slug", permanent: true },
+    ];
+  },
 };
 
 module.exports = nextConfig;

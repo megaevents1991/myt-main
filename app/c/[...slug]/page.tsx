@@ -3,11 +3,12 @@ import Image from "next/image";
 import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { getAllCategories, getEventsInCategory } from "@/lib/taxonomy";
+import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
 import { DetailHero } from "@/components/DetailHero";
+import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { EventCard } from "@/components/EventCard";
+import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
 import ClientTracker from "@/components/ClientTracker";
 
 export const revalidate = 3600;
@@ -39,7 +40,7 @@ export async function generateMetadata({
   const canonicalPath = slugPathOf(cat, all).join("/");
   return {
     title: `${cat.name} - כרטיסים וחבילות | MYT`,
-    description: cat.description || `כרטיסים וחבילות ל${cat.name}`,
+    description: cat.subtitle || `כרטיסים וחבילות ל${cat.name}`,
     alternates: { canonical: `https://www.mega-events.co.il/c/${canonicalPath}` },
     openGraph: {
       title: cat.name,
@@ -70,13 +71,17 @@ export default async function TaxonomyCategoryPage({
     .filter((c) => c.parent_id === cat.id)
     .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
   const { events } = await getEventsInCategory(cat.slug);
+  const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
   return (
     <>
       <ClientTracker />
+      {/* Puts the category name in the header bar once the hero scrolls away,
+          exactly like the artist and team pages. */}
+      <HeaderTitle name={cat.name} />
       <DetailHero
         name={cat.name}
-        bio={cat.description ? <p>{cat.description}</p> : null}
+        bio={cat.subtitle ? <p>{cat.subtitle}</p> : null}
         imageUrl={cat.image_url ?? undefined}
         imageAlt={`באנר ${cat.name}`}
       />
@@ -152,16 +157,19 @@ export default async function TaxonomyCategoryPage({
             id="category-events-heading"
             className="mb-6 font-display text-2xl font-extrabold text-foreground"
           >
-            אירועים ב{cat.name}
+            חבילות ל{cat.name}
           </h2>
           {events.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
-              {events.map((event) => (
-                <EventCard key={event.id} event={event} showName />
-              ))}
-            </div>
+            <CategoryEventsBrowser
+              events={events}
+              tagsByEvent={tagsByEvent}
+              headingId="category-events-heading"
+            />
           ) : (
-            <EmptyState title="אין אירועים בקטגוריה זו כרגע" />
+            <EmptyState
+              title="אין חבילות בקטגוריה זו כרגע"
+              description="הקטגוריה נבנית מתגיות — ברגע שאירוע יתויג בהתאם הוא יופיע כאן."
+            />
           )}
         </section>
       </div>

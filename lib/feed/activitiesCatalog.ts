@@ -149,8 +149,18 @@ export function buildActivityItem(
 
   const price = feedPriceUSD(event);
   if (price == null) return { skipped: "no computable price" };
-  const image_link = event.campaign_image_url || event.card_image_url;
-  if (!image_link) return { skipped: "no image" };
+  // BRANDED OR NOT AT ALL: a product in the catalogue must carry the campaign
+  // creative — our wordmark, the package line, the price pill. A raw provider
+  // photo next to competitors' branded cards is worth less than not being
+  // there, so an event without a creative is withheld rather than published
+  // bare (Dor, 2026-07-29).
+  //
+  // Backstop, not a cliff: the backoffice generator now produces a creative for
+  // EVERY priced event — a bare branded card when it has no artwork of its own
+  // — so this only withholds events that could not be advertised anyway, and
+  // /product-feed lists exactly who those are.
+  const image_link = event.campaign_image_url;
+  if (!image_link) return { skipped: "no campaign creative" };
 
   const d = new Date(`${eventDate}T00:00:00Z`);
   const name = event.name.trim();

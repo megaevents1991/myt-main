@@ -12,6 +12,7 @@ import { Header } from "@/components/Header";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { SocialLinks } from "@/components/ui/SocialLinks";
 import { FooterMarquee } from "@/components/ui/FooterMarquee";
+import { getNavCategories } from "@/lib/taxonomy";
 
 // Body face. Assistant mirrors the Figma body (Inter) feel while rendering Hebrew
 // RTL correctly — free Google substitute for the brand-book body font.
@@ -138,7 +139,8 @@ export const metadata: Metadata = {
 const GTM_TAG = process.env.NEXT_PUBLIC_GTM || undefined;
 const GTM_URL = `https://www.googletagmanager.com/ns.html?id=${GTM_TAG}`;
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const navCategories = await getNavCategories();
   return (
     <html
       lang="he"
@@ -208,16 +210,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             so decorative overflow never causes sideways scrolling on mobile */}
         <div className="w-full relative min-h-screen overflow-x-clip">
           <MixpanelProvider />
-          <Suspense>
-            <MantineThemeProvider>
-              <a
-                href="#main-content"
-                className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-              >
-                דלג לתוכן הראשי
-              </a>
-              <div className="print:hidden">
-                <Header />
+          <AuthProvider>
+            <Suspense>
+              <MantineThemeProvider>
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:m-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+                >
+                  דלג לתוכן הראשי
+                </a>
+                <Header categories={navCategories} />
                 <GlobalSearch />
               </div>
               <main id="main-content">{children}</main>

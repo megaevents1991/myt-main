@@ -10,8 +10,13 @@ import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cn } from "@/lib/utils";
 
-const navLinks = [
-  { href: "/football", label: "כדורגל" },
+type NavLink = { href: string; label: string };
+
+// Always present, whatever the category tree looks like. /football and
+// /artists are the performer hubs (teams and artists) — a sibling pair, so
+// neither is dropped when categories take the lead.
+const staticNavLinks: NavLink[] = [
+  { href: "/football", label: "קבוצות" },
   { href: "/artists", label: "אומנים" },
   { href: "/faq", label: "שאלות נפוצות" },
   { href: "/about", label: "אודותינו" },
@@ -29,7 +34,13 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const Header = () => {
+/**
+ * @param categories live top-level categories from the backoffice tree, passed
+ *   by the root layout. They lead the nav so the structure the team builds is
+ *   the structure people navigate; a new root category appears here on its own.
+ */
+export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
+  const navLinks: NavLink[] = [...categories, ...staticNavLinks];
   const [menuOpen, setMenuOpen] = useState(false);
   const floatingRef = useRef<HTMLDivElement>(null);
   // Shared-element hand-off: when the navbar appears, the floating corner
@@ -101,7 +112,11 @@ export const Header = () => {
     // DetailHero). Decided by route — not DOM presence — so a slow-loading
     // hero never makes us mistake the page for a plain one.
     const hasOwnHero =
-      pathname === "/" || /^\/(artists|football)\/[^/]+$/.test(pathname ?? "");
+      pathname === "/" ||
+      /^\/(artists|football)\/[^/]+$/.test(pathname ?? "") ||
+      // Category pages open on a DetailHero too — without this the solid bar
+      // sat on top of their hero instead of sliding in behind it.
+      /^\/c\//.test(pathname ?? "");
 
     if (!hasOwnHero) {
       // Plain page (e.g. /football, /artists, /faq): solid header from the

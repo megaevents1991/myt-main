@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 
 import { getFeedUser } from "@/lib/feed/feedAuth";
-import { getFeedItems } from "@/lib/feed/feedData";
+import { getActivityItems, getFeedItems } from "@/lib/feed/feedData";
 import { FEED_SITE_ORIGIN } from "@/lib/feed/metaCatalog";
 import { CopyButton } from "./CopyButton";
+import { FeedTable } from "./FeedTable";
 
 /**
  * Internal admin page for the Meta product feed — live counts and a row
@@ -91,9 +92,32 @@ export default async function ProductFeedPage({
     );
   }
 
-  const { items, skipped } = await getFeedItems();
+  // Two different feeds: the e-commerce shape below (Google Merchant) and the
+  // ACTIVITIES shape Meta actually consumes. They drop different events — the
+  // activities feed also drops sold-out ones and anything inside the booking
+  // window — so a product can be present here and still be missing from Meta.
+  const [{ items, skipped }, activities] = await Promise.all([
+    getFeedItems(),
+    getActivityItems(),
+  ]);
   const inStock = items.filter((i) => i.availability === "in stock").length;
   const xmlUrl = `${FEED_SITE_ORIGIN}/feeds/meta-catalog.xml`;
+
+  const REASON_LABELS: Record<string, string> = {
+    "sold out": "אזלו הכרטיסים",
+    "inside booking window": "בתוך חלון ההזמנה (פחות מ-3 ימים)",
+    "no computable price": "אין מחיר לחישוב",
+    "no campaign creative":
+      "אין קריאטיב קמפיין — מוצר מתפרסם רק עם המיתוג שלנו. הרץ 'סנכרן הכל' בבקאופיס",
+    "no image": "אין תמונה — לא כרטיס, לא cutout ולא קריאטיב",
+  };
+  const activityDrops = activities.skipped.reduce<Record<string, typeof activities.skipped>>(
+    (acc, s) => {
+      (acc[s.reason] ??= []).push(s);
+      return acc;
+    },
+    {}
+  );
 
   return (
     <div dir="rtl" className="min-h-screen bg-gray-50 text-gray-900">
@@ -153,7 +177,10 @@ export default async function ProductFeedPage({
         </p>
       </div>
 
-      {/* Counts */}
+      {/* Counts — e-commerce shape (Google Merchant), NOT what Meta reads */}
+      <h2 className="mb-2 text-lg font-bold text-gray-900">
+        פיד ה-e-commerce (Google Merchant)
+      </h2>
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
         {[
           { label: "פריטים בפיד", value: items.length },
@@ -176,100 +203,92 @@ export default async function ProductFeedPage({
       {skipped.length > 0 && (
         <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
           <h2 className="mb-2 text-lg font-bold text-amber-900">
-            אירועים שלא נכנסו לפיד
+            אירועים שלא נכנסו לפיד ה-e-commerce
           </h2>
           <ul className="list-inside list-disc text-sm text-amber-900">
             {skipped.map((s) => (
               <li key={s.id}>
-                #{s.id} {s.name} — {s.reason === "no image" ? "חסרה תמונה" : "אין מחיר"}
+                #{s.id} {s.name} — {REASON_LABELS[s.reason] ?? s.reason}
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Preview */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-card">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50 text-right text-xs text-gray-500">
-              <th className="px-3 py-2">id</th>
-              <th className="px-3 py-2">image</th>
-              <th className="px-3 py-2">title</th>
-              <th className="px-3 py-2">price</th>
-              <th className="px-3 py-2">availability</th>
-              <th className="px-3 py-2">expiration</th>
-              <th className="px-3 py-2">product_type</th>
-              <th className="px-3 py-2">labels</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => (
-              <tr key={it.id} className="border-b border-gray-200/50 align-top">
-                <td className="px-3 py-2">
-                  <a
-                    href={it.link}
-                    target="_blank"
-                    rel="noopener"
-                    className="font-semibold text-main hover:underline"
-                    dir="ltr"
-                  >
-                    {it.id}
-                  </a>
-                </td>
-                <td className="px-3 py-2">
-                  <a href={it.image_link} target="_blank" rel="noopener" className="relative block">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={it.image_link}
-                      alt=""
-                      className="h-16 w-16 rounded-md border border-gray-200 object-cover"
-                    />
-                    <span
-                      className={
-                        it.has_campaign
-                          ? "absolute -bottom-1 -right-1 rounded-full bg-main px-1.5 py-0.5 text-[9px] font-bold text-white"
-                          : "absolute -bottom-1 -right-1 rounded-full bg-gray-400 px-1.5 py-0.5 text-[9px] font-bold text-white"
-                      }
-                    >
-                      {it.has_campaign ? "קמפיין" : "מקורי"}
-                    </span>
-                  </a>
-                </td>
-                <td className="max-w-[320px] px-3 py-2 text-gray-900">{it.title}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
-                  {it.price}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  <span
-                    className={
-                      it.availability === "in stock"
-                        ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800"
-                        : "rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800"
-                    }
-                  >
-                    {it.availability}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
-                  {it.expiration_date}
-                </td>
-                <td className="max-w-[200px] px-3 py-2 text-gray-900" dir="ltr">
-                  {it.product_type || "—"}
-                </td>
-                <td className="max-w-[220px] px-3 py-2 text-gray-900" dir="ltr">
-                  {it.custom_labels.filter(Boolean).join(", ")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {items.length === 0 && (
-          <p className="p-6 text-center text-sm text-gray-500">
-            אין פריטים בפיד.
+      {/* What Meta actually receives — the activities feed, and everything it drops */}
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold text-gray-900">
+            הפיד שמטא קוראת (Activities)
+          </h2>
+          <a
+            href="/feeds/meta-activities.csv?excel=1"
+            className="text-sm font-semibold text-main hover:underline"
+          >
+            הורד CSV
+          </a>
+        </div>
+        <p className="mb-4 text-sm text-gray-500">
+          זה הקובץ הרשום ב-Commerce Manager. הוא מפיל אירועים שהטבלה למטה כן
+          מכילה: אזלו הכרטיסים, אירועים קרובים מדי, וכל אירוע בלי תמונה.
+        </p>
+
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {activities.items.length}
+            </div>
+            <div className="text-xs text-gray-500">נשלחים למטא</div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {activities.skipped.length}
+            </div>
+            <div className="text-xs text-gray-500">נופלים מהפיד</div>
+          </div>
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {activities.items.length + activities.skipped.length}
+            </div>
+            <div className="text-xs text-gray-500">אירועים שנבדקו</div>
+          </div>
+        </div>
+
+        {activities.skipped.length === 0 ? (
+          <p className="text-sm font-semibold text-green-700">
+            כל האירועים נכנסו לפיד.
           </p>
+        ) : (
+          <div className="space-y-3">
+            {Object.entries(activityDrops)
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([reason, list]) => (
+                <details
+                  key={reason}
+                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                >
+                  <summary className="cursor-pointer text-sm font-bold text-gray-900">
+                    {REASON_LABELS[reason] ?? reason}{" "}
+                    <span className="font-normal text-gray-500">({list.length})</span>
+                  </summary>
+                  <ul className="mt-2 space-y-0.5 text-sm text-gray-900">
+                    {list.map((s) => (
+                      <li key={s.id}>
+                        <span className="text-gray-500" dir="ltr">
+                          #{s.id}
+                        </span>{" "}
+                        {s.name}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+          </div>
         )}
       </div>
+
+      {/* Preview */}
+      <FeedTable items={items} />
     </div>
     </div>
   );
