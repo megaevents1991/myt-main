@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
+import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
 import { eventRelatesToTeam, normalizeName } from "@/lib/eventNameMatch";
 
 // Inner cached reader THROWS on a failed/empty query so unstable_cache never
@@ -90,7 +91,11 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     console.log(
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
-    return { events: await enrichEventsWithFallbackImages(events || []) };
+    return {
+      events: await markLockedPackagesSoldOut(
+        await enrichEventsWithFallbackImages(events || []),
+      ),
+    };
   } catch (error) {
     const queryTime = Date.now() - startTime;
     console.error(`[EventsData] Unexpected error after ${queryTime}ms:`, {
@@ -133,5 +138,9 @@ export async function getEventsByName(
       normalizeName(e.name_english).includes(needle) &&
       eventRelatesToTeam(e.name_english ?? "", searchName),
   );
-  return { events: await enrichEventsWithFallbackImages(matched) };
+  return {
+    events: await markLockedPackagesSoldOut(
+      await enrichEventsWithFallbackImages(matched),
+    ),
+  };
 }
