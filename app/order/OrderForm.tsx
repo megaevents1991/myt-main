@@ -62,6 +62,7 @@ export const OrderForm = ({
     setFlightSkipped,
     returnToSummary,
     setReturnToSummary,
+    packageLocked,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -368,6 +369,10 @@ export const OrderForm = ({
   // continue button (same guard + side effects). Never further: steps must be
   // completed in order (1 → 2 → 3).
   const slotNav = (target: number) => {
+    // Agent-locked package: pills are labels, not navigation — the pinned
+    // composition may not be rearranged. Forward (the primary CTA's twin)
+    // stays, so a repick landing can still continue.
+    if (packageLocked && target < step) return undefined;
     if (target < step) return () => setStep(target); // back to a done step
     if (target === step + 1 && !buttonDisabled) return () => nextStep(); // continue
     return undefined;

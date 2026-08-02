@@ -36,6 +36,7 @@ type PreparedPackageRow = {
   hotel_order_info: OrderHotel | null;
   hotel_skipped: boolean;
   num_travelers: number;
+  allow_edit?: boolean | null;
 };
 
 function isInFuture(dateStr: string | undefined | null): boolean {
@@ -53,13 +54,24 @@ export async function GET(
     return NextResponse.json({ error: "Invalid package id" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const PACKAGE_COLUMNS =
+    "event_id, event_order_info, flight_order_info, flight_skipped, hotel_order_info, hotel_skipped, num_travelers";
+
+  let { data, error } = await supabase
     .from("prepared_packages")
-    .select(
-      "event_id, event_order_info, flight_order_info, flight_skipped, hotel_order_info, hotel_skipped, num_travelers",
-    )
+    .select(`${PACKAGE_COLUMNS}, allow_edit`)
     .eq("share_token", id)
     .maybeSingle();
+
+  // allow_edit may not be migrated yet — fall back to the older column list
+  // (absent column = editable, today's behavior).
+  if (error && error.code === "42703") {
+    ({ data, error } = await supabase
+      .from("prepared_packages")
+      .select(PACKAGE_COLUMNS)
+      .eq("share_token", id)
+      .maybeSingle());
+  }
 
   if (error) {
     console.error("GET /api/package/[id]:", error.message, error.code, error.details, error.hint);
@@ -178,5 +190,6 @@ export async function GET(
     hotel_order_info: hotel,
     hotel_needs_repick: hotelNeedsRepick,
     num_travelers: row.num_travelers,
+    allow_edit: row.allow_edit !== false,
   });
 }
