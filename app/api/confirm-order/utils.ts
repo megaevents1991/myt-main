@@ -1,4 +1,10 @@
-import { Coupon, Event, OrderData } from "@/lib/app.types";
+import {
+  Coupon,
+  Event,
+  OrderData,
+  SETTLEMENT_METHODS,
+  SettlementMethod,
+} from "@/lib/app.types";
 import * as yup from "yup";
 import { getEvents } from "@/lib/eventsData";
 import { exchangeRateService } from "@/lib/exchangeRateService";
@@ -10,6 +16,7 @@ import {
   hasComponentMarkups,
 } from "@/lib/events/price";
 import { supabase } from "@/lib/supabase";
+import { requireAgent } from "@/lib/partner-auth";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -62,6 +69,7 @@ export const validateOrderData = async (
       final_purchase_price_ils: yup.number().required(),
       aff_partner_tracking_code: yup.string(),
       is_agent_booking: yup.boolean(),
+      settlement_method: yup.string().oneOf([...SETTLEMENT_METHODS]).optional(),
       coupon_code: yup.string().nullable(),
       coupon_base_total_usd: yup.number().nullable(),
     });
@@ -142,11 +150,23 @@ export const validatePurchasePriceFloor = async (
         .maybeSingle());
     }
 
-    // Agents book with custom, rep-approved pricing — never gate them. The
-    // client flag alone is a one-line floor bypass, so only honor it when the
-    // order's partner really is an agent (commission > 0, mirroring
-    // `is_agent_booking: agentCommission > 0` in OrderReview).
-    if (data.is_agent_booking && Number(partner?.commission) > 0) return null;
+    // Agents book with custom, rep-approved pricing — never gate them. But
+    // the client's `is_agent_booking` flag plus a real agent's tracking code
+    // is not proof of anything: anyone can read a commission > 0 off the
+    // public checkCode endpoint and name that code without ever being that
+    // agent. Only waive the floor when the request actually carries THAT
+    // agent's live /agent session — same requirement resolveAgentSettlement
+    // enforces for agent_card/voucher, applied here too since this bypass is
+    // otherwise a bare, sessionless floor-skip for anyone who can name a code.
+    if (data.is_agent_booking && Number(partner?.commission) > 0) {
+      try {
+        const session = await requireAgent();
+        if (session.partner_code === data.aff_partner_tracking_code) return null;
+      } catch {
+        // Not a valid, live agent session for this code — fall through to
+        // the normal floor check below.
+      }
+    }
 
     const charged = Number(data.final_purchase_price_ils);
     if (!Number.isFinite(charged) || charged <= 0) {
@@ -210,6 +230,159 @@ export const validatePurchasePriceFloor = async (
       error instanceof Error ? error.message : String(error),
     );
     return null;
+  }
+};
+
+/**
+ * Decides how an agent-entered booking actually gets charged.
+ *
+ * `final_purchase_price_ils` always stays the FULL, undiscounted total —
+ * every customer-facing surface (confirmation emails, this reservation's own
+ * record) reads that column, and an agent-card settlement must never leak
+ * its commission-netted charge onto something the customer sees. The
+ * discount instead lives in `agent_card_discount_ils`, which ONLY
+ * /api/payment reads, at the one place a real charge is actually decided
+ * (chargeAmount = final_purchase_price_ils - agent_card_discount_ils).
+ *
+ * The client always sends the FULL price, exactly as a normal customer_card
+ * order would (no client-side changes needed for that path at all). This
+ * function only ever computes a discount from trusted, freshly-fetched
+ * partner data — never from anything the client claims about its own
+ * discount. A request with no settlement_method (every non-agent-assisted
+ * order) short-circuits immediately without even querying `partners`.
+ */
+export const resolveAgentSettlement = async (
+  data: OrderData,
+  payNow: boolean,
+): Promise<
+  | {
+      ok: true;
+      method: SettlementMethod | null;
+      finalPurchasePriceIls: number;
+      agentCardDiscountIls: number;
+    }
+  | { ok: false; reason: string }
+> => {
+  const requested = data.settlement_method;
+  const fallback = {
+    ok: true as const,
+    method: null,
+    finalPurchasePriceIls: Number(data.final_purchase_price_ils),
+    agentCardDiscountIls: 0,
+  };
+
+  if (!requested || !data.aff_partner_tracking_code) return fallback;
+
+  try {
+    let { data: partner, error } = await supabase
+      .from("partners")
+      .select("type, is_active, commission, voucher_payment_allowed")
+      .eq("partner_tracking_code", data.aff_partner_tracking_code)
+      .maybeSingle();
+    if (error && error.code === "42703") {
+      ({ data: partner, error } = await supabase
+        .from("partners")
+        .select("type, is_active, commission")
+        .eq("partner_tracking_code", data.aff_partner_tracking_code)
+        .maybeSingle());
+    }
+    if (error || !partner) return fallback;
+
+    // Never trust the client's is_agent_booking flag alone — re-derive
+    // "really an active agent" from the DB, same posture as the price floor.
+    if (partner.type !== "agent" || partner.is_active === false) return fallback;
+
+    // agent_card/voucher grant something a plain requester shouldn't be able
+    // to get just by knowing (or guessing — checkCode's commission field is
+    // openly readable) someone else's tracking code: a real charge reduction,
+    // or skipping the card entirely. Require the request to actually carry
+    // THAT agent's signed-in /agent session, not merely name their code.
+    // customer_card asks for nothing beyond today's default, so it isn't
+    // gated — anyone can already trigger that path today.
+    if (requested === "voucher" || requested === "agent_card") {
+      // requireAgent() re-reads the live profile (not just the cookie), the
+      // same rigor requirePartner() exists for — an agent deactivated
+      // mid-session must lose this the moment it happens, not up to a week
+      // later when the signed cookie would otherwise expire.
+      let isThatAgent = false;
+      try {
+        const session = await requireAgent();
+        isThatAgent = session.partner_code === data.aff_partner_tracking_code;
+      } catch {
+        isThatAgent = false;
+      }
+      if (!isThatAgent) {
+        return {
+          ok: false,
+          reason: "Agent session required for this settlement method",
+        };
+      }
+    }
+
+    const fullPriceIls = Number(data.final_purchase_price_ils);
+    if (!Number.isFinite(fullPriceIls) || fullPriceIls <= 0) return fallback;
+
+    if (requested === "voucher") {
+      if (partner.voucher_payment_allowed !== true) {
+        return { ok: false, reason: "Voucher payment not enabled for this partner" };
+      }
+      // Full price — the voucher covers the whole sale to us; the agent's
+      // commission is settled through the normal payout cycle, same as any
+      // other referred booking. No card is ever charged for this order.
+      return {
+        ok: true,
+        method: "voucher",
+        finalPurchasePriceIls: fullPriceIls,
+        agentCardDiscountIls: 0,
+      };
+    }
+
+    if (requested === "agent_card") {
+      // The discount only means anything when this request is about to hit
+      // /api/payment right now — a "hold" or "phone order" submission never
+      // charges anyone, and if the discount rode along on the row anyway, a
+      // later, unrelated charge attempt against the same reservation id
+      // would inherit it. Reject rather than silently downgrade, so the
+      // agent picks a payable option instead of unknowingly parking a
+      // discount nobody asked to charge.
+      if (!payNow) {
+        return {
+          ok: false,
+          reason: "agent_card settlement requires an immediate card charge",
+        };
+      }
+      const commission = Math.min(Math.max(Number(partner.commission) || 0, 0), 100);
+      const discountIls = Math.round(fullPriceIls * (commission / 100));
+      // A misconfigured >=100% commission (or one landing right at the
+      // rounding edge) must not park an unpayable ~₪0 reservation — reject
+      // outright instead of clamping, which would just get stuck Pending.
+      if (fullPriceIls - discountIls <= 0) {
+        return {
+          ok: false,
+          reason: "Computed agent charge is non-positive",
+        };
+      }
+      return {
+        ok: true,
+        method: "agent_card",
+        finalPurchasePriceIls: fullPriceIls,
+        agentCardDiscountIls: discountIls,
+      };
+    }
+
+    // "customer_card" — explicit, unchanged full price.
+    return {
+      ok: true,
+      method: "customer_card",
+      finalPurchasePriceIls: fullPriceIls,
+      agentCardDiscountIls: 0,
+    };
+  } catch (e) {
+    console.error(
+      "resolveAgentSettlement failed (falling back to full price):",
+      e instanceof Error ? e.message : String(e),
+    );
+    return fallback;
   }
 };
 

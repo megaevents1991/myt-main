@@ -13,6 +13,7 @@ export const sendUserEmail = async ({
   isPaymentSuccess = false,
   partnerTrackingCode = null,
   orderId,
+  isAgentVoucherOrder = false,
 }: {
   orderData: OrderData;
   payNow?: boolean;
@@ -20,6 +21,10 @@ export const sendUserEmail = async ({
   isPaymentSuccess?: boolean;
   partnerTrackingCode?: string | null;
   orderId?: number;
+  /** Agent-entered booking settled by voucher — order confirmed, but never
+   * word it as "payment collected by phone", the customer isn't the one
+   * paying us here and shouldn't be told how the agent is settling it. */
+  isAgentVoucherOrder?: boolean;
 }) => {
   const transporter = nodemailer.createTransport({
     host: "smtp.zeptomail.com",
@@ -53,16 +58,29 @@ export const sendUserEmail = async ({
       title: "ההזמנה נשמרה ל-24 שעות",
       message: `שמחנו לשמור עבורך את ההזמנה למשך 24 שעות הקרובות.<br>להשלמת הרכישה ותשלום עכשיו ניתן ליצור איתנו קשר בטלפון <strong>03-768-4800</strong> או להשיב למייל זה.<br>שימי/שימו לב: המחירים והמלאי אינם מובטחים לאחר תום תקופת ההחזקה ועלולים להשתנות.<br>נשמח לעמוד לרשותך בכל שאלה.`,
     },
+    // Agent entered this booking and is settling with us by voucher — the
+    // customer's own arrangement is with their agent, not with us, so this
+    // must read like a normal confirmation and never mention how payment
+    // to us is being handled.
+    agentAssistedPending: {
+      subject: `תודה שבחרת מגה איבנטס!`,
+      title: "הזמנתך נתקבלה בהצלחה",
+      message:
+        "ההזמנה שלך התקבלה ומטופלת מול סוכן הנסיעות שלך. נשמח לעמוד לרשותך בכל שאלה נוספת.",
+    },
   };
 
-  // Template selection precedence: saved hold (onlySave) > payNow success/fail > phone order fallback
+  // Template selection precedence: saved hold (onlySave) > agent-voucher
+  // pending > payNow success/fail > phone order fallback
   const emailTemplate = onlySave
     ? emailtemplates.savedOrder
-    : payNow
-      ? isPaymentSuccess
-        ? emailtemplates.successfulPurchase
-        : emailtemplates.failedPurchase
-      : emailtemplates.phoneOrder;
+    : isAgentVoucherOrder
+      ? emailtemplates.agentAssistedPending
+      : payNow
+        ? isPaymentSuccess
+          ? emailtemplates.successfulPurchase
+          : emailtemplates.failedPurchase
+        : emailtemplates.phoneOrder;
 
   // Skipped flights are saved as an EMPTY OBJECT (truthy!) — `?.` on
   // flight_order_info alone doesn't protect the inner accesses. A missing

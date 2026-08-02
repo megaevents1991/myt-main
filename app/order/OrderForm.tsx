@@ -13,11 +13,13 @@ import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
+import { useHandlePreparedPackage } from "../hooks/useHandlePreparedPackage";
 import { shortenAirlineName } from "./order-review.utils";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup } from "@/lib/events/price";
+import type { PartnerSession } from "@/lib/partner-auth/session";
 
 const shortenTicketCategory = (category: string): string => {
   // Return text up to the first comma if comma exists
@@ -31,7 +33,13 @@ const shortenTicketCategory = (category: string): string => {
   return category;
 };
 
-export const OrderForm = ({ event }: { event: Event }) => {
+export const OrderForm = ({
+  event,
+  partnerSession,
+}: {
+  event: Event;
+  partnerSession?: PartnerSession | null;
+}) => {
   const {
     step,
     setStep,
@@ -57,6 +65,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
+  useHandlePreparedPackage();
 
   const { affDiscount, affId } = useFetchAffiliate(); // @TODO: should be removed and called once in ticket selection
   const {
@@ -462,6 +471,7 @@ export const OrderForm = ({ event }: { event: Event }) => {
               setReturnToSummary(true);
               setStep(target);
             }}
+            partnerSession={partnerSession}
           />
         )}
         {/* Floating ContactUs - separate from footer */}

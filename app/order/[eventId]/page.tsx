@@ -9,6 +9,7 @@ import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
 import { normalizeName } from "@/lib/eventNameMatch";
 import Link from "next/link";
+import { getPartnerSession } from "@/lib/partner-auth";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
@@ -112,6 +113,13 @@ export default async function OrderPageWithId({
     return <EventNotFoundNotice />;
   }
 
+  // Resolved server-side so the "save this as a package" action can be
+  // gated by a real, cookie-verified session instead of the unauthenticated
+  // localStorage/utm_source signal the print-price feature already uses.
+  // Null for every anonymous visitor — the common case, no session lookup
+  // cost beyond the one cookie read.
+  const partnerSession = await getPartnerSession();
+
   // Fetch the event data server-side
   let event: Event | undefined;
   try {
@@ -200,6 +208,7 @@ export default async function OrderPageWithId({
         initialEvent={event}
         eventId={eventId}
         personLink={personLink}
+        partnerSession={partnerSession}
       />
     </OrderErrorBoundary>
   );

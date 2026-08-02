@@ -4,7 +4,11 @@ import { supabase } from "@/lib/supabase";
 import { Coupon, OrderData } from "@/lib/app.types";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
-import { validateOrderData, validatePurchasePriceFloor } from "./utils";
+import {
+  validateOrderData,
+  validatePurchasePriceFloor,
+  resolveAgentSettlement,
+} from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
 import {
   trackServerSideEvent,
@@ -146,50 +150,88 @@ export async function POST(req: Request) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("reservations")
-    .insert({
-      main_contact_first_name: validatedData.main_contact_first_name,
-      main_contact_last_name: validatedData.main_contact_last_name,
-      main_contact_phone_number: validatedData.main_contact_phone_number,
-      main_contact_email: validatedData.main_contact_email,
-      more_pax_info: validatedData.more_pax_info,
-      event_order_info: validatedData.event_order_info,
-      flight_order_info: validatedData.flight_order_info,
-      hotel_order_info: validatedData.hotel_order_info,
-      user_shown_price: validatedData.user_shown_price,
-      event_id: validatedData.event_id,
-      payment_info: payNow ? {} : null,
-      // Coupon-to-affiliate attribution: a coupon linked to a partner credits
-      // that partner, but only when the order has no affiliate of its own
-      // (existing link/utm attribution wins).
-      aff_partner_tracking_code:
-        validatedData.aff_partner_tracking_code ||
-        coupon?.partner_tracking_code ||
-        "",
-      final_purchase_price_ils: validatedData.final_purchase_price_ils,
-      exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
-      gtmIdnts: gtmIdnts || null,
-      status: onlySave ? "24Save" : "Pending",
-      offline_flight_id: flightInfoForLink?.offlineId ?? null,
-      // offlineRawPrice on flights is per-traveler; multiply to match hotel
-      // semantics (already a booking-level total) so profit calc is correct.
-      offline_flight_cost:
-        flightInfoForLink?.offlineRawPrice != null
-          ? flightInfoForLink.offlineRawPrice *
-            (flightInfoForLink.numOfTravelers ?? 1)
-          : null,
-      offline_hotel_id: offlineHotelIdsForLink
-        ? offlineHotelIdsForLink[0]
+  // Agent booking-on-behalf: decides whether this order is charged in full,
+  // netted for the agent's own card, or settled by voucher (no charge at
+  // all). Must run after the floor check above so a voucher/agent_card order
+  // still has to clear it on the full price the client submitted.
+  const settlement = await resolveAgentSettlement(validatedData, payNow);
+  if (!settlement.ok) {
+    console.error("Rejected order — agent settlement:", settlement.reason);
+    return NextResponse.json({ error: "SETTLEMENT_NOT_ALLOWED" }, { status: 400 });
+  }
+
+  const reservationPayload = {
+    main_contact_first_name: validatedData.main_contact_first_name,
+    main_contact_last_name: validatedData.main_contact_last_name,
+    main_contact_phone_number: validatedData.main_contact_phone_number,
+    main_contact_email: validatedData.main_contact_email,
+    more_pax_info: validatedData.more_pax_info,
+    event_order_info: validatedData.event_order_info,
+    flight_order_info: validatedData.flight_order_info,
+    hotel_order_info: validatedData.hotel_order_info,
+    user_shown_price: validatedData.user_shown_price,
+    event_id: validatedData.event_id,
+    payment_info: payNow ? {} : null,
+    // Coupon-to-affiliate attribution: a coupon linked to a partner credits
+    // that partner, but only when the order has no affiliate of its own
+    // (existing link/utm attribution wins).
+    aff_partner_tracking_code:
+      validatedData.aff_partner_tracking_code ||
+      coupon?.partner_tracking_code ||
+      "",
+    // Always the FULL, undiscounted total — see resolveAgentSettlement.
+    final_purchase_price_ils: settlement.finalPurchasePriceIls,
+    exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
+    gtmIdnts: gtmIdnts || null,
+    status: onlySave ? "24Save" : "Pending",
+    // Staff-only marker (never shown to the customer) so a Pending
+    // reservation reads as "awaiting a voucher from this partner" instead
+    // of a generic uncalled phone lead. Null for every non-agent-assisted
+    // booking.
+    partner_settlement_method: settlement.method,
+    // The ONLY column /api/payment subtracts before charging — 0 for every
+    // order except an agent_card settlement.
+    agent_card_discount_ils: settlement.agentCardDiscountIls || null,
+    offline_flight_id: flightInfoForLink?.offlineId ?? null,
+    // offlineRawPrice on flights is per-traveler; multiply to match hotel
+    // semantics (already a booking-level total) so profit calc is correct.
+    offline_flight_cost:
+      flightInfoForLink?.offlineRawPrice != null
+        ? flightInfoForLink.offlineRawPrice *
+          (flightInfoForLink.numOfTravelers ?? 1)
         : null,
-      offline_hotel_ids: offlineHotelIdsForLink,
-      offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
-      coupon_code: coupon ? coupon.code : null,
-      coupon_discount_usd: coupon ? couponDiscountUsd : null,
-    })
+    offline_hotel_id: offlineHotelIdsForLink
+      ? offlineHotelIdsForLink[0]
+      : null,
+    offline_hotel_ids: offlineHotelIdsForLink,
+    offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
+    coupon_code: coupon ? coupon.code : null,
+    coupon_discount_usd: coupon ? couponDiscountUsd : null,
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let { data, error } = await (supabase as any)
+    .from("reservations")
+    .insert(reservationPayload)
     .select()
     .single();
+
+  if (error?.code === "42703") {
+    // The settlement-tracking columns' migration hasn't landed yet — retry
+    // without them rather than failing EVERY order confirmation (not just
+    // agent ones) on a column that doesn't exist yet.
+    const {
+      partner_settlement_method: _partnerSettlementMethod,
+      agent_card_discount_ils: _agentCardDiscountIls,
+      ...payloadWithoutSettlementColumns
+    } = reservationPayload;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ data, error } = await (supabase as any)
+      .from("reservations")
+      .insert(payloadWithoutSettlementColumns)
+      .select()
+      .single());
+  }
 
   const id = data?.id;
 
@@ -262,7 +304,19 @@ export async function POST(req: Request) {
           New Order Details:
           Name: ${validatedData.main_contact_first_name} ${validatedData.main_contact_last_name}
           Contact Details: ${validatedData.main_contact_phone_number}, ${validatedData.main_contact_email}
-          Payment Method: ${onlySave ? "24Save" : payNow ? "Credit Card" : "Phone Order"}
+          Payment Method: ${
+            onlySave
+              ? "24Save"
+              : settlement.method === "voucher"
+                ? `Voucher (awaiting from partner ${validatedData.aff_partner_tracking_code})`
+                : settlement.method === "agent_card"
+                  ? `Credit Card (agent's own — charging ₪${
+                      settlement.finalPurchasePriceIls - settlement.agentCardDiscountIls
+                    } of ₪${settlement.finalPurchasePriceIls}, net of commission)`
+                  : payNow
+                    ? "Credit Card"
+                    : "Phone Order"
+          }
           More Pax: ${validatedData.more_pax_info.length}- ${validatedData.more_pax_info.map((pax) => `${pax.first_name} ${pax.last_name}`).join("; ")}
 
           ******** Event Details ********
@@ -363,6 +417,7 @@ export async function POST(req: Request) {
           onlySave,
           partnerTrackingCode,
           orderId: id,
+          isAgentVoucherOrder: settlement.method === "voucher",
         });
 
         await supabase

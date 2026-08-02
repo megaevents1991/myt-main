@@ -14,21 +14,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > rows keep their old Contentful entry id as `slug`; that's just a string.
 > `CONTENTFUL_*` env vars are unused — safe to delete locally and on Vercel.
 
-> **🔒 TODO — SECURITY HARDENING (deferred, do carefully after redesign ships).**
-> A 2026-07 audit fixed the top breaches on branch `fix/security-hardening`
-> (payment ₪1 price-tampering floor in `app/api/confirm-order/utils.ts`; order-read
-> IDOR narrowed in `app/api/confirm-order/[id]/route.ts`). **Still open — fix
-> carefully later:**
-> - **User management / auth overhaul.** No real user layer. Partner passwords are
->   PLAINTEXT (`partners.password`, compared via `.eq()` in
->   `app/api/affiliate/login/route.ts`); every order auto-creates a partner with a
->   guessable `<code>_pass` password (`app/api/confirm-order/route.ts`). Backoffice
->   admins share ONE hardcoded env credential. Plan: unify on Supabase Auth, hash +
->   migrate, add roles. Candidate approach + file refs in Claude memory
->   (`auth-user-management-todo`).
-> - **Unauthenticated affiliate data leak.** `GET /api/affiliate/stats` &
->   `/api/affiliate/checkCode` take a guessable `?affiliateId=` with no auth → leak
->   revenue/commission. Gate on the partner session once auth exists.
+> **⚠️ `/agent` AREA DEPRECATED — partner self-service moved BACK to the
+> backoffice (2026-08-02).** Decision reversed: myt-main is for customers;
+> carrying the partner area here bloats and slows it. Agents/affiliates use
+> the backoffice's `/portal` (dashboard, links, credit, coupons, reservations,
+> quotes, and the prepared-package live-link builder). **Leave the `/agent`
+> pages, `lib/agent-*-actions`, and `lib/partner-auth` as they are — do NOT
+> build on them; they are slated for removal in a future cleanup.**
+> Three pieces are genuinely customer-facing and STAY live here permanently:
+> 1. `app/api/package/[id]` — resolves `?pkg={share_token}` links (now created
+>    from the backoffice portal) against live data.
+> 2. `confirm-order`/`payment` agent settlement (`partner_settlement_method`,
+>    `agent_card_discount_ils`, voucher flow) — runs inside customer checkout.
+> 3. `utm_source` affiliate tracking + the funnel writes.
+
+> **✅ PARTNER AUTH OVERHAUL — `/agent` (2026-07-30).** The plaintext-password,
+> React-state-only "auth" is retired. `/agent` (search, and everything future
+> partner-facing work lands under) sits behind a real Supabase Auth session —
+> HMAC-signed cookie, verified in `middleware.ts` and re-checked against the
+> live `user_profiles` row on every request, so a deactivated or demoted
+> partner can't keep riding an old cookie. `app/api/affiliate/login/route.ts`,
+> `app/hooks/AuthContext.tsx`, and the old `/partner`(`/login`) pages are gone —
+> `/partner*` now just redirects into `/agent*` for old links. `GET
+> /api/affiliate/stats` is fixed alongside it: it now 404s unless the caller's
+> session matches the requested `affiliateId`. See `lib/partner-auth/`.
+>
+> **🔒 TODO — SECURITY HARDENING, still open:**
+> - **`/api/affiliate/checkCode` still unauthenticated by design** — it backs
+>   the live customer order flow (`app/order/hooks.tsx`) for anonymous
+>   visitors carrying a `?utm_source=`/`?aff=` code in `localStorage`, so it
+>   can't require a partner session without breaking real checkouts. It does
+>   still return a guessed agent's raw `commission` %, which is more than a
+>   stranger needs to see a discount — narrowing that safely needs the
+>   client-side print-price feature reworked first, not just the route.
+> - **Auto-created partner passwords are still guessable.** Every order
+>   auto-creates a `partners` row with a `<code>_pass` password
+>   (`app/api/confirm-order/route.ts`). Unused by `/agent` (that's Supabase
+>   Auth now), but the column and the weak scheme are still there. Backoffice
+>   admins still share one hardcoded env credential. Candidate approach + file
+>   refs in Claude memory (`auth-user-management-todo`).
 > - **Order-read still keyed by sequential id** — move to an unguessable per-order token.
 > - **Revalidation secret in URL** (`/api/revalidate`, `/api/hotels`) — move to a
 >   header + rotate (cross-project: backoffice calls these).
@@ -92,6 +116,14 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_MAPBOX_TOKEN` — Mapbox maps
 - `NEXT_PUBLIC_GTM` — Google Tag Manager
 - `NEXT_PUBLIC_MIXPANEL_TOKEN` — Mixpanel analytics
+- `NEXT_SECRET_SESSION_SECRET` — **Required for the `/agent` partner area.** Signs the
+  partner session cookie (HMAC-SHA256). Unset → nobody can sign in and every partner
+  session fails closed. Rotating it invalidates all outstanding partner sessions, and
+  because middleware runs on the Edge the value is inlined at build time — rotating on
+  Vercel needs a redeploy, not just a restart.
+- `NEXT_SECRET_SUPABASE_ANON_KEY` — **Required for the `/agent` partner area.** Partner
+  sign-in verifies the password through Supabase Auth with the anon key; the service key
+  cannot do `signInWithPassword`. Server-side only — never expose it as `NEXT_PUBLIC_`.
 - `NEXT_PUBLIC_MARKUP` — Price markup (currently 175)
 - `NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT` — Safety buffer % added to the static DB price for `tx_event` tickets **only when live TixStock pricing is unavailable** (default 15). Prevents selling below the live price during a TX outage. Applied in `app/order/TicketSelection.tsx`.
 - `NEXT_PUBLIC_API_URL` — Base URL for internal API calls

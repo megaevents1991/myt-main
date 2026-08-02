@@ -30,17 +30,36 @@ export async function POST(request: Request) {
 
   // Charge the price PERSISTED for this order, never a client-supplied amount —
   // the request body used to control the charge, so anyone could pay ₪1.
-  const { data: reservation, error: reservationError } = await supabase
+  //
+  // final_purchase_price_ils is always the FULL, undiscounted total — every
+  // customer-facing surface (confirmation emails, this order's own record)
+  // reads that column, so it must never itself hold a reduced number.
+  // agent_card_discount_ils is the ONE place an agent-card settlement's
+  // commission-net reduction lives (see confirm-order/utils.ts,
+  // resolveAgentSettlement) — subtracted here, at the only place a real
+  // charge is actually decided.
+  let { data: reservation, error: reservationError } = await supabase
     .from("reservations")
-    .select("final_purchase_price_ils")
+    .select("final_purchase_price_ils, agent_card_discount_ils")
     .eq("id", orderId)
     .single();
+  if (reservationError?.code === "42703") {
+    // agent_card_discount_ils migration not deployed yet — no agent-card
+    // orders can exist either, so charging the full price is still correct.
+    ({ data: reservation, error: reservationError } = await supabase
+      .from("reservations")
+      .select("final_purchase_price_ils")
+      .eq("id", orderId)
+      .single());
+  }
 
   if (reservationError || !reservation) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  const amountIls = Number(reservation.final_purchase_price_ils);
+  const fullPriceIls = Number(reservation.final_purchase_price_ils);
+  const discountIls = Number(reservation.agent_card_discount_ils) || 0;
+  const amountIls = fullPriceIls - discountIls;
   if (!Number.isFinite(amountIls) || amountIls <= 0) {
     return NextResponse.json(
       { error: "Order has no valid amount" },

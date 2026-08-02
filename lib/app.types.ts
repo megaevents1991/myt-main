@@ -334,6 +334,14 @@ export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   quantity: number;
 };
 
+/**
+ * How an agent-entered booking gets settled — see confirm-order/utils.ts'
+ * resolveAgentSettlement. Only ever meaningful when is_agent_booking is true;
+ * absent/undefined means the normal customer-pays-full-price path.
+ */
+export const SETTLEMENT_METHODS = ["customer_card", "agent_card", "voucher"] as const;
+export type SettlementMethod = (typeof SETTLEMENT_METHODS)[number];
+
 export type OrderData = {
   payment_info?: object;
   main_contact_first_name: string;
@@ -368,6 +376,8 @@ export type OrderData = {
   final_purchase_price_ils: number;
   exchange_rate_usd_ils_100: number;
   is_agent_booking: boolean;
+  /** Client-requested settlement method; server re-verifies eligibility, never trusts it outright. */
+  settlement_method?: SettlementMethod;
   confirmation_email_sent: boolean;
   status?: string;
   /** Coupon redeemed on this order (only when it beat the affiliate discount). */

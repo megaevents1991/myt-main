@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { OrderContext } from "../app.context";
 import { cn } from "@/lib/utils";
-import type { OrderData } from "@/lib/app.types";
+import type { OrderData, SettlementMethod } from "@/lib/app.types";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,6 +38,8 @@ import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import AgentMode from "@/components/AgentMode";
 import AgentPrintSettings from "@/components/AgentPrintSettings";
+import { SavePackageLink } from "@/components/SavePackageLink";
+import type { PartnerSession } from "@/lib/partner-auth/session";
 import PrintableOrderSummary from "@/components/PrintableOrderSummary";
 import usePrintableWindow from "../hooks/usePrintableWindow";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -61,9 +63,14 @@ const TermsError = () => (
 // One line shift down, imports
 export default function OrderReview({
   onEditStep,
+  partnerSession,
 }: {
   /** Navigate to an order step to edit it; arms return-to-summary in OrderForm. */
   onEditStep?: (step: 1 | 2 | 3) => void;
+  /** Real, cookie-verified /agent session — gates "save as a package link",
+   * unlike agentCommission (below), which is only the unauthenticated
+   * localStorage/utm_source signal the print-price feature reads. */
+  partnerSession?: PartnerSession | null;
 } = {}) {
   const {
     flight: selectedFlight,
@@ -83,7 +90,7 @@ export default function OrderReview({
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
-  const { affId, affDiscount, agentCommission, setAffDiscount } =
+  const { affId, affDiscount, agentCommission, voucherPaymentAllowed, setAffDiscount } =
     useFetchAffiliate();
   const passengerCount = flightSkipped
     ? numberOfEventTickets
@@ -171,6 +178,13 @@ export default function OrderReview({
   const stickyFooterRef = useRef<HTMLDivElement>(null);
 
   const [isAgentMode, setIsAgentMode] = useState(false);
+  // How this booking gets settled when an agent is entering it on the
+  // customer's behalf. Only ever read server-side when isAgentMode is on —
+  // see the settlement_method branch in confirm-order/utils.ts. Defaults to
+  // customer_card, which is exactly today's behavior for every other order.
+  const [settlementMethod, setSettlementMethod] =
+    useState<SettlementMethod>("customer_card");
+  const [settlementError, setSettlementError] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState(() => {
     try {
       const raw = localStorage.getItem("mytData");
@@ -771,6 +785,15 @@ export default function OrderReview({
     }
 
     if (!response.ok) {
+      // Agent picked agent_card/voucher without (or no longer) holding a real
+      // /agent session for that code — surface it distinctly so the UI can
+      // fall back to customer_card instead of the generic failure modal.
+      if (response.status === 400) {
+        const body = await response.json().catch(() => null);
+        if (body?.error === "SETTLEMENT_NOT_ALLOWED") {
+          throw new Error("SETTLEMENT_NOT_ALLOWED");
+        }
+      }
       // Coupon died between "apply" and "pay" (expired/exhausted) — surface
       // it so the customer sees the corrected price instead of a silent fail.
       if (response.status === 409) {
@@ -808,6 +831,16 @@ export default function OrderReview({
     onlySave = false
   ) => {
     e.preventDefault();
+    // Voucher settlement never touches the card gateway, regardless of which
+    // CTA the agent clicked — it behaves like a phone order (Pending status,
+    // immediate confirmation email) until staff confirms the voucher arrived
+    // and flips the reservation to Paid by hand.
+    const isVoucherSettlement =
+      isAgentMode && agentCommission > 0 && settlementMethod === "voucher";
+    if (isVoucherSettlement) {
+      payNow = false;
+      onlySave = false;
+    }
     // Safety: if hold is not allowed for this event, force onlySave off
     if (onlySave && !isHoldAllowed) {
       console.log("⚠️ Hold not allowed for this event, converting to phone order");
@@ -904,6 +937,12 @@ export default function OrderReview({
       event_id: event?.id || 0,
       aff_partner_tracking_code: affId || utmParams.source || "",
       is_agent_booking: agentCommission > 0,
+      // Only meaningful when the agent is actually operating agent mode —
+      // the server independently re-verifies eligibility (voucher_payment_allowed,
+      // active agent) against the DB and never trusts this beyond "which of the
+      // eligible options did they click".
+      settlement_method:
+        isAgentMode && agentCommission > 0 ? settlementMethod : undefined,
       // Only send the coupon when it actually won (server re-validates and
       // recomputes the discount from the pre-discount total).
       coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
@@ -959,6 +998,16 @@ export default function OrderReview({
         setAppliedCoupon(null);
         setCouponInput("");
         setCouponStatus("expired");
+      } else if (error instanceof Error && error.message === "SETTLEMENT_NOT_ALLOWED") {
+        // The server re-verifies agent_card/voucher against a real /agent
+        // session — a stale login, a raw link opened without signing in, or
+        // picking someone else's code all land here. Fall back to the
+        // always-available option instead of the generic failure modal, which
+        // would wrongly tell the agent "you weren't charged, try again."
+        setSettlementMethod("customer_card");
+        setSettlementError(
+          "לא ניתן להשתמש באפשרות זו — יש להתחבר לאזור הסוכן ולנסות שוב. ההזמנה לא נשלחה.",
+        );
       } else {
         setSubmitFailed(true);
       }
@@ -1130,12 +1179,32 @@ export default function OrderReview({
             showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24")
           )}
         >
+          {partnerSession && event && (
+            <SavePackageLink
+              eventId={event.id}
+              ticket={eventTicket}
+              numberOfEventTickets={numberOfEventTickets}
+              flight={selectedFlight}
+              flightSkipped={flightSkipped}
+              hotel={selectedHotel}
+              hotelSkipped={skipHotel}
+            />
+          )}
+
           {agentCommission > 0 && (
             <div>
               <AgentMode
                 isAgentMode={isAgentMode}
                 onToggleAgentMode={() => setIsAgentMode(!isAgentMode)}
                 onPrintForClient={handlePrintForClient}
+                settlementMethod={settlementMethod}
+                onSettlementMethodChange={(method) => {
+                  setSettlementError(null);
+                  setSettlementMethod(method);
+                }}
+                agentCommissionPercent={agentCommission}
+                voucherAllowed={voucherPaymentAllowed}
+                settlementError={settlementError}
               />
 
               {isAgentMode && (
