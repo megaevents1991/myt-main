@@ -86,6 +86,8 @@ export default function OrderReview({
     skipHotel,
     flightSkipped,
   } = useContext(OrderContext);
+  // Agent-locked prepared package — the summary's edit affordances go inert.
+  const { packageLocked, setPackageLocked } = useContext(OrderContext);
   const router = useRouter();
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1044,6 +1046,9 @@ export default function OrderReview({
   const handleTimeoutModalAction = () => {
     setOpenModal(false);
     if (isTimeout) {
+      // The held package expired with the timer — restarting is a fresh,
+      // fully-editable flow, so an agent lock does not survive it.
+      setPackageLocked(false);
       setStep(1);
     }
   };
@@ -1318,7 +1323,9 @@ export default function OrderReview({
                   // Back-navigation from the summary: each section jumps to its
                   // step (1 ticket / 2 flight / 3 hotel); via onEditStep the
                   // flow returns HERE right after the edited step is confirmed.
-                  onEdit={(target) => (onEditStep ?? setStep)(target)}
+                  // A locked package passes undefined — Review then renders no
+                  // עריכה buttons and no +להוספה rows at all.
+                  onEdit={packageLocked ? undefined : (target) => (onEditStep ?? setStep)(target)}
                 />
                 {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
                 {agentCommission <= 0 && (

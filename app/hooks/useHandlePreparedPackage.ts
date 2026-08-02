@@ -25,6 +25,7 @@ export const useHandlePreparedPackage = () => {
     setGlobalLoader,
     setSkipHotel,
     setFlightSkipped,
+    setPackageLocked,
   } = useContext(OrderContext);
 
   const searchParams = useSearchParams();
@@ -53,7 +54,15 @@ export const useHandlePreparedPackage = () => {
         flight_needs_repick: boolean;
         hotel_order_info: OrderHotel | null;
         hotel_needs_repick: boolean;
+        allow_edit?: boolean;
       } = await response.json();
+
+      // Agent chose to lock the composition — the summary's edit buttons,
+      // the stepper and the slot pills go inert. A needs_repick piece still
+      // lands the visitor on its step to be picked (that never locks).
+      if (data.allow_edit === false) {
+        setPackageLocked(true);
+      }
 
       setEventTicket({
         category: data.event_order_info.category,

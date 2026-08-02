@@ -45,6 +45,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [skipFlight, setSkipFlight] = useState(false);
   const [flightSkipped, setFlightSkipped] = useState(false);
   const [returnToSummary, setReturnToSummary] = useState(false);
+  const [packageLocked, setPackageLocked] = useState(false);
 
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
@@ -52,7 +53,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
 
   const handleStepperClick = (index: number) => {
     // Edit-from-summary is a focused task — no wandering the flow mid-edit.
-    if (returnToSummary) return;
+    // An agent-locked package is not the customer's to rearrange either.
+    if (returnToSummary || packageLocked) return;
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
@@ -122,6 +124,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setFlightSkipped,
           returnToSummary,
           setReturnToSummary,
+          packageLocked,
+          setPackageLocked,
         }}
       >
         <HotelFetchProvider>
