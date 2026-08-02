@@ -169,5 +169,12 @@ export function hasAvailableTickets(event: Event): boolean {
  * @returns true if the event is sold out
  */
 export function isEventSoldOut(event: Event): boolean {
-  return !hasAvailableTickets(event) || event.tags === "Sold";
+  // A locked package sells one offline flight with no fallback, so an exhausted
+  // flight is as sold out as an exhausted ticket allocation — the card has to
+  // say so, or it sends the customer to the sold-out panel at the flight step.
+  return (
+    !hasAvailableTickets(event) ||
+    event.tags === "Sold" ||
+    event.locked_flight_sold_out === true
+  );
 }

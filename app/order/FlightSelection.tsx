@@ -656,7 +656,11 @@ export const FlightSelection = () => {
                   setDateRange={setDateRange}
                   eventDay={event?.date}
                   onPopoverClose={handleDatePopoverClose}
-                  showTooltip={true}
+                  // The tooltip opens itself on mount and invites the customer
+                  // to pick other dates. On a locked package the dates ARE the
+                  // flight's and the picker is disabled, so it was inviting an
+                  // action that cannot be taken.
+                  showTooltip={!isLockedPackage}
                   aria-label="בחר תאריכי יציאה וחזרה"
                 />
                 <button
