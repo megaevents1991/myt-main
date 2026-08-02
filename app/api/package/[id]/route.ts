@@ -111,7 +111,10 @@ export async function GET(
   // confirm-order's own price floor is still the real backstop at booking
   // time regardless.
   let flight: Flight | null = row.flight_skipped ? null : row.flight_order_info;
-  let flightNeedsRepick = false;
+  // Not skipped but nothing pinned = the agent deliberately left the flight
+  // for the customer to pick live (backoffice builder's "live" mode) — same
+  // client behavior as a stale flight: land on the flight step.
+  let flightNeedsRepick = !row.flight_skipped && !row.flight_order_info;
   if (flight) {
     if (!isInFuture(flight.outbound?.departureTime)) {
       flight = null;
@@ -134,7 +137,8 @@ export async function GET(
   // Hotel: same idea. offlineIds can cover more than one inventory row;
   // every one of them needs enough remaining rooms.
   let hotel: OrderHotel | null = row.hotel_skipped ? null : row.hotel_order_info;
-  let hotelNeedsRepick = false;
+  // Same "pick it live" semantics as the flight above.
+  let hotelNeedsRepick = !row.hotel_skipped && !row.hotel_order_info;
   if (hotel) {
     if (!isInFuture(hotel.checkin)) {
       hotel = null;
