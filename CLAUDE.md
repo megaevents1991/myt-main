@@ -14,6 +14,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > rows keep their old Contentful entry id as `slug`; that's just a string.
 > `CONTENTFUL_*` env vars are unused — safe to delete locally and on Vercel.
 
+> **⚠️ `/agent` AREA DEPRECATED — partner self-service moved BACK to the
+> backoffice (2026-08-02).** Decision reversed: myt-main is for customers;
+> carrying the partner area here bloats and slows it. Agents/affiliates use
+> the backoffice's `/portal` (dashboard, links, credit, coupons, reservations,
+> quotes, and the prepared-package live-link builder). **Leave the `/agent`
+> pages, `lib/agent-*-actions`, and `lib/partner-auth` as they are — do NOT
+> build on them; they are slated for removal in a future cleanup.**
+> Three pieces are genuinely customer-facing and STAY live here permanently:
+> 1. `app/api/package/[id]` — resolves `?pkg={share_token}` links (now created
+>    from the backoffice portal) against live data.
+> 2. `confirm-order`/`payment` agent settlement (`partner_settlement_method`,
+>    `agent_card_discount_ils`, voucher flow) — runs inside customer checkout.
+> 3. `utm_source` affiliate tracking + the funnel writes.
+
 > **✅ PARTNER AUTH OVERHAUL — `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future
 > partner-facing work lands under) sits behind a real Supabase Auth session —
