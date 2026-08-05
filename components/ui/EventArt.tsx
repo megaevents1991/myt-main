@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
@@ -123,6 +126,14 @@ export const EventArt = ({
   hoverZoom?: boolean;
 }) => {
   const fit = imageFit ?? (variant === "blob" ? "contain" : "cover");
+  // Photo variant, auto fit only: a PORTRAIT source top-anchored in a
+  // landscape card shows its empty top and beheads a bottom-weighted design
+  // (a person's pre-composed hero art borrowed by a photo-less event — the
+  // Strokes card). Portrait sources anchor center instead; landscape photos
+  // keep the head-safe object-top, and explicit imageFit callers (the hero
+  // carousel) are untouched. Measured on load — SSR renders top-anchored.
+  const autoFit = imageFit == null;
+  const [portraitPhoto, setPortraitPhoto] = useState(false);
   const art = getEventArt(id, { colorIndex, shapeIndex });
   const color = EVENT_ART_COLORS[art.colorIndex % EVENT_ART_COLORS.length];
   // Indices 6+ select a photo background instead of a blob shape.
@@ -219,10 +230,22 @@ export const EventArt = ({
             loading={priority ? undefined : loading}
             className={cn(
               fit === "contain" ? "object-contain" : "object-cover",
-              variant === "photo" ? "object-top" : "object-bottom",
+              variant === "photo"
+                ? autoFit && portraitPhoto
+                  ? "object-center"
+                  : "object-top"
+                : "object-bottom",
               imageClassName
             )}
             style={imgStyle}
+            onLoad={
+              variant === "photo" && autoFit
+                ? (e) => {
+                    const img = e.currentTarget;
+                    if (img.naturalHeight > img.naturalWidth) setPortraitPhoto(true);
+                  }
+                : undefined
+            }
           />
         </div>
       ) : null}
