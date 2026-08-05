@@ -9,4 +9,4 @@ Quick repo-wide musts. Tech depth lives in `standards/` (TS/React/Next/Supabase)
 - **No new UI/analytics libs** — use existing Mantine/shadcn + Mixpanel/GTM.
 - **Build ignores TS/ESLint errors** (next.config) — so `tsc --noEmit` is the real type gate; don't rely on `yarn build` to catch types.
 - Conventional commits (`feat(scope): …`). **Never** add an AI co-author line.
-- **Never push unprompted.** Commit if asked, then stop and report — a push waits for Dor to say "push" / run `/commit-push`. Enforced by `.claude/hooks/guard-push.js` (PreToolUse gate: every `git … push` forces an approval prompt).
+- **Never push unprompted.** Commit if asked, then stop and report — a push waits for Dor to say "push" / run `/commit-push`. Enforced by `.claude/hooks/guard-push.js`: it reads Dor's last message and blocks `git … push` outright unless he asked for it (when he did, the push runs with no prompt).
