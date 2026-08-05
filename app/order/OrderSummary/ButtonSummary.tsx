@@ -8,6 +8,7 @@ export const ButtonSummary = ({
   recommendedPriceAllPax,
   numberOfPersons,
   agentCommission,
+  isAgent,
   isNumberOfPersonsEqual,
   isSticky = false,
   affDiscount = 0,
@@ -18,6 +19,8 @@ export const ButtonSummary = ({
   recommendedPriceAllPax: number;
   numberOfPersons: number;
   agentCommission: number;
+  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  isAgent?: boolean;
   isNumberOfPersonsEqual: boolean;
   isSticky?: boolean; // when true show shorter label
   affDiscount?: number;
@@ -33,6 +36,7 @@ export const ButtonSummary = ({
     finalPurchasePrice,
     recommendedPriceAllPax,
     agentCommission,
+    isAgent,
     isNumberOfPersonsEqual,
     numberOfPersons,
     finalPurchasePriceILS,

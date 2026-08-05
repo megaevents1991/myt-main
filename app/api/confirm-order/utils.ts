@@ -17,6 +17,7 @@ import {
 } from "@/lib/events/price";
 import { supabase } from "@/lib/supabase";
 import { requireAgent } from "@/lib/partner-auth";
+import { liveVoucherBalanceUsd } from "@/lib/partner-vouchers";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -325,6 +326,15 @@ export const resolveAgentSettlement = async (
     if (requested === "voucher") {
       if (partner.voucher_payment_allowed !== true) {
         return { ok: false, reason: "Voucher payment not enabled for this partner" };
+      }
+      // A voucher order is only honest while the agent actually holds a LIVE
+      // voucher (active, unspent credit-redemption coupon) — the same gate
+      // checkCode applies to even showing the option.
+      const voucherBalance = await liveVoucherBalanceUsd(
+        data.aff_partner_tracking_code,
+      );
+      if (voucherBalance <= 0) {
+        return { ok: false, reason: "No live voucher available for this agent" };
       }
       // Full price — the voucher covers the whole sale to us; the agent's
       // commission is settled through the normal payout cycle, same as any

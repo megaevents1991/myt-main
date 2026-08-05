@@ -44,6 +44,7 @@ export const getPrices = ({
   finalPurchasePrice,
   recommendedPriceAllPax,
   agentCommission,
+  isAgent,
   isNumberOfPersonsEqual,
   numberOfPersons,
   finalPurchasePriceILS,
@@ -51,12 +52,18 @@ export const getPrices = ({
   finalPurchasePrice: number;
   recommendedPriceAllPax: number;
   agentCommission: number;
+  /** True for ANY signed agent code — commission may legitimately be 0, so
+   *  `agentCommission > 0` alone under-detects (kept as fallback default). */
+  isAgent?: boolean;
   isNumberOfPersonsEqual: boolean;
   numberOfPersons: number;
   finalPurchasePriceILS: number;
 }) => {
+  const agentViewer = isAgent ?? agentCommission > 0;
+  // The strikethrough "recommended price" framing is retail-customer-only —
+  // agents (any commission, including 0) never see it.
   const originalNoDiscount =
-    agentCommission <= 0 &&
+    !agentViewer &&
     isNumberOfPersonsEqual &&
     recommendedPriceAllPax > finalPurchasePrice
       ? recommendedPriceAllPax

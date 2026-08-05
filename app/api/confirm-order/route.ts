@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Coupon, OrderData } from "@/lib/app.types";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
+import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
 import {
   validateOrderData,
   validatePurchasePriceFloor,
@@ -255,6 +256,43 @@ export async function POST(req: Request) {
 
   // Order saved — count the redemption (soft limit; failure is non-fatal).
   if (coupon) await incrementCouponUse(coupon);
+
+  // Voucher settlement SPENDS a live voucher: mark the agent's oldest one
+  // used and record it on the reservation like an applied coupon, so (a) one
+  // voucher can't gate unlimited orders, and (b) the backoffice credit ledger
+  // settles it exactly like any credit coupon (spent when Paid, value
+  // returned if the order is abandoned). Runs after the insert so a failed
+  // order never burns a voucher; done best-effort — an order must not die
+  // over the bookkeeping.
+  if (settlement.method === "voucher" && validatedData.aff_partner_tracking_code) {
+    try {
+      const voucher = await consumeOldestLiveVoucher(
+        validatedData.aff_partner_tracking_code,
+      );
+      if (voucher) {
+        await supabase
+          .from("reservations")
+          .update({
+            coupon_code: voucher.code,
+            coupon_discount_usd: Math.min(
+              voucher.valueUsd,
+              Number(validatedData.user_shown_price) || voucher.valueUsd,
+            ),
+          })
+          .eq("id", id);
+      } else {
+        // Balance was verified moments ago in resolveAgentSettlement — this
+        // is either a race with another voucher order or data drift. The
+        // order stands; staff see the settlement marker and chase the voucher.
+        console.error(
+          "voucher settlement: no live voucher left to consume for",
+          validatedData.aff_partner_tracking_code,
+        );
+      }
+    } catch (e) {
+      console.error("voucher settlement: consume failed —", e);
+    }
+  }
 
   // Generate referral tracking code only for non-agent bookings
   let partnerTrackingCode = "dummy_code";

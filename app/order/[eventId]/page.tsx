@@ -10,6 +10,7 @@ import { hasAvailableTickets } from "@/lib/utils";
 import { normalizeName } from "@/lib/eventNameMatch";
 import Link from "next/link";
 import { getPartnerSession } from "@/lib/partner-auth";
+import ClientTracker from "@/components/ClientTracker";
 
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
@@ -204,6 +205,10 @@ export default async function OrderPageWithId({
 
   return (
     <OrderErrorBoundary>
+      {/* Records a VISIT (with path) for partner-attributed traffic. Order
+          pages had no tracker, so package deep-links never counted as a
+          visit — the backoffice entry funnels rely on this. */}
+      <ClientTracker />
       <OrderPageClient
         initialEvent={event}
         eventId={eventId}

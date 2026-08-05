@@ -92,8 +92,19 @@ export default function OrderReview({
   const { isMobile } = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
-  const { affId, affDiscount, agentCommission, voucherPaymentAllowed, setAffDiscount } =
-    useFetchAffiliate();
+  const {
+    affId,
+    affDiscount,
+    affType,
+    agentCommission,
+    voucherPaymentAllowed,
+    voucherBalanceUsd,
+    setAffDiscount,
+  } = useFetchAffiliate();
+  // ANY signed agent code enables the agent tools — commission may legitimately
+  // be 0 (the agent then just pays/charges full price). The old
+  // `agentCommission > 0` gate hid the whole panel from 0-commission agents.
+  const isAgentVisitor = affType === "agent";
   const passengerCount = flightSkipped
     ? numberOfEventTickets
     : selectedFlight?.numOfTravelers || 1;
@@ -466,7 +477,7 @@ export default function OrderReview({
     // Only for non-agent bookings, only when initial info modal is closed, and if offer is allowed.
     // Ticket-only orders (flight skipped) never get the extra inactivity discount.
     if (
-      agentCommission > 0 ||
+      isAgentVisitor ||
       openModal ||
       !isSpecialOfferAllowed ||
       isPercentageAffiliateDiscount ||
@@ -509,7 +520,7 @@ export default function OrderReview({
       }
     };
   }, [
-    agentCommission,
+    isAgentVisitor,
     openModal,
     isSpecialOfferAllowed,
     affiliateDiscountPerTicketUsd,
@@ -688,7 +699,7 @@ export default function OrderReview({
   // discount the customer ALREADY has — accepting the offer must not raise the
   // price (an affiliate at $100/ticket used to be replaced by the flat 80).
   const specialOfferDiscountPerPerson = useMemo(() => {
-    if (agentCommission > 0) return 0;
+    if (isAgentVisitor) return 0;
     const offer =
       affiliateDiscountPerTicketUsd > 50
         ? 80
@@ -696,7 +707,7 @@ export default function OrderReview({
           ? affiliateDiscountPerTicketUsd * 1.5
           : 50;
     return Math.max(offer, affiliateDiscountPerTicketUsd);
-  }, [affiliateDiscountPerTicketUsd, agentCommission]);
+  }, [affiliateDiscountPerTicketUsd, isAgentVisitor]);
 
   // Calculate total discount for all tickets
   const specialOfferTotalDiscount = specialOfferDiscountPerPerson * numberOfEventTickets;
@@ -838,7 +849,7 @@ export default function OrderReview({
     // immediate confirmation email) until staff confirms the voucher arrived
     // and flips the reservation to Paid by hand.
     const isVoucherSettlement =
-      isAgentMode && agentCommission > 0 && settlementMethod === "voucher";
+      isAgentMode && isAgentVisitor && settlementMethod === "voucher";
     if (isVoucherSettlement) {
       payNow = false;
       onlySave = false;
@@ -938,13 +949,13 @@ export default function OrderReview({
       final_purchase_price_ils: finalPurchasePriceILS,
       event_id: event?.id || 0,
       aff_partner_tracking_code: affId || utmParams.source || "",
-      is_agent_booking: agentCommission > 0,
+      is_agent_booking: isAgentVisitor,
       // Only meaningful when the agent is actually operating agent mode —
       // the server independently re-verifies eligibility (voucher_payment_allowed,
       // active agent) against the DB and never trusts this beyond "which of the
       // eligible options did they click".
       settlement_method:
-        isAgentMode && agentCommission > 0 ? settlementMethod : undefined,
+        isAgentMode && isAgentVisitor ? settlementMethod : undefined,
       // Only send the coupon when it actually won (server re-validates and
       // recomputes the discount from the pre-discount total).
       coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
@@ -973,7 +984,7 @@ export default function OrderReview({
         affiliateId: affId,
         couponCode: couponWins && appliedCoupon ? appliedCoupon.code : null,
         couponDiscount: couponWins ? couponDiscountUsd : 0,
-        isAgentBooking: agentCommission > 0,
+        isAgentBooking: isAgentVisitor,
         eventTags: event.tags,
         eventId: event.id,
         eventName: event.name,
@@ -1059,7 +1070,7 @@ export default function OrderReview({
       return;
 
     setSpecialOfferOpen(false);
-    if (agentCommission <= 0) {
+    if (!isAgentVisitor) {
       setAffDiscount(specialOfferDiscountPerPerson);
     }
   };
@@ -1124,7 +1135,7 @@ export default function OrderReview({
           </Button>
         }
         opened={
-          agentCommission <= 0 &&
+          !isAgentVisitor &&
           specialOfferOpen &&
           isSpecialOfferAllowed &&
           !isPercentageAffiliateDiscount &&
@@ -1196,7 +1207,7 @@ export default function OrderReview({
             />
           )}
 
-          {agentCommission > 0 && (
+          {isAgentVisitor && (
             <div>
               <AgentMode
                 isAgentMode={isAgentMode}
@@ -1209,6 +1220,7 @@ export default function OrderReview({
                 }}
                 agentCommissionPercent={agentCommission}
                 voucherAllowed={voucherPaymentAllowed}
+                voucherBalanceUsd={voucherBalanceUsd}
                 settlementError={settlementError}
               />
 
@@ -1301,6 +1313,7 @@ export default function OrderReview({
                     recommendedPriceAllPax={recommendedPriceAllPax}
                     numberOfPersons={numberOfPersons}
                     agentCommission={agentCommission}
+                    isAgent={isAgentVisitor}
                     affDiscount={effectiveDiscountTotalUsd}
                     isCouponDiscount={couponWins}
                     isNumberOfPersonsEqual={isNumberOfPersonsEqual}
@@ -1316,6 +1329,7 @@ export default function OrderReview({
                   hotelPriceAddition={hotelPriceAddition}
                   totalGuests={totalGuests}
                   agentCommission={agentCommission}
+                  isAgent={isAgentVisitor}
                   airlineFullName={airlineFullName}
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
@@ -1328,7 +1342,7 @@ export default function OrderReview({
                   onEdit={packageLocked ? undefined : (target) => (onEditStep ?? setStep)(target)}
                 />
                 {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
-                {agentCommission <= 0 && (
+                {!isAgentVisitor && (
                   <div dir="rtl" className="px-6 py-4 border-t border-border">
                     {appliedCoupon && couponStatus === "applied" ? (
                       <div className="flex items-center justify-between gap-2">
@@ -2053,7 +2067,7 @@ export default function OrderReview({
                 </div>
               </Card>
               {/* Trust */}
-              {agentCommission <= 0 && (
+              {!isAgentVisitor && (
                 <Card
                   className="bg-card text-card-foreground shadow-lg overflow-hidden order-4 md:order-3 hidden md:block"
                   dir="rtl"
@@ -2240,6 +2254,7 @@ export default function OrderReview({
                   recommendedPriceAllPax={recommendedPriceAllPax}
                   numberOfPersons={numberOfPersons}
                   agentCommission={agentCommission}
+                  isAgent={isAgentVisitor}
                   isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                   isSticky={false}
                     affDiscount={effectiveDiscountTotalUsd}
@@ -2336,6 +2351,7 @@ export default function OrderReview({
                 recommendedPriceAllPax={recommendedPriceAllPax}
                 numberOfPersons={numberOfPersons}
                 agentCommission={agentCommission}
+                isAgent={isAgentVisitor}
                 isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                 isSticky
                 affDiscount={effectiveDiscountTotalUsd}

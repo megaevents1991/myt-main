@@ -4,6 +4,7 @@ export const EventSummary = ({
   numberOfEventTickets,
   eventTicket,
   agentCommission,
+  isAgent,
   eventTicketPriceAddition,
 }: {
   numberOfEventTickets: number;
@@ -12,8 +13,13 @@ export const EventSummary = ({
     description?: string;
   };
   agentCommission: number;
+  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  isAgent?: boolean;
   eventTicketPriceAddition: number;
 }) => {
+  // The per-item price-addition breakdown is retail-customer-only — hidden
+  // from every agent, including 0%-commission ones.
+  const agentViewer = isAgent ?? agentCommission > 0;
   return (
     <div className="">
       <h3 className="font-bold text-lg hidden md:block">
@@ -34,7 +40,7 @@ export const EventSummary = ({
             <div className="ml-1">
               {eventTicket.category}
             </div>
-            {agentCommission <= 0 && (
+            {!agentViewer && (
               <div>
                 {eventTicketPriceAddition ? (
                   <>
@@ -51,7 +57,7 @@ export const EventSummary = ({
               {eventTicket.description}
             </p>
           </div>
-          {agentCommission <= 0 && (
+          {!agentViewer && (
             <div>
               {eventTicketPriceAddition
                 ? formatPrice(eventTicketPriceAddition, {

@@ -8,12 +8,16 @@ export const FlightSummary = ({
   airlineFullName,
   flightPriceAddition,
   agentCommission,
+  isAgent,
 }: {
   selectedFlight: Flight;
   airlineFullName?: string;
   flightPriceAddition: number;
   agentCommission: number;
+  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  isAgent?: boolean;
 }) => {
+  const agentViewer = isAgent ?? agentCommission > 0;
   return (
     <div className="">
       <h3 className="font-bold text-lg hidden md:block">
@@ -45,7 +49,7 @@ export const FlightSummary = ({
             </div>
           </div>
         </div>
-        {agentCommission <= 0 && (
+        {!agentViewer && (
           <div>
             {formatPrice(flightPriceAddition)
               ? formatPrice(flightPriceAddition, {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getEvents } from "@/lib/eventsData";
 import { isEventSoldOut } from "@/lib/events/price";
+import { getPartnerSession } from "@/lib/partner-auth";
 import type { Flight, OrderHotel } from "@/lib/app.types";
 
 /**
@@ -37,6 +38,7 @@ type PreparedPackageRow = {
   hotel_skipped: boolean;
   num_travelers: number;
   allow_edit?: boolean | null;
+  partner_tracking_code?: string | null;
 };
 
 function isInFuture(dateStr: string | undefined | null): boolean {
@@ -55,7 +57,7 @@ export async function GET(
   }
 
   const PACKAGE_COLUMNS =
-    "event_id, event_order_info, flight_order_info, flight_skipped, hotel_order_info, hotel_skipped, num_travelers";
+    "event_id, event_order_info, flight_order_info, flight_skipped, hotel_order_info, hotel_skipped, num_travelers, partner_tracking_code";
 
   let { data, error } = await supabase
     .from("prepared_packages")
@@ -182,6 +184,20 @@ export async function GET(
     }
   }
 
+  // The lock binds the CUSTOMER to the composition — never its own author.
+  // An agent opening their package through the partner-handoff (ordering on a
+  // customer's behalf) keeps full editing, locked or not.
+  let isOwner = false;
+  try {
+    const partnerSession = await getPartnerSession();
+    isOwner =
+      !!partnerSession &&
+      !!row.partner_tracking_code &&
+      partnerSession.partner_code === row.partner_tracking_code;
+  } catch {
+    isOwner = false;
+  }
+
   return NextResponse.json({
     event_id: row.event_id,
     event_order_info: eventOrderInfo,
@@ -190,6 +206,6 @@ export async function GET(
     hotel_order_info: hotel,
     hotel_needs_repick: hotelNeedsRepick,
     num_travelers: row.num_travelers,
-    allow_edit: row.allow_edit !== false,
+    allow_edit: isOwner || row.allow_edit !== false,
   });
 }
