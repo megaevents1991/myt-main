@@ -1221,6 +1221,7 @@ export default function OrderReview({
                 agentCommissionPercent={agentCommission}
                 voucherAllowed={voucherPaymentAllowed}
                 voucherBalanceUsd={voucherBalanceUsd}
+                finalPurchasePriceUsd={finalPurchasePrice}
                 settlementError={settlementError}
               />
 
