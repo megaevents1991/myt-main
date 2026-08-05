@@ -32,6 +32,7 @@ import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiltersModal } from "@/components/ui/FiltersModal";
 import { prepareFlightsData } from "@/lib/prepareFlightsData";
+import { ISRAELI_AIRLINE_CODES } from "@/lib/flightCarriers";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import dayjs from "dayjs";
@@ -146,6 +147,10 @@ export const FlightSelection = () => {
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
+  // fetchFlights reads this AFTER awaiting the network — the state its closure
+  // captured at call time may be stale by then (the customer can switch tabs
+  // while a search is in flight).
+  const isIsraeliFilterRef = useRef(false);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(event.def_date_depart),
     new Date(event.def_date_return),
@@ -295,8 +300,18 @@ export const FlightSelection = () => {
       const { airlines, maxDuration, minDuration, maxPrice, minPrice } =
         prepareFlightsData(flights);
 
+      // A new search rebuilds every filter from the fresh results, but the
+      // ישראלי tab is a standing choice, not a per-search checkbox — keep
+      // honoring it, or every foreign airline floods back under a
+      // still-highlighted tab (and the isIsraeliFilter guard in
+      // handleSortTabChange then swallows the re-click that tries to restore
+      // it).
+      const airlineSelection = isIsraeliFilterRef.current
+        ? [...ISRAELI_AIRLINE_CODES]
+        : airlines;
+
       const filteredFlights = applyFiltersAndSorting(flights, {
-        airline: airlines,
+        airline: airlineSelection,
         sortOption,
         flightDuration: maxDuration,
         departureRanges: [],
@@ -323,7 +338,7 @@ export const FlightSelection = () => {
       });
       setFilters((prev) => ({
         ...prev,
-        airline: airlines,
+        airline: airlineSelection,
         directOnly,
       }));
       setFlights(flights);
@@ -469,10 +484,12 @@ export const FlightSelection = () => {
       const wantIsraeli = next === "israeli";
       if (wantIsraeli !== isIsraeliFilter) {
         setIsIsraeliFilter(wantIsraeli);
-        const israeliAirlines = ["LY", "6H", "IZ", "BZ", "U8"];
+        isIsraeliFilterRef.current = wantIsraeli;
         handleFlightSearchCriteriaChange({
           type: "airline",
-          value: wantIsraeli ? israeliAirlines : airlines.map((a) => a.value),
+          value: wantIsraeli
+            ? [...ISRAELI_AIRLINE_CODES]
+            : airlines.map((a) => a.value),
         });
       }
     },
