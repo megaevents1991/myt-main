@@ -38,6 +38,7 @@ import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import AgentMode from "@/components/AgentMode";
 import AgentPrintSettings from "@/components/AgentPrintSettings";
+import { PartnerReferralBadge } from "@/components/PartnerReferralBadge";
 import { SavePackageLink } from "@/components/SavePackageLink";
 import type { PartnerSession } from "@/lib/partner-auth/session";
 import PrintableOrderSummary from "@/components/PrintableOrderSummary";
@@ -257,12 +258,54 @@ export default function OrderReview({
     [couponDiscountUsd, getAffiliateDiscountTotalUsd, affDiscount]
   );
 
+  // Agent quote link (?quote&qsig): the offer's content and total, verified
+  // server-side by signature (/api/quote-offer). While valid and the customer
+  // hasn't edited the composition, the AGENT'S total is the price — dearer
+  // than site price sends the delta to the agent, cheaper comes out of their
+  // commission (the doc's rule); the confirm-order floor, already relaxed by
+  // that partner's commission, still backstops gross underpricing.
+  type QuoteOffer = {
+    id: number;
+    title: string | null;
+    customer_name: string | null;
+    line_items: { label: string; qty: number; unit_price: number }[];
+    total_usd: number;
+    valid_until: string | null;
+    expired: boolean;
+  };
+  const [quoteOffer, setQuoteOffer] = useState<QuoteOffer | null>(null);
+  // Editing any component invalidates the quoted composition — price reverts
+  // to live site pricing (the offer card stays visible for reference).
+  const [quotePriceDropped, setQuotePriceDropped] = useState(false);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const quoteId = params.get("quote");
+      const qsig = params.get("qsig");
+      if (!quoteId || !qsig) return;
+      fetch(`/api/quote-offer?quote=${encodeURIComponent(quoteId)}&qsig=${encodeURIComponent(qsig)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && typeof data.total_usd === "number") setQuoteOffer(data);
+        })
+        .catch(() => {});
+    } catch {
+      /* malformed URL — plain flow */
+    }
+  }, []);
+  const quotePriceActive =
+    !!quoteOffer && !quoteOffer.expired && !quotePriceDropped && quoteOffer.total_usd > 0;
+
   const finalPurchasePrice = useMemo(
     () =>
-      couponWins
-        ? Math.max(0, Math.ceil(baseTotalUsd - couponDiscountUsd))
-        : finalPurchasePriceCalc(affDiscount),
+      quotePriceActive && quoteOffer
+        ? Math.ceil(quoteOffer.total_usd)
+        : couponWins
+          ? Math.max(0, Math.ceil(baseTotalUsd - couponDiscountUsd))
+          : finalPurchasePriceCalc(affDiscount),
     [
+      quotePriceActive,
+      quoteOffer,
       couponWins,
       baseTotalUsd,
       couponDiscountUsd,
@@ -1081,6 +1124,7 @@ export default function OrderReview({
     <div className="min-h-screen bg-background flex flex-col items-center">
       {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} skipHotel={skipHotel} />}
 
+      <PartnerReferralBadge />
       <div className="sr-only">
         <h1>סיכום הזמנה לאירוע {event?.name}</h1>
         <p>
@@ -1236,6 +1280,65 @@ export default function OrderReview({
               )}
             </div>
           )}
+          {/* Agent quote offer — the שובר/הצעה the customer arrived with. */}
+          {quoteOffer && (
+            <div
+              dir="rtl"
+              className={`mb-4 rounded-lg border p-4 shadow ${
+                quoteOffer.expired ? "border-red-300 bg-red-50" : "border-main/30 bg-white"
+              }`}
+            >
+              {quoteOffer.expired ? (
+                <p className="text-sm font-bold text-red-700">
+                  ההצעה הזו כבר אינה בתוקף
+                  {quoteOffer.valid_until && (
+                    <span className="font-normal">
+                      {" "}
+                      (הייתה תקפה עד{" "}
+                      {new Date(quoteOffer.valid_until).toLocaleDateString("he-IL")})
+                    </span>
+                  )}{" "}
+                  — המחירים המוצגים באתר הם המחירים העדכניים.
+                </p>
+              ) : (
+                <>
+                  <p className="font-bold">
+                    {quoteOffer.title || "הצעת מחיר אישית"}
+                    {quoteOffer.customer_name && (
+                      <span className="mr-1 font-normal text-gray-600">
+                        · עבור {quoteOffer.customer_name}
+                      </span>
+                    )}
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-gray-700">
+                    {quoteOffer.line_items.map((item, i) => (
+                      <li key={i} className="flex justify-between gap-3">
+                        <span className="min-w-0 truncate">
+                          {item.label}
+                          {item.qty > 1 && ` × ${item.qty}`}
+                        </span>
+                        <span className="shrink-0 tabular-nums" dir="ltr">
+                          ${(item.qty * item.unit_price).toLocaleString("en-US")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 border-t pt-2 text-sm font-bold">
+                    סה&quot;כ ההצעה:{" "}
+                    <span className="tabular-nums" dir="ltr">
+                      ${Math.ceil(quoteOffer.total_usd).toLocaleString("en-US")}
+                    </span>
+                    {quotePriceDropped && (
+                      <span className="mr-2 font-normal text-amber-700">
+                        (החבילה שונתה — המחיר עודכן לתמחור האתר)
+                      </span>
+                    )}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-4 items-start">
             <div className="space-y-4 order-1 md:order-2">
               <Card className="bg-card text-card-foreground shadow-lg overflow-hidden">
@@ -1340,7 +1443,16 @@ export default function OrderReview({
                   // flow returns HERE right after the edited step is confirmed.
                   // A locked package passes undefined — Review then renders no
                   // עריכה buttons and no +להוספה rows at all.
-                  onEdit={packageLocked ? undefined : (target) => (onEditStep ?? setStep)(target)}
+                  onEdit={
+                    packageLocked
+                      ? undefined
+                      : (target) => {
+                          // A quoted price covers the composition AS OFFERED —
+                          // editing reverts to live site pricing.
+                          setQuotePriceDropped(true);
+                          (onEditStep ?? setStep)(target);
+                        }
+                  }
                 />
                 {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
                 {!isAgentVisitor && (

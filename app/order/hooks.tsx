@@ -370,6 +370,8 @@ export function useFetchAffiliate() {
   const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
   const [voucherPaymentAllowed, setVoucherPaymentAllowed] = useState(false);
   const [voucherBalanceUsd, setVoucherBalanceUsd] = useState(0);
+  const [partnerLogoUrl, setPartnerLogoUrl] = useState<string | null>(null);
+  const [partnerDisplayName, setPartnerDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     let affiliateData;
@@ -401,6 +403,8 @@ export function useFetchAffiliate() {
         .then((res) => res.json())
         .then((data) => {
           if (data) {
+            setPartnerLogoUrl(data.partnerLogoUrl ?? null);
+            setPartnerDisplayName(data.partnerDisplayName ?? null);
             if (data.type === "agent") {
               setAgentCommission(data.commission);
               setAffType("agent");
@@ -428,6 +432,8 @@ export function useFetchAffiliate() {
     agentCommission,
     voucherPaymentAllowed,
     voucherBalanceUsd,
+    partnerLogoUrl,
+    partnerDisplayName,
     // expose setter to allow contextual promos (e.g., inactivity special offer)
     setAffDiscount,
   };

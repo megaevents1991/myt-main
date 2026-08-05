@@ -49,7 +49,27 @@ export async function GET(request: Request) {
         data.type === "agent" && voucherApproved
           ? await liveVoucherBalanceUsd(data.partner_tracking_code)
           : 0;
+      // The partner's logo lives on their PORTAL profile (user_profiles),
+      // not the partners row — shown on the customer's landing page so an
+      // agent-referred visitor sees who sent them.
+      let partnerLogoUrl: string | null = null;
+      let partnerDisplayName: string | null = null;
+      try {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("logo_url, display_name")
+          .eq("partner_tracking_code", data.partner_tracking_code)
+          .in("role", ["agent", "affiliate"])
+          .maybeSingle();
+        partnerLogoUrl = (profile as { logo_url?: string | null } | null)?.logo_url ?? null;
+        partnerDisplayName =
+          (profile as { display_name?: string | null } | null)?.display_name ?? null;
+      } catch {
+        /* decoration only — never fail the code check over it */
+      }
       return NextResponse.json({
+        partnerLogoUrl,
+        partnerDisplayName,
         discount: data.user_discount || 0,
         commission: data.commission || 0,
         type: data.type,
