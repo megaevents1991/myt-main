@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { liveVoucherBalanceUsd } from "@/lib/partner-vouchers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -34,8 +35,20 @@ export async function GET(request: Request) {
     if ((data as { is_active?: boolean } | null)?.is_active === false)
       return NextResponse.json({ });
 
-    // Return data if it has either discount OR commission (for agents)
-    if (data && (data?.user_discount || data?.commission))
+    // Agents get their tools regardless of commission (it may legitimately be
+    // 0 — they then just charge full price); affiliates still need a discount
+    // to matter.
+    if (data && (data?.user_discount || data?.commission || data?.type === "agent")) {
+      // Voucher payment requires BOTH the staff approval flag AND a live
+      // voucher to actually pay with — an active, unspent coupon minted from
+      // the agent's portal credit. resolveAgentSettlement re-checks both.
+      const voucherApproved =
+        (data as { voucher_payment_allowed?: boolean }).voucher_payment_allowed ===
+        true;
+      const voucherBalanceUsd =
+        data.type === "agent" && voucherApproved
+          ? await liveVoucherBalanceUsd(data.partner_tracking_code)
+          : 0;
       return NextResponse.json({
         discount: data.user_discount || 0,
         commission: data.commission || 0,
@@ -43,11 +56,10 @@ export async function GET(request: Request) {
         // Agent-only, and only meaningful once the order flow's own agent-mode
         // gate is on — see lib/partner-auth's requireAgent doc comment on why
         // this exists at all (booking on a customer's behalf, voucher payment).
-        voucherPaymentAllowed:
-          (data as { voucher_payment_allowed?: boolean }).voucher_payment_allowed ===
-          true,
+        voucherPaymentAllowed: voucherApproved && voucherBalanceUsd > 0,
+        voucherBalanceUsd,
       });
-    else
+    } else
     return NextResponse.json({ });
   } catch (e) {
     console.log("Failed to login:", e);

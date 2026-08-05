@@ -8,14 +8,18 @@ interface AgentModeProps {
   settlementMethod: SettlementMethod;
   onSettlementMethodChange: (method: SettlementMethod) => void;
   agentCommissionPercent: number;
+  /** True only when the agent BOTH is approved for voucher payment AND holds a
+   *  live voucher (active, unspent credit-redemption coupon) — see checkCode. */
   voucherAllowed: boolean;
+  /** Live voucher value in USD, shown in the voucher option's hint. */
+  voucherBalanceUsd?: number;
   settlementError?: string | null;
 }
 
 const SETTLEMENT_OPTIONS: Array<{
   value: SettlementMethod;
   label: string;
-  hint: (commissionPercent: number) => string;
+  hint: (commissionPercent: number, voucherBalanceUsd: number) => string;
   agentOnlyFeature?: boolean;
 }> = [
   {
@@ -27,13 +31,19 @@ const SETTLEMENT_OPTIONS: Array<{
     value: "agent_card",
     label: "אשראי שלי (הסוכן)",
     hint: (p) =>
-      `אתה מזין את פרטי האשראי שלך. יחויב עלות בניקוי העמלה שלך (${p}%) — את הסכום המלא תגבה מהלקוח בנפרד.`,
+      p > 0
+        ? `אתה מזין את פרטי האשראי שלך. יחויב עלות בניקוי העמלה שלך (${p}%) — את הסכום המלא תגבה מהלקוח בנפרד.`
+        : "אתה מזין את פרטי האשראי שלך במחיר המלא — את הסכום תגבה מהלקוח בנפרד.",
   },
   {
     value: "voucher",
     label: "תשלום בשובר",
-    hint: () =>
-      "ההזמנה תישאר ממתינה לאישור עד שהשובר יתקבל אצלנו — לא יבוצע חיוב אשראי.",
+    hint: (_p, voucherBalanceUsd) =>
+      `${
+        voucherBalanceUsd > 0
+          ? `יש לך שובר פעיל בסך $${Math.round(voucherBalanceUsd).toLocaleString("en-US")}. `
+          : ""
+      }ההזמנה תישאר ממתינה לאישור עד שהשובר ייגבה אצלנו — לא יבוצע חיוב אשראי.`,
     agentOnlyFeature: true,
   },
 ];
@@ -43,11 +53,13 @@ function SettlementMethodPicker({
   onSettlementMethodChange,
   agentCommissionPercent,
   voucherAllowed,
+  voucherBalanceUsd = 0,
 }: {
   settlementMethod: SettlementMethod;
   onSettlementMethodChange: (method: SettlementMethod) => void;
   agentCommissionPercent: number;
   voucherAllowed: boolean;
+  voucherBalanceUsd?: number;
 }) {
   const options = SETTLEMENT_OPTIONS.filter(
     (opt) => !opt.agentOnlyFeature || voucherAllowed,
@@ -74,7 +86,9 @@ function SettlementMethodPicker({
           </button>
         ))}
       </div>
-      <p className="text-xs text-gray-500">{active.hint(agentCommissionPercent)}</p>
+      <p className="text-xs text-gray-500">
+        {active.hint(agentCommissionPercent, voucherBalanceUsd)}
+      </p>
     </div>
   );
 }
@@ -87,6 +101,7 @@ function AgentMode({
   onSettlementMethodChange,
   agentCommissionPercent,
   voucherAllowed,
+  voucherBalanceUsd,
   settlementError,
 }: AgentModeProps) {
   return (
@@ -133,6 +148,7 @@ function AgentMode({
             onSettlementMethodChange={onSettlementMethodChange}
             agentCommissionPercent={agentCommissionPercent}
             voucherAllowed={voucherAllowed}
+            voucherBalanceUsd={voucherBalanceUsd}
           />
           {settlementError && (
             <p className="text-sm font-medium text-red-600" role="alert">

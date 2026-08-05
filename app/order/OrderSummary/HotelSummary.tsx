@@ -5,14 +5,18 @@ import dayjs from "dayjs";
 export const HotelSummary = ({
   selectedHotel,
   agentCommission,
+  isAgent,
   hotelPriceAddition,
   totalGuests,
 }: {
   selectedHotel: OrderHotel;
   agentCommission: number;
+  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  isAgent?: boolean;
   hotelPriceAddition: number;
   totalGuests: number;
 }) => {
+  const agentViewer = isAgent ?? agentCommission > 0;
   return (
     <div className="">
       <h3 className="font-bold text-lg hidden md:block">
@@ -37,7 +41,7 @@ export const HotelSummary = ({
             : selectedHotel.rate?.room_data_trans?.main_name}
         </p>
         </div>
-        {agentCommission <= 0 && (
+        {!agentViewer && (
           <div>
             {hotelPriceAddition
               ? formatPrice(hotelPriceAddition, {

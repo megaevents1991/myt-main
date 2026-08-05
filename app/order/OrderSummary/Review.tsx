@@ -11,6 +11,7 @@ import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
 
 export const Review = ({
   agentCommission,
+  isAgent,
   hotelPriceAddition,
   totalGuests,
   numberOfEventTickets,
@@ -26,6 +27,8 @@ export const Review = ({
   onEdit,
 }: {
   agentCommission: number;
+  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  isAgent?: boolean;
   hotelPriceAddition: number;
   totalGuests: number;
   numberOfEventTickets: number;
@@ -58,6 +61,7 @@ export const Review = ({
             numberOfEventTickets={numberOfEventTickets}
             eventTicket={eventTicket}
             agentCommission={agentCommission}
+            isAgent={isAgent}
             eventTicketPriceAddition={eventTicketPriceAddition}
           />
         ),
@@ -77,6 +81,7 @@ export const Review = ({
             key={"hotel-summary"}
             selectedHotel={selectedHotel}
             agentCommission={agentCommission}
+            isAgent={isAgent}
             hotelPriceAddition={hotelPriceAddition}
             totalGuests={totalGuests}
           />
@@ -93,6 +98,7 @@ export const Review = ({
           <FlightSummary
             key={"flight-summary"}
             agentCommission={agentCommission}
+            isAgent={isAgent}
             airlineFullName={airlineFullName}
             flightPriceAddition={flightPriceAddition}
             selectedFlight={selectedFlight}
@@ -104,6 +110,7 @@ export const Review = ({
       numberOfEventTickets,
       eventTicket,
       agentCommission,
+      isAgent,
       eventTicketPriceAddition,
       selectedHotel,
       hotelPriceAddition,

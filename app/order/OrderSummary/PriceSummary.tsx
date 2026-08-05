@@ -7,6 +7,7 @@ export const PriceSummary = ({
   recommendedPriceAllPax,
   numberOfPersons,
   agentCommission,
+  isAgent,
   affDiscount,
   isCouponDiscount = false,
   isNumberOfPersonsEqual,
@@ -16,12 +17,15 @@ export const PriceSummary = ({
   recommendedPriceAllPax: number;
   numberOfPersons: number;
   agentCommission: number;
+  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  isAgent?: boolean;
   // Total winning discount in USD (affiliate or coupon — best one wins)
   affDiscount: number;
   // true when the winning discount came from a coupon (changes the label)
   isCouponDiscount?: boolean;
   isNumberOfPersonsEqual: boolean;
 }) => {
+  const agentViewer = isAgent ?? agentCommission > 0;
   const {
     originalNoDiscount,
     pricePerPerson,
@@ -30,6 +34,7 @@ export const PriceSummary = ({
     finalPurchasePrice,
     recommendedPriceAllPax,
     agentCommission,
+    isAgent: agentViewer,
     isNumberOfPersonsEqual,
     numberOfPersons,
     finalPurchasePriceILS,
@@ -41,13 +46,17 @@ export const PriceSummary = ({
     <div dir="rtl" className="flex flex-row justify-between items-center py-4 px-6 border-b border-border">
       <div className="flex flex-col items-start font-bold">
         <span className="text-[22px] ">סה&quot;כ</span>
-        {agentCommission > 0 ? (
-          <span className="text-[14px] tabular-nums text-success">
-            עמלה צפויה $
-            {((agentCommission / 100) * finalPurchasePrice).toLocaleString(
-              "en-US"
-            )}
-          </span>
+        {agentViewer ? (
+          // Agent framing: expected commission, or nothing for a 0% agent —
+          // never the customer's discount line.
+          agentCommission > 0 && (
+            <span className="text-[14px] tabular-nums text-success">
+              עמלה צפויה $
+              {((agentCommission / 100) * finalPurchasePrice).toLocaleString(
+                "en-US"
+              )}
+            </span>
+          )
         ) : (
           affDiscount > 0 && (
             <span className="text-[14px] tabular-nums text-success">

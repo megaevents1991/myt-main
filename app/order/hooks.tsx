@@ -369,6 +369,7 @@ export function useFetchAffiliate() {
   const [affId, setAffId] = useState<string | null>(null);
   const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
   const [voucherPaymentAllowed, setVoucherPaymentAllowed] = useState(false);
+  const [voucherBalanceUsd, setVoucherBalanceUsd] = useState(0);
 
   useEffect(() => {
     let affiliateData;
@@ -378,39 +379,45 @@ export function useFetchAffiliate() {
       console.error("localStorage access error:", error);
       // add statsig event
     }
+    // Corrupt mytData must not take down the whole order flow on every visit.
+    let parsedAffiliateData: { affiliateId?: string | null } = {};
     if (affiliateData) {
-      // Corrupt mytData must not take down the whole order flow on every visit.
-      let parsedAffiliateData;
       try {
         parsedAffiliateData = JSON.parse(affiliateData);
       } catch (error) {
         console.error("Corrupt mytData in localStorage:", error);
-        return;
       }
-      if (parsedAffiliateData.affiliateId) {
-        fetch(
-          `/api/affiliate/checkCode?affiliateId=${parsedAffiliateData.affiliateId}`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            if (data) {
-              if (data.type === "agent") {
-                setAgentCommission(data.commission);
-                setAffType("agent");
-                setVoucherPaymentAllowed(data.voucherPaymentAllowed === true);
-                superTrack({
-                  isAgent: true,
-                  agentId: parsedAffiliateData.affiliateId,
-                });
-              } else if (data.type === "affiliate") {
-                setAffDiscount(data.discount);
-                setAffType("affiliate");
-              }
-              setAffId(parsedAffiliateData.affiliateId);
+    }
+    // First visit through a partner link: the tracker writes mytData in a
+    // deferred effect, so on this very first mount localStorage can still be
+    // empty — read the code straight off the URL then (same params the
+    // tracker itself consumes), or agent mode never shows without a refresh.
+    const urlAffiliateId =
+      new URLSearchParams(window.location.search).get("utm_source") ||
+      new URLSearchParams(window.location.search).get("aff");
+    const affiliateId = parsedAffiliateData.affiliateId || urlAffiliateId;
+    if (affiliateId) {
+      fetch(`/api/affiliate/checkCode?affiliateId=${affiliateId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            if (data.type === "agent") {
+              setAgentCommission(data.commission);
+              setAffType("agent");
+              setVoucherPaymentAllowed(data.voucherPaymentAllowed === true);
+              setVoucherBalanceUsd(Number(data.voucherBalanceUsd) || 0);
+              superTrack({
+                isAgent: true,
+                agentId: affiliateId,
+              });
+            } else if (data.type === "affiliate") {
+              setAffDiscount(data.discount);
+              setAffType("affiliate");
             }
-          })
-          .catch(console.error);
-      }
+            setAffId(affiliateId);
+          }
+        })
+        .catch(console.error);
     }
   }, []);
 
@@ -420,6 +427,7 @@ export function useFetchAffiliate() {
     affType,
     agentCommission,
     voucherPaymentAllowed,
+    voucherBalanceUsd,
     // expose setter to allow contextual promos (e.g., inactivity special offer)
     setAffDiscount,
   };
