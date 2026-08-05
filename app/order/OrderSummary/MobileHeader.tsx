@@ -26,7 +26,7 @@ export const MobileHeader = ({
         דקות
       </div>
       {saving > 0 && !skipHotel && (
-        <div className="w-full bg-[#EBFFEE] mt-3 p-2 rounded-xl flex items-center justify-center">
+        <div className="w-full bg-[#EBFFEE] mt-3 p-2 rounded-xl flex items-center justify-center dark:bg-emerald-950/50 dark:text-emerald-100">
           <span className="">וואו! חסכת <span className="font-bold">${saving}</span> עם החבילה הזאת</span>
         <Image
           src="/Union.svg"

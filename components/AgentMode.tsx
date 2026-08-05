@@ -69,10 +69,10 @@ function SettlementMethodPicker({
         full > 0 && agentCommissionPercent > 0 ? (
           <span>
             יחויב: <b dir="ltr">{usd(netAgent)}</b>{" "}
-            <span className="text-gray-400 line-through" dir="ltr">
+            <span className="text-gray-400 line-through dark:text-gray-500" dir="ltr">
               {usd(full)}
             </span>{" "}
-            <span className="font-semibold text-emerald-700">
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
               (−{agentCommissionPercent}% עמלה)
             </span>
           </span>
@@ -94,7 +94,7 @@ function SettlementMethodPicker({
           {voucherBalanceUsd > 0 && (
             <>
               {" · "}
-              <span className="font-semibold text-emerald-700">
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">
                 שובר פעיל: <b dir="ltr">{usd(voucherBalanceUsd)}</b>
               </span>
             </>
@@ -124,29 +124,39 @@ function SettlementMethodPicker({
                 onClick={() => onSettlementMethodChange(opt.value)}
                 className={`flex items-start gap-2.5 rounded-xl border-2 p-3 text-right transition-colors ${
                   selected
-                    ? "border-main bg-main/5"
-                    : "border-gray-200 hover:border-main/40"
+                    ? "border-main bg-main/5 dark:border-glow dark:bg-glow/10"
+                    : "border-gray-200 hover:border-main/40 dark:border-border dark:hover:border-glow/50"
                 }`}
               >
                 <span
                   aria-hidden
                   className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${
-                    selected ? "border-main" : "border-gray-300"
+                    selected
+                      ? "border-main dark:border-glow"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                 >
-                  {selected && <span className="h-2 w-2 rounded-full bg-main" />}
+                  {selected && (
+                    <span className="h-2 w-2 rounded-full bg-main dark:bg-glow" />
+                  )}
                 </span>
                 <span className="min-w-0">
                   <span
                     className={`flex items-center gap-1.5 text-sm font-bold ${
-                      selected ? "text-main" : "text-gray-800"
+                      selected
+                        ? "text-main dark:text-glow"
+                        : "text-gray-800 dark:text-gray-200"
                     }`}
                   >
                     <Icon size={15} className="shrink-0" />
                     {opt.label}
                   </span>
-                  <span className="mt-0.5 block text-[13px] text-gray-700">{opt.amount}</span>
-                  <span className="mt-0.5 block text-xs text-gray-500">{opt.hint}</span>
+                  <span className="mt-0.5 block text-[13px] text-gray-700 dark:text-gray-300">
+                    {opt.amount}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                    {opt.hint}
+                  </span>
                 </span>
               </button>
             );
@@ -169,7 +179,10 @@ function AgentMode({
   settlementError,
 }: AgentModeProps) {
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4" dir="rtl">
+    <div
+      className="bg-white rounded-lg shadow p-4 mb-4 dark:border dark:border-border dark:bg-card"
+      dir="rtl"
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h3 className="font-bold mr-2">מסך סוכן נסיעות</h3>
@@ -195,7 +208,7 @@ function AgentMode({
 
       {isAgentMode && (
         <div className="mt-4 space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             מצב זה מאפשר להדפיס הצעת מחיר ללקוח עם לוגו משרדך ומחיר סופי ללקוח
             עפ&quot;י שיקול דעתך
           </p>
@@ -218,7 +231,7 @@ function AgentMode({
             finalPurchasePriceUsd={finalPurchasePriceUsd}
           />
           {settlementError && (
-            <p className="text-sm font-medium text-red-600" role="alert">
+            <p className="text-sm font-medium text-red-600 dark:text-red-400" role="alert">
               {settlementError}
             </p>
           )}

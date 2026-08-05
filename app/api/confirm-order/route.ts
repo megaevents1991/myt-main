@@ -208,6 +208,20 @@ export async function POST(req: Request) {
     offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
     coupon_code: coupon ? coupon.code : null,
     coupon_discount_usd: coupon ? couponDiscountUsd : null,
+    // Source attribution for the partner portal's "how did this order arrive"
+    // label (package link / quote / plain link). Sanitized, never trusted
+    // beyond labeling — no FK, no pricing effect.
+    source_share_token:
+      typeof validatedData.source_share_token === "string" &&
+      validatedData.source_share_token.trim()
+        ? validatedData.source_share_token.trim().slice(0, 64)
+        : null,
+    quote_id:
+      typeof validatedData.quote_id === "number" &&
+      Number.isInteger(validatedData.quote_id) &&
+      validatedData.quote_id > 0
+        ? validatedData.quote_id
+        : null,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -218,12 +232,14 @@ export async function POST(req: Request) {
     .single();
 
   if (error?.code === "42703") {
-    // The settlement-tracking columns' migration hasn't landed yet — retry
+    // The settlement/attribution columns' migration hasn't landed yet — retry
     // without them rather than failing EVERY order confirmation (not just
     // agent ones) on a column that doesn't exist yet.
     const {
       partner_settlement_method: _partnerSettlementMethod,
       agent_card_discount_ils: _agentCardDiscountIls,
+      source_share_token: _sourceShareToken,
+      quote_id: _quoteId,
       ...payloadWithoutSettlementColumns
     } = reservationPayload;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

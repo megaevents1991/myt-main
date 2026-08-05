@@ -73,6 +73,8 @@ export const validateOrderData = async (
       settlement_method: yup.string().oneOf([...SETTLEMENT_METHODS]).optional(),
       coupon_code: yup.string().nullable(),
       coupon_base_total_usd: yup.number().nullable(),
+      source_share_token: yup.string().nullable(),
+      quote_id: yup.number().nullable(),
     });
 
     await dynamicOrderSchema.validate(data);

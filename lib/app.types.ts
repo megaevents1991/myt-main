@@ -384,6 +384,10 @@ export type OrderData = {
   coupon_code?: string | null;
   /** Pre-discount package total USD — server recomputes the coupon discount from it. */
   coupon_base_total_usd?: number | null;
+  /** Prepared-package share token the order arrived through (?pkg=) — source attribution only. */
+  source_share_token?: string | null;
+  /** Signed quote the order arrived through (?quote=) — source attribution only. */
+  quote_id?: number | null;
 };
 
 /**

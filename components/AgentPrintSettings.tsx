@@ -44,7 +44,10 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4" dir="rtl">
+    <div
+      className="bg-white rounded-lg shadow p-4 mb-4 dark:border dark:border-border dark:bg-card"
+      dir="rtl"
+    >
       <h3 className="font-bold mb-4">הגדרות הדפסה</h3>
 
       <div className="space-y-4">
@@ -52,7 +55,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
           <div className="flex items-center mb-1">
             <label
               htmlFor="logoUrl"
-              className="block text-m font-medium text-gray-700 ml-1"
+              className="block text-m font-medium text-gray-700 ml-1 dark:text-gray-300"
             >
               לינק ללוגו סוכנות
             </label>
@@ -68,7 +71,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
               <div className="flex space-x-1">
                 <button
                   onClick={handleLogoSave}
-                  className="text-green-600 hover:text-green-700 transition-colors"
+                  className="text-green-600 hover:text-green-700 transition-colors dark:text-emerald-400 dark:hover:text-emerald-300"
                   aria-label="Save logo URL"
                 >
                   <Check size={16} />
@@ -93,11 +96,11 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
               id="logoUrl"
               value={tempLogoUrl}
               onChange={(e) => setTempLogoUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-glow"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-glow dark:border-border dark:bg-background"
               placeholder="https://example.com/logo.png"
             />
           ) : (
-            <div className="text-sm text-gray-600 truncate">
+            <div className="text-sm text-gray-600 truncate dark:text-gray-400">
               {logoUrl ? logoUrl : "No logo URL set"}
             </div>
           )}
@@ -122,7 +125,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
           <div className="flex items-center mb-1">
             <label
               htmlFor="finalPrice"
-              className="block text-m font-medium text-gray-700 ml-1"
+              className="block text-m font-medium text-gray-700 ml-1 dark:text-gray-300"
             >
               מחיר סופי ללקוח
             </label>
@@ -138,7 +141,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
               <div className="flex space-x-1">
                 <button
                   onClick={handlePriceSave}
-                  className="text-green-600 hover:text-green-700 transition-colors"
+                  className="text-green-600 hover:text-green-700 transition-colors dark:text-emerald-400 dark:hover:text-emerald-300"
                   aria-label="Save final price"
                 >
                   <Check size={16} />
@@ -165,7 +168,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
                 id="finalPrice"
                 value={tempFinalPrice}
                 onChange={(e) => setTempFinalPrice(Number(e.target.value))}
-                className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-glow"
+                className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-glow dark:border-border dark:bg-background"
                 min="0"
                 step="1"
               />
@@ -174,7 +177,7 @@ const AgentPrintSettings: React.FC<AgentPrintSettingsProps> = ({
             <div className="flex items-center">
               <span className="text-xl">${finalPrice.toFixed(2)}</span>
               {finalPrice !== originalPrice && (
-                <span className="ml-2 text-xs text-forest">
+                <span className="ml-2 text-xs text-forest dark:text-glow">
                   (Original: ${originalPrice.toFixed(2)})
                 </span>
               )}

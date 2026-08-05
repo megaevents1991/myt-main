@@ -1003,6 +1003,18 @@ export default function OrderReview({
       // recomputes the discount from the pre-discount total).
       coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
       coupon_base_total_usd: couponWins && appliedCoupon ? baseTotalUsd : null,
+      // Source attribution (portal "how did this order arrive"): the package
+      // link token and/or the verified quote the customer came through — sent
+      // even when the quote price was dropped, because the SOURCE is still the
+      // quote link.
+      source_share_token: (() => {
+        try {
+          return new URLSearchParams(window.location.search).get("pkg");
+        } catch {
+          return null;
+        }
+      })(),
+      quote_id: quoteOffer?.id ?? null,
     };
 
     try {
@@ -1285,11 +1297,13 @@ export default function OrderReview({
             <div
               dir="rtl"
               className={`mb-4 rounded-lg border p-4 shadow ${
-                quoteOffer.expired ? "border-red-300 bg-red-50" : "border-main/30 bg-white"
+                quoteOffer.expired
+                  ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+                  : "border-main/30 bg-white dark:border-glow/30 dark:bg-card"
               }`}
             >
               {quoteOffer.expired ? (
-                <p className="text-sm font-bold text-red-700">
+                <p className="text-sm font-bold text-red-700 dark:text-red-300">
                   ההצעה הזו כבר אינה בתוקף
                   {quoteOffer.valid_until && (
                     <span className="font-normal">
@@ -1305,12 +1319,12 @@ export default function OrderReview({
                   <p className="font-bold">
                     {quoteOffer.title || "הצעת מחיר אישית"}
                     {quoteOffer.customer_name && (
-                      <span className="mr-1 font-normal text-gray-600">
+                      <span className="mr-1 font-normal text-gray-600 dark:text-gray-400">
                         · עבור {quoteOffer.customer_name}
                       </span>
                     )}
                   </p>
-                  <ul className="mt-2 space-y-1 text-sm text-gray-700">
+                  <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     {quoteOffer.line_items.map((item, i) => (
                       <li key={i} className="flex justify-between gap-3">
                         <span className="min-w-0 truncate">
@@ -1329,7 +1343,7 @@ export default function OrderReview({
                       ${Math.ceil(quoteOffer.total_usd).toLocaleString("en-US")}
                     </span>
                     {quotePriceDropped && (
-                      <span className="mr-2 font-normal text-amber-700">
+                      <span className="mr-2 font-normal text-amber-700 dark:text-amber-400">
                         (החבילה שונתה — המחיר עודכן לתמחור האתר)
                       </span>
                     )}
@@ -1916,7 +1930,7 @@ export default function OrderReview({
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
-                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors"
+                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
                   disabled={isSubmitting}
                   aria-label="צור קשר עם נציג"
                 >
@@ -1928,7 +1942,7 @@ export default function OrderReview({
                   <Button
                     onClick={(e) => handleSubmit(e, false, true)}
                     variant={"link"}
-                    className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors"
+                    className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
                     disabled={isSubmitting}
                     aria-label="הבטיחו את המחיר ל-24 שעות"
                   >
