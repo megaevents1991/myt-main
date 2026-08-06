@@ -12,7 +12,7 @@ import type { Flight, OrderHotel, OrderTicket } from "@/lib/app.types";
  *
  * Only rendered when `partnerSession` is a real, cookie-verified session
  * (checked by the caller) — never gated on the unauthenticated
- * agentCommission/localStorage signal AgentMode/AgentPrintSettings use.
+ * agentCommission/localStorage signal AgentMode uses.
  */
 export function SavePackageLink({
   eventId,

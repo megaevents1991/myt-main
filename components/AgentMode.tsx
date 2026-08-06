@@ -1,18 +1,18 @@
-import { ToggleLeft, ToggleRight, Printer, CreditCard, Wallet, TicketCheck } from "lucide-react";
+import { ToggleLeft, ToggleRight, CreditCard, Wallet, TicketCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SettlementMethod } from "@/lib/app.types";
 
 interface AgentModeProps {
   isAgentMode: boolean;
   onToggleAgentMode: () => void;
-  onPrintForClient: () => void;
   settlementMethod: SettlementMethod;
   onSettlementMethodChange: (method: SettlementMethod) => void;
-  agentCommissionPercent: number;
-  /** True only when the agent BOTH is approved for voucher payment AND holds a
-   *  live voucher (active, unspent credit-redemption coupon) — see checkCode. */
+  /** The agent's expected commission in USD for THIS order, already computed
+   *  per the commission's unit (percent of sale / fixed per ticket). */
+  agentCommissionUsd: number;
+  /** Agent is configured for voucher settlement (partners.voucher_payment_allowed). */
   voucherAllowed: boolean;
-  /** Live voucher value in USD, shown on the voucher option. */
+  /** Live credit-voucher value in USD — informational only. */
   voucherBalanceUsd?: number;
   /** Full package total in USD — each option shows the amount it actually
    *  charges, incl. the commission-netted agent-card figure. */
@@ -25,21 +25,20 @@ const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 function SettlementMethodPicker({
   settlementMethod,
   onSettlementMethodChange,
-  agentCommissionPercent,
+  agentCommissionUsd,
   voucherAllowed,
   voucherBalanceUsd = 0,
   finalPurchasePriceUsd = 0,
 }: {
   settlementMethod: SettlementMethod;
   onSettlementMethodChange: (method: SettlementMethod) => void;
-  agentCommissionPercent: number;
+  agentCommissionUsd: number;
   voucherAllowed: boolean;
   voucherBalanceUsd?: number;
   finalPurchasePriceUsd?: number;
 }) {
   const full = finalPurchasePriceUsd;
-  const netAgent =
-    agentCommissionPercent > 0 ? full * (1 - agentCommissionPercent / 100) : full;
+  const netAgent = agentCommissionUsd > 0 ? Math.max(0, full - agentCommissionUsd) : full;
 
   // Radio CARDS, not bare pills: icon + who pays + the ACTUAL number each
   // method charges — the commission deduction is visible on the card itself,
@@ -66,14 +65,14 @@ function SettlementMethodPicker({
       icon: Wallet,
       label: "אשראי שלי (הסוכן)",
       amount:
-        full > 0 && agentCommissionPercent > 0 ? (
+        full > 0 && agentCommissionUsd > 0 ? (
           <span>
             יחויב: <b dir="ltr">{usd(netAgent)}</b>{" "}
             <span className="text-gray-400 line-through dark:text-gray-500" dir="ltr">
               {usd(full)}
             </span>{" "}
             <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-              (−{agentCommissionPercent}% עמלה)
+              (בניכוי עמלה {usd(agentCommissionUsd)})
             </span>
           </span>
         ) : full > 0 ? (
@@ -169,10 +168,9 @@ function SettlementMethodPicker({
 function AgentMode({
   isAgentMode,
   onToggleAgentMode,
-  onPrintForClient,
   settlementMethod,
   onSettlementMethodChange,
-  agentCommissionPercent,
+  agentCommissionUsd,
   voucherAllowed,
   voucherBalanceUsd,
   finalPurchasePriceUsd,
@@ -206,26 +204,17 @@ function AgentMode({
         </div>
       </div>
 
+      {/* "הדפסה ללקוח" והגדרות ההדפסה (לוגו LiveEvents הישן) הוסרו —
+          אלון ודור, 2026-08-06. */}
       {isAgentMode && (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            מצב זה מאפשר להדפיס הצעת מחיר ללקוח עם לוגו משרדך ומחיר סופי ללקוח
-            עפ&quot;י שיקול דעתך
+            הזמנה עבור הלקוח — בחרו איך נגבה את התשלום על ההזמנה הזו.
           </p>
-          {/* Forest-on-white, not mint — the pale green button was invisible
-              against the white card. */}
-          <button
-            onClick={onPrintForClient}
-            className="flex items-center rounded-md bg-main px-4 py-2 font-medium text-main-foreground transition-colors hover:bg-main/90"
-            aria-label="Print for client"
-          >
-            <Printer size={16} className="ml-2" />
-            <span>הדפסה ללקוח</span>
-          </button>
           <SettlementMethodPicker
             settlementMethod={settlementMethod}
             onSettlementMethodChange={onSettlementMethodChange}
-            agentCommissionPercent={agentCommissionPercent}
+            agentCommissionUsd={agentCommissionUsd}
             voucherAllowed={voucherAllowed}
             voucherBalanceUsd={voucherBalanceUsd}
             finalPurchasePriceUsd={finalPurchasePriceUsd}

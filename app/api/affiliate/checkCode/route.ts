@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     let { data, error } = await supabase
       .from('partners')
       .select(
-        "partner_tracking_code, user_discount, commission, type, is_active, voucher_payment_allowed",
+        "partner_tracking_code, user_discount, commission, commission_type, type, is_active, voucher_payment_allowed",
       )
       .eq('partner_tracking_code', affiliateId)
       .single();
@@ -39,9 +39,12 @@ export async function GET(request: Request) {
     // 0 — they then just charge full price); affiliates still need a discount
     // to matter.
     if (data && (data?.user_discount || data?.commission || data?.type === "agent")) {
-      // Voucher payment requires BOTH the staff approval flag AND a live
-      // voucher to actually pay with — an active, unspent coupon minted from
-      // the agent's portal credit. resolveAgentSettlement re-checks both.
+      // Voucher settlement is the AGENCY-voucher flow: the agent books, the
+      // order waits Pending, and the voucher document is collected offline.
+      // Configured (voucher_payment_allowed) ⇒ the option shows — a live
+      // credit-coupon balance is unrelated and no longer gates it (אלון היה
+      // מוגדר לשובר והאופציה לא הופיעה — 2026-08-06). The balance is still
+      // reported for display.
       const voucherApproved =
         (data as { voucher_payment_allowed?: boolean }).voucher_payment_allowed ===
         true;
@@ -72,11 +75,16 @@ export async function GET(request: Request) {
         partnerDisplayName,
         discount: data.user_discount || 0,
         commission: data.commission || 0,
+        // Percent vs fixed-per-ticket — the agent screens must not assume
+        // percent (a fixed $20/ticket agent showed "20%" commission math).
+        commissionType:
+          (data as { commission_type?: string }).commission_type ??
+          "fixed_per_ticket",
         type: data.type,
         // Agent-only, and only meaningful once the order flow's own agent-mode
         // gate is on — see lib/partner-auth's requireAgent doc comment on why
         // this exists at all (booking on a customer's behalf, voucher payment).
-        voucherPaymentAllowed: voucherApproved && voucherBalanceUsd > 0,
+        voucherPaymentAllowed: voucherApproved,
         voucherBalanceUsd,
       });
     } else

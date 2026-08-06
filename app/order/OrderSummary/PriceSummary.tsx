@@ -7,6 +7,7 @@ export const PriceSummary = ({
   recommendedPriceAllPax,
   numberOfPersons,
   agentCommission,
+  agentCommissionUsd,
   isAgent,
   affDiscount,
   isCouponDiscount = false,
@@ -17,6 +18,9 @@ export const PriceSummary = ({
   recommendedPriceAllPax: number;
   numberOfPersons: number;
   agentCommission: number;
+  /** Expected commission in USD, computed per the commission's unit (percent /
+   *  fixed-per-ticket). When given it replaces the legacy percent-only math. */
+  agentCommissionUsd?: number;
   /** Any signed agent code — commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
   // Total winning discount in USD (affiliate or coupon — best one wins)
@@ -47,14 +51,17 @@ export const PriceSummary = ({
       <div className="flex flex-col items-start font-bold">
         <span className="text-[22px] ">סה&quot;כ</span>
         {agentViewer ? (
-          // Agent framing: expected commission, or nothing for a 0% agent —
-          // never the customer's discount line.
-          agentCommission > 0 && (
+          // Agent framing: expected commission, or nothing for a 0 agent —
+          // never the customer's discount line. agentCommissionUsd (computed
+          // per the commission's UNIT) wins; the percent math is the legacy
+          // fallback for callers that never pass it.
+          (agentCommissionUsd ?? agentCommission) > 0 && (
             <span className="text-[14px] tabular-nums text-success">
               עמלה צפויה $
-              {((agentCommission / 100) * finalPurchasePrice).toLocaleString(
-                "en-US"
-              )}
+              {(agentCommissionUsd != null
+                ? agentCommissionUsd
+                : (agentCommission / 100) * finalPurchasePrice
+              ).toLocaleString("en-US")}
             </span>
           )
         ) : (

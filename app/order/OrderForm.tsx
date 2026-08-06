@@ -12,7 +12,6 @@ import { orderStage } from "../hooks/Affiliate";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { useFetchAffiliate, useOrderVars } from "./hooks";
-import { PartnerReferralBadge } from "@/components/PartnerReferralBadge";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
 import { useHandlePreparedPackage } from "../hooks/useHandlePreparedPackage";
 import { shortenAirlineName } from "./order-review.utils";
@@ -466,7 +465,8 @@ export const OrderForm = ({
   return (
     <>
       <div className="max-w-7xl mx-auto px-2 pt-3">
-        <PartnerReferralBadge />
+        {/* Partner badge moved into the Stepper header row (one badge, symmetric
+            with the MegaEvents wordmark). */}
         {step === 1 && <TicketSelection initialEvent={event} />}
         {step === 2 && <FlightSelection />}
         {step === 3 && <HotelSelection />}

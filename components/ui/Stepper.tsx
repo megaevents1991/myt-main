@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Stepper as MantineStepper } from "@mantine/core";
 import { MYT } from "@/components/ui/myt";
+import { PartnerReferralBadge } from "@/components/PartnerReferralBadge";
 
 const defaultSteps = ["כרטיסים", "טיסה", "מלון", "סיום"];
 
@@ -34,6 +35,12 @@ export const Stepper = ({
       <Link href="/" aria-label="חזרה לדף הבית" className="shrink-0">
         <MYT className="h-5 w-auto text-foreground md:h-6" />
       </Link>
+      {/* Partner pill — ONE badge, on the header row symmetric with the MYT
+          wordmark (inline-end). Was rendered inside the page body (twice on
+          the summary) — אלון ודור, 2026-08-06. */}
+      <div className="order-first shrink-0 sm:order-last sm:ms-auto [&>div]:mx-0 [&>div]:mb-0">
+        <PartnerReferralBadge />
+      </div>
       {!hideSteps && (
         <div className="w-full max-w-2xl flex-1">
           <MantineStepper

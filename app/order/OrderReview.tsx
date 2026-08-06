@@ -37,12 +37,8 @@ import { type Fields, validate } from "./order-review.utils";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter } from "next/navigation";
 import AgentMode from "@/components/AgentMode";
-import AgentPrintSettings from "@/components/AgentPrintSettings";
-import { PartnerReferralBadge } from "@/components/PartnerReferralBadge";
 import { SavePackageLink } from "@/components/SavePackageLink";
 import type { PartnerSession } from "@/lib/partner-auth/session";
-import PrintableOrderSummary from "@/components/PrintableOrderSummary";
-import usePrintableWindow from "../hooks/usePrintableWindow";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { formatPhoneNumber, getPenText, TIMEOUT } from "./utils";
 import {
@@ -98,14 +94,22 @@ export default function OrderReview({
     affDiscount,
     affType,
     agentCommission,
+    agentCommissionType,
     voucherPaymentAllowed,
     voucherBalanceUsd,
     setAffDiscount,
   } = useFetchAffiliate();
-  // ANY signed agent code enables the agent tools — commission may legitimately
-  // be 0 (the agent then just pays/charges full price). The old
-  // `agentCommission > 0` gate hid the whole panel from 0-commission agents.
-  const isAgentVisitor = affType === "agent";
+  // The agent tools open ONLY in a browser where the agent HIMSELF is signed
+  // in (cookie-verified partner session matching the link's code) — the URL
+  // code alone is public knowledge and used to open the panel for anyone
+  // holding the link (אלון ודור, 2026-08-06). Commission may legitimately be
+  // 0 — the agent then just pays/charges full price.
+  const isAgentVisitor =
+    affType === "agent" &&
+    !!partnerSession &&
+    partnerSession.role === "agent" &&
+    partnerSession.partner_code.trim().toLowerCase() ===
+      (affId ?? "").trim().toLowerCase();
   const passengerCount = flightSkipped
     ? numberOfEventTickets
     : selectedFlight?.numOfTravelers || 1;
@@ -199,16 +203,6 @@ export default function OrderReview({
   const [settlementMethod, setSettlementMethod] =
     useState<SettlementMethod>("customer_card");
   const [settlementError, setSettlementError] = useState<string | null>(null);
-  const [logoUrl, setLogoUrl] = useState(() => {
-    try {
-      const raw = localStorage.getItem("mytData");
-      const parsed = raw ? JSON.parse(raw) : null;
-      return parsed?.logoUrl || "";
-    } catch (e) {
-      console.error("Failed to parse localStorage mytData", e);
-      return "";
-    }
-  });
 
   const trackAnalyticsEvent = (event: import("@/lib/app.types").Event) => {
     try {
@@ -313,6 +307,24 @@ export default function OrderReview({
       affDiscount,
     ]
   );
+
+  // Expected commission in USD, honoring the commission's UNIT: percent of the
+  // sale, or fixed $ per ticket × tickets. The old percent-only math showed a
+  // fixed-$20 agent "$495 עמלה צפויה" on a $2,476 order (אלון, 2026-08-06).
+  const agentCommissionUsd = useMemo(() => {
+    if (!isAgentVisitor) return 0;
+    const rate = Number(agentCommission) || 0;
+    if (rate <= 0) return 0;
+    return agentCommissionType === "percent_of_sale"
+      ? Math.round(finalPurchasePrice * rate) / 100
+      : rate * numberOfEventTickets;
+  }, [
+    isAgentVisitor,
+    agentCommission,
+    agentCommissionType,
+    finalPurchasePrice,
+    numberOfEventTickets,
+  ]);
 
   const trackFormStart = useCallback(() => {
     if (hasTrackedFormStartRef.current || !event) return;
@@ -618,64 +630,10 @@ export default function OrderReview({
     setValidationErrors(allErrors);
   };
 
-  const [finalPrice, setFinalPrice] = useState(finalPurchasePrice);
+  // "הדפסה ללקוח" + הגדרות ההדפסה (לוגו LiveEvents הישן) הוסרו לבקשת
+  // אלון ודור (2026-08-06) — שריד מגרסת גלעד שאינו רלוונטי.
 
-  const { openPrintableWindow } = usePrintableWindow({
-    title: "Trip Booking Summary",
-  });
 
-  const handlePrintForClient = () => {
-    // Open the printable window with the customized data
-
-    const tripData = {
-      tripDetails: {
-        destination: event?.location.name || "",
-        price: finalPrice,
-        pricePerPerson: finalPrice / numberOfPersons,
-        travelers: numberOfPersons,
-      },
-      flightDetails: {
-        outboundDepartureTime: selectedFlight?.outbound.departureTime || "",
-        outboundDepartureAirport:
-          selectedFlight?.outbound.departureAirport || "",
-        outboundArrivalTime: selectedFlight?.outbound.arrivalTime || "",
-        outboundArrivalAirport: selectedFlight?.outbound.arrivalAirport || "",
-        inboundDepartureTime: selectedFlight?.inbound.departureTime || "",
-        inboundDepartureAirport: selectedFlight?.inbound.departureAirport || "",
-        inboundArrivalTime: selectedFlight?.inbound.arrivalTime || "",
-        inboundArrivalAirport: selectedFlight?.inbound.arrivalAirport || "",
-        airlineName: airlineName || "",
-        outbound: selectedFlight?.outbound || {},
-        inbound: selectedFlight?.inbound || {},
-      },
-      hotelDetails: {
-        name: selectedHotel?.name || "",
-        roomType: selectedHotel?.rate?.room_data_trans?.main_name || "",
-        checkIn: selectedHotel?.checkin || "",
-        checkOut: selectedHotel?.checkout || "",
-      },
-      eventDetails: {
-        eventName: event?.name || "",
-        eventDate: event?.date || "",
-        eventLocation: event?.location.name || "",
-        eventImage: event?.card_image_url || "",
-        ticketType: eventTicket.category,
-        quantity: numberOfEventTickets,
-      },
-    };
-
-    openPrintableWindow(
-      <PrintableOrderSummary
-        logoUrl={logoUrl}
-        tripDetails={tripData.tripDetails}
-        flightDetails={tripData.flightDetails}
-        hotelDetails={tripData.hotelDetails}
-        eventDetails={tripData.eventDetails}
-      />
-    );
-  };
-
-  
 
   useEffect(() => {
     setErrors();
@@ -1135,8 +1093,6 @@ export default function OrderReview({
   return (
     <div className="min-h-screen bg-background flex flex-col items-center">
       {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} skipHotel={skipHotel} />}
-
-      <PartnerReferralBadge />
       <div className="sr-only">
         <h1>סיכום הזמנה לאירוע {event?.name}</h1>
         <p>
@@ -1268,28 +1224,17 @@ export default function OrderReview({
               <AgentMode
                 isAgentMode={isAgentMode}
                 onToggleAgentMode={() => setIsAgentMode(!isAgentMode)}
-                onPrintForClient={handlePrintForClient}
                 settlementMethod={settlementMethod}
                 onSettlementMethodChange={(method) => {
                   setSettlementError(null);
                   setSettlementMethod(method);
                 }}
-                agentCommissionPercent={agentCommission}
+                agentCommissionUsd={agentCommissionUsd}
                 voucherAllowed={voucherPaymentAllowed}
                 voucherBalanceUsd={voucherBalanceUsd}
                 finalPurchasePriceUsd={finalPurchasePrice}
                 settlementError={settlementError}
               />
-
-              {isAgentMode && (
-                <AgentPrintSettings
-                  logoUrl={logoUrl}
-                  setLogoUrl={setLogoUrl}
-                  finalPrice={finalPrice}
-                  setFinalPrice={setFinalPrice}
-                  originalPrice={finalPurchasePrice}
-                />
-              )}
             </div>
           )}
           {/* Agent quote offer — the שובר/הצעה the customer arrived with. */}
@@ -1431,6 +1376,7 @@ export default function OrderReview({
                     recommendedPriceAllPax={recommendedPriceAllPax}
                     numberOfPersons={numberOfPersons}
                     agentCommission={agentCommission}
+                  agentCommissionUsd={agentCommissionUsd}
                     isAgent={isAgentVisitor}
                     affDiscount={effectiveDiscountTotalUsd}
                     isCouponDiscount={couponWins}

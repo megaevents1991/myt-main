@@ -366,6 +366,11 @@ export function useOrderVars() {
 export function useFetchAffiliate() {
   const [affDiscount, setAffDiscount] = useState(0);
   const [agentCommission, setAgentCommission] = useState(0);
+  // Percent vs fixed-per-ticket — commission math must not assume percent
+  // (a fixed $20/ticket agent was shown 20% everywhere).
+  const [agentCommissionType, setAgentCommissionType] = useState<
+    "percent_of_sale" | "fixed_per_ticket"
+  >("fixed_per_ticket");
   const [affId, setAffId] = useState<string | null>(null);
   const [affType, setAffType] = useState<"agent" | "affiliate" | null>(null);
   const [voucherPaymentAllowed, setVoucherPaymentAllowed] = useState(false);
@@ -407,6 +412,11 @@ export function useFetchAffiliate() {
             setPartnerDisplayName(data.partnerDisplayName ?? null);
             if (data.type === "agent") {
               setAgentCommission(data.commission);
+              setAgentCommissionType(
+                data.commissionType === "percent_of_sale"
+                  ? "percent_of_sale"
+                  : "fixed_per_ticket"
+              );
               setAffType("agent");
               setVoucherPaymentAllowed(data.voucherPaymentAllowed === true);
               setVoucherBalanceUsd(Number(data.voucherBalanceUsd) || 0);
@@ -430,6 +440,7 @@ export function useFetchAffiliate() {
     affId,
     affType,
     agentCommission,
+    agentCommissionType,
     voucherPaymentAllowed,
     voucherBalanceUsd,
     partnerLogoUrl,

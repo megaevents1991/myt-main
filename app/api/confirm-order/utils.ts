@@ -17,7 +17,6 @@ import {
 } from "@/lib/events/price";
 import { supabase } from "@/lib/supabase";
 import { requireAgent } from "@/lib/partner-auth";
-import { liveVoucherBalanceUsd } from "@/lib/partner-vouchers";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -279,7 +278,7 @@ export const resolveAgentSettlement = async (
   try {
     let { data: partner, error } = await supabase
       .from("partners")
-      .select("type, is_active, commission, voucher_payment_allowed")
+      .select("type, is_active, commission, commission_type, voucher_payment_allowed")
       .eq("partner_tracking_code", data.aff_partner_tracking_code)
       .maybeSingle();
     if (error && error.code === "42703") {
@@ -329,15 +328,11 @@ export const resolveAgentSettlement = async (
       if (partner.voucher_payment_allowed !== true) {
         return { ok: false, reason: "Voucher payment not enabled for this partner" };
       }
-      // A voucher order is only honest while the agent actually holds a LIVE
-      // voucher (active, unspent credit-redemption coupon) — the same gate
-      // checkCode applies to even showing the option.
-      const voucherBalance = await liveVoucherBalanceUsd(
-        data.aff_partner_tracking_code,
-      );
-      if (voucherBalance <= 0) {
-        return { ok: false, reason: "No live voucher available for this agent" };
-      }
+      // AGENCY-voucher flow: the order waits Pending until the voucher
+      // document is collected offline (backoffice tracks voucher_state).
+      // Being configured for it is the whole gate — a live credit-coupon
+      // balance is a different feature and no longer blocks this
+      // (אלון היה מוגדר לשובר ולא יכול היה לבחור בו — 2026-08-06).
       // Full price — the voucher covers the whole sale to us; the agent's
       // commission is settled through the normal payout cycle, same as any
       // other referred booking. No card is ever charged for this order.
@@ -363,11 +358,31 @@ export const resolveAgentSettlement = async (
           reason: "agent_card settlement requires an immediate card charge",
         };
       }
-      const commission = Math.min(Math.max(Number(partner.commission) || 0, 0), 100);
-      const discountIls = Math.round(fullPriceIls * (commission / 100));
-      // A misconfigured >=100% commission (or one landing right at the
-      // rounding edge) must not park an unpayable ~₪0 reservation — reject
-      // outright instead of clamping, which would just get stuck Pending.
+      // The commission's UNIT follows partners.commission_type: percent of the
+      // sale, or fixed USD per ticket. Treating a fixed $20/ticket agent as
+      // 20% under-charged their card by hundreds of dollars (אלון, 2026-08-06).
+      const commissionType =
+        (partner as { commission_type?: string }).commission_type ??
+        "fixed_per_ticket";
+      let discountIls: number;
+      if (commissionType === "percent_of_sale") {
+        const commission = Math.min(Math.max(Number(partner.commission) || 0, 0), 100);
+        discountIls = Math.round(fullPriceIls * (commission / 100));
+      } else {
+        const perTicketUsd = Math.max(Number(partner.commission) || 0, 0);
+        const tickets = Math.max(
+          1,
+          Math.floor(Number(data.event_order_info?.number_of_ticket)) || 1,
+        );
+        const ilsRate = Number(data.exchange_rate_usd_ils_100) / 100;
+        if (!Number.isFinite(ilsRate) || ilsRate <= 0) {
+          return { ok: false, reason: "Missing exchange rate for agent settlement" };
+        }
+        discountIls = Math.round(perTicketUsd * tickets * ilsRate);
+      }
+      // A misconfigured commission (or one landing right at the rounding edge)
+      // must not park an unpayable ~₪0 reservation — reject outright instead
+      // of clamping, which would just get stuck Pending.
       if (fullPriceIls - discountIls <= 0) {
         return {
           ok: false,
