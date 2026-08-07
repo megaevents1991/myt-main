@@ -1,4 +1,4 @@
-import { getCachedEvents } from "@/lib/eventsData";
+import { getCachedEvents, getEvents } from "@/lib/eventsData";
 import { getAllArtists } from "@/lib/artists";
 import { getAllFootballTeams } from "@/lib/football";
 import OrderPageClient from "../OrderPageClient";
@@ -50,8 +50,15 @@ export async function generateMetadata({
   
   try {
     const { events } = await getCachedEvents();
-    const event = events.find((e) => e.id === parseInt(eventId));
-    
+    let event = events.find((e) => e.id === parseInt(eventId));
+
+    // QA test events (is_test) are excluded from the cached catalog but stay
+    // orderable by direct link — fetch by id, which keeps them.
+    if (!event) {
+      const { events: direct } = await getEvents(parseInt(eventId));
+      event = direct[0];
+    }
+
     if (!event) {
       return {
         title: "Event Not Found - Mega Events",
@@ -126,6 +133,12 @@ export default async function OrderPageWithId({
   try {
     const { events } = await getCachedEvents();
     event = events.find((e) => e.id === parseInt(eventId));
+    // QA test events (is_test) are excluded from the cached catalog but stay
+    // orderable by direct link — fetch by id, which keeps them.
+    if (!event) {
+      const { events: direct } = await getEvents(parseInt(eventId));
+      event = direct[0];
+    }
   } catch (error) {
     console.error("Error fetching event:", error);
     return <EventNotFoundNotice eventId={eventId} />;
