@@ -96,7 +96,12 @@ export async function getEventsInCategory(
     console.error("getEventsInCategory events failed:", JSON.stringify(error));
     return { category, events: [] };
   }
-  return { category, events: await enrichEventsWithFallbackImages(events ?? []) };
+  return {
+    category,
+    events: await enrichEventsWithFallbackImages(
+      (events ?? []).filter((e) => !e.is_test),
+    ),
+  };
 }
 
 /* ---------- tags (product feed / promotions) ---------- */
@@ -152,7 +157,12 @@ export async function getEventsByTag(
     console.error("getEventsByTag events failed:", JSON.stringify(error));
     return { tag: tag as EventTag, events: [] };
   }
-  return { tag: tag as EventTag, events: await enrichEventsWithFallbackImages(events ?? []) };
+  return {
+    tag: tag as EventTag,
+    events: await enrichEventsWithFallbackImages(
+      (events ?? []).filter((e) => !e.is_test),
+    ),
+  };
 }
 
 /**

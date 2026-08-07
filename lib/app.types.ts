@@ -60,6 +60,9 @@ export type Event = {
   // the events loader.
   locked_flight_sold_out?: boolean;
   is_deleted: string;
+  // QA-only events: orderable by direct /order/{id} link, excluded from every
+  // listing, search, category and feed surface.
+  is_test?: boolean;
   tags: string;
   tx_excluded_sections?: string[];
   event_additional_markup?: number | null;

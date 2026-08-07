@@ -91,9 +91,12 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     console.log(
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
+    // Test events (backoffice QA) stay orderable by direct id but never list.
+    const visible =
+      id !== undefined ? events || [] : (events || []).filter((e) => !e.is_test);
     return {
       events: await markLockedPackagesSoldOut(
-        await enrichEventsWithFallbackImages(events || []),
+        await enrichEventsWithFallbackImages(visible),
       ),
     };
   } catch (error) {
@@ -135,6 +138,7 @@ export async function getEventsByName(
   // events (artists) pass through untouched.
   const matched = (events ?? []).filter(
     (e) =>
+      !e.is_test &&
       normalizeName(e.name_english).includes(needle) &&
       eventRelatesToTeam(e.name_english ?? "", searchName),
   );

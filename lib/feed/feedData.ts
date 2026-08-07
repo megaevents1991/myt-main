@@ -89,7 +89,9 @@ async function getFeedEvents(): Promise<{
     return { events: [], taxonomyByEvent: new Map() };
   }
 
-  const enriched = await enrichEventsWithFallbackImages((events ?? []) as Event[]);
+  const enriched = await enrichEventsWithFallbackImages(
+    ((events ?? []) as Event[]).filter((e) => !e.is_test),
+  );
   return {
     events: enriched,
     taxonomyByEvent: await getTaxonomyByEvent(enriched.map((e) => e.id)),
