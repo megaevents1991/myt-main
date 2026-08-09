@@ -266,6 +266,9 @@ export default function OrderReview({
     total_usd: number;
     valid_until: string | null;
     expired: boolean;
+    /** Agent-session-only: the margin priced above the system baseline —
+     *  the API omits it for the customer opening the same link. */
+    agent_uplift_usd?: number;
   };
   const [quoteOffer, setQuoteOffer] = useState<QuoteOffer | null>(null);
   // Editing any component invalidates the quoted composition — price reverts
@@ -314,16 +317,28 @@ export default function OrderReview({
   const agentCommissionUsd = useMemo(() => {
     if (!isAgentVisitor) return 0;
     const rate = Number(agentCommission) || 0;
-    if (rate <= 0) return 0;
-    return agentCommissionType === "percent_of_sale"
-      ? Math.round(finalPurchasePrice * rate) / 100
-      : rate * numberOfEventTickets;
+    const base =
+      rate <= 0
+        ? 0
+        : agentCommissionType === "percent_of_sale"
+          ? Math.round(finalPurchasePrice * rate) / 100
+          : rate * numberOfEventTickets;
+    // Quote uplift: the margin the agent priced into the signed quote is
+    // theirs on top of the base rate — $20/ticket + $100/pax on 2 pax = $240
+    // (אלון, 2026-08-07). Counts only while the quote price actually charges.
+    const uplift =
+      quotePriceActive && Number(quoteOffer?.agent_uplift_usd) > 0
+        ? Number(quoteOffer?.agent_uplift_usd)
+        : 0;
+    return base + uplift;
   }, [
     isAgentVisitor,
     agentCommission,
     agentCommissionType,
     finalPurchasePrice,
     numberOfEventTickets,
+    quotePriceActive,
+    quoteOffer,
   ]);
 
   const trackFormStart = useCallback(() => {

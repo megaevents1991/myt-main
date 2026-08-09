@@ -364,6 +364,7 @@ export const resolveAgentSettlement = async (
       const commissionType =
         (partner as { commission_type?: string }).commission_type ??
         "fixed_per_ticket";
+      const ilsRate = Number(data.exchange_rate_usd_ils_100) / 100;
       let discountIls: number;
       if (commissionType === "percent_of_sale") {
         const commission = Math.min(Math.max(Number(partner.commission) || 0, 0), 100);
@@ -374,11 +375,47 @@ export const resolveAgentSettlement = async (
           1,
           Math.floor(Number(data.event_order_info?.number_of_ticket)) || 1,
         );
-        const ilsRate = Number(data.exchange_rate_usd_ils_100) / 100;
         if (!Number.isFinite(ilsRate) || ilsRate <= 0) {
           return { ok: false, reason: "Missing exchange rate for agent settlement" };
         }
         discountIls = Math.round(perTicketUsd * tickets * ilsRate);
+      }
+
+      // Quote-priced margin: whatever THIS agent priced above the recorded
+      // system price on the signed quote the order settles is theirs too —
+      // $20/ticket base + $100/pax uplift on 2 pax nets the card full − $240
+      // (אלון, 2026-08-07). DB-trusted end to end: the quote row's total,
+      // baseline and owner, never a client figure.
+      const quoteId = Number((data as { quote_id?: number | null }).quote_id);
+      if (Number.isFinite(quoteId) && quoteId > 0) {
+        const { data: quote } = await supabase
+          .from("quotes")
+          .select("total, base_unit_price, line_items, partner_tracking_code")
+          .eq("id", quoteId)
+          .maybeSingle();
+        if (
+          quote &&
+          quote.partner_tracking_code === data.aff_partner_tracking_code &&
+          quote.base_unit_price != null
+        ) {
+          const qty = (Array.isArray(quote.line_items) ? quote.line_items : []).reduce(
+            (sum: number, item: { qty?: number | string }) => {
+              const q = Number(item?.qty);
+              return sum + (Number.isFinite(q) && q > 0 ? q : 0);
+            },
+            0,
+          );
+          const upliftUsd =
+            qty > 0
+              ? Math.max(0, Number(quote.total ?? 0) - Number(quote.base_unit_price) * qty)
+              : 0;
+          if (upliftUsd > 0) {
+            if (!Number.isFinite(ilsRate) || ilsRate <= 0) {
+              return { ok: false, reason: "Missing exchange rate for agent settlement" };
+            }
+            discountIls += Math.round(upliftUsd * ilsRate);
+          }
+        }
       }
       // A misconfigured commission (or one landing right at the rounding edge)
       // must not park an unpayable ~₪0 reservation — reject outright instead

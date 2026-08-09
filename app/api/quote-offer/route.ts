@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { verifyQuoteSig } from "@/lib/quote-link";
+import { getPartnerSession } from "@/lib/partner-auth";
 
 /**
  * Resolves a signed quote link (`?quote={id}&qsig={sig}` on an order URL)
@@ -24,6 +25,8 @@ type QuoteRow = {
   total: number | null;
   valid_until: string | null;
   partner_tracking_code: string | null;
+  /** System price per unit at quote creation — the uplift baseline. */
+  base_unit_price: number | null;
 };
 
 export async function GET(request: Request) {
@@ -36,7 +39,9 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("quotes")
-    .select("id, title, customer_name, line_items, total, valid_until, partner_tracking_code")
+    .select(
+      "id, title, customer_name, line_items, total, valid_until, partner_tracking_code, base_unit_price"
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) {
@@ -59,6 +64,36 @@ export async function GET(request: Request) {
     expired = Number.isFinite(until.getTime()) && Date.now() > until.getTime();
   }
 
+  // Agent-only figure: what the agent priced ABOVE the recorded system price
+  // (their margin, paid on top of the base commission). Included ONLY when the
+  // request carries THAT agent's own session — the customer opening the same
+  // link must never see the markup baked into their offer.
+  let agentUpliftUsd: number | undefined;
+  try {
+    const session = await getPartnerSession();
+    if (
+      session &&
+      session.partner_code === row.partner_tracking_code &&
+      row.base_unit_price != null
+    ) {
+      const qty = (Array.isArray(row.line_items) ? row.line_items : []).reduce(
+        (sum, item) => {
+          const q = Number(item?.qty);
+          return sum + (Number.isFinite(q) && q > 0 ? q : 0);
+        },
+        0,
+      );
+      if (qty > 0) {
+        agentUpliftUsd = Math.max(
+          0,
+          totalUsd - Number(row.base_unit_price) * qty,
+        );
+      }
+    }
+  } catch {
+    // No session — public payload stays uplift-free.
+  }
+
   return NextResponse.json({
     id: row.id,
     title: row.title,
@@ -68,5 +103,6 @@ export async function GET(request: Request) {
     valid_until: row.valid_until,
     partner_tracking_code: row.partner_tracking_code,
     expired,
+    ...(agentUpliftUsd !== undefined ? { agent_uplift_usd: agentUpliftUsd } : {}),
   });
 }
