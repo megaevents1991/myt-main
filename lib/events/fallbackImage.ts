@@ -71,6 +71,14 @@ export async function enrichEventsWithFallbackImages(
         candidates.find((p) => teamFixtureRole(name, p.name) === "home") ??
         candidates[0];
       if (!match) continue;
+      // Gallery first: a deterministic per-event pick (same `id % length`
+      // rule the backoffice creative generator uses) so ten photo-less
+      // events of one artist show ten different photos instead of the same
+      // blob/hero everywhere. Stable per event across renders — no churn.
+      if (match.gallery.length) {
+        event.card_image_url = match.gallery[event.id % match.gallery.length];
+        continue;
+      }
       if (match.art) {
         event.art_image_url = match.art.imageUrl;
         event.art_color_index = match.art.colorIndex;

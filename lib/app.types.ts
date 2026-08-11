@@ -82,7 +82,8 @@ export type Event = {
   // every other path untouched. Empty/null = no override.
   ticket_only_markup?: number | null;
   // Auto-generated campaign creative (backoffice nightly cron). Feed uses
-  // campaign_image_url as image_link (fallback card_image_url), banner as
+  // campaign_image_url as image_link (NO fallback — an event without a
+  // creative is skipped, "branded or not at all"), banner as
   // additional_image_link. Synced with backoffice types/app.types.ts.
   campaign_image_url?: string | null;
   campaign_banner_url?: string | null;

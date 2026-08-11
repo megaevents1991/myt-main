@@ -56,6 +56,10 @@ export type PersonImageEntry = {
     offsetX: number | null;
     offsetY: number | null;
   } | null;
+  /** Gallery photos (full https URLs) — photo-less events pick one
+   *  deterministically so the same artist's events don't all share one image.
+   *  Empty when the person has no gallery. */
+  gallery: string[];
 };
 
 // Consumers build the final src as `"https:" + url`, so return a
@@ -152,7 +156,7 @@ export function makePeopleReaders(cfg: PeopleConfig) {
       const { data, error } = await supabase
         .from(table)
         .select(
-          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y"
+          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y, gallery"
         )
         .eq("is_deleted", false)
         .eq("is_active", true);
@@ -161,7 +165,11 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         return [];
       }
       return ((data ?? []) as PersonRow[])
-        .filter((r) => r.name_english && (r.image_url || r.art_image_url))
+        .filter(
+          (r) =>
+            r.name_english &&
+            (r.image_url || r.art_image_url || r.gallery?.length)
+        )
         .map((r) => ({
           name: r.name_english as string,
           url: r.image_url ?? null,
@@ -176,6 +184,9 @@ export function makePeopleReaders(cfg: PeopleConfig) {
                 offsetY: r.art_image_offset_y ?? null,
               }
             : null,
+          gallery: (r.gallery ?? []).filter(
+            (u): u is string => typeof u === "string" && u.length > 0
+          ),
         }));
     },
 

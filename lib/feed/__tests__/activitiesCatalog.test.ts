@@ -116,7 +116,20 @@ assert.strictEqual(item.activity_sub_categories, "Rock");
 assert.strictEqual(item.activity_date, "2026-10-02");
 assert.strictEqual(item.custom_label_0, "music");
 assert.strictEqual(item.custom_label_1, "rock");
+/* feed-tag slugs land in labels 2-4 (the CMO's campaign filters) */
+assert.strictEqual(item.custom_label_2, "berlin");
+assert.strictEqual(item.custom_label_3, "music");
+assert.strictEqual(item.custom_label_4, "rock");
 assert.ok(item.description.length > 0 && item.description !== item.title);
+
+/* legacy auto-slugged Hebrew tags ("item-N") are noise → dropped from labels */
+const legacyTags = buildActivityItem(
+  baseEvent(),
+  { categoryPath: ["Music"], tagSlugs: ["item-4", "pop"] },
+  CUTOFF
+) as ActivityItem;
+assert.strictEqual(legacyTags.custom_label_2, "pop");
+assert.strictEqual(legacyTags.custom_label_3, "");
 /* no invented social proof — we have no ratings system */
 assert.strictEqual(item.rating_count, 0);
 assert.strictEqual(item.user_rating, 0);
@@ -208,13 +221,14 @@ assert.ok(videoCsv.split("\r\n")[0].endsWith(",video[0].url"));
 assert.ok(videoCsv.split("\r\n")[1].endsWith(","), "item without video → empty cell");
 assert.ok(videoCsv.split("\r\n")[2].endsWith(",https://cdn.example.com/v/gnr.mp4"));
 
-/* CSV: exact verified header, no BOM, CRLF, quoting */
+/* CSV: verified header + the appended tag-label columns, no BOM, CRLF, quoting */
 const csv = toActivitiesCsv([item]);
 assert.strictEqual(
   csv.split("\r\n")[0],
   "id,image_link,brand,description,title,price,link,rating_count,user_rating," +
     "activity_category,performers,location_names,activity_sub_categories," +
-    "activity_date,custom_label_0,custom_label_1"
+    "activity_date,custom_label_0,custom_label_1,custom_label_2," +
+    "custom_label_3,custom_label_4"
 );
 assert.ok(csv.charCodeAt(0) !== 0xfeff, "no BOM");
 assert.ok(csv.endsWith("\r\n"));
