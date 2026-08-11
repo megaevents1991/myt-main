@@ -22,6 +22,34 @@ import {
 } from "@/lib/feed/activitiesCatalog";
 import { normalizeName } from "@/lib/eventNameMatch";
 
+// PostgREST hard-caps every response at max-rows (1000 on this project) —
+// a plain unranged select silently returns the first 1000 rows and drops the
+// rest, which for the link tables meant arbitrary events losing their
+// custom labels / product_type as soon as total links crossed the cap.
+const DB_PAGE_SIZE = 1000;
+// `.in("event_id", ids)` serializes into the query string — hundreds of ids
+// make the URL long enough to 414, so id-lists are chunked.
+const IN_CHUNK_SIZE = 200;
+
+/** Drains a ranged query page by page until a short page arrives. */
+async function fetchAllPages<T>(
+  label: string,
+  page: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += DB_PAGE_SIZE) {
+    const { data, error } = await page(from, from + DB_PAGE_SIZE - 1);
+    if (error) {
+      console.error(`[feed] ${label} query failed:`, JSON.stringify(error));
+      break;
+    }
+    const rows = (data ?? []) as T[];
+    all.push(...rows);
+    if (rows.length < DB_PAGE_SIZE) break;
+  }
+  return all;
+}
+
 /**
  * Classifier for events the taxonomy doesn't cover: does the event name match
  * a CMS artist or a football team? Most `tx_event` rows have no category link,
@@ -55,16 +83,18 @@ async function fetchPeopleNames(
   table: "artists" | "football_teams"
 ): Promise<Set<string>> {
   // artists/football_teams use a BOOLEAN is_deleted (events use a date string).
-  const { data, error } = await supabase
-    .from(table)
-    .select("name, name_english")
-    .eq("is_deleted", false);
-  if (error) {
-    console.error(`[feed] ${table} query failed:`, JSON.stringify(error));
-    return new Set();
-  }
+  const rows = await fetchAllPages<{ name?: string; name_english?: string }>(
+    table,
+    (from, to) =>
+      supabase
+        .from(table)
+        .select("name, name_english")
+        .eq("is_deleted", false)
+        .order("id", { ascending: true })
+        .range(from, to)
+  );
   const names = new Set<string>();
-  for (const row of (data ?? []) as { name?: string; name_english?: string }[]) {
+  for (const row of rows) {
     for (const n of [row.name, row.name_english]) {
       const normalized = normalizeName(n);
       if (normalized) names.add(normalized);
@@ -78,19 +108,19 @@ async function getFeedEvents(): Promise<{
   events: Event[];
   taxonomyByEvent: Map<number, EventTaxonomyInfo>;
 }> {
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("*")
-    .is("is_deleted", null)
-    .gte("date", futureDateISO(0))
-    .order("date", { ascending: true });
-  if (error) {
-    console.error("[feed] events query failed:", JSON.stringify(error));
-    return { events: [], taxonomyByEvent: new Map() };
-  }
+  const events = await fetchAllPages<Event>("events", (from, to) =>
+    supabase
+      .from("events")
+      .select("*")
+      .is("is_deleted", null)
+      .gte("date", futureDateISO(0))
+      .order("date", { ascending: true })
+      .order("id", { ascending: true }) // stable pages when dates tie
+      .range(from, to)
+  );
 
   const enriched = await enrichEventsWithFallbackImages(
-    ((events ?? []) as Event[]).filter((e) => !e.is_test),
+    events.filter((e) => !e.is_test),
   );
   return {
     events: enriched,
@@ -210,15 +240,14 @@ async function getTaxonomyByEvent(
 }
 
 async function fetchAllCategories(): Promise<EventCategory[]> {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("is_deleted", false);
-  if (error) {
-    console.error("[feed] categories query failed:", JSON.stringify(error));
-    return [];
-  }
-  return (data ?? []) as EventCategory[];
+  return fetchAllPages<EventCategory>("categories", (from, to) =>
+    supabase
+      .from("categories")
+      .select("*")
+      .eq("is_deleted", false)
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 }
 
 async function fetchLinks(
@@ -226,16 +255,21 @@ async function fetchLinks(
   otherCol: "category_id" | "tag_id",
   eventIds: number[]
 ): Promise<{ event_id: number; other_id: number }[]> {
-  const { data, error } = await supabase
-    .from(table)
-    .select(`event_id,${otherCol}`)
-    .in("event_id", eventIds);
-  if (error) {
-    console.error(`[feed] ${table} query failed:`, JSON.stringify(error));
-    return [];
+  const links: { event_id: number; other_id: number }[] = [];
+  for (let i = 0; i < eventIds.length; i += IN_CHUNK_SIZE) {
+    const chunk = eventIds.slice(i, i + IN_CHUNK_SIZE);
+    const rows = await fetchAllPages<Record<string, number>>(table, (from, to) =>
+      supabase
+        .from(table)
+        .select(`event_id,${otherCol}`)
+        .in("event_id", chunk)
+        .order("event_id", { ascending: true })
+        .order(otherCol, { ascending: true }) // unique pair → fully stable pages
+        .range(from, to)
+    );
+    for (const row of rows) {
+      links.push({ event_id: row.event_id, other_id: row[otherCol] });
+    }
   }
-  return ((data ?? []) as unknown as Record<string, number>[]).map((row) => ({
-    event_id: row.event_id,
-    other_id: row[otherCol],
-  }));
+  return links;
 }

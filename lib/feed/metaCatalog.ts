@@ -25,9 +25,19 @@ export const GOOGLE_PRODUCT_CATEGORY = "499969";
 export type EventTaxonomyInfo = {
   /** Deepest category path, root-first (e.g. ["Music", "Rock"]). */
   categoryPath: string[];
-  /** Curated feed-tag slugs, backoffice order. */
+  /** Feed-tag slugs, sorted alphabetically by feedData. */
   tagSlugs: string[];
 };
+
+/**
+ * Tag slugs worth showing a campaign manager. Legacy Hebrew-only tags were
+ * auto-slugged `item-<N>` (the backoffice now blocks creating new ones) — as
+ * a custom label that's meaningless noise, so they're dropped from labels
+ * (internal_labels keep the raw list for diagnostics).
+ */
+export function usableTagSlugs(slugs: string[]): string[] {
+  return slugs.filter((s) => !/^item-\d+$/.test(s));
+}
 
 export type FeedItem = {
   id: number;
@@ -151,10 +161,9 @@ export function buildFeedItem(
 ): FeedItem | { skipped: string } {
   const price = feedPriceUSD(event);
   if (price == null) return { skipped: "no computable price" };
-  // Campaign creative (backoffice nightly cron) wins; original card image is
-  // the fallback for events the auto-derivation couldn't handle cleanly.
   // Branded or not at all — same rule as the activities feed, see the note
-  // there. The campaign creative IS the product image; nothing falls back.
+  // there. The campaign creative IS the product image; nothing falls back
+  // (the old card_image_url fallback is gone since d4539e1).
   const imageLink = event.campaign_image_url;
   if (!imageLink) return { skipped: "no campaign creative" };
 
@@ -180,7 +189,7 @@ export function buildFeedItem(
   const description = fromCms && fromCms !== title ? fromCms : generated;
 
   const status = soldOut ? "sold_out" : "available";
-  const labels = taxonomy.tagSlugs.slice(0, 4);
+  const labels = usableTagSlugs(taxonomy.tagSlugs).slice(0, 4);
   const custom_labels: FeedItem["custom_labels"] = [
     labels[0] ?? "",
     labels[1] ?? "",

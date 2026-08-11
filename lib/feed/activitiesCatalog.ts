@@ -22,6 +22,7 @@ import {
   formatPriceUSD,
   orderLink,
   plainText,
+  usableTagSlugs,
   type EventTaxonomyInfo,
 } from "./metaCatalog";
 
@@ -62,6 +63,13 @@ export type ActivityItem = {
   activity_date: string;
   custom_label_0: string;
   custom_label_1: string;
+  /** Backoffice feed tags (event_tag_links), first three usable slugs —
+   *  the labels the CMO filters campaigns by. Empty when the event carries
+   *  no tags. Appended after the verified column set (Meta maps by header
+   *  name, extra columns are additive) — re-verify one upload after deploy. */
+  custom_label_2: string;
+  custom_label_3: string;
+  custom_label_4: string;
   /** Direct video FILE url, or "" — never a player/YouTube link. */
   video_url: string;
 };
@@ -190,6 +198,11 @@ export function buildActivityItem(
     path[0]?.toLowerCase() ||
     (hint === "artist" ? "music" : hint === "football-team" ? "sport" : "");
   const subCategory = leaf || (hint === "football-team" ? "Football" : "");
+  // Backoffice feed tags → labels 2-4. This used to exist only in the Google
+  // feed — Commerce Manager never saw tag labels at all ("the custom labels
+  // from tags don't show up"). Legacy `item-N` slugs (auto-slugged
+  // Hebrew-only tags) are meaningless to a campaign filter and are dropped.
+  const tagLabels = usableTagSlugs(taxonomy.tagSlugs);
 
   return {
     id: event.id,
@@ -209,6 +222,9 @@ export function buildActivityItem(
     activity_date: eventDate,
     custom_label_0: domainLabel,
     custom_label_1: subCategory.toLowerCase(),
+    custom_label_2: tagLabels[0] ?? "",
+    custom_label_3: tagLabels[1] ?? "",
+    custom_label_4: tagLabels[2] ?? "",
     video_url: isDirectVideoUrl(event.campaign_video_url)
       ? (event.campaign_video_url as string)
       : "",
@@ -219,7 +235,8 @@ const CSV_HEADERS = [
   "id", "image_link", "brand", "description", "title", "price", "link",
   "rating_count", "user_rating", "activity_category", "performers",
   "location_names", "activity_sub_categories", "activity_date",
-  "custom_label_0", "custom_label_1",
+  "custom_label_0", "custom_label_1", "custom_label_2", "custom_label_3",
+  "custom_label_4",
 ];
 /** Meta's optional video column (up to video[19].url; we publish one). */
 const VIDEO_HEADER = "video[0].url";
@@ -242,7 +259,8 @@ export function toActivitiesCsv(items: ActivityItem[]): string {
       it.id, it.image_link, it.brand, it.description, it.title, it.price, it.link,
       it.rating_count, it.user_rating, it.activity_category, it.performers,
       it.location_names, it.activity_sub_categories, it.activity_date,
-      it.custom_label_0, it.custom_label_1,
+      it.custom_label_0, it.custom_label_1, it.custom_label_2, it.custom_label_3,
+      it.custom_label_4,
     ];
     if (withVideo) cells.push(it.video_url);
     return cells.map(csvCell).join(",");
