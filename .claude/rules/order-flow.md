@@ -1,4 +1,4 @@
-# Order Flow Rule (always-on) — myt-main
+# Order Flow Rule (always-on) - myt-main
 
 The core booking flow under `app/order/[eventId]`. Keep it intact.
 
@@ -11,4 +11,4 @@ The core booking flow under `app/order/[eventId]`. Keep it intact.
   - `sports_event` / `music_event` → static Supabase `tickets_and_rates`
   - `sports_event_dynamic` / `music_live_event_dynamic` → XS2Event API
   - `tx_event` → Tixstock + interactive seat map (`TixstockDynamicMap.tsx`)
-- Session expiry handled by `useOrderExpiry` — don't duplicate timer logic.
+- Session expiry handled by `useOrderExpiry` - don't duplicate timer logic.

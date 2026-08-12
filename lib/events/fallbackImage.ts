@@ -14,15 +14,15 @@ import {
  *
  * An event with no image of its own (`art_image_url` and `card_image_url` both
  * empty) borrows its matching artist's / football team's imagery in place:
- * - the person's BLOB card-art (art_* set) — so event cards render the exact
+ * - the person's BLOB card-art (art_* set) - so event cards render the exact
  *   same blob card as the artist catalog/carousel; and
- * - the person's hero photo into `card_image_url` — used by the order-header
+ * - the person's hero photo into `card_image_url` - used by the order-header
  *   circle and OG image (and by cards when the person has no blob art).
- * Zero component changes — the existing `art_image_url ? blob : photo` logic
+ * Zero component changes - the existing `art_image_url ? blob : photo` logic
  * picks the right variant.
  */
 
-// Merged artist+team index, names normalized once (case/accent/punctuation —
+// Merged artist+team index, names normalized once (case/accent/punctuation -
 // same normalizeName as getEventsByName) and sorted longest-first so the most
 // specific person wins when several match (keeps "Sia" from grabbing an
 // "Asia" event). Cached once per ISR window, invalidated with `events`.
@@ -37,16 +37,17 @@ const getPersonImageIndex = nextCache(
       .sort((a, b) => b.name.length - a.name.length);
   },
   ["person-image-index"],
-  { tags: ["events"], revalidate: 3600 }
+  { tags: ["events"], revalidate: 3600 },
 );
 
 // "" / null / undefined all count as absent.
-const hasOwnPhoto = (e: Event) => Boolean(e.art_image_url) || Boolean(e.card_image_url);
+const hasOwnPhoto = (e: Event) =>
+  Boolean(e.art_image_url) || Boolean(e.card_image_url);
 
-/** Fills `card_image_url` in place for photo-less events. Never throws — on any
+/** Fills `card_image_url` in place for photo-less events. Never throws - on any
  *  failure events render exactly as they do today. */
 export async function enrichEventsWithFallbackImages(
-  events: Event[]
+  events: Event[],
 ): Promise<Event[]> {
   try {
     if (!events.some((e) => !hasOwnPhoto(e))) return events;
@@ -65,7 +66,7 @@ export async function enrichEventsWithFallbackImages(
       );
       // A fixture matches BOTH clubs ("AS Roma vs Inter Milan") and the
       // longest-first order would hand the art to whichever club has the longer
-      // name (Inter). The event is the HOME team's game — its crest wins;
+      // name (Inter). The event is the HOME team's game - its crest wins;
       // non-fixtures (artists) have no home side and keep longest-first.
       const match =
         candidates.find((p) => teamFixtureRole(name, p.name) === "home") ??
@@ -73,10 +74,17 @@ export async function enrichEventsWithFallbackImages(
       if (!match) continue;
       // Gallery first: a deterministic per-event pick (same `id % length`
       // rule the backoffice creative generator uses) so ten photo-less
-      // events of one artist show ten different photos instead of the same
-      // blob/hero everywhere. Stable per event across renders — no churn.
+      // events of one artist show ten different images instead of the same
+      // art everywhere. Stable per event across renders - no churn.
+      //
+      // Gallery images come out of the backoffice cut-out upload pipeline -
+      // transparent PNGs. As a raw card photo they render as floating
+      // torsos on a dark panel (2026-08-11 prod bug), so they enter the
+      // BLOB art system instead: art_image_url with color/shape left unset
+      // → getEventArt derives them from the event id → every event gets
+      // the brand blob card in its own random color/shape.
       if (match.gallery.length) {
-        event.card_image_url = match.gallery[event.id % match.gallery.length];
+        event.art_image_url = match.gallery[event.id % match.gallery.length];
         continue;
       }
       if (match.art) {

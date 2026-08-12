@@ -172,7 +172,7 @@ export type HotelInfoClient = {
     longitude: number;
     latitude: number;
     distanceFromCenter: number;
-    // RateHawk guest review score (0–10) + review count. NOT TripAdvisor —
+    // RateHawk guest review score (0–10) + review count. NOT TripAdvisor -
     // ETG does not expose TripAdvisor via API. 0/undefined = no score → hide.
     guestRating?: number;
     guestReviewCount?: number;
@@ -189,7 +189,7 @@ export type HotelGuestRating = {
 };
 
 // Response of POST https://api.worldota.net/api/content/v1/hotel_reviews_by_ids/
-// Shape is defensive — confirm exact fields against the first real response once
+// Shape is defensive - confirm exact fields against the first real response once
 // ETG enables Content-API reviews access on the key.
 export type HotelReviewsResponse = {
   data?: Array<{

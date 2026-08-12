@@ -1,6 +1,6 @@
 -- Events: ticket-only override markup (nullable, USD per ticket).
 -- When set AND the customer skips BOTH flight and hotel, the main app charges
--- exactly ticket_cost + ticket_only_markup — no global markup, no
+-- exactly ticket_cost + ticket_only_markup - no global markup, no
 -- event_additional_markup, no skip fees, no component markups. Every other
 -- package combination is untouched. NULL = no override (default).
 

@@ -3,7 +3,7 @@ export type ConsumedRow = { flight_id: number; consumed_seats: number };
 
 /**
  * Seats still sellable to ONE event, keyed by flight id. A flight absent from
- * the map has no allocation row and draws on the global pool — the
+ * the map has no allocation row and draws on the global pool - the
  * pre-allocation behaviour, deliberately preserved so existing links keep
  * working without a backfill.
  */
@@ -17,7 +17,8 @@ export function buildSeatQuota(
   return new Map(
     allocations.map((allocation) => [
       allocation.flight_id,
-      allocation.allocated_seats - (consumedByFlight.get(allocation.flight_id) ?? 0),
+      allocation.allocated_seats -
+        (consumedByFlight.get(allocation.flight_id) ?? 0),
     ]),
   );
 }

@@ -1,5 +1,5 @@
 /**
- * Signed quote links — the integrity half of "the PDF's pay CTA charges the
+ * Signed quote links - the integrity half of "the PDF's pay CTA charges the
  * agent's price".
  *
  * The backoffice appends `&quote={id}&qsig={sig}` to a quote's payment link
@@ -14,7 +14,9 @@
 function signingKey(): string {
   const key = process.env.NEXT_SECRET_SESSION_SECRET;
   if (!key) {
-    throw new Error("Missing NEXT_SECRET_SESSION_SECRET — quote links cannot be verified");
+    throw new Error(
+      "Missing NEXT_SECRET_SESSION_SECRET - quote links cannot be verified",
+    );
   }
   return key;
 }
@@ -33,7 +35,11 @@ async function hmac(data: string): Promise<string> {
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(data),
+  );
   return toBase64Url(new Uint8Array(sig));
 }
 

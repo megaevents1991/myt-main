@@ -13,7 +13,7 @@ import { trackEvent } from "@/lib/mixpanel";
 type PaymentStatus = "success" | "error" | "pending";
 
 // One order-details line. Flex in an RTL container puts the label flush right
-// and the value flowing left of it — consistent RTL layout even when the whole
+// and the value flowing left of it - consistent RTL layout even when the whole
 // line is English (a right-aligned LTR run leaves the labels ragged). `ltr`
 // isolates values that start with neutrals/digits ("(x2) …", flight numbers)
 // so bidi can't reorder them.
@@ -122,10 +122,10 @@ export default function ConfirmationPage() {
   const handlePageOpen = async () => {
     setIsLoading(true);
 
-    // Validate the payment FIRST and independently — this call is what marks
+    // Validate the payment FIRST and independently - this call is what marks
     // the order Paid (with the server callback as its twin). It must never be
     // skipped because the display fetch below failed.
-    // useSearchParams can be null before hydration completes — never throw here.
+    // useSearchParams can be null before hydration completes - never throw here.
     const resultObject = Object.fromEntries(searchParams?.entries() ?? []);
     let isPaid: PaymentStatus = "pending";
     if (status && resultObject.txId) {
@@ -385,7 +385,7 @@ export default function ConfirmationPage() {
         </p>
       </div>
       {partnerTrackingCode ? (
-        // RTL flex-row: first child sits on the RIGHT — summary right, promo left.
+        // RTL flex-row: first child sits on the RIGHT - summary right, promo left.
         <div className="md:flex md:flex-row md:gap-8 md:items-start md:max-w-4xl w-full flex flex-col">
           <div
             id="order_summary_confirmation"

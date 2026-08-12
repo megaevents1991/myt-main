@@ -1,5 +1,5 @@
 /**
- * Pure tree helpers for the event taxonomy — mirrored from myt-backoffice
+ * Pure tree helpers for the event taxonomy - mirrored from myt-backoffice
  * `lib/taxonomy-tree.ts`. No I/O; safe for client and server. Keep in sync.
  */
 // Relative import (not "@/lib/...") so vitest resolves it without an alias config.
@@ -18,7 +18,10 @@ export function buildTree(cats: EventCategory[]): EventCategoryNode[] {
     }
   });
   const sort = (ns: EventCategoryNode[]) => {
-    ns.sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
+    ns.sort(
+      (a, b) =>
+        a.display_order - b.display_order || a.name.localeCompare(b.name),
+    );
     ns.forEach((n) => sort(n.children));
   };
   sort(roots);
@@ -26,7 +29,9 @@ export function buildTree(cats: EventCategory[]): EventCategoryNode[] {
 }
 
 // "כדורגל › ליגה אנגלית" path label per category.
-export function flattenWithPath(cats: EventCategory[]): { id: number; path: string }[] {
+export function flattenWithPath(
+  cats: EventCategory[],
+): { id: number; path: string }[] {
   const byId = new Map<number, EventCategory>(cats.map((c) => [c.id, c]));
   const pathOf = (c: EventCategory): string => {
     const parts: string[] = [c.name];
@@ -44,7 +49,10 @@ export function flattenWithPath(cats: EventCategory[]): { id: number; path: stri
 }
 
 // All descendant ids of `id` (not including `id` itself), from a built tree.
-export function descendantIds(nodes: EventCategoryNode[], id: number): number[] {
+export function descendantIds(
+  nodes: EventCategoryNode[],
+  id: number,
+): number[] {
   const find = (ns: EventCategoryNode[]): EventCategoryNode | null => {
     for (const n of ns) {
       if (n.id === id) return n;
@@ -60,7 +68,10 @@ export function descendantIds(nodes: EventCategoryNode[], id: number): number[] 
 }
 
 // Ancestor chain (root → ... → parent) for breadcrumbs. Excludes `cat` itself.
-export function ancestorsOf(cat: EventCategory, all: EventCategory[]): EventCategory[] {
+export function ancestorsOf(
+  cat: EventCategory,
+  all: EventCategory[],
+): EventCategory[] {
   const byId = new Map<number, EventCategory>(all.map((c) => [c.id, c]));
   const chain: EventCategory[] = [];
   const seen = new Set<number>();

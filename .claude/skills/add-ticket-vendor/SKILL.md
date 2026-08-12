@@ -6,15 +6,17 @@ description: Scaffold the customer-side rendering + routing for a new ticket ven
 # Add Ticket Vendor (myt-main frontend)
 
 The backoffice `/new-provider-sync` scaffolds the sync side. This scaffolds how the customer
-app *renders and routes* tickets for the new source. Do these in order.
+app _renders and routes_ tickets for the new source. Do these in order.
 
 ## 1. Type
+
 - Add the new value to the `EventType` union in `lib/app.types.ts` (and mirror to backoffice
-  `types/app.types.ts` — run `/sync-types`).
+  `types/app.types.ts` - run `/sync-types`).
 - Add/extend the ticket shape if the vendor returns a new structure (follow `EventTicket` /
   `OrderTicket = Omit<EventTicket,'colorOnTheMap'> & { quantity:number }`).
 
 ## 2. Routing
+
 - In the ticket-selection step (`app/order/[eventId]/.../TicketSelection.tsx`), branch on
   `event.type` exactly like existing vendors:
   - static → Supabase `tickets_and_rates`
@@ -25,13 +27,16 @@ app *renders and routes* tickets for the new source. Do these in order.
   fetch-provider pattern rather than fetching in render.
 
 ## 3. Pricing
+
 - Ensure prices feed `lib/price.utils.tsx` correctly: USD internal, +175 markup, **÷100 if
   the vendor returns cents** (sports convention). See `@.claude/rules/pricing.md`.
 
 ## 4. Display
+
 - Hebrew/RTL labels; Mantine/shadcn components only. Fire selection analytics via
   `lib/mixpanel.ts` + `lib/gtmAnalytics.ts` on user action.
 
 ## 5. Verify
+
 - `/react-review` + `/nextjs-review` on new files; `/price-audit`; `/review` for cross-project
   impact; `tsc --noEmit`.

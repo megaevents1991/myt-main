@@ -7,7 +7,7 @@ export interface FilterPillProps
   active?: boolean;
 }
 
-/** Category filter pill — outline by default, filled when active. */
+/** Category filter pill - outline by default, filled when active. */
 export const FilterPill = React.forwardRef<
   HTMLButtonElement,
   FilterPillProps

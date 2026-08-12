@@ -1,8 +1,8 @@
 /**
- * Single source of truth for partner payout — ported verbatim from
+ * Single source of truth for partner payout - ported verbatim from
  * myt-backoffice's lib/partner-commission.ts (same shared `reservations` /
  * `partners` tables). Do not re-derive this math elsewhere: the backoffice
- * comment on the original explains why it exists at all — "the portal once
+ * comment on the original explains why it exists at all - "the portal once
  * read the column as a percentage while the monthly report cron paid it as
  * $/ticket, so the same partner saw two different payouts for the same
  * month." Every partner-facing surface in this app must call in here too.
@@ -11,7 +11,11 @@
 export type CommissionType = "fixed_per_ticket" | "percent_of_sale";
 
 type EventOrderInfoItem = { number_of_ticket?: number | null };
-type EventOrderInfo = EventOrderInfoItem | { events: EventOrderInfoItem[] } | null | undefined;
+type EventOrderInfo =
+  | EventOrderInfoItem
+  | { events: EventOrderInfoItem[] }
+  | null
+  | undefined;
 
 type ReservationLike = {
   status?: string | null;
@@ -26,7 +30,9 @@ export type CommissionTerms = {
 };
 
 /** A reservation's event_order_info is either one event, or `{events: [...]}` for a combined booking. */
-function normalizeEventOrderInfo(eventOrderInfo: EventOrderInfo): EventOrderInfoItem[] {
+function normalizeEventOrderInfo(
+  eventOrderInfo: EventOrderInfo,
+): EventOrderInfoItem[] {
   if (!eventOrderInfo) return [];
   if (
     typeof eventOrderInfo === "object" &&
@@ -54,7 +60,7 @@ export function countTickets(reservations: ReservationLike[]): number {
 /**
  * The one status that earns commission. Every writer in both apps stores
  * exactly this casing, and the backoffice's monthly cron bills on
- * `.eq("status", PAID_STATUS)` — a looser check would show partners
+ * `.eq("status", PAID_STATUS)` - a looser check would show partners
  * commission the cron never actually pays.
  */
 export const PAID_STATUS = "Paid";
@@ -64,7 +70,7 @@ export function isPaid(reservation: ReservationLike): boolean {
   return reservation.status === PAID_STATUS;
 }
 
-/** The package price the customer paid — the base for percentage commission. */
+/** The package price the customer paid - the base for percentage commission. */
 export function saleValue(reservation: ReservationLike): number {
   return reservation.user_shown_price ?? 0;
 }
@@ -92,7 +98,7 @@ export function commissionForReservation(
     return (saleValue(reservation) * terms.rate) / 100;
   }
   // fixed_per_ticket is the default for every legacy row, so an unset or
-  // unrecognised type must land here — that is how the cron has always paid.
+  // unrecognised type must land here - that is how the cron has always paid.
   return countReservationTickets(reservation) * terms.rate;
 }
 
@@ -101,11 +107,14 @@ export function commissionForReservations(
   reservations: ReservationLike[],
   terms: CommissionTerms,
 ): number {
-  return reservations.reduce((sum, r) => sum + commissionForReservation(r, terms), 0);
+  return reservations.reduce(
+    (sum, r) => sum + commissionForReservation(r, terms),
+    0,
+  );
 }
 
 /**
- * Site credit accrued on paid reservations — separate from cash commission,
+ * Site credit accrued on paid reservations - separate from cash commission,
  * and paid in addition to it. Accrues per ticket, the same unit the monthly
  * report counts, so the two figures always agree about what a "passenger" is.
  */
@@ -118,7 +127,7 @@ export function creditAccrued(
 }
 
 /**
- * The instant historical partner balances were settled outside this system —
+ * The instant historical partner balances were settled outside this system -
  * commission and site credit both. Mirrors the backfill in the backoffice's
  * migration 20260729220000, which stamps exactly this value into `billed_at`.
  *
@@ -129,7 +138,9 @@ export const SETTLEMENT_CUTOFF_ISO = "2026-07-01T00:00:00+00:00";
 const SETTLEMENT_CUTOFF_MS = Date.parse(SETTLEMENT_CUTOFF_ISO);
 
 /** True when this reservation was part of the pre-cutoff settlement. */
-export function wasSettledAtCutoff(billedAt: string | null | undefined): boolean {
+export function wasSettledAtCutoff(
+  billedAt: string | null | undefined,
+): boolean {
   if (!billedAt) return false;
   const stamped = Date.parse(billedAt);
   return Number.isFinite(stamped) && stamped <= SETTLEMENT_CUTOFF_MS;
@@ -142,11 +153,11 @@ export function round2(amount: number): number {
 
 /**
  * Human-readable rate, e.g. "$25 per ticket" or "8% of sales". A rate of 0 is
- * shown as "$0", not "—": partners created alongside a user start at 0, and
+ * shown as "$0", not "-": partners created alongside a user start at 0, and
  * "not configured yet" must not look like "no data".
  */
 export function describeCommission(terms: CommissionTerms): string {
-  if (!isUsableRate(terms.rate)) return "—";
+  if (!isUsableRate(terms.rate)) return "-";
   return terms.type === "percent_of_sale"
     ? `${terms.rate}% of sales`
     : `$${terms.rate} per ticket`;

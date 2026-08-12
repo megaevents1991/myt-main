@@ -11,7 +11,7 @@ import {
 } from "@/lib/partner-commission";
 
 /**
- * Reservations list for the agent/influencer area — ported from the
+ * Reservations list for the agent/influencer area - ported from the
  * backoffice partner portal (`getPortalReservations` in
  * lib/actions/portal-actions.ts there). Same shared `reservations` /
  * `partners` tables, so the column allowlist, the hold window and the
@@ -35,7 +35,7 @@ type ReservationEventOrderInfo =
 /**
  * A reservation's event_order_info is either one event, or `{events: [...]}`
  * for a combined booking. lib/partner-commission.ts has the exact same
- * function (`normalizeEventOrderInfo`) but keeps it private to that module —
+ * function (`normalizeEventOrderInfo`) but keeps it private to that module -
  * this is a deliberate small local copy, not a fork of shared logic, since
  * here it also needs to read display fields (name/date/location/category)
  * that module's own minimal item type doesn't carry.
@@ -49,7 +49,8 @@ function normalizeReservationEventOrderInfo(
     "events" in eventOrderInfo &&
     Array.isArray((eventOrderInfo as { events?: unknown }).events)
   ) {
-    return (eventOrderInfo as { events: ReservationEventOrderInfoItem[] }).events;
+    return (eventOrderInfo as { events: ReservationEventOrderInfoItem[] })
+      .events;
   }
   return [eventOrderInfo as ReservationEventOrderInfoItem];
 }
@@ -69,7 +70,7 @@ export interface PortalReservation {
   tickets: number;
   /** Travellers on the booking, including the person who booked it. */
   pax: number;
-  /** Ours to quote back at us — staff-entered, may be empty. */
+  /** Ours to quote back at us - staff-entered, may be empty. */
   booking_reference: string | null;
   /** Whether the customer's confirmation went out. */
   materials_sent: boolean;
@@ -99,25 +100,27 @@ const HOLD_STATUS = "24Save";
  *
  * This app's own recovery endpoint (app/api/find-order/route.ts) allows 25
  * hours, not the 24 advertised to the customer. The partner is shown the real
- * cut-off — telling them 24 would have them chase a customer whose link still
+ * cut-off - telling them 24 would have them chase a customer whose link still
  * works, or write off one that isn't actually recoverable for another hour.
  */
 const HOLD_WINDOW_MS = 25 * 60 * 60 * 1000;
 
 function holdExpiry(createdAt: string): string | null {
   const created = new Date(createdAt).getTime();
-  return Number.isFinite(created) ? new Date(created + HOLD_WINDOW_MS).toISOString() : null;
+  return Number.isFinite(created)
+    ? new Date(created + HOLD_WINDOW_MS).toISOString()
+    : null;
 }
 
 /**
  * Columns a partner may see on their own bookings.
  *
- * Listed explicitly, never "everything except" — a column added to
+ * Listed explicitly, never "everything except" - a column added to
  * `reservations` later must not start leaking on its own. Deliberately
  * absent: `main_contact_phone_number` and `main_contact_email` (the customer
  * belongs to the business, not the partner), `payment_info`,
  * `offline_flight_cost` / `offline_hotel_cost` / `final_purchase_price_ils`
- * (our cost — showing them hands the partner our margin on every booking),
+ * (our cost - showing them hands the partner our margin on every booking),
  * `accounting_number`, and `comments`, which is staff's internal note field.
  */
 const PORTAL_RESERVATION_COLUMNS =
@@ -157,14 +160,17 @@ export async function getPortalReservations(): Promise<PortalReservationsPage> {
   ]);
 
   if (reservationsResult.error) {
-    console.error("getPortalReservations:", JSON.stringify(reservationsResult.error));
+    console.error(
+      "getPortalReservations:",
+      JSON.stringify(reservationsResult.error),
+    );
     return { rows: [], truncated: false };
   }
 
   let partnerResult = partnerResultInitial;
   if (partnerResult.error?.code === "42703") {
     // The commission_type column and this app's deploy can land out of order
-    // (same race lib/quote-actions.ts already guards against) — a reporting
+    // (same race lib/quote-actions.ts already guards against) - a reporting
     // column must not stop a partner seeing their own bookings.
     partnerResult = await supabase
       .from("partners")
@@ -174,7 +180,10 @@ export async function getPortalReservations(): Promise<PortalReservationsPage> {
   }
   if (partnerResult.error) {
     // Never let a lookup failure quietly render every booking as $0 commission.
-    console.error("getPortalReservations partner:", JSON.stringify(partnerResult.error));
+    console.error(
+      "getPortalReservations partner:",
+      JSON.stringify(partnerResult.error),
+    );
   }
 
   const terms: CommissionTerms = {
@@ -182,12 +191,15 @@ export async function getPortalReservations(): Promise<PortalReservationsPage> {
     // fixed_per_ticket), this app has only ever read `partners.commission` as
     // a plain PERCENTAGE everywhere else it touches it (confirm-order/utils.ts's
     // agent_card discount, PriceSummary.tsx's "עמלה צפויה" line, lib/quote-actions.ts's
-    // commissionTermsFor) — so percent_of_sale is the fallback that matches
+    // commissionTermsFor) - so percent_of_sale is the fallback that matches
     // what this number has always meant here, not the backoffice's convention.
     type:
-      ((partnerResult.data as { commission_type?: CommissionType | null } | null)
-        ?.commission_type as CommissionType | null) ?? "percent_of_sale",
-    rate: (partnerResult.data as { commission?: number | null } | null)?.commission ?? null,
+      ((
+        partnerResult.data as { commission_type?: CommissionType | null } | null
+      )?.commission_type as CommissionType | null) ?? "percent_of_sale",
+    rate:
+      (partnerResult.data as { commission?: number | null } | null)
+        ?.commission ?? null,
   };
 
   const all = (reservationsResult.data as Row[] | null) ?? [];
@@ -212,7 +224,7 @@ export async function getPortalReservations(): Promise<PortalReservationsPage> {
       event_location: first?.location_name ?? null,
       ticket_category: first?.category ?? null,
       tickets: countReservationTickets(r),
-      // `more_pax_info` is the ADDITIONAL passengers — the main contact is not
+      // `more_pax_info` is the ADDITIONAL passengers - the main contact is not
       // in it (this app writes `passengers.slice(1)`), so the +1 is the
       // booker. Every other pax count in this repo does the same.
       pax: 1 + (Array.isArray(r.more_pax_info) ? r.more_pax_info.length : 0),
@@ -221,10 +233,11 @@ export async function getPortalReservations(): Promise<PortalReservationsPage> {
       commission_usd: round2(commissionForReservation(r, terms)),
       billed: !!r.billed_at,
       is_hold: r.status === HOLD_STATUS,
-      hold_expires_at: r.status === HOLD_STATUS ? holdExpiry(r.created_at) : null,
+      hold_expires_at:
+        r.status === HOLD_STATUS ? holdExpiry(r.created_at) : null,
       // Deliberately NOT the customer's order-recovery link. Opening it loads
       // the saved cart through this app's find-order endpoint, which returns
-      // the customer's phone, email and every passenger name — exactly what
+      // the customer's phone, email and every passenger name - exactly what
       // PORTAL_RESERVATION_COLUMNS above refuses to select. The partner
       // already has the customer's name and the event, which is what they
       // need to make the call.

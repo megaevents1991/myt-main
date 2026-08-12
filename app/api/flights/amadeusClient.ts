@@ -25,7 +25,7 @@ type AmadeusEnv = "test" | "enterprise";
 const ENV = (process.env.AMADEUS_ENV as AmadeusEnv) || "test";
 
 // Default hosts per environment. `test` is the Enterprise SANDBOX gateway
-// (test.travel.*). `enterprise` is the production gateway (travel.*) — the host
+// (test.travel.*). `enterprise` is the production gateway (travel.*) - the host
 // the production keys authenticate against (verified live 2026-07-18).
 // Both can be overridden via AMADEUS_AUTH_HOST / AMADEUS_API_HOST.
 const DEFAULT_HOSTS: Record<AmadeusEnv, { auth: string; api: string }> = {
@@ -94,7 +94,7 @@ async function getToken(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// Error shaping — match the SDK's ResponseError so callers keep working
+// Error shaping - match the SDK's ResponseError so callers keep working
 // ---------------------------------------------------------------------------
 
 interface AmadeusLikeError extends Error {
@@ -106,7 +106,9 @@ interface AmadeusLikeError extends Error {
 }
 
 function buildError(statusCode: number, result: unknown): AmadeusLikeError {
-  const err = new Error(`Amadeus API error (${statusCode})`) as AmadeusLikeError;
+  const err = new Error(
+    `Amadeus API error (${statusCode})`,
+  ) as AmadeusLikeError;
   err.response = {
     statusCode,
     result,
@@ -118,12 +120,12 @@ function buildError(statusCode: number, result: unknown): AmadeusLikeError {
 }
 
 // ---------------------------------------------------------------------------
-// Core request helper — returns the SDK-style { data, result, body } envelope
+// Core request helper - returns the SDK-style { data, result, body } envelope
 // ---------------------------------------------------------------------------
 
 function authHeaders(token: string): Record<string, string> {
   // The office/PCC is bound to the OAuth credential on Amadeus's side, so the
-  // bearer token alone carries the right context — no X-Amadeus-Office-Id header
+  // bearer token alone carries the right context - no X-Amadeus-Office-Id header
   // is needed (sending one actually trips error 2668 on this gateway).
   return {
     Authorization: `Bearer ${token}`,
@@ -144,7 +146,7 @@ async function request(
     // callers so Amadeus support can trace each Search/Price call. Required by
     // the production-certification checklist.
     clientRef?: string;
-  } = {}
+  } = {},
   // Return shape mirrors the SDK envelope. Typed loose (`any`) so the existing
   // call sites that read `.result.data` / `.result.dictionaries` keep compiling
   // exactly as they did against the SDK's ambient types.
@@ -171,7 +173,9 @@ async function request(
     method,
     headers,
     body:
-      method === "POST" && body !== undefined ? JSON.stringify(body) : undefined,
+      method === "POST" && body !== undefined
+        ? JSON.stringify(body)
+        : undefined,
   });
 
   const text = await res.text();
@@ -211,7 +215,7 @@ export const amadeus = {
         // POST /v1/shopping/flight-offers/pricing?include=...
         post: (
           body: unknown,
-          opts?: { include?: string[]; clientRef?: string }
+          opts?: { include?: string[]; clientRef?: string },
         ) =>
           request("POST", "/v1/shopping/flight-offers/pricing", {
             query: opts?.include?.length

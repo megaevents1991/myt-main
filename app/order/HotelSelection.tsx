@@ -65,7 +65,7 @@ export const HotelSelection = () => {
     // which is itself synced to the number of booked tickets at ticket
     // selection. tickets → flight → hotel, one consistent headcount.
     // Fall back to the ticket count when planeTickets isn't set yet (skip-flight
-    // / US / direct-to-hotel) — otherwise getRoomParams(undefined) returns [],
+    // / US / direct-to-hotel) - otherwise getRoomParams(undefined) returns [],
     // collapsing the per-person divisor to 1 and showing the full room price
     // (e.g. 940) as the per-traveler price instead of 470.
   >(getRoomParams(planeTickets?.adults || numberOfEventTickets || 1));
@@ -104,7 +104,7 @@ export const HotelSelection = () => {
   const [hotelNameFilter, setHotelNameFilter] = useState("");
   const [userInteracted, setUserInteracted] = useState(false);
 
-  // Offline hotels — fetched from /api/offline-hotels and merged into the main
+  // Offline hotels - fetched from /api/offline-hotels and merged into the main
   // WorldOTA-style list so they render through the exact same <HotelCard>.
   type OfflineMeta = {
     offlineId: number;
@@ -126,15 +126,15 @@ export const HotelSelection = () => {
   const [offlineLoading, setOfflineLoading] = useState(true);
 
   // Serialize roomParams so the effect re-runs when the customer changes their
-  // room/guest config — needed because the API now filters by room capacity.
+  // room/guest config - needed because the API now filters by room capacity.
   const roomParamsKey = useMemo(
     () => JSON.stringify(roomParams),
     [roomParams]
   );
 
   // Correct a stale online hotel search. An early preload (OrderForm, on event
-  // load) fetches hotels with the default 2 guests — before the customer's real
-  // party size is known — and a stale-cache guard then blocks later refetches.
+  // load) fetches hotels with the default 2 guests - before the customer's real
+  // party size is known - and a stale-cache guard then blocks later refetches.
   // If the cached search's guest count doesn't match the current party size,
   // refetch once so prices, room capacity, and the selected hotel reflect the
   // real headcount (this drove the "hotel only for 2" under-booking bug).
@@ -248,7 +248,7 @@ export const HotelSelection = () => {
       a.length === b.length && a.every((value, index) => value === b[index]);
 
     // No hotels at all (0-result search / all dropped for missing rates):
-    // bail to the empty state — Math.max(...[]) below is -Infinity and
+    // bail to the empty state - Math.max(...[]) below is -Infinity and
     // hotelsToSet[0] would throw.
     if (!data.data.hotels.length) {
       setFilteredHotels([]);
@@ -352,7 +352,7 @@ export const HotelSelection = () => {
     // Batch all state updates together using React's automatic batching
     const selectedHotelId = hotelsToSet[0].id;
 
-    // Info of the AUTO-SELECTED hotel — hotelsInfo is keyed by hotel id, so
+    // Info of the AUTO-SELECTED hotel - hotelsInfo is keyed by hotel id, so
     // the old hotelsInfo[0] was always undefined and orders accepted with the
     // default hotel saved an empty hotelInformation.
     const selectedInfo = hotelsInfo[selectedHotelId];
@@ -592,7 +592,7 @@ export const HotelSelection = () => {
     }
   };
 
-  // Total pax across requested rooms — used as the HotelCard `persons` divisor
+  // Total pax across requested rooms - used as the HotelCard `persons` divisor
   // for offline hotels so the supplement math matches the online pipeline:
   //   perPerson = show_amount / persons
   //   supplement = perPerson - event.base_hotel_price
@@ -739,7 +739,7 @@ export const HotelSelection = () => {
           <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader
               event={event}
-              // Edit-from-summary is a focused task — no person-page links.
+              // Edit-from-summary is a focused task - no person-page links.
               artistHref={returnToSummary ? undefined : personLink?.href}
               artistLinkLabel={returnToSummary ? undefined : personLink?.label}
             />
@@ -997,7 +997,7 @@ export const HotelSelection = () => {
               // Show the branded loading animation for ANY active fetch (same as
               // the flight step), not only first load. Prefetch now survives into
               // this step, so hotelsData is often already populated when a refetch
-              // (dates/guests/distance) runs — gating on "no hotels" used to drop
+              // (dates/guests/distance) runs - gating on "no hotels" used to drop
               // us into the plain skeleton branch and lose the animation.
               <FlightLoadingTransition
                 title={flightSkipped ? "מחפשים לכם את המלונות הטובים ביותר" : "!?כבר הספקתם לבחור טיסות"}
@@ -1022,7 +1022,7 @@ export const HotelSelection = () => {
                 <OrderIssueState
                   className="min-h-64"
                   title="לא מצאנו מלונות שמתאימים לחיפוש"
-                  subtitle="נסו לשנות את התאריכים, להגדיל את המרחק מהאירוע או לשחרר קצת את המסננים — ואם אתם צריכים עזרה, אנחנו כאן."
+                  subtitle="נסו לשנות את התאריכים, להגדיל את המרחק מהאירוע או לשחרר קצת את המסננים - ואם אתם צריכים עזרה, אנחנו כאן."
                   whatsAppText="היי, אני מחפש מלון להזמנה באתר ולא מצאתי תוצאות. אשמח לעזרה :)"
                 />
               )}

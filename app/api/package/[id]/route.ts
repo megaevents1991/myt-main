@@ -7,7 +7,7 @@ import type { Flight, OrderHotel } from "@/lib/app.types";
 
 /**
  * Resolves a prepared package into what OrderReview needs, re-validated
- * against live data — unlike /api/find-order (the 24h-hold recovery
+ * against live data - unlike /api/find-order (the 24h-hold recovery
  * equivalent), which trusts its stored blob completely for its whole
  * 25-hour window. A package link can be shared and opened much later than
  * that, so staleness here is the normal case to plan for, not an edge case.
@@ -15,7 +15,7 @@ import type { Flight, OrderHotel } from "@/lib/app.types";
  * Degrades piece by piece: a stale flight or hotel drops just that piece
  * (flagged `_needs_repick` so the client lands the visitor on the right
  * step to re-pick it) rather than failing the whole package. Only a gone
- * event or a no-longer-available ticket category fails the whole thing —
+ * event or a no-longer-available ticket category fails the whole thing -
  * there is no "some other category" fallback to compose from here.
  */
 
@@ -65,7 +65,7 @@ export async function GET(
     .eq("share_token", id)
     .maybeSingle();
 
-  // allow_edit may not be migrated yet — fall back to the older column list
+  // allow_edit may not be migrated yet - fall back to the older column list
   // (absent column = editable, today's behavior).
   if (error && error.code === "42703") {
     ({ data, error } = await supabase
@@ -76,15 +76,24 @@ export async function GET(
   }
 
   if (error) {
-    console.error("GET /api/package/[id]:", error.message, error.code, error.details, error.hint);
-    return NextResponse.json({ error: "Failed to load package" }, { status: 500 });
+    console.error(
+      "GET /api/package/[id]:",
+      error.message,
+      error.code,
+      error.details,
+      error.hint,
+    );
+    return NextResponse.json(
+      { error: "Failed to load package" },
+      { status: 500 },
+    );
   }
   if (!data) {
     return NextResponse.json({ error: "Package not found" }, { status: 404 });
   }
   const row = data as unknown as PreparedPackageRow;
 
-  // getEvents() already filters is_deleted + the availability window — an
+  // getEvents() already filters is_deleted + the availability window - an
   // empty result here means the event is gone or has moved outside the
   // sell window, either way this package can no longer be honored at all.
   const { events } = await getEvents(row.event_id);
@@ -110,7 +119,7 @@ export async function GET(
   }
 
   // Defense in depth: always respond with the CURRENT live price for this
-  // category, never the snapshot taken when the package was saved — closes
+  // category, never the snapshot taken when the package was saved - closes
   // the read side of the same gap savePreparedPackage guards on write.
   const eventOrderInfo = {
     ...row.event_order_info,
@@ -121,12 +130,12 @@ export async function GET(
   // Flight: offline inventory gets a real availability check (same
   // consumed/initial columns confirm-order itself reads); a live
   // (Amadeus) offer has no cheap way to re-verify short of a full
-  // re-search, so it's trusted as long as it hasn't already departed —
+  // re-search, so it's trusted as long as it hasn't already departed -
   // confirm-order's own price floor is still the real backstop at booking
   // time regardless.
   let flight: Flight | null = row.flight_skipped ? null : row.flight_order_info;
   // Not skipped but nothing pinned = the agent deliberately left the flight
-  // for the customer to pick live (backoffice builder's "live" mode) — same
+  // for the customer to pick live (backoffice builder's "live" mode) - same
   // client behavior as a stale flight: land on the flight step.
   let flightNeedsRepick = !row.flight_skipped && !row.flight_order_info;
   if (flight) {
@@ -140,7 +149,8 @@ export async function GET(
         .eq("id", flight.offlineId)
         .maybeSingle();
       const remaining =
-        (flightRow?.initial_quantity ?? 0) - (flightRow?.consumed_quantity ?? 0);
+        (flightRow?.initial_quantity ?? 0) -
+        (flightRow?.consumed_quantity ?? 0);
       if (!flightRow || remaining < row.num_travelers) {
         flight = null;
         flightNeedsRepick = true;
@@ -150,7 +160,9 @@ export async function GET(
 
   // Hotel: same idea. offlineIds can cover more than one inventory row;
   // every one of them needs enough remaining rooms.
-  let hotel: OrderHotel | null = row.hotel_skipped ? null : row.hotel_order_info;
+  let hotel: OrderHotel | null = row.hotel_skipped
+    ? null
+    : row.hotel_order_info;
   // Same "pick it live" semantics as the flight above.
   let hotelNeedsRepick = !row.hotel_skipped && !row.hotel_order_info;
   if (hotel) {
@@ -184,7 +196,7 @@ export async function GET(
     }
   }
 
-  // The lock binds the CUSTOMER to the composition — never its own author.
+  // The lock binds the CUSTOMER to the composition - never its own author.
   // An agent opening their package through the partner-handoff (ordering on a
   // customer's behalf) keeps full editing, locked or not.
   let isOwner = false;

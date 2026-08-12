@@ -15,11 +15,11 @@ export const revalidate = 3600;
 export const dynamicParams = true;
 
 /**
- * Dynamic taxonomy pages — one page per node of the backoffice category tree,
+ * Dynamic taxonomy pages - one page per node of the backoffice category tree,
  * at its canonical nested path: /c/football, /c/football/premier-league, ...
  * The LAST segment resolves the node (slugs are globally unique); non-canonical
  * paths 301 to the canonical one. Events include every descendant node's
- * events (ancestors inferred at read time — Shopify-style).
+ * events (ancestors inferred at read time - Shopify-style).
  */
 
 export async function generateStaticParams() {
@@ -87,7 +87,7 @@ export default async function TaxonomyCategoryPage({
       />
 
       <div className="container mx-auto px-4 py-8" dir="rtl">
-        {/* Breadcrumbs — walk UP the tree */}
+        {/* Breadcrumbs - walk UP the tree */}
         <nav aria-label="ניווט קטגוריות" className="mb-6 text-sm text-muted-foreground">
           <ol className="flex flex-wrap items-center gap-1">
             <li>
@@ -113,7 +113,7 @@ export default async function TaxonomyCategoryPage({
           </ol>
         </nav>
 
-        {/* Child categories — walk DOWN the tree */}
+        {/* Child categories - walk DOWN the tree */}
         {children.length > 0 && (
           <section aria-labelledby="subcategories-heading" className="mb-10">
             <h2
@@ -168,7 +168,7 @@ export default async function TaxonomyCategoryPage({
           ) : (
             <EmptyState
               title="אין חבילות בקטגוריה זו כרגע"
-              description="הקטגוריה נבנית מתגיות — ברגע שאירוע יתויג בהתאם הוא יופיע כאן."
+              description="הקטגוריה נבנית מתגיות - ברגע שאירוע יתויג בהתאם הוא יופיע כאן."
             />
           )}
         </section>

@@ -2,12 +2,12 @@
 
 End-to-end tests for **both** MYT apps, run from this repo:
 
-| App        | What                          | Port | Source                   |
-| ---------- | ----------------------------- | ---- | ------------------------ |
-| main       | Customer-facing booking app   | 3000 | this repo                |
-| backoffice | Admin dashboard               | 3001 | `../../MYT-backoffice-app` |
+| App        | What                        | Port | Source                     |
+| ---------- | --------------------------- | ---- | -------------------------- |
+| main       | Customer-facing booking app | 3000 | this repo                  |
+| backoffice | Admin dashboard             | 3001 | `../../MYT-backoffice-app` |
 
-Both dev servers start automatically — you don't need to run `yarn dev` yourself.
+Both dev servers start automatically - you don't need to run `yarn dev` yourself.
 If a server is already running on its port, it's reused.
 
 ## Setup (one time)
@@ -48,9 +48,9 @@ tests/
 
 ## Notes
 
-- Backoffice tests reuse a logged-in session from `global-setup.ts` — no per-test login.
+- Backoffice tests reuse a logged-in session from `global-setup.ts` - no per-test login.
 - `order-flow.spec.ts` covers step 1 (ticket). The full flight→hotel→review
-  walkthrough is a `test.fixme` skeleton — it needs selectors from
+  walkthrough is a `test.fixme` skeleton - it needs selectors from
   `app/order/{FlightSelection,HotelSelection,OrderReview}.tsx` and hits live
   provider APIs.
 - Output (`playwright-report/`, `test-results/`, `.auth/`) is gitignored.

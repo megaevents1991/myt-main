@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EventArt } from "@/components/ui/EventArt";
 
 /**
- * Homepage category banner card (per Dor's mock) — e.g. "ליגת האלופות", "F1".
+ * Homepage category banner card (per Dor's mock) - e.g. "ליגת האלופות", "F1".
  * A wide banner image with the category name, a meta subtitle, an optional tag,
  * and a CTA into the category page that lists its packages.
  */
@@ -41,7 +41,7 @@ export const CategoryCard = ({
 }) => (
   <Link
     href={linkUrl || `/category/${slug}`}
-    aria-label={`${name} — לצפייה בחבילות`}
+    aria-label={`${name} - לצפייה בחבילות`}
     className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover"
     dir="rtl"
   >

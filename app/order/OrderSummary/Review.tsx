@@ -27,7 +27,7 @@ export const Review = ({
   onEdit,
 }: {
   agentCommission: number;
-  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
   hotelPriceAddition: number;
   totalGuests: number;
@@ -126,7 +126,7 @@ export const Review = ({
   // For mobile we control opened state to adjust font sizes & styles
   const [opened, setOpened] = useState<string[]>([]);
 
-  // Skipped steps stay bookable — offer a compact "add it" row instead of
+  // Skipped steps stay bookable - offer a compact "add it" row instead of
   // hiding them entirely (US events are sold without a hotel, so no hotel row).
   const isUS = event?.location?.country_code === "US";
   const addRows = onEdit

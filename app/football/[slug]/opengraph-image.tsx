@@ -2,12 +2,12 @@ import { getFootballTeamBySlug } from "@/lib/football";
 import { getEventArt } from "@/lib/eventArt";
 import { personOgImage, OG_SIZE } from "@/lib/og";
 
-// Branded link-preview card (WhatsApp/social) — new card-art design.
+// Branded link-preview card (WhatsApp/social) - new card-art design.
 // File-based OG beats the generateMetadata heroBanner image.
 export const revalidate = 3600;
 export const size = OG_SIZE;
 export const contentType = "image/png";
-export const alt = "MegaEvents — חבילות למשחקים";
+export const alt = "MegaEvents - חבילות למשחקים";
 
 export default async function Image({
   params,

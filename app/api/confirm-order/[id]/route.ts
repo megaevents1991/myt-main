@@ -1,26 +1,26 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// NOTE: The deprecated, unauthenticated PATCH handler was removed — it let anyone
+// NOTE: The deprecated, unauthenticated PATCH handler was removed - it let anyone
 // overwrite any reservation's payment_info by sequential id. Payment status is
 // written server-side only by /api/payment/[id]/[txId]/[promoCode].
 //
 // The GET below still backs the post-payment confirmation page. It is keyed by a
 // sequential id (IDOR surface), so it returns ONLY the order-summary fields the
-// confirmation page renders — never main_contact/passenger PII or the raw
+// confirmation page renders - never main_contact/passenger PII or the raw
 // CreditGuard payment_info blob. Full fix: gate by an unguessable per-order token
-// (not the sequential id) — tracked as a follow-up.
+// (not the sequential id) - tracked as a follow-up.
 
 export async function GET(
   _: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
     const { data, error } = await supabase
       .from("reservations")
       .select(
-        "event_id, event_order_info, flight_order_info, hotel_order_info, booking_reference, aff_partner_tracking_code, final_purchase_price_ils, payment_info"
+        "event_id, event_order_info, flight_order_info, hotel_order_info, booking_reference, aff_partner_tracking_code, final_purchase_price_ils, payment_info",
       )
       .eq("id", id)
       .limit(1)
@@ -42,7 +42,7 @@ export async function GET(
     console.error("Error fetching order data:", error);
     return NextResponse.json(
       { error: "Failed to fetch order data", orderId: id },
-      { status: 200 }
+      { status: 200 },
     );
   }
 }

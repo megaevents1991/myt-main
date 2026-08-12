@@ -53,7 +53,7 @@ export async function generateMetadata({
     let event = events.find((e) => e.id === parseInt(eventId));
 
     // QA test events (is_test) are excluded from the cached catalog but stay
-    // orderable by direct link — fetch by id, which keeps them.
+    // orderable by direct link - fetch by id, which keeps them.
     if (!event) {
       const { events: direct } = await getEvents(parseInt(eventId));
       event = direct[0];
@@ -124,7 +124,7 @@ export default async function OrderPageWithId({
   // Resolved server-side so the "save this as a package" action can be
   // gated by a real, cookie-verified session instead of the unauthenticated
   // localStorage/utm_source signal the print-price feature already uses.
-  // Null for every anonymous visitor — the common case, no session lookup
+  // Null for every anonymous visitor - the common case, no session lookup
   // cost beyond the one cookie read.
   const partnerSession = await getPartnerSession();
 
@@ -134,7 +134,7 @@ export default async function OrderPageWithId({
     const { events } = await getCachedEvents();
     event = events.find((e) => e.id === parseInt(eventId));
     // QA test events (is_test) are excluded from the cached catalog but stay
-    // orderable by direct link — fetch by id, which keeps them.
+    // orderable by direct link - fetch by id, which keeps them.
     if (!event) {
       const { events: direct } = await getEvents(parseInt(eventId));
       event = direct[0];
@@ -175,7 +175,7 @@ export default async function OrderPageWithId({
   }
 
   // Resolve the person page (if any) this event belongs to, by english-name
-  // match — same rule the homepage uses to group events under artist pages.
+  // match - same rule the homepage uses to group events under artist pages.
   // Artists match exactly; football teams match as a substring of the event
   // name ("Arsenal - Chelsea"), earliest hit = home team. Lets the
   // ticket-selection header + summary link the photo to the person page.
@@ -220,7 +220,7 @@ export default async function OrderPageWithId({
     <OrderErrorBoundary>
       {/* Records a VISIT (with path) for partner-attributed traffic. Order
           pages had no tracker, so package deep-links never counted as a
-          visit — the backoffice entry funnels rely on this. */}
+          visit - the backoffice entry funnels rely on this. */}
       <ClientTracker />
       <OrderPageClient
         initialEvent={event}

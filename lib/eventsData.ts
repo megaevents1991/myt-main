@@ -6,14 +6,16 @@ import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailabilit
 import { eventRelatesToTeam, normalizeName } from "@/lib/eventNameMatch";
 
 // Inner cached reader THROWS on a failed/empty query so unstable_cache never
-// stores the failure — a transient Supabase hiccup during revalidation used to
+// stores the failure - a transient Supabase hiccup during revalidation used to
 // cache {events: []} for a full hour and the whole site rendered "sold out"
 // (2026-07-19). A thrown error is not cached, so the next request re-queries.
 const cachedNonEmptyEvents = nextCache(
   async (): Promise<{ events: Event[] }> => {
     const res = await getEvents();
     if (!res.events.length) {
-      throw new Error("[EventsData] query failed or returned 0 events — not caching");
+      throw new Error(
+        "[EventsData] query failed or returned 0 events - not caching",
+      );
     }
     return res;
   },
@@ -21,16 +23,19 @@ const cachedNonEmptyEvents = nextCache(
   {
     tags: ["events"],
     revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
-  }
+  },
 );
 
-/** Same contract as before (never throws, empty on failure) — but an empty
+/** Same contract as before (never throws, empty on failure) - but an empty
  *  result is served for THIS request only, never written to the shared cache. */
 export async function getCachedEvents(): Promise<{ events: Event[] }> {
   try {
     return await cachedNonEmptyEvents();
   } catch (error) {
-    console.error("[EventsData] events unavailable — serving empty, uncached:", error);
+    console.error(
+      "[EventsData] events unavailable - serving empty, uncached:",
+      error,
+    );
     return { events: [] };
   }
 }
@@ -43,7 +48,7 @@ export async function getCachedEvents(): Promise<{ events: Event[] }> {
  */
 export const AVAILABILITY_WINDOW_DAYS = 3;
 
-/** `YYYY-MM-DD` for `daysAhead` from now — the DB-comparable availability cutoff. */
+/** `YYYY-MM-DD` for `daysAhead` from now - the DB-comparable availability cutoff. */
 export function futureDateISO(daysAhead: number): string {
   const d = new Date();
   d.setDate(d.getDate() + daysAhead);
@@ -54,7 +59,7 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
   const startTime = Date.now();
 
   try {
-    // Availability cutoff — shared with catalog/taxonomy/feed so all surfaces
+    // Availability cutoff - shared with catalog/taxonomy/feed so all surfaces
     // agree on what is bookable.
     const futureDate = futureDateISO(AVAILABILITY_WINDOW_DAYS);
 
@@ -93,7 +98,9 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     );
     // Test events (backoffice QA) stay orderable by direct id but never list.
     const visible =
-      id !== undefined ? events || [] : (events || []).filter((e) => !e.is_test);
+      id !== undefined
+        ? events || []
+        : (events || []).filter((e) => !e.is_test);
     return {
       events: await markLockedPackagesSoldOut(
         await enrichEventsWithFallbackImages(visible),
@@ -114,13 +121,13 @@ export async function getEventsByName(
   searchName: string,
 ): Promise<{ events: Event[] }> {
   // Only events at least AVAILABILITY_WINDOW_DAYS out count (shared with the
-  // catalog's on-tour check in lib/tourStatus.ts — keep them on one threshold).
+  // catalog's on-tour check in lib/tourStatus.ts - keep them on one threshold).
   const futureDate = futureDateISO(AVAILABILITY_WINDOW_DAYS);
   const needle = normalizeName(searchName);
   if (!needle) return { events: [] };
 
   // The substring match happens in JS (not SQL ILIKE) so it can be accent- and
-  // punctuation-insensitive via normalizeName — backoffice-entered events
+  // punctuation-insensitive via normalizeName - backoffice-entered events
   // ("Andre Rieu") must still land on the accented template page ("André Rieu").
   const { data: events, error } = await supabase
     .from("events")
@@ -134,7 +141,7 @@ export async function getEventsByName(
   // The substring gate is deliberately fuzzy, so a club whose name is a
   // substring of another's over-matches (team "Milan" pulls in ALL "Inter
   // Milan" fixtures). eventRelatesToTeam keeps only fixtures the team actually
-  // plays in — home and away both (the page splits them visually); non-fixture
+  // plays in - home and away both (the page splits them visually); non-fixture
   // events (artists) pass through untouched.
   const matched = (events ?? []).filter(
     (e) =>

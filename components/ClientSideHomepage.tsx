@@ -49,7 +49,7 @@ interface Props {
   carouselArtists?: Artist[];
   // Hero-gallery ring: every artist/team with an available event (זמין באתר).
   heroItems?: HeroCarouselItem[];
-  // Homepage "אמנים מובילים" / "כדורגל" slides — ALL entries, available first
+  // Homepage "אמנים מובילים" / "כדורגל" slides - ALL entries, available first
   // then the unavailable ones appended at the end.
   homeArtists?: Artist[];
   homeFootball?: FootballTeam[];
@@ -498,7 +498,7 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
   // backoffice image dials (they shrink the crest to ~0.8 and, being an inline
   // style transform, would OVERRIDE the class scale) and size the crest purely
   // via the class below so it reads big and centered. That assumes a padded
-  // "cutout" source (the art_blobs pipeline) — every other source (the
+  // "cutout" source (the art_blobs pipeline) - every other source (the
   // football-logos library, ad-hoc templates-bucket uploads) is a
   // tightly-cropped badge with no such padding, so a flat 1.4x blowup fills
   // the whole card. Those honor the backoffice dial instead.
@@ -524,7 +524,7 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
       >
         <div className="relative group overflow-hidden rounded-t-2xl flex-1">
           {/* Brand blob behind the team crest (color + shape per team), falling
-              back to the flat hero photo when no blob art is set — same treatment
+              back to the flat hero photo when no blob art is set - same treatment
               as the artist cards. */}
           <EventArt
             id={team.sys.id}
@@ -569,7 +569,7 @@ function CompactTeamCard({ team, loading }: { team: FootballTeam; loading?: "eag
             sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
-          {/* Dark bottom-edge gradient — grounds the image against the white name
+          {/* Dark bottom-edge gradient - grounds the image against the white name
               panel in light mode (matches the קטגוריות CategoryCard treatment). */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
@@ -629,7 +629,7 @@ function CompactArtistCard({ artist, loading }: { artist: Artist; loading?: "eag
             sizes="(max-width: 640px) 45vw, 240px"
             className="h-full w-full"
           />
-          {/* Dark bottom-edge gradient — grounds the art against the white name
+          {/* Dark bottom-edge gradient - grounds the art against the white name
               panel in light mode (matches the קטגוריות CategoryCard treatment). */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
@@ -663,7 +663,7 @@ const UniversalCarousel = ({
 
   const items = teams || artists || events || [];
 
-  // Render on the server (no isMounted gate) so the row — and its card images —
+  // Render on the server (no isMounted gate) so the row - and its card images -
   // ship in the SSR HTML instead of flashing blank until hydration. This is a
   // plain native-scroll row, so it's SSR-safe; the scroll refs/arrows just wire
   // up after mount.
@@ -777,8 +777,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   // the page is idle, so they're ready before you reach them. Deliberately SKIP
   // the horizontal carousels: warming all ~120 images forced iOS Safari to decode
   // them all at once, blowing its image-memory budget so it evicted + re-decoded
-  // on every scroll (the "cards reload" bug). Carousel cards stay lazy — only the
-  // few horizontally-visible ones decode — keeping total decoded images low.
+  // on every scroll (the "cards reload" bug). Carousel cards stay lazy - only the
+  // few horizontally-visible ones decode - keeping total decoded images low.
   useEffect(() => {
     let cancelled = false;
     const warmImages = () => {
@@ -788,7 +788,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         .forEach((img) => {
           if (img.complete) return;
           // Skip images inside a horizontal carousel (its scroll track is
-          // .overflow-x-auto) — those load on swipe, not up front.
+          // .overflow-x-auto) - those load on swipe, not up front.
           if (img.closest(".overflow-x-auto")) return;
           // Warm the browser cache with a throwaway request (same srcset/sizes so
           // it picks the exact candidate the real <img> will use). When the card
@@ -949,18 +949,18 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   }
 
   // NOTE: This component renders its real content on the server (no isMounted
-  // gate). That's deliberate — gating behind mount kept every card image out of
+  // gate). That's deliberate - gating behind mount kept every card image out of
   // the SSR HTML, so `priority`/`loading="eager"` couldn't preload the LCP and
   // "המבוקשים ביותר" only started loading after hydration (broken on first
   // scroll). Client-only values here (`matches`, `isMobile`) are false-first, so
-  // they hydrate consistently and only update post-mount — no mismatch.
+  // they hydrate consistently and only update post-mount - no mismatch.
 
   // Separate VIP events
   // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
   // Collapse events that have a dedicated page (artist OR football team) down to
   // a single representative card, so the homepage shows one card + "see all"
-  // strip per artist/team. Football collapses by HOME team — home games only.
+  // strip per artist/team. Football collapses by HOME team - home games only.
   const filterEventsFromArtistsWithPages = (events: Event[]) => {
     const hasArtistPages = !!artists && artists.length > 0;
     const teamsForGrouping = allFootballTeams && allFootballTeams.length > 0 ? allFootballTeams : [];
@@ -986,7 +986,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       })[0];
 
-    // 1) Group by artist (whole-word name match — same rule as the artist page,
+    // 1) Group by artist (whole-word name match - same rule as the artist page,
     //    so "Bon Jovi London" collapses into the "Bon Jovi" card).
     const eventsByArtist = new Map<string, Event[]>();
     const afterArtistGrouping: Event[] = [];
@@ -1265,7 +1265,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
       {/* min-h in `svh` (small viewport height), NOT `dvh`: `dvh` changes every
           time the iOS address bar shows/hides on scroll, which resized this hero
           and reflowed the entire page below it on every scroll (seconds of jank
-          on mobile). `svh` is stable — it never changes as you scroll. */}
+          on mobile). `svh` is stable - it never changes as you scroll. */}
       <section className="w-full flex min-h-[92svh] flex-col justify-center gap-3 pt-16 pb-8 md:pt-20 md:pb-10 px-4 md:px-6 text-white bg-main relative overflow-hidden" role="banner">
         <Aurora intensity={0.5} />
         {/* Soft ambient fill across the mid-hero so the Aurora-lit top and the
@@ -1280,7 +1280,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
         />
         {/* Logo centered at the hero top (per Figma); visible while the header is hidden */}
         <div className="container relative z-20 mx-auto mb-4 md:mb-5 flex justify-center">
-          <Link href="/" aria-label="MegaEvents — דף הבית">
+          <Link href="/" aria-label="MegaEvents - דף הבית">
             <MYT className="h-9 w-auto text-main-foreground md:h-11" />
           </Link>
         </div>
@@ -1304,13 +1304,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             </span>
           </h1>
         </div>
-        {/* The single search experience — assembles a package live as you type */}
+        {/* The single search experience - assembles a package live as you type */}
         <div className="relative z-20 mt-6 md:mt-7">
           <HeroSearch events={initialEvents} artists={artists} overlay />
         </div>
-        {/* Trust row — sits under the gallery, per Dor's layout note */}
+        {/* Trust row - sits under the gallery, per Dor's layout note */}
         <TrustBadges className="relative z-10 mt-3 md:mt-8 justify-center text-main-foreground/80" />
-        {/* Hero gallery — tilted colorful cards linking to artist pages */}
+        {/* Hero gallery - tilted colorful cards linking to artist pages */}
         <div className="relative z-10 mt-1 sm:mt-2">
           <HeroCarousel
             items={
@@ -1326,7 +1326,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
 
       <section className="w-full py-10 lg:py-14 bg-background px-4 md:px-6" role="main">
         <div className="container mx-auto">
-          {/* Mobile trust bar removed — the hero already carries the trust row. */}
+          {/* Mobile trust bar removed - the hero already carries the trust row. */}
           <div className="hidden" aria-hidden>
             <section>
               <h2 className="sr-only">היתרונות שלנו</h2>
@@ -1506,7 +1506,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             />
           </div>
 
-          {/* Sports Section — all teams, available (זמין באתר) first, rest at end */}
+          {/* Sports Section - all teams, available (זמין באתר) first, rest at end */}
           {homeFootball && homeFootball.length > 0 && (
             <section aria-labelledby="football-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
@@ -1532,7 +1532,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                 </div>
               </div>
               {/* One responsive carousel (was two identical mobile+desktop copies
-                  — the component is already responsive, so the duplicate just
+                  - the component is already responsive, so the duplicate just
                   doubled the DOM/hydration cost and helped starve paint on scroll). */}
               <div className="mb-8">
                 <UniversalCarousel teams={homeFootball} variant="compact" />
@@ -1540,7 +1540,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             </section>
           )}
 
-          {/* Artists Section — all artists, available (זמין באתר) first, rest at end */}
+          {/* Artists Section - all artists, available (זמין באתר) first, rest at end */}
           {homeArtists && homeArtists.length > 0 && (
             <section aria-labelledby="artists-section-heading">
               <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
@@ -1598,7 +1598,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </h2>
                 </div>
               </div>
-              {/* Stacked list — one column on mobile, grid on desktop. Minimal
+              {/* Stacked list - one column on mobile, grid on desktop. Minimal
                   no-image cards (same as the search page). No carousel. */}
               <div className="grid gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
                    role="list"
@@ -1617,7 +1617,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                     />
                   </div>
                 ))}
-                {/* Search-prompt card — smaller, same design, appended at the end */}
+                {/* Search-prompt card - smaller, same design, appended at the end */}
                 <div
                   className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
                   onClick={handleSearchPromptClick}
@@ -1631,7 +1631,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                     }
                   }}
                 >
-                  {/* Animated brand card — same breathe glow + sheen sweep +
+                  {/* Animated brand card - same breathe glow + sheen sweep +
                       wordmark⇄mark morph as the hero carousel's logo card. */}
                   <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-40 flex items-center justify-center">
                     <span
@@ -1657,7 +1657,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </div>
                 </div>
               </div>
-              {/* Floating contact button — mobile only (was nested in the old carousel) */}
+              {/* Floating contact button - mobile only (was nested in the old carousel) */}
               <div
                 className="fixed left-3 z-50 sm:hidden"
                 style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
@@ -1688,8 +1688,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   );
 }
 
-// Name comparison uses the shared normalizeName (lib/eventNameMatch) —
-// case/accent/punctuation-insensitive, same rule as getEventsByName — so the
+// Name comparison uses the shared normalizeName (lib/eventNameMatch) -
+// case/accent/punctuation-insensitive, same rule as getEventsByName - so the
 // homepage collapses exactly the events the artist/team detail page lists.
 
 // Escape a string for safe use inside a RegExp.
@@ -1729,7 +1729,7 @@ const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam |
   if (!teams || teams.length === 0) return null;
   const full = normalizeName(event.name_english) || normalizeName(event.name);
   if (!full) return null;
-  const sep = full.match(/\s(?:vs\.?|v\.?|[-–—])\s/i);
+  const sep = full.match(/\s(?:vs\.?|v\.?|[-–-])\s/i);
   const homeSide = sep && sep.index !== undefined ? full.slice(0, sep.index) : full;
   let best: FootballTeam | null = null;
   let bestLen = -1;
@@ -1754,7 +1754,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
   const packagePrice = computePackagePrice(event);
   const router = useRouter();
 
-  // Match a dedicated ARTIST page by whole-word name match — same rule as the
+  // Match a dedicated ARTIST page by whole-word name match - same rule as the
   // artist page's substring lookup, so "Bon Jovi London" resolves to Bon Jovi.
   const matchingArtist = useMemo(() => {
     if (!artists || (!event.name_english && !event.name)) return null;
@@ -1779,7 +1779,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
     return findEventHomeTeam(event, footballTeams);
   }, [event, footballTeams, matchingArtist]);
 
-  // Unified "see all events" target — artist page or football team page.
+  // Unified "see all events" target - artist page or football team page.
   const collideTarget = useMemo(() => {
     if (matchingArtist) {
       return { kind: "artist" as const, id: matchingArtist.sys.id, href: `/artists/${matchingArtist.sys.id}`, label: event.name };
@@ -1898,7 +1898,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
       >
         {/* Accessibility: Enhanced event card with proper semantic structure */}
         <article className={`group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover ${hasMultipleDates ? 'rounded-b-none' : ''}`}>
-          {/* Image — neon blob + cut-out for artists, full photo for sports */}
+          {/* Image - neon blob + cut-out for artists, full photo for sports */}
           <div className="relative">
             <EventArt
               id={event.id}
@@ -1957,7 +1957,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
               <PackageIcons cycle />
             </div>
 
-            {/* Same size as before — shape (rounded-md) + font match the artist-page CTA. */}
+            {/* Same size as before - shape (rounded-md) + font match the artist-page CTA. */}
             <div className="mt-4 w-full rounded-md bg-main py-3 text-center text-xs font-semibold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black dark:bg-foreground dark:text-background dark:group-hover:bg-foreground/90 dark:group-hover:text-background dark:group-active:bg-foreground/90 dark:group-active:text-background">
               {computedSold ? "אזל מהמלאי" : "לפרטים והזמנה"}
             </div>

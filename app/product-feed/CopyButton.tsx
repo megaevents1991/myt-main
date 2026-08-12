@@ -13,7 +13,7 @@ export function CopyButton({ text }: { text: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         } catch {
-          /* clipboard unavailable — user can select the text manually */
+          /* clipboard unavailable - user can select the text manually */
         }
       }}
       className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:bg-gray-50"

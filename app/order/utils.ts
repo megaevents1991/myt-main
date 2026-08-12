@@ -24,11 +24,11 @@ export const getPenText = (selectedFlight: Flight | undefined) => {
       .replace(/PE\.PENALTIES\s*\n/, "")
       .replace(
         /CANCELLATIONS\s*\n/,
-        '<h3 class="font-bold mt-4 mb-2">Cancellation Policy</h3>'
+        '<h3 class="font-bold mt-4 mb-2">Cancellation Policy</h3>',
       )
       .replace(
         /CHANGES\s*\n/,
-        '<h3 class="font-bold mt-4 mb-2">Change Policy</h3>'
+        '<h3 class="font-bold mt-4 mb-2">Change Policy</h3>',
       )
       .replace(/NOTE -/g, "<strong>Note:</strong>")
       .replace(/--+/g, '<hr class="my-2">')
@@ -52,7 +52,7 @@ export const getPrices = ({
   finalPurchasePrice: number;
   recommendedPriceAllPax: number;
   agentCommission: number;
-  /** True for ANY signed agent code — commission may legitimately be 0, so
+  /** True for ANY signed agent code - commission may legitimately be 0, so
    *  `agentCommission > 0` alone under-detects (kept as fallback default). */
   isAgent?: boolean;
   isNumberOfPersonsEqual: boolean;
@@ -60,7 +60,7 @@ export const getPrices = ({
   finalPurchasePriceILS: number;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;
-  // The strikethrough "recommended price" framing is retail-customer-only —
+  // The strikethrough "recommended price" framing is retail-customer-only -
   // agents (any commission, including 0) never see it.
   const originalNoDiscount =
     !agentViewer &&
@@ -72,7 +72,9 @@ export const getPrices = ({
   const pricePerPerson = Math.ceil(finalPurchasePrice / numberOfPersons);
 
   return {
-    originalNoDiscount: originalNoDiscount ? originalNoDiscount.toLocaleString("en-US") : null,
+    originalNoDiscount: originalNoDiscount
+      ? originalNoDiscount.toLocaleString("en-US")
+      : null,
     pricePerPerson: pricePerPerson.toLocaleString("en-US"),
     finalPurchasePrice: finalPurchasePrice.toLocaleString("en-US"),
     finalPurchasePriceILS: finalPurchasePriceILS.toLocaleString("en-US"),

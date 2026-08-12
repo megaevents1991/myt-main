@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Aurora — the MegaEvents signature background. Layered neon gradient blobs that
+ * Aurora - the MegaEvents signature background. Layered neon gradient blobs that
  * drift on slow independent loops, blending to a luminous "northern lights" wash.
  * Designed to sit behind hero / accent sections on dark surfaces.
  *
@@ -24,10 +24,10 @@ export const Aurora = ({
   // NOTE: the live `filter: blur(56px)` + `mix-blend-mode: screen` live in the
   // `.aurora-blob` class (globals.css) and apply on DESKTOP ONLY. On iOS those
   // five giant blurred, blended, animated layers forced WebKit to re-composite
-  // the page on every scroll — the whole page repainted for seconds each scroll
+  // the page on every scroll - the whole page repainted for seconds each scroll
   // (bisected on-device: killing filters fixed it; killing shadows didn't).
   // Mobile gets the same drifting blobs with softness baked into the gradient
-  // instead — transform-only animation is composited and stays cheap.
+  // instead - transform-only animation is composited and stays cheap.
   const blob = (
     color: string,
     size: string,

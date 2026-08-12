@@ -1,4 +1,4 @@
-# Mondial Domain Routing — Design Spec
+# Mondial Domain Routing - Design Spec
 
 **Date:** 2026-05-13
 **Author:** Dor + Claude
@@ -11,7 +11,7 @@ Two deployments share the codebase:
 - `www.mega-events.co.il` (main branch) → all events, full package (ticket + flight + hotel)
 - `mondial2026.mega-events.co.il` (mondial branch) → World Cup 2026 events only, with multi-event bundle / ticket-only / Mondial2026 title parsing
 
-Both deployments currently render any event from the shared Supabase DB. Result: bug — clicking a mondial event from the main site enters the main-branch flow, missing mondial features (multi-event bundle, ticket-only UX, special title rendering). Likewise, a non-mondial event opened on the mondial subdomain hits a flow that hides hotel/flight pricing logic users expect.
+Both deployments currently render any event from the shared Supabase DB. Result: bug - clicking a mondial event from the main site enters the main-branch flow, missing mondial features (multi-event bundle, ticket-only UX, special title rendering). Likewise, a non-mondial event opened on the mondial subdomain hits a flow that hides hotel/flight pricing logic users expect.
 
 ## Goal
 
@@ -48,7 +48,10 @@ import { parseMondial2026EventName } from "./mondial2026Title";
 const MAIN_HOST = "www.mega-events.co.il";
 const MONDIAL_HOST = "mondial2026.mega-events.co.il";
 
-export function requireCorrectDomainForEvent(event: { name: string; id: number }, pathname: string) {
+export function requireCorrectDomainForEvent(
+  event: { name: string; id: number },
+  pathname: string,
+) {
   const host = headers().get("host") ?? "";
   const isMondialEvent = parseMondial2026EventName(event.name).isMondial2026;
   const isOnMondialHost = host.includes("mondial2026");
@@ -88,7 +91,7 @@ requireCorrectDomainForEvent(event, `/order/${eventId}`);
 
 - **Mondial branch** already has `parseMondial2026EventName`. Add `domainRouting.ts` + page integrations.
 - **Main branch** does NOT have `parseMondial2026EventName`. Add:
-  - `lib/mondial2026Title.ts` (port from mondial branch, only the parser function — title constant not needed)
+  - `lib/mondial2026Title.ts` (port from mondial branch, only the parser function - title constant not needed)
   - `lib/domainRouting.ts`
   - Page integrations
 
@@ -110,13 +113,13 @@ The server-side redirect remains as the safety net (bookmarks, shared links, sea
 
 ## Edge cases
 
-| Case | Behavior |
-|------|----------|
-| Event name changes (mondial → not, or vice versa) | Next request hits new branch; user mid-flow may be redirected — acceptable since order isn't persisted yet |
-| Bookmarked wrong-domain URL | Server 307 redirect to correct domain; resumes seamlessly |
-| Search engine indexes wrong-domain URL | Server redirect signals canonical domain; combined with existing noindex on mondial, search engines learn fast |
+| Case                                                                              | Behavior                                                                                                                                            |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event name changes (mondial → not, or vice versa)                                 | Next request hits new branch; user mid-flow may be redirected - acceptable since order isn't persisted yet                                          |
+| Bookmarked wrong-domain URL                                                       | Server 307 redirect to correct domain; resumes seamlessly                                                                                           |
+| Search engine indexes wrong-domain URL                                            | Server redirect signals canonical domain; combined with existing noindex on mondial, search engines learn fast                                      |
 | `parseMondial2026EventName` returns false for an event the team considers mondial | Treated as non-mondial. Fix: update regex in `lib/mondial2026Title.ts`. Future-proof: consider adding explicit `tags: "mondial2026"` as an override |
-| Event fetch fails | `notFound()` runs first; no redirect attempt on missing event |
+| Event fetch fails                                                                 | `notFound()` runs first; no redirect attempt on missing event                                                                                       |
 
 ## Non-goals
 
@@ -136,5 +139,5 @@ The server-side redirect remains as the safety net (bookmarks, shared links, sea
 ## Open questions
 
 - Are there event-flow URLs beyond `/order/[eventId]` that need the same guard? (`/confirmation/*`, `/order/[eventId]/edit`, partner pages, payment callbacks)
-- For shared `/order` SSR caching: redirect must occur before any cached render — verify with Next.js segment cache behavior
+- For shared `/order` SSR caching: redirect must occur before any cached render - verify with Next.js segment cache behavior
 - Decide whether the helper should accept just `event.name` or the full event (we may want id later for logging)

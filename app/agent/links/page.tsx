@@ -6,7 +6,7 @@ import { LogoSettings } from "./logo-settings";
 export const dynamic = "force-dynamic";
 
 export default async function AgentLinksPage() {
-  // Shown to both agents and influencers — requirePartner() is the only
+  // Shown to both agents and influencers - requirePartner() is the only
   // gate, no role check.
   const session = await requirePartner();
 

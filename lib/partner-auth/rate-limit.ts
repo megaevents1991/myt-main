@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 /**
  * Login throttling for the partner area, backed by the shared `audit_log`
  * table (owned by myt-backoffice, already service-role-only) instead of an
- * in-memory counter — Vercel runs this route across many serverless
+ * in-memory counter - Vercel runs this route across many serverless
  * instances with no shared memory, so an in-process Map would only ever
  * throttle a fraction of the attempts.
  */
@@ -33,7 +33,10 @@ export async function checkLoginRateLimit(
 
   if (error) {
     // Fail open: a broken query must not lock every partner out of the site.
-    console.error("partner login rate-limit check failed:", JSON.stringify(error));
+    console.error(
+      "partner login rate-limit check failed:",
+      JSON.stringify(error),
+    );
     return { allowed: true };
   }
 
@@ -46,7 +49,10 @@ export async function checkLoginRateLimit(
   return { allowed: true };
 }
 
-export async function recordFailedLogin(email: string, ip: string): Promise<void> {
+export async function recordFailedLogin(
+  email: string,
+  ip: string,
+): Promise<void> {
   const { error } = await supabase.from("audit_log").insert({
     actor_email: email,
     action: ACTION,
@@ -54,6 +60,9 @@ export async function recordFailedLogin(email: string, ip: string): Promise<void
   });
   if (error) {
     // Never let logging failure surface as a login failure of its own.
-    console.error("partner login: failed to record attempt —", JSON.stringify(error));
+    console.error(
+      "partner login: failed to record attempt -",
+      JSON.stringify(error),
+    );
   }
 }

@@ -16,5 +16,5 @@ Name them exactly (lowercase, no spaces):
 - lot.svg
 - aegean.svg
 
-Monochrome/gray versions preferred (per Figma). Any subset works — the strip
+Monochrome/gray versions preferred (per Figma). Any subset works - the strip
 renders whatever exists here.

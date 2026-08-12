@@ -13,11 +13,11 @@ export const EventSummary = ({
     description?: string;
   };
   agentCommission: number;
-  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
   eventTicketPriceAddition: number;
 }) => {
-  // The per-item price-addition breakdown is retail-customer-only — hidden
+  // The per-item price-addition breakdown is retail-customer-only - hidden
   // from every agent, including 0%-commission ones.
   const agentViewer = isAgent ?? agentCommission > 0;
   return (

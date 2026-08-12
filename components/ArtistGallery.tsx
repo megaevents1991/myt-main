@@ -5,7 +5,7 @@ import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
- * #21 — image gallery on an artist / team page. Backoffice-managed (Supabase
+ * #21 - image gallery on an artist / team page. Backoffice-managed (Supabase
  * `gallery` jsonb: an array of image URLs). Grid + simple lightbox. Renders
  * nothing when empty.
  */

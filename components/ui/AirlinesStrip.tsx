@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 /**
- * Airline partners band — "עובדים עם חברות התעופה המובילות בעולם" (per Figma).
+ * Airline partners band - "עובדים עם חברות התעופה המובילות בעולם" (per Figma).
  * One wide strip image (public/airlines/airlines.png); scrolls horizontally on
  * small screens, fits centered on desktop.
  */

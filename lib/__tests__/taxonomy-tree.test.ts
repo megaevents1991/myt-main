@@ -2,7 +2,7 @@
  * Validation script for the taxonomy tree helpers (buildTree, descendantIds,
  * ancestorsOf, slugPathOf, flattenWithPath).
  * Run with: npx tsx lib/__tests__/taxonomy-tree.test.ts
- * (Matches the repo's script-style tests — see lib/events/__tests__/price.test.ts.)
+ * (Matches the repo's script-style tests - see lib/events/__tests__/price.test.ts.)
  */
 import assert from "node:assert";
 import {
@@ -19,7 +19,7 @@ const cat = (
   name: string,
   slug: string,
   parent_id: number | null,
-  display_order = 0
+  display_order = 0,
 ): EventCategory => ({
   id,
   parent_id,
@@ -49,20 +49,28 @@ const tree = buildTree(CATS);
 assert.deepStrictEqual(
   tree.map((n) => n.slug),
   ["football", "music"],
-  "roots sorted by display_order"
+  "roots sorted by display_order",
 );
 assert.strictEqual(tree[0].children[0].slug, "premier-league", "child nested");
-assert.strictEqual(tree[0].children[0].children[0].slug, "derby", "grandchild nested");
+assert.strictEqual(
+  tree[0].children[0].children[0].slug,
+  "derby",
+  "grandchild nested",
+);
 
 // buildTree: orphan (missing parent) becomes a root
 assert.deepStrictEqual(
   buildTree([cat(9, "יתום", "orphan", 999)]).map((n) => n.slug),
   ["orphan"],
-  "orphan treated as root"
+  "orphan treated as root",
 );
 
 // descendantIds: whole subtree, excluding the node itself
-assert.deepStrictEqual(descendantIds(tree, 1).sort(), [2, 4], "football subtree");
+assert.deepStrictEqual(
+  descendantIds(tree, 1).sort(),
+  [2, 4],
+  "football subtree",
+);
 assert.deepStrictEqual(descendantIds(tree, 2), [4], "league subtree");
 assert.deepStrictEqual(descendantIds(tree, 4), [], "leaf has no descendants");
 
@@ -71,16 +79,24 @@ const derby = CATS.find((c) => c.id === 4)!;
 assert.deepStrictEqual(
   ancestorsOf(derby, CATS).map((a) => a.slug),
   ["football", "premier-league"],
-  "ancestors root-first"
+  "ancestors root-first",
 );
 assert.deepStrictEqual(
   slugPathOf(derby, CATS),
   ["football", "premier-league", "derby"],
-  "canonical slug path"
+  "canonical slug path",
 );
 const football = CATS.find((c) => c.id === 1)!;
-assert.deepStrictEqual(ancestorsOf(football, CATS), [], "root has no ancestors");
-assert.deepStrictEqual(slugPathOf(football, CATS), ["football"], "root path is own slug");
+assert.deepStrictEqual(
+  ancestorsOf(football, CATS),
+  [],
+  "root has no ancestors",
+);
+assert.deepStrictEqual(
+  slugPathOf(football, CATS),
+  ["football"],
+  "root path is own slug",
+);
 
 // corrupt parent cycle must not hang or throw
 const a = cat(1, "א", "a", 2);
@@ -92,8 +108,12 @@ const paths = flattenWithPath(CATS);
 assert.strictEqual(
   paths.find((p) => p.id === 4)?.path,
   "כדורגל › ליגה אנגלית › דרבי",
-  "nested path label"
+  "nested path label",
 );
-assert.strictEqual(paths.find((p) => p.id === 1)?.path, "כדורגל", "root path label");
+assert.strictEqual(
+  paths.find((p) => p.id === 1)?.path,
+  "כדורגל",
+  "root path label",
+);
 
 console.log("taxonomy-tree: all assertions passed ✅");

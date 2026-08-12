@@ -2,7 +2,11 @@ import { unstable_cache as nextCache } from "next/cache";
 
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/lib/app.types";
-import type { EventCategory, EventCategoryNode, EventTag } from "@/lib/taxonomy.types";
+import type {
+  EventCategory,
+  EventCategoryNode,
+  EventTag,
+} from "@/lib/taxonomy.types";
 import { buildTree, descendantIds, slugPathOf } from "@/lib/taxonomy-tree";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
@@ -10,7 +14,7 @@ import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
 /**
  * Event taxonomy readers.
  *
- * ONE category table: `categories` — the card the backoffice team builds
+ * ONE category table: `categories` - the card the backoffice team builds
  * (image, subtitle, blob art) which also carries the tree (`parent_id`) and
  * the tags that compose it. Events are never assigned to a category by hand;
  * they are tagged, and `event_category_links` is the VIEW that derives
@@ -35,7 +39,9 @@ export async function getCategoryTree(): Promise<EventCategoryNode[]> {
   return buildTree(await getAllCategories());
 }
 
-export async function getCategoryBySlug(slug: string): Promise<EventCategory | null> {
+export async function getCategoryBySlug(
+  slug: string,
+): Promise<EventCategory | null> {
   const { data, error } = await supabase
     .from("categories")
     .select("*")
@@ -53,7 +59,7 @@ export async function getCategoryBySlug(slug: string): Promise<EventCategory | n
  * Events under a category node.
  *
  * A category is COMPOSED OF TAGS (backoffice: Templates → category form): every
- * event carrying one of its tags is pulled in, and that is the whole rule — so
+ * event carrying one of its tags is pulled in, and that is the whole rule - so
  * a parent collects only what its own tags collect, and `includeDescendants`
  * defaults to FALSE. Roll "כדורגל" into "ספורט" by giving ספורט those tags, not
  * by nesting. Pass `includeDescendants: true` to walk the tree anyway.
@@ -63,7 +69,7 @@ export async function getCategoryBySlug(slug: string): Promise<EventCategory | n
  */
 export async function getEventsInCategory(
   slug: string,
-  opts: { includeDescendants?: boolean } = {}
+  opts: { includeDescendants?: boolean } = {},
 ): Promise<{ category: EventCategory | null; events: Event[] }> {
   const includeDescendants = opts.includeDescendants ?? false;
   const all = await getAllCategories();
@@ -121,7 +127,7 @@ export async function getAllTags(): Promise<EventTag[]> {
 }
 
 export async function getEventsByTag(
-  slug: string
+  slug: string,
 ): Promise<{ tag: EventTag | null; events: Event[] }> {
   const { data: tag, error: tagErr } = await supabase
     .from("event_tags")
@@ -172,7 +178,7 @@ export async function getEventsByTag(
  * backoffice builds was unreachable from anywhere but a homepage card.
  *
  * Only categories that are live AND actually hold packages appear: "roots
- * only" put an empty category in the nav while כדורגל — 139 packages — stayed
+ * only" put an empty category in the nav while כדורגל - 139 packages - stayed
  * hidden because its parent was still switched off. Cached for an ISR window
  * and invalidated with the `events` tag like the rest of the catalogue, since
  * the root layout renders on every request.
@@ -187,7 +193,7 @@ export const getNavCategories = nextCache(
       .select("category_id")
       .in(
         "category_id",
-        all.map((c) => c.id)
+        all.map((c) => c.id),
       );
     if (error) {
       console.error("getNavCategories links failed:", JSON.stringify(error));
@@ -201,40 +207,53 @@ export const getNavCategories = nextCache(
 
     return all
       .filter((c) => (counts.get(c.id) ?? 0) > 0)
-      .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name))
+      .sort(
+        (a, b) =>
+          a.display_order - b.display_order || a.name.localeCompare(b.name),
+      )
       .slice(0, 3)
-      .map((c) => ({ href: `/c/${slugPathOf(c, all).join("/")}`, label: c.name }));
+      .map((c) => ({
+        href: `/c/${slugPathOf(c, all).join("/")}`,
+        label: c.name,
+      }));
   },
   ["nav-categories"],
-  { tags: ["events"], revalidate: 3600 }
+  { tags: ["events"], revalidate: 3600 },
 );
 
 /**
  * Tag names per event, for the category page's tag filter.
  *
  * Tags are what compose a category, so they are also the sharpest way to slice
- * it: "ליגה אנגלית" inside כדורגל. Only tags that are live are returned — a
+ * it: "ליגה אנגלית" inside כדורגל. Only tags that are live are returned - a
  * retired tag must not linger as a filter chip.
  */
 export async function getTagsForEvents(
-  eventIds: number[]
+  eventIds: number[],
 ): Promise<Record<number, string[]>> {
   if (!eventIds.length) return {};
 
   const [linksRes, tagsRes] = await Promise.all([
-    supabase.from("event_tag_links").select("event_id,tag_id").in("event_id", eventIds),
-    supabase.from("event_tags").select("id,name").eq("is_active", true).eq("is_deleted", false),
+    supabase
+      .from("event_tag_links")
+      .select("event_id,tag_id")
+      .in("event_id", eventIds),
+    supabase
+      .from("event_tags")
+      .select("id,name")
+      .eq("is_active", true)
+      .eq("is_deleted", false),
   ]);
   if (linksRes.error || tagsRes.error) {
     console.error(
       "getTagsForEvents failed:",
-      JSON.stringify(linksRes.error ?? tagsRes.error)
+      JSON.stringify(linksRes.error ?? tagsRes.error),
     );
     return {};
   }
 
   const nameById = new Map<number, string>(
-    (tagsRes.data ?? []).map((t) => [t.id as number, t.name as string])
+    (tagsRes.data ?? []).map((t) => [t.id as number, t.name as string]),
   );
   const byEvent: Record<number, string[]> = {};
   (linksRes.data ?? []).forEach((l) => {
@@ -245,8 +264,10 @@ export async function getTagsForEvents(
   return byEvent;
 }
 
-/** Tag names a category is composed of — excluded from its own filter chips. */
-export async function getCategoryTagNames(categoryId: number): Promise<string[]> {
+/** Tag names a category is composed of - excluded from its own filter chips. */
+export async function getCategoryTagNames(
+  categoryId: number,
+): Promise<string[]> {
   const { data: links, error } = await supabase
     .from("category_tags")
     .select("tag_id")

@@ -7,7 +7,7 @@ import { eventRelatesToTeam, normalizeName } from "@/lib/eventNameMatch";
 
 /**
  * Builds a predicate that answers "do we currently have an available event for
- * this artist/team?" — the same rule the detail pages use via getEventsByName:
+ * this artist/team?" - the same rule the detail pages use via getEventsByName:
  * an event is counted when it is not deleted, is at least 7 days out, and its
  * name_english contains the item's English name (case-insensitive substring).
  *
@@ -39,7 +39,7 @@ export async function getAvailabilityChecker(): Promise<
     if (!needle) return false;
     const low = normalizeName(needle);
     // Substring gate (accent/punctuation-insensitive, same normalizeName as
-    // getEventsByName) + fixture-aware refinement — home AND away games both
+    // getEventsByName) + fixture-aware refinement - home AND away games both
     // count (the detail page shows both), but another club's own fixtures
     // don't (Milan isn't on-tour off Inter's home games).
     return availableNames.some(

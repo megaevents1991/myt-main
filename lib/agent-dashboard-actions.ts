@@ -22,13 +22,13 @@ import {
 /**
  * Everything the /agent dashboard shows, in one round trip. Ported from
  * myt-backoffice's lib/actions/portal-dashboard-actions.ts (`getPortalDashboard`)
- * — same shared `partners` / `reservations` / `coupons` tables, and the
+ * - same shared `partners` / `reservations` / `coupons` tables, and the
  * `partner_funnel_counts` / `partner_clicked_events` RPCs the backoffice's own
  * migrations already created in the shared DB, so calling them from this
  * app's `supabase` client needs no extra setup.
  *
  * Commission is split into pending and billed, both read from the same
- * `billed_at` flag the backoffice's monthly report cron stamps — a
+ * `billed_at` flag the backoffice's monthly report cron stamps - a
  * calendar-month figure computed on a different basis than the invoice would
  * disagree with it whenever a reservation was paid after the report went out,
  * which is exactly the kind of mismatch that turns into an argument about
@@ -41,7 +41,7 @@ export interface AgentDashboardCommission {
   /** Earned since 1 January, all paid reservations. */
   yearToDateUsd: number;
   /**
-   * Owed but not yet in a monthly report — reservations that are paid and
+   * Owed but not yet in a monthly report - reservations that are paid and
    * carry no `billed_at`. This is the same fact the report bills on, so the
    * portal and the invoice cannot drift apart.
    */
@@ -74,7 +74,7 @@ export interface AgentDashboard {
 
 /**
  * A reservation's `event_order_info` is either one event, or `{events: [...]}`
- * for a combined booking — the same shape `lib/partner-commission.ts`
+ * for a combined booking - the same shape `lib/partner-commission.ts`
  * normalizes internally. That copy is file-scoped there and only keeps
  * `number_of_ticket` (all commission math needs); this dashboard also needs
  * each event's `name` (to say "clicked, never booked"), so rather than widen
@@ -119,36 +119,53 @@ export async function getAgentDashboard(): Promise<AgentDashboard> {
   const session = await requirePartner();
   const code = session.partner_code;
 
-  const [partnerResult, reservationsResult, couponsResult, funnelResult, clicksResult] =
-    await Promise.all([
-      supabase
-        .from("partners")
-        .select("commission,commission_type")
-        .eq("partner_tracking_code", code)
-        .maybeSingle(),
-      supabase
-        .from("reservations")
-        .select("created_at,status,user_shown_price,event_order_info,billed_at")
-        .eq("aff_partner_tracking_code", code),
-      supabase
-        .from("coupons")
-        .select("is_active,times_used")
-        .eq("partner_tracking_code", code),
-      supabase.rpc("partner_funnel_counts", { p_tracking_code: code }),
-      supabase.rpc("partner_clicked_events", { p_tracking_code: code, p_limit: 8 }),
-    ]);
+  const [
+    partnerResult,
+    reservationsResult,
+    couponsResult,
+    funnelResult,
+    clicksResult,
+  ] = await Promise.all([
+    supabase
+      .from("partners")
+      .select("commission,commission_type")
+      .eq("partner_tracking_code", code)
+      .maybeSingle(),
+    supabase
+      .from("reservations")
+      .select("created_at,status,user_shown_price,event_order_info,billed_at")
+      .eq("aff_partner_tracking_code", code),
+    supabase
+      .from("coupons")
+      .select("is_active,times_used")
+      .eq("partner_tracking_code", code),
+    supabase.rpc("partner_funnel_counts", { p_tracking_code: code }),
+    supabase.rpc("partner_clicked_events", {
+      p_tracking_code: code,
+      p_limit: 8,
+    }),
+  ]);
 
   if (partnerResult.error) throw partnerResult.error;
   if (reservationsResult.error) throw reservationsResult.error;
-  // The rest are decoration — never fail the whole dashboard over them.
+  // The rest are decoration - never fail the whole dashboard over them.
   if (couponsResult.error) {
-    console.error("getAgentDashboard coupons:", JSON.stringify(couponsResult.error));
+    console.error(
+      "getAgentDashboard coupons:",
+      JSON.stringify(couponsResult.error),
+    );
   }
   if (funnelResult.error) {
-    console.error("getAgentDashboard funnel:", JSON.stringify(funnelResult.error));
+    console.error(
+      "getAgentDashboard funnel:",
+      JSON.stringify(funnelResult.error),
+    );
   }
   if (clicksResult.error) {
-    console.error("getAgentDashboard clicks:", JSON.stringify(clicksResult.error));
+    console.error(
+      "getAgentDashboard clicks:",
+      JSON.stringify(clicksResult.error),
+    );
   }
 
   const partner = partnerResult.data as {
@@ -161,7 +178,7 @@ export async function getAgentDashboard(): Promise<AgentDashboard> {
   // everywhere else it touches the column (app/api/confirm-order/utils.ts's
   // agent_card discount, app/order/OrderSummary/PriceSummary.tsx's "עמלה
   // צפויה" line, and lib/quote-actions.ts's own port of this exact fallback)
-  // — so percent_of_sale is the default that matches what this number has
+  // - so percent_of_sale is the default that matches what this number has
   // always meant here, not the backoffice's fixed_per_ticket convention.
   const terms: CommissionTerms = {
     type: partner?.commission_type ?? "percent_of_sale",
@@ -179,8 +196,8 @@ export async function getAgentDashboard(): Promise<AgentDashboard> {
   }[];
 
   // Which of the clicked events actually converted, so the dashboard can say
-  // "clicked, never booked" — that is the list worth acting on.
-  // Every event on the reservation, not just the first — a two-event booking
+  // "clicked, never booked" - that is the list worth acting on.
+  // Every event on the reservation, not just the first - a two-event booking
   // would otherwise mark its second event "never booked", inverting the exact
   // signal this list exists to give.
   const bookedNames = new Set(
@@ -211,7 +228,10 @@ export async function getAgentDashboard(): Promise<AgentDashboard> {
     }));
 
   const stageCounts = new Map<string, number>();
-  for (const row of (funnelResult.data ?? []) as { stage: string; visitors: number }[]) {
+  for (const row of (funnelResult.data ?? []) as {
+    stage: string;
+    visitors: number;
+  }[]) {
     stageCounts.set(row.stage, Number(row.visitors) || 0);
   }
   const traffic: PartnerTraffic = funnelResult.error

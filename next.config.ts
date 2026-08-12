@@ -18,7 +18,7 @@ const nextConfig: import("next").NextConfig = {
       {
         // Every PUBLIC bucket of our own Supabase project. Was an explicit
         // per-bucket allowlist, which silently broke images whenever the
-        // backoffice started writing a new bucket — the generated campaign
+        // backoffice started writing a new bucket - the generated campaign
         // creatives (`creatives/output/*`, set as `events.card_image_url`)
         // 400'd in the image optimizer and rendered as a black/broken card.
         // Private buckets are unreachable without a signed URL anyway.
@@ -79,7 +79,7 @@ const nextConfig: import("next").NextConfig = {
   },
   // One category URL. /category/<slug> used to be its own page listing member
   // pages and no events; /c/ is the category page. Redirecting in config rather
-  // than from a route handler keeps it independent of any data lookup — and /c/
+  // than from a route handler keeps it independent of any data lookup - and /c/
   // resolves a category by its LAST path segment, so the flat destination lands
   // on the canonical nested path by itself.
   async redirects() {

@@ -2,7 +2,7 @@ import { authHeader } from "../keys";
 import { HotelGuestRating, HotelReviewsResponse } from "@/lib/hotel.type";
 
 // RateHawk/ETG Content-API endpoint for guest reviews. Requires Content-API
-// access to be enabled on the key by ETG support — without it this returns
+// access to be enabled on the key by ETG support - without it this returns
 // 403/empty and callers fall back to "no score" (UI hides the badge).
 const HOTEL_REVIEWS_URL =
   "https://api.worldota.net/api/content/v1/hotel_reviews_by_ids/";
@@ -11,7 +11,7 @@ const HOTEL_REVIEWS_URL =
 // review score. Scale is treated as 0–10 (matches the green badge on ratehawk.com).
 // Mapping is isolated here so it's trivial to adjust once a real response is seen.
 const normalize = (
-  entry: NonNullable<HotelReviewsResponse["data"]>[number]
+  entry: NonNullable<HotelReviewsResponse["data"]>[number],
 ): HotelGuestRating => {
   const reviews = entry.reviews ?? [];
 
@@ -20,8 +20,8 @@ const normalize = (
     typeof entry.rating === "number"
       ? entry.rating
       : reviews.length
-      ? reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length
-      : 0;
+        ? reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length
+        : 0;
 
   return {
     guest_rating: Math.round(overall * 10) / 10,
@@ -31,9 +31,9 @@ const normalize = (
 };
 
 // Fetch guest ratings for the given hids. Returns a map hid -> rating record.
-// Never throws — a failure (incl. access not yet granted) yields an empty map.
+// Never throws - a failure (incl. access not yet granted) yields an empty map.
 export const getHotelReviews = async (
-  hids: number[]
+  hids: number[],
 ): Promise<Record<number, HotelGuestRating>> => {
   if (!hids.length) return {};
 
@@ -45,7 +45,11 @@ export const getHotelReviews = async (
     });
 
     if (!res.ok) {
-      console.error("Hotel reviews fetch failed:", res.status, await res.text());
+      console.error(
+        "Hotel reviews fetch failed:",
+        res.status,
+        await res.text(),
+      );
       return {};
     }
 

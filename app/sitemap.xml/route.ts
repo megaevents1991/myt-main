@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const events = await getCachedEvents();
     const baseUrl = "https://www.mega-events.co.il";
-    // Stable date for static pages — bump manually on meaningful content changes.
+    // Stable date for static pages - bump manually on meaningful content changes.
     // A per-request `new Date()` made every lastmod fake, so Google ignored them all.
     const STATIC_LASTMOD = "2026-07-01T00:00:00.000Z";
     const staticPages = [
@@ -102,7 +102,7 @@ export async function GET() {
       console.error("Error fetching football teams for sitemap:", error);
     }
 
-    // Taxonomy category pages (/c/football/premier-league...) — canonical
+    // Taxonomy category pages (/c/football/premier-league...) - canonical
     // nested paths only, active categories only.
     let categoryPages: Array<{
       url: string;

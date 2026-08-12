@@ -30,7 +30,7 @@ const TX_FALLBACK_MULTIPLIER =
 /**
  * Group-order rescue for the "can't supply N tickets together" dead-end:
  * WhatsApp (prefilled) or leave name+phone → lead email to the sales rep via
- * /api/more-events (same channel the homepage "more events" form uses) — we
+ * /api/more-events (same channel the homepage "more events" form uses) - we
  * come back with a tailored offer instead of losing a high-value group buyer.
  */
 const GroupTicketsInquiry = ({
@@ -143,13 +143,13 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary } = useContext(OrderContext);
   // Context `event` is only populated client-side (useEffect in OrderPageClient),
   // so it's empty during SSR. Fall back to the server-provided `initialEvent`
-  // so the header — including the <h1> — renders real HTML in the initial
+  // so the header - including the <h1> - renders real HTML in the initial
   // response (SEO). Same data, so no visual change or hydration mismatch.
   const headerEvent = event ?? initialEvent;
   const eventRef = useRef(event);
   const isDebugMode = useSearchParams().get("debug") === "true";
   const [errorMessage, setErrorMessage] = useState("");
-  /** Quantity the customer ASKED for above MAX_TICKETS — shows the group form. */
+  /** Quantity the customer ASKED for above MAX_TICKETS - shows the group form. */
   const [overMaxRequest, setOverMaxRequest] = useState<number | null>(null);
   const [cheapestTicket, setCheapestTicket] = useState<EventTicket | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<string | undefined>(
@@ -299,13 +299,13 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
    * quantity are filtered out entirely.
    */
   const ticketsWithLivePrices: EventTicket[] = useMemo(() => {
-    // Non-tx events never use live pricing — leave them untouched.
+    // Non-tx events never use live pricing - leave them untouched.
     if (!isTxEvent) return availableTickets;
 
     // tx_event with no live listings: live pricing is unavailable (API error,
-    // timeout, zero listings — or the fetch still in flight). Fall back to the
+    // timeout, zero listings - or the fetch still in flight). Fall back to the
     // static DB price WITH the safety buffer so neither an outage nor a fast
-    // "continue" during the fetch can sell below the true live price — the
+    // "continue" during the fetch can sell below the true live price - the
     // auto-select effect commits this memo's price straight into the order
     // context, so the unbuffered DB price must never appear here.
     if (liveListings.length === 0) {
@@ -339,7 +339,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
   /**
    * Largest quantity (below the requested one) that at least one category can
-   * still supply — powers the one-tap "reduce quantity" suggestion when the
+   * still supply - powers the one-tap "reduce quantity" suggestion when the
    * requested amount can't be fulfilled. null when nothing smaller works.
    */
   const maxFeasibleQty: number | null = useMemo(() => {
@@ -372,7 +372,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   useEffect(() => {
     if (usingBufferedFallback) {
       console.warn(
-        `[TixStock] Live pricing unavailable for event ${event?.id} — selling on buffered DB price (×${TX_FALLBACK_MULTIPLIER}).`,
+        `[TixStock] Live pricing unavailable for event ${event?.id} - selling on buffered DB price (×${TX_FALLBACK_MULTIPLIER}).`,
       );
     }
   }, [usingBufferedFallback, event?.id]);
@@ -398,7 +398,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
     // Auto-select from the tickets the customer actually SEES: on tx events the
     // list is filtered to map-matched tickets, and picking the global cheapest
-    // used to select a hidden (unmapped) ticket — so no card looked selected
+    // used to select a hidden (unmapped) ticket - so no card looked selected
     // and the map showed no dark-green section until a manual click.
     const mappedPool =
       isTxEvent && matchedTicketIds
@@ -471,7 +471,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
-      // 10+ tickets = a group order — instead of just a red wall, offer the
+      // 10+ tickets = a group order - instead of just a red wall, offer the
       // group-lead form (details / WhatsApp) with a way back to the picker.
       setErrorMessage("ניתן לרכוש עד 9 כרטיסים באתר");
       setOverMaxRequest(+value);
@@ -501,7 +501,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     [effectiveTickets],
   );
 
-  /** Stable callback for TixstockDynamicMap — clicking a section selects
+  /** Stable callback for TixstockDynamicMap - clicking a section selects
    *  the best matching ticket, just like clicking it in the list. */
   const handleMapTicketSelect = useCallback(
     (ticketId: string) => {
@@ -519,7 +519,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     [effectiveTickets, handleTicketSelect],
   );
 
-  /** Stable callback — receives the set of ticket IDs that match the map.
+  /** Stable callback - receives the set of ticket IDs that match the map.
    *  Only triggers a state update if the actual IDs changed. */
   const handleMatchedTicketIds = useCallback(
     (ids: Set<string>) => {
@@ -586,21 +586,21 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                             : `${(opt as { name?: string })?.name ?? ""}: ${(opt as { value?: string })?.value ?? ""}`
                         )
                         .join(", ")
-                    : l.restrictions_benefits?.other || "—";
+                    : l.restrictions_benefits?.other || "-";
                 return (
                   <tr key={l.id} className="border-b border-yellow-200 even:bg-yellow-100">
                     <td className="pr-3 py-1 text-yellow-700">{l.id}</td>
-                    <td className="pr-3 py-1">{l.seat_details?.category ?? "—"}</td>
-                    <td className="pr-3 py-1">{l.seat_details?.section ?? "—"}</td>
-                    <td className="pr-3 py-1">{l.seat_details?.row ?? "—"}</td>
+                    <td className="pr-3 py-1">{l.seat_details?.category ?? "-"}</td>
+                    <td className="pr-3 py-1">{l.seat_details?.section ?? "-"}</td>
+                    <td className="pr-3 py-1">{l.seat_details?.row ?? "-"}</td>
                     <td className="pr-3 py-1 text-center">
-                      {l.number_of_tickets_for_sale?.quantity_available ?? "—"}
+                      {l.number_of_tickets_for_sale?.quantity_available ?? "-"}
                     </td>
                     <td className="pr-3 py-1 text-center">
-                      {l.number_of_tickets_for_sale?.split_quantity ?? "—"}
+                      {l.number_of_tickets_for_sale?.split_quantity ?? "-"}
                     </td>
                     <td className="pr-3 py-1 font-semibold">
-                      {l.proceed_price?.amount ?? "—"} {l.proceed_price?.currency ?? ""}
+                      {l.proceed_price?.amount ?? "-"} {l.proceed_price?.currency ?? ""}
                     </td>
                     <td className="pr-3 py-1 max-w-[220px] break-words">{restrictionText}</td>
                   </tr>
@@ -623,7 +623,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader
               event={headerEvent}
-              // Edit-from-summary is a focused task — no person-page links.
+              // Edit-from-summary is a focused task - no person-page links.
               artistHref={returnToSummary ? undefined : personLink?.href}
               artistLinkLabel={returnToSummary ? undefined : personLink?.label}
             />
@@ -746,7 +746,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                 ) : effectiveTickets.length === 0 ? (
                   isTxEvent && availableTickets.length > 0 ? (
                     // Quantity dead-end: the event HAS tickets, just not N together.
-                    // Rescue instead of a wall — one-tap reduce to the max that
+                    // Rescue instead of a wall - one-tap reduce to the max that
                     // works, or leave details / WhatsApp for a group offer.
                     <div className="flex flex-col items-center justify-center p-6 text-center gap-4">
                       <Text size="xl" fw={700} c="red" aria-live="polite">
@@ -758,7 +758,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                           onClick={() => handleQuantityChange(maxFeasibleQty)}
                           className="rounded-xl bg-main px-5 py-2.5 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90"
                         >
-                          יש עד {maxFeasibleQty} כרטיסים ביחד — עדכנו את הכמות
+                          יש עד {maxFeasibleQty} כרטיסים ביחד - עדכנו את הכמות
                         </button>
                       ) : (
                         <Text size="md" c="dimmed">
@@ -775,7 +775,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                     <OrderIssueState
                       className="border-0 bg-transparent"
                       title="הכרטיסים אזלו בינתיים"
-                      subtitle="זה קורה באירועים מבוקשים — לפעמים חוזרים כרטיסים למכירה. דברו איתנו ונעדכן אתכם ברגע שיש, או שנמצא לכם אירוע אחר מדליק."
+                      subtitle="זה קורה באירועים מבוקשים - לפעמים חוזרים כרטיסים למכירה. דברו איתנו ונעדכן אתכם ברגע שיש, או שנמצא לכם אירוע אחר מדליק."
                       whatsAppText={`היי, רציתי כרטיסים לאירוע ${headerEvent?.name || ""} וראיתי שאזלו. אשמח לעדכון אם חוזרים כרטיסים :)`}
                     />
                   )

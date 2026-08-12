@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 /* Brand palette tokens (single source of truth in globals.css).
    Foreground brand green is theme-adaptive via `text-forest dark:text-glow`
-   (forest ink on light, glow-mint on dark) — the constant forest was invisible
-   on the dark order-flow cards. MINT (glow) reads on both — used for fills. */
+   (forest ink on light, glow-mint on dark) - the constant forest was invisible
+   on the dark order-flow cards. MINT (glow) reads on both - used for fills. */
 const MINT = "hsl(var(--brand-glow))";
 
 /** Adaptive brand-green foreground: forest on light, glow-mint on dark. */
@@ -18,7 +18,7 @@ export type ContinueSlot = {
   label: string;
   /** Slot has been resolved (picked or explicitly skipped). */
   filled: boolean;
-  /** Shown once filled — the pick's name, or "ללא טיסה"/"ללא מלון". */
+  /** Shown once filled - the pick's name, or "ללא טיסה"/"ללא מלון". */
   value: string;
   /** Small price note, e.g. "+$120" or "כלול". Optional. */
   delta?: string;
@@ -30,17 +30,17 @@ export type ContinueSlot = {
 
 type Props = {
   slots: ContinueSlot[];
-  /** Package total (numeric, USD) — animated with a count-up on change. */
+  /** Package total (numeric, USD) - animated with a count-up on change. */
   total: number;
   primaryLabel: string;
   primaryDisabled: boolean;
   onPrimary: () => void;
   skip?: { label: string; onSkip: () => void };
-  /** This step's actions lead into the summary — play the build animation. */
+  /** This step's actions lead into the summary - play the build animation. */
   isFinalStep: boolean;
 };
 
-/* Brand icon set — lucide-react, same faces the search bar uses
+/* Brand icon set - lucide-react, same faces the search bar uses
    (כרטיס→Ticket, טיסה→Plane, מלון→Building2). */
 const SlotIcon = ({ type }: { type: ContinueSlot["icon"] }) => {
   const Icon = type === "ticket" ? Ticket : type === "flight" ? Plane : Building2;
@@ -98,7 +98,7 @@ export const OrderContinueBar = ({
     if (building) return;
     setBuilding(true);
     timers.current.push(setTimeout(() => setBuildMsg("✓ החבילה מוכנה!"), 1700));
-    // Advance once the progress bar has filled — the bar unmounts at step 4.
+    // Advance once the progress bar has filled - the bar unmounts at step 4.
     timers.current.push(setTimeout(fn, 2200));
   };
 
@@ -113,13 +113,13 @@ export const OrderContinueBar = ({
       `}</style>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_44px_-24px_rgba(10,26,20,.35)]">
         {/* Mobile: two stacked rows (slots / price+actions). Desktop (sm+):
-            one inline row — slots · price · buttons — like the summary bar. */}
+            one inline row - slots · price · buttons - like the summary bar. */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 sm:px-3 sm:py-2">
-        {/* Slots (hidden entirely in edit-from-summary mode — slots=[]) */}
+        {/* Slots (hidden entirely in edit-from-summary mode - slots=[]) */}
         {slots.length > 0 && (
         <div className="flex gap-2 border-b border-border bg-muted/40 px-3 py-2 sm:min-w-0 sm:flex-1 sm:border-b-0 sm:bg-transparent sm:p-0">
           {slots.map((s) => {
-            // Completed steps are clickable buttons — tap navigates back to
+            // Completed steps are clickable buttons - tap navigates back to
             // that step to modify. Future steps stay plain (no skipping ahead).
             const Tag = s.onClick ? "button" : "div";
             return (
@@ -168,7 +168,7 @@ export const OrderContinueBar = ({
         </div>
         )}
 
-        {/* Price + actions — `sm:contents` folds them into the desktop row. */}
+        {/* Price + actions - `sm:contents` folds them into the desktop row. */}
         <div className="flex flex-col gap-2 px-4 py-2.5 sm:contents">
           <div className={cn("flex items-baseline gap-1 sm:shrink-0", ACCENT_FG)}>
             <span className="text-[15px] font-bold">$</span>
@@ -208,7 +208,7 @@ export const OrderContinueBar = ({
                 disabled={primaryDisabled}
                 aria-label={primaryLabel}
                 className={cn(
-                  // Same dark CTA as the artist-page cards ("לפרטים והזמנה") —
+                  // Same dark CTA as the artist-page cards ("לפרטים והזמנה") -
                   // their shape (rounded-md) + font, sizes unchanged.
                   "flex-[1.4] whitespace-nowrap rounded-md bg-main text-main-foreground dark:bg-foreground dark:text-background px-5 py-2.5 text-xs font-semibold transition-all sm:flex-none sm:px-4 sm:py-1.5",
                   primaryDisabled

@@ -15,7 +15,7 @@ import { FooterMarquee } from "@/components/ui/FooterMarquee";
 import { getNavCategories } from "@/lib/taxonomy";
 
 // Body face. Assistant mirrors the Figma body (Inter) feel while rendering Hebrew
-// RTL correctly — free Google substitute for the brand-book body font.
+// RTL correctly - free Google substitute for the brand-book body font.
 const fontSans = Assistant({
   weight: ["400", "500", "600", "700"],
   style: "normal",
@@ -25,7 +25,7 @@ const fontSans = Assistant({
 });
 
 // Display face for headings + logo wordmark. Rubik is a warm geometric sans with
-// strong Hebrew + Latin coverage — free substitute for the proprietary Fedra Sans.
+// strong Hebrew + Latin coverage - free substitute for the proprietary Fedra Sans.
 const fontDisplay = Rubik({
   weight: ["600", "700", "800"],
   style: "normal",
@@ -161,7 +161,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             //
             // DON'T add a window 'load' handler that calls scrollTo(0,0) here.
             // 'load' fires only after EVERY image, iframe and third-party
-            // widget has finished — on the homepage that was ~20s — by which
+            // widget has finished - on the homepage that was ~20s - by which
             // time the visitor has long since scrolled down, and they got
             // yanked back to the top mid-read (2026-07 bug).
             if ('scrollRestoration' in history) {
@@ -206,7 +206,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             ></iframe>
           </noscript>
         )}
-        {/* w-full (not w-screen — 100vw overflows past the scrollbar) + clip
+        {/* w-full (not w-screen - 100vw overflows past the scrollbar) + clip
             so decorative overflow never causes sideways scrolling on mobile */}
         <div className="w-full relative min-h-screen overflow-x-clip">
           <MixpanelProvider />

@@ -21,9 +21,9 @@ function statusBadgeClass(status: string): string {
 }
 
 function formatDate(value: string | null): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("he-IL");
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString("he-IL");
 }
 
 function formatUsd(value: number): string {
@@ -32,7 +32,7 @@ function formatUsd(value: number): string {
 
 /** Hebrew "time left" for a still-open hold, given its expiry instant. */
 function timeRemainingLabel(expiresAt: string | null): string {
-  if (!expiresAt) return "—";
+  if (!expiresAt) return "-";
   const diffMs = new Date(expiresAt).getTime() - Date.now();
   if (!Number.isFinite(diffMs) || diffMs <= 0) return "פג תוקף";
   const hours = Math.floor(diffMs / (60 * 60 * 1000));
@@ -42,7 +42,7 @@ function timeRemainingLabel(expiresAt: string | null): string {
 }
 
 export default async function AgentReservationsPage() {
-  // Shown to both agents and influencers — requirePartner() is the real
+  // Shown to both agents and influencers - requirePartner() is the real
   // gate, no role check (getPortalReservations guards the same way).
   await requirePartner();
   const { rows, truncated } = await getPortalReservations();
@@ -52,7 +52,7 @@ export default async function AgentReservationsPage() {
   const paidTickets = paidRows.reduce((sum, r) => sum + r.tickets, 0);
   const totalSales = paidRows.reduce((sum, r) => sum + r.user_shown_price, 0);
   // Non-paid rows already carry commission_usd === 0, so summing every row
-  // and summing only paidRows give the same total — summing paidRows keeps
+  // and summing only paidRows give the same total - summing paidRows keeps
   // the intent explicit.
   const totalCommission = paidRows.reduce((sum, r) => sum + r.commission_usd, 0);
 
@@ -100,8 +100,8 @@ export default async function AgentReservationsPage() {
               <tbody>
                 {holds.map((r) => (
                   <tr key={r.id} className="border-t">
-                    <td className="px-3 py-2">{r.customer_name || "—"}</td>
-                    <td className="px-3 py-2">{r.event_title || "—"}</td>
+                    <td className="px-3 py-2">{r.customer_name || "-"}</td>
+                    <td className="px-3 py-2">{r.event_title || "-"}</td>
                     <td className="px-3 py-2 text-gray-500">{formatDate(r.created_at)}</td>
                     <td className="px-3 py-2 font-medium">
                       {timeRemainingLabel(r.hold_expires_at)}
@@ -138,12 +138,12 @@ export default async function AgentReservationsPage() {
               <tbody>
                 {rows.map((r: PortalReservation) => (
                   <tr key={r.id} className="border-t align-top">
-                    <td className="px-3 py-2">{r.customer_name || "—"}</td>
+                    <td className="px-3 py-2">{r.customer_name || "-"}</td>
                     <td className="px-3 py-2">
-                      <div>{r.event_title || "—"}</div>
+                      <div>{r.event_title || "-"}</div>
                       <div className="text-xs text-gray-500">{formatDate(r.event_date)}</div>
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{r.ticket_category || "—"}</td>
+                    <td className="px-3 py-2 text-gray-500">{r.ticket_category || "-"}</td>
                     <td className="px-3 py-2">{r.tickets}</td>
                     <td className="px-3 py-2">{r.pax}</td>
                     <td className="px-3 py-2">
@@ -186,7 +186,7 @@ export default async function AgentReservationsPage() {
           </div>
           {truncated && (
             <p className="text-xs text-gray-500">
-              מוצגות ההזמנות האחרונות בלבד — קיימות הזמנות ישנות יותר שאינן מופיעות ברשימה זו.
+              מוצגות ההזמנות האחרונות בלבד - קיימות הזמנות ישנות יותר שאינן מופיעות ברשימה זו.
             </p>
           )}
         </div>

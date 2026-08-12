@@ -1,9 +1,9 @@
 -- Coupons: customer-facing discount codes (run once in the Supabase SQL editor).
--- STATUS: already executed by Dor on 2026-07-06 — kept as schema documentation.
+-- STATUS: already executed by Dor on 2026-07-06 - kept as schema documentation.
 --
 -- Backoffice creates coupons; the main app validates a code on the order
 -- summary (step 4) and applies the discount. Discounts do NOT stack with the
--- affiliate discount — the bigger single discount wins (client + server both
+-- affiliate discount - the bigger single discount wins (client + server both
 -- enforce). Spec: docs/superpowers/specs/2026-07-06-coupons-design.md
 --
 --   discount_type 'percent' : discount_value = % off the package total (e.g. 5)

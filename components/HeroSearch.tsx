@@ -42,7 +42,7 @@ type SpeechRecognitionLike = {
   onend: (() => void) | null;
   start: () => void;
 };
-/** Small on-brand tooltip (desktop hover/focus only) — Tailwind, no library. */
+/** Small on-brand tooltip (desktop hover/focus only) - Tailwind, no library. */
 const HoverTip = ({ label, children }: { label: string; children: ReactNode }) => (
   <span className="group/tip relative inline-flex shrink-0">
     {children}
@@ -67,7 +67,7 @@ const getSpeechRecognition = ():
 };
 
 /**
- * Hero "AI" search — the single search experience on the homepage (per Dor's
+ * Hero "AI" search - the single search experience on the homepage (per Dor's
  * mock): one big input; typing assembles a package live ("מרכיבים את החבילה
  * שלך…") with the best-matching event, its included parts and average price.
  * Optional voice input via the Web Speech API (Hebrew).
@@ -80,10 +80,10 @@ export const HeroSearch = ({
 }: {
   events: Event[];
   artists?: Artist[];
-  /** Focus the input on mount — used when rendered inside the search modal. */
+  /** Focus the input on mount - used when rendered inside the search modal. */
   autoFocus?: boolean;
   /** Float the results panel OVER the content below (homepage hero) instead of
-   * pushing it down. Keep false inside the search modal — there the modal box
+   * pushing it down. Keep false inside the search modal - there the modal box
    * itself must grow with the results. */
   overlay?: boolean;
 }) => {
@@ -105,7 +105,7 @@ export const HeroSearch = ({
   const fmtDate = (d?: string) =>
     d ? dayjs(d).locale("he").format("D בMMMM") : "תאריך יפורסם";
 
-  // The event the user picked from the list — drives the package panel.
+  // The event the user picked from the list - drives the package panel.
   const [selected, setSelected] = useState<Event | null>(null);
 
   // First-pick-only "assembling your package online" animation: pills reveal
@@ -270,8 +270,8 @@ export const HeroSearch = ({
             else goToSearch();
           }}
           placeholder="לאן טסים? אמן, קבוצה או עיר…"
-          aria-label="חיפוש אירוע — הקלידו אירוע, אומן, קבוצה או עיר"
-          // placeholder:text-[15px] — the full sentence is 5px too wide for a
+          aria-label="חיפוש אירוע - הקלידו אירוע, אומן, קבוצה או עיר"
+          // placeholder:text-[15px] - the full sentence is 5px too wide for a
           // 375px input at 16px; one size down fits without changing the copy.
           className="min-w-0 flex-1 bg-transparent px-2 text-base text-main-foreground placeholder:font-medium placeholder:text-[15px] placeholder:text-main-foreground/80 focus:outline-none sm:placeholder:text-base"
           type="text"
@@ -304,7 +304,7 @@ export const HeroSearch = ({
         </HoverTip>
       </div>
 
-      {/* Stage 1 — plain results list. Pick a row to assemble its package. */}
+      {/* Stage 1 - plain results list. Pick a row to assemble its package. */}
       {open && !selected && matches.length > 0 && (
         <div
           className={cn(
@@ -374,7 +374,7 @@ export const HeroSearch = ({
         </div>
       )}
 
-      {/* Stage 2 — chosen event pulled up; package assembles live. */}
+      {/* Stage 2 - chosen event pulled up; package assembles live. */}
       {open && selected && (
         <div
           className={cn(
@@ -467,7 +467,7 @@ export const HeroSearch = ({
             </button>
           </div>
 
-          {/* Other matches — pick a different event without re-typing */}
+          {/* Other matches - pick a different event without re-typing */}
           {matches.filter((m) => m.id !== selected.id).length > 0 && (
             <div className="mt-3 border-t border-main-foreground/10 pt-2">
               <p className="px-1 pb-1 text-xs font-medium text-main-foreground/50">
@@ -505,7 +505,7 @@ export const HeroSearch = ({
             </div>
           )}
 
-          {/* All shows of this artist — keep available after a pick too */}
+          {/* All shows of this artist - keep available after a pick too */}
           {selectedArtist && (
             <Link
               href={`/artists/${selectedArtist.sys.id}`}

@@ -18,7 +18,7 @@ import {
 } from "@/lib/gtmAnalytics";
 
 export async function POST(req: Request) {
-  // Bad JSON / failed validation is a client error — return 400 before any
+  // Bad JSON / failed validation is a client error - return 400 before any
   // side effect (an uncaught throw here used to surface as a 500).
   let payNow, onlySave, gtmIdnts, skipAnalytics, orderDetails;
   let validatedData: OrderData;
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   // Defense-in-depth: offline hotel inventory has fixed dates. Reject the order
   // if any linked offline_hotels row doesn't EXACTLY match the booked stay
   // (guards against stale client state after a flight-date change, races, or
-  // tampering — the client filter in /api/offline-hotels is the first line).
+  // tampering - the client filter in /api/offline-hotels is the first line).
   if (offlineHotelIdsForLink) {
     const bookedCheckin = hotelInfoForLink?.checkin;
     const bookedCheckout = hotelInfoForLink?.checkout;
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
     if (datesMismatch) {
       console.error(
-        "Offline hotel date mismatch — rejecting order.",
+        "Offline hotel date mismatch - rejecting order.",
         JSON.stringify({ bookedCheckin, bookedCheckout, offlineRows }),
       );
       return NextResponse.json(
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Reject grossly-tampered totals before persisting — the stored
+  // Reject grossly-tampered totals before persisting - the stored
   // final_purchase_price_ils is what /api/payment later charges. Runs after the
   // coupon re-check so the floor can be relaxed by the DB-trusted coupon row.
   // Fails open, so it never blocks a legitimate order (see
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
   const priceError = await validatePurchasePriceFloor(validatedData, coupon);
   if (priceError) {
     console.error(
-      "Rejected order — purchase-price floor:",
+      "Rejected order - purchase-price floor:",
       JSON.stringify({ event_id: validatedData.event_id, reason: priceError }),
     );
     return NextResponse.json(
@@ -157,8 +157,11 @@ export async function POST(req: Request) {
   // still has to clear it on the full price the client submitted.
   const settlement = await resolveAgentSettlement(validatedData, payNow);
   if (!settlement.ok) {
-    console.error("Rejected order — agent settlement:", settlement.reason);
-    return NextResponse.json({ error: "SETTLEMENT_NOT_ALLOWED" }, { status: 400 });
+    console.error("Rejected order - agent settlement:", settlement.reason);
+    return NextResponse.json(
+      { error: "SETTLEMENT_NOT_ALLOWED" },
+      { status: 400 },
+    );
   }
 
   const reservationPayload = {
@@ -180,7 +183,7 @@ export async function POST(req: Request) {
       validatedData.aff_partner_tracking_code ||
       coupon?.partner_tracking_code ||
       "",
-    // Always the FULL, undiscounted total — see resolveAgentSettlement.
+    // Always the FULL, undiscounted total - see resolveAgentSettlement.
     final_purchase_price_ils: settlement.finalPurchasePriceIls,
     exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
     gtmIdnts: gtmIdnts || null,
@@ -190,7 +193,7 @@ export async function POST(req: Request) {
     // of a generic uncalled phone lead. Null for every non-agent-assisted
     // booking.
     partner_settlement_method: settlement.method,
-    // The ONLY column /api/payment subtracts before charging — 0 for every
+    // The ONLY column /api/payment subtracts before charging - 0 for every
     // order except an agent_card settlement.
     agent_card_discount_ils: settlement.agentCardDiscountIls || null,
     offline_flight_id: flightInfoForLink?.offlineId ?? null,
@@ -201,16 +204,14 @@ export async function POST(req: Request) {
         ? flightInfoForLink.offlineRawPrice *
           (flightInfoForLink.numOfTravelers ?? 1)
         : null,
-    offline_hotel_id: offlineHotelIdsForLink
-      ? offlineHotelIdsForLink[0]
-      : null,
+    offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
     offline_hotel_ids: offlineHotelIdsForLink,
     offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
     coupon_code: coupon ? coupon.code : null,
     coupon_discount_usd: coupon ? couponDiscountUsd : null,
     // Source attribution for the partner portal's "how did this order arrive"
     // label (package link / quote / plain link). Sanitized, never trusted
-    // beyond labeling — no FK, no pricing effect.
+    // beyond labeling - no FK, no pricing effect.
     source_share_token:
       typeof validatedData.source_share_token === "string" &&
       validatedData.source_share_token.trim()
@@ -232,7 +233,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error?.code === "42703") {
-    // The settlement/attribution columns' migration hasn't landed yet — retry
+    // The settlement/attribution columns' migration hasn't landed yet - retry
     // without them rather than failing EVERY order confirmation (not just
     // agent ones) on a column that doesn't exist yet.
     const {
@@ -267,10 +268,10 @@ export async function POST(req: Request) {
     );
   }
 
-  // Hold offline inventory immediately — released only on cancellation.
+  // Hold offline inventory immediately - released only on cancellation.
   await holdOfflineInventory(validatedData);
 
-  // Order saved — count the redemption (soft limit; failure is non-fatal).
+  // Order saved - count the redemption (soft limit; failure is non-fatal).
   if (coupon) await incrementCouponUse(coupon);
 
   // Voucher settlement SPENDS a live voucher: mark the agent's oldest one
@@ -278,9 +279,12 @@ export async function POST(req: Request) {
   // voucher can't gate unlimited orders, and (b) the backoffice credit ledger
   // settles it exactly like any credit coupon (spent when Paid, value
   // returned if the order is abandoned). Runs after the insert so a failed
-  // order never burns a voucher; done best-effort — an order must not die
+  // order never burns a voucher; done best-effort - an order must not die
   // over the bookkeeping.
-  if (settlement.method === "voucher" && validatedData.aff_partner_tracking_code) {
+  if (
+    settlement.method === "voucher" &&
+    validatedData.aff_partner_tracking_code
+  ) {
     try {
       const voucher = await consumeOldestLiveVoucher(
         validatedData.aff_partner_tracking_code,
@@ -297,7 +301,7 @@ export async function POST(req: Request) {
           })
           .eq("id", id);
       } else {
-        // Balance was verified moments ago in resolveAgentSettlement — this
+        // Balance was verified moments ago in resolveAgentSettlement - this
         // is either a race with another voucher order or data drift. The
         // order stands; staff see the settlement marker and chase the voucher.
         console.error(
@@ -306,7 +310,7 @@ export async function POST(req: Request) {
         );
       }
     } catch (e) {
-      console.error("voucher settlement: consume failed —", e);
+      console.error("voucher settlement: consume failed -", e);
     }
   }
 
@@ -364,8 +368,9 @@ export async function POST(req: Request) {
               : settlement.method === "voucher"
                 ? `Voucher (awaiting from partner ${validatedData.aff_partner_tracking_code})`
                 : settlement.method === "agent_card"
-                  ? `Credit Card (agent's own — charging ₪${
-                      settlement.finalPurchasePriceIls - settlement.agentCardDiscountIls
+                  ? `Credit Card (agent's own - charging ₪${
+                      settlement.finalPurchasePriceIls -
+                      settlement.agentCardDiscountIls
                     } of ₪${settlement.finalPurchasePriceIls}, net of commission)`
                   : payNow
                     ? "Credit Card"

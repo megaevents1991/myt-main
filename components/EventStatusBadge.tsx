@@ -46,7 +46,7 @@ export const EventStatusBadge = ({
   const tag = getEventTagInfo(event.tags);
   if (!tag) return null;
   // "Sold" as a manual tag on an event that still has inventory is a backoffice
-  // typo more often than a real state — sold-out is decided by isEventSoldOut
+  // typo more often than a real state - sold-out is decided by isEventSoldOut
   // above, so ignore it here rather than hiding a bookable event.
   if (tag.style === "soldout") return null;
   if (tag.style === "lastTickets") {

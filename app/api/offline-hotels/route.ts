@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { Hotel, HotelInfoClient, HotelsInfoClient, HotelKind, Rate } from "@/lib/hotel.type";
+import {
+  Hotel,
+  HotelInfoClient,
+  HotelsInfoClient,
+  HotelKind,
+  Rate,
+} from "@/lib/hotel.type";
 import { getDistance } from "geolib";
 import { getOfflineRoomCapacity } from "@/lib/offlineRoomCapacity";
 
@@ -33,7 +39,7 @@ type OfflineRow = {
 };
 
 type OfflineMeta = {
-  offlineId: number; // first of offlineIds — kept for legacy backoffice code
+  offlineId: number; // first of offlineIds - kept for legacy backoffice code
   offlineIds: number[]; // one entry per consumed room unit (with repetition)
   checkin: string;
   checkout: string;
@@ -52,7 +58,7 @@ type RequestedRoom = { adults: number; children: number[] };
 // requested room cannot be satisfied from this hotel's inventory.
 function matchRoomsToInventory(
   requested: RequestedRoom[],
-  rows: OfflineRow[]
+  rows: OfflineRow[],
 ): { rowIds: number[]; totalPrice: number } | null {
   const needs = requested
     .map((r) => r.adults + r.children.length)
@@ -70,14 +76,14 @@ function matchRoomsToInventory(
 
   for (const pax of needs) {
     // Snug fit: a room must hold the party (capacity >= pax) but not waste beds
-    // (capacity <= pax) — e.g. a couple should never be offered a Triple. Floor
+    // (capacity <= pax) - e.g. a couple should never be offered a Triple. Floor
     // the upper bound at 2 because offline inventory has no single-capacity
     // rooms, so a solo traveler still matches a Double/Twin.
     const maxCapacity = Math.max(pax, 2);
     const pick = units
       .filter(
         (u) =>
-          u.remaining > 0 && u.capacity >= pax && u.capacity <= maxCapacity
+          u.remaining > 0 && u.capacity >= pax && u.capacity <= maxCapacity,
       )
       .sort((a, b) => a.capacity - b.capacity || a.price - b.price)[0];
     if (!pick) return null;
@@ -112,7 +118,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Offline inventory has FIXED dates — a pre-purchased room block cannot be
+  // Offline inventory has FIXED dates - a pre-purchased room block cannot be
   // stretched. A row is eligible only when its window EXACTLY matches the
   // flight-aligned stay (check_in == arrival date, check_out == return
   // departure date). A "covers" filter would wrongly keep offering an offline
@@ -127,7 +133,7 @@ export async function GET(request: Request) {
   const query = (supabase as any)
     .from("offline_hotels")
     .select(
-      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date, guest_rating, guest_review_count"
+      "id, hid, hotel_name, city, check_in, check_out, price, room_type, num_rooms, consumed_rooms, meal_plan, notes, last_cancellation_date, guest_rating, guest_review_count",
     )
     .contains("event_ids", [eventId])
     .eq("is_deleted", false)
@@ -159,7 +165,7 @@ export async function GET(request: Request) {
     longitude?: number;
   };
 
-  // 3) WorldOTA metadata for rows that have a hid — same shape as /api/hotels-info
+  // 3) WorldOTA metadata for rows that have a hid - same shape as /api/hotels-info
   const hids = (offlineRows as OfflineRow[])
     .filter((h) => h.hid != null)
     .map((h) => h.hid);
@@ -184,7 +190,7 @@ export async function GET(request: Request) {
     const { data: meta } = await supabase
       .from("hotels")
       .select(
-        "hid, _id, name, star_rating, kind, images_ext, amenity_groups, room_groups, address, latitude, longitude, guest_rating, guest_review_count"
+        "hid, _id, name, star_rating, kind, images_ext, amenity_groups, room_groups, address, latitude, longitude, guest_rating, guest_review_count",
       )
       .in("hid", hids);
     hotelsMetaRows = meta ?? [];
@@ -228,7 +234,7 @@ export async function GET(request: Request) {
 
     const generalAmenities =
       ((meta?.amenity_groups ?? []) as AmenityGroup[]).find(
-        (g) => g.group_name === "General"
+        (g) => g.group_name === "General",
       )?.amenities ?? [];
 
     const rooms = ((meta?.room_groups ?? []) as RoomGroup[]).reduce(
@@ -242,7 +248,7 @@ export async function GET(request: Request) {
         }
         return acc;
       },
-      {} as HotelInfoClient["rooms"]
+      {} as HotelInfoClient["rooms"],
     );
 
     const distanceFromCenter =
@@ -255,7 +261,7 @@ export async function GET(request: Request) {
               latitude: eventLocation.latitude,
               longitude: eventLocation.longitude,
             },
-            { latitude: meta.latitude, longitude: meta.longitude }
+            { latitude: meta.latitude, longitude: meta.longitude },
           )
         : 0;
 
@@ -283,7 +289,7 @@ export async function GET(request: Request) {
       },
     };
 
-    // Synthetic Rate — show_amount is the total combo price. The customer-facing
+    // Synthetic Rate - show_amount is the total combo price. The customer-facing
     // per-person supplement is computed in <HotelCard> the same way it is for
     // online hotels: (show_amount / persons) - event.base_hotel_price.
     const firstRoomName =
@@ -291,7 +297,7 @@ export async function GET(request: Request) {
       (anchor.room_type as string | undefined) ||
       "Standard Room";
 
-    // Earliest cancellation deadline across matched rows — worst case for the customer
+    // Earliest cancellation deadline across matched rows - worst case for the customer
     const matchedCancDates = match.rowIds
       .map((id) => rowsInGroup.find((r) => r.id === id)?.last_cancellation_date)
       .filter((d): d is string => !!d);
@@ -363,10 +369,7 @@ export async function GET(request: Request) {
 
     // Totals across the rows that make up this group's inventory
     const totalNumRooms = rowsInGroup.reduce((s, r) => s + r.num_rooms, 0);
-    const totalConsumed = rowsInGroup.reduce(
-      (s, r) => s + r.consumed_rooms,
-      0
-    );
+    const totalConsumed = rowsInGroup.reduce((s, r) => s + r.consumed_rooms, 0);
 
     hotels.push(hotel);
     hotelsInfo[id] = info;
@@ -385,9 +388,7 @@ export async function GET(request: Request) {
   }
 
   // Keep the cheapest-first ordering the old code relied on.
-  hotels.sort(
-    (a, b) => metaById[a.id].rawPrice - metaById[b.id].rawPrice
-  );
+  hotels.sort((a, b) => metaById[a.id].rawPrice - metaById[b.id].rawPrice);
 
   return NextResponse.json({ hotels, hotelsInfo, meta: metaById });
 }

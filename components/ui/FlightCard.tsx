@@ -256,7 +256,7 @@ export const FlightTicketCard = memo(
                 <span>כלול במחיר</span>
               )}
             </div>
-            {/* Mobile best/cheapest badge — desktop shows it in the price column,
+            {/* Mobile best/cheapest badge - desktop shows it in the price column,
                 which is hidden on mobile. Only one badge on mobile (best wins over
                 cheapest) so it never collides with the price pill on narrow screens.
                 z-10 keeps it in front of the card. */}
@@ -320,7 +320,7 @@ const FlightCard = ({
   return (
     <div className="flex flex-row items-center justify-between w-full gap-2 lg:gap-1">
       <div className="w-[20%] lg:w-[20%] flex flex-col items-center">
-        {/* Airline logos are dark-ink PNGs — on the dark card they vanish, so on
+        {/* Airline logos are dark-ink PNGs - on the dark card they vanish, so on
             dark we seat them on a white chip to keep the brand legible. */}
         <div className="mb-2 rounded-md dark:bg-white/95 dark:p-1.5">
           {metadata.logo ? (

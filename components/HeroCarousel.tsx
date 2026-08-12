@@ -11,7 +11,7 @@ import { MYTMark } from "@/components/ui/mytMark";
 import { EventArt } from "@/components/ui/EventArt";
 import { cn } from "@/lib/utils";
 
-// One ring entry — an artist or a football team (structurally identical
+// One ring entry - an artist or a football team (structurally identical
 // Contentful-shaped records; `kind` only decides the link target + CTA copy).
 export type HeroCarouselItem = {
   kind: "artist" | "team";
@@ -24,7 +24,7 @@ const STEP_FRAC = 0.56; // gap between card centers, as a fraction of card width
 const ROTATE = 46; // side-card Y rotation (deg)
 const CENTER_SCALE = 1.06;
 
-// Momentum fling — release with speed → a roulette-style glide that decelerates
+// Momentum fling - release with speed → a roulette-style glide that decelerates
 // and snaps to the nearest card (velocity is in px/ms; +x = finger moving right).
 const FLING_MIN_V = 0.22; // below this, a release just snaps to nearest (no spin)
 const FLING_FRICTION = 0.0035; // per-ms exponential velocity decay (lower = glides longer)
@@ -33,7 +33,7 @@ const FLING_MAX_CARDS = 20; // cap travel so a hard flick can't over-spin a smal
 
 // Reflection cast under each card. DESKTOP ONLY: on mobile WebKit the card is a
 // composited 3D layer (will-change + translateZ + backface-visibility) and
-// `-webkit-box-reflect` gets dropped once the layer is promoted to the GPU — the
+// `-webkit-box-reflect` gets dropped once the layer is promoted to the GPU - the
 // reflection flashes for one frame then vanishes. So we omit it on mobile (as
 // Firefox already does on every platform) and keep it on desktop Blink.
 const BOX_REFLECT_DESKTOP =
@@ -44,7 +44,7 @@ type Card =
   | { kind: "logo" };
 
 /**
- * Hero gallery — an index-based Swiper-style coverflow (modelled on the
+ * Hero gallery - an index-based Swiper-style coverflow (modelled on the
  * `react-coverflow` engine). A single `current` index drives everything: each
  * card is positioned purely from `index - current` (shortest path around the
  * ring), so it's infinite, fully declarative, and has no DOM-measurement
@@ -53,7 +53,7 @@ type Card =
  *
  * - Click a side card / dot / arrow to bring it to center; click the centered
  *   card to open it. Mouse drag-pans, vertical wheel steps through cards, touch
- *   swipes — all just change `current`. CSS transitions do the animating.
+ *   swipes - all just change `current`. CSS transitions do the animating.
  * - Opens on the brand logo, then a single "peek" nudge advertises scrolling
  *   (cancels on first interaction). Reduced-motion skips the nudge + 3D.
  */
@@ -72,7 +72,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     [itemsProp]
   );
 
-  // One ring of cards — all artists/teams, with the brand-logo card spliced
+  // One ring of cards - all artists/teams, with the brand-logo card spliced
   // into the middle so the carousel opens on it.
   const cards = useMemo<Card[]>(() => {
     const out: Card[] = items.map((item, idx) => ({
@@ -88,7 +88,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
   const logoIndex = cards.findIndex((c) => c.kind === "logo");
 
   // `current` is unbounded (we reduce mod N for content) so stepping never hits
-  // an edge — the ring is infinite in both directions.
+  // an edge - the ring is infinite in both directions.
   const [current, setCurrent] = useState(logoIndex);
   const [cardW, setCardW] = useState(176);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -97,7 +97,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
   const dragging = useRef(false);
   const moved = useRef(false);
   const dragStart = useRef(0);
-  const dragStartY = useRef(0); // pointer Y at grab — for axis-lock
+  const dragStartY = useRef(0); // pointer Y at grab - for axis-lock
   const axisLock = useRef<"x" | "y" | null>(null); // gesture direction, decided once
   const dragRef = useRef(0); // live sub-card drag remainder (px)
   const interacted = useRef(false);
@@ -141,7 +141,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
 
   const stop = useCallback(() => {
     interacted.current = true;
-    // Any new input (grab, arrow, tap) halts a glide in progress — grab to stop,
+    // Any new input (grab, arrow, tap) halts a glide in progress - grab to stop,
     // like catching a spinning roulette.
     if (momentumRaf.current) {
       cancelAnimationFrame(momentumRaf.current);
@@ -159,12 +159,12 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
   );
 
   // Hard axis-lock for touch. `touch-action: pan-y` lets the browser scroll the
-  // page vertically — but on a DIAGONAL swipe that vertical component still
+  // page vertically - but on a DIAGONAL swipe that vertical component still
   // scrolled the page while the finger was trying to move the ring sideways
   // (the "slides up/down when I swipe left/right" bug). A pointer handler can't
   // stop that native scroll, so we attach a NON-PASSIVE touchmove that decides
   // the axis from the raw touch delta and preventDefaults once the gesture is
-  // horizontal — killing the page scroll for the rest of that swipe. Vertical
+  // horizontal - killing the page scroll for the rest of that swipe. Vertical
   // gestures are left alone, so the page still scrolls normally off the ring.
   useEffect(() => {
     const el = stageRef.current;
@@ -211,7 +211,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
 
   // One-time auto-loop on load: glide once around the whole ring (logo → every
   // card → back to the logo), advertising the gallery. Inputs are arrows + drag
-  // (PC) / swipe (mobile) — no wheel, so nothing races this. Stops on the first
+  // (PC) / swipe (mobile) - no wheel, so nothing races this. Stops on the first
   // interaction; skipped under reduced-motion.
   useEffect(() => {
     if (reducedRef.current || N <= 1) return;
@@ -247,7 +247,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     lastX.current = e.clientX;
     lastT.current = e.timeStamp;
     // Mouse/pen ONLY: capture so a drag keeps tracking if the cursor leaves the
-    // stage. NEVER capture a touch pointer — WebKit/iOS has a long-standing bug
+    // stage. NEVER capture a touch pointer - WebKit/iOS has a long-standing bug
     // where setPointerCapture on an ancestor for a touch pointer makes pointermove
     // silently STOP firing (gotpointercapture lies). That is what froze the swipe
     // on iPhone. Touch already has working *implicit* capture on its own target,
@@ -262,7 +262,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     // Axis-lock: decide once, after enough movement, whether this gesture is a
     // horizontal ring-swipe or a vertical page-scroll. A diagonal drag used to
     // move the ring AND scroll the page at once (the jitter). Now vertical
-    // intent wins and the ring yields — the page just scrolls.
+    // intent wins and the ring yields - the page just scrolls.
     if (axisLock.current === null) {
       const adx = Math.abs(dx);
       const ady = Math.abs(e.clientY - dragStartY.current);
@@ -273,7 +273,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     }
     if (axisLock.current === "y") return;
     // Step `current` as the finger crosses each card-width and keep only the
-    // sub-card remainder as the live offset — so the strip scrolls card-by-card
+    // sub-card remainder as the live offset - so the strip scrolls card-by-card
     // under the finger and never slides off-screen.
     let steps = 0;
     while (dx <= -baseStep) {
@@ -302,7 +302,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     if (!dragging.current) return;
     dragging.current = false;
     // Release the capture taken in pointerdown. Touch auto-releases on pointerup,
-    // but mouse/pen don't — without this the next desktop click is misrouted.
+    // but mouse/pen don't - without this the next desktop click is misrouted.
     if (e && e.currentTarget.hasPointerCapture?.(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }
@@ -400,7 +400,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
       kind === "team" ? `עמוד הקבוצה ${name}` : `עמוד האומן ${name}`;
     const cta = kind === "team" ? "למשחקים" : "לאירועים";
     // Blob cut-outs: the whole image must stay visible on these TALL portrait
-    // cards — `contain`, centered. No zoom/offset dial is applied to a PERSON
+    // cards - `contain`, centered. No zoom/offset dial is applied to a PERSON
     // here whatever bucket the cut-out sits in: legacy art_blobs cut-outs carry
     // their own padding, and cut-outs from the picker are trimmed tight, so both
     // read right at plain contain size. The dials are tuned on the near-square
@@ -412,10 +412,10 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
     // bucket (`isTightCrest`), which quietly swept up every artist cut-out the
     // picker writes to `templates` and gave people the crest's lift.
     const crest = kind === "team" && isTightCrest(artImageUrl);
-    // ⬇️ BLOB ZOOM DIAL. The shapes vary a lot — some paths flood their whole
+    // ⬇️ BLOB ZOOM DIAL. The shapes vary a lot - some paths flood their whole
     // viewBox (any "cover" crop shows flat color, the Backstreet/Pitbull bug),
     // others leave margins. So the ring uses blobFit="contain" (whole shape
-    // fitted inside the card first — edges guaranteed visible on EVERY shape)
+    // fitted inside the card first - edges guaranteed visible on EVERY shape)
     // and then zooms it with this dial so the color still reaches down toward
     // the footer. Backoffice bgScale is ignored here (square-card dial).
     const HERO_BLOB_SCALE = 1.3;
@@ -453,13 +453,13 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
             blob
               ? // Crests sit a bit HIGHER here than the shared standard: on this
                 // tall card the -12% offset reads low, so the hero uses its own
-                // dial (the "like Arsenal" centered look). People get no lift —
+                // dial (the "like Arsenal" centered look). People get no lift -
                 // it pushed their heads out through the top of the card.
                 (crest ? FOOTBALL_CREST_ART.heroImageOffsetY : undefined)
               : entry.fields.artImageOffsetY
           }
           imageFit={blob ? "contain" : "cover"}
-          // object-center beats EventArt's default object-bottom (twMerge) —
+          // object-center beats EventArt's default object-bottom (twMerge) -
           // the cut-out floats centered in the card instead of hugging one edge.
           imageClassName={blob ? "object-center" : undefined}
           hoverZoom={false}
@@ -476,7 +476,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
         <span className="absolute inset-x-2 bottom-12 truncate text-center text-base font-bold text-white drop-shadow lg:bottom-14 lg:text-xl">
           {name}
         </span>
-        {/* Only the CTA navigates — clicking the card art never does. */}
+        {/* Only the CTA navigates - clicking the card art never does. */}
         <Link
           href={href}
           aria-label={ariaLabel}
@@ -505,7 +505,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
 
   return (
     <div className="group relative">
-      {/* Left chevron — brings the card on the left toward center. */}
+      {/* Left chevron - brings the card on the left toward center. */}
       <button
         type="button"
         onClick={() => step(-1)}
@@ -514,7 +514,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
       >
         <ChevronLeft className="size-5" aria-hidden />
       </button>
-      {/* Right chevron — brings the card on the right toward center. */}
+      {/* Right chevron - brings the card on the right toward center. */}
       <button
         type="button"
         onClick={() => step(1)}
@@ -548,7 +548,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
         {cards.map((card, i) => {
           const d = deltaOf(i);
           const reduced = reducedRef.current;
-          // Continuous position in card-units, including the live drag — so the
+          // Continuous position in card-units, including the live drag - so the
           // 3D interpolates smoothly during a swipe (a real slide) instead of
           // popping at each card boundary. Stepping still recycles cards.
           const pos = reduced ? d : d + drag / baseStep;
@@ -573,7 +573,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
               aria-hidden={!visible}
               className={cn(
                 "absolute left-1/2 top-1/2 h-64 w-44 [backface-visibility:hidden] sm:h-80 sm:w-56 lg:h-96 lg:w-64",
-                // will-change only on the visible band — leaving it on all 21
+                // will-change only on the visible band - leaving it on all 21
                 // cards permanently allocated a GPU layer each, blowing iOS
                 // Safari's layer-memory budget and making it re-rasterize (white
                 // flash) the rest of the page on scroll. Off-screen cards are
@@ -592,7 +592,7 @@ export const HeroCarousel = ({ items: itemsProp }: { items: HeroCarouselItem[] }
                 pointerEvents: visible ? "auto" : "none",
               }}
               onClickCapture={(e) => {
-                // Clicks on the CTA link always pass through — a swipe that
+                // Clicks on the CTA link always pass through - a swipe that
                 // ended without a click (touch) leaves `moved` stale, which
                 // used to swallow the next tap on "לאירועים".
                 if ((e.target as HTMLElement).closest("a")) {

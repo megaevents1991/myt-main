@@ -6,7 +6,7 @@ import { PartnerLoginForm } from "./login-form";
 export const dynamic = "force-dynamic";
 
 export default async function PartnerLoginPage() {
-  // Already signed in — don't show a login form to someone who has a session.
+  // Already signed in - don't show a login form to someone who has a session.
   if (await getPartnerSession()) redirect("/agent");
 
   return (

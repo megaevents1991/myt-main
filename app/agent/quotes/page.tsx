@@ -5,7 +5,7 @@ import { getMyQuotes } from "@/lib/quote-actions";
 export const dynamic = "force-dynamic";
 
 export default async function AgentQuotesPage() {
-  // Nav already hides this tab from an influencer; this is the real gate —
+  // Nav already hides this tab from an influencer; this is the real gate -
   // requireAgent() throws for anyone whose role isn't exactly "agent".
   await requireAgent();
   const quotes = await getMyQuotes();
@@ -50,15 +50,15 @@ export default async function AgentQuotesPage() {
                   <td className="px-3 py-2 text-gray-500">
                     {new Date(quote.created_at).toLocaleDateString("he-IL")}
                   </td>
-                  <td className="px-3 py-2">{quote.customer_name || "—"}</td>
-                  <td className="px-3 py-2">{quote.title || "—"}</td>
+                  <td className="px-3 py-2">{quote.customer_name || "-"}</td>
+                  <td className="px-3 py-2">{quote.title || "-"}</td>
                   <td className="px-3 py-2 font-medium">
-                    {quote.total != null ? `$${quote.total.toLocaleString()}` : "—"}
+                    {quote.total != null ? `$${quote.total.toLocaleString()}` : "-"}
                   </td>
                   <td className="px-3 py-2 text-gray-500">
                     {quote.valid_until
                       ? new Date(quote.valid_until).toLocaleDateString("he-IL")
-                      : "—"}
+                      : "-"}
                   </td>
                   <td className="px-3 py-2 text-left">
                     <Link

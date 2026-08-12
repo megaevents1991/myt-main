@@ -20,7 +20,7 @@ import { OrderExpiryProvider, useOrderExpiry } from "../hooks/useOrderExpiry";
 import OrderExpiredNotice from "@/components/OrderExpiredNotice";
 
 const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
-  // flight/hotel start undefined, NOT {} — an empty object is truthy and every
+  // flight/hotel start undefined, NOT {} - an empty object is truthy and every
   // "is there a flight/hotel?" guard downstream must not need Object.keys().
   const [flight, setFlight] = useState<Flight | undefined>(undefined);
   const [event, setEvent] = useState<Event | undefined>(undefined);
@@ -52,7 +52,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const isUS = event?.location?.country_code === "US";
 
   const handleStepperClick = (index: number) => {
-    // Edit-from-summary is a focused task — no wandering the flow mid-edit.
+    // Edit-from-summary is a focused task - no wandering the flow mid-edit.
     // An agent-locked package is not the customer's to rearrange either.
     if (returnToSummary || packageLocked) return;
     if (index + 1 < step) {
@@ -82,7 +82,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
         currentStep={step}
         onStepperClick={handleStepperClick}
         steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
-        // Hidden on the summary AND during edit-from-summary — an edit is a
+        // Hidden on the summary AND during edit-from-summary - an edit is a
         // focused single-step task, not a walk through the flow.
         hideSteps={step === 4 || returnToSummary}
       />

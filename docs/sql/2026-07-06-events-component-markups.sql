@@ -1,6 +1,6 @@
 -- Events: per-event component markups (run once in the Supabase SQL editor).
 --
--- Full markup control per event. All columns NULLABLE — when none of the
+-- Full markup control per event. All columns NULLABLE - when none of the
 -- three component markups is set, pricing behaves EXACTLY as today
 -- (global $175 markup + env hotel-skip fee + skip_flight_markup).
 --
@@ -18,7 +18,7 @@ alter table events
   add column if not exists markup_hotel numeric,
   add column if not exists skip_hotel_markup numeric;
 
--- sanity check — columns exist, everything NULL (legacy mode) by default
+-- sanity check - columns exist, everything NULL (legacy mode) by default
 select column_name, data_type, is_nullable
 from information_schema.columns
 where table_name = 'events'

@@ -96,7 +96,7 @@ export function ConvertCredit({ balanceUsd }: { balanceUsd: number }) {
           <DialogHeader>
             <DialogTitle>המרת צבירה לקופון</DialogTitle>
             <DialogDescription>
-              יש לכם {usd.format(balanceUsd)} להמרה. אפשר להמיר הכל או חלק — מה שלא תמירו נשאר
+              יש לכם {usd.format(balanceUsd)} להמרה. אפשר להמיר הכל או חלק - מה שלא תמירו נשאר
               בצבירה.
             </DialogDescription>
           </DialogHeader>
@@ -110,7 +110,7 @@ export function ConvertCredit({ balanceUsd }: { balanceUsd: number }) {
                   type="number"
                   min={MIN_CONVERT_USD}
                   max={balanceUsd}
-                  // Cents, not whole dollars — a balance can be $62.50.
+                  // Cents, not whole dollars - a balance can be $62.50.
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}

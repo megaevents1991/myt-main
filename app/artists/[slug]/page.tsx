@@ -48,7 +48,7 @@ export async function generateMetadata({
       alternates: {
         canonical: `https://www.mega-events.co.il/artists/${slug}`,
       },
-      // og:image intentionally NOT set here — the branded card from
+      // og:image intentionally NOT set here - the branded card from
       // opengraph-image.tsx is the preview (explicit images would override it).
       openGraph: {
         title,

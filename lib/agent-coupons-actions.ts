@@ -4,7 +4,7 @@ import { requirePartner } from "@/lib/partner-auth";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Coupons for the agent/influencer area — ported from the backoffice partner
+ * Coupons for the agent/influencer area - ported from the backoffice partner
  * portal (`getPortalCoupons` in lib/actions/portal-actions.ts there). Pure
  * read-only passthrough of the partner's own coupons, same shared `coupons`
  * table, no business-logic transforms.
@@ -23,7 +23,7 @@ export interface PortalCoupon {
   event_id: number | null;
 }
 
-// Shown to both agents and influencers — requirePartner() is the only guard
+// Shown to both agents and influencers - requirePartner() is the only guard
 // (no role check), matching getPortalCoupons's own guard in the backoffice.
 export async function getPortalCoupons(): Promise<PortalCoupon[]> {
   const session = await requirePartner();

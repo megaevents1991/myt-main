@@ -7,23 +7,23 @@ import { partnerLink } from "@/lib/agent-links";
 import type { Flight, OrderHotel, OrderTicket } from "@/lib/app.types";
 
 /**
- * Prepared packages — a partner picks a specific ticket+flight+hotel
+ * Prepared packages - a partner picks a specific ticket+flight+hotel
  * combination through the site's own order flow, then saves it here to get
  * a shareable link that lands a follower on that exact package.
  *
- * This is never a financial commitment on its own — the actual booking still
+ * This is never a financial commitment on its own - the actual booking still
  * goes through confirm-order's own full validation (price floor, agent
  * settlement, etc.). But confirm-order's price floor deliberately excludes
  * flight/hotel and only floors the ticket against the cheapest category
  * overall, so a saved package is a real, standalone place a partner could
- * otherwise plant a manipulated price with nothing else ever catching it — a
+ * otherwise plant a manipulated price with nothing else ever catching it - a
  * package can be opened long after it was made, unlike a normal order where
  * the ticket price came from TicketSelection moments before submitting. So
  * this re-derives the ticket price from the live event rather than trusting
  * the client, and rejects offline flight/hotel prices below their known true
  * inventory cost. A live (Amadeus/Ratehawk) offer has no equivalent ground
- * truth short of a full re-search — same limitation /api/package/[id]
- * documents on the read side — so it's trusted as-is, same as there.
+ * truth short of a full re-search - same limitation /api/package/[id]
+ * documents on the read side - so it's trusted as-is, same as there.
  */
 
 export interface SavePackageInput {
@@ -36,9 +36,13 @@ export interface SavePackageInput {
   hotelSkipped: boolean;
 }
 
-export type SavePackageResult = { ok: true; link: string } | { ok: false; error: string };
+export type SavePackageResult =
+  | { ok: true; link: string }
+  | { ok: false; error: string };
 
-export async function savePreparedPackage(input: SavePackageInput): Promise<SavePackageResult> {
+export async function savePreparedPackage(
+  input: SavePackageInput,
+): Promise<SavePackageResult> {
   const session = await requirePartner();
 
   const eventId = Number(input.eventId);
@@ -46,7 +50,7 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
     return { ok: false, error: "אירוע לא תקין" };
   }
 
-  // Re-fetch the live event — never trust the client for whether it still
+  // Re-fetch the live event - never trust the client for whether it still
   // exists at all, even though the ticket/flight/hotel values themselves
   // come from the same selection UI a real customer would use.
   const { events } = await getEvents(eventId);
@@ -55,13 +59,20 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
     return { ok: false, error: "האירוע לא נמצא או שאינו זמין יותר" };
   }
 
-  const qty = Math.max(1, Math.min(999, Math.floor(input.numberOfEventTickets || 1)));
-  if (!input.ticket || typeof input.ticket.category !== "string" || !input.ticket.category) {
+  const qty = Math.max(
+    1,
+    Math.min(999, Math.floor(input.numberOfEventTickets || 1)),
+  );
+  if (
+    !input.ticket ||
+    typeof input.ticket.category !== "string" ||
+    !input.ticket.category
+  ) {
     return { ok: false, error: "יש לבחור כרטיס לפני השמירה" };
   }
 
   // Re-derive both the category's existence AND its price from the live
-  // event — never the client-submitted ticket. This is the one component a
+  // event - never the client-submitted ticket. This is the one component a
   // full, exact revalidation is possible for.
   const liveTicket = (event.tickets_and_rates || []).find(
     (t) => t.category === input.ticket.category && t.available !== false,
@@ -101,7 +112,7 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
     id: liveTicket.id,
   };
 
-  // Opaque, unguessable — used in the link and looked up on read instead of
+  // Opaque, unguessable - used in the link and looked up on read instead of
   // the row's sequential id, so packages can't be enumerated.
   const shareToken = crypto.randomUUID();
 
@@ -111,9 +122,9 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
     created_by: session.sub,
     event_id: event.id,
     event_order_info: eventOrderInfo,
-    flight_order_info: input.flightSkipped ? null : input.flight ?? null,
+    flight_order_info: input.flightSkipped ? null : (input.flight ?? null),
     flight_skipped: input.flightSkipped,
-    hotel_order_info: input.hotelSkipped ? null : input.hotel ?? null,
+    hotel_order_info: input.hotelSkipped ? null : (input.hotel ?? null),
     hotel_skipped: input.hotelSkipped,
     num_travelers: qty,
   };
@@ -126,7 +137,7 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
 
   if (error || !data) {
     // error={} with zero own properties (last round) rules out a normal
-    // PostgrestError entirely — that always carries at least a message.
+    // PostgrestError entirely - that always carries at least a message.
     // Two things left to tell apart: (a) the insert never actually landed
     // (permissions/RLS/schema), or (b) it landed fine but reading the row
     // back is what's failing (response handling, not the write). A
@@ -146,10 +157,15 @@ export async function savePreparedPackage(input: SavePackageInput): Promise<Save
       "rowActuallyInserted=",
       JSON.stringify(check.data),
       "checkError=",
-      check.error ? JSON.stringify(check.error, Object.getOwnPropertyNames(check.error)) : check.error,
+      check.error
+        ? JSON.stringify(check.error, Object.getOwnPropertyNames(check.error))
+        : check.error,
     );
     return { ok: false, error: "שמירת החבילה נכשלה. נסו שוב." };
   }
 
-  return { ok: true, link: partnerLink(session.partner_code, event.id, data.share_token) };
+  return {
+    ok: true,
+    link: partnerLink(session.partner_code, event.id, data.share_token),
+  };
 }

@@ -1,7 +1,7 @@
 /**
  * Validation script for the Meta catalog feed builders/serializers.
  * Run with: npx tsx lib/feed/__tests__/metaCatalog.test.ts
- * (Script-style asserts — matches lib/events/__tests__/price.test.ts.)
+ * (Script-style asserts - matches lib/events/__tests__/price.test.ts.)
  */
 import assert from "node:assert";
 import type { Event } from "../../app.types";
@@ -32,10 +32,18 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     description: "",
     card_image_url: "https://example.com/bryan.jpg",
     // A product only reaches the catalogue with a campaign creative, so the
-    // baseline event carries one — see the "branded or not at all" rule.
-    campaign_image_url: "https://cdn.example.com/auto/event-607-square.png?v=abc",
+    // baseline event carries one - see the "branded or not at all" rule.
+    campaign_image_url:
+      "https://cdn.example.com/auto/event-607-square.png?v=abc",
     tickets_and_rates: [
-      { category: "A", price: 120, id: "t1", description: "", available: true, colorOnTheMap: "" },
+      {
+        category: "A",
+        price: 120,
+        id: "t1",
+        description: "",
+        available: true,
+        colorOnTheMap: "",
+      },
     ],
     def_date_depart: "2026-10-01",
     def_date_return: "2026-10-03",
@@ -48,7 +56,10 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     ...over,
   }) as Event;
 
-const TAX = { categoryPath: ["Music", "Rock"], tagSlugs: ["berlin", "music", "rock"] };
+const TAX = {
+  categoryPath: ["Music", "Rock"],
+  tagSlugs: ["berlin", "music", "rock"],
+};
 const CUTOFF = "2026-07-23"; // today + 7
 const TODAY = "2026-07-16";
 
@@ -61,11 +72,11 @@ assert.ok(isMondial2026Name("World Cup 2026 Final"));
 assert.ok(!isMondial2026Name("בריאן אדמס בברלין"));
 assert.strictEqual(
   orderLink({ id: 5, name: "World Cup 2026 Final" }),
-  "https://mondial2026.mega-events.co.il/order/5"
+  "https://mondial2026.mega-events.co.il/order/5",
 );
 assert.strictEqual(
   orderLink({ id: 607, name: "בריאן אדמס" }),
-  "https://www.mega-events.co.il/order/607"
+  "https://www.mega-events.co.il/order/607",
 );
 
 /* expiration = day after event */
@@ -80,7 +91,14 @@ assert.strictEqual(formatPriceUSD(1811), "1811.00 USD");
 /* price fallback: sold out (no available tickets) still uses cheapest ticket */
 const soldOut = baseEvent({
   tickets_and_rates: [
-    { category: "A", price: 120, id: "t1", description: "", available: false, colorOnTheMap: "" },
+    {
+      category: "A",
+      price: 120,
+      id: "t1",
+      description: "",
+      available: false,
+      colorOnTheMap: "",
+    },
   ],
 });
 assert.strictEqual(feedPriceUSD(soldOut), 1811);
@@ -89,13 +107,13 @@ assert.strictEqual(feedPriceUSD(soldOut), 1811);
 assert.strictEqual(feedPriceUSD(baseEvent({ tickets_and_rates: [] })), 2000);
 assert.strictEqual(
   feedPriceUSD(baseEvent({ tickets_and_rates: [], usual_price: 0 })),
-  null
+  null,
 );
 
 /* plainText strips html + links */
 assert.strictEqual(
   plainText("<p>שורה  אחת</p> https://x.co/a בסוף"),
-  "שורה אחת בסוף"
+  "שורה אחת בסוף",
 );
 
 /* buildFeedItem: full item */
@@ -107,9 +125,18 @@ assert.strictEqual(item.price, "1811.00 USD");
 assert.strictEqual(item.link, "https://www.mega-events.co.il/order/607");
 assert.strictEqual(item.expiration_date, "2026-10-03");
 assert.strictEqual(item.product_type, "Music > Rock");
-assert.deepStrictEqual(item.custom_labels, ["berlin", "music", "rock", "", "available"]);
+assert.deepStrictEqual(item.custom_labels, [
+  "berlin",
+  "music",
+  "rock",
+  "",
+  "available",
+]);
 assert.deepStrictEqual(item.internal_labels, [
-  "berlin", "music", "rock", "status:available",
+  "berlin",
+  "music",
+  "rock",
+  "status:available",
 ]);
 assert.deepStrictEqual(item.custom_numbers, [2026, 78, 2]); // year, days to 2.10, nights
 assert.ok(item.description.length > 0 && item.description !== item.title);
@@ -120,32 +147,51 @@ assert.strictEqual(soldItem.availability, "out of stock");
 assert.strictEqual(soldItem.custom_labels[4], "sold_out");
 
 /* "Sold" tag → out of stock even with available tickets */
-const taggedSold = buildFeedItem(baseEvent({ tags: "Sold" }), TAX, CUTOFF, TODAY) as FeedItem;
+const taggedSold = buildFeedItem(
+  baseEvent({ tags: "Sold" }),
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
 assert.strictEqual(taggedSold.availability, "out of stock");
 
 /* event inside the 7-day booking window → out of stock (site won't sell it) */
-const tooSoon = buildFeedItem(baseEvent({ date: "2026-07-20" }), TAX, CUTOFF, TODAY) as FeedItem;
+const tooSoon = buildFeedItem(
+  baseEvent({ date: "2026-07-20" }),
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
 assert.strictEqual(tooSoon.availability, "out of stock");
 
 /* skip_flight event → title unaffected by composition (removed from title) */
-const noFlight = buildFeedItem(baseEvent({ skip_flight: true }), TAX, CUTOFF, TODAY) as FeedItem;
+const noFlight = buildFeedItem(
+  baseEvent({ skip_flight: true }),
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
 assert.strictEqual(noFlight.title, "בריאן אדמס · ברלין · 2.10");
 
 /* campaign creative wins over card image; banner rides along */
 const withCampaign = buildFeedItem(
   baseEvent({
-    campaign_image_url: "https://cdn.example.com/auto/event-607-square.png?v=abc",
-    campaign_banner_url: "https://cdn.example.com/auto/event-607-banner.png?v=abc",
+    campaign_image_url:
+      "https://cdn.example.com/auto/event-607-square.png?v=abc",
+    campaign_banner_url:
+      "https://cdn.example.com/auto/event-607-banner.png?v=abc",
   }),
-  TAX, CUTOFF, TODAY
+  TAX,
+  CUTOFF,
+  TODAY,
 ) as FeedItem;
 assert.strictEqual(
   withCampaign.image_link,
-  "https://cdn.example.com/auto/event-607-square.png?v=abc"
+  "https://cdn.example.com/auto/event-607-square.png?v=abc",
 );
 assert.strictEqual(
   withCampaign.additional_image_link,
-  "https://cdn.example.com/auto/event-607-banner.png?v=abc"
+  "https://cdn.example.com/auto/event-607-banner.png?v=abc",
 );
 assert.strictEqual(withCampaign.has_campaign, true);
 const campaignXml = toXml([withCampaign]);
@@ -155,44 +201,60 @@ assert.ok(campaignXml.includes("<g:additional_image_link>"));
    no additional link */
 assert.strictEqual(
   item.image_link,
-  "https://cdn.example.com/auto/event-607-square.png?v=abc"
+  "https://cdn.example.com/auto/event-607-square.png?v=abc",
 );
 assert.strictEqual(item.additional_image_link, null);
 assert.strictEqual(item.has_campaign, true);
 assert.ok(!toXml([item]).includes("additional_image_link"));
 
-/* branded or not at all: a card image or a cut-out is NOT a substitute —
+/* branded or not at all: a card image or a cut-out is NOT a substitute -
    publishing a raw provider photo is worse than withholding the product */
 assert.deepStrictEqual(
   buildFeedItem(baseEvent({ campaign_image_url: null }), TAX, CUTOFF, TODAY),
-  { skipped: "no campaign creative" }
+  { skipped: "no campaign creative" },
 );
 assert.deepStrictEqual(
   buildFeedItem(
-    baseEvent({ campaign_image_url: null, art_image_url: "https://example.com/cutout.png" }),
-    TAX, CUTOFF, TODAY
+    baseEvent({
+      campaign_image_url: null,
+      art_image_url: "https://example.com/cutout.png",
+    }),
+    TAX,
+    CUTOFF,
+    TODAY,
   ),
-  { skipped: "no campaign creative" }
+  { skipped: "no campaign creative" },
 );
 
 /* campaign image works even when the event has no card image */
 const campaignOnly = buildFeedItem(
   baseEvent({
     card_image_url: "",
-    campaign_image_url: "https://cdn.example.com/auto/event-607-square.png?v=abc",
+    campaign_image_url:
+      "https://cdn.example.com/auto/event-607-square.png?v=abc",
   }),
-  TAX, CUTOFF, TODAY
+  TAX,
+  CUTOFF,
+  TODAY,
 ) as FeedItem;
 assert.strictEqual(campaignOnly.has_campaign, true);
 
 /* skips: no price */
 assert.deepStrictEqual(
-  buildFeedItem(baseEvent({ tickets_and_rates: [], usual_price: 0 }), TAX, CUTOFF, TODAY),
-  { skipped: "no computable price" }
+  buildFeedItem(
+    baseEvent({ tickets_and_rates: [], usual_price: 0 }),
+    TAX,
+    CUTOFF,
+    TODAY,
+  ),
+  { skipped: "no computable price" },
 );
 
 /* nightsOf */
-assert.strictEqual(nightsOf({ def_date_depart: "2026-10-01", def_date_return: "2026-10-03" }), 2);
+assert.strictEqual(
+  nightsOf({ def_date_depart: "2026-10-01", def_date_return: "2026-10-03" }),
+  2,
+);
 assert.strictEqual(nightsOf({ def_date_depart: "", def_date_return: "" }), 0);
 
 /* XML: declaration, namespace, escaping, exact availability strings */
@@ -207,41 +269,56 @@ assert.ok(xml.includes("<custom_number_0>2026</custom_number_0>"));
 assert.ok(xml.includes("<internal_label>status:available</internal_label>"));
 /* Google Merchant compat: GTIN-less custom goods + Event Tickets category */
 assert.ok(xml.includes("<g:identifier_exists>no</g:identifier_exists>"));
-assert.ok(xml.includes("<g:google_product_category>499969</g:google_product_category>"));
+assert.ok(
+  xml.includes("<g:google_product_category>499969</g:google_product_category>"),
+);
 
 /* generated-at stamp: emitted only when passed, right after the declaration */
 const stamped = toXml([item], "2026-07-22T08:00:00.000Z");
-assert.ok(stamped.includes('?>\n<!-- generated 2026-07-22T08:00:00.000Z -->\n<rss'));
+assert.ok(
+  stamped.includes("?>\n<!-- generated 2026-07-22T08:00:00.000Z -->\n<rss"),
+);
 assert.ok(!xml.includes("<!-- generated"), "no stamp when param omitted");
 
 /* trailing spaces in DB name/city don't leak into title or description */
-const padded = buildFeedItem(baseEvent({ name: "בריאן אדמס " }), TAX, CUTOFF, TODAY) as FeedItem;
+const padded = buildFeedItem(
+  baseEvent({ name: "בריאן אדמס " }),
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
 assert.strictEqual(padded.title, "בריאן אדמס · ברלין · 2.10");
 assert.ok(!padded.description.includes("  "));
 const amp = buildFeedItem(
   baseEvent({ name: "AC/DC & Friends <live>" }),
   { categoryPath: [], tagSlugs: [] },
   CUTOFF,
-  TODAY
+  TODAY,
 ) as FeedItem;
 const ampXml = toXml([amp]);
 assert.ok(ampXml.includes("AC/DC &amp; Friends &lt;live&gt;"));
 assert.ok(!ampXml.includes("<g:product_type>"), "empty product_type omitted");
 
-/* CSV: proven-working feed_ready.csv shape — NO BOM, exact header, quoting,
+/* CSV: proven-working feed_ready.csv shape - NO BOM, exact header, quoting,
    internal_label as one ['a','b']-style cell */
 const csv = toCsv([item]);
-assert.ok(csv.charCodeAt(0) !== 0xfeff, "no BOM (verified working file has none)");
+assert.ok(
+  csv.charCodeAt(0) !== 0xfeff,
+  "no BOM (verified working file has none)",
+);
 assert.ok(
   csv.startsWith(
     "id,title,description,availability,condition,price,link,image_link,brand," +
       "expiration_date,product_type,internal_label,custom_label_0,custom_label_1," +
-      "custom_label_2,custom_label_3,custom_label_4,custom_number_0,custom_number_1,custom_number_2\r\n"
+      "custom_label_2,custom_label_3,custom_label_4,custom_number_0,custom_number_1,custom_number_2\r\n",
   ),
-  "header matches verified file exactly"
+  "header matches verified file exactly",
 );
 assert.ok(csv.includes("\"['berlin','music','rock','status:available']\""));
-assert.ok(!csv.includes("additional_image_link"), "column absent from verified file");
+assert.ok(
+  !csv.includes("additional_image_link"),
+  "column absent from verified file",
+);
 assert.ok(toCsv([amp]).includes('"'), "comma/quote-worthy cells get quoted");
 
 console.log("metaCatalog: all assertions passed ✅");

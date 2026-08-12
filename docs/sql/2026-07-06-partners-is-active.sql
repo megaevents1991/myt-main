@@ -14,7 +14,7 @@ update partners
   set is_active = false
   where partner_tracking_code = 'michaela';
 
--- sanity check — expect one row, is_active = false
+-- sanity check - expect one row, is_active = false
 select partner_tracking_code, name_hebrew, email, is_active
 from partners
 where partner_tracking_code = 'michaela';

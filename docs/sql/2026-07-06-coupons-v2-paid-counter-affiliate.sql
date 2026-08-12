@@ -1,6 +1,6 @@
 -- Coupons v2: paid-use counter + affiliate attribution (run once in the Supabase SQL editor).
 --
--- 1. times_paid — counts redemptions whose reservation actually reached
+-- 1. times_paid - counts redemptions whose reservation actually reached
 --    status 'Paid'. Incremented by a DB trigger on the status transition, so
 --    it catches BOTH the CreditGuard success callback and a manual status
 --    change in the backoffice, can't double-count (fires only on the
@@ -8,7 +8,7 @@
 --    times_used stays as-is: counts every confirmed order and still enforces
 --    max_uses.
 --
--- 2. partner_tracking_code — links a coupon to a partner (affiliate). An
+-- 2. partner_tracking_code - links a coupon to a partner (affiliate). An
 --    order redeeming the coupon is attributed to that partner ONLY when the
 --    order has no affiliate of its own (existing link/utm attribution wins).
 

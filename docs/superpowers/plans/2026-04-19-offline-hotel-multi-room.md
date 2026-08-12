@@ -6,22 +6,24 @@
 
 **Architecture:** Three changes wired together. (1) Supabase schema gains `offline_hotel_ids integer[]`. (2) `confirm-order` writes the array and stops decrementing stock. (3) `payment` route decrements stock on the Pending → Paid transition only. (4) Backoffice `Reservation` type + detail page fetch the `offline_hotels` rows by ID and render all of them.
 
-**Tech Stack:** Next.js 15 App Router, Supabase (PostgreSQL), TypeScript, React 19. No automated test runner in either project — verification is manual against dev + real Supabase.
+**Tech Stack:** Next.js 15 App Router, Supabase (PostgreSQL), TypeScript, React 19. No automated test runner in either project - verification is manual against dev + real Supabase.
 
 **Spec:** [../specs/2026-04-19-offline-hotel-multi-room-design.md](../specs/2026-04-19-offline-hotel-multi-room-design.md)
 
 **Projects touched:**
-- `myt---main` (this repo) — paths below are relative to its root
-- `myt---backoffice` — paths prefixed with `backoffice/`. Actual path on disk is `../myt---backoffice/...`
+
+- `myt---main` (this repo) - paths below are relative to its root
+- `myt---backoffice` - paths prefixed with `backoffice/`. Actual path on disk is `../myt---backoffice/...`
 
 ---
 
 ## Task 1: Add `offline_hotel_ids` column to `reservations` (Supabase)
 
 **Files:**
+
 - Create: `docs/superpowers/specs/2026-04-19-offline-hotel-multi-room.sql`
 
-This SQL file is a record of the migration. The user runs it manually in the Supabase SQL editor — Supabase is shared between both projects and there is no migration tooling in this repo.
+This SQL file is a record of the migration. The user runs it manually in the Supabase SQL editor - Supabase is shared between both projects and there is no migration tooling in this repo.
 
 - [ ] **Step 1: Write the migration SQL**
 
@@ -64,6 +66,7 @@ git commit -m "db: add reservations.offline_hotel_ids column"
 ## Task 2: Write `offline_hotel_ids` during order insert (main)
 
 **Files:**
+
 - Modify: `app/api/confirm-order/route.ts:22-54`
 
 - [ ] **Step 1: Extend `hotelInfoForLink` typing and the insert payload**
@@ -71,62 +74,64 @@ git commit -m "db: add reservations.offline_hotel_ids column"
 In `app/api/confirm-order/route.ts`, replace the block currently at lines 22–54 (from the comment `// Surface offline inventory linkage…` through the closing `})` of `.insert({…})` and including the `.select().single()` chain) with:
 
 ```ts
-  // Surface offline inventory linkage as top-level columns so the backoffice
-  // can query / JOIN without unpacking the order JSON blobs.
-  const flightInfoForLink = validatedData.flight_order_info as
-    | { offlineId?: number; offlineRawPrice?: number }
-    | undefined;
-  const hotelInfoForLink = validatedData.hotel_order_info as
-    | {
-        offlineId?: number;
-        offlineIds?: number[];
-        offlineRawPrice?: number;
-      }
-    | undefined;
+// Surface offline inventory linkage as top-level columns so the backoffice
+// can query / JOIN without unpacking the order JSON blobs.
+const flightInfoForLink = validatedData.flight_order_info as
+  | { offlineId?: number; offlineRawPrice?: number }
+  | undefined;
+const hotelInfoForLink = validatedData.hotel_order_info as
+  | {
+      offlineId?: number;
+      offlineIds?: number[];
+      offlineRawPrice?: number;
+    }
+  | undefined;
 
-  const offlineHotelIdsForLink: number[] | null =
-    hotelInfoForLink?.offlineIds && hotelInfoForLink.offlineIds.length > 0
-      ? hotelInfoForLink.offlineIds
-      : hotelInfoForLink?.offlineId != null
+const offlineHotelIdsForLink: number[] | null =
+  hotelInfoForLink?.offlineIds && hotelInfoForLink.offlineIds.length > 0
+    ? hotelInfoForLink.offlineIds
+    : hotelInfoForLink?.offlineId != null
       ? [hotelInfoForLink.offlineId]
       : null;
 
-  const { data, error } = await (supabase as any)
-    .from("reservations")
-    .insert({
-      main_contact_first_name: validatedData.main_contact_first_name,
-      main_contact_last_name: validatedData.main_contact_last_name,
-      main_contact_phone_number: validatedData.main_contact_phone_number,
-      main_contact_email: validatedData.main_contact_email,
-      more_pax_info: validatedData.more_pax_info,
-      event_order_info: validatedData.event_order_info,
-      flight_order_info: validatedData.flight_order_info,
-      hotel_order_info: validatedData.hotel_order_info,
-      user_shown_price: validatedData.user_shown_price,
-      event_id: validatedData.event_id,
-      payment_info: payNow ? {} : null,
-      aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
-      final_purchase_price_ils: validatedData.final_purchase_price_ils,
-      exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
-      gtmIdnts: gtmIdnts || null,
-      status: onlySave ? "24Save" : "Pending",
-      offline_flight_id: flightInfoForLink?.offlineId ?? null,
-      offline_flight_cost: flightInfoForLink?.offlineRawPrice ?? null,
-      offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
-      offline_hotel_ids: offlineHotelIdsForLink,
-      offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
-    })
-    .select()
-    .single();
+const { data, error } = await (supabase as any)
+  .from("reservations")
+  .insert({
+    main_contact_first_name: validatedData.main_contact_first_name,
+    main_contact_last_name: validatedData.main_contact_last_name,
+    main_contact_phone_number: validatedData.main_contact_phone_number,
+    main_contact_email: validatedData.main_contact_email,
+    more_pax_info: validatedData.more_pax_info,
+    event_order_info: validatedData.event_order_info,
+    flight_order_info: validatedData.flight_order_info,
+    hotel_order_info: validatedData.hotel_order_info,
+    user_shown_price: validatedData.user_shown_price,
+    event_id: validatedData.event_id,
+    payment_info: payNow ? {} : null,
+    aff_partner_tracking_code: validatedData.aff_partner_tracking_code,
+    final_purchase_price_ils: validatedData.final_purchase_price_ils,
+    exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,
+    gtmIdnts: gtmIdnts || null,
+    status: onlySave ? "24Save" : "Pending",
+    offline_flight_id: flightInfoForLink?.offlineId ?? null,
+    offline_flight_cost: flightInfoForLink?.offlineRawPrice ?? null,
+    offline_hotel_id: offlineHotelIdsForLink ? offlineHotelIdsForLink[0] : null,
+    offline_hotel_ids: offlineHotelIdsForLink,
+    offline_hotel_cost: hotelInfoForLink?.offlineRawPrice ?? null,
+  })
+  .select()
+  .single();
 ```
 
 - [ ] **Step 2: Build and type-check**
 
 Run:
+
 ```bash
 yarn build
 ```
-Expected: build succeeds. If TypeScript complains about `offline_hotel_ids` not being known by Supabase's generated types, the existing file already uses `(supabase as any)` on the insert — this is unchanged and silences it. Any new error signals a regression; do not cast wider.
+
+Expected: build succeeds. If TypeScript complains about `offline_hotel_ids` not being known by Supabase's generated types, the existing file already uses `(supabase as any)` on the insert - this is unchanged and silences it. Any new error signals a regression; do not cast wider.
 
 - [ ] **Step 3: Commit**
 
@@ -140,11 +145,12 @@ git commit -m "feat: write offline_hotel_ids array on reservation insert"
 ## Task 3: Remove inventory decrement from `confirm-order` (main)
 
 **Files:**
+
 - Modify: `app/api/confirm-order/route.ts:75-137`
 
 - [ ] **Step 1: Delete the decrement block**
 
-In `app/api/confirm-order/route.ts`, delete lines 75–137 inclusive — the entire comment `// Best-effort: decrement offline inventory…` through the closing `}` of the `catch (decrementError)` block.
+In `app/api/confirm-order/route.ts`, delete lines 75–137 inclusive - the entire comment `// Best-effort: decrement offline inventory…` through the closing `}` of the `catch (decrementError)` block.
 
 Nothing replaces it. The next statement is `// Generate referral tracking code only for non-agent bookings`; that comment now follows the insert error check directly.
 
@@ -153,11 +159,13 @@ Nothing replaces it. The next statement is `// Generate referral tracking code o
 ```bash
 yarn build
 ```
+
 Expected: build succeeds. No remaining references to `consumed_rooms` or `consumed_quantity` in this file:
 
 ```bash
 grep -n "consumed_rooms\|consumed_quantity" app/api/confirm-order/route.ts
 ```
+
 Expected: no output.
 
 - [ ] **Step 3: Commit**
@@ -172,6 +180,7 @@ git commit -m "refactor: move offline inventory decrement out of confirm-order"
 ## Task 4: Decrement offline inventory on payment success (main)
 
 **Files:**
+
 - Modify: `app/api/payment/[id]/[txId]/[promoCode]/route.ts`
 
 - [ ] **Step 1: Add the decrement helper at the bottom of the file**
@@ -209,8 +218,8 @@ async function decrementOfflineInventory(orderData: OrderData) {
       hotelInfo?.offlineIds && hotelInfo.offlineIds.length > 0
         ? hotelInfo.offlineIds
         : hotelInfo?.offlineId
-        ? [hotelInfo.offlineId]
-        : [];
+          ? [hotelInfo.offlineId]
+          : [];
     if (offlineHotelIds.length > 0) {
       const counts = new Map<number, number>();
       for (const rowId of offlineHotelIds) {
@@ -243,37 +252,40 @@ async function decrementOfflineInventory(orderData: OrderData) {
 Still in `app/api/payment/[id]/[txId]/[promoCode]/route.ts`, replace the block from `const orderData = data as OrderData;` (line 60) through the final `.update(updateObj)…` call (line 81) with:
 
 ```ts
-  const orderData = data as OrderData;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateObj = { payment_info: result, status: isSuccess ? "Paid" : "Pending" } as any;
+const orderData = data as OrderData;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const updateObj = {
+  payment_info: result,
+  status: isSuccess ? "Paid" : "Pending",
+} as any;
 
-  if (!orderData.confirmation_email_sent) {
-    await sendUserEmail({
-      orderData,
-      isPaymentSuccess: isSuccess,
-      payNow: true,
-      partnerTrackingCode: promoCode,
-      orderId: parseInt(id),
-    });
+if (!orderData.confirmation_email_sent) {
+  await sendUserEmail({
+    orderData,
+    isPaymentSuccess: isSuccess,
+    payNow: true,
+    partnerTrackingCode: promoCode,
+    orderId: parseInt(id),
+  });
 
-    updateObj["confirmation_email_sent"] = true;
-  }
+  updateObj["confirmation_email_sent"] = true;
+}
 
-  // Idempotency guard: only decrement on the first Pending → Paid flip. If the
-  // reservation is already Paid we are replaying a callback and must not
-  // consume stock again.
-  const shouldDecrement = isSuccess && orderData.status !== "Paid";
+// Idempotency guard: only decrement on the first Pending → Paid flip. If the
+// reservation is already Paid we are replaying a callback and must not
+// consume stock again.
+const shouldDecrement = isSuccess && orderData.status !== "Paid";
 
-  await supabase
-    .from("reservations")
-    .update(updateObj)
-    .eq("id", id)
-    .select()
-    .single();
+await supabase
+  .from("reservations")
+  .update(updateObj)
+  .eq("id", id)
+  .select()
+  .single();
 
-  if (shouldDecrement) {
-    await decrementOfflineInventory(orderData);
-  }
+if (shouldDecrement) {
+  await decrementOfflineInventory(orderData);
+}
 ```
 
 Note: `orderData.status` is read from the DB row fetched at the top of the function. If `OrderData` does not already declare `status`, extend the type locally as shown below in Step 3.
@@ -295,6 +307,7 @@ If the grep shows `status` already on the type, skip this step.
 ```bash
 yarn build
 ```
+
 Expected: build succeeds.
 
 - [ ] **Step 5: Commit**
@@ -309,6 +322,7 @@ git commit -m "feat: decrement offline inventory on payment success only"
 ## Task 5: Update backoffice `Reservation` type
 
 **Files:**
+
 - Modify: `../myt---backoffice/types/reservation.types.ts:47-50`
 
 - [ ] **Step 1: Add the array field**
@@ -316,7 +330,7 @@ git commit -m "feat: decrement offline inventory on payment success only"
 In `../myt---backoffice/types/reservation.types.ts`, find the block:
 
 ```ts
-  // Offline inventory linkage — populated when the reservation consumed a
+  // Offline inventory linkage - populated when the reservation consumed a
   // Mega-owned flight / hotel row. Top-level for cheap JOINs and filtering.
   offline_flight_id?: number | null;
   offline_flight_cost?: number | null;
@@ -327,7 +341,7 @@ In `../myt---backoffice/types/reservation.types.ts`, find the block:
 Replace it with:
 
 ```ts
-  // Offline inventory linkage — populated when the reservation consumed a
+  // Offline inventory linkage - populated when the reservation consumed a
   // Mega-owned flight / hotel row. Top-level for cheap JOINs and filtering.
   // offline_hotel_ids holds every row consumed by the booking (may repeat when
   // one row covers multiple requested rooms). offline_hotel_id mirrors [0]
@@ -345,6 +359,7 @@ Replace it with:
 cd ../myt---backoffice
 yarn build
 ```
+
 Expected: build succeeds.
 
 - [ ] **Step 3: Commit (in backoffice repo)**
@@ -360,6 +375,7 @@ git commit -m "types: add offline_hotel_ids to Reservation"
 ## Task 6: Fetch offline hotel rows in backoffice reservation page
 
 **Files:**
+
 - Modify: `../myt---backoffice/app/(dashboard)/reservations/[id]/page.tsx`
 
 This page currently fetches a single reservation and renders it. It does not fetch `offline_hotels` rows. We add a fetch for the matched rows and expose them to the render.
@@ -393,8 +409,8 @@ useEffect(() => {
     reservation.offline_hotel_ids && reservation.offline_hotel_ids.length > 0
       ? reservation.offline_hotel_ids
       : reservation.offline_hotel_id != null
-      ? [reservation.offline_hotel_id]
-      : [];
+        ? [reservation.offline_hotel_id]
+        : [];
   if (ids.length === 0) {
     setOfflineRooms([]);
     return;
@@ -403,30 +419,44 @@ useEffect(() => {
   (async () => {
     const { data } = await supabase
       .from("offline_hotels")
-      .select("id, hotel_name, room_type, price, check_in, check_out, meal_plan")
+      .select(
+        "id, hotel_name, room_type, price, check_in, check_out, meal_plan",
+      )
       .in("id", uniqueIds);
     setOfflineRooms(data ?? []);
   })();
 }, [reservation]);
 ```
 
-Server component variant (use when the file is a server component — no `"use client"`):
+Server component variant (use when the file is a server component - no `"use client"`):
 
 ```tsx
 const offlineHotelIds =
   reservation.offline_hotel_ids && reservation.offline_hotel_ids.length > 0
     ? reservation.offline_hotel_ids
     : reservation.offline_hotel_id != null
-    ? [reservation.offline_hotel_id]
-    : [];
+      ? [reservation.offline_hotel_id]
+      : [];
 const uniqueOfflineHotelIds = Array.from(new Set(offlineHotelIds));
 
 const { data: offlineRooms } = uniqueOfflineHotelIds.length
   ? await supabase
       .from("offline_hotels")
-      .select("id, hotel_name, room_type, price, check_in, check_out, meal_plan")
+      .select(
+        "id, hotel_name, room_type, price, check_in, check_out, meal_plan",
+      )
       .in("id", uniqueOfflineHotelIds)
-  : { data: [] as Array<{ id: number; hotel_name: string; room_type: string; price: string | number; check_in: string; check_out: string; meal_plan: string | null }> };
+  : {
+      data: [] as Array<{
+        id: number;
+        hotel_name: string;
+        room_type: string;
+        price: string | number;
+        check_in: string;
+        check_out: string;
+        meal_plan: string | null;
+      }>,
+    };
 ```
 
 Also compute the count of each row for the collapsed display:
@@ -437,8 +467,8 @@ const sourceIds =
   reservation.offline_hotel_ids && reservation.offline_hotel_ids.length > 0
     ? reservation.offline_hotel_ids
     : reservation.offline_hotel_id != null
-    ? [reservation.offline_hotel_id]
-    : [];
+      ? [reservation.offline_hotel_id]
+      : [];
 for (const rowId of sourceIds) {
   offlineRoomCounts.set(rowId, (offlineRoomCounts.get(rowId) || 0) + 1);
 }
@@ -449,31 +479,33 @@ for (const rowId of sourceIds) {
 In the same file, locate the Hotel Information `<Card>` (around line 513, the one whose header is `<span>Hotel Information</span>`). Inside its `<CardContent>`, immediately before the closing `</CardContent>`, add:
 
 ```tsx
-{offlineRooms && offlineRooms.length > 0 && (
-  <div>
-    <p className="text-sm font-medium">Mega inventory rooms</p>
-    <div className="space-y-1">
-      {offlineRooms.map((room) => {
-        const count = offlineRoomCounts.get(room.id) || 1;
-        return (
-          <div key={room.id} className="text-sm">
-            <span className="font-medium">{room.hotel_name}</span>
-            {" — "}
-            {room.room_type}
-            {count > 1 ? ` × ${count}` : ""}
-            {" ("}
-            {new Date(room.check_in).toLocaleDateString()}
-            {" → "}
-            {new Date(room.check_out).toLocaleDateString()}
-            {") — $"}
-            {Number(room.price).toFixed(2)} / room
-            {room.meal_plan ? ` — ${room.meal_plan}` : ""}
-          </div>
-        );
-      })}
+{
+  offlineRooms && offlineRooms.length > 0 && (
+    <div>
+      <p className="text-sm font-medium">Mega inventory rooms</p>
+      <div className="space-y-1">
+        {offlineRooms.map((room) => {
+          const count = offlineRoomCounts.get(room.id) || 1;
+          return (
+            <div key={room.id} className="text-sm">
+              <span className="font-medium">{room.hotel_name}</span>
+              {" - "}
+              {room.room_type}
+              {count > 1 ? ` × ${count}` : ""}
+              {" ("}
+              {new Date(room.check_in).toLocaleDateString()}
+              {" → "}
+              {new Date(room.check_out).toLocaleDateString()}
+              {") - $"}
+              {Number(room.price).toFixed(2)} / room
+              {room.meal_plan ? ` - ${room.meal_plan}` : ""}
+            </div>
+          );
+        })}
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 - [ ] **Step 4: Build the backoffice project**
@@ -482,6 +514,7 @@ In the same file, locate the Hotel Information `<Card>` (around line 513, the on
 cd ../myt---backoffice
 yarn build
 ```
+
 Expected: build succeeds.
 
 - [ ] **Step 5: Commit (in backoffice repo)**
@@ -501,6 +534,7 @@ No automated test suite exists. Verify in dev against the real Supabase project.
 - [ ] **Step 1: Seed / confirm offline inventory for a test event**
 
 Pick an existing test event (or the Bruno Mars one, event 400). Ensure `offline_hotels` has at least:
+
 - One row with `room_type = 'Triple'`, `num_rooms - consumed_rooms >= 1`, same `hid` as another row.
 - One row with `room_type = 'Double'`, same `hid`, `num_rooms - consumed_rooms >= 1`.
 
@@ -509,15 +543,16 @@ Use the backoffice offline-hotels editor or the Supabase dashboard.
 - [ ] **Step 2: Boot both apps**
 
 ```bash
-# terminal 1 — main
+# terminal 1 - main
 yarn dev
-# terminal 2 — backoffice
+# terminal 2 - backoffice
 cd ../myt---backoffice && yarn dev
 ```
 
 - [ ] **Step 3: Walk the booking flow as 5 pax**
 
 In the main app, open the event page. In the hotel step set room configuration to `[{adults:3},{adults:2}]`. Confirm that:
+
 - The offline hotel appears in the list with combined price (Triple + Double).
 - If you change inventory to remove the Triple, the offline hotel disappears.
 
@@ -565,7 +600,7 @@ Open the reservation detail page in the backoffice. Confirm the Hotel Informatio
 
 Pick a pre-2026-04-19 reservation whose `offline_hotel_ids` is NULL but `offline_hotel_id` is set. Open its detail page.
 
-Expected: the fallback kicks in — the single offline room is listed. No crash, no empty render.
+Expected: the fallback kicks in - the single offline room is listed. No crash, no empty render.
 
 - [ ] **Step 10: Final commit (only if any doc updates)**
 
@@ -577,6 +612,6 @@ If verification uncovered doc updates, commit them now. Otherwise this task is i
 
 - All three issues from the spec are covered by Tasks 1–6. Task 7 is the verification pass.
 - No placeholders. Every code step shows the full block.
-- `decrementOfflineInventory` keeps the same shape it had in `confirm-order`, so the known behavior is preserved exactly — only the call site changed.
+- `decrementOfflineInventory` keeps the same shape it had in `confirm-order`, so the known behavior is preserved exactly - only the call site changed.
 - `OrderData` is touched once (Task 4 Step 3) with a conditional guard in case `status` is already present.
 - `offline_hotel_id` is kept in sync with `offline_hotel_ids[0]` so all existing dashboards, badges, and filters continue to work without touching them.

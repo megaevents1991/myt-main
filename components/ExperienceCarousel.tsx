@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { EventArt } from "@/components/ui/EventArt";
 
 /**
  * Fanned "coverflow" gallery shown near the end of an artist / team page.
@@ -92,12 +92,17 @@ export const ExperienceCarousel = ({
                 opacity: hidden ? 0 : 1 - abs * 0.15,
               }}
             >
-              <Image
-                src={src}
+              {/* Gallery images are cut-out PNGs (backoffice upload pipeline)
+                  — object-cover on a white card beheads them. EventArt gives
+                  each print the brand blob card instead, color/shape derived
+                  from the image URL so every print differs. */}
+              <EventArt
+                id={src}
+                imageUrl={src}
                 alt=""
-                fill
+                className="h-full w-full"
                 sizes="(max-width: 640px) 40vw, 208px"
-                className="object-cover"
+                hoverZoom={false}
               />
             </button>
           );

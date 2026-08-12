@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         error:
           "Amadeus client is not initialized. Check your environment variables.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
   if (virtual) {
@@ -44,13 +44,13 @@ export async function POST(request: Request) {
 
   // Validate the flightOffer object for offline Flights
   if (!flightOffer || Object.keys(flightOffer).length === 0) {
-    if (flightOffer.validatingAirlineCodes[0] === 'LY') {
+    if (flightOffer.validatingAirlineCodes[0] === "LY") {
       const penalties = `PE.PENALTIES 
         CANCELLATIONS
         ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
         FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION.`;
       return NextResponse.json({ bags: 65, penalties });
-    } else if (flightOffer.validatingAirlineCodes[0] === 'LY') {
+    } else if (flightOffer.validatingAirlineCodes[0] === "LY") {
       const penalties = `PE.PENALTIES 
         CANCELLATIONS
         ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
   }
   try {
-    // Amadeus per-request client reference (ama-Client-Ref) — required by the
+    // Amadeus per-request client reference (ama-Client-Ref) - required by the
     // production-certification checklist. Falls back to a time-only ref if the
     // caller didn't send an eventId.
     const clientRef = eventId
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           flightOffers: [flightOffer],
         },
       },
-      { include: ["bags", "detailed-fare-rules"], clientRef }
+      { include: ["bags", "detailed-fare-rules"], clientRef },
     );
 
     // processing the response and returning it to the client.
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const penalties = data.included?.["detailed-fare-rules"]?.[
       "1"
     ]?.fareNotes?.descriptions?.find(
-      (desc: Record<string, unknown>) => desc.descriptionType === "PENALTIES"
+      (desc: Record<string, unknown>) => desc.descriptionType === "PENALTIES",
     )?.text;
 
     if (!data.included?.["detailed-fare-rules"]?.["1"]) {
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         error:
           "Failed to fetch flight data. Please check the server logs for more information.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

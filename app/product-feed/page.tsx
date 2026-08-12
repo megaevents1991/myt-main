@@ -7,7 +7,7 @@ import { CopyButton } from "./CopyButton";
 import { FeedTable } from "./FeedTable";
 
 /**
- * Internal admin page for the Meta product feed — live counts and a row
+ * Internal admin page for the Meta product feed - live counts and a row
  * preview of exactly what /feeds/meta-catalog.xml serves, plus the CSV
  * export. Gated by the SAME login as the backoffice (Supabase Auth Google
  * SSO + staff role in the shared user_profiles table). Not linked from the
@@ -51,7 +51,7 @@ export default async function ProductFeedPage({
               {ERRORS[error] ?? "שגיאה. נסו שוב."}
             </p>
           )}
-          {/* Same backoffice credentials — Supabase Auth email+password */}
+          {/* Same backoffice credentials - Supabase Auth email+password */}
           <form method="post" action="/api/feed-auth/login" className="space-y-3">
             <input
               name="email"
@@ -93,9 +93,9 @@ export default async function ProductFeedPage({
   }
 
   // Two different feeds: the e-commerce shape below (Google Merchant) and the
-  // ACTIVITIES shape Meta actually consumes. They drop different events — the
+  // ACTIVITIES shape Meta actually consumes. They drop different events - the
   // activities feed also drops sold-out ones and anything inside the booking
-  // window — so a product can be present here and still be missing from Meta.
+  // window - so a product can be present here and still be missing from Meta.
   const [{ items, skipped }, activities] = await Promise.all([
     getFeedItems(),
     getActivityItems(),
@@ -108,8 +108,8 @@ export default async function ProductFeedPage({
     "inside booking window": "בתוך חלון ההזמנה (פחות מ-3 ימים)",
     "no computable price": "אין מחיר לחישוב",
     "no campaign creative":
-      "אין קריאטיב קמפיין — מוצר מתפרסם רק עם המיתוג שלנו. הרץ 'סנכרן הכל' בבקאופיס",
-    "no image": "אין תמונה — לא כרטיס, לא cutout ולא קריאטיב",
+      "אין קריאטיב קמפיין - מוצר מתפרסם רק עם המיתוג שלנו. הרץ 'סנכרן הכל' בבקאופיס",
+    "no image": "אין תמונה - לא כרטיס, לא cutout ולא קריאטיב",
   };
   const activityDrops = activities.skipped.reduce<Record<string, typeof activities.skipped>>(
     (acc, s) => {
@@ -177,7 +177,7 @@ export default async function ProductFeedPage({
         </p>
       </div>
 
-      {/* Counts — e-commerce shape (Google Merchant), NOT what Meta reads */}
+      {/* Counts - e-commerce shape (Google Merchant), NOT what Meta reads */}
       <h2 className="mb-2 text-lg font-bold text-gray-900">
         פיד ה-e-commerce (Google Merchant)
       </h2>
@@ -199,7 +199,7 @@ export default async function ProductFeedPage({
         ))}
       </div>
 
-      {/* Skipped events — fix these in the backoffice */}
+      {/* Skipped events - fix these in the backoffice */}
       {skipped.length > 0 && (
         <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
           <h2 className="mb-2 text-lg font-bold text-amber-900">
@@ -208,14 +208,14 @@ export default async function ProductFeedPage({
           <ul className="list-inside list-disc text-sm text-amber-900">
             {skipped.map((s) => (
               <li key={s.id}>
-                #{s.id} {s.name} — {REASON_LABELS[s.reason] ?? s.reason}
+                #{s.id} {s.name} - {REASON_LABELS[s.reason] ?? s.reason}
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* What Meta actually receives — the activities feed, and everything it drops */}
+      {/* What Meta actually receives - the activities feed, and everything it drops */}
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-card">
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold text-gray-900">

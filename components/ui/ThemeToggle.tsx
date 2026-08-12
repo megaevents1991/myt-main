@@ -16,7 +16,7 @@ function applyTheme(theme: Theme) {
 /**
  * Light/dark switch. Persists to localStorage; first visit follows the
  * system preference. The no-FOUC inline script in layout.tsx applies the
- * stored choice before paint — this only handles the interactive toggle.
+ * stored choice before paint - this only handles the interactive toggle.
  */
 export const ThemeToggle = ({ className }: { className?: string }) => {
   const [theme, setTheme] = useState<Theme>("light");

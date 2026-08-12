@@ -49,7 +49,7 @@ export function hasComponentMarkups(event: Event): boolean {
 /**
  * Ticket-only override amount, or null when not configured. When non-null AND
  * the customer skips BOTH flight and hotel, the price is exactly
- * ticket_cost + this value — no other markup of any kind. Wins over legacy
+ * ticket_cost + this value - no other markup of any kind. Wins over legacy
  * and composed pricing. 0 is a valid value (sell at cost + 0).
  */
 export function getTicketOnlyMarkup(event: Event): number | null {
@@ -170,7 +170,7 @@ export function hasAvailableTickets(event: Event): boolean {
  */
 export function isEventSoldOut(event: Event): boolean {
   // A locked package sells one offline flight with no fallback, so an exhausted
-  // flight is as sold out as an exhausted ticket allocation — the card has to
+  // flight is as sold out as an exhausted ticket allocation - the card has to
   // say so, or it sends the customer to the sold-out panel at the flight step.
   return (
     !hasAvailableTickets(event) ||

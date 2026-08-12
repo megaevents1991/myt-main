@@ -11,7 +11,7 @@ export type LockedFlightInventory = {
  * Two gates, the same two the flight search applies, in the same order:
  *  - the flight's own pool (`initial_quantity - consumed_quantity`), which is
  *    what hid flight 30 when it reached 16/16;
- *  - the event's allocation, when it has one — a hard cap that can bite while
+ *  - the event's allocation, when it has one - a hard cap that can bite while
  *    the flight still has unallocated seats elsewhere.
  *
  * A locked flight that is missing, soft-deleted, or unknown counts as zero:
@@ -28,7 +28,9 @@ export function lockedSeatsRemaining(
 
   const pool = flight.initial_quantity - flight.consumed_quantity;
   const remaining =
-    allocationRemaining === undefined ? pool : Math.min(pool, allocationRemaining);
+    allocationRemaining === undefined
+      ? pool
+      : Math.min(pool, allocationRemaining);
   return Math.max(0, remaining);
 }
 

@@ -3,7 +3,7 @@
 import { useFetchAffiliate } from "@/app/order/hooks";
 
 /**
- * "לוגו השותף על עמוד הנחיתה של הלקוח" — a customer arriving through a
+ * "לוגו השותף על עמוד הנחיתה של הלקוח" - a customer arriving through a
  * partner link sees WHO sent them: the partner's portal logo (+ name) in a
  * quiet strip at the top of the order flow. Renders nothing for organic
  * traffic or partners who never uploaded a logo.

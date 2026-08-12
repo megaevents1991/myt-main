@@ -40,7 +40,7 @@ export class OrderErrorBoundary extends Component<Props, State> {
             variant="error"
             className="max-w-xl border-0 bg-transparent"
             title="אופס, משהו השתבש אצלנו"
-            subtitle="לא הצלחנו לטעון את האירוע. אנחנו על זה — נסו שוב עוד רגע, ואם זה חוזר על עצמו דברו איתנו ונעזור."
+            subtitle="לא הצלחנו לטעון את האירוע. אנחנו על זה - נסו שוב עוד רגע, ואם זה חוזר על עצמו דברו איתנו ונעזור."
             onRetry={() => this.setState({ hasError: false })}
             whatsAppText="היי, ניסיתי לפתוח אירוע באתר וקיבלתי שגיאה. אשמח לעזרה :)"
             showHomeLink

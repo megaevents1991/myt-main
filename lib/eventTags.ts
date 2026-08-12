@@ -1,5 +1,5 @@
 /**
- * Event tag vocabulary — single source of truth for `events.tags`.
+ * Event tag vocabulary - single source of truth for `events.tags`.
  *
  * The backoffice writes this column from TWO places with historically different
  * wordings: the event detail select ("LastTickets", "Popular", "Restock",
@@ -29,14 +29,19 @@ export const EVENT_TAGS = [
 export type EventTag = (typeof EVENT_TAGS)[number];
 
 /** Visual treatment of a tag. "lastTickets" = the outlined pulsing-dot pill. */
-export type EventTagStyle = "lastTickets" | "urgent" | "new" | "vip" | "soldout";
+export type EventTagStyle =
+  | "lastTickets"
+  | "urgent"
+  | "new"
+  | "vip"
+  | "soldout";
 
 export type EventTagInfo = { style: EventTagStyle; label: string };
 
 const normalize = (tag: string) => tag.toLowerCase().replace(/[\s_-]+/g, "");
 
 // Keyed by normalized tag. Several backoffice wordings intentionally share a
-// look — they differ only in the Hebrew label the customer reads.
+// look - they differ only in the Hebrew label the customer reads.
 const TAG_INFO: Record<string, EventTagInfo> = {
   sold: { style: "soldout", label: "SOLD OUT" },
   lasttickets: { style: "lastTickets", label: "כרטיסים אחרונים" },
@@ -63,7 +68,7 @@ export const getEventTagInfo = (tag?: string | null): EventTagInfo | null => {
   if (!tag) return null;
   const present = new Set(tag.split(",").map(normalize).filter(Boolean));
   const key = PRIORITY.find((t) => present.has(t));
-  return key ? TAG_INFO[key] ?? null : null;
+  return key ? (TAG_INFO[key] ?? null) : null;
 };
 
 /** True when the tag marks an event worth surfacing (promo banners, etc.). */

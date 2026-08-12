@@ -14,7 +14,7 @@ export const FlightSummary = ({
   airlineFullName?: string;
   flightPriceAddition: number;
   agentCommission: number;
-  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;

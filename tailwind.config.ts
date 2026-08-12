@@ -5,7 +5,7 @@ export default {
   darkMode: ["class"],
   future: {
     // hover: styles only on devices with a real pointer. On iOS, dragging a
-    // finger to scroll fires :hover on the touched card — its hover shadow +
+    // finger to scroll fires :hover on the touched card - its hover shadow +
     // lift + image zoom then repaint on EVERY scroll gesture (the "cards
     // reload while scrolling" bug, real devices only). Desktop is unchanged.
     hoverOnlyWhenSupported: true,
@@ -30,7 +30,7 @@ export default {
     },
     extend: {
       colors: {
-        // Core brand greens — constant across themes (see globals.css).
+        // Core brand greens - constant across themes (see globals.css).
         // Supports opacity modifiers: `bg-glow/10`, `border-forest/60`, etc.
         forest: "hsl(var(--brand-forest))",
         glow: "hsl(var(--brand-glow))",
@@ -86,7 +86,7 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        // Brand neon accents (category coding, glows, blobs) — Figma brand palette
+        // Brand neon accents (category coding, glows, blobs) - Figma brand palette
         brand: {
           mint: "hsl(var(--brand-mint))",
           aqua: "hsl(var(--brand-aqua))",

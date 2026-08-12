@@ -16,7 +16,7 @@ export function documentToPlainText(doc?: Document | null): string {
   return walk(doc).replace(/\s+/g, " ").trim();
 }
 
-/** First sentence of a plain-text string — up to (and including) the first
+/** First sentence of a plain-text string - up to (and including) the first
  *  sentence-ending mark. Falls back to the whole string when none is found. */
 export function firstSentence(text: string): string {
   const m = text.match(/^[\s\S]*?[.!?](?=\s|$)/);

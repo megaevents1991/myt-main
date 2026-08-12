@@ -1,7 +1,7 @@
 /**
  * Partner tracking links for the agent/influencer portal.
  *
- * Ported from myt-backoffice's `lib/site.ts` (`partnerLink()`) — but unlike
+ * Ported from myt-backoffice's `lib/site.ts` (`partnerLink()`) - but unlike
  * the backoffice, this app IS www.mega-events.co.il, not a separate app
  * linking out to it. So there's no overridable "main site" origin to point
  * at a different deployment; the origin is just this app's own, same literal
@@ -22,7 +22,7 @@ export function partnerLink(
 ): string {
   const path = eventId == null ? "/" : `/order/${eventId}`;
   const params = new URLSearchParams({ utm_source: trackingCode });
-  // A prepared-package link always carries utm_source too — the existing
+  // A prepared-package link always carries utm_source too - the existing
   // affiliate/orderStage mechanism already attributes off that param alone,
   // so this piggybacks on it rather than needing a second attribution path.
   // The opaque share_token (not the row's sequential id) keeps packages from

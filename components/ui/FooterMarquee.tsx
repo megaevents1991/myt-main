@@ -1,7 +1,7 @@
 import { MYT } from "@/components/ui/myt";
 
 /**
- * Footer wordmark band — a slow horizontal marquee of the MegaEvents logo, as in
+ * Footer wordmark band - a slow horizontal marquee of the MegaEvents logo, as in
  * the Figma footer. Two identical tracks scroll seamlessly; the global
  * prefers-reduced-motion rule freezes it. Decorative, hidden from screen readers.
  */

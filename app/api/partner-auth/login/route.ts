@@ -19,7 +19,7 @@ import {
  *
  * Replaces `/api/affiliate/login`, which selected `*` from a credentials table
  * and compared `partners.password` in plain text with `.eq()`. There was no
- * session at all — the client flipped a boolean, so a refresh logged you out
+ * session at all - the client flipped a boolean, so a refresh logged you out
  * and no server route ever knew who was calling.
  *
  * Identity is Supabase Auth, the same account the backoffice creates.
@@ -29,14 +29,19 @@ export async function POST(request: Request) {
   let password: string;
   try {
     const body = await request.json();
-    email = String(body?.email ?? "").trim().toLowerCase();
+    email = String(body?.email ?? "")
+      .trim()
+      .toLowerCase();
     password = String(body?.password ?? "");
   } catch {
     return NextResponse.json({ error: "בקשה לא תקינה" }, { status: 400 });
   }
 
   if (!email || !password) {
-    return NextResponse.json({ error: "יש להזין אימייל וסיסמה" }, { status: 400 });
+    return NextResponse.json(
+      { error: "יש להזין אימייל וסיסמה" },
+      { status: 400 },
+    );
   }
 
   const ip = getRequestIp(request);
@@ -44,21 +49,27 @@ export async function POST(request: Request) {
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "יותר מדי ניסיונות התחברות. נסו שוב מאוחר יותר." },
-      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      },
     );
   }
 
   const verified = await verifyPassword(email, password);
   if (!verified.ok) {
     if (verified.reason === "transient") {
-      // Not a credentials verdict — say so, or the partner resets a good password.
+      // Not a credentials verdict - say so, or the partner resets a good password.
       return NextResponse.json(
         { error: "השירות עמוס כרגע. נסו שוב בעוד רגע." },
         { status: 429 },
       );
     }
     await recordFailedLogin(email, ip);
-    return NextResponse.json({ error: "אימייל או סיסמה שגויים" }, { status: 401 });
+    return NextResponse.json(
+      { error: "אימייל או סיסמה שגויים" },
+      { status: 401 },
+    );
   }
 
   const profile = await getPartnerProfile(verified.userId);
@@ -66,7 +77,10 @@ export async function POST(request: Request) {
   // must not confirm which accounts exist or what role they hold.
   if (!profile || !profile.is_active) {
     await recordFailedLogin(email, ip);
-    return NextResponse.json({ error: "אימייל או סיסמה שגויים" }, { status: 401 });
+    return NextResponse.json(
+      { error: "אימייל או סיסמה שגויים" },
+      { status: 401 },
+    );
   }
 
   // Signing throws when NEXT_SECRET_SESSION_SECRET is unset. Unwrapped it
@@ -82,7 +96,7 @@ export async function POST(request: Request) {
       display_name: profile.display_name,
     });
   } catch (e) {
-    console.error("partner login: cannot sign session —", e);
+    console.error("partner login: cannot sign session -", e);
     return NextResponse.json(
       { error: "ההתחברות אינה זמינה כרגע. פנו אלינו." },
       { status: 503 },
@@ -94,16 +108,12 @@ export async function POST(request: Request) {
     role: profile.role,
     display_name: profile.display_name,
   });
-  response.cookies.set(
-    PARTNER_SESSION_COOKIE,
-    cookieValue,
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: PARTNER_SESSION_MAX_AGE,
-      path: "/",
-    },
-  );
+  response.cookies.set(PARTNER_SESSION_COOKIE, cookieValue, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: PARTNER_SESSION_MAX_AGE,
+    path: "/",
+  });
   return response;
 }

@@ -28,15 +28,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
   }
 
-  // Charge the price PERSISTED for this order, never a client-supplied amount —
+  // Charge the price PERSISTED for this order, never a client-supplied amount -
   // the request body used to control the charge, so anyone could pay ₪1.
   //
-  // final_purchase_price_ils is always the FULL, undiscounted total — every
+  // final_purchase_price_ils is always the FULL, undiscounted total - every
   // customer-facing surface (confirmation emails, this order's own record)
   // reads that column, so it must never itself hold a reduced number.
   // agent_card_discount_ils is the ONE place an agent-card settlement's
   // commission-net reduction lives (see confirm-order/utils.ts,
-  // resolveAgentSettlement) — subtracted here, at the only place a real
+  // resolveAgentSettlement) - subtracted here, at the only place a real
   // charge is actually decided.
   let { data: reservation, error: reservationError } = await supabase
     .from("reservations")
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     .eq("id", orderId)
     .single();
   if (reservationError?.code === "42703") {
-    // agent_card_discount_ils migration not deployed yet — no agent-card
+    // agent_card_discount_ils migration not deployed yet - no agent-card
     // orders can exist either, so charging the full price is still correct.
     ({ data: reservation, error: reservationError } = await supabase
       .from("reservations")
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     const result = convert(body, { format: "object" }) as any;
 
     // A gateway HTTP 200 can still carry an error envelope (auth failure,
-    // terminal error) with no doDeal — surface it instead of throwing.
+    // terminal error) with no doDeal - surface it instead of throwing.
     const hostedPageUrl = result?.ashrait?.response?.doDeal?.mpiHostedPageUrl;
     if (!hostedPageUrl) {
       console.error("Payment gateway returned no hosted page URL:", body);

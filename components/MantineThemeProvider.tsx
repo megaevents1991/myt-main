@@ -7,7 +7,7 @@ import {
   MantineColorsTuple,
 } from "@mantine/core";
 
-// MegaEvents 2.0 pulse-mint (#5BFF95) — tonal ramp so Mantine components match
+// MegaEvents 2.0 pulse-mint (#5BFF95) - tonal ramp so Mantine components match
 // the brand-book primary. Shade 4 is the exact brand neon.
 const myColor: MantineColorsTuple = [
   "#E6FFEF",
@@ -27,7 +27,7 @@ const theme = createTheme({
     myColor,
   },
   primaryColor: "myColor",
-  // Shade 6 (#15C95C) — a harder green than the neon brand mint (shade 4).
+  // Shade 6 (#15C95C) - a harder green than the neon brand mint (shade 4).
   // Selection controls (stepper, checkboxes, sliders) need the stronger tone
   // to read clearly on light surfaces; big brand CTAs keep the neon mint via
   // Tailwind classes.

@@ -13,15 +13,15 @@ Any event with no photo of its own borrows the hero image of its matching
 
 For each event, the image resolves in this order:
 
-1. `art_image_url` (blob cut-out PNG) → renders **blob** variant *(unchanged)*
-2. else `card_image_url` (event's own photo) → **photo** variant *(unchanged)*
+1. `art_image_url` (blob cut-out PNG) → renders **blob** variant _(unchanged)_
+2. else `card_image_url` (event's own photo) → **photo** variant _(unchanged)_
 3. **new:** matched person's `image_url` → **photo** variant
-4. else → blob-only, no image *(current empty behavior, unchanged)*
+4. else → blob-only, no image _(current empty behavior, unchanged)_
 
 "Event image" means either `art_image_url` **or** `card_image_url`. Either one
 beats the person photo. The person photo only fills the gap when both are empty.
 
-## Where it happens — data layer, zero component changes
+## Where it happens - data layer, zero component changes
 
 Enrichment lives in `lib/eventsData.ts`. After events are fetched, any event
 with **no own photo** (`!art_image_url && !card_image_url`) gets its
@@ -44,7 +44,7 @@ Consumers that benefit for free (all read `art_image_url || card_image_url`, or
 
 Filling `card_image_url` in place (chosen over adding a separate
 `display_image_url` field) means the fallback also flows to the OG image and
-confirmation email — desirable, and it avoids editing every consumer.
+confirmation email - desirable, and it avoids editing every consumer.
 
 ## The match (event → person)
 
@@ -61,14 +61,14 @@ event) by preferring the more specific match.
 
 ## New pieces
 
-### 1. `lib/cms/people.ts` — `listImageIndex()`
+### 1. `lib/cms/people.ts` - `listImageIndex()`
 
 Add a lightweight reader to `makePeopleReaders`:
 
 - Selects only `name_english, image_url` from the table (`is_deleted=false`,
   `is_active=true`), rows with a non-null `image_url`.
 - Returns `{ name: string; url: string }[]` where `url` is the **full https**
-  URL as stored (do **not** strip the scheme — events consume the URL directly
+  URL as stored (do **not** strip the scheme - events consume the URL directly
   in `next/image`, unlike the `heroBanner` path which strips it).
 - No Contentful fallback needed (migration verified 100%); on query error,
   return `[]` so enrichment is a no-op and the site keeps working.
@@ -76,11 +76,10 @@ Add a lightweight reader to `makePeopleReaders`:
 `lib/artists.ts` and `lib/football.ts` both build on `makePeopleReaders`, so
 each gains `listImageIndex` from the shared factory automatically.
 
-### 2. `lib/events/fallbackImage.ts` — `enrichEventsWithFallbackImages(events)`
+### 2. `lib/events/fallbackImage.ts` - `enrichEventsWithFallbackImages(events)`
 
 - Builds a merged person index from artists + football teams.
-- Index is wrapped in `next/cache` (`unstable_cache`, tag `events`, revalidate
-  3600) so it is fetched once per revalidation, not per request.
+- Index is wrapped in `next/cache` (`unstable_cache`, tag `events`, revalidate 3600) so it is fetched once per revalidation, not per request.
 - Names are lowercased once; index sorted by name length **descending** for the
   longest-match tie-break.
 - For each event with no own photo, find the first index entry whose lowercased
@@ -100,7 +99,7 @@ each gains `listImageIndex` from the shared factory automatically.
   wrapped by `getCachedEvents` (1h). Artist/team pages use `revalidate = 3600`.
 - **Pure frontend read path.** No DB schema change, no shared-type change, no
   change to any API route the backoffice calls. **No backoffice impact.**
-- If the person index query fails, enrichment is a no-op — events render exactly
+- If the person index query fails, enrichment is a no-op - events render exactly
   as they do today (blob-only for photo-less events).
 
 ## Known limitation
@@ -114,5 +113,5 @@ for parity with current behavior.
 No test runner configured. Verify by:
 
 1. `yarn build` green (real type gate per repo convention).
-2. Spot-check a photo-less event on the homepage/catalog — confirm it now shows
+2. Spot-check a photo-less event on the homepage/catalog - confirm it now shows
    the artist/team hero image, and that events with their own photo are unchanged.

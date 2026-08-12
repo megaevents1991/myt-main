@@ -25,7 +25,7 @@ const COLORS = [
   "hsl(var(--brand-gold))",
 ];
 
-/** Small colourful brand blob marker, cycled by index — used beside FAQ items. */
+/** Small colourful brand blob marker, cycled by index - used beside FAQ items. */
 export const FaqShape = ({
   index,
   className,

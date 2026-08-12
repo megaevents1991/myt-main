@@ -12,18 +12,18 @@ import {
 /**
  * Lands a backoffice-portal agent here WITH their identity: the portal mints a
  * short-lived token in this app's exact `partner_session` format (signed with
- * the SAME `NEXT_SECRET_SESSION_SECRET` — see the backoffice's
+ * the SAME `NEXT_SECRET_SESSION_SECRET` - see the backoffice's
  * lib/auth/partner-handoff.ts), this route swaps it for our own week-long
  * httpOnly cookie and redirects into the order flow.
  *
  * Why: agent-mode settlement (`agent_card`/`voucher` in confirm-order's
- * resolveAgentSettlement) requires `requireAgent()` — a live session on THIS
+ * resolveAgentSettlement) requires `requireAgent()` - a live session on THIS
  * domain. Partners sign in only to the backoffice since the portal moved back
  * there (2026-08-02), so without this bridge both agent-paid methods are
  * always rejected.
  *
  * Failure mode is deliberately soft: a bad/expired token still redirects to
- * `next` — the page works as a plain package link, only the agent-paid
+ * `next` - the page works as a plain package link, only the agent-paid
  * settlement stays unavailable. The token itself is already a signed,
  * minutes-lived session value, so verification + the same live-profile
  * re-check the login route does are the whole gate.
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("token");
   const next = url.searchParams.get("next") || "/";
 
-  // Same-origin relative paths only — never an open redirect. Backslash is the
+  // Same-origin relative paths only - never an open redirect. Backslash is the
   // classic bypass: the WHATWG URL parser treats "\" like "/" for http(s), so
   // "/\evil.com" resolves to https://evil.com. Belt-and-braces: sanitize, then
   // verify the RESOLVED origin is still ours.
@@ -51,10 +51,10 @@ export async function GET(request: Request) {
   if (!session) {
     if (token) {
       // A present-but-unverifiable token is almost always secret drift between
-      // the two Vercel projects — say so, or the failure is invisible (the
+      // the two Vercel projects - say so, or the failure is invisible (the
       // redirect still lands on a working plain package link).
       console.error(
-        "partner-handoff: token present but failed verification — check NEXT_SECRET_SESSION_SECRET parity between backoffice and main",
+        "partner-handoff: token present but failed verification - check NEXT_SECRET_SESSION_SECRET parity between backoffice and main",
       );
     }
     return NextResponse.redirect(redirectTo);
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
       display_name: profile.display_name,
     });
   } catch (e) {
-    console.error("partner-handoff: cannot sign session —", e);
+    console.error("partner-handoff: cannot sign session -", e);
     return NextResponse.redirect(redirectTo);
   }
 

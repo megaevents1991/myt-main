@@ -19,12 +19,12 @@ export const revalidate = 3600; // Revalidate every hour (reduced from 24h for f
 
 async function getEventsForPage() {
   const events = await getCachedEvents();
-  // Never publish a homepage snapshot with zero events — a transient DB
+  // Never publish a homepage snapshot with zero events - a transient DB
   // failure during ISR regeneration used to bake an empty page (site-wide
   // "sold out") into the static cache for an hour (2026-07-19). Throwing makes
   // the regeneration fail, so Next keeps serving the last good page instead.
   if (!events.events.length) {
-    throw new Error("Homepage: events unavailable — keeping last good static page");
+    throw new Error("Homepage: events unavailable - keeping last good static page");
   }
   return events;
 }
@@ -64,7 +64,7 @@ async function getCategories(): Promise<HomeCategory[]> {
 }
 
 // Hero carousel ring: EVERY artist + football team we currently have an
-// available event for ("זמין באתר" — same availability rule as the catalog
+// available event for ("זמין באתר" - same availability rule as the catalog
 // pages), featured entries first, artists and teams interleaved so the ring
 // mixes music and football.
 function buildHeroItems(
@@ -143,7 +143,7 @@ export default async function Home() {
     isAvailable
   );
 
-  // Homepage "אמנים מובילים" / "כדורגל" slides — all entries, available first.
+  // Homepage "אמנים מובילים" / "כדורגל" slides - all entries, available first.
   const homeArtists = availableFirst(artists, isAvailable);
   const homeFootball = availableFirst(allFootballTeams, isAvailable);
 
@@ -169,9 +169,9 @@ export default async function Home() {
         homeArtists={homeArtists}
         homeFootball={homeFootball}
       />
-      {/* קטגוריות (categories) visual hidden for now — needs rework before re-enabling. */}
+      {/* קטגוריות (categories) visual hidden for now - needs rework before re-enabling. */}
       {/* <CategorySection categories={categories} /> */}
-      {/* AirlinesStrip + MegaEventsSection (about / "שותפים לדרך") hidden for now — re-add later */}
+      {/* AirlinesStrip + MegaEventsSection (about / "שותפים לדרך") hidden for now - re-add later */}
       <TrustSection />
       <FAQ />
     </main>

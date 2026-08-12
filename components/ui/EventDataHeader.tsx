@@ -18,7 +18,7 @@ export const EventDataHeader = ({
    *  defaults to the concerts wording with the event name. */
   artistLinkLabel?: string;
 }) => {
-  const alt = artistHref ? `${event?.name ?? ""} — לעמוד האמן` : "";
+  const alt = artistHref ? `${event?.name ?? ""} - לעמוד האמן` : "";
   // Blob card-art wins when set (backoffice art_* fields, or borrowed from the
   // matching artist/team by the fallback enrichment); otherwise the plain photo.
   const photo = event?.art_image_url ? (
@@ -52,11 +52,11 @@ export const EventDataHeader = ({
         (artistHref ? (
           <Link
             href={artistHref}
-            // New tab: the order flow's state lives in OrderContext — same-tab
+            // New tab: the order flow's state lives in OrderContext - same-tab
             // navigation away would lose the in-progress order.
             target="_blank"
             rel="noopener"
-            aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
+            aria-label={`${event?.name ?? "האמן"} - מעבר לעמוד האמן`}
             className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
           >
             {photo}

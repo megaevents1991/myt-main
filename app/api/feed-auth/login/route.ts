@@ -7,14 +7,17 @@ import {
 } from "@/lib/feed/feedAuth";
 
 /**
- * Email+password login for /product-feed — verified against the SAME
+ * Email+password login for /product-feed - verified against the SAME
  * Supabase Auth users the backoffice uses (no separate credentials, no
  * self-signup). Only pre-created ACTIVE staff profiles get a session;
  * everyone else is signed out and bounced with an error.
  */
 export async function POST(request: Request) {
   const back = (error: string) =>
-    NextResponse.redirect(new URL(`/product-feed?error=${error}`, request.url), 303);
+    NextResponse.redirect(
+      new URL(`/product-feed?error=${error}`, request.url),
+      303,
+    );
 
   try {
     const form = await request.formData();
@@ -42,9 +45,16 @@ export async function POST(request: Request) {
       return back("no-account");
     }
 
-    const redirect = NextResponse.redirect(new URL("/product-feed", request.url), 303);
+    const redirect = NextResponse.redirect(
+      new URL("/product-feed", request.url),
+      303,
+    );
     toSet.forEach(({ name, value, options }) =>
-      redirect.cookies.set(name, value, options as Parameters<typeof redirect.cookies.set>[2])
+      redirect.cookies.set(
+        name,
+        value,
+        options as Parameters<typeof redirect.cookies.set>[2],
+      ),
     );
     return redirect;
   } catch (e) {

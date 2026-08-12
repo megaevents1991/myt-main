@@ -27,7 +27,7 @@ export function PartnerLoginForm() {
         return;
       }
       // `next` comes from our own middleware redirect, but it arrives via the
-      // URL — only ever follow a same-site path, never an absolute URL.
+      // URL - only ever follow a same-site path, never an absolute URL.
       const next = searchParams.get("next");
       const target = next && next.startsWith("/agent") ? next : "/agent";
       router.replace(target);

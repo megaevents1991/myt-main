@@ -12,9 +12,9 @@ interface AgentModeProps {
   agentCommissionUsd: number;
   /** Agent is configured for voucher settlement (partners.voucher_payment_allowed). */
   voucherAllowed: boolean;
-  /** Live credit-voucher value in USD — informational only. */
+  /** Live credit-voucher value in USD - informational only. */
   voucherBalanceUsd?: number;
-  /** Full package total in USD — each option shows the amount it actually
+  /** Full package total in USD - each option shows the amount it actually
    *  charges, incl. the commission-netted agent-card figure. */
   finalPurchasePriceUsd?: number;
   settlementError?: string | null;
@@ -41,13 +41,13 @@ function SettlementMethodPicker({
   const netAgent = agentCommissionUsd > 0 ? Math.max(0, full - agentCommissionUsd) : full;
 
   // Radio CARDS, not bare pills: icon + who pays + the ACTUAL number each
-  // method charges — the commission deduction is visible on the card itself,
+  // method charges - the commission deduction is visible on the card itself,
   // not buried in a hint below.
   const options: Array<{
     value: SettlementMethod;
     icon: LucideIcon;
     label: string;
-    /** The money line — the number this method really charges. */
+    /** The money line - the number this method really charges. */
     amount: React.ReactNode;
     hint: string;
     show: boolean;
@@ -57,7 +57,7 @@ function SettlementMethodPicker({
       icon: CreditCard,
       label: "אשראי הלקוח",
       amount: full > 0 ? <span>יחויב: <b dir="ltr">{usd(full)}</b></span> : "מחיר מלא",
-      hint: "הלקוח מזין את פרטי האשראי שלו — כרגיל.",
+      hint: "הלקוח מזין את פרטי האשראי שלו - כרגיל.",
       show: true,
     },
     {
@@ -80,7 +80,7 @@ function SettlementMethodPicker({
         ) : (
           "בניכוי העמלה שלך"
         ),
-      hint: "אתה מזין את האשראי שלך — את הסכום המלא תגבה מהלקוח בנפרד.",
+      hint: "אתה מזין את האשראי שלך - את הסכום המלא תגבה מהלקוח בנפרד.",
       show: true,
     },
     {
@@ -204,12 +204,12 @@ function AgentMode({
         </div>
       </div>
 
-      {/* "הדפסה ללקוח" והגדרות ההדפסה (לוגו LiveEvents הישן) הוסרו —
+      {/* "הדפסה ללקוח" והגדרות ההדפסה (לוגו LiveEvents הישן) הוסרו -
           אלון ודור, 2026-08-06. */}
       {isAgentMode && (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            הזמנה עבור הלקוח — בחרו איך נגבה את התשלום על ההזמנה הזו.
+            הזמנה עבור הלקוח - בחרו איך נגבה את התשלום על ההזמנה הזו.
           </p>
           <SettlementMethodPicker
             settlementMethod={settlementMethod}

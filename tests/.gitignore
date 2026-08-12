@@ -1,4 +1,4 @@
-# Test secrets — never commit
+# Test secrets - never commit
 .env
 
 # Saved auth session created by global-setup

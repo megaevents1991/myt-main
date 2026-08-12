@@ -7,7 +7,7 @@ import {
 
 /**
  * A locked package sells exactly one offline flight and deliberately has no
- * fallback to a dynamic search — so when that flight runs out, the package is
+ * fallback to a dynamic search - so when that flight runs out, the package is
  * gone, not merely flightless. The catalog card decides sold-out from ticket
  * availability alone, which left a locked-and-empty package advertised as
  * bookable right up until the customer reached the flight step and hit the
@@ -33,26 +33,27 @@ export async function markLockedPackagesSoldOut(
   ];
 
   try {
-    const [flightsResult, allocationsResult, consumedResult] = await Promise.all([
-      supabase
-        .from("flights")
-        .select("id, initial_quantity, consumed_quantity, is_deleted")
-        .in("id", flightIds),
-      supabase
-        .from("flight_event_allocations")
-        .select("event_id, flight_id, allocated_seats")
-        .in("event_id", eventIds),
-      supabase
-        .from("flight_event_consumed")
-        .select("event_id, flight_id, consumed_seats")
-        .in("event_id", eventIds),
-    ]);
+    const [flightsResult, allocationsResult, consumedResult] =
+      await Promise.all([
+        supabase
+          .from("flights")
+          .select("id, initial_quantity, consumed_quantity, is_deleted")
+          .in("id", flightIds),
+        supabase
+          .from("flight_event_allocations")
+          .select("event_id, flight_id, allocated_seats")
+          .in("event_id", eventIds),
+        supabase
+          .from("flight_event_consumed")
+          .select("event_id, flight_id, consumed_seats")
+          .in("event_id", eventIds),
+      ]);
 
     const failure =
       flightsResult.error || allocationsResult.error || consumedResult.error;
     if (failure) {
       console.error(
-        "[LockedPackages] availability lookup failed — leaving cards unmarked:",
+        "[LockedPackages] availability lookup failed - leaving cards unmarked:",
         JSON.stringify(failure),
       );
       return events;
@@ -74,7 +75,10 @@ export async function markLockedPackagesSoldOut(
     const allocationRemaining = new Map<string, number>(
       (allocationsResult.data ?? []).map((row) => {
         const pairKey = key(row.event_id, row.flight_id);
-        return [pairKey, row.allocated_seats - (consumedByPair.get(pairKey) ?? 0)];
+        return [
+          pairKey,
+          row.allocated_seats - (consumedByPair.get(pairKey) ?? 0),
+        ];
       }),
     );
 
@@ -100,7 +104,7 @@ export async function markLockedPackagesSoldOut(
     );
   } catch (error) {
     console.error(
-      "[LockedPackages] availability lookup threw — leaving cards unmarked:",
+      "[LockedPackages] availability lookup threw - leaving cards unmarked:",
       error,
     );
     return events;

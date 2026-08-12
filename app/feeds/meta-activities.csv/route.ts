@@ -2,12 +2,12 @@ import { getActivityItems } from "@/lib/feed/feedData";
 import { toActivitiesCsv } from "@/lib/feed/activitiesCatalog";
 
 /**
- * Meta ACTIVITIES catalog feed — the one Meta actually consumes. Our Meta
+ * Meta ACTIVITIES catalog feed - the one Meta actually consumes. Our Meta
  * catalog is the activities vertical, whose schema differs completely from
  * the e-commerce one in /feeds/meta-catalog.{xml,csv} (those stay for Google
  * Merchant). Column set copies the file that uploaded with 0 errors.
  *
- * `?excel=1` prepends a UTF-8 BOM for humans opening it in Excel — the
+ * `?excel=1` prepends a UTF-8 BOM for humans opening it in Excel - the
  * default output stays BOM-less, byte-matching the verified file.
  */
 export const dynamic = "force-dynamic";

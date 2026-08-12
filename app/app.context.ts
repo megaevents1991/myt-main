@@ -9,7 +9,7 @@ import {
 import { createContext, Dispatch, SetStateAction } from "react";
 
 /** Link to the artist/football-team page this event belongs to (resolved
- *  server-side by name match) — href + ready-made Hebrew label. */
+ *  server-side by name match) - href + ready-made Hebrew label. */
 export type PersonLink = { href: string; label: string };
 
 type AppContext = {
@@ -63,7 +63,7 @@ type AppContext = {
   returnToSummary: boolean;
   setReturnToSummary: (on: boolean) => void;
   /** Agent-locked prepared package (prepared_packages.allow_edit = false):
-   *  the pinned composition may not be changed — summary edit buttons, the
+   *  the pinned composition may not be changed - summary edit buttons, the
    *  stepper and the slot pills are inert. A stale or deliberately-left-live
    *  piece still gets picked normally (that landing step stays interactive).
    *  Distinct from the event-level locked_flight_id ("locked package"). */

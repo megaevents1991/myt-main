@@ -1,4 +1,4 @@
-// MegaEvents short "MΣ" mark (from public/brand/logo-mark-ME.svg, letters only —
+// MegaEvents short "MΣ" mark (from public/brand/logo-mark-ME.svg, letters only -
 // the host surface supplies the mint background). Renders in `currentColor`.
 export const MYTMark = ({ className }: { className?: string }) => (
   <svg

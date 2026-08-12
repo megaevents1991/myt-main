@@ -26,7 +26,7 @@ const visitor = async (
       headers: {
         "Content-Type": "application/json",
       },
-      // CONFIRMED fires right before window.location.replace(paymentUrl) —
+      // CONFIRMED fires right before window.location.replace(paymentUrl) -
       // keepalive lets the request outlive the navigation instead of being
       // cancelled with the page.
       keepalive: true,
@@ -77,7 +77,7 @@ export const orderStage = async (stage: TrackingStage, data: object) => {
   }
 
   // Adopt a NEW code from the URL. A bare URL (no utm_source/aff) must never
-  // clear the saved code — otherwise every in-flow page wipes attribution and
+  // clear the saved code - otherwise every in-flow page wipes attribution and
   // the returning visitor's events stop being sent.
   if (affParam && affiliateData.affiliateId !== affParam) {
     affiliateData.affiliateId = affParam;

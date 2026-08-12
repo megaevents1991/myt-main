@@ -1,5 +1,5 @@
 /**
- * Meta catalog feed — data assembly (server-only). Fetches the live events the
+ * Meta catalog feed - data assembly (server-only). Fetches the live events the
  * site sells plus their taxonomy links, and maps them through the pure
  * builders in `metaCatalog.ts`. Used by the XML/CSV feed routes and the
  * /product-feed admin page, so all three always agree.
@@ -22,19 +22,22 @@ import {
 } from "@/lib/feed/activitiesCatalog";
 import { normalizeName } from "@/lib/eventNameMatch";
 
-// PostgREST hard-caps every response at max-rows (1000 on this project) —
+// PostgREST hard-caps every response at max-rows (1000 on this project) -
 // a plain unranged select silently returns the first 1000 rows and drops the
 // rest, which for the link tables meant arbitrary events losing their
 // custom labels / product_type as soon as total links crossed the cap.
 const DB_PAGE_SIZE = 1000;
-// `.in("event_id", ids)` serializes into the query string — hundreds of ids
+// `.in("event_id", ids)` serializes into the query string - hundreds of ids
 // make the URL long enough to 414, so id-lists are chunked.
 const IN_CHUNK_SIZE = 200;
 
 /** Drains a ranged query page by page until a short page arrives. */
 async function fetchAllPages<T>(
   label: string,
-  page: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: unknown; error: unknown }>,
 ): Promise<T[]> {
   const all: T[] = [];
   for (let from = 0; ; from += DB_PAGE_SIZE) {
@@ -53,7 +56,7 @@ async function fetchAllPages<T>(
 /**
  * Classifier for events the taxonomy doesn't cover: does the event name match
  * a CMS artist or a football team? Most `tx_event` rows have no category link,
- * and Meta's activity_category ("Concert"/"Sports") drives who sees the ad —
+ * and Meta's activity_category ("Concert"/"Sports") drives who sees the ad -
  * so falling back to "Other" for a Shakira concert is a real targeting loss.
  * Fixture names ("Bayern - RB Leipzig") are matched side by side.
  */
@@ -73,14 +76,16 @@ async function peopleClassifier(): Promise<(eventName: string) => DomainHint> {
       .map((s) => normalizeName(s))
       .filter(Boolean);
 
-    if (teams.has(whole) || sides.some((s) => teams.has(s))) return "football-team";
-    if (artists.has(whole) || sides.some((s) => artists.has(s))) return "artist";
+    if (teams.has(whole) || sides.some((s) => teams.has(s)))
+      return "football-team";
+    if (artists.has(whole) || sides.some((s) => artists.has(s)))
+      return "artist";
     return null;
   };
 }
 
 async function fetchPeopleNames(
-  table: "artists" | "football_teams"
+  table: "artists" | "football_teams",
 ): Promise<Set<string>> {
   // artists/football_teams use a BOOLEAN is_deleted (events use a date string).
   const rows = await fetchAllPages<{ name?: string; name_english?: string }>(
@@ -91,7 +96,7 @@ async function fetchPeopleNames(
         .select("name, name_english")
         .eq("is_deleted", false)
         .order("id", { ascending: true })
-        .range(from, to)
+        .range(from, to),
   );
   const names = new Set<string>();
   for (const row of rows) {
@@ -116,7 +121,7 @@ async function getFeedEvents(): Promise<{
       .gte("date", futureDateISO(0))
       .order("date", { ascending: true })
       .order("id", { ascending: true }) // stable pages when dates tie
-      .range(from, to)
+      .range(from, to),
   );
 
   const enriched = await enrichEventsWithFallbackImages(
@@ -129,7 +134,7 @@ async function getFeedEvents(): Promise<{
 }
 
 /**
- * Same events in Meta's ACTIVITIES schema — the vertical our Meta catalog
+ * Same events in Meta's ACTIVITIES schema - the vertical our Meta catalog
  * actually is (see `activitiesCatalog.ts`). Activities feeds have no
  * availability field, so sold-out and unbookable events are dropped here
  * rather than marked out of stock.
@@ -145,10 +150,14 @@ export async function getActivityItems(): Promise<ActivityBuildResult> {
       event,
       taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [] },
       cutoffISO,
-      classify(event.name)
+      classify(event.name),
     );
     if ("skipped" in built) {
-      result.skipped.push({ id: event.id, name: event.name, reason: built.skipped });
+      result.skipped.push({
+        id: event.id,
+        name: event.name,
+        reason: built.skipped,
+      });
     } else {
       result.items.push(built);
     }
@@ -158,7 +167,7 @@ export async function getActivityItems(): Promise<ActivityBuildResult> {
 
 /**
  * Every sellable product, sold-out included (Meta guidance: mark "out of
- * stock" rather than delete). Past events drop out — Meta hides them via
+ * stock" rather than delete). Past events drop out - Meta hides them via
  * expiration_date anyway, so listing them only bloats the file.
  */
 export async function getFeedItems(): Promise<FeedBuildResult> {
@@ -172,10 +181,14 @@ export async function getFeedItems(): Promise<FeedBuildResult> {
       event,
       taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [] },
       cutoffISO,
-      todayISO
+      todayISO,
     );
     if ("skipped" in built) {
-      result.skipped.push({ id: event.id, name: event.name, reason: built.skipped });
+      result.skipped.push({
+        id: event.id,
+        name: event.name,
+        reason: built.skipped,
+      });
     } else {
       result.items.push(built);
     }
@@ -186,17 +199,17 @@ export async function getFeedItems(): Promise<FeedBuildResult> {
 /**
  * product_type + custom-label inputs per event, from the backoffice taxonomy.
  * Category path = the DEEPEST directly-linked category's ancestor chain
- * (name_english preferred — Meta's product_type examples are latin);
+ * (name_english preferred - Meta's product_type examples are latin);
  * tag slugs keep the tag list's alphabetical order.
  */
 async function getTaxonomyByEvent(
-  eventIds: number[]
+  eventIds: number[],
 ): Promise<Map<number, EventTaxonomyInfo>> {
   const map = new Map<number, EventTaxonomyInfo>();
   if (!eventIds.length) return map;
 
   const [cats, tags, catLinks, tagLinks] = await Promise.all([
-    // ALL non-deleted categories, hidden included — product_type describes
+    // ALL non-deleted categories, hidden included - product_type describes
     // what the event IS; a category hidden from the site (is_active=false,
     // page 404s) must still label its events in the Meta catalog.
     fetchAllCategories(),
@@ -246,26 +259,28 @@ async function fetchAllCategories(): Promise<EventCategory[]> {
       .select("*")
       .eq("is_deleted", false)
       .order("id", { ascending: true })
-      .range(from, to)
+      .range(from, to),
   );
 }
 
 async function fetchLinks(
   table: "event_category_links" | "event_tag_links",
   otherCol: "category_id" | "tag_id",
-  eventIds: number[]
+  eventIds: number[],
 ): Promise<{ event_id: number; other_id: number }[]> {
   const links: { event_id: number; other_id: number }[] = [];
   for (let i = 0; i < eventIds.length; i += IN_CHUNK_SIZE) {
     const chunk = eventIds.slice(i, i + IN_CHUNK_SIZE);
-    const rows = await fetchAllPages<Record<string, number>>(table, (from, to) =>
-      supabase
-        .from(table)
-        .select(`event_id,${otherCol}`)
-        .in("event_id", chunk)
-        .order("event_id", { ascending: true })
-        .order(otherCol, { ascending: true }) // unique pair → fully stable pages
-        .range(from, to)
+    const rows = await fetchAllPages<Record<string, number>>(
+      table,
+      (from, to) =>
+        supabase
+          .from(table)
+          .select(`event_id,${otherCol}`)
+          .in("event_id", chunk)
+          .order("event_id", { ascending: true })
+          .order(otherCol, { ascending: true }) // unique pair → fully stable pages
+          .range(from, to),
     );
     for (const row of rows) {
       links.push({ event_id: row.event_id, other_id: row[otherCol] });

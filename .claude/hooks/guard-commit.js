@@ -3,7 +3,7 @@
  * PreToolUse hook for Bash(git commit:*).
  * Blocks (exit 2) when the commit message carries an AI co-author /
  * "Generated with Claude" line.
- * (The main/master branch guard was removed 2026-07-05 at Dor's request —
+ * (The main/master branch guard was removed 2026-07-05 at Dor's request -
  * direct commits to main are allowed.)
  * Fails open: any parse/exec error -> allow (never block a legit commit).
  */
@@ -26,10 +26,13 @@ function main() {
   if (!/\bgit\s+commit\b/.test(cmd)) process.exit(0);
 
   // (b) AI attribution
-  if (/Co-?Authored-?By:.*claude/i.test(cmd) || /Generated with .*Claude/i.test(cmd)) {
+  if (
+    /Co-?Authored-?By:.*claude/i.test(cmd) ||
+    /Generated with .*Claude/i.test(cmd)
+  ) {
     console.error(
       "Blocked: commit message contains an AI co-author/attribution line. " +
-        "Remove it (Dor's rule: no AI attribution in commits)."
+        "Remove it (Dor's rule: no AI attribution in commits).",
     );
     process.exit(2);
   }

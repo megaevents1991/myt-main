@@ -1,4 +1,4 @@
-# Amadeus Enterprise API — onboarding & migration guide
+# Amadeus Enterprise API - onboarding & migration guide
 
 This repo migrated off the `amadeus` npm SDK (Self-Service, being deprecated) to the
 **Amadeus Enterprise REST API**, called directly over `fetch`. This guide covers what to
@@ -17,15 +17,15 @@ Everything comes from the Enterprise workspace:
 1. Log in (account: Dor AZOURI) → **My Enterprise Workspace** → **REST apps**.
 2. Open the **"Mega events"** app (Status currently: **Test**).
 3. From the app detail page copy:
-   - **API Key**  → this is your `client_id`
+   - **API Key** → this is your `client_id`
    - **API Secret** → this is your `client_secret` (click reveal/show)
    - **Host / base URL** (if shown) → for `AMADEUS_API_HOST` / `AMADEUS_AUTH_HOST`
-   - **Office ID** (if the app shows one — candidate `GOT 259889`)
+   - **Office ID** (if the app shows one - candidate `GOT 259889`)
 4. Confirm the app's **enabled APIs** include:
    - **Flight Offers Search** (`GET /v2/shopping/flight-offers`)
    - **Flight Offers Price** (`POST /v1/shopping/flight-offers/pricing`)
 
-No extra request is needed to start on **test** — the app is already provisioned.
+No extra request is needed to start on **test** - the app is already provisioned.
 
 ---
 
@@ -69,16 +69,16 @@ If both curls return data, your credentials + host are correct.
 1. Copy `.env.amadeus.example` values into your `.env.local`.
 2. Paste API Key → `NEW_AMADEUS_CLIENT_ID`, API Secret → `NEW_AMADEUS_CLIENT_SECRET`.
 3. `AMADEUS_ENV=enterprise` for production (`test` for sandbox while developing).
-4. No Office ID env — the office is bound to the OAuth credential (sending an
+4. No Office ID env - the office is bound to the OAuth credential (sending an
    office header trips error 2668 on this gateway).
 
-| Variable | Meaning |
-|----------|---------|
-| `AMADEUS_ENV` | `test` (sandbox, test.travel.api.amadeus.com) or `enterprise` (production, travel.api.amadeus.com) |
-| `AMADEUS_AUTH_HOST` | OAuth token host override (optional — defaults per `AMADEUS_ENV`) |
-| `AMADEUS_API_HOST` | Flight APIs host override (optional — defaults per `AMADEUS_ENV`) |
-| `NEW_AMADEUS_CLIENT_ID` | API Key |
-| `NEW_AMADEUS_CLIENT_SECRET` | API Secret |
+| Variable                    | Meaning                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `AMADEUS_ENV`               | `test` (sandbox, test.travel.api.amadeus.com) or `enterprise` (production, travel.api.amadeus.com) |
+| `AMADEUS_AUTH_HOST`         | OAuth token host override (optional - defaults per `AMADEUS_ENV`)                                  |
+| `AMADEUS_API_HOST`          | Flight APIs host override (optional - defaults per `AMADEUS_ENV`)                                  |
+| `NEW_AMADEUS_CLIENT_ID`     | API Key                                                                                            |
+| `NEW_AMADEUS_CLIENT_SECRET` | API Secret                                                                                         |
 
 > Backoffice uses the same variables with a `NEXT_SECRET_` prefix
 > (e.g. `NEXT_SECRET_AMADEUS_CLIENT_ID`).
@@ -87,10 +87,10 @@ If both curls return data, your credentials + host are correct.
 
 ## 4. Going to production
 
-**DONE 2026-07-18** — the app was promoted to Production. Live config:
+**DONE 2026-07-18** - the app was promoted to Production. Live config:
 
 - Host (auth + api): `https://travel.api.amadeus.com`
 - `AMADEUS_ENV=enterprise` (defaults to that host)
 - Production keys from the workspace → `NEW_AMADEUS_CLIENT_ID` / `NEW_AMADEUS_CLIENT_SECRET`
 
-Rollback at any point: flip `AMADEUS_ENV=test` (sandbox host + keys) — no code change required.
+Rollback at any point: flip `AMADEUS_ENV=test` (sandbox host + keys) - no code change required.

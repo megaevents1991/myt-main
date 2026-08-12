@@ -5,7 +5,7 @@ import { isCouponUsable, normalizeCouponCode } from "@/lib/coupon.utils";
 /**
  * Server-only: fetch a coupon by code and check it's redeemable for the
  * event. Returns the row when usable, null otherwise (unknown code, inactive,
- * expired, exhausted, or wrong event — callers must not distinguish, so the
+ * expired, exhausted, or wrong event - callers must not distinguish, so the
  * client can't enumerate codes).
  */
 export const findValidCoupon = async (
@@ -17,7 +17,7 @@ export const findValidCoupon = async (
 
   // ILIKE = case-insensitive equality for legacy mixed-case rows. The format
   // guard in normalizeCouponCode blocks % entirely; `_` is a legal code char,
-  // so escape it here — otherwise it's an ILIKE single-char wildcard and
+  // so escape it here - otherwise it's an ILIKE single-char wildcard and
   // "SUMMER_1" would also match "SUMMER21" (coupon guessing/bypass).
   const escaped = normalized.replace(/([\\%_])/g, "\\$1");
   // times_paid / partner_tracking_code may not exist until the v2 migration
@@ -51,7 +51,7 @@ export const findValidCoupon = async (
 };
 
 /**
- * Count a redemption. Read-then-write (not atomic) — max_uses is a soft
+ * Count a redemption. Read-then-write (not atomic) - max_uses is a soft
  * marketing limit, a rare race overshooting by one is acceptable.
  */
 export const incrementCouponUse = async (coupon: Coupon): Promise<void> => {

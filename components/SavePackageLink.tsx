@@ -5,13 +5,13 @@ import { savePreparedPackage } from "@/lib/agent-package-actions";
 import type { Flight, OrderHotel, OrderTicket } from "@/lib/app.types";
 
 /**
- * Lets a signed-in partner (agent or influencer — this is still fundamentally
+ * Lets a signed-in partner (agent or influencer - this is still fundamentally
  * "give a link", same as a plain tracking link, just pre-filled) save the
  * exact ticket/flight/hotel combination they just picked and get a link that
  * lands a follower directly on it instead of an empty search page.
  *
  * Only rendered when `partnerSession` is a real, cookie-verified session
- * (checked by the caller) — never gated on the unauthenticated
+ * (checked by the caller) - never gated on the unauthenticated
  * agentCommission/localStorage signal AgentMode uses.
  */
 export function SavePackageLink({
@@ -55,7 +55,7 @@ export function SavePackageLink({
       }
       setLink(result.link);
     } catch {
-      setError("שגיאת רשת — נסו שוב.");
+      setError("שגיאת רשת - נסו שוב.");
     } finally {
       setSaving(false);
     }
@@ -66,7 +66,7 @@ export function SavePackageLink({
       <h3 className="font-bold mb-1">שמירת החבילה הזו כלינק לשיתוף</h3>
       <p className="text-sm text-gray-600 mb-3">
         שומר את הכרטיס, הטיסה והמלון שבחרתם כאן, ונותן לינק שמוביל את העוקב/הלקוח
-        ישר לחבילה הזו — במקום לחפש מההתחלה.
+        ישר לחבילה הזו - במקום לחפש מההתחלה.
       </p>
 
       {link ? (
@@ -86,7 +86,7 @@ export function SavePackageLink({
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               } catch {
-                /* clipboard unavailable — the field above can be selected manually */
+                /* clipboard unavailable - the field above can be selected manually */
               }
             }}
             className="shrink-0 rounded-md bg-main px-4 py-2 text-sm font-medium text-main-foreground hover:bg-main/90"

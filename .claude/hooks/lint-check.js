@@ -4,16 +4,16 @@
  * failures back to Claude.
  * - Build ignores TS errors (next.config), so `tsc --noEmit` is the real type gate.
  * - Loop guard: stop_hook_active -> exit 0 (no endless lint->fix->stop cycle).
- * - Skips entirely when the working tree has no modified/untracked .ts/.tsx —
+ * - Skips entirely when the working tree has no modified/untracked .ts/.tsx -
  *   the hook fires on every Stop and a clean tree has nothing new to check.
  * - eslint runs on the changed files only (`next lint` full-project takes 5m+
  *   on this checkout); tsc is whole-project but fast (~10s incremental).
- * - Tools are spawned as `node <local bin js>` — Node >= 20.12 refuses to
+ * - Tools are spawned as `node <local bin js>` - Node >= 20.12 refuses to
  *   spawn npx.cmd/yarn.cmd on Windows (EINVAL, CVE-2024-27980), and the
  *   corepack yarn v4 shim chokes on this repo's v1 lockfile anyway.
- * - FAIL-OPEN: never block on the hook's own infrastructure problems —
+ * - FAIL-OPEN: never block on the hook's own infrastructure problems -
  *   missing node_modules/binary, spawn errors (string e.code), or a non-zero
- *   exit with no output. A non-zero EXIT STATUS lands in e.code as a NUMBER —
+ *   exit with no output. A non-zero EXIT STATUS lands in e.code as a NUMBER -
  *   that is a finding, not an infra failure; only string codes mean skip.
  */
 const { execFileSync } = require("child_process");
@@ -51,7 +51,7 @@ function changedTsFiles(cwd) {
   }
 }
 
-// {status: 'pass' | 'findings' | 'skip', out} — args[0] is a repo-relative JS bin.
+// {status: 'pass' | 'findings' | 'skip', out} - args[0] is a repo-relative JS bin.
 function run(args, cwd) {
   const bin = path.join(cwd, args[0]);
   if (!fs.existsSync(bin)) return { status: "skip", out: "" };
@@ -92,12 +92,17 @@ function main() {
       : { status: "skip", out: "" };
 
   const blocks = [];
-  if (tsc.status === "findings") blocks.push(`[tsc --noEmit]\n${tsc.out.slice(-4000)}`);
-  if (lint.status === "findings") blocks.push(`[eslint (changed files)]\n${lint.out.slice(-4000)}`);
+  if (tsc.status === "findings")
+    blocks.push(`[tsc --noEmit]\n${tsc.out.slice(-4000)}`);
+  if (lint.status === "findings")
+    blocks.push(`[eslint (changed files)]\n${lint.out.slice(-4000)}`);
 
-  if (!blocks.length) process.exit(0); // pass or skipped — let the session stop
+  if (!blocks.length) process.exit(0); // pass or skipped - let the session stop
 
-  console.error("Pre-stop checks failed — fix before wrapping up:\n\n" + blocks.join("\n\n"));
+  console.error(
+    "Pre-stop checks failed - fix before wrapping up:\n\n" +
+      blocks.join("\n\n"),
+  );
   process.exit(2);
 }
 main();

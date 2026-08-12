@@ -9,7 +9,7 @@ import type { FeedItem } from "@/lib/feed/metaCatalog";
  * Filtering client-side rather than through searchParams is deliberate: the
  * page rebuilds the entire feed from the DB on every request (seconds), so a
  * round trip per keystroke would make the filters unusable. The rows are
- * already here — narrowing them is free.
+ * already here - narrowing them is free.
  */
 type ImageFilter = "all" | "campaign" | "original";
 type StockFilter = "all" | "in" | "out";
@@ -135,7 +135,7 @@ export function FeedTable({ items }: { items: FeedItem[] }) {
                   {it.expiration_date}
                 </td>
                 <td className="max-w-[200px] px-3 py-2 text-gray-900" dir="ltr">
-                  {it.product_type || "—"}
+                  {it.product_type || "-"}
                 </td>
                 <td className="max-w-[220px] px-3 py-2 text-gray-900" dir="ltr">
                   {it.custom_labels.filter(Boolean).join(", ")}

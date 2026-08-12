@@ -25,7 +25,7 @@ function CopyLinkField({ label, url }: { label: string; url: string }) {
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
             } catch {
-              /* clipboard unavailable — the field above can be selected manually */
+              /* clipboard unavailable - the field above can be selected manually */
             }
           }}
           className="shrink-0 rounded-md bg-main px-4 py-2 text-sm font-medium text-main-foreground hover:bg-main/90"
@@ -50,7 +50,7 @@ export function LinkBuilder({
   const generalLink = useMemo(() => partnerLink(trackingCode), [trackingCode]);
 
   // Keep the currently-selected event visible in the list even if a later
-  // search term would otherwise filter it out — losing the selection out
+  // search term would otherwise filter it out - losing the selection out
   // from under the user just because they kept typing would be surprising.
   const filteredEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -105,8 +105,8 @@ export function LinkBuilder({
             filteredEvents.map((ev) => (
               <option key={ev.id} value={ev.id}>
                 {ev.name}
-                {ev.location ? ` — ${ev.location}` : ""}
-                {ev.date ? ` — ${new Date(ev.date).toLocaleDateString("he-IL")}` : ""}
+                {ev.location ? ` - ${ev.location}` : ""}
+                {ev.date ? ` - ${new Date(ev.date).toLocaleDateString("he-IL")}` : ""}
               </option>
             ))
           )}

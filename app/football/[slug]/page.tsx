@@ -49,7 +49,7 @@ export async function generateMetadata({
       alternates: {
         canonical: `https://www.mega-events.co.il/football/${slug}`,
       },
-      // og:image intentionally NOT set here — the branded card from
+      // og:image intentionally NOT set here - the branded card from
       // opengraph-image.tsx is the preview (explicit images would override it).
       openGraph: {
         title,
@@ -75,7 +75,7 @@ const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
 );
 
-/** Green-cube section heading — same look as the catalog's "זמין באתר" rows. */
+/** Green-cube section heading - same look as the catalog's "זמין באתר" rows. */
 const CubeHeading = ({ children }: { children: ReactNode }) => (
   <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
     <div aria-hidden className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} />
@@ -123,7 +123,7 @@ export default async function FootballPage({
 
     const { events } = await getEventsByName(String(nameDBenglish));
 
-    // Split fixtures by the team's role — "X vs Y" naming, first side hosts.
+    // Split fixtures by the team's role - "X vs Y" naming, first side hosts.
     // Unclassified = competition-hub pages ("Champions League", where sides
     // never equal the page's name) and non-fixture events → shown as one plain
     // list exactly like before the split.
@@ -185,7 +185,7 @@ export default async function FootballPage({
           {events.length === 0 ? (
             <EmptyState title="אין אירועים קרובים" />
           ) : homeEvents.length === 0 && awayEvents.length === 0 ? (
-            // Hub pages (e.g. ליגת האלופות) — no home/away notion, one list.
+            // Hub pages (e.g. ליגת האלופות) - no home/away notion, one list.
             <ArtistEventsFilter events={events} title={String(name)} showName />
           ) : (
             <div className="flex flex-col gap-10">

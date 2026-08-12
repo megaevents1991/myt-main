@@ -4,7 +4,7 @@ import { getPortalCoupons } from "@/lib/agent-coupons-actions";
 export const dynamic = "force-dynamic";
 
 export default async function AgentCouponsPage() {
-  // Shown to both agents and influencers — requirePartner() is the real
+  // Shown to both agents and influencers - requirePartner() is the real
   // gate, no role check (getPortalCoupons guards the same way).
   await requirePartner();
   const coupons = await getPortalCoupons();
@@ -51,7 +51,7 @@ export default async function AgentCouponsPage() {
                   <td className="px-3 py-2 text-gray-500">
                     {coupon.valid_until
                       ? new Date(coupon.valid_until).toLocaleDateString("he-IL")
-                      : "—"}
+                      : "-"}
                   </td>
                   <td className="px-3 py-2">
                     <span

@@ -53,7 +53,7 @@ declare module "amadeus" {
                 flightOffers: FlightOffer[];
               };
             },
-            { include }
+            { include },
           ): Promise<any>;
         };
       };
@@ -63,7 +63,7 @@ declare module "amadeus" {
 
 /**
  * A baggage allowance as Amadeus actually returns it. The carrier decides
- * whether the allowance is expressed as a piece count OR as a weight — they are
+ * whether the allowance is expressed as a piece count OR as a weight - they are
  * mutually exclusive in practice, and BOTH mean "a bag is included". Verified
  * live on the Enterprise gateway: Arkia sends `{weight: 8, weightUnit: "KG"}`
  * for its cabin bag and Emirates sends `{weight: 30, weightUnit: "KG"}` for its

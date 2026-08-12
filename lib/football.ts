@@ -8,7 +8,7 @@ const r = makePeopleReaders({ table: "football_teams" });
 
 /**
  * Football card-art resolution order (per product spec, 2026-07-22 rev 2):
- * 1. football_logos LIBRARY crest by club name — the PRIMARY source for EVERY
+ * 1. football_logos LIBRARY crest by club name - the PRIMARY source for EVERY
  *    team (not just imageless ones): one crop style across the site is what
  *    makes the crest standard actually look uniform. Name matching tolerates
  *    qualifier drift via clubNamesMatch ("Tottenham Hotspur FC" ≡ library's
@@ -19,7 +19,7 @@ const r = makePeopleReaders({ table: "football_teams" });
  *
  * Standardization: every tight crest (library included) renders with
  * FOOTBALL_CREST_ART (stadium background + one size). Per-team dials are
- * ignored for crests on purpose — uniformity is the requirement, and per-team
+ * ignored for crests on purpose - uniformity is the requirement, and per-team
  * knobs caused three production bugs.
  */
 const standardizeCrest = (t: FootballTeam): FootballTeam =>
@@ -38,7 +38,11 @@ const standardizeCrest = (t: FootballTeam): FootballTeam =>
       }
     : t;
 
-type LogoRow = { name_english: string; name_hebrew: string | null; logo_url: string };
+type LogoRow = {
+  name_english: string;
+  name_hebrew: string | null;
+  logo_url: string;
+};
 
 async function fetchLogoLibrary(): Promise<LogoRow[]> {
   const { data, error } = await supabase
@@ -51,18 +55,20 @@ async function fetchLogoLibrary(): Promise<LogoRow[]> {
   return (data ?? []) as LogoRow[];
 }
 
-/** Library crest for a club name pair — exact english, exact hebrew, then
+/** Library crest for a club name pair - exact english, exact hebrew, then
  *  token-equal english (qualifier drift). */
 const libraryUrlFor = (
   english: string | undefined,
   hebrew: string | undefined,
-  lib: LogoRow[]
+  lib: LogoRow[],
 ): string | null => {
   const en = (english ?? "").trim();
   const he = (hebrew ?? "").trim();
   const row =
     (en &&
-      lib.find((l) => l.name_english.trim().toLowerCase() === en.toLowerCase())) ||
+      lib.find(
+        (l) => l.name_english.trim().toLowerCase() === en.toLowerCase(),
+      )) ||
     (he && lib.find((l) => l.name_hebrew?.trim() === he)) ||
     (en && lib.find((l) => clubNamesMatch(l.name_english, en))) ||
     null;
@@ -86,7 +92,7 @@ export const getAllFootballTeams = async (): Promise<FootballTeam[]> =>
 export const getFeaturedFootballTeams = async (): Promise<FootballTeam[]> =>
   (await resolveCrests(await r.listFeatured())).map(standardizeCrest);
 export const getFootballTeamBySlug = async (
-  slug: string
+  slug: string,
 ): Promise<FootballTeam | null> => {
   const team = await r.getBySlug(slug);
   if (!team) return null;
@@ -95,14 +101,20 @@ export const getFootballTeamBySlug = async (
 export const getFootballTeamSlugs = r.listSlugs;
 
 /**
- * name_english → image index for the event-photo fallback — routed through the
+ * name_english → image index for the event-photo fallback - routed through the
  * SAME library-first resolution + crest standard, so an order-page or catalog
  * event card wears the exact crest art its team page does.
  */
-export const getFootballTeamImageIndex = async (): Promise<PersonImageEntry[]> => {
-  const [entries, lib] = await Promise.all([r.listImageIndex(), fetchLogoLibrary()]);
+export const getFootballTeamImageIndex = async (): Promise<
+  PersonImageEntry[]
+> => {
+  const [entries, lib] = await Promise.all([
+    r.listImageIndex(),
+    fetchLogoLibrary(),
+  ]);
   return entries.map((e) => {
-    const url = libraryUrlFor(e.name, undefined, lib) ?? e.art?.imageUrl ?? null;
+    const url =
+      libraryUrlFor(e.name, undefined, lib) ?? e.art?.imageUrl ?? null;
     if (!url || !isTightCrest(url)) return e;
     return {
       ...e,

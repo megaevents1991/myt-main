@@ -1,12 +1,12 @@
 /**
- * Meta ACTIVITIES catalog feed — pure mapping + CSV serialization.
+ * Meta ACTIVITIES catalog feed - pure mapping + CSV serialization.
  *
  * Meta catalogs have verticals, and ours is **Activities** (events/tickets),
  * NOT e-commerce. Different required fields entirely: activities want
  * rating_count / user_rating / activity_category / activity_date and have NO
  * availability, condition, expiration_date or product_type. Uploading our
  * e-commerce-shaped file into an activities catalog is what produced
- * "Your file format isn't supported" — Meta was reading a file whose columns
+ * "Your file format isn't supported" - Meta was reading a file whose columns
  * its parser doesn't know. `metaCatalog.ts` (e-commerce shape) stays for
  * Google Merchant; THIS file is what Meta consumes.
  *
@@ -28,15 +28,19 @@ import {
 
 /**
  * Meta marks rating_count + user_rating "required", but we have NO ratings
- * system — so we publish zeros, which the spec explicitly allows ("a rating
+ * system - so we publish zeros, which the spec explicitly allows ("a rating
  * between 0.0 and 5.0"). Inventing a rating (e.g. 100 reviews / 5 stars)
  * would be fabricated social proof shown to customers in ads. If real
  * ratings ever exist, source them per-event here instead of a constant.
  */
-export const ACTIVITY_RATING_COUNT = Number(process.env.META_ACTIVITY_RATING_COUNT ?? 0);
-export const ACTIVITY_USER_RATING = Number(process.env.META_ACTIVITY_USER_RATING ?? 0);
+export const ACTIVITY_RATING_COUNT = Number(
+  process.env.META_ACTIVITY_RATING_COUNT ?? 0,
+);
+export const ACTIVITY_USER_RATING = Number(
+  process.env.META_ACTIVITY_USER_RATING ?? 0,
+);
 
-/** Package suffix on concert titles — matches the verified working file. */
+/** Package suffix on concert titles - matches the verified working file. */
 const PACKAGE_SUFFIX = "טיסה+מלון+כרטיס";
 
 export type ActivityCategory = "Concert" | "Sports" | "Other";
@@ -55,7 +59,7 @@ export type ActivityItem = {
   activity_category: ActivityCategory;
   /** Artist or team name. */
   performers: string;
-  /** City only — no country, per the verified file. */
+  /** City only - no country, per the verified file. */
   location_names: string;
   /** Genre / sport, e.g. "Rock", "Football". */
   activity_sub_categories: string;
@@ -63,26 +67,53 @@ export type ActivityItem = {
   activity_date: string;
   custom_label_0: string;
   custom_label_1: string;
-  /** Backoffice feed tags (event_tag_links), first three usable slugs —
+  /** Backoffice feed tags (event_tag_links), first three usable slugs -
    *  the labels the CMO filters campaigns by. Empty when the event carries
    *  no tags. Appended after the verified column set (Meta maps by header
-   *  name, extra columns are additive) — re-verify one upload after deploy. */
+   *  name, extra columns are additive) - re-verify one upload after deploy. */
   custom_label_2: string;
   custom_label_3: string;
   custom_label_4: string;
-  /** Direct video FILE url, or "" — never a player/YouTube link. */
+  /** Direct video FILE url, or "" - never a player/YouTube link. */
   video_url: string;
 };
 
 /**
  * Meta's supported video containers (product data spec). A player page
  * (YouTube/Vimeo/Instagram) is rejected by Meta, so we only pass through URLs
- * that point at an actual file — a bad link would fail the whole feed row.
+ * that point at an actual file - a bad link would fail the whole feed row.
  */
 const VIDEO_EXTENSIONS = [
-  "3g2", "3gp", "3gpp", "asf", "avi", "dat", "divx", "dv", "f4v", "flv", "gif",
-  "m2ts", "m4v", "mkv", "mod", "mov", "mp4", "mpe", "mpeg", "mpeg4", "mpg",
-  "mts", "nsv", "ogm", "ogv", "qt", "tod", "ts", "vob", "wmv",
+  "3g2",
+  "3gp",
+  "3gpp",
+  "asf",
+  "avi",
+  "dat",
+  "divx",
+  "dv",
+  "f4v",
+  "flv",
+  "gif",
+  "m2ts",
+  "m4v",
+  "mkv",
+  "mod",
+  "mov",
+  "mp4",
+  "mpe",
+  "mpeg",
+  "mpeg4",
+  "mpg",
+  "mts",
+  "nsv",
+  "ogm",
+  "ogv",
+  "qt",
+  "tod",
+  "ts",
+  "vob",
+  "wmv",
 ];
 
 /** https URL whose path ends in a Meta-supported video extension. */
@@ -104,7 +135,7 @@ export type ActivityBuildResult = {
 };
 
 /**
- * Whether the event's name matched a CMS artist or football team — the site's
+ * Whether the event's name matched a CMS artist or football team - the site's
  * own classifier, supplied by `feedData`. Many `tx_event` rows carry no
  * taxonomy link at all, and this is what keeps them out of "Other".
  */
@@ -114,9 +145,12 @@ export type DomainHint = "artist" | "football-team" | null;
 export function activityCategoryOf(
   event: Pick<Event, "type">,
   taxonomy: EventTaxonomyInfo,
-  hint: DomainHint = null
+  hint: DomainHint = null,
 ): ActivityCategory {
-  if (event.type === "music_event" || event.type === "music_live_event_dynamic") {
+  if (
+    event.type === "music_event" ||
+    event.type === "music_live_event_dynamic"
+  ) {
     return "Concert";
   }
   if (
@@ -126,7 +160,7 @@ export function activityCategoryOf(
   ) {
     return "Sports";
   }
-  // tx_event carries either kind — taxonomy root first, then the CMS match.
+  // tx_event carries either kind - taxonomy root first, then the CMS match.
   const root = (taxonomy.categoryPath[0] ?? "").trim().toLowerCase();
   if (root.startsWith("music")) return "Concert";
   if (root.startsWith("sport")) return "Sports";
@@ -142,30 +176,31 @@ export function cityOnly(locationName: string | undefined): string {
 
 /**
  * @param availabilityCutoffISO events dated before this can't be booked (the
- *   site's 7-day window) — activities feeds have no availability field, so
+ *   site's 7-day window) - activities feeds have no availability field, so
  *   those and sold-out events are dropped rather than marked out of stock.
  */
 export function buildActivityItem(
   event: Event,
   taxonomy: EventTaxonomyInfo,
   availabilityCutoffISO: string,
-  hint: DomainHint = null
+  hint: DomainHint = null,
 ): ActivityItem | { skipped: string } {
   const eventDate = event.date.split("T")[0];
   if (isEventSoldOut(event)) return { skipped: "sold out" };
-  if (eventDate < availabilityCutoffISO) return { skipped: "inside booking window" };
+  if (eventDate < availabilityCutoffISO)
+    return { skipped: "inside booking window" };
 
   const price = feedPriceUSD(event);
   if (price == null) return { skipped: "no computable price" };
   // BRANDED OR NOT AT ALL: a product in the catalogue must carry the campaign
-  // creative — our wordmark, the package line, the price pill. A raw provider
+  // creative - our wordmark, the package line, the price pill. A raw provider
   // photo next to competitors' branded cards is worth less than not being
   // there, so an event without a creative is withheld rather than published
   // bare (Dor, 2026-07-29).
   //
   // Backstop, not a cliff: the backoffice generator now produces a creative for
-  // EVERY priced event — a bare branded card when it has no artwork of its own
-  // — so this only withholds events that could not be advertised anyway, and
+  // EVERY priced event - a bare branded card when it has no artwork of its own
+  // - so this only withholds events that could not be advertised anyway, and
   // /product-feed lists exactly who those are.
   const image_link = event.campaign_image_url;
   if (!image_link) return { skipped: "no campaign creative" };
@@ -179,7 +214,9 @@ export function buildActivityItem(
     .filter(Boolean)
     .join(" · ");
   const title = (
-    activity_category === "Concert" ? `${baseTitle} · ${PACKAGE_SUFFIX}` : baseTitle
+    activity_category === "Concert"
+      ? `${baseTitle} · ${PACKAGE_SUFFIX}`
+      : baseTitle
   ).slice(0, 200);
 
   const fromCms = plainText(event.description || "");
@@ -187,7 +224,7 @@ export function buildActivityItem(
     d.getUTCMonth() + 1
   }.${d.getUTCFullYear()}. כרטיס רשמי לאירוע${
     event.skip_flight ? " ומלון" : ", טיסה ומלון"
-  } — חבילה שאתם מרכיבים בעצמכם.`;
+  } - חבילה שאתם מרכיבים בעצמכם.`;
   const description = fromCms && fromCms !== title ? fromCms : generated;
 
   // Category names carry stray whitespace in the DB ("Football ").
@@ -199,7 +236,7 @@ export function buildActivityItem(
     (hint === "artist" ? "music" : hint === "football-team" ? "sport" : "");
   const subCategory = leaf || (hint === "football-team" ? "Football" : "");
   // Backoffice feed tags → labels 2-4. This used to exist only in the Google
-  // feed — Commerce Manager never saw tag labels at all ("the custom labels
+  // feed - Commerce Manager never saw tag labels at all ("the custom labels
   // from tags don't show up"). Legacy `item-N` slugs (auto-slugged
   // Hebrew-only tags) are meaningless to a campaign filter and are dropped.
   const tagLabels = usableTagSlugs(taxonomy.tagSlugs);
@@ -232,10 +269,24 @@ export function buildActivityItem(
 }
 
 const CSV_HEADERS = [
-  "id", "image_link", "brand", "description", "title", "price", "link",
-  "rating_count", "user_rating", "activity_category", "performers",
-  "location_names", "activity_sub_categories", "activity_date",
-  "custom_label_0", "custom_label_1", "custom_label_2", "custom_label_3",
+  "id",
+  "image_link",
+  "brand",
+  "description",
+  "title",
+  "price",
+  "link",
+  "rating_count",
+  "user_rating",
+  "activity_category",
+  "performers",
+  "location_names",
+  "activity_sub_categories",
+  "activity_date",
+  "custom_label_0",
+  "custom_label_1",
+  "custom_label_2",
+  "custom_label_3",
   "custom_label_4",
 ];
 /** Meta's optional video column (up to video[19].url; we publish one). */
@@ -256,10 +307,24 @@ export function toActivitiesCsv(items: ActivityItem[]): string {
   const headers = withVideo ? [...CSV_HEADERS, VIDEO_HEADER] : CSV_HEADERS;
   const rows = items.map((it) => {
     const cells: (string | number)[] = [
-      it.id, it.image_link, it.brand, it.description, it.title, it.price, it.link,
-      it.rating_count, it.user_rating, it.activity_category, it.performers,
-      it.location_names, it.activity_sub_categories, it.activity_date,
-      it.custom_label_0, it.custom_label_1, it.custom_label_2, it.custom_label_3,
+      it.id,
+      it.image_link,
+      it.brand,
+      it.description,
+      it.title,
+      it.price,
+      it.link,
+      it.rating_count,
+      it.user_rating,
+      it.activity_category,
+      it.performers,
+      it.location_names,
+      it.activity_sub_categories,
+      it.activity_date,
+      it.custom_label_0,
+      it.custom_label_1,
+      it.custom_label_2,
+      it.custom_label_3,
       it.custom_label_4,
     ];
     if (withVideo) cells.push(it.video_url);

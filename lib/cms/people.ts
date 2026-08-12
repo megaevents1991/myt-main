@@ -2,12 +2,12 @@ import { supabase } from "@/lib/supabase";
 import type { Artist } from "@/lib/app.types";
 
 /**
- * Readers for the "people" CMS tables (artists, football_teams) — typed rows in
+ * Readers for the "people" CMS tables (artists, football_teams) - typed rows in
  * Supabase (managed by the backoffice Templates section). Each reader maps a
  * row back to the exact `Artist`/`FootballTeam` runtime shape the UI already
  * consumes, so no component changes are needed. (Artist and FootballTeam are
  * structurally identical.) Slugs of pre-migration rows are old Contentful
- * entry ids — that's just a string format, there is no Contentful at runtime.
+ * entry ids - that's just a string format, there is no Contentful at runtime.
  */
 type PersonRow = {
   slug: string;
@@ -46,7 +46,7 @@ export type PersonImageEntry = {
   name: string;
   /** Hero photo, full https URL (artist-page main image). */
   url: string | null;
-  /** Blob card-art set — preferred fallback; null when the person has none. */
+  /** Blob card-art set - preferred fallback; null when the person has none. */
   art: {
     imageUrl: string;
     colorIndex: number | null;
@@ -56,7 +56,7 @@ export type PersonImageEntry = {
     offsetX: number | null;
     offsetY: number | null;
   } | null;
-  /** Gallery photos (full https URLs) — photo-less events pick one
+  /** Gallery photos (full https URLs) - photo-less events pick one
    *  deterministically so the same artist's events don't all share one image.
    *  Empty when the person has no gallery. */
   gallery: string[];
@@ -132,7 +132,7 @@ export function makePeopleReaders(cfg: PeopleConfig) {
 
     /** One row by slug (pre-migration rows use the old Contentful id string).
      *  Inactive rows (is_active=false) are logo-only records for the
-     *  backoffice creative generator — they must not get a public page. */
+     *  backoffice creative generator - they must not get a public page. */
     async getBySlug(slug: string): Promise<Artist | null> {
       const { data, error } = await base()
         .eq("slug", slug)
@@ -149,14 +149,14 @@ export function makePeopleReaders(cfg: PeopleConfig) {
      * Lightweight name→image index for the event-image fallback
      * (docs/superpowers/specs/2026-07-01-event-photo-artist-fallback-design.md).
      * Carries the person's blob card-art (preferred fill) AND the hero photo.
-     * Full https URLs as stored — events consume them directly in next/image.
+     * Full https URLs as stored - events consume them directly in next/image.
      * No Contentful fallback: on error return [] so enrichment is a no-op.
      */
     async listImageIndex(): Promise<PersonImageEntry[]> {
       const { data, error } = await supabase
         .from(table)
         .select(
-          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y, gallery"
+          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y, gallery",
         )
         .eq("is_deleted", false)
         .eq("is_active", true);
@@ -168,7 +168,7 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         .filter(
           (r) =>
             r.name_english &&
-            (r.image_url || r.art_image_url || r.gallery?.length)
+            (r.image_url || r.art_image_url || r.gallery?.length),
         )
         .map((r) => ({
           name: r.name_english as string,
@@ -185,13 +185,13 @@ export function makePeopleReaders(cfg: PeopleConfig) {
               }
             : null,
           gallery: (r.gallery ?? []).filter(
-            (u): u is string => typeof u === "string" && u.length > 0
+            (u): u is string => typeof u === "string" && u.length > 0,
           ),
         }));
     },
 
     /** Slugs for static params.
-     *  Inactive (logo-only) rows excluded — no page, no sitemap entry. */
+     *  Inactive (logo-only) rows excluded - no page, no sitemap entry. */
     async listSlugs(): Promise<string[]> {
       const { data, error } = await base().select("slug").eq("is_active", true);
       if (error) {

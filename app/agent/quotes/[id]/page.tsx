@@ -15,7 +15,7 @@ export default async function QuoteViewPage({
   if (!Number.isFinite(quoteId)) notFound();
 
   // getMyQuote() itself calls requireAgent() and returns null for a quote
-  // that isn't this agent's — same 404-for-both-cases posture as the
+  // that isn't this agent's - same 404-for-both-cases posture as the
   // backoffice's PDF route, so a guessed id can't confirm it exists.
   const quote = await getMyQuote(quoteId);
   if (!quote) notFound();
@@ -36,7 +36,7 @@ export default async function QuoteViewPage({
         <div className="mb-6 flex items-start justify-between border-b pb-4">
           <div>
             {profile?.logo_url && (
-              // Agent's own agency logo — plain <img>, this is a one-off
+              // Agent's own agency logo - plain <img>, this is a one-off
               // print document rather than a Next/Image-optimized page.
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.logo_url} alt="" className="mb-2 h-12 w-auto" />

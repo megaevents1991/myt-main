@@ -9,7 +9,7 @@ import type { Event, Artist } from "@/lib/app.types";
 import { HeroSearch } from "@/components/HeroSearch";
 
 /**
- * Global search overlay — the header search button opens the *same* search
+ * Global search overlay - the header search button opens the *same* search
  * experience here, in place, on every page (including the homepage), instead of
  * routing anywhere. Events + artists are lazy-loaded (cached API) the first time
  * it opens, so pages that never search pay nothing for it.
@@ -67,7 +67,7 @@ export const GlobalSearch = () => {
           "!text-main-foreground !bg-transparent hover:!bg-main-foreground/15 !rounded-full",
       }}
       styles={{
-        // No modal scrollbars — the modal grows with its content and the
+        // No modal scrollbars - the modal grows with its content and the
         // results lists inside HeroSearch scroll themselves.
         content: {
           backgroundColor: "hsl(var(--surface-inverse))",

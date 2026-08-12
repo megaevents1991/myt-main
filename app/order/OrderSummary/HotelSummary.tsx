@@ -11,7 +11,7 @@ export const HotelSummary = ({
 }: {
   selectedHotel: OrderHotel;
   agentCommission: number;
-  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
   hotelPriceAddition: number;
   totalGuests: number;

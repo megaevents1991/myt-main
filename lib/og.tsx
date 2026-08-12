@@ -4,7 +4,7 @@ import { isTightCrest } from "@/lib/eventArt";
 
 /**
  * Branded Open-Graph card for artist / football-team pages (WhatsApp & social
- * link previews) — the new card-art design: dark brand canvas, the person's
+ * link previews) - the new card-art design: dark brand canvas, the person's
  * cut-out on their blob color, name + wordmark. Rendered by the
  * `opengraph-image.tsx` route files.
  */
@@ -41,7 +41,7 @@ const BLOB_SHAPES: { d: string; w: number; h: number }[] = [
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-/** Rubik subset with exactly the glyphs the card uses (Hebrew incl.) — the
+/** Rubik subset with exactly the glyphs the card uses (Hebrew incl.) - the
  *  default og font is latin-only and would render Hebrew as tofu. Google
  *  returns TTF when fetched without a browser UA. */
 async function loadHebrewFont(text: string): Promise<ArrayBuffer | null> {
@@ -59,7 +59,7 @@ async function loadHebrewFont(text: string): Promise<ArrayBuffer | null> {
   }
 }
 
-/** Satori has no RTL/bidi — Hebrew strings must be pre-reversed so the LTR
+/** Satori has no RTL/bidi - Hebrew strings must be pre-reversed so the LTR
  *  layout draws them right-to-left. Latin-only strings pass through. */
 const rtl = (s: string) =>
   /[֐-׿]/.test(s) ? [...s].reverse().join("") : s;
@@ -67,14 +67,14 @@ const rtl = (s: string) =>
 export async function personOgImage(p: {
   name: string;
   nameEnglish?: string;
-  /** Transparent cut-out (art_image_url) — preferred. */
+  /** Transparent cut-out (art_image_url) - preferred. */
   cutoutUrl?: string | null;
   /** Flat photo fallback when there's no cut-out. */
   photoUrl?: string | null;
   colorIndex?: number | null;
   shapeIndex?: number | null;
-  /** Backoffice zoom dial — honored for every tightly-cropped crest source
-   *  (football-logos library, ad-hoc templates-bucket uploads — no built-in
+  /** Backoffice zoom dial - honored for every tightly-cropped crest source
+   *  (football-logos library, ad-hoc templates-bucket uploads - no built-in
    *  padding); art_blobs cutouts already read right at the fixed
    *  CARD_W-30/CARD_H-60 box, so callers simply don't pass this for them. */
   imageScale?: number | null;
@@ -99,7 +99,7 @@ export async function personOgImage(p: {
   const cover = Math.max(CARD_W / shape.w, CARD_H / shape.h) * 1.05;
   const bw = Math.round(shape.w * cover);
   const bh = Math.round(shape.h * cover);
-  const tagline = "טיסות · מלון · כרטיסים — חבילה אחת";
+  const tagline = "טיסות · מלון · כרטיסים - חבילה אחת";
   const font = await loadHebrewFont(
     `${p.name} ${p.nameEnglish ?? ""} MegaΣvents. ${tagline}`
   );

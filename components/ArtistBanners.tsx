@@ -4,7 +4,7 @@ import Image from "next/image";
 type Banner = { image_url?: string; link_url?: string; title?: string };
 
 /**
- * #20 — promo banners on an artist / team page. Backoffice-managed (Supabase
+ * #20 - promo banners on an artist / team page. Backoffice-managed (Supabase
  * `banners` jsonb). Renders nothing when empty.
  */
 export const ArtistBanners = ({ banners }: { banners?: Banner[] }) => {

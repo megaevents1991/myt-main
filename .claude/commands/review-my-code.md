@@ -1,4 +1,4 @@
-Project-specific review of YOUR recent (uncommitted) changes before pushing — myt-main.
+Project-specific review of YOUR recent (uncommitted) changes before pushing - myt-main.
 
 1. `git diff` (unstaged + staged) to find what you changed. If $ARGUMENTS names files,
    scope to those.

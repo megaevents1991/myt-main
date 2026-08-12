@@ -16,7 +16,7 @@ export function buildOfflineStops(
 }
 
 /**
- * Postgres renders `interval` as "HH:MM:SS" — the same assumption the route's
+ * Postgres renders `interval` as "HH:MM:SS" - the same assumption the route's
  * existing PTfunction makes. Returns hours to one decimal, or null when the
  * value is missing or unparseable (never NaN, which would break the UI).
  */

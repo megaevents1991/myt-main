@@ -69,7 +69,10 @@ export const validateOrderData = async (
       final_purchase_price_ils: yup.number().required(),
       aff_partner_tracking_code: yup.string(),
       is_agent_booking: yup.boolean(),
-      settlement_method: yup.string().oneOf([...SETTLEMENT_METHODS]).optional(),
+      settlement_method: yup
+        .string()
+        .oneOf([...SETTLEMENT_METHODS])
+        .optional(),
       coupon_code: yup.string().nullable(),
       coupon_base_total_usd: yup.number().nullable(),
       source_share_token: yup.string().nullable(),
@@ -115,7 +118,7 @@ const minMandatoryMarkupUsd = (event: Event): number => {
  *
  * `final_purchase_price_ils` is computed in the browser and is the amount later
  * billed by /api/payment. It reaches us client-supplied and, until now, was only
- * type-checked — so a tampered request could persist a ₪1 total for a full-price
+ * type-checked - so a tampered request could persist a ₪1 total for a full-price
  * package and be charged ₪1.
  *
  * This recomputes a TRUSTED minimum from server-held data (cheapest available
@@ -123,7 +126,7 @@ const minMandatoryMarkupUsd = (event: Event): number => {
  * server exchange rate, and rejects only amounts grossly below it. The floor
  * counts ONLY always-present components (never the flight/hotel, which can be
  * skipped), is relaxed by DB-trusted coupon/affiliate discounts, and keeps a
- * wide 40% slack — so a legitimate order can never trip it; it only catches
+ * wide 40% slack - so a legitimate order can never trip it; it only catches
  * gross underpayment.
  *
  * Fails OPEN: any missing trusted input (unknown event, last-minute event outside
@@ -152,20 +155,21 @@ export const validatePurchasePriceFloor = async (
         .maybeSingle());
     }
 
-    // Agents book with custom, rep-approved pricing — never gate them. But
+    // Agents book with custom, rep-approved pricing - never gate them. But
     // the client's `is_agent_booking` flag plus a real agent's tracking code
     // is not proof of anything: anyone can read a commission > 0 off the
     // public checkCode endpoint and name that code without ever being that
     // agent. Only waive the floor when the request actually carries THAT
-    // agent's live /agent session — same requirement resolveAgentSettlement
+    // agent's live /agent session - same requirement resolveAgentSettlement
     // enforces for agent_card/voucher, applied here too since this bypass is
     // otherwise a bare, sessionless floor-skip for anyone who can name a code.
     if (data.is_agent_booking && Number(partner?.commission) > 0) {
       try {
         const session = await requireAgent();
-        if (session.partner_code === data.aff_partner_tracking_code) return null;
+        if (session.partner_code === data.aff_partner_tracking_code)
+          return null;
       } catch {
-        // Not a valid, live agent session for this code — fall through to
+        // Not a valid, live agent session for this code - fall through to
         // the normal floor check below.
       }
     }
@@ -180,13 +184,13 @@ export const validatePurchasePriceFloor = async (
 
     const { events } = await getEvents(eventId);
     const event = events?.[0];
-    if (!event) return null; // event outside availability window / not found — skip
+    if (!event) return null; // event outside availability window / not found - skip
 
     const rate = exchangeRateService.getTravelRate();
     if (!Number.isFinite(rate) || rate <= 0) return null;
 
     // Cheapest available ticket from TRUSTED event data. Empty for dynamic-ticket
-    // events (XS2Event/Tixstock) — markup alone still anchors a non-zero floor.
+    // events (XS2Event/Tixstock) - markup alone still anchors a non-zero floor.
     const available = (event.tickets_and_rates || []).filter(
       (t) => t?.available !== false,
     );
@@ -202,7 +206,7 @@ export const validatePurchasePriceFloor = async (
 
     // Relax the floor by discounts a legit order can carry, using ONLY
     // DB-trusted values (never the client's numbers). The client applies
-    // best-one-wins, so subtracting both can only relax further — safe side.
+    // best-one-wins, so subtracting both can only relax further - safe side.
     if (coupon) {
       floorUsd =
         coupon.discount_type === "percent"
@@ -226,7 +230,7 @@ export const validatePurchasePriceFloor = async (
     }
     return null;
   } catch (error) {
-    // Never let this guard break checkout — on any internal failure, skip it.
+    // Never let this guard break checkout - on any internal failure, skip it.
     console.error(
       "Price-floor validation error (skipping guard):",
       error instanceof Error ? error.message : String(error),
@@ -238,7 +242,7 @@ export const validatePurchasePriceFloor = async (
 /**
  * Decides how an agent-entered booking actually gets charged.
  *
- * `final_purchase_price_ils` always stays the FULL, undiscounted total —
+ * `final_purchase_price_ils` always stays the FULL, undiscounted total -
  * every customer-facing surface (confirmation emails, this reservation's own
  * record) reads that column, and an agent-card settlement must never leak
  * its commission-netted charge onto something the customer sees. The
@@ -249,7 +253,7 @@ export const validatePurchasePriceFloor = async (
  * The client always sends the FULL price, exactly as a normal customer_card
  * order would (no client-side changes needed for that path at all). This
  * function only ever computes a discount from trusted, freshly-fetched
- * partner data — never from anything the client claims about its own
+ * partner data - never from anything the client claims about its own
  * discount. A request with no settlement_method (every non-agent-assisted
  * order) short-circuits immediately without even querying `partners`.
  */
@@ -278,7 +282,9 @@ export const resolveAgentSettlement = async (
   try {
     let { data: partner, error } = await supabase
       .from("partners")
-      .select("type, is_active, commission, commission_type, voucher_payment_allowed")
+      .select(
+        "type, is_active, commission, commission_type, voucher_payment_allowed",
+      )
       .eq("partner_tracking_code", data.aff_partner_tracking_code)
       .maybeSingle();
     if (error && error.code === "42703") {
@@ -290,20 +296,21 @@ export const resolveAgentSettlement = async (
     }
     if (error || !partner) return fallback;
 
-    // Never trust the client's is_agent_booking flag alone — re-derive
+    // Never trust the client's is_agent_booking flag alone - re-derive
     // "really an active agent" from the DB, same posture as the price floor.
-    if (partner.type !== "agent" || partner.is_active === false) return fallback;
+    if (partner.type !== "agent" || partner.is_active === false)
+      return fallback;
 
     // agent_card/voucher grant something a plain requester shouldn't be able
-    // to get just by knowing (or guessing — checkCode's commission field is
+    // to get just by knowing (or guessing - checkCode's commission field is
     // openly readable) someone else's tracking code: a real charge reduction,
     // or skipping the card entirely. Require the request to actually carry
     // THAT agent's signed-in /agent session, not merely name their code.
     // customer_card asks for nothing beyond today's default, so it isn't
-    // gated — anyone can already trigger that path today.
+    // gated - anyone can already trigger that path today.
     if (requested === "voucher" || requested === "agent_card") {
       // requireAgent() re-reads the live profile (not just the cookie), the
-      // same rigor requirePartner() exists for — an agent deactivated
+      // same rigor requirePartner() exists for - an agent deactivated
       // mid-session must lose this the moment it happens, not up to a week
       // later when the signed cookie would otherwise expire.
       let isThatAgent = false;
@@ -326,14 +333,17 @@ export const resolveAgentSettlement = async (
 
     if (requested === "voucher") {
       if (partner.voucher_payment_allowed !== true) {
-        return { ok: false, reason: "Voucher payment not enabled for this partner" };
+        return {
+          ok: false,
+          reason: "Voucher payment not enabled for this partner",
+        };
       }
       // AGENCY-voucher flow: the order waits Pending until the voucher
       // document is collected offline (backoffice tracks voucher_state).
-      // Being configured for it is the whole gate — a live credit-coupon
+      // Being configured for it is the whole gate - a live credit-coupon
       // balance is a different feature and no longer blocks this
-      // (אלון היה מוגדר לשובר ולא יכול היה לבחור בו — 2026-08-06).
-      // Full price — the voucher covers the whole sale to us; the agent's
+      // (אלון היה מוגדר לשובר ולא יכול היה לבחור בו - 2026-08-06).
+      // Full price - the voucher covers the whole sale to us; the agent's
       // commission is settled through the normal payout cycle, same as any
       // other referred booking. No card is ever charged for this order.
       return {
@@ -346,7 +356,7 @@ export const resolveAgentSettlement = async (
 
     if (requested === "agent_card") {
       // The discount only means anything when this request is about to hit
-      // /api/payment right now — a "hold" or "phone order" submission never
+      // /api/payment right now - a "hold" or "phone order" submission never
       // charges anyone, and if the discount rode along on the row anyway, a
       // later, unrelated charge attempt against the same reservation id
       // would inherit it. Reject rather than silently downgrade, so the
@@ -367,7 +377,10 @@ export const resolveAgentSettlement = async (
       const ilsRate = Number(data.exchange_rate_usd_ils_100) / 100;
       let discountIls: number;
       if (commissionType === "percent_of_sale") {
-        const commission = Math.min(Math.max(Number(partner.commission) || 0, 0), 100);
+        const commission = Math.min(
+          Math.max(Number(partner.commission) || 0, 0),
+          100,
+        );
         discountIls = Math.round(fullPriceIls * (commission / 100));
       } else {
         const perTicketUsd = Math.max(Number(partner.commission) || 0, 0);
@@ -376,13 +389,16 @@ export const resolveAgentSettlement = async (
           Math.floor(Number(data.event_order_info?.number_of_ticket)) || 1,
         );
         if (!Number.isFinite(ilsRate) || ilsRate <= 0) {
-          return { ok: false, reason: "Missing exchange rate for agent settlement" };
+          return {
+            ok: false,
+            reason: "Missing exchange rate for agent settlement",
+          };
         }
         discountIls = Math.round(perTicketUsd * tickets * ilsRate);
       }
 
       // Quote-priced margin: whatever THIS agent priced above the recorded
-      // system price on the signed quote the order settles is theirs too —
+      // system price on the signed quote the order settles is theirs too -
       // $20/ticket base + $100/pax uplift on 2 pax nets the card full − $240
       // (אלון, 2026-08-07). DB-trusted end to end: the quote row's total,
       // baseline and owner, never a client figure.
@@ -398,27 +414,33 @@ export const resolveAgentSettlement = async (
           quote.partner_tracking_code === data.aff_partner_tracking_code &&
           quote.base_unit_price != null
         ) {
-          const qty = (Array.isArray(quote.line_items) ? quote.line_items : []).reduce(
-            (sum: number, item: { qty?: number | string }) => {
-              const q = Number(item?.qty);
-              return sum + (Number.isFinite(q) && q > 0 ? q : 0);
-            },
-            0,
-          );
+          const qty = (
+            Array.isArray(quote.line_items) ? quote.line_items : []
+          ).reduce((sum: number, item: { qty?: number | string }) => {
+            const q = Number(item?.qty);
+            return sum + (Number.isFinite(q) && q > 0 ? q : 0);
+          }, 0);
           const upliftUsd =
             qty > 0
-              ? Math.max(0, Number(quote.total ?? 0) - Number(quote.base_unit_price) * qty)
+              ? Math.max(
+                  0,
+                  Number(quote.total ?? 0) -
+                    Number(quote.base_unit_price) * qty,
+                )
               : 0;
           if (upliftUsd > 0) {
             if (!Number.isFinite(ilsRate) || ilsRate <= 0) {
-              return { ok: false, reason: "Missing exchange rate for agent settlement" };
+              return {
+                ok: false,
+                reason: "Missing exchange rate for agent settlement",
+              };
             }
             discountIls += Math.round(upliftUsd * ilsRate);
           }
         }
       }
       // A misconfigured commission (or one landing right at the rounding edge)
-      // must not park an unpayable ~₪0 reservation — reject outright instead
+      // must not park an unpayable ~₪0 reservation - reject outright instead
       // of clamping, which would just get stuck Pending.
       if (fullPriceIls - discountIls <= 0) {
         return {
@@ -434,7 +456,7 @@ export const resolveAgentSettlement = async (
       };
     }
 
-    // "customer_card" — explicit, unchanged full price.
+    // "customer_card" - explicit, unchanged full price.
     return {
       ok: true,
       method: "customer_card",
@@ -469,7 +491,7 @@ export const userEmail = (
           <div style="margin-bottom: 18px; direction: rtl;" dir="rtl">
               <p style="font-size: 13px; font-weight: 700; letter-spacing: .04em; color: #7FD8A6; margin: 0 0 4px 0; direction: rtl;" dir="rtl">הזמינו חברים לחופשה</p>
               <p style="font-size: 30px; font-weight: 800; color: #5BFF95; margin: 0 0 10px 0; direction: rtl;" dir="rtl">עד <span style="unicode-bidi: embed;">$800</span> החזר!</p>
-              <p style="font-size: 14px; line-height: 1.6; color: #C7D8CF; margin: 0 auto; max-width: 380px; direction: rtl;" dir="rtl">על כל נוסע שיזמין דרך הקישור שלכם — <strong style="color: #5BFF95;">$40 החזר</strong>, והם יהנו מהטבה בלעדית.</p>
+              <p style="font-size: 14px; line-height: 1.6; color: #C7D8CF; margin: 0 auto; max-width: 380px; direction: rtl;" dir="rtl">על כל נוסע שיזמין דרך הקישור שלכם - <strong style="color: #5BFF95;">$40 החזר</strong>, והם יהנו מהטבה בלעדית.</p>
           </div>
           
           <!-- Referral Link (LTR content in RTL context) -->

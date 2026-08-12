@@ -21,9 +21,9 @@ export const PriceSummary = ({
   /** Expected commission in USD, computed per the commission's unit (percent /
    *  fixed-per-ticket). When given it replaces the legacy percent-only math. */
   agentCommissionUsd?: number;
-  /** Any signed agent code — commission may be 0. Falls back to commission>0. */
+  /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
-  // Total winning discount in USD (affiliate or coupon — best one wins)
+  // Total winning discount in USD (affiliate or coupon - best one wins)
   affDiscount: number;
   // true when the winning discount came from a coupon (changes the label)
   isCouponDiscount?: boolean;
@@ -46,12 +46,12 @@ export const PriceSummary = ({
 
   return (
     // Explicit RTL: "סה"כ" (+ discount note) on the right, the amounts on the
-    // left — Hebrew-native layout regardless of the surrounding context.
+    // left - Hebrew-native layout regardless of the surrounding context.
     <div dir="rtl" className="flex flex-row justify-between items-center py-4 px-6 border-b border-border">
       <div className="flex flex-col items-start font-bold">
         <span className="text-[22px] ">סה&quot;כ</span>
         {agentViewer ? (
-          // Agent framing: expected commission, or nothing for a 0 agent —
+          // Agent framing: expected commission, or nothing for a 0 agent -
           // never the customer's discount line. agentCommissionUsd (computed
           // per the commission's UNIT) wins; the percent math is the legacy
           // fallback for callers that never pass it.

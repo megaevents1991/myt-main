@@ -90,7 +90,7 @@ export function AgentSearch({
 
       {matches.length === 60 && (
         <p className="text-xs text-gray-500">
-          מוצגות 60 התוצאות הראשונות — חדדו את החיפוש כדי לראות עוד.
+          מוצגות 60 התוצאות הראשונות - חדדו את החיפוש כדי לראות עוד.
         </p>
       )}
     </div>

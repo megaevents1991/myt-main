@@ -30,7 +30,7 @@ export function LogoSettings({ currentLogoUrl }: { currentLogoUrl: string | null
       setLogoUrl(result.logo_url);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
-      setError("שגיאת רשת — נסו שוב.");
+      setError("שגיאת רשת - נסו שוב.");
     } finally {
       setBusy(false);
     }
@@ -47,7 +47,7 @@ export function LogoSettings({ currentLogoUrl }: { currentLogoUrl: string | null
       }
       setLogoUrl(null);
     } catch {
-      setError("שגיאת רשת — נסו שוב.");
+      setError("שגיאת רשת - נסו שוב.");
     } finally {
       setBusy(false);
     }
@@ -63,7 +63,7 @@ export function LogoSettings({ currentLogoUrl }: { currentLogoUrl: string | null
       </div>
 
       {logoUrl && (
-        // Partner-controlled logo served from a public Storage bucket —
+        // Partner-controlled logo served from a public Storage bucket -
         // plain <img>, not a content asset this app owns the source of.
         // eslint-disable-next-line @next/next/no-img-element
         <img

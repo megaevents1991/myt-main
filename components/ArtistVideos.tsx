@@ -3,7 +3,7 @@ import { youtubeId, youtubeEmbed } from "@/lib/youtube";
 type Video = { url?: string; label?: string };
 
 /**
- * #24 — performance videos on an artist / team page. Backoffice-managed
+ * #24 - performance videos on an artist / team page. Backoffice-managed
  * (Supabase `videos` jsonb: [{ url, label }]). Lazy YouTube embeds. Renders
  * nothing when empty / no valid YouTube URLs.
  */

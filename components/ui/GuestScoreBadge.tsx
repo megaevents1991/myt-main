@@ -1,4 +1,4 @@
-// RateHawk guest review score (0–10). NOT TripAdvisor — labelled generically as
+// RateHawk guest review score (0–10). NOT TripAdvisor - labelled generically as
 // a guest rating. Renders nothing when there is no score.
 //
 // Review count is intentionally NOT displayed: the reviews dump exposes the

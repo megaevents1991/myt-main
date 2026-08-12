@@ -17,7 +17,7 @@ type StepperProps = {
  * Booking progress indicator. Mantine renders the three states distinctly
  * once primaryColor (mint) is set: completed = filled + check, active =
  * outlined, upcoming = muted. Forward steps are not selectable.
- * The MYT wordmark sits at the inline-start (right in RTL) and links home —
+ * The MYT wordmark sits at the inline-start (right in RTL) and links home -
  * the global header is hidden inside the order flow.
  */
 export const Stepper = ({
@@ -28,16 +28,16 @@ export const Stepper = ({
 }: StepperProps) => {
   const active = currentStep - 1;
   return (
-    // Static (non-sticky) header — it scrolls away with the page. The global
+    // Static (non-sticky) header - it scrolls away with the page. The global
     // header is hidden inside the order flow, so this just marks the top.
     <div className="border-b border-border bg-background">
     <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 px-4 py-3 sm:flex-row sm:gap-8 sm:px-10 sm:py-4">
       <Link href="/" aria-label="חזרה לדף הבית" className="shrink-0">
         <MYT className="h-5 w-auto text-foreground md:h-6" />
       </Link>
-      {/* Partner pill — ONE badge, on the header row symmetric with the MYT
+      {/* Partner pill - ONE badge, on the header row symmetric with the MYT
           wordmark (inline-end). Was rendered inside the page body (twice on
-          the summary) — אלון ודור, 2026-08-06. */}
+          the summary) - אלון ודור, 2026-08-06. */}
       <div className="order-first shrink-0 sm:order-last sm:ms-auto [&>div]:mx-0 [&>div]:mb-0">
         <PartnerReferralBadge />
       </div>
@@ -48,7 +48,7 @@ export const Stepper = ({
             size="md"
             active={active}
             allowNextStepsSelect={false}
-            // Brand light-green (mint, shade 4 #5BFF95) for the progress —
+            // Brand light-green (mint, shade 4 #5BFF95) for the progress -
             // overrides the global primaryShade 6 just for the stepper.
             color="myColor.4"
             styles={{

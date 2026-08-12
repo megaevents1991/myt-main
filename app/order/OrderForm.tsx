@@ -92,7 +92,7 @@ export const OrderForm = ({
   // "Edit from summary" mode (flag lives in OrderContext so the layout's
   // Stepper can hide too): entering a step via the summary's עריכה button arms
   // it; confirming that step jumps straight back to the summary (step 4)
-  // instead of walking the rest of the flow again. Cleared on arrival — and
+  // instead of walking the rest of the flow again. Cleared on arrival - and
   // ignored when the flow is no longer complete (e.g. a quantity change wiped
   // the flight/hotel), which falls back to the normal 1→2→3 walk.
   useEffect(() => {
@@ -164,11 +164,11 @@ export const OrderForm = ({
     (flight?.price || 0) / planeTickets.adults - event.base_flight_price
   );
 
-  // NOTE: param renamed from `skipHotel` — it shadowed the context flag of the
+  // NOTE: param renamed from `skipHotel` - it shadowed the context flag of the
   // same name, which the edit-return check below needs to read.
   // Runs OUTSIDE the setStep updater: updaters must be pure (StrictMode/
-  // concurrent React may replay them — analytics and the pricing fetch used to
-  // double-fire). `step` is fresh here — nextStep only runs from click handlers.
+  // concurrent React may replay them - analytics and the pricing fetch used to
+  // double-fire). `step` is fresh here - nextStep only runs from click handlers.
   const nextStep = (skipHotelChosen = false) => {
     const prev = step;
     let next = prev + 1;
@@ -259,7 +259,7 @@ export const OrderForm = ({
             if (res.ok) {
               res.json().then((data) => {
                 // If the flight was cleared meanwhile (skip / back-nav), stay
-                // cleared — never resurrect a truthy id-less flight object.
+                // cleared - never resurrect a truthy id-less flight object.
                 setFlight((prev) =>
                   prev
                     ? { ...prev, penalties: data?.penalties, bags: data?.bags }
@@ -306,7 +306,7 @@ export const OrderForm = ({
         });
       }
       // Edit-from-summary: once the edited step is confirmed, jump straight
-      // back to the summary — but only when every step is still satisfied
+      // back to the summary - but only when every step is still satisfied
       // (a quantity change clears flight/hotel → walk the flow normally).
       if (returnToSummary && prev < 4) {
         const flowComplete =
@@ -365,11 +365,11 @@ export const OrderForm = ({
         : "כלול";
 
   // Pills are navigation: completed steps (behind the current one) tap back to
-  // modify; the IMMEDIATE next step taps forward — exactly like the primary
+  // modify; the IMMEDIATE next step taps forward - exactly like the primary
   // continue button (same guard + side effects). Never further: steps must be
   // completed in order (1 → 2 → 3).
   const slotNav = (target: number) => {
-    // Agent-locked package: pills are labels, not navigation — the pinned
+    // Agent-locked package: pills are labels, not navigation - the pinned
     // composition may not be rearranged. Forward (the primary CTA's twin)
     // stays, so a repick landing can still continue.
     if (packageLocked && target < step) return undefined;
@@ -392,7 +392,7 @@ export const OrderForm = ({
       label: "טיסה",
       filled: flightSkipped || !!flight?.id,
       value: flightSkipped ? "ללא טיסה" : flight?.id ? airline : "",
-      // Skipped = still bookable — invite the tap instead of a dead ✓.
+      // Skipped = still bookable - invite the tap instead of a dead ✓.
       delta: flightSkipped
         ? "+ להוספה"
         : flight?.id
@@ -417,7 +417,7 @@ export const OrderForm = ({
   }
 
   // Running total = base package + the same upgrade deltas shown per slot
-  // (no new price math — just sums figures already derived above).
+  // (no new price math - just sums figures already derived above).
   const displayTotal =
     basePriceNum +
     (ticketRelativePrice > 0 ? ticketRelativePrice : 0) +
@@ -426,11 +426,11 @@ export const OrderForm = ({
     (flight?.id && !flightSkipped ? flightDelta : 0) +
     (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
 
-  // Once the package is COMPLETE (finalPurchasePriceCalc > 0 — flight picked or
+  // Once the package is COMPLETE (finalPurchasePriceCalc > 0 - flight picked or
   // skipped), show EXACTLY the summary's per-traveler price (the real
   // calculateBaseTotal chain: skip fees, composed markups, ticket-only
   // override, affiliate discount). The additive preview above only serves the
-  // in-progress steps — keeping it after completion made the edit-mode bar
+  // in-progress steps - keeping it after completion made the edit-mode bar
   // drift a few dollars from the summary.
   const realTotalAllPax = finalPurchasePriceCalc(affDiscount);
   const barTotal =
@@ -488,13 +488,13 @@ export const OrderForm = ({
           </div>
         )}
       </div>
-      {/* Sticky continue bar (steps 1–3) — full-width strip, inner card
+      {/* Sticky continue bar (steps 1–3) - full-width strip, inner card
          viewport-centered via its own `mx-auto max-w-5xl`. Lives OUTSIDE the
          max-w-7xl wrapper so `w-full` = viewport, not the centered container. */}
       {step < 4 && (
         <div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur">
           <OrderContinueBar
-            // Edit mode: hide the flow pills — a focused "pick → save" task.
+            // Edit mode: hide the flow pills - a focused "pick → save" task.
             slots={returnToSummary ? [] : continueSlots}
             total={barTotal}
             primaryLabel={primaryLabel}

@@ -19,7 +19,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 export default async function AgentDashboardPage() {
-  // Nav has no dedicated tab yet; this is the real gate regardless — same
+  // Nav has no dedicated tab yet; this is the real gate regardless - same
   // requirePartner() every other /agent page relies on, so a demoted or
   // deactivated partner never sees stale numbers.
   const dashboard = await getAgentDashboard();
@@ -107,9 +107,9 @@ export default async function AgentDashboardPage() {
                   <tr key={`${event.name}-${i}`} className="border-t">
                     <td className="px-3 py-2 font-medium">{event.name}</td>
                     <td className="px-3 py-2 text-gray-500">
-                      {event.date ? new Date(event.date).toLocaleDateString("he-IL") : "—"}
+                      {event.date ? new Date(event.date).toLocaleDateString("he-IL") : "-"}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{event.location || "—"}</td>
+                    <td className="px-3 py-2 text-gray-500">{event.location || "-"}</td>
                     <td className="px-3 py-2">{event.visitors}</td>
                     <td className="px-3 py-2">{event.clicks}</td>
                     <td className="px-3 py-2 text-left">

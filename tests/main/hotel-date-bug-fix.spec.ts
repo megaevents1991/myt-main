@@ -12,13 +12,13 @@ import type { Event, Flight } from "../../lib/app.types";
  * Both the online (Ratehawk) pipeline and the offline-inventory pipeline derive
  * checkin/checkout from getDefaultDateRange, so a unit test on the helper
  * covers both. The offline path additionally requires an EXACT date match in
- * app/api/offline-hotels/route.ts — a checkout drift of even one day silently
+ * app/api/offline-hotels/route.ts - a checkout drift of even one day silently
  * drops the inventory row from the result set.
  */
 
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
+    d.getDate(),
   ).padStart(2, "0")}`;
 
 const flightWith = (arrivalTime: string, returnDepartureTime: string): Flight =>
@@ -27,7 +27,7 @@ const flightWith = (arrivalTime: string, returnDepartureTime: string): Flight =>
     inbound: { departureTime: returnDepartureTime },
   }) as unknown as Flight;
 
-test.describe("hotel date bug — checkout must equal return flight date", () => {
+test.describe("hotel date bug - checkout must equal return flight date", () => {
   const event = {
     def_date_depart: "2026-06-03",
     def_date_return: "2026-06-08",
@@ -37,7 +37,7 @@ test.describe("hotel date bug — checkout must equal return flight date", () =>
   test("user's reported scenario: outbound 3/6, inbound 8/6 14:00 → checkout 8/6", () => {
     const [checkIn, checkOut] = getDefaultDateRange(
       event,
-      flightWith("2026-06-03T12:00:00", "2026-06-08T14:00:00")
+      flightWith("2026-06-03T12:00:00", "2026-06-08T14:00:00"),
     );
     expect(ymd(checkIn)).toBe("2026-06-03");
     expect(ymd(checkOut)).toBe("2026-06-08");
@@ -47,7 +47,7 @@ test.describe("hotel date bug — checkout must equal return flight date", () =>
   test("morning return at 09:00 → no extra night", () => {
     const [, checkOut] = getDefaultDateRange(
       event,
-      flightWith("2026-06-03T12:00:00", "2026-06-08T09:00:00")
+      flightWith("2026-06-03T12:00:00", "2026-06-08T09:00:00"),
     );
     expect(ymd(checkOut)).toBe("2026-06-08");
   });
@@ -55,7 +55,7 @@ test.describe("hotel date bug — checkout must equal return flight date", () =>
   test("late evening return at 23:00 → no extra night", () => {
     const [, checkOut] = getDefaultDateRange(
       event,
-      flightWith("2026-06-03T12:00:00", "2026-06-08T23:00:00")
+      flightWith("2026-06-03T12:00:00", "2026-06-08T23:00:00"),
     );
     expect(ymd(checkOut)).toBe("2026-06-08");
   });
@@ -63,7 +63,7 @@ test.describe("hotel date bug — checkout must equal return flight date", () =>
   test("red-eye return at 02:00 → checkout still = flight date", () => {
     const [, checkOut] = getDefaultDateRange(
       event,
-      flightWith("2026-06-03T12:00:00", "2026-06-08T02:00:00")
+      flightWith("2026-06-03T12:00:00", "2026-06-08T02:00:00"),
     );
     expect(ymd(checkOut)).toBe("2026-06-08");
   });

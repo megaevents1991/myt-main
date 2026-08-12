@@ -3,7 +3,7 @@ import { FiCopy, FiCheck } from "react-icons/fi";
 import Image from "next/image";
 
 /**
- * Refer-a-friend card — brand redesign (Dark Forest + Glow Green).
+ * Refer-a-friend card - brand redesign (Dark Forest + Glow Green).
  * The referral link is shown in a proper chip with an inline copy button,
  * instead of an opaque white "copy" square.
  */
@@ -53,7 +53,7 @@ export const ReferFriend = ({ promoCode }: { promoCode: string }) => {
         </span>
         <h3 className="mt-1 text-4xl font-extrabold text-glow">עד $800 החזר!</h3>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-white/75">
-          על כל נוסע שיזמין דרך הקישור שלכם —{" "}
+          על כל נוסע שיזמין דרך הקישור שלכם -{" "}
           <span className="font-bold text-glow">$40 החזר</span>, והם יהנו מהטבה
           בלעדית.
         </p>

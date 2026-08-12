@@ -111,7 +111,7 @@ export const useHandleExistingOrder = () => {
 
       setPassengers(passengers);
 
-      // Skipped flight is saved as {} (truthy!) — check the inner field, same
+      // Skipped flight is saved as {} (truthy!) - check the inner field, same
       // as the hotel below, or the review step renders a phantom flight and
       // crashes on selectedFlight.outbound.
       if (!data.flight_order_info?.outbound) {

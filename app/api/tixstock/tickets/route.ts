@@ -23,7 +23,7 @@ function toUsd(amount: string, currency: string): string {
     const rate = exchangeRateService.getEurUsdRate().rate;
     return ((value + 40) * rate * 1.035).toFixed(2);
   }
-  // Unknown currency — return as-is and log
+  // Unknown currency - return as-is and log
   console.warn(
     `[TixStock Tickets] Unknown currency "${currency}", not converting`,
   );

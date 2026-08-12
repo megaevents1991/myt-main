@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Backoffice smoke tests — admin dashboard (../../MYT-backoffice-app @ :3001).
+ * Backoffice smoke tests - admin dashboard (../../MYT-backoffice-app @ :3001).
  *
  * - "login" group runs logged OUT (fresh context) and exercises the login page.
  * - "authenticated" group reuses the session from global-setup.ts.
@@ -9,10 +9,10 @@ import { test, expect } from "@playwright/test";
  */
 
 const hasCreds = Boolean(
-  process.env.BACKOFFICE_EMAIL && process.env.BACKOFFICE_PASSWORD
+  process.env.BACKOFFICE_EMAIL && process.env.BACKOFFICE_PASSWORD,
 );
 
-test.describe("backoffice — login page (logged out)", () => {
+test.describe("backoffice - login page (logged out)", () => {
   // Force a clean, session-free context for these tests.
   test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -42,10 +42,10 @@ test.describe("backoffice — login page (logged out)", () => {
   });
 });
 
-test.describe("backoffice — authenticated pages", () => {
+test.describe("backoffice - authenticated pages", () => {
   test.skip(
     !hasCreds,
-    "No backoffice credentials in tests/.env — authenticated tests skipped"
+    "No backoffice credentials in tests/.env - authenticated tests skipped",
   );
 
   test("dashboard loads", async ({ page }) => {

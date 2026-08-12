@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 type NavLink = { href: string; label: string };
 
 // Always present, whatever the category tree looks like. /football and
-// /artists are the performer hubs (teams and artists) — a sibling pair, so
+// /artists are the performer hubs (teams and artists) - a sibling pair, so
 // neither is dropped when categories take the lead.
 const staticNavLinks: NavLink[] = [
   { href: "/football", label: "קבוצות" },
@@ -26,7 +26,7 @@ const staticNavLinks: NavLink[] = [
 const iconBtn =
   "inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-main-foreground/10";
 
-// Monochrome WhatsApp glyph (lucide has no brand icon) — inherits currentColor
+// Monochrome WhatsApp glyph (lucide has no brand icon) - inherits currentColor
 // so it matches the other header icons.
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
@@ -51,7 +51,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   const [fly, setFly] = useState({ rx: 0, ry: 0 });
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
-  // Inside the order flow the Stepper is the only chrome — hide the global
+  // Inside the order flow the Stepper is the only chrome - hide the global
   // header so users can't bounce back to the homepage mid-booking.
   const hidden = pathname?.startsWith("/order");
 
@@ -81,7 +81,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   useEffect(() => {
     if (!menuOpen) return;
     const onClick = (e: MouseEvent) => {
-      // Ignore the floating corner layer — the hamburger there OPENS the menu
+      // Ignore the floating corner layer - the hamburger there OPENS the menu
       // on pointerdown, and this mousedown (same gesture) must not undo it.
       if (
         !headerRef.current?.contains(e.target as Node) &&
@@ -101,7 +101,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   // detail hero) it goes translucent + blurred so the hero keeps its wow
   // factor; once the hero scrolls away it turns solid bg-main.
   const [overHero, setOverHero] = useState(false);
-  // Plain pages (catalog/text) have no overlay hero — reserve a spacer so the
+  // Plain pages (catalog/text) have no overlay hero - reserve a spacer so the
   // fixed header never covers the page's first content.
   const [needsSpacer, setNeedsSpacer] = useState(false);
 
@@ -109,12 +109,12 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
     setPageTitle(null); // reset on navigation; the new page re-sets it if any
     // Which pages carry their own top hero the header floats over: the
     // homepage (its search bar) and artist/football detail pages (their
-    // DetailHero). Decided by route — not DOM presence — so a slow-loading
+    // DetailHero). Decided by route - not DOM presence - so a slow-loading
     // hero never makes us mistake the page for a plain one.
     const hasOwnHero =
       pathname === "/" ||
       /^\/(artists|football)\/[^/]+$/.test(pathname ?? "") ||
-      // Category pages open on a DetailHero too — without this the solid bar
+      // Category pages open on a DetailHero too - without this the solid bar
       // sat on top of their hero instead of sliding in behind it.
       /^\/c\//.test(pathname ?? "");
 
@@ -155,7 +155,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
 
   // Measure the corner hamburger's flight path into the navbar pill. The
   // pill's final viewport position is derived from layout offsets
-  // (transform-independent — the bar itself may be translated off-screen); the
+  // (transform-independent - the bar itself may be translated off-screen); the
   // corner is measured while it sits at its natural spot.
   useEffect(() => {
     const measure = () => {
@@ -191,12 +191,12 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
 
   if (hidden) return null;
 
-  // Over the hero: no bar at all — a floating corner hamburger (Claude-style)
+  // Over the hero: no bar at all - a floating corner hamburger (Claude-style)
   // in the top-right corner, on every screen size. Opening the menu /
   // scrolling past the hero slides the solid bar in while the corner fades
   // out (both stay mounted so the hand-off animates instead of snapping).
   const showFloating = overHero && !menuOpen;
-  // Same dark pill as the navbar cluster — in BOTH themes (the hero is always
+  // Same dark pill as the navbar cluster - in BOTH themes (the hero is always
   // dark, and the icon lands inside the navbar's dark pill when scrolling).
   const floatBtn =
     "inline-flex size-9 shrink-0 touch-manipulation md:size-11 items-center justify-center rounded-full bg-main text-main-foreground shadow-card ring-1 ring-white/15 transition-colors hover:bg-secondary hover:text-black hover:ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -208,7 +208,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   return (
     <>
     {needsSpacer && <div aria-hidden className="h-14 md:h-16" />}
-    {/* The floating strip is click-transparent — only the corner units accept
+    {/* The floating strip is click-transparent - only the corner units accept
         input, so the hero logo underneath (centered, same band) stays
         clickable. */}
     {!needsSpacer && (
@@ -218,7 +218,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
         className="pointer-events-none fixed inset-x-0 top-0 z-50"
       >
         <div className="flex items-start justify-between px-3 pt-3 md:px-5 md:pt-4">
-          {/* RTL: first child sits in the RIGHT corner — the hamburger. It
+          {/* RTL: first child sits in the RIGHT corner - the hamburger. It
               flies into its slot at the pill's right end when the bar shows. */}
           <div
             ref={flyRightRef}
@@ -257,7 +257,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
       )}
     >
       <div className="container relative mx-auto flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-3">
-        {/* Action cluster — RTL order (right→left): hamburger (mobile only),
+        {/* Action cluster - RTL order (right→left): hamburger (mobile only),
             theme, whatsapp, search. Grouped in a subtle pill so it reads as one
             control, not a loaded row. First DOM child sits on the right in RTL. */}
         <div ref={clusterRef} className="flex shrink-0 items-center gap-0 rounded-full bg-main-foreground/[0.06] px-0.5">
@@ -266,7 +266,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
             aria-label={menuOpen ? "סגירת תפריט" : "פתיחת תפריט"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            // Desktop normally has the inline nav — but when the menu was
+            // Desktop normally has the inline nav - but when the menu was
             // opened from the hero's floating hamburger, keep the X visible
             // on every size so it can be closed.
             className={cn(iconBtn, !menuOpen && "md:hidden")}
@@ -297,7 +297,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
           </button>
         </div>
 
-        {/* Desktop inline nav — replaces the hamburger on ≥md. Centred like the
+        {/* Desktop inline nav - replaces the hamburger on ≥md. Centred like the
             page title; hidden on detail pages where the sticky title takes the
             centre slot instead. */}
         {!pageTitle && !menuOpen && (
@@ -324,7 +324,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
         )}
 
         {/* Desktop: the artist/team name sits centred once the hero scrolls
-            away (mobile shows it beside the brand mark instead — see below). */}
+            away (mobile shows it beside the brand mark instead - see below). */}
         {pageTitle && (
           <span className="absolute left-1/2 top-1/2 hidden max-w-[62%] -translate-x-1/2 -translate-y-1/2 truncate text-center text-base font-bold md:block">
             {pageTitle}
@@ -341,7 +341,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
               {pageTitle}
             </span>
           )}
-          <Link href="/" aria-label="MegaEvents — דף הבית" className="shrink-0">
+          <Link href="/" aria-label="MegaEvents - דף הבית" className="shrink-0">
             {pageTitle ? (
               <>
                 <Image
@@ -361,7 +361,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
         </div>
       </div>
 
-      {/* Slide-down menu — all sizes (desktop reaches it via the hero's
+      {/* Slide-down menu - all sizes (desktop reaches it via the hero's
           floating hamburger; the inline nav hides while it's open). */}
       <div
         className={cn(
@@ -383,7 +383,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
               {link.label}
             </Link>
           ))}
-          {/* Contact — plain inline links (ContactUs positions itself absolutely,
+          {/* Contact - plain inline links (ContactUs positions itself absolutely,
               which overlapped the header bar on mobile) */}
           <div className="mt-1 flex items-center gap-4 border-t border-main-foreground/10 px-3 pt-3 text-sm font-semibold">
             <a href="tel:+97237684800" className="hover:underline">

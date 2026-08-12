@@ -1,4 +1,4 @@
-// NOTE: no `server-only` guard — the package isn't a dependency here. This
+// NOTE: no `server-only` guard - the package isn't a dependency here. This
 // module reads the service-role client and a signing secret, so it must never
 // be imported from a "use client" file. `lib/partner-auth/session.ts` is the
 // Edge/middleware-safe half and carries no Supabase import.
@@ -15,7 +15,7 @@ import {
 /**
  * Partner identity for the agent/influencer area.
  *
- * Supabase Auth is the identity provider — the same `auth.users` +
+ * Supabase Auth is the identity provider - the same `auth.users` +
  * `user_profiles` rows the backoffice creates, so an agent has ONE account
  * across both apps. `partners.password` (plain text) is never consulted.
  */
@@ -32,7 +32,7 @@ export async function verifyPassword(
 ): Promise<VerifyResult> {
   const url = process.env.NEXT_SECRET_SUPABASE_URL;
   // Server-side only, so no NEXT_PUBLIC_ prefix. This app previously had no
-  // anon key at all — feedAuth builds its client from the service key.
+  // anon key at all - feedAuth builds its client from the service key.
   const anonKey = process.env.NEXT_SECRET_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     console.error("verifyPassword: Supabase URL or anon key is not configured");
@@ -43,11 +43,16 @@ export async function verifyPassword(
     auth: { persistSession: false, autoRefreshToken: false },
   });
   try {
-    const { data, error } = await anon.auth.signInWithPassword({ email, password });
+    const { data, error } = await anon.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
       const status = (error as { status?: number }).status;
-      const transient = status === 429 || (status !== undefined && status >= 500);
-      if (transient) console.error("verifyPassword transient:", status, error.message);
+      const transient =
+        status === 429 || (status !== undefined && status >= 500);
+      if (transient)
+        console.error("verifyPassword transient:", status, error.message);
       return { ok: false, reason: transient ? "transient" : "invalid" };
     }
     if (!data.user) return { ok: false, reason: "invalid" };
@@ -74,11 +79,15 @@ export type PartnerProfile = {
  * partner. Staff are deliberately excluded: this area is scoped by
  * `partner_code`, and staff have none.
  */
-export async function getPartnerProfile(userId: string): Promise<PartnerProfile | null> {
+export async function getPartnerProfile(
+  userId: string,
+): Promise<PartnerProfile | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("user_profiles")
-    .select("id,email,display_name,role,partner_tracking_code,logo_url,is_active")
+    .select(
+      "id,email,display_name,role,partner_tracking_code,logo_url,is_active",
+    )
     .eq("id", userId)
     .maybeSingle();
   if (error) {
@@ -124,7 +133,7 @@ export async function requirePartner(): Promise<PartnerSession> {
 /**
  * Throws unless the caller is an AGENT.
  *
- * Quotes, booking on a customer's behalf and voucher payment are agent tools —
+ * Quotes, booking on a customer's behalf and voucher payment are agent tools -
  * an influencer shares a link and never prices or books for a named customer.
  */
 export async function requireAgent(): Promise<PartnerSession> {

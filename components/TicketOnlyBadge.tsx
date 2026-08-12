@@ -39,7 +39,7 @@ export function TicketOnlyBadge({
 
   /* ── Desktop: click (mouse) ── */
   const handleClick = (e: React.MouseEvent) => {
-    // only handle real mouse clicks — touch is handled by onTouchEnd
+    // only handle real mouse clicks - touch is handled by onTouchEnd
     if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerType === "touch") return;
     e.preventDefault();
     e.stopPropagation();
@@ -63,7 +63,7 @@ export function TicketOnlyBadge({
     e.stopPropagation();         // stop Link from seeing the touch
   };
 
-  /* close on outside tap — only register 200ms after open to avoid
+  /* close on outside tap - only register 200ms after open to avoid
      the opening touch event from immediately closing the tooltip     */
   useEffect(() => {
     if (!open) return;

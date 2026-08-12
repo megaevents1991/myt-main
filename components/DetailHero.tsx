@@ -11,7 +11,7 @@ import { youtubeId, youtubeEmbed } from "@/lib/youtube";
 import { isTightCrest } from "@/lib/eventArt";
 
 /**
- * Split detail-hero for artist / football pages — dark surface, cutout image
+ * Split detail-hero for artist / football pages - dark surface, cutout image
  * (or a looping YouTube clip) on a mint blob, bold bilingual heading, bio,
  * trust row.
  */
@@ -37,7 +37,7 @@ export const DetailHero = ({
   name: string;
   nameEnglish?: string;
   bio: ReactNode;
-  /** Plain-text first sentence — when set, the bio collapses to it on mobile
+  /** Plain-text first sentence - when set, the bio collapses to it on mobile
    *  with a "קרא עוד.." toggle (full bio always shown on desktop). */
   bioFirstSentence?: string;
   /** Whether the bio has more than the first sentence to reveal. */
@@ -46,15 +46,15 @@ export const DetailHero = ({
   imageAlt: string;
   /** #19b: YouTube URL that loops inside the hero circle (overrides the image). */
   heroVideoUrl?: string;
-  /** Homepage-card art (backoffice art_* fields) — when set, the hero circle
+  /** Homepage-card art (backoffice art_* fields) - when set, the hero circle
    *  shows the exact same EventArt as the catalog card: same colored blob,
    *  same shape, same cut-out. Hero layout/design unchanged. */
   artId?: string;
   artImageUrl?: string;
   artColorIndex?: number;
   artShapeIndex?: number;
-  /** Backoffice zoom/offset dial — honored for every tightly-cropped crest
-   *  source (football-logos library, ad-hoc templates-bucket uploads — no
+  /** Backoffice zoom/offset dial - honored for every tightly-cropped crest
+   *  source (football-logos library, ad-hoc templates-bucket uploads - no
    *  built-in padding). Legacy art_blobs cutouts already read right at the
    *  default contain-fit size, so they keep ignoring it exactly as before. */
   artImageScale?: number | null;
@@ -68,7 +68,7 @@ export const DetailHero = ({
   return (
   <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
     <Aurora intensity={0.4} />
-    {/* Way home — the hero carries its own wordmark link, CENTERED so the
+    {/* Way home - the hero carries its own wordmark link, CENTERED so the
         floating corner controls (hamburger right, quick-actions left) never
         overlap it. */}
     <div className="container relative z-10 mx-auto flex justify-center px-4 pt-4">
@@ -91,12 +91,12 @@ export const DetailHero = ({
                 aria-hidden
               />
             ) : artImageUrl ? (
-              // Same art as the homepage card — colored blob + shape from the
-              // backoffice art_* fields — clipped by the hero's existing mask.
+              // Same art as the homepage card - colored blob + shape from the
+              // backoffice art_* fields - clipped by the hero's existing mask.
               // The subject is CENTERED in the circle (not bottom-anchored) and
-              // fully contained (zoomed out) so the whole cut-out shows — a person
+              // fully contained (zoomed out) so the whole cut-out shows - a person
               // reads smaller/centered, a crest sits centered over its full-bleed
-              // photo. Generic — applies to every detail hero.
+              // photo. Generic - applies to every detail hero.
               <EventArt
                 id={artId ?? name}
                 imageUrl={artImageUrl}

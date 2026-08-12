@@ -5,12 +5,12 @@ import { useSearchParams } from "next/navigation";
 
 /**
  * Consumes a `?pkg=<id>` link (see lib/agent-package-actions.ts,
- * SavePackageLink) — a partner's saved ticket+flight+hotel combination,
+ * SavePackageLink) - a partner's saved ticket+flight+hotel combination,
  * re-validated server-side (app/api/package/[id]/route.ts) rather than
  * trusted outright, unlike the sibling `?orderId=` recovery flow
  * (useHandleExistingOrder), whose 25-hour window makes staleness rare
  * enough to skip re-checking. A package link can be opened long after it
- * was made, so a stale flight/hotel is the expected case, not an edge one —
+ * was made, so a stale flight/hotel is the expected case, not an edge one -
  * the route drops just that piece and this hook lands the visitor on the
  * step that actually needs a fresh pick instead of pretending everything
  * is still fine.
@@ -35,11 +35,14 @@ export const useHandlePreparedPackage = () => {
     try {
       const response = await fetch(`/api/package/${packageId}`);
       if (!response.ok) {
-        // Gone/invalid package — fall back to a normal, from-scratch flow
+        // Gone/invalid package - fall back to a normal, from-scratch flow
         // rather than blocking the visitor entirely; they still landed on
         // the right event via the link's own eventId.
         const errorData = await response.json().catch(() => null);
-        console.error("useHandlePreparedPackage:", errorData?.error || response.status);
+        console.error(
+          "useHandlePreparedPackage:",
+          errorData?.error || response.status,
+        );
         return;
       }
 
@@ -57,7 +60,7 @@ export const useHandlePreparedPackage = () => {
         allow_edit?: boolean;
       } = await response.json();
 
-      // Agent chose to lock the composition — the summary's edit buttons,
+      // Agent chose to lock the composition - the summary's edit buttons,
       // the stepper and the slot pills go inert. A needs_repick piece still
       // lands the visitor on its step to be picked (that never locks).
       if (data.allow_edit === false) {
@@ -77,7 +80,7 @@ export const useHandlePreparedPackage = () => {
         setFlightSkipped(false);
         setFlight(data.flight_order_info);
       } else {
-        // Either the agent skipped flight entirely, or it's now stale —
+        // Either the agent skipped flight entirely, or it's now stale -
         // flight_needs_repick (below) is what tells step-targeting apart.
         setFlightSkipped(!data.flight_needs_repick);
         setFlight(undefined);

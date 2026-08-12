@@ -9,17 +9,36 @@
 
 // League/corporate qualifier tokens that don't identify a club on their own
 // (so "AC Milan" ≡ "Milan", "AS Roma" ≡ "Roma", "FC Barcelona" ≡ "Barcelona").
-// "Inter" is a real club identifier, not a qualifier — so it is NOT listed here.
+// "Inter" is a real club identifier, not a qualifier - so it is NOT listed here.
 const GENERIC_TOKENS = new Set([
-  "fc", "afc", "cf", "cfc", "sc", "ac", "as", "ss", "ssc", "us", "ud",
-  "ca", "rc", "rcd", "sl", "bc", "de", "del", "calcio", "club", "balompie",
+  "fc",
+  "afc",
+  "cf",
+  "cfc",
+  "sc",
+  "ac",
+  "as",
+  "ss",
+  "ssc",
+  "us",
+  "ud",
+  "ca",
+  "rc",
+  "rcd",
+  "sl",
+  "bc",
+  "de",
+  "del",
+  "calcio",
+  "club",
+  "balompie",
 ]);
 
 /**
  * Case-, accent- and whitespace-insensitive canonical form of a person/event
  * name, for substring matching. Backoffice-entered names drift on exactly
  * these axes ("André Rieu " vs "Andre Rieu"), so EVERY name↔event substring
- * comparison in the app must go through this — raw `.toLowerCase().includes`
+ * comparison in the app must go through this - raw `.toLowerCase().includes`
  * silently drops accented artists.
  *
  * Quotes/apostrophes/commas/periods are dropped too ("Guns N' Roses" ≡
@@ -75,7 +94,7 @@ function sideIsTeam(side: string, team: string): boolean {
  * qualifier drift between the teams table and the football_logos library
  * ("AFC Ajax" ≡ "Ajax", "Tottenham Hotspur FC" ≡ "Tottenham Hotspur",
  * "Barcelona" ≡ "FC Barcelona") still resolves. Hebrew names have no latin
- * tokens and never match here — compare those exactly instead.
+ * tokens and never match here - compare those exactly instead.
  */
 export function clubNamesMatch(a: string, b: string): boolean {
   return tokensEqual(significantTokens(a), significantTokens(b));
@@ -91,16 +110,19 @@ function fixtureSides(eventName: string): string[] | null {
 /**
  * Whether an event legitimately belongs to a team's page.
  * - Competition hub pages (team name == the "Champions League:" prefix) keep all their events.
- * - Football fixtures are kept when the team is one of the two sides — EXCEPT
+ * - Football fixtures are kept when the team is one of the two sides - EXCEPT
  *   an away game hosted by a club whose name strictly contains the team's
  *   ("Inter Milan vs AC Milan" is Inter's home derby, not a Milan-page event).
  *   Regular away games (Arsenal at Tottenham) still count.
  * - Non-fixture events (no " vs ") are trusted as-is (the substring match stands).
  */
-export function eventBelongsToTeam(eventName: string, teamName: string): boolean {
+export function eventBelongsToTeam(
+  eventName: string,
+  teamName: string,
+): boolean {
   if (!eventName || !teamName) return true;
 
-  // Hub pages like "Champions League" — the team name is the competition prefix.
+  // Hub pages like "Champions League" - the team name is the competition prefix.
   const prefixMatch = eventName.match(/^([^:]+):\s*/);
   if (
     prefixMatch &&
@@ -110,13 +132,13 @@ export function eventBelongsToTeam(eventName: string, teamName: string): boolean
   }
 
   const sides = fixtureSides(eventName);
-  if (!sides) return true; // artists/concerts — not a fixture, leave untouched
+  if (!sides) return true; // artists/concerts - not a fixture, leave untouched
 
   const [home, ...rest] = sides;
   if (sideIsTeam(home, teamName)) return true; // team hosts → always its event
 
   // Away side: belongs unless the HOME club's name strictly contains the
-  // team's name — then the fixture is the home club's (derby disambiguation).
+  // team's name - then the fixture is the home club's (derby disambiguation).
   const teamTokens = significantTokens(teamName);
   const homeTokens = significantTokens(home);
   if (tokensStrictSuperset(homeTokens, teamTokens)) return false;
@@ -125,7 +147,7 @@ export function eventBelongsToTeam(eventName: string, teamName: string): boolean
 
 /**
  * The team's role in a fixture: "home" when it's the first side, "away" when
- * it's any other side (INCLUDING derbies hosted by a containing-name club —
+ * it's any other side (INCLUDING derbies hosted by a containing-name club -
  * "Inter Milan vs AC Milan" is a Milan AWAY game here). null for non-fixtures
  * (artists) and fixtures the team doesn't play in (incl. competition-hub
  * matches like the "Champions League" page, where sides never equal the team).
@@ -145,13 +167,16 @@ export function teamFixtureRole(
 
 /**
  * Looser page-level gate than eventBelongsToTeam: keeps EVERY fixture the team
- * plays in — home AND away, derbies included — plus hub-prefix events and
+ * plays in - home AND away, derbies included - plus hub-prefix events and
  * non-fixtures. Used by the team page (which splits home/away visually) and
  * the catalog's on-tour check, so "has events on its page" ⇔ "on tour".
  * eventBelongsToTeam stays stricter for the event-art fallback (an away derby
  * must not wear the visiting team's imagery).
  */
-export function eventRelatesToTeam(eventName: string, teamName: string): boolean {
+export function eventRelatesToTeam(
+  eventName: string,
+  teamName: string,
+): boolean {
   if (!eventName || !teamName) return true;
   const prefixMatch = eventName.match(/^([^:]+):\s*/);
   if (
@@ -161,6 +186,6 @@ export function eventRelatesToTeam(eventName: string, teamName: string): boolean
     return true;
   }
   const sides = fixtureSides(eventName);
-  if (!sides) return true; // artists/concerts — substring match stands
+  if (!sides) return true; // artists/concerts - substring match stands
   return sides.some((side) => sideIsTeam(side, teamName));
 }

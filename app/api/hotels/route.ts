@@ -22,7 +22,7 @@ const fetchHotels = async (hotelSearchRequest: HotelSearchRequest) => {
   return response;
 };
 
-// offline_hotels has no hid column — it is a standalone inventory not linked to Ratehawk.
+// offline_hotels has no hid column - it is a standalone inventory not linked to Ratehawk.
 // Returns empty set until offline hotels are shown separately (like offline flights).
 const getOfflineHotelHids = async (eventId: number): Promise<Set<number>> => {
   void eventId;
@@ -30,7 +30,8 @@ const getOfflineHotelHids = async (eventId: number): Promise<Set<number>> => {
 };
 
 export async function POST(request: Request) {
-  const { location, checkin, checkout, guests, radius, eventId } = await request.json();
+  const { location, checkin, checkout, guests, radius, eventId } =
+    await request.json();
 
   if (!location || !checkin || !checkout || !guests?.length) {
     console.log("Invalid request body:", {
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
         error:
           "Location, check-in, check-out dates, and number of guests are required",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -67,64 +68,73 @@ export async function POST(request: Request) {
       fetchHotels(hotelSearchRequest)
         .then((res) => res.json())
         .then(async (data: HotelResponse) => {
-          // Cold serp sometimes returns 0 — retry once immediately (no sleep).
+          // Cold serp sometimes returns 0 - retry once immediately (no sleep).
           if (!data.data.total_hotels) {
             console.log("No hotels found, retrying immediately");
             return (await fetchHotels(hotelSearchRequest)).json();
           }
           return data;
         }),
-      eventId ? getOfflineHotelHids(eventId) : Promise.resolve(new Set<number>()),
+      eventId
+        ? getOfflineHotelHids(eventId)
+        : Promise.resolve(new Set<number>()),
     ]);
 
-    const fixedHotels: Hotel[] = data.data.hotels.reduce((acc: Hotel[], hotel: Hotel) => {
-      if (!hotel.rates || !Array.isArray(hotel.rates) || hotel.rates.length === 0) {
-        return acc;
-      }
-      const fixedRates = hotel.rates.map((rate) => {
-        if (!rate.payment_options?.payment_types) {
-          return rate;
+    const fixedHotels: Hotel[] = data.data.hotels.reduce(
+      (acc: Hotel[], hotel: Hotel) => {
+        if (
+          !hotel.rates ||
+          !Array.isArray(hotel.rates) ||
+          hotel.rates.length === 0
+        ) {
+          return acc;
         }
-        const fixedPaymentTypes = rate.payment_options.payment_types.map(
-          (paymentType) => {
-            const vat = paymentType.tax_data?.["taxes"]?.find(
-              (tax) => tax.name === "vat"
-            );
-            const tax =
-              !vat?.included_by_supplier && vat?.amount ? +vat.amount : 0;
-
-            if (tax) {
-              console.log({
-                taxFound: tax,
-                oldPrice: +paymentType.show_amount,
-                newPrice: +paymentType.show_amount + tax,
-              });
-            }
-
-            return {
-              ...paymentType,
-              show_amount: (+paymentType.show_amount + tax).toString(),
-            };
+        const fixedRates = hotel.rates.map((rate) => {
+          if (!rate.payment_options?.payment_types) {
+            return rate;
           }
-        );
+          const fixedPaymentTypes = rate.payment_options.payment_types.map(
+            (paymentType) => {
+              const vat = paymentType.tax_data?.["taxes"]?.find(
+                (tax) => tax.name === "vat",
+              );
+              const tax =
+                !vat?.included_by_supplier && vat?.amount ? +vat.amount : 0;
 
-        return {
-          ...rate,
-          payment_options: {
-            ...rate.payment_options,
-            payment_types: fixedPaymentTypes,
-          },
-        };
-      });
+              if (tax) {
+                console.log({
+                  taxFound: tax,
+                  oldPrice: +paymentType.show_amount,
+                  newPrice: +paymentType.show_amount + tax,
+                });
+              }
 
-      acc.push({
-        ...hotel,
-        rates: fixedRates,
-        ...(offlineHids.has(hotel.hid) && { isOffline: true }),
-      });
+              return {
+                ...paymentType,
+                show_amount: (+paymentType.show_amount + tax).toString(),
+              };
+            },
+          );
 
-      return acc;
-    }, [] as Hotel[]);
+          return {
+            ...rate,
+            payment_options: {
+              ...rate.payment_options,
+              payment_types: fixedPaymentTypes,
+            },
+          };
+        });
+
+        acc.push({
+          ...hotel,
+          rates: fixedRates,
+          ...(offlineHids.has(hotel.hid) && { isOffline: true }),
+        });
+
+        return acc;
+      },
+      [] as Hotel[],
+    );
 
     return NextResponse.json<HotelResponse>({
       ...data,
@@ -137,31 +147,37 @@ export async function POST(request: Request) {
     console.error("API error:", error);
     return NextResponse.json(
       { error: "An error occurred while fetching hotel data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const latitude = parseFloat(searchParams.get('lat') || '');
-  const longitude = parseFloat(searchParams.get('lon') || '');
-  const checkin = searchParams.get('checkin');
-  const checkout = searchParams.get('checkout');
-  const secret = searchParams.get('secret');
-    
+  const latitude = parseFloat(searchParams.get("lat") || "");
+  const longitude = parseFloat(searchParams.get("lon") || "");
+  const checkin = searchParams.get("checkin");
+  const checkout = searchParams.get("checkout");
+  const secret = searchParams.get("secret");
+
   if (secret !== process.env.NEXT_SECRET_REVALIDATION_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Validate required parameters (isFinite, not truthiness — 0 is a valid coordinate)
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !checkin || !checkout) {
+  // Validate required parameters (isFinite, not truthiness - 0 is a valid coordinate)
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    !checkin ||
+    !checkout
+  ) {
     return NextResponse.json(
-      { 
+      {
         error: "latitude, longitude, checkin, and checkout are required",
-        example: "?latitude=31.7683&longitude=35.2137&checkin=2025-08-01&checkout=2025-08-03"
+        example:
+          "?latitude=31.7683&longitude=35.2137&checkin=2025-08-01&checkout=2025-08-03",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -170,7 +186,7 @@ export async function GET(request: Request) {
   if (!dateRegex.test(checkin) || !dateRegex.test(checkout)) {
     return NextResponse.json(
       { error: "Dates must be in YYYY-MM-DD format" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -203,13 +219,13 @@ export async function GET(request: Request) {
       return NextResponse.json({
         cheapest_price: null,
         message: "No hotels found within 2km radius",
-        search_params: { latitude, longitude, checkin, checkout }
+        search_params: { latitude, longitude, checkin, checkout },
       });
     }
 
     // Step 2: Get hotel info to filter for 4-star hotels
-    const hotelIds = hotelResponse.data.hotels.map(hotel => hotel.hid);
-    
+    const hotelIds = hotelResponse.data.hotels.map((hotel) => hotel.hid);
+
     // Fetch hotel static data from database
     const { data: hotelsStaticData, error } = await supabase
       .from("hotels")
@@ -222,7 +238,7 @@ export async function GET(request: Request) {
       console.error("Database query error:", error);
       return NextResponse.json(
         { error: "Error retrieving hotel information" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -230,12 +246,12 @@ export async function GET(request: Request) {
       return NextResponse.json({
         cheapest_price: null,
         message: "No 3-star hotels found within 1km radius",
-        search_params: { latitude, longitude, checkin, checkout }
+        search_params: { latitude, longitude, checkin, checkout },
       });
     }
 
     // Step 3: Find cheapest price among 3-star hotels
-    const threeStarHotelIds = new Set(hotelsStaticData.map(h => h.hid));
+    const threeStarHotelIds = new Set(hotelsStaticData.map((h) => h.hid));
     let cheapestPrice = Infinity;
     let cheapestHotel = null;
 
@@ -253,11 +269,11 @@ export async function GET(request: Request) {
             cheapestPrice = price;
             cheapestHotel = {
               hid: hotel.hid,
-              name: hotelsStaticData.find(h => h.hid === hotel.hid)?.name,
+              name: hotelsStaticData.find((h) => h.hid === hotel.hid)?.name,
               price: price,
               currency: paymentType.show_currency_code,
               room_name: rate.room_name,
-              meal: rate.meal
+              meal: rate.meal,
             };
           }
         }
@@ -272,25 +288,24 @@ export async function GET(request: Request) {
           hid: cheapestHotel.hid,
           name: cheapestHotel.name,
           room_name: cheapestHotel.room_name,
-          meal: cheapestHotel.meal
+          meal: cheapestHotel.meal,
         },
         search_params: { latitude, longitude, checkin, checkout, radius: 2 },
-        total_4star_hotels_found: hotelsStaticData.length
+        total_4star_hotels_found: hotelsStaticData.length,
       });
     } else {
       return NextResponse.json({
         cheapest_price: null,
         message: "No available rates found for 3-star hotels",
         search_params: { latitude, longitude, checkin, checkout },
-        total_4star_hotels_found: hotelsStaticData.length
+        total_4star_hotels_found: hotelsStaticData.length,
       });
     }
-
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json(
       { error: "An error occurred while fetching cheapest hotel price" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

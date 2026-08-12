@@ -1,6 +1,6 @@
 /**
  * The booking funnel this app itself records in `affiliates_tracking` (see
- * app/api/affiliate/aff/route.ts's VALID_STAGES — must match exactly).
+ * app/api/affiliate/aff/route.ts's VALID_STAGES - must match exactly).
  * Ported from myt-backoffice's lib/partner-funnel.ts.
  */
 

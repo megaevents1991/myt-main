@@ -9,7 +9,7 @@ export type AppliedCoupon = {
 
 /**
  * Business rules for whether a coupon row can currently be redeemed for a
- * given event. Pure — used by the validate route AND re-checked in
+ * given event. Pure - used by the validate route AND re-checked in
  * confirm-order so an expired/exhausted coupon can't slip through between
  * "apply" and "pay".
  */
@@ -36,7 +36,7 @@ export const isCouponUsable = (
 /**
  * USD the coupon takes off the package total. Percent is applied to the
  * pre-discount total; both kinds are capped at the total (never negative
- * price). Rounded down — errs in the house's favor by at most $1.
+ * price). Rounded down - errs in the house's favor by at most $1.
  */
 export const getCouponDiscountUsd = (
   coupon: Pick<AppliedCoupon, "discountType" | "discountValue">,
@@ -52,7 +52,7 @@ export const getCouponDiscountUsd = (
 
 /**
  * Coupons are matched case-insensitively; canonical form is UPPERCASE.
- * Strict format guard: letters/digits/dash/underscore only, max 64 chars —
+ * Strict format guard: letters/digits/dash/underscore only, max 64 chars -
  * anything else (spaces, %, _-abuse via ILIKE wildcards) returns "" and the
  * lookup treats it as an unknown code. Underscore is allowed as a literal
  * character in codes; the DB query escapes it (see findValidCoupon).

@@ -8,7 +8,7 @@
  *
  * Offline hotels inherit the score from `hotels` via their hid at read time, so
  * filling `hotels` covers online AND offline-with-hid. Offline rows without a
- * hid have no source — set a manual rating in the backoffice form instead.
+ * hid have no source - set a manual rating in the backoffice form instead.
  *
  * Run:  node scripts/backfill-guest-ratings.mjs
  * Re-runnable + incremental-safe (always overwrites with latest dump values).
@@ -31,14 +31,17 @@ const env = Object.fromEntries(
     .map((l) => {
       const i = l.indexOf("=");
       return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
-    })
+    }),
 );
 const SUPABASE_URL = env.NEXT_SECRET_SUPABASE_URL;
 const SUPABASE_KEY = env.NEXT_SECRET_SUPABASE_SERVICE_KEY;
 const AUTH = Buffer.from(
-  `${env.EMERGING_TRAVEL_API_KEY}:${env.EMERGING_TRAVEL_API_SECRET}`
+  `${env.EMERGING_TRAVEL_API_KEY}:${env.EMERGING_TRAVEL_API_SECRET}`,
 ).toString("base64");
-const sbHead = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+const sbHead = {
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+};
 
 // ── 1) load every cached hid into a Set ──────────────────────────────────────
 async function loadHids() {
@@ -65,13 +68,18 @@ async function getDumpUrl() {
     "https://api.worldota.net/api/b2b/v3/hotel/reviews/dump/",
     {
       method: "POST",
-      headers: { Authorization: `Basic ${AUTH}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Basic ${AUTH}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ language: "en" }),
-    }
+    },
   );
   const json = await res.json();
   if (!json?.data?.url) {
-    throw new Error(`No dump URL (status ${res.status}): ${JSON.stringify(json).slice(0, 300)}`);
+    throw new Error(
+      `No dump URL (status ${res.status}): ${JSON.stringify(json).slice(0, 300)}`,
+    );
   }
   console.log("Dump last_update:", json.data.last_update);
   return json.data.url;
@@ -94,20 +102,24 @@ function parseLine(line) {
 
 // ── 3) PATCH a single hotel row by hid ───────────────────────────────────────
 async function patchHotel(rec) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/hotels?hid=eq.${rec.hid}`,
-    {
-      method: "PATCH",
-      headers: { ...sbHead, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({
-        guest_rating: rec.guest_rating,
-        guest_review_count: rec.guest_review_count,
-        guest_detailed_ratings: rec.guest_detailed_ratings,
-        guest_rating_updated_at: new Date().toISOString(),
-      }),
-    }
-  );
-  if (!res.ok) console.error(`  PATCH hid ${rec.hid} failed ${res.status}: ${(await res.text()).slice(0, 150)}`);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/hotels?hid=eq.${rec.hid}`, {
+    method: "PATCH",
+    headers: {
+      ...sbHead,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      guest_rating: rec.guest_rating,
+      guest_review_count: rec.guest_review_count,
+      guest_detailed_ratings: rec.guest_detailed_ratings,
+      guest_rating_updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!res.ok)
+    console.error(
+      `  PATCH hid ${rec.hid} failed ${res.status}: ${(await res.text()).slice(0, 150)}`,
+    );
 }
 
 // Bounded-concurrency pool over a queue of records.
@@ -118,7 +130,8 @@ async function runPool(records, concurrency = 25) {
     while (i < records.length) {
       const rec = records[i++];
       await patchHotel(rec);
-      if (++done % 500 === 0) console.log(`  updated ${done}/${records.length}…`);
+      if (++done % 500 === 0)
+        console.log(`  updated ${done}/${records.length}…`);
     }
   }
   await Promise.all(Array.from({ length: concurrency }, worker));
@@ -150,13 +163,15 @@ for await (const line of rl) {
     hid: rec.hid,
     guest_rating: Math.round(rec.rating * 10) / 10,
     // The dump's `reviews` array is only a small SAMPLE of recent reviews, not
-    // the true total — so we never derive a count from it. Real counts only come
+    // the true total - so we never derive a count from it. Real counts only come
     // from manual overrides on offline hotels.
     guest_review_count: null,
     guest_detailed_ratings: rec.detailed_ratings ?? null,
   });
 }
-console.log(`Scan done. ${scanned} properties scanned, ${matches.length} matched our hids.`);
+console.log(
+  `Scan done. ${scanned} properties scanned, ${matches.length} matched our hids.`,
+);
 
 console.log("Writing scores to `hotels`…");
 await runPool(matches);

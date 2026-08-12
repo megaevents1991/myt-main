@@ -1,5 +1,5 @@
 /**
- * Meta (Facebook) product-catalog feed — pure mapping + serialization.
+ * Meta (Facebook) product-catalog feed - pure mapping + serialization.
  * One site event = one feed item (id = event id, link = /order/{id}).
  * No I/O here: `lib/feed/feedData.ts` fetches events + taxonomy and calls
  * these builders; routes serialize with `toXml` / `toCsv`. Field rules follow
@@ -16,7 +16,7 @@ import {
 export const FEED_SITE_ORIGIN = "https://www.mega-events.co.il";
 export const MONDIAL_ORIGIN = "https://mondial2026.mega-events.co.il";
 export const FEED_BRAND = "Mega Events";
-/** Google taxonomy id for "Arts & Entertainment > Event Tickets" — every item
+/** Google taxonomy id for "Arts & Entertainment > Event Tickets" - every item
  * is a ticket package, so one constant. Meta ignores the field; Google (GMC)
  * needs it + identifier_exists=no to accept GTIN-less custom goods. */
 export const GOOGLE_PRODUCT_CATEGORY = "499969";
@@ -31,7 +31,7 @@ export type EventTaxonomyInfo = {
 
 /**
  * Tag slugs worth showing a campaign manager. Legacy Hebrew-only tags were
- * auto-slugged `item-<N>` (the backoffice now blocks creating new ones) — as
+ * auto-slugged `item-<N>` (the backoffice now blocks creating new ones) - as
  * a custom label that's meaningless noise, so they're dropped from labels
  * (internal_labels keep the raw list for diagnostics).
  */
@@ -54,7 +54,7 @@ export type FeedItem = {
   /** True when image_link is the auto-generated campaign creative. */
   has_campaign: boolean;
   brand: string;
-  /** Day after the event, YYYY-MM-DD — Meta auto-hides past events. */
+  /** Day after the event, YYYY-MM-DD - Meta auto-hides past events. */
   expiration_date: string;
   /** "Music > Rock" (empty when the event has no category). */
   product_type: string;
@@ -73,10 +73,7 @@ export type FeedBuildResult = {
 /* ---------------- helpers ---------------- */
 
 export function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /** Mondial 2026 events live on the mondial subdomain (see mondial routing spec). */
@@ -85,7 +82,9 @@ export function isMondial2026Name(name: string): boolean {
 }
 
 export function orderLink(event: Pick<Event, "id" | "name">): string {
-  const origin = isMondial2026Name(event.name) ? MONDIAL_ORIGIN : FEED_SITE_ORIGIN;
+  const origin = isMondial2026Name(event.name)
+    ? MONDIAL_ORIGIN
+    : FEED_SITE_ORIGIN;
   return `${origin}/order/${event.id}`;
 }
 
@@ -108,7 +107,7 @@ export function formatPriceUSD(amount: number): string {
 
 /**
  * Feed price. In-stock events: exactly the package price the order page
- * computes. Sold-out events still need a price (Meta requires one) — fall back
+ * computes. Sold-out events still need a price (Meta requires one) - fall back
  * to the same formula over ALL tickets, then to `usual_price`. Null = no
  * usable price; the event is skipped.
  */
@@ -142,26 +141,36 @@ export function plainText(s: string): string {
 }
 
 const HEB_MONTHS = [
-  "בינואר", "בפברואר", "במרץ", "באפריל", "במאי", "ביוני",
-  "ביולי", "באוגוסט", "בספטמבר", "באוקטובר", "בנובמבר", "בדצמבר",
+  "בינואר",
+  "בפברואר",
+  "במרץ",
+  "באפריל",
+  "במאי",
+  "ביוני",
+  "ביולי",
+  "באוגוסט",
+  "בספטמבר",
+  "באוקטובר",
+  "בנובמבר",
+  "בדצמבר",
 ];
 
 /* ---------------- item builder ---------------- */
 
 /**
  * @param availabilityCutoffISO events dated before this are "out of stock"
- *   (the site's 7-day booking window — the order page won't load them).
+ *   (the site's 7-day booking window - the order page won't load them).
  * @param todayISO "now" for days-until-event; injected for testability.
  */
 export function buildFeedItem(
   event: Event,
   taxonomy: EventTaxonomyInfo,
   availabilityCutoffISO: string,
-  todayISO: string
+  todayISO: string,
 ): FeedItem | { skipped: string } {
   const price = feedPriceUSD(event);
   if (price == null) return { skipped: "no computable price" };
-  // Branded or not at all — same rule as the activities feed, see the note
+  // Branded or not at all - same rule as the activities feed, see the note
   // there. The campaign creative IS the product image; nothing falls back
   // (the old card_image_url fallback is gone since d4539e1).
   const imageLink = event.campaign_image_url;
@@ -184,7 +193,7 @@ export function buildFeedItem(
     HEB_MONTHS[d.getUTCMonth()]
   } ${d.getUTCFullYear()}. כרטיס רשמי לאירוע${
     event.skip_flight ? " ומלון" : ", טיסה ומלון"
-  } — חבילה שאתם מרכיבים בעצמכם.`;
+  } - חבילה שאתם מרכיבים בעצמכם.`;
   // Meta rejects description === title; the generated sentence always differs.
   const description = fromCms && fromCms !== title ? fromCms : generated;
 
@@ -200,7 +209,9 @@ export function buildFeedItem(
 
   const daysUntil = Math.max(
     0,
-    Math.round((d.getTime() - new Date(`${todayISO}T00:00:00Z`).getTime()) / dayMs)
+    Math.round(
+      (d.getTime() - new Date(`${todayISO}T00:00:00Z`).getTime()) / dayMs,
+    ),
   );
   const nights = nightsOf(event);
 
@@ -213,7 +224,9 @@ export function buildFeedItem(
     price: formatPriceUSD(price),
     link: orderLink(event),
     image_link: imageLink,
-    additional_image_link: event.campaign_image_url ? (event.campaign_banner_url ?? null) : null,
+    additional_image_link: event.campaign_image_url
+      ? (event.campaign_banner_url ?? null)
+      : null,
     has_campaign: Boolean(event.campaign_image_url),
     brand: FEED_BRAND,
     expiration_date: expirationDateOf(eventDate),
@@ -225,9 +238,15 @@ export function buildFeedItem(
 }
 
 /** Package nights from the default depart/return dates (0 when unusable). */
-export function nightsOf(event: Pick<Event, "def_date_depart" | "def_date_return">): number {
-  const dep = new Date(`${(event.def_date_depart || "").split("T")[0]}T00:00:00Z`);
-  const ret = new Date(`${(event.def_date_return || "").split("T")[0]}T00:00:00Z`);
+export function nightsOf(
+  event: Pick<Event, "def_date_depart" | "def_date_return">,
+): number {
+  const dep = new Date(
+    `${(event.def_date_depart || "").split("T")[0]}T00:00:00Z`,
+  );
+  const ret = new Date(
+    `${(event.def_date_return || "").split("T")[0]}T00:00:00Z`,
+  );
   if (isNaN(dep.getTime()) || isNaN(ret.getTime())) return 0;
   const n = Math.round((ret.getTime() - dep.getTime()) / dayMs);
   return n > 0 ? n : 0;
@@ -237,7 +256,7 @@ export function nightsOf(event: Pick<Event, "def_date_depart" | "def_date_return
 
 /**
  * @param generatedAtISO when set, stamped as a comment after the XML
- *   declaration — lets the publish cron + health check tell a fresh build
+ *   declaration - lets the publish cron + health check tell a fresh build
  *   from a stale republished snapshot, and makes every publish byte-unique
  *   (avoids the identical-content weak-etag Cloudflare cache poisoning).
  */
@@ -248,7 +267,10 @@ export function toXml(items: FeedItem[], generatedAtISO?: string): string {
         .map((l) => `      <internal_label>${escapeXml(l)}</internal_label>`)
         .join("\n");
       const customLabels = it.custom_labels
-        .map((l, i) => `      <g:custom_label_${i}>${escapeXml(l)}</g:custom_label_${i}>`)
+        .map(
+          (l, i) =>
+            `      <g:custom_label_${i}>${escapeXml(l)}</g:custom_label_${i}>`,
+        )
         .join("\n");
       const customNumbers = it.custom_numbers
         .map((n, i) => `      <custom_number_${i}>${n}</custom_number_${i}>`)
@@ -285,13 +307,29 @@ ${itemXml}
 }
 
 // EXACT column set + order of the CMO's verified-working Meta CSV
-// ("feed_ready.csv" — imported into Commerce Manager with 0 errors). Do not
+// ("feed_ready.csv" - imported into Commerce Manager with 0 errors). Do not
 // add/remove/reorder columns without re-verifying an import in Meta.
 const CSV_HEADERS = [
-  "id", "title", "description", "availability", "condition", "price", "link",
-  "image_link", "brand", "expiration_date", "product_type", "internal_label",
-  "custom_label_0", "custom_label_1", "custom_label_2", "custom_label_3", "custom_label_4",
-  "custom_number_0", "custom_number_1", "custom_number_2",
+  "id",
+  "title",
+  "description",
+  "availability",
+  "condition",
+  "price",
+  "link",
+  "image_link",
+  "brand",
+  "expiration_date",
+  "product_type",
+  "internal_label",
+  "custom_label_0",
+  "custom_label_1",
+  "custom_label_2",
+  "custom_label_3",
+  "custom_label_4",
+  "custom_number_0",
+  "custom_number_1",
+  "custom_number_2",
 ];
 
 function csvCell(v: string | number): string {
@@ -302,18 +340,28 @@ function csvCell(v: string | number): string {
 /**
  * CSV feed in the proven-working shape: same rows as the XML, internal_labels
  * as one `['a','b']`-style cell (matches the verified file). UTF-8 WITHOUT a
- * BOM and CRLF rows — byte-format mirrors the file Meta demonstrably accepts.
+ * BOM and CRLF rows - byte-format mirrors the file Meta demonstrably accepts.
  */
 export function toCsv(items: FeedItem[]): string {
   const rows = items.map((it) =>
     [
-      it.id, it.title, it.description, it.availability, it.condition, it.price,
-      it.link, it.image_link, it.brand, it.expiration_date, it.product_type,
+      it.id,
+      it.title,
+      it.description,
+      it.availability,
+      it.condition,
+      it.price,
+      it.link,
+      it.image_link,
+      it.brand,
+      it.expiration_date,
+      it.product_type,
       `[${it.internal_labels.map((l) => `'${l}'`).join(",")}]`,
-      ...it.custom_labels, ...it.custom_numbers,
+      ...it.custom_labels,
+      ...it.custom_numbers,
     ]
       .map(csvCell)
-      .join(",")
+      .join(","),
   );
   return [CSV_HEADERS.join(","), ...rows].join("\r\n") + "\r\n";
 }

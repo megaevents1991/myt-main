@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 /**
  * The category page's event browser.
  *
- * A category can hold 130+ packages — the page used to dump every card in one
+ * A category can hold 130+ packages - the page used to dump every card in one
  * scroll, which is unusable: you cannot find "Barcelona in October under
  * $2,000" by eye. Filters are derived from the events themselves (only cities
  * and months that exist appear), so no combination ever returns an empty grid
@@ -36,7 +36,7 @@ const ALL = "__all__";
 const CONTROL =
   "h-11 w-full rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
-/** "לונדון, בריטניה" → "לונדון" — the city is what people filter by. */
+/** "לונדון, בריטניה" → "לונדון" - the city is what people filter by. */
 const cityOf = (event: Event) => (event.location?.name ?? "").split(",")[0].trim();
 
 const monthKeyOf = (event: Event) => (event.date ? dayjs(event.date).format("YYYY-MM") : "");
@@ -128,7 +128,7 @@ export function CategoryEventsBrowser({
   headingId,
 }: {
   events: Event[];
-  /** Feed tag names per event id — the sharpest slice of a category. */
+  /** Feed tag names per event id - the sharpest slice of a category. */
   tagsByEvent?: Record<number, string[]>;
   headingId?: string;
 }) {
@@ -194,12 +194,12 @@ export function CategoryEventsBrowser({
   }, [events]);
 
   /**
-   * The feed tags carried by the events on screen — the same tags the Meta
+   * The feed tags carried by the events on screen - the same tags the Meta
    * catalogue targets on. Inside כדורגל these are "ליגה אנגלית", "ליגה
    * איטלקית" and so on, which is the cut people actually want.
    *
    * A tag is dropped only when it cannot narrow anything: carried by one event
-   * or by (nearly) all of them. Note what is NOT excluded — the tags that
+   * or by (nearly) all of them. Note what is NOT excluded - the tags that
    * COMPOSE this category. They looked redundant, but in כדורגל those are
    * exactly the league tags, and excluding them left the bar with nothing
    * useful on it.

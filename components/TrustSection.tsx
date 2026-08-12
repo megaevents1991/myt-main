@@ -4,7 +4,7 @@ const pillars = [
   {
     Icon: Lock,
     title: "כרטיסים רשמיים בלבד",
-    desc: "אתם בידיים טובות — כל הכרטיסים מאושרים",
+    desc: "אתם בידיים טובות - כל הכרטיסים מאושרים",
   },
   {
     Icon: MessageCircle,
@@ -18,7 +18,7 @@ const pillars = [
   },
 ];
 
-/** "החוויה שלכם — בידיים בטוחות" — trust pillars on cream. */
+/** "החוויה שלכם - בידיים בטוחות" - trust pillars on cream. */
 export const TrustSection = () => (
   <section
     className="bg-background px-4 py-16 md:px-6"
@@ -29,10 +29,10 @@ export const TrustSection = () => (
         id="trust-heading"
         className="font-display text-3xl font-extrabold text-foreground sm:text-4xl"
       >
-        החוויה שלכם — בידיים בטוחות
+        החוויה שלכם - בידיים בטוחות
       </h2>
       <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-        אנחנו מלווים אתכם לכל אורך הדרך — מבחירת האירוע ועד קבלת הכרטיסים
+        אנחנו מלווים אתכם לכל אורך הדרך - מבחירת האירוע ועד קבלת הכרטיסים
         והרכיבים של החבילה.
       </p>
 
@@ -52,7 +52,7 @@ export const TrustSection = () => (
       </div>
 
       <p className="mt-8 font-bold text-foreground">
-        אנחנו כאן כדי שתיהנו מהחוויה שלכם — בשקט נפשי ובאמינות מלאה.
+        אנחנו כאן כדי שתיהנו מהחוויה שלכם - בשקט נפשי ובאמינות מלאה.
       </p>
     </div>
   </section>

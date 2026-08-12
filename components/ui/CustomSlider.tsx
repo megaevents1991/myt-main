@@ -2,7 +2,7 @@ import { FlightSearchCriteria } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
 import { Slider } from "@mantine/core";
 
-/* Adaptive: dark-forest on light surfaces, glow-mint on dark — the constant
+/* Adaptive: dark-forest on light surfaces, glow-mint on dark - the constant
    forest was invisible on the dark order-flow cards. */
 const themeColor = "hsl(var(--brand-accent))";
 const themeColorForeground = "hsl(var(--brand-accent-foreground))";

@@ -1,21 +1,29 @@
 "use server";
 
-import { requireAgent, requirePartner, type PartnerSession } from "@/lib/partner-auth";
+import {
+  requireAgent,
+  requirePartner,
+  type PartnerSession,
+} from "@/lib/partner-auth";
 import { supabase } from "@/lib/supabase";
 import { getEvents, getCachedEvents } from "@/lib/eventsData";
 import { computePackagePrice } from "@/lib/events/price";
-import { round2, type CommissionTerms, type CommissionType } from "@/lib/partner-commission";
+import {
+  round2,
+  type CommissionTerms,
+  type CommissionType,
+} from "@/lib/partner-commission";
 
 /**
- * Quotes for the agent/influencer area — ported from the backoffice partner
+ * Quotes for the agent/influencer area - ported from the backoffice partner
  * portal (lib/actions/quote-actions.ts there) so an agent builds a quote
  * against the site's own live event data instead of a backoffice mirror.
  * Same shared `quotes` table; same discount-cap rule, reproduced exactly.
  *
  * No PDF file is generated here (backoffice's route shells out to a headless
- * Chromium via playwright-core + @sparticuz/chromium — neither is a
+ * Chromium via playwright-core + @sparticuz/chromium - neither is a
  * dependency of this app, and this environment has no way to add one and
- * verify it installs). /agent/quotes/[id] is instead a print-ready page —
+ * verify it installs). /agent/quotes/[id] is instead a print-ready page -
  * Ctrl+P → Save as PDF gets the agent the same document.
  */
 
@@ -47,19 +55,21 @@ export interface AgentQuote {
 }
 
 /**
- * Partner's commission terms, read fresh — never trusted from the client.
+ * Partner's commission terms, read fresh - never trusted from the client.
  *
  * `commission_type` may not exist yet depending on migration/deploy order
- * with the backoffice, which owns the schema — and even once it exists, a
+ * with the backoffice, which owns the schema - and even once it exists, a
  * legacy row may still have it null. Unlike the backoffice (whose own
  * historical default is fixed_per_ticket), THIS app has only ever read
  * `partners.commission` as a plain PERCENTAGE everywhere else it touches it
  * (confirm-order/utils.ts's agent_card discount, PriceSummary.tsx's "עמלה
- * צפויה" line, the $40 auto-created-partner default meaning 40%) — so
+ * צפויה" line, the $40 auto-created-partner default meaning 40%) - so
  * percent_of_sale is the fallback that matches what this number has always
  * meant here, not the backoffice's own convention.
  */
-async function commissionTermsFor(trackingCode: string): Promise<CommissionTerms | null> {
+async function commissionTermsFor(
+  trackingCode: string,
+): Promise<CommissionTerms | null> {
   let { data, error } = await supabase
     .from("partners")
     .select("commission, commission_type")
@@ -78,8 +88,9 @@ async function commissionTermsFor(trackingCode: string): Promise<CommissionTerms
   }
   if (!data) return null;
   return {
-    type: ((data as { commission_type?: CommissionType | null }).commission_type as CommissionType) ??
-      "percent_of_sale",
+    type:
+      ((data as { commission_type?: CommissionType | null })
+        .commission_type as CommissionType) ?? "percent_of_sale",
     rate: Number(data.commission) || 0,
   };
 }
@@ -94,7 +105,7 @@ export async function getMyAgentTerms(): Promise<CommissionTerms | null> {
  * What the system would price ONE package at for this event, right now, and
  * the event's own name (for the quote's package line label).
  *
- * Per traveller, matching computePackagePrice — recomputed server-side from
+ * Per traveller, matching computePackagePrice - recomputed server-side from
  * the live event row rather than trusted from the form, since the whole
  * point of storing it is to measure what the agent did to the price.
  */
@@ -109,11 +120,11 @@ async function suggestedPackageFor(
 }
 
 export async function getQuoteEvents(): Promise<QuoteEventOption[]> {
-  // Both roles — this is a plain event listing with no pricing decision
+  // Both roles - this is a plain event listing with no pricing decision
   // baked in (unlike createQuote, which is agent-only). /agent/links reuses
   // this for its per-event tracking link, and an influencer needs that too.
   await requirePartner();
-  // The same ISR-cached reader /agent's own search page uses — never a raw
+  // The same ISR-cached reader /agent's own search page uses - never a raw
   // query for a plain listing.
   const { events } = await getCachedEvents();
   return (events || []).slice(0, 300).map((event) => ({
@@ -154,7 +165,7 @@ export async function getMyQuote(id: number): Promise<AgentQuote | null> {
     console.error("getMyQuote:", JSON.stringify(error));
     return null;
   }
-  // 404-as-null for both "doesn't exist" and "not yours" — don't confirm a
+  // 404-as-null for both "doesn't exist" and "not yours" - don't confirm a
   // foreign quote id exists.
   if (!data || data.partner_tracking_code !== session.partner_code) return null;
   return data as AgentQuote;
@@ -167,14 +178,14 @@ export async function createQuote(input: {
   /**
    * The event package line, when the quote is built from a catalogued event.
    * The stored line item for the package is ALWAYS derived server-side from
-   * this value (qty/unit_price) plus the event's own name — never from
-   * `extra_line_items` — so the discount-cap check below, which runs against
+   * this value (qty/unit_price) plus the event's own name - never from
+   * `extra_line_items` - so the discount-cap check below, which runs against
    * this exact number, can never diverge from what actually gets billed.
    * Quoting the package as a lump-sum "extra" line instead would make the
    * cap unenforceable (the discount would hide behind a quantity of 1).
    */
   package?: { qty: number; unit_price: number } | null;
-  /** Anything beyond the package itself — insurance, upgrades, add-ons.
+  /** Anything beyond the package itself - insurance, upgrades, add-ons.
    * NOT subject to the discount cap, and must never describe the package. */
   extra_line_items?: QuoteLineItem[];
   notes?: string | null;
@@ -184,7 +195,7 @@ export async function createQuote(input: {
   try {
     session = await requireAgent();
   } catch {
-    // Influencers never reach this — no nav link, no session role match —
+    // Influencers never reach this - no nav link, no session role match -
     // but the action itself must refuse regardless of how it's called.
     return { ok: false, error: "הצעות מחיר זמינות לסוכנים מחוברים בלבד" };
   }
@@ -199,7 +210,9 @@ export async function createQuote(input: {
   if (!customer_name) return { ok: false, error: "שם הלקוח הוא שדה חובה" };
   if (!title) return { ok: false, error: "כותרת היא שדה חובה" };
 
-  const extraItems = Array.isArray(input.extra_line_items) ? input.extra_line_items : [];
+  const extraItems = Array.isArray(input.extra_line_items)
+    ? input.extra_line_items
+    : [];
   for (const item of extraItems) {
     if (!item || typeof item !== "object") {
       return { ok: false, error: "פריט לא תקין" };
@@ -224,7 +237,7 @@ export async function createQuote(input: {
   }
 
   const lineItems: QuoteLineItem[] = [];
-  // What the system itself would have charged per traveller — for reporting,
+  // What the system itself would have charged per traveller - for reporting,
   // so staff can compare it against what the agent actually quoted
   // (line_items[0].unit_price). Never what was actually charged.
   let base_unit_price: number | null = null;
@@ -236,7 +249,10 @@ export async function createQuote(input: {
   if (input.event_id != null) {
     const suggested = await suggestedPackageFor(input.event_id);
     if (suggested?.unitPrice == null) {
-      return { ok: false, error: "לא הצלחנו לחשב את מחיר החבילה לאירוע הזה. נסו שוב." };
+      return {
+        ok: false,
+        error: "לא הצלחנו לחשב את מחיר החבילה לאירוע הזה. נסו שוב.",
+      };
     }
     const pkg = input.package;
     if (!pkg || !Number.isFinite(pkg.unit_price) || pkg.unit_price < 0) {
@@ -251,7 +267,7 @@ export async function createQuote(input: {
       return { ok: false, error: "כמות נוסעים לא תקינה" };
     }
 
-    // An agent may give away their own commission, never more — below that
+    // An agent may give away their own commission, never more - below that
     // they would owe us the difference on a sale we cannot collect it from.
     // Measured PER TRAVELLER on the package alone: comparing whole-quote
     // totals lets a discount hide behind a lump-sum line item that
@@ -262,7 +278,9 @@ export async function createQuote(input: {
       // Percent commission is paid on what the CUSTOMER pays, so the ceiling
       // is derived from the discounted price, not the list price.
       const commissionPerTraveller = round2(
-        terms.type === "percent_of_sale" ? (quoted * (terms.rate ?? 0)) / 100 : terms.rate ?? 0,
+        terms.type === "percent_of_sale"
+          ? (quoted * (terms.rate ?? 0)) / 100
+          : (terms.rate ?? 0),
       );
       if (discountPerTraveller > commissionPerTraveller + 0.001) {
         return {
@@ -273,7 +291,7 @@ export async function createQuote(input: {
     }
 
     // The package's OWN line item, built from the same validated qty/price
-    // the cap check just ran against — never from client-supplied line items.
+    // the cap check just ran against - never from client-supplied line items.
     lineItems.push({ label: suggested.name, qty: pkg.qty, unit_price: quoted });
     base_unit_price = round2(suggested.unitPrice);
   }
@@ -309,10 +327,14 @@ export async function createQuote(input: {
     .single();
 
   // The migration adding base_unit_price and this app's deploy ship
-  // separately — a reporting field must not stop an agent creating quotes in
+  // separately - a reporting field must not stop an agent creating quotes in
   // the window between them.
   if (error?.code === "PGRST204") {
-    ({ data, error } = await supabase.from("quotes").insert(row).select("id").single());
+    ({ data, error } = await supabase
+      .from("quotes")
+      .insert(row)
+      .select("id")
+      .single());
   }
 
   if (error || !data) {

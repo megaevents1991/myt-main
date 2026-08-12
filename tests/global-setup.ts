@@ -10,7 +10,7 @@ import path from "path";
  * authenticated instead of logging in every time.
  *
  * If no credentials are configured in tests/.env, an empty session is written
- * so the config still loads — backoffice authenticated tests skip themselves.
+ * so the config still loads - backoffice authenticated tests skip themselves.
  */
 async function globalSetup(config: FullConfig) {
   const storageState = path.resolve(__dirname, ".auth", "backoffice.json");
@@ -22,10 +22,13 @@ async function globalSetup(config: FullConfig) {
   // No creds → write an empty session and bail. Authenticated tests will skip.
   if (!email || !password) {
     console.warn(
-      "[global-setup] BACKOFFICE_EMAIL/PASSWORD not set in tests/.env — " +
-        "backoffice authenticated tests will be skipped."
+      "[global-setup] BACKOFFICE_EMAIL/PASSWORD not set in tests/.env - " +
+        "backoffice authenticated tests will be skipped.",
     );
-    fs.writeFileSync(storageState, JSON.stringify({ cookies: [], origins: [] }));
+    fs.writeFileSync(
+      storageState,
+      JSON.stringify({ cookies: [], origins: [] }),
+    );
     return;
   }
 
@@ -42,7 +45,7 @@ async function globalSetup(config: FullConfig) {
     await ctx.dispose();
     throw new Error(
       `[global-setup] Backoffice login failed (${res.status()}). ` +
-        "Check BACKOFFICE_EMAIL/PASSWORD in tests/.env."
+        "Check BACKOFFICE_EMAIL/PASSWORD in tests/.env.",
     );
   }
 

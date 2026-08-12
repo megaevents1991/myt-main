@@ -85,7 +85,7 @@ export const SearchResults = ({
     [events]
   );
 
-  // When the typed query itself is a city, the city dropdown is redundant — the
+  // When the typed query itself is a city, the city dropdown is redundant - the
   // text search already narrows to it. Hide the select and drop the city filter.
   const queryIsCity = useMemo(() => {
     const q = query.trim();
@@ -177,7 +177,7 @@ export const SearchResults = ({
       city: effectiveCity,
       resultsCount: results.length,
     });
-    // Only when the query itself changes — avoid firing on every filter tweak.
+    // Only when the query itself changes - avoid firing on every filter tweak.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 

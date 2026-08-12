@@ -10,10 +10,10 @@ import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { isFeaturedTag } from "@/lib/eventTags";
 
 /**
- * Promo "package" banners on the homepage — wide cards highlighting featured
+ * Promo "package" banners on the homepage - wide cards highlighting featured
  * events (per Dor's mock). Content is auto-selected from the events list:
  * tagged events first, falling back to the next available ones. No new data
- * source — purely a richer presentation of existing events.
+ * source - purely a richer presentation of existing events.
  */
 export const PackageBanners = ({ events }: { events: Event[] }) => {
   const live = events.filter((e) => !isEventSoldOut(e));
@@ -48,7 +48,7 @@ export const PackageBanners = ({ events }: { events: Event[] }) => {
                 key={event.id}
                 href={`/order/${event.id}`}
                 className="group relative w-[88vw] shrink-0 snap-start overflow-hidden rounded-3xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:w-auto"
-                aria-label={`${event.name} — ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}`}
+                aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}`}
               >
                 {/* Banner art with green brand wash + title overlay */}
                 <div className="relative h-44 sm:h-52">

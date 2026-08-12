@@ -51,7 +51,7 @@ export type Event = {
   skip_flight_markup?: number | null;
   // LOCKFLIGHT: when set, the main app offers ONLY this offline flight and
   // never calls Amadeus for this event. skip_flight still applies. When the
-  // flight's allocation for this event is exhausted the package is sold out —
+  // flight's allocation for this event is exhausted the package is sold out -
   // there is deliberately no fallback to a dynamic search.
   locked_flight_id?: number | null;
   // Derived at read time by markLockedPackagesSoldOut, NOT a column: the locked
@@ -76,13 +76,13 @@ export type Event = {
   markup_hotel?: number | null;
   skip_hotel_markup?: number | null;
   // Ticket-only override (USD per ticket). When set AND the customer skips
-  // BOTH flight and hotel, the price is exactly ticket_cost + this value —
+  // BOTH flight and hotel, the price is exactly ticket_cost + this value -
   // no global markup, no event_additional_markup, no skip fees, no component
   // markups. Absolute, wins over everything. Only the both-skipped scenario;
   // every other path untouched. Empty/null = no override.
   ticket_only_markup?: number | null;
   // Auto-generated campaign creative (backoffice nightly cron). Feed uses
-  // campaign_image_url as image_link (NO fallback — an event without a
+  // campaign_image_url as image_link (NO fallback - an event without a
   // creative is skipped, "branded or not at all"), banner as
   // additional_image_link. Synced with backoffice types/app.types.ts.
   campaign_image_url?: string | null;
@@ -205,7 +205,7 @@ export type AffiliateTracking = {
 };
 
 /**
- * Customer-facing discount code (shared `coupons` table — backoffice writes,
+ * Customer-facing discount code (shared `coupons` table - backoffice writes,
  * this app validates + applies). Does NOT stack with the affiliate discount:
  * the bigger single discount wins.
  */
@@ -339,11 +339,15 @@ export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
 };
 
 /**
- * How an agent-entered booking gets settled — see confirm-order/utils.ts'
+ * How an agent-entered booking gets settled - see confirm-order/utils.ts'
  * resolveAgentSettlement. Only ever meaningful when is_agent_booking is true;
  * absent/undefined means the normal customer-pays-full-price path.
  */
-export const SETTLEMENT_METHODS = ["customer_card", "agent_card", "voucher"] as const;
+export const SETTLEMENT_METHODS = [
+  "customer_card",
+  "agent_card",
+  "voucher",
+] as const;
 export type SettlementMethod = (typeof SETTLEMENT_METHODS)[number];
 
 export type OrderData = {
@@ -386,16 +390,16 @@ export type OrderData = {
   status?: string;
   /** Coupon redeemed on this order (only when it beat the affiliate discount). */
   coupon_code?: string | null;
-  /** Pre-discount package total USD — server recomputes the coupon discount from it. */
+  /** Pre-discount package total USD - server recomputes the coupon discount from it. */
   coupon_base_total_usd?: number | null;
-  /** Prepared-package share token the order arrived through (?pkg=) — source attribution only. */
+  /** Prepared-package share token the order arrived through (?pkg=) - source attribution only. */
   source_share_token?: string | null;
-  /** Signed quote the order arrived through (?quote=) — source attribution only. */
+  /** Signed quote the order arrived through (?quote=) - source attribution only. */
   quote_id?: number | null;
 };
 
 /**
- * Backoffice CMS templates — one typed table per content type (replacing
+ * Backoffice CMS templates - one typed table per content type (replacing
  * Contentful). Every table shares `TemplateBase`. Shared DB shape: keep in sync
  * with backoffice `types/template.types.ts` + per-type files.
  */
@@ -424,7 +428,7 @@ export interface TemplateBase {
 }
 
 /**
- * Category — typed row of the Supabase `categories` table. Managed in the
+ * Category - typed row of the Supabase `categories` table. Managed in the
  * backoffice, read by this app. Keep in sync with backoffice
  * `types/category.types.ts`.
  */

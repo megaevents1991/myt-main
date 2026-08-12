@@ -6,14 +6,14 @@ import path from "path";
  * Playwright E2E config for the MYT platform.
  *
  * Covers BOTH apps from this single repo:
- *  - `main`       — customer-facing booking app (this repo)        → localhost:3000
- *  - `backoffice` — admin dashboard (../../MYT-backoffice-app)     → localhost:3001
+ *  - `main`       - customer-facing booking app (this repo)        → localhost:3000
+ *  - `backoffice` - admin dashboard (../../MYT-backoffice-app)     → localhost:3001
  *
  * Both dev servers are started automatically (see `webServer` below).
  * Backoffice tests reuse a logged-in session created by `global-setup.ts`.
  */
 
-// Load test-only secrets (backoffice creds) from tests/.env — never committed.
+// Load test-only secrets (backoffice creds) from tests/.env - never committed.
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const MAIN_PORT = 3000;
@@ -21,8 +21,12 @@ const BACKOFFICE_PORT = 3001;
 const MAIN_URL = `http://localhost:${MAIN_PORT}`;
 const BACKOFFICE_URL = `http://localhost:${BACKOFFICE_PORT}`;
 
-// Saved backoffice session — produced by global-setup, consumed by backoffice tests.
-export const STORAGE_STATE = path.resolve(__dirname, ".auth", "backoffice.json");
+// Saved backoffice session - produced by global-setup, consumed by backoffice tests.
+export const STORAGE_STATE = path.resolve(
+  __dirname,
+  ".auth",
+  "backoffice.json",
+);
 
 export default defineConfig({
   testDir: __dirname,
@@ -35,7 +39,13 @@ export default defineConfig({
 
   reporter: [
     ["list"],
-    ["html", { outputFolder: path.resolve(__dirname, "playwright-report"), open: "never" }],
+    [
+      "html",
+      {
+        outputFolder: path.resolve(__dirname, "playwright-report"),
+        open: "never",
+      },
+    ],
   ],
 
   // Logs into the backoffice once and saves the session to STORAGE_STATE.
@@ -46,7 +56,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     actionTimeout: 15_000,
-    // Generous — first navigation to an uncompiled route in `next dev` is slow.
+    // Generous - first navigation to an uncompiled route in `next dev` is slow.
     navigationTimeout: 60_000,
   },
 

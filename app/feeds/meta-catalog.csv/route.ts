@@ -2,7 +2,7 @@ import { getFeedItems } from "@/lib/feed/feedData";
 import { toCsv } from "@/lib/feed/metaCatalog";
 
 /**
- * CSV export of the exact same rows as /feeds/meta-catalog.xml — for manual
+ * CSV export of the exact same rows as /feeds/meta-catalog.xml - for manual
  * inspection / spreadsheet work from the /product-feed page. The XML is the
  * canonical feed Meta consumes.
  */
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const { items } = await getFeedItems();
     // Default output is byte-exact to the Meta-verified feed_ready.csv shape:
     // NO BOM. Excel misreads BOM-less UTF-8 Hebrew as ANSI, so human
-    // downloads (?excel=1, the /product-feed button) get a BOM prepended —
+    // downloads (?excel=1, the /product-feed button) get a BOM prepended -
     // never the cron/Meta path.
     const forExcel = new URL(request.url).searchParams.get("excel") === "1";
     const body = (forExcel ? "﻿" : "") + toCsv(items);

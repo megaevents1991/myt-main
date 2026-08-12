@@ -14,14 +14,14 @@ const mid = process.env.NEXT_SECRET_CG_MID || "";
  * Verify a CreditGuard transaction and record the outcome on the reservation.
  *
  * Ordering is deliberate and load-bearing:
- * 1. Persist `payment_info` + `status` FIRST — a paid order must be marked
+ * 1. Persist `payment_info` + `status` FIRST - a paid order must be marked
  *    Paid no matter what happens later. (A crash in the confirmation email
  *    used to abort this route before the update, so real payments sat as
  *    Pending until the backoffice flagged them Lost.)
  * 2. Only then send the customer email, wrapped so its failure is non-fatal.
  *
  * Idempotent: safe to call from both the CreditGuard server callback and the
- * client confirmation page — the second call rewrites the same values and the
+ * client confirmation page - the second call rewrites the same values and the
  * `confirmation_email_sent` flag stops a duplicate email.
  */
 export async function validateAndRecordPayment({
@@ -60,7 +60,7 @@ export async function validateAndRecordPayment({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = convert(body, { format: "object" }) as any;
 
-  // xmlbuilder2 gives a single object for one <row> but an ARRAY for several —
+  // xmlbuilder2 gives a single object for one <row> but an ARRAY for several -
   // a paid tx must be recognized in both shapes, and a missing/error envelope
   // must not throw (it would abort before the status update below).
   const rowRaw = result?.ashrait?.response?.inquireTransactions?.row;
@@ -86,7 +86,7 @@ export async function validateAndRecordPayment({
     );
   }
 
-  // 2. Customer email — non-fatal by design.
+  // 2. Customer email - non-fatal by design.
   try {
     const { data } = await supabase
       .from("reservations")

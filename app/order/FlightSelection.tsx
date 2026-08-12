@@ -47,7 +47,7 @@ const pricePerTraveler = (f: Flight) => f.price / f.numOfTravelers;
 
 // The default-selected / "best"-badged flight. Offline flight+hotel inventory
 // is sold as a bundle, so an available offline flight is always the best choice
-// — and when several offline flights exist, the CHEAPEST one (per traveler)
+// - and when several offline flights exist, the CHEAPEST one (per traveler)
 // wins. With no offline inventory, "best value" is the composite: fewest stops,
 // then cheapest per traveler, then shortest total duration. Picks only from
 // visible flights so the selection always lands on a card the customer can see.
@@ -108,7 +108,7 @@ export const FlightSelection = () => {
 
   // A customer who skipped the flight can come back and add one ("+ להוספה").
   // Any flight landing in the order (manual pick, best-flight auto-pick, filter
-  // re-pick) cancels the skip — otherwise the review would still say "ללא טיסה"
+  // re-pick) cancels the skip - otherwise the review would still say "ללא טיסה"
   // and ignore the chosen flight.
   useEffect(() => {
     if (flightSkipped && orderFlight?.id) setFlightSkipped(false);
@@ -130,7 +130,7 @@ export const FlightSelection = () => {
   const [sortOption] = useState<SortOptions>("price_asc");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // LOCKFLIGHT — the event is pinned to one offline flight, so there is nothing
+  // LOCKFLIGHT - the event is pinned to one offline flight, so there is nothing
   // to choose between and no Amadeus search behind it.
   const [isLockedPackage, setIsLockedPackage] = useState(false);
   const [isLockedSoldOut, setIsLockedSoldOut] = useState(false);
@@ -147,7 +147,7 @@ export const FlightSelection = () => {
   const [arrivalRanges, setArrivalRanges] = useState<TimeRange[] | []>([]);
   const [departureRanges, setDepartureRanges] = useState<TimeRange[] | []>([]);
   const [isIsraeliFilter, setIsIsraeliFilter] = useState(false);
-  // fetchFlights reads this AFTER awaiting the network — the state its closure
+  // fetchFlights reads this AFTER awaiting the network - the state its closure
   // captured at call time may be stale by then (the customer can switch tabs
   // while a search is in flight).
   const isIsraeliFilterRef = useRef(false);
@@ -170,7 +170,7 @@ export const FlightSelection = () => {
   // Tracks whether this step is still mounted. A live Amadeus search that
   // resolves after the customer has left the flight step (e.g. tapped
   // "skip flight") must not write its result back into the shared order
-  // context — otherwise a skipped-flight order silently gets a flight.
+  // context - otherwise a skipped-flight order silently gets a flight.
   const isMountedRef = useRef(true);
   useEffect(() => {
     return () => {
@@ -180,7 +180,7 @@ export const FlightSelection = () => {
 
   useLayoutEffect(() => {
     // A locked package hides the filter sidebar, so measuring it yields 0 and
-    // would clamp the flight list to zero height — the one flight on offer
+    // would clamp the flight list to zero height - the one flight on offer
     // would render and then be clipped out of sight. The JSX drops `mah`
     // entirely in that case, so there is nothing to measure here.
     if (isLockedPackage) return;
@@ -205,7 +205,7 @@ export const FlightSelection = () => {
   // preload in OrderForm already kicked off the default-dates fetch; identical
   // params are coalesced by the provider, so this only does real work when the
   // flight's dates differ from the event defaults. (Merged the old separate
-  // "first fetch" effect into this one — coalescing makes it redundant.)
+  // "first fetch" effect into this one - coalescing makes it redundant.)
   useEffect(() => {
     if (event?.location?.country_code === "US") return;
     if (orderFlight?.id) {
@@ -284,13 +284,13 @@ export const FlightSelection = () => {
         debug: { departureDate: string; returnDate: string };
         // LOCKFLIGHT: this package sells one fixed offline flight and the API
         // skipped Amadeus entirely. `lockedSoldOut` means that flight has no
-        // seats left for this party — there is deliberately no fallback search.
+        // seats left for this party - there is deliberately no fallback search.
         locked?: boolean;
         lockedSoldOut?: boolean;
       } = await res.json();
 
       // The customer may have skipped the flight (or otherwise left this
-      // step) while the search was in flight — drop stale results so they
+      // step) while the search was in flight - drop stale results so they
       // can't re-populate `flight` after a skip.
       if (!isMountedRef.current) return;
 
@@ -301,7 +301,7 @@ export const FlightSelection = () => {
         prepareFlightsData(flights);
 
       // A new search rebuilds every filter from the fresh results, but the
-      // ישראלי tab is a standing choice, not a per-search checkbox — keep
+      // ישראלי tab is a standing choice, not a per-search checkbox - keep
       // honoring it, or every foreign airline floods back under a
       // still-highlighted tab (and the isIsraeliFilter guard in
       // handleSortTabChange then swallows the re-click that tries to restore
@@ -378,7 +378,7 @@ export const FlightSelection = () => {
 
   const cheapestFlightId = useMemo(() => {
     // Use filteredFlights so the badge always lands on a visible card.
-    // Strictly the lowest price per traveler — no offline preference here;
+    // Strictly the lowest price per traveler - no offline preference here;
     // offline inventory is surfaced via the "best" tab, not "cheapest".
     if (!filteredFlights.length) return null;
     return filteredFlights.reduce((min, f) =>
@@ -539,7 +539,7 @@ export const FlightSelection = () => {
     );
   }
 
-  // LOCKFLIGHT sold out — the package is pinned to one offline flight that has
+  // LOCKFLIGHT sold out - the package is pinned to one offline flight that has
   // no seats left for this party. There is deliberately no Amadeus fallback:
   // falling back would silently re-price the package. If the event allows it,
   // the "continue without a flight" control in OrderForm is still available.
@@ -624,7 +624,7 @@ export const FlightSelection = () => {
           <div className="flex justify-between w-full max-w-7xl mx-auto gap-2 px-2 lg:px-6 flex-col lg:flex-row lg:gap-2">
             <EventDataHeader
               event={event}
-              // Edit-from-summary is a focused task — no person-page links.
+              // Edit-from-summary is a focused task - no person-page links.
               artistHref={returnToSummary ? undefined : personLink?.href}
               artistLinkLabel={returnToSummary ? undefined : personLink?.label}
             />
@@ -639,7 +639,7 @@ export const FlightSelection = () => {
                     const adults = +(value || 0);
                     setPlaneTickets({ adults, children: 0 });
                     // Flight list + auto-picked flight are priced per party
-                    // size — a count change invalidates both, so refetch
+                    // size - a count change invalidates both, so refetch
                     // (fetchFlights also clears the selected flight).
                     if (adults > 0) fetchFlights({ adults });
                   }}
@@ -825,7 +825,7 @@ export const FlightSelection = () => {
         className={cn(
           "flex lg:gap-4 justify-between items-start w-full",
           !matches && "flex-col gap-2",
-          // No sidebar when locked — center the card column rather than leaving
+          // No sidebar when locked - center the card column rather than leaving
           // a dead quarter beside it.
           isLockedPackage && "lg:justify-center"
         )}
@@ -834,7 +834,7 @@ export const FlightSelection = () => {
           className={cn(
             "w-1/4 space-y-4",
             !matches && "w-full",
-            // A locked package offers exactly one flight — there is nothing to
+            // A locked package offers exactly one flight - there is nothing to
             // filter or sort between, so the sidebar would only be noise.
             isLockedPackage && "hidden"
           )}
@@ -892,13 +892,13 @@ export const FlightSelection = () => {
               aria-relevant="additions removals"
             >
               {flightTicketCards}
-              {/* Never on a locked package — it has no filters to loosen, and
+              {/* Never on a locked package - it has no filters to loosen, and
                   the sold-out panel above already handles "nothing to sell". */}
               {filteredFlights.length === 0 && !isLockedPackage && (
                 <OrderIssueState
                   className="min-h-64 lg:w-2/3"
                   title="לא מצאנו טיסות שמתאימות למסננים"
-                  subtitle="נסו לשחרר קצת את המסננים או לשנות את התאריכים — לפעמים גמישות של יום פותחת המון אפשרויות."
+                  subtitle="נסו לשחרר קצת את המסננים או לשנות את התאריכים - לפעמים גמישות של יום פותחת המון אפשרויות."
                 />
               )}
             </div>

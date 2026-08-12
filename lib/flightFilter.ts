@@ -14,7 +14,7 @@ export const applyFiltersAndSorting = (
     maxPrice: number;
     numOfStops: string[];
     luggage: string[];
-  }
+  },
 ): Flight[] => {
   const {
     airline,
@@ -29,7 +29,7 @@ export const applyFiltersAndSorting = (
   const filteredFlights = flights.filter((flight) => {
     const departureTime = getTimeValue(new Date(flight.outbound.departureTime));
     const returnDepartureTime = getTimeValue(
-      new Date(flight.inbound.departureTime)
+      new Date(flight.inbound.departureTime),
     );
 
     const departureRangesToDateTime: [number, number][] = departureRanges.map(
@@ -38,7 +38,7 @@ export const applyFiltersAndSorting = (
           range[0].hours * 60 + range[0].minutes,
           range[1].hours * 60 + range[1].minutes,
         ];
-      }
+      },
     );
 
     const matchesDepartureRange =
@@ -53,7 +53,7 @@ export const applyFiltersAndSorting = (
           range[0].hours * 60 + range[0].minutes,
           range[1].hours * 60 + range[1].minutes,
         ];
-      }
+      },
     );
 
     const matchesArrivalRange =
@@ -63,10 +63,10 @@ export const applyFiltersAndSorting = (
       });
 
     // Match on the ticketing carrier OR the airline actually operating the
-    // outbound — Blue Bird flights are ticketed by Hahn Air, so `flight.airline`
+    // outbound - Blue Bird flights are ticketed by Hahn Air, so `flight.airline`
     // alone never matches a "BZ" selection. See lib/flightCarriers.ts.
     const matchesAirline = getFlightCarrierCodes(flight).some((code) =>
-      airline.includes(code)
+      airline.includes(code),
     );
     const matchesStops =
       flight.stops < 2 && options.numOfStops.includes(flight.stops.toString());
@@ -78,11 +78,11 @@ export const applyFiltersAndSorting = (
     let matchesLuggage = false;
 
     if (options.luggage.length === 2 || options.luggage.length === 0) {
-      // Both boxes checked (the default) or neither is not a real narrowing —
+      // Both boxes checked (the default) or neither is not a real narrowing -
       // it means "no luggage restriction". The previous semantics ("at least
       // one bag" when both were checked) made backpack-only fares unreachable
       // from any UI state, which silently hid EVERY Arkia / Blue Bird / Israair
-      // basic fare — consistently the cheapest flights out of TLV.
+      // basic fare - consistently the cheapest flights out of TLV.
       matchesLuggage = true;
     } else if (options.luggage.includes("withCheckedBags")) {
       matchesLuggage = flight.outbound.checkBagsIncluded;

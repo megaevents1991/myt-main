@@ -64,7 +64,7 @@ export default function OrderReview({
 }: {
   /** Navigate to an order step to edit it; arms return-to-summary in OrderForm. */
   onEditStep?: (step: 1 | 2 | 3) => void;
-  /** Real, cookie-verified /agent session — gates "save as a package link",
+  /** Real, cookie-verified /agent session - gates "save as a package link",
    * unlike agentCommission (below), which is only the unauthenticated
    * localStorage/utm_source signal the print-price feature reads. */
   partnerSession?: PartnerSession | null;
@@ -83,7 +83,7 @@ export default function OrderReview({
     skipHotel,
     flightSkipped,
   } = useContext(OrderContext);
-  // Agent-locked prepared package — the summary's edit affordances go inert.
+  // Agent-locked prepared package - the summary's edit affordances go inert.
   const { packageLocked, setPackageLocked } = useContext(OrderContext);
   const router = useRouter();
   const { isMobile } = useIsMobile();
@@ -100,10 +100,10 @@ export default function OrderReview({
     setAffDiscount,
   } = useFetchAffiliate();
   // The agent tools open ONLY in a browser where the agent HIMSELF is signed
-  // in (cookie-verified partner session matching the link's code) — the URL
+  // in (cookie-verified partner session matching the link's code) - the URL
   // code alone is public knowledge and used to open the panel for anyone
   // holding the link (אלון ודור, 2026-08-06). Commission may legitimately be
-  // 0 — the agent then just pays/charges full price.
+  // 0 - the agent then just pays/charges full price.
   const isAgentVisitor =
     affType === "agent" &&
     !!partnerSession &&
@@ -156,7 +156,7 @@ export default function OrderReview({
 
   // Coupon (customer-entered code). Validated by /api/coupons/validate and
   // re-validated server-side in confirm-order. Never stacks with the
-  // affiliate discount — the bigger one wins.
+  // affiliate discount - the bigger one wins.
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(
     null
@@ -197,7 +197,7 @@ export default function OrderReview({
 
   const [isAgentMode, setIsAgentMode] = useState(false);
   // How this booking gets settled when an agent is entering it on the
-  // customer's behalf. Only ever read server-side when isAgentMode is on —
+  // customer's behalf. Only ever read server-side when isAgentMode is on -
   // see the settlement_method branch in confirm-order/utils.ts. Defaults to
   // customer_card, which is exactly today's behavior for every other order.
   const [settlementMethod, setSettlementMethod] =
@@ -254,7 +254,7 @@ export default function OrderReview({
 
   // Agent quote link (?quote&qsig): the offer's content and total, verified
   // server-side by signature (/api/quote-offer). While valid and the customer
-  // hasn't edited the composition, the AGENT'S total is the price — dearer
+  // hasn't edited the composition, the AGENT'S total is the price - dearer
   // than site price sends the delta to the agent, cheaper comes out of their
   // commission (the doc's rule); the confirm-order floor, already relaxed by
   // that partner's commission, still backstops gross underpricing.
@@ -266,12 +266,12 @@ export default function OrderReview({
     total_usd: number;
     valid_until: string | null;
     expired: boolean;
-    /** Agent-session-only: the margin priced above the system baseline —
+    /** Agent-session-only: the margin priced above the system baseline -
      *  the API omits it for the customer opening the same link. */
     agent_uplift_usd?: number;
   };
   const [quoteOffer, setQuoteOffer] = useState<QuoteOffer | null>(null);
-  // Editing any component invalidates the quoted composition — price reverts
+  // Editing any component invalidates the quoted composition - price reverts
   // to live site pricing (the offer card stays visible for reference).
   const [quotePriceDropped, setQuotePriceDropped] = useState(false);
   useEffect(() => {
@@ -287,7 +287,7 @@ export default function OrderReview({
         })
         .catch(() => {});
     } catch {
-      /* malformed URL — plain flow */
+      /* malformed URL - plain flow */
     }
   }, []);
   const quotePriceActive =
@@ -324,7 +324,7 @@ export default function OrderReview({
           ? Math.round(finalPurchasePrice * rate) / 100
           : rate * numberOfEventTickets;
     // Quote uplift: the margin the agent priced into the signed quote is
-    // theirs on top of the base rate — $20/ticket + $100/pax on 2 pax = $240
+    // theirs on top of the base rate - $20/ticket + $100/pax on 2 pax = $240
     // (אלון, 2026-08-07). Counts only while the quote price actually charges.
     const uplift =
       quotePriceActive && Number(quoteOffer?.agent_uplift_usd) > 0
@@ -437,7 +437,7 @@ export default function OrderReview({
     setCouponInput("");
     setCouponStatus("idle");
   }, []);
-  // Both start at 0 = "not loaded yet" — submit is blocked until the async
+  // Both start at 0 = "not loaded yet" - submit is blocked until the async
   // rate fetch fills them, so a plausible-looking hardcoded init (the old 3.5)
   // must never leak into an order.
   const [finalPurchasePriceILS, setFinalPurchasePriceILS] = useState<number>(0);
@@ -646,7 +646,7 @@ export default function OrderReview({
   };
 
   // "הדפסה ללקוח" + הגדרות ההדפסה (לוגו LiveEvents הישן) הוסרו לבקשת
-  // אלון ודור (2026-08-06) — שריד מגרסת גלעד שאינו רלוונטי.
+  // אלון ודור (2026-08-06) - שריד מגרסת גלעד שאינו רלוונטי.
 
 
 
@@ -712,7 +712,7 @@ export default function OrderReview({
   );
 
   // Calculate the special offer discount amount (per person). Never below the
-  // discount the customer ALREADY has — accepting the offer must not raise the
+  // discount the customer ALREADY has - accepting the offer must not raise the
   // price (an affiliate at $100/ticket used to be replaced by the flat 80).
   const specialOfferDiscountPerPerson = useMemo(() => {
     if (isAgentVisitor) return 0;
@@ -815,7 +815,7 @@ export default function OrderReview({
 
     if (!response.ok) {
       // Agent picked agent_card/voucher without (or no longer) holding a real
-      // /agent session for that code — surface it distinctly so the UI can
+      // /agent session for that code - surface it distinctly so the UI can
       // fall back to customer_card instead of the generic failure modal.
       if (response.status === 400) {
         const body = await response.json().catch(() => null);
@@ -823,7 +823,7 @@ export default function OrderReview({
           throw new Error("SETTLEMENT_NOT_ALLOWED");
         }
       }
-      // Coupon died between "apply" and "pay" (expired/exhausted) — surface
+      // Coupon died between "apply" and "pay" (expired/exhausted) - surface
       // it so the customer sees the corrected price instead of a silent fail.
       if (response.status === 409) {
         const body = await response.json().catch(() => null);
@@ -861,7 +861,7 @@ export default function OrderReview({
   ) => {
     e.preventDefault();
     // Voucher settlement never touches the card gateway, regardless of which
-    // CTA the agent clicked — it behaves like a phone order (Pending status,
+    // CTA the agent clicked - it behaves like a phone order (Pending status,
     // immediate confirmation email) until staff confirms the voucher arrived
     // and flips the reservation to Paid by hand.
     const isVoucherSettlement =
@@ -918,10 +918,10 @@ export default function OrderReview({
       return;
     }
 
-    // The ILS total is computed async (finalPurchasePriceILSCalc effect) —
+    // The ILS total is computed async (finalPurchasePriceILSCalc effect) -
     // submitting before it resolves would persist/charge a 0 amount.
     if (!Number.isFinite(finalPurchasePriceILS) || finalPurchasePriceILS <= 0) {
-      console.error("ILS total not ready yet — submit blocked, try again");
+      console.error("ILS total not ready yet - submit blocked, try again");
       return;
     }
 
@@ -966,7 +966,7 @@ export default function OrderReview({
       event_id: event?.id || 0,
       aff_partner_tracking_code: affId || utmParams.source || "",
       is_agent_booking: isAgentVisitor,
-      // Only meaningful when the agent is actually operating agent mode —
+      // Only meaningful when the agent is actually operating agent mode -
       // the server independently re-verifies eligibility (voucher_payment_allowed,
       // active agent) against the DB and never trusts this beyond "which of the
       // eligible options did they click".
@@ -977,7 +977,7 @@ export default function OrderReview({
       coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
       coupon_base_total_usd: couponWins && appliedCoupon ? baseTotalUsd : null,
       // Source attribution (portal "how did this order arrive"): the package
-      // link token and/or the verified quote the customer came through — sent
+      // link token and/or the verified quote the customer came through - sent
       // even when the quote price was dropped, because the SOURCE is still the
       // quote link.
       source_share_token: (() => {
@@ -1034,20 +1034,20 @@ export default function OrderReview({
       }
     } catch (error) {
       if (error instanceof Error && error.message === "COUPON_INVALID") {
-        // Server rejected the coupon at order time — drop it so the summary
+        // Server rejected the coupon at order time - drop it so the summary
         // shows the real price, and tell the customer why.
         setAppliedCoupon(null);
         setCouponInput("");
         setCouponStatus("expired");
       } else if (error instanceof Error && error.message === "SETTLEMENT_NOT_ALLOWED") {
         // The server re-verifies agent_card/voucher against a real /agent
-        // session — a stale login, a raw link opened without signing in, or
+        // session - a stale login, a raw link opened without signing in, or
         // picking someone else's code all land here. Fall back to the
         // always-available option instead of the generic failure modal, which
         // would wrongly tell the agent "you weren't charged, try again."
         setSettlementMethod("customer_card");
         setSettlementError(
-          "לא ניתן להשתמש באפשרות זו — יש להתחבר לאזור הסוכן ולנסות שוב. ההזמנה לא נשלחה.",
+          "לא ניתן להשתמש באפשרות זו - יש להתחבר לאזור הסוכן ולנסות שוב. ההזמנה לא נשלחה.",
         );
       } else {
         setSubmitFailed(true);
@@ -1085,7 +1085,7 @@ export default function OrderReview({
   const handleTimeoutModalAction = () => {
     setOpenModal(false);
     if (isTimeout) {
-      // The held package expired with the timer — restarting is a fresh,
+      // The held package expired with the timer - restarting is a fresh,
       // fully-editable flow, so an agent lock does not survive it.
       setPackageLocked(false);
       setStep(1);
@@ -1147,7 +1147,7 @@ export default function OrderReview({
         title="רגע, יש לנו משהו בשבילכם 🎁"
         description={<>
         {
-         `מגיעה לכם הנחה של $${specialOfferTotalDiscount} על ההזמנה — לחצו והיא תתווסף לסיכום.`
+         `מגיעה לכם הנחה של $${specialOfferTotalDiscount} על ההזמנה - לחצו והיא תתווסף לסיכום.`
         }
         </>
         }
@@ -1170,12 +1170,12 @@ export default function OrderReview({
         }
         iconType="Gift"
       />
-      {/* Order submission failed — nothing was charged; offer retry + WhatsApp */}
+      {/* Order submission failed - nothing was charged; offer retry + WhatsApp */}
       <Modal
         title="אופס, ההזמנה לא נשלחה"
         description={
           <>
-            משהו השתבש אצלנו בדרך — לא חויבתם ושום דבר לא אבד.
+            משהו השתבש אצלנו בדרך - לא חויבתם ושום דבר לא אבד.
             <br />
             נסו שוב עוד רגע, ואם זה חוזר על עצמו דברו איתנו בוואטסאפ{" "}
             <a
@@ -1252,7 +1252,7 @@ export default function OrderReview({
               />
             </div>
           )}
-          {/* Agent quote offer — the שובר/הצעה the customer arrived with. */}
+          {/* Agent quote offer - the שובר/הצעה the customer arrived with. */}
           {quoteOffer && (
             <div
               dir="rtl"
@@ -1272,7 +1272,7 @@ export default function OrderReview({
                       {new Date(quoteOffer.valid_until).toLocaleDateString("he-IL")})
                     </span>
                   )}{" "}
-                  — המחירים המוצגים באתר הם המחירים העדכניים.
+                  - המחירים המוצגים באתר הם המחירים העדכניים.
                 </p>
               ) : (
                 <>
@@ -1304,7 +1304,7 @@ export default function OrderReview({
                     </span>
                     {quotePriceDropped && (
                       <span className="mr-2 font-normal text-amber-700 dark:text-amber-400">
-                        (החבילה שונתה — המחיר עודכן לתמחור האתר)
+                        (החבילה שונתה - המחיר עודכן לתמחור האתר)
                       </span>
                     )}
                   </p>
@@ -1328,16 +1328,16 @@ export default function OrderReview({
                       (personLink ? (
                         <Link
                           href={personLink.href}
-                          // New tab — same-tab navigation would lose the
+                          // New tab - same-tab navigation would lose the
                           // in-progress order (state lives in OrderContext).
                           target="_blank"
                           rel="noopener"
-                          aria-label={`${event?.name ?? "האמן"} — מעבר לעמוד האמן`}
+                          aria-label={`${event?.name ?? "האמן"} - מעבר לעמוד האמן`}
                           className="shrink-0 rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-forest"
                         >
                           <Image
                             src={event.card_image_url}
-                            alt={`${event?.name ?? ""} — לעמוד האמן`}
+                            alt={`${event?.name ?? ""} - לעמוד האמן`}
                             width={56}
                             height={56}
                             className="size-12 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-14"
@@ -1416,20 +1416,20 @@ export default function OrderReview({
                   // Back-navigation from the summary: each section jumps to its
                   // step (1 ticket / 2 flight / 3 hotel); via onEditStep the
                   // flow returns HERE right after the edited step is confirmed.
-                  // A locked package passes undefined — Review then renders no
+                  // A locked package passes undefined - Review then renders no
                   // עריכה buttons and no +להוספה rows at all.
                   onEdit={
                     packageLocked
                       ? undefined
                       : (target) => {
-                          // A quoted price covers the composition AS OFFERED —
+                          // A quoted price covers the composition AS OFFERED -
                           // editing reverts to live site pricing.
                           setQuotePriceDropped(true);
                           (onEditStep ?? setStep)(target);
                         }
                   }
                 />
-                {/* Coupon — hidden in agent mode (commission and coupon don't mix). */}
+                {/* Coupon - hidden in agent mode (commission and coupon don't mix). */}
                 {!isAgentVisitor && (
                   <div dir="rtl" className="px-6 py-4 border-t border-border">
                     {appliedCoupon && couponStatus === "applied" ? (
@@ -1437,7 +1437,7 @@ export default function OrderReview({
                         <span className="text-sm font-medium text-success">
                           {couponWins ? (
                             <>
-                              קופון {appliedCoupon.code} הופעל — הנחת{" "}
+                              קופון {appliedCoupon.code} הופעל - הנחת{" "}
                               <span dir="ltr" className="tabular-nums">
                                 ${couponDiscountUsd.toLocaleString("en-US")}
                               </span>
@@ -1498,7 +1498,7 @@ export default function OrderReview({
                         )}
                         {couponStatus === "expired" && (
                           <p className="text-sm text-red-500 mt-1">
-                            הקופון כבר אינו בתוקף — המחיר עודכן
+                            הקופון כבר אינו בתוקף - המחיר עודכן
                           </p>
                         )}
                       </>

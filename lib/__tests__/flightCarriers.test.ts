@@ -1,26 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { getFlightCarrierCodes, ISRAELI_AIRLINE_CODES } from "../flightCarriers";
+import {
+  getFlightCarrierCodes,
+  ISRAELI_AIRLINE_CODES,
+} from "../flightCarriers";
 import type { Flight } from "../app.types";
 
-// The filter only reads `airline` and the first outbound segment of `offer` —
+// The filter only reads `airline` and the first outbound segment of `offer` -
 // everything else is irrelevant to carrier matching.
 const flight = (
   airline: string,
-  firstSegment?: { carrierCode?: string; operating?: { carrierCode: string } }
+  firstSegment?: { carrierCode?: string; operating?: { carrierCode: string } },
 ): Flight =>
   ({
     airline,
     offer: firstSegment
       ? { itineraries: [{ segments: [firstSegment] }] }
       : ({} as Flight["offer"]),
-  } as unknown as Flight);
+  }) as unknown as Flight;
 
 // flightFilter.ts's matchesAirline, verbatim.
 const matchesIsraeliTab = (f: Flight) =>
   getFlightCarrierCodes(f).some((code) => ISRAELI_AIRLINE_CODES.includes(code));
 
 describe("getFlightCarrierCodes", () => {
-  it("a real airline as validating carrier IS the card — the operating carrier must not leak in", () => {
+  it("a real airline as validating carrier IS the card - the operating carrier must not leak in", () => {
     // Iberia-validated codeshare riding El Al metal: the card says "IBERIA",
     // so the ישראלי tab must not claim it.
     const iberiaOnElAlMetal = flight("IB", {
@@ -42,13 +45,13 @@ describe("getFlightCarrierCodes", () => {
 
   it("Hahn-Air-ticketed El Al inventory (relabelled card) matches too", () => {
     expect(
-      matchesIsraeliTab(flight("HR", { operating: { carrierCode: "LY" } }))
+      matchesIsraeliTab(flight("HR", { operating: { carrierCode: "LY" } })),
     ).toBe(true);
   });
 
   it("Hahn Air on foreign metal stays foreign", () => {
     expect(
-      matchesIsraeliTab(flight("HR", { operating: { carrierCode: "4Y" } }))
+      matchesIsraeliTab(flight("HR", { operating: { carrierCode: "4Y" } })),
     ).toBe(false);
   });
 
@@ -66,8 +69,6 @@ describe("getFlightCarrierCodes", () => {
   });
 
   it("a plainly Israeli-validated flight still matches", () => {
-    expect(
-      matchesIsraeliTab(flight("LY", { carrierCode: "LY" }))
-    ).toBe(true);
+    expect(matchesIsraeliTab(flight("LY", { carrierCode: "LY" }))).toBe(true);
   });
 });

@@ -1,14 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * Main app order-flow tests — the 4-step booking funnel:
+ * Main app order-flow tests - the 4-step booking funnel:
  *   step 1 TicketSelection → 2 FlightSelection → 3 HotelSelection → 4 OrderReview
  *
  * The funnel is React state inside OrderForm.tsx (the URL stays /order/<id>),
  * so step progress is asserted via the DOM, not the URL.
  *
  * NOTE: steps 2–4 hit live providers (Amadeus flights, Ratehawk hotels) and
- * depend on real inventory — they are inherently slow/flaky. The deterministic
+ * depend on real inventory - they are inherently slow/flaky. The deterministic
  * step-1 path is a real test; the full walkthrough is a `fixme` skeleton below.
  */
 
@@ -46,7 +46,7 @@ test("step 1: select a ticket and advance to flight selection", async ({
     await expect(toFlight).toBeEnabled();
     await toFlight.click();
 
-    // Step 1's continue button is unique to step 1 — its disappearance
+    // Step 1's continue button is unique to step 1 - its disappearance
     // confirms the funnel advanced to flight selection.
     await expect(toFlight).toBeHidden({ timeout: 20_000 });
   });
@@ -63,26 +63,23 @@ test("step 1: select a ticket and advance to flight selection", async ({
  * Footer continue-button labels per step live in app/order/OrderForm.tsx
  * (`buttonText`): 2 "לבחירת מלון", 3 "לסיכום הזמנה", 4 "שלח הזמנה".
  */
-test.fixme(
-  "full walkthrough: ticket → flight → hotel → review",
-  async ({ page }) => {
-    test.slow();
+test.fixme("full walkthrough: ticket → flight → hotel → review", async ({
+  page,
+}) => {
+  test.slow();
 
-    await openFirstEventOrderPage(page);
+  await openFirstEventOrderPage(page);
 
-    // Step 1 — ticket
-    await page.locator(TICKET_CARDS).first().click();
-    await page.getByRole("button", { name: "לבחירת טיסה" }).click();
+  // Step 1 - ticket
+  await page.locator(TICKET_CARDS).first().click();
+  await page.getByRole("button", { name: "לבחירת טיסה" }).click();
 
-    // Step 2 — flight: wait for /api/flights/search results, pick one.
-    // TODO: add a flight-card selector from FlightSelection.tsx.
+  // Step 2 - flight: wait for /api/flights/search results, pick one.
+  // TODO: add a flight-card selector from FlightSelection.tsx.
 
-    // Step 3 — hotel: pick a hotel, or use the "לא צריך מלון" skip button.
-    // TODO: add a hotel-card selector from HotelSelection.tsx.
+  // Step 3 - hotel: pick a hotel, or use the "לא צריך מלון" skip button.
+  // TODO: add a hotel-card selector from HotelSelection.tsx.
 
-    // Step 4 — review: assert OrderReview renders the "שלח הזמנה" button.
-    await expect(
-      page.getByRole("button", { name: "שלח הזמנה" })
-    ).toBeVisible();
-  }
-);
+  // Step 4 - review: assert OrderReview renders the "שלח הזמנה" button.
+  await expect(page.getByRole("button", { name: "שלח הזמנה" })).toBeVisible();
+});

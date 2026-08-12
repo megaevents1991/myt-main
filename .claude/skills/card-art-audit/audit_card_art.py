@@ -105,10 +105,10 @@ def main():
             name = str(r["name_english"])[:28]
             kind = "team" if table == "football_teams" else "artist"
             if ALLOWED_PREFIX not in url:
-                problems.append(f"{name}: not a public Supabase URL — next/image will 400")
+                problems.append(f"{name}: not a public Supabase URL - next/image will 400")
             try:
                 raw = urllib.request.urlopen(url, timeout=120).read()
-            except Exception as exc:  # noqa: BLE001 — report, never abort the audit
+            except Exception as exc:  # noqa: BLE001 - report, never abort the audit
                 problems.append(f"{name}: image unreachable ({type(exc).__name__})")
                 print(f"{name:30} {kind:6} UNREACHABLE")
                 continue
@@ -125,7 +125,7 @@ def main():
                 fw = (bb[2] - bb[0]) / im.width
                 fh = (bb[3] - bb[1]) / im.height
                 wasted = round((1 - fw * fh) * 100)
-                # Crests are padded ON PURPOSE — FOOTBALL_CREST_ART sizes them on
+                # Crests are padded ON PURPOSE - FOOTBALL_CREST_ART sizes them on
                 # their stadium background, and hand-trimming them is what broke
                 # Inter / Bayern / PSG. Only people must be tight.
                 if kind == "artist" and wasted >= WASTED_LIMIT:
@@ -171,7 +171,7 @@ def main():
             draw.text((x + 4, y + 4), name, fill=(0, 0, 0, 255))
         out = os.path.join(args.out, "card-art-surfaces.png")
         sheet.convert("RGB").save(out)
-        print(f"\ncontact sheet: {out}  (hero | catalog | circle — READ IT)")
+        print(f"\ncontact sheet: {out}  (hero | catalog | circle - READ IT)")
 
     if problems and args.fail_on_issues:
         sys.exit(1)

@@ -3,14 +3,18 @@ import { validateAndRecordPayment } from "@/app/api/payment/validateAndRecord";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string; promoCode: string; result: string }> }
+  {
+    params,
+  }: {
+    params: Promise<{ orderId: string; promoCode: string; result: string }>;
+  },
 ) {
   try {
     const { orderId, promoCode, result } = await params;
-    
+
     // Extract form data from the request payload
     const formData = await request.formData();
-    
+
     // Convert form data to a regular object for easier handling
     const paymentData: Record<string, string> = {};
     formData.forEach((value, key) => {
@@ -24,7 +28,7 @@ export async function POST(
       `/confirmation/${orderId}/${promoCode}/${result}${
         queryParams.toString() ? `?${queryParams.toString()}` : ""
       }`,
-      request.url
+      request.url,
     );
 
     // Log the payment callback for debugging/tracking
@@ -39,7 +43,7 @@ export async function POST(
     // Record the payment outcome SERVER-SIDE, before the browser redirect.
     // The confirmation page re-validates too (idempotent), but this is the
     // reliable write: it runs even when the customer closes the tab / loses
-    // network after paying — previously those paid orders stayed Pending and
+    // network after paying - previously those paid orders stayed Pending and
     // the backoffice flagged them Lost. Failure here must not break the
     // redirect: the page's own validation is the fallback.
     if (paymentData.txId) {
@@ -62,23 +66,22 @@ export async function POST(
   } catch (error) {
     console.error("Error processing payment callback:", error);
 
-    let orderIdForError = 'unknown';
-    let promoCodeForError = 'unknown';
+    let orderIdForError = "unknown";
+    let promoCodeForError = "unknown";
     try {
-        const resolvedParams = await params;
-        orderIdForError = resolvedParams.orderId;
-        promoCodeForError = resolvedParams.promoCode;
+      const resolvedParams = await params;
+      orderIdForError = resolvedParams.orderId;
+      promoCodeForError = resolvedParams.promoCode;
     } catch (paramError) {
-        console.error("Error resolving params in error handler:", paramError);
+      console.error("Error resolving params in error handler:", paramError);
     }
 
     // Redirect to error page
     const errorUrl = new URL(
       `/confirmation/${orderIdForError}/${promoCodeForError}/error`,
-      request.url
+      request.url,
     );
 
     return NextResponse.redirect(errorUrl);
   }
 }
-

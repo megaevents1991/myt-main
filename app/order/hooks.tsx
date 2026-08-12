@@ -41,7 +41,7 @@ export function useOrderVars() {
   const hotelPriceAddition = useMemo(() => {
     if (skipHotel && event) {
       // Composed pricing: the hotel-skip fee is the event's own
-      // skip_hotel_markup, charged in calculateBaseTotal — no env fee here.
+      // skip_hotel_markup, charged in calculateBaseTotal - no env fee here.
       if (hasComponentMarkups(event)) return 0;
       // Legacy: when skipping hotel, add profit. Tunable via env vars.
       const HOTEL_SKIP_FLIGHT_THRESHOLD = 550;
@@ -204,7 +204,7 @@ export function useOrderVars() {
           hotelComponent
       );
     }
-    // ── Legacy pricing (no component markups) — unchanged ──────────────────
+    // ── Legacy pricing (no component markups) - unchanged ──────────────────
 
     // When skipping flight, add admin-set per-ticket markup to keep margin
     const skipFlightMarkupValue = Math.max(0, Number(event.skip_flight_markup ?? 0));
@@ -286,7 +286,7 @@ export function useOrderVars() {
     [getAffiliateDiscountTotalUsd, numberOfEventTickets]
   );
   const finalPurchasePriceILSCalc = useCallback(async (USDprice: number) => {
-    // Two attempts against our own API before touching any fallback — an
+    // Two attempts against our own API before touching any fallback - an
     // /api/events-info blip should never decide the customer's exchange rate.
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
@@ -310,7 +310,7 @@ export function useOrderVars() {
         );
       }
     }
-    // Same last-resort rate the server-side service falls back to — the old
+    // Same last-resort rate the server-side service falls back to - the old
     // ad-hoc 3.7 here sat ABOVE the service's own validity ceiling (3.65).
     return {
       ils: Math.ceil(USDprice * FALLBACK_TRAVEL_RATE),
@@ -366,7 +366,7 @@ export function useOrderVars() {
 export function useFetchAffiliate() {
   const [affDiscount, setAffDiscount] = useState(0);
   const [agentCommission, setAgentCommission] = useState(0);
-  // Percent vs fixed-per-ticket — commission math must not assume percent
+  // Percent vs fixed-per-ticket - commission math must not assume percent
   // (a fixed $20/ticket agent was shown 20% everywhere).
   const [agentCommissionType, setAgentCommissionType] = useState<
     "percent_of_sale" | "fixed_per_ticket"
@@ -397,7 +397,7 @@ export function useFetchAffiliate() {
     }
     // First visit through a partner link: the tracker writes mytData in a
     // deferred effect, so on this very first mount localStorage can still be
-    // empty — read the code straight off the URL then (same params the
+    // empty - read the code straight off the URL then (same params the
     // tracker itself consumes), or agent mode never shows without a refresh.
     const urlAffiliateId =
       new URLSearchParams(window.location.search).get("utm_source") ||

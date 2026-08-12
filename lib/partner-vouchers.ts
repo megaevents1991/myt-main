@@ -2,25 +2,25 @@ import { supabase } from "@/lib/supabase";
 
 /**
  * The agent's LIVE voucher value: coupons minted from portal credit
- * redemptions (backoffice `convertCreditToCoupon` — every redemption is a row
+ * redemptions (backoffice `convertCreditToCoupon` - every redemption is a row
  * in `partner_credit_redemptions` pointing at its coupon) that are still
  * active and not fully used.
  *
  * This is what "תשלום בשובר" is backed by: the option only shows (checkCode)
  * and only settles (resolveAgentSettlement) while such a voucher exists.
  * A partner's ordinary marketing coupons also carry their tracking code, so
- * membership in the redemptions ledger — not the coupons table alone — is
+ * membership in the redemptions ledger - not the coupons table alone - is
  * what makes a coupon a voucher.
  */
 /**
  * Spend the agent's OLDEST live voucher on a voucher-settled order.
  *
- * Marks the coupon used (optimistic `times_used` bump — a concurrent order
+ * Marks the coupon used (optimistic `times_used` bump - a concurrent order
  * falls through to the next voucher) and returns its code+value so the caller
  * records them on the reservation exactly like an applied coupon. That record
  * is what makes the backoffice credit ledger settle honestly: a voucher order
  * that reaches Paid counts as spent value; one that is abandoned leaves the
- * coupon dead-but-unpaid, and the ledger returns its value to the balance —
+ * coupon dead-but-unpaid, and the ledger returns its value to the balance -
  * the exact model regular credit coupons already follow.
  *
  * Without this, one live voucher would pass the "has a live voucher" gate for
@@ -36,7 +36,8 @@ export async function consumeOldestLiveVoucher(
       .eq("partner_tracking_code", trackingCode)
       .order("created_at", { ascending: true });
     if (error || !redemptions?.length) {
-      if (error) console.error("consumeOldestLiveVoucher redemptions:", error.message);
+      if (error)
+        console.error("consumeOldestLiveVoucher redemptions:", error.message);
       return null;
     }
 
@@ -50,10 +51,11 @@ export async function consumeOldestLiveVoucher(
         .maybeSingle();
       if (!couponRow || couponRow.is_active !== true) continue;
       const used = Number(couponRow.times_used ?? 0);
-      const max = couponRow.max_uses == null ? Infinity : Number(couponRow.max_uses);
+      const max =
+        couponRow.max_uses == null ? Infinity : Number(couponRow.max_uses);
       if (used >= max) continue;
 
-      // Conditional bump — if another order spent it first, times_used no
+      // Conditional bump - if another order spent it first, times_used no
       // longer matches and zero rows update; move on to the next voucher.
       const { data: updated, error: updateError } = await supabase
         .from("coupons")
@@ -76,7 +78,9 @@ export async function consumeOldestLiveVoucher(
   }
 }
 
-export async function liveVoucherBalanceUsd(trackingCode: string): Promise<number> {
+export async function liveVoucherBalanceUsd(
+  trackingCode: string,
+): Promise<number> {
   try {
     const { data: redemptions, error: redemptionsError } = await supabase
       .from("partner_credit_redemptions")
@@ -84,9 +88,12 @@ export async function liveVoucherBalanceUsd(trackingCode: string): Promise<numbe
       .eq("partner_tracking_code", trackingCode);
     if (redemptionsError || !redemptions?.length) {
       if (redemptionsError) {
-        // Table may predate the credit feature on some environments — treat as
+        // Table may predate the credit feature on some environments - treat as
         // "no vouchers", never break checkout over it.
-        console.error("liveVoucherBalanceUsd redemptions:", redemptionsError.message);
+        console.error(
+          "liveVoucherBalanceUsd redemptions:",
+          redemptionsError.message,
+        );
       }
       return 0;
     }
@@ -106,7 +113,8 @@ export async function liveVoucherBalanceUsd(trackingCode: string): Promise<numbe
       .in("code", codes)
       .eq("is_active", true);
     if (couponsError || !coupons) {
-      if (couponsError) console.error("liveVoucherBalanceUsd coupons:", couponsError.message);
+      if (couponsError)
+        console.error("liveVoucherBalanceUsd coupons:", couponsError.message);
       return 0;
     }
 

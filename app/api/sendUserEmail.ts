@@ -21,7 +21,7 @@ export const sendUserEmail = async ({
   isPaymentSuccess?: boolean;
   partnerTrackingCode?: string | null;
   orderId?: number;
-  /** Agent-entered booking settled by voucher — order confirmed, but never
+  /** Agent-entered booking settled by voucher - order confirmed, but never
    * word it as "payment collected by phone", the customer isn't the one
    * paying us here and shouldn't be told how the agent is settling it. */
   isAgentVoucherOrder?: boolean;
@@ -58,7 +58,7 @@ export const sendUserEmail = async ({
       title: "ההזמנה נשמרה ל-24 שעות",
       message: `שמחנו לשמור עבורך את ההזמנה למשך 24 שעות הקרובות.<br>להשלמת הרכישה ותשלום עכשיו ניתן ליצור איתנו קשר בטלפון <strong>03-768-4800</strong> או להשיב למייל זה.<br>שימי/שימו לב: המחירים והמלאי אינם מובטחים לאחר תום תקופת ההחזקה ועלולים להשתנות.<br>נשמח לעמוד לרשותך בכל שאלה.`,
     },
-    // Agent entered this booking and is settling with us by voucher — the
+    // Agent entered this booking and is settling with us by voucher - the
     // customer's own arrangement is with their agent, not with us, so this
     // must read like a normal confirmation and never mention how payment
     // to us is being handled.
@@ -82,7 +82,7 @@ export const sendUserEmail = async ({
           : emailtemplates.failedPurchase
         : emailtemplates.phoneOrder;
 
-  // Skipped flights are saved as an EMPTY OBJECT (truthy!) — `?.` on
+  // Skipped flights are saved as an EMPTY OBJECT (truthy!) - `?.` on
   // flight_order_info alone doesn't protect the inner accesses. A missing
   // outbound/inbound must not throw: this email runs inside the payment
   // flow, and a crash here used to leave paid orders stuck un-Paid.

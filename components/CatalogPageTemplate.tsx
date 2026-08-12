@@ -97,7 +97,7 @@ const CatalogSection = ({
 }) => {
   if (items.length === 0) return null;
   return (
-    <section className="mb-12 last:mb-0" aria-label={`${gridLabel} — ${heading}`}>
+    <section className="mb-12 last:mb-0" aria-label={`${gridLabel} - ${heading}`}>
       <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
         <div
           aria-hidden
@@ -147,7 +147,7 @@ const CatalogSection = ({
 };
 
 /**
- * Shared layout for the artist / football catalog pages — collapses what were
+ * Shared layout for the artist / football catalog pages - collapses what were
  * two copy-pasted page files. Pages fetch + normalise their items and hand
  * them here.
  */

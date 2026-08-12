@@ -21,7 +21,7 @@ export const EventCard = ({
   showName = false,
 }: {
   event: Event;
-  /** Display title — falls back to the event name. */
+  /** Display title - falls back to the event name. */
   title?: string;
   /** Show the event name above the venue (used on the search results grid,
    * where the same event isn't implied by the page context). */
@@ -40,7 +40,7 @@ export const EventCard = ({
     <Link
       href={sold ? "#no-op" : `/order/${event.id}`}
       aria-label={
-        sold ? "אירוע — אזל מהמלאי" : `הזמנת כרטיסים — ${title ?? event.name}`
+        sold ? "אירוע - אזל מהמלאי" : `הזמנת כרטיסים - ${title ?? event.name}`
       }
       className={cn("block h-full", sold ? "cursor-default" : "cursor-pointer")}
       role="listitem"
@@ -66,7 +66,7 @@ export const EventCard = ({
             >
               {price !== null
                 ? `$${price.toLocaleString("en-US")}`
-                : "—"}
+                : "-"}
             </span>
           </div>
 

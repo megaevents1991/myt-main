@@ -10,7 +10,7 @@ export default async function AgentHomePage() {
   // server-side backstop so the page can never render without a partner.
   const session = await requirePartner();
 
-  // Reuses the site's own event source — the whole point of the partner area
+  // Reuses the site's own event source - the whole point of the partner area
   // living here rather than in the backoffice. `getEvents` already filters
   // soft-deleted and past events and is the same ISR-cached reader the site
   // itself uses, so it cannot drift from what a customer sees.

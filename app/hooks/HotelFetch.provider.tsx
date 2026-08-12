@@ -15,7 +15,7 @@ export type HotelsData = {
 };
 
 export type GetHotelsOptions = {
-  // Skip the debounce — use for programmatic preloads (mount, skip-flight,
+  // Skip the debounce - use for programmatic preloads (mount, skip-flight,
   // flight-selected, guest-correct). The debounce only makes sense for
   // user-driven filter changes (e.g. dragging the distance slider).
   immediate?: boolean;
@@ -77,7 +77,7 @@ export const HotelFetchProvider = ({
     ): Promise<HotelsData> => {
       const key = requestKey(params);
 
-      // Coalesce: an identical request is already running — reuse it so racing
+      // Coalesce: an identical request is already running - reuse it so racing
       // callers (mount preload, flight effects, guest-correct) don't abort and
       // restart each other.
       if (inFlightRef.current?.key === key) {
@@ -93,7 +93,7 @@ export const HotelFetchProvider = ({
         setIsFetching(true);
 
         const run = async () => {
-          // Params changed — abort the now-stale in-flight fetch.
+          // Params changed - abort the now-stale in-flight fetch.
           if (abortControllerRef.current) {
             abortControllerRef.current.abort("another request has started");
           }
@@ -110,11 +110,11 @@ export const HotelFetchProvider = ({
               setIsFetching(false);
             });
           } catch (err) {
-            // This request was superseded by a newer one — expected, the
+            // This request was superseded by a newer one - expected, the
             // newer request now owns `isFetching`, so leave this promise
             // unsettled (same as before) to avoid surfacing abort rejections.
             if (controller.signal.aborted) return;
-            // A real failure — surface it and clear the loading state so
+            // A real failure - surface it and clear the loading state so
             // the UI isn't stuck on the spinner.
             console.error("Hotel fetch failed:", err);
             setIsFetching(false);

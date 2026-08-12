@@ -7,14 +7,14 @@
  * neither app can be tricked into trusting a cookie the other would reject.
  *
  * This REPLACES the old partner login, which compared `partners.password` in
- * plain text and kept "logged in" as a React boolean — a refresh logged you out,
+ * plain text and kept "logged in" as a React boolean - a refresh logged you out,
  * and nothing server-side ever checked who you were.
  *
  * Signing key: `NEXT_SECRET_SESSION_SECRET`. Set it to the same value as the
  * backoffice only if you want one cookie to work on both hosts; otherwise any
  * strong secret is fine, since the domains differ. Uses Web Crypto so it runs in
  * both the Node runtime (routes) and Edge (middleware). Never import from a
- * client component — it reads a server-only secret.
+ * client component - it reads a server-only secret.
  */
 
 export const PARTNER_SESSION_COOKIE = "partner_session";
@@ -30,7 +30,7 @@ export type PartnerSession = {
   sub: string;
   email: string;
   role: PartnerRole;
-  /** partners.partner_tracking_code — never null for a partner session. */
+  /** partners.partner_tracking_code - never null for a partner session. */
   partner_code: string;
   display_name: string | null;
   /** ms epoch */
@@ -40,7 +40,9 @@ export type PartnerSession = {
 function signingKey(): string {
   const key = process.env.NEXT_SECRET_SESSION_SECRET;
   if (!key) {
-    throw new Error("Missing NEXT_SECRET_SESSION_SECRET — the partner area cannot sign sessions");
+    throw new Error(
+      "Missing NEXT_SECRET_SESSION_SECRET - the partner area cannot sign sessions",
+    );
   }
   return key;
 }
@@ -67,11 +69,15 @@ async function hmac(data: string): Promise<string> {
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(data),
+  );
   return toBase64Url(new Uint8Array(sig));
 }
 
-/** Constant-time comparison — a fast-exit compare leaks the signature by timing. */
+/** Constant-time comparison - a fast-exit compare leaks the signature by timing. */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -125,8 +131,10 @@ export async function verifyPartnerSession(
     // Staff roles must never mint a partner session: every query in this area is
     // scoped by partner_code, and a session without one would widen them.
     if (!PARTNER_ROLES.includes(payload.role)) return null;
-    if (typeof payload.partner_code !== "string" || !payload.partner_code) return null;
-    if (typeof payload.exp !== "number" || Date.now() > payload.exp) return null;
+    if (typeof payload.partner_code !== "string" || !payload.partner_code)
+      return null;
+    if (typeof payload.exp !== "number" || Date.now() > payload.exp)
+      return null;
     return payload;
   } catch {
     return null;

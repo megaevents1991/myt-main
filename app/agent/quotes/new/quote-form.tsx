@@ -34,7 +34,7 @@ export function QuoteForm({
   const suggestedPrice = selectedEvent?.suggested_price ?? null;
 
   // Mirrors the server's own formula exactly (lib/quote-actions.ts,
-  // createQuote) — a live preview, not the enforcement. The server never
+  // createQuote) - a live preview, not the enforcement. The server never
   // trusts this number; it recomputes the same check from a freshly-fetched
   // event row and partner commission.
   const discountWarning = useMemo(() => {
@@ -83,7 +83,7 @@ export function QuoteForm({
     setSubmitting(true);
     try {
       // The package line itself (label, qty, price) is built server-side from
-      // `package` — never sent as a plain line item — so it can't diverge
+      // `package` - never sent as a plain line item - so it can't diverge
       // from what the discount cap actually checked.
       const result = await createQuote({
         event_id: selectedEvent ? selectedEvent.id : null,
@@ -103,7 +103,7 @@ export function QuoteForm({
       }
       router.push(`/agent/quotes/${result.id}`);
     } catch {
-      setError("שגיאת רשת — נסו שוב.");
+      setError("שגיאת רשת - נסו שוב.");
     } finally {
       setSubmitting(false);
     }
@@ -123,10 +123,10 @@ export function QuoteForm({
             if (ev?.suggested_price != null) setUnitPrice(ev.suggested_price);
           }}
         >
-          <option value="">— ללא אירוע (הצעה חופשית) —</option>
+          <option value="">- ללא אירוע (הצעה חופשית) -</option>
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>
-              {ev.name} {ev.date ? `— ${new Date(ev.date).toLocaleDateString("he-IL")}` : ""}
+              {ev.name} {ev.date ? `- ${new Date(ev.date).toLocaleDateString("he-IL")}` : ""}
             </option>
           ))}
         </select>
