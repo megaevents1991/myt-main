@@ -599,6 +599,36 @@ export async function POST(request: Request) {
           currentFlight.price + 45 * currentFlight.numOfTravelers;
       }
 
+      // Codeshare disclosure: the card shows the validating carrier, but the
+      // plane may belong to someone else (LY-marketed Saturday flights are
+      // operated by Air France). Expose the operating carrier per leg so the
+      // client can render "מופעל ע"י X". For HR (Hahn Air) the card was just
+      // rebranded to the operating carrier above, so compare against that.
+      const displayedCarrier =
+        currentFlight.metadata.iata === "HR"
+          ? (itineraries[0].segments[0].operating?.carrierCode ?? "HR")
+          : validatingAirlineCodes[0];
+      const operatedByLabel = (
+        segment: FlightOffer["itineraries"][number]["segments"][number],
+      ) => {
+        // Amadeus omits `operating` when it equals the marketing carrier -
+        // fall back to the segment's own carrierCode so an interline leg
+        // (marketing != validating) is disclosed too.
+        const operating = segment.operating?.carrierCode ?? segment.carrierCode;
+        if (!operating || operating === displayedCarrier) return undefined;
+        return (
+          getAirlineByIata(operating)?.name ??
+          response.result.dictionaries.carriers[operating] ??
+          operating
+        );
+      };
+      currentFlight.outbound.operatedBy = operatedByLabel(
+        itineraries[0].segments[0],
+      );
+      currentFlight.inbound.operatedBy = operatedByLabel(
+        itineraries[1].segments[0],
+      );
+
       if (
         currentFlight.metadata.iata === "LY" &&
         currentFlight.outbound.checkBagsIncluded === false &&

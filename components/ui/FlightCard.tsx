@@ -312,6 +312,7 @@ const FlightCard = ({
   checkBagsIncluded,
   cabinBagsIncluded,
   flightNumber,
+  operatedBy,
   ...flightMeta
 }: FlightCardProps) => {
   const [tooltipCabinOpened, setTooltipCabinOpened] = useState(false);
@@ -335,6 +336,14 @@ const FlightCard = ({
           )}
         </div>
         <div className="text-sm hidden lg:block">{flightNumber}</div>
+        {operatedBy && (
+          <div
+            className="text-[10px] font-bold text-amber-700 dark:text-amber-400 text-center leading-tight"
+            dir="rtl"
+          >
+            מופעל ע״י <span dir="ltr">{operatedBy}</span>
+          </div>
+        )}
       </div>
       <div className="w-full lg:w-[50%] flex justify-center">
         <FlightMeta {...flightMeta} />
