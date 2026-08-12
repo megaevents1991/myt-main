@@ -64,14 +64,14 @@ export const FlightSummary = ({
       <div className="h-1"></div>
       <div className="text-[12px] mt-2 px-2" dir="rtl">
         {selectedFlight.outbound.operatedBy && (
-          <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400" dir="rtl">
+          <div className="text-[11px] text-forest dark:text-glow" dir="rtl">
             הלוך מופעל ע״י{" "}
             <span dir="ltr">{selectedFlight.outbound.operatedBy}</span>
           </div>
         )}
         <FlightMeta {...selectedFlight.outbound} />
         {selectedFlight.inbound.operatedBy && (
-          <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400" dir="rtl">
+          <div className="text-[11px] text-forest dark:text-glow" dir="rtl">
             חזור מופעל ע״י{" "}
             <span dir="ltr">{selectedFlight.inbound.operatedBy}</span>
           </div>

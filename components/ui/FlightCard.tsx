@@ -338,7 +338,7 @@ const FlightCard = ({
         <div className="text-sm hidden lg:block">{flightNumber}</div>
         {operatedBy && (
           <div
-            className="text-[10px] font-bold text-amber-700 dark:text-amber-400 text-center leading-tight"
+            className="text-[10px] text-forest dark:text-glow text-center leading-tight"
             dir="rtl"
           >
             מופעל ע״י <span dir="ltr">{operatedBy}</span>
