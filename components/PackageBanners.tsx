@@ -54,7 +54,12 @@ export const PackageBanners = ({ events }: { events: Event[] }) => {
                 <div className="relative h-44 sm:h-52">
                   <EventArt
                     id={event.id}
-                    imageUrl={event.art_image_url || event.card_image_url}
+                    imageUrl={
+                      event.match_away_logo_url
+                        ? event.match_home_logo_url
+                        : event.art_image_url || event.card_image_url
+                    }
+                    awayImageUrl={event.match_away_logo_url}
                     alt={`תמונת האירוע ${event.name}`}
                     variant={event.art_image_url ? "blob" : "photo"}
                     colorIndex={event.art_color_index ?? undefined}

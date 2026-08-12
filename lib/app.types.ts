@@ -32,6 +32,12 @@ export type Event = {
   art_image_url?: string | null;
   art_color_index?: number | null;
   art_shape_index?: number | null;
+  // Match "logo VS logo" art - COMPUTED at read time by the fallback-image
+  // enrichment (lib/events/fallbackImage.ts) when BOTH sides of a fixture name
+  // ("ברצלונה - ריאל מדריד" / "Barcelona vs Real Madrid") resolve in the
+  // football_logos library. NOT database columns - never persisted.
+  match_home_logo_url?: string | null;
+  match_away_logo_url?: string | null;
   // Zoom (1 = 100%): cut-out scale + background (blob/photo) scale.
   art_image_scale?: number | null;
   art_bg_scale?: number | null;

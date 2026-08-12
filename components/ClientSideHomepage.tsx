@@ -463,7 +463,12 @@ function CompactEventCard({ event, loading }: { event: Event; loading?: "eager" 
           {/* Brand swoosh background behind the artist image (color + shape per event) */}
           <EventArt
             id={event.id}
-            imageUrl={event.art_image_url || event.card_image_url}
+            imageUrl={
+              event.match_away_logo_url
+                ? event.match_home_logo_url
+                : event.art_image_url || event.card_image_url
+            }
+            awayImageUrl={event.match_away_logo_url}
             alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
             variant={event.art_image_url ? "blob" : "photo"}
             colorIndex={event.art_color_index ?? undefined}
@@ -1902,7 +1907,12 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
           <div className="relative">
             <EventArt
               id={event.id}
-              imageUrl={event.art_image_url || event.card_image_url}
+              imageUrl={
+                event.match_away_logo_url
+                  ? event.match_home_logo_url
+                  : event.art_image_url || event.card_image_url
+              }
+              awayImageUrl={event.match_away_logo_url}
               alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
               variant={event.art_image_url ? "blob" : "photo"}
               colorIndex={event.art_color_index ?? undefined}

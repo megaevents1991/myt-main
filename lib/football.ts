@@ -38,13 +38,13 @@ const standardizeCrest = (t: FootballTeam): FootballTeam =>
       }
     : t;
 
-type LogoRow = {
+export type LogoRow = {
   name_english: string;
   name_hebrew: string | null;
   logo_url: string;
 };
 
-async function fetchLogoLibrary(): Promise<LogoRow[]> {
+export async function fetchLogoLibrary(): Promise<LogoRow[]> {
   const { data, error } = await supabase
     .from("football_logos")
     .select("name_english,name_hebrew,logo_url");
@@ -56,8 +56,11 @@ async function fetchLogoLibrary(): Promise<LogoRow[]> {
 }
 
 /** Library crest for a club name pair - exact english, exact hebrew, then
- *  token-equal english (qualifier drift). */
-const libraryUrlFor = (
+ *  token-equal english (qualifier drift). Also used by the match "logo VS
+ *  logo" enrichment (lib/events/fallbackImage.ts), which passes each fixture
+ *  side as BOTH english and hebrew - a Hebrew side has no latin tokens so the
+ *  english comparisons are safely inert, and vice versa. */
+export const libraryUrlFor = (
   english: string | undefined,
   hebrew: string | undefined,
   lib: LogoRow[],

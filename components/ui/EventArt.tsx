@@ -52,6 +52,7 @@ const PHOTO_BACKGROUNDS = [
 export const EventArt = ({
   id,
   imageUrl,
+  awayImageUrl,
   alt,
   className,
   colorIndex,
@@ -72,6 +73,11 @@ export const EventArt = ({
 }: {
   id: string | number;
   imageUrl?: string | null;
+  /** Away-team crest for match events ("logo VS logo"). When set together
+   *  with imageUrl (the HOME crest), the card renders both crests + a VS
+   *  badge on the football stadium background and every other art dial is
+   *  ignored. Computed by lib/events/fallbackImage.ts match enrichment. */
+  awayImageUrl?: string | null;
   alt: string;
   className?: string;
   colorIndex?: number;
@@ -159,6 +165,87 @@ export const EventArt = ({
           transformOrigin: "bottom center",
         }
       : undefined;
+
+  // Match card: home crest VS away crest on the stadium photo (the site's
+  // standard football backdrop), same composition as the Meta-feed creative
+  // minus the text layer. dir="rtl" puts the HOME crest on the RIGHT - the
+  // reading order of the Hebrew fixture name ("ברצלונה - ריאל מדריד").
+  if (imageUrl && awayImageUrl) {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden bg-[hsl(var(--surface-inverse))]",
+          className
+        )}
+      >
+        <div
+          className={cn(
+            "absolute inset-0",
+            hoverZoom &&
+              "transition-transform duration-300 group-hover:scale-[1.07]"
+          )}
+        >
+          <Image
+            src={PHOTO_BACKGROUNDS[2]}
+            alt=""
+            fill
+            sizes={sizes}
+            aria-hidden="true"
+            className="object-cover"
+          />
+        </div>
+        <div
+          dir="rtl"
+          className={cn(
+            "absolute inset-0 flex items-center justify-center gap-[4%] px-[5%]",
+            hoverZoom &&
+              "transition-transform duration-300 group-hover:scale-[1.07]"
+          )}
+        >
+          <div className="relative h-[52%] w-[34%]">
+            <Image
+              src={imageUrl}
+              alt={alt}
+              fill
+              sizes={sizes}
+              priority={priority}
+              loading={priority ? undefined : loading}
+              className="object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.55)]"
+            />
+          </div>
+          {/* SVG so the badge scales with the card (order-header circle → hero). */}
+          <svg
+            viewBox="0 0 40 24"
+            className="w-[13%] shrink-0 drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
+            aria-hidden="true"
+          >
+            <text
+              x="20"
+              y="18"
+              textAnchor="middle"
+              fontSize="17"
+              fontStyle="italic"
+              fontWeight="900"
+              fill="#FAFAF5"
+            >
+              VS
+            </text>
+          </svg>
+          <div className="relative h-[52%] w-[34%]">
+            <Image
+              src={awayImageUrl}
+              alt=""
+              fill
+              sizes={sizes}
+              loading={priority ? undefined : loading}
+              aria-hidden="true"
+              className="object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.55)]"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

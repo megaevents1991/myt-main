@@ -1,7 +1,11 @@
 import { unstable_cache as nextCache } from "next/cache";
 import { Event } from "@/lib/app.types";
 import { getArtistImageIndex } from "@/lib/artists";
-import { getFootballTeamImageIndex } from "@/lib/football";
+import {
+  fetchLogoLibrary,
+  getFootballTeamImageIndex,
+  libraryUrlFor,
+} from "@/lib/football";
 import {
   eventBelongsToTeam,
   normalizeName,
@@ -44,12 +48,72 @@ const getPersonImageIndex = nextCache(
 const hasOwnPhoto = (e: Event) =>
   Boolean(e.art_image_url) || Boolean(e.card_image_url);
 
+/* ----------------------- match "logo VS logo" art ----------------------- */
+
+// Same fixture split the backoffice creative generator uses (lib/creative/
+// auto.ts): "ברצלונה - ריאל מדריד", "Barcelona vs Real Madrid", en/em dashes.
+// A leading "Competition:" prefix is dropped like eventNameMatch.fixtureSides.
+const FIXTURE_SPLIT = /\s+[-–—]\s+|\s+vs\.?\s+/i;
+
+const fixturePair = (source?: string | null): [string, string] | null => {
+  const parts = (source ?? "")
+    .replace(/^[^:]+:\s*/, "")
+    .split(FIXTURE_SPLIT)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.length === 2 ? [parts[0], parts[1]] : null;
+};
+
+// football_logos library, cached once per ISR window like the person index.
+const getLogoLibrary = nextCache(
+  async () => fetchLogoLibrary(),
+  ["football-logo-library"],
+  { tags: ["events"], revalidate: 3600 },
+);
+
+/**
+ * Site-side mirror of the feed's match creative: when BOTH sides of a fixture
+ * name resolve in the football_logos library, the event card renders
+ * "home crest VS away crest" (EventArt awayImageUrl) instead of a photo.
+ * Manual event art (a backoffice-uploaded art_image_url) still wins - the
+ * gate runs BEFORE the photo fallback below fills art_image_url itself.
+ */
+async function enrichEventsWithMatchArt(events: Event[]): Promise<void> {
+  const candidates = events.filter(
+    (e) =>
+      !e.art_image_url &&
+      (fixturePair(e.name) || fixturePair(e.name_english)),
+  );
+  if (!candidates.length) return;
+  const lib = await getLogoLibrary();
+  if (!lib.length) return;
+  for (const event of candidates) {
+    for (const source of [event.name, event.name_english]) {
+      const pair = fixturePair(source);
+      if (!pair) continue;
+      // Each side passed as both english and hebrew - only the matching
+      // script's comparisons can hit (see libraryUrlFor).
+      const home = libraryUrlFor(pair[0], pair[0], lib);
+      const away = libraryUrlFor(pair[1], pair[1], lib);
+      if (home && away && home !== away) {
+        event.match_home_logo_url = home;
+        event.match_away_logo_url = away;
+        break;
+      }
+    }
+  }
+}
+
 /** Fills `card_image_url` in place for photo-less events. Never throws - on any
  *  failure events render exactly as they do today. */
 export async function enrichEventsWithFallbackImages(
   events: Event[],
 ): Promise<Event[]> {
   try {
+    // Match art first: it applies to fixtures WITH their own card photo too
+    // (a matched "logo VS logo" beats a generic stock photo, feed parity),
+    // so it must not sit behind the photo-less early-return below.
+    await enrichEventsWithMatchArt(events);
     if (!events.some((e) => !hasOwnPhoto(e))) return events;
     const index = await getPersonImageIndex();
     if (!index.length) return events;
