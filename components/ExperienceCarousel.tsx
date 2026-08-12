@@ -23,7 +23,11 @@ export const ExperienceCarousel = ({
   subtitle?: string;
 }) => {
   const items = (images ?? []).filter(Boolean);
-  const [active, setActive] = useState(0);
+  // Open on the MIDDLE card so the deck fans out symmetrically — starting at
+  // the first card leaned the whole spread to one side.
+  const [active, setActive] = useState(() =>
+    Math.floor((images ?? []).filter(Boolean).length / 2)
+  );
   const dragX = useRef<number | null>(null);
 
   if (items.length === 0) return null;
@@ -41,6 +45,18 @@ export const ExperienceCarousel = ({
     dragX.current = null;
     // RTL: dragging left (negative dx) advances forward.
     if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  };
+
+  // Keyboard support on the deck itself (the RTL mapping mirrors the arrows:
+  // visually-left = forward, like the on-screen controls).
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      go(1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      go(-1);
+    }
   };
 
   return (
@@ -65,6 +81,7 @@ export const ExperienceCarousel = ({
         className="relative mx-auto flex h-64 max-w-3xl touch-pan-y items-center justify-center [perspective:1200px] sm:h-80"
         onPointerDown={onDown}
         onPointerUp={onUp}
+        onKeyDown={onKeyDown}
         role="group"
         aria-roledescription="carousel"
         aria-label="גלריית חוויה"
@@ -82,12 +99,20 @@ export const ExperienceCarousel = ({
               aria-current={offset === 0}
               tabIndex={hidden ? -1 : 0}
               className={cn(
-                "absolute left-1/2 top-1/2 aspect-[3/4] w-40 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_32px_-12px_rgb(0_0_0/0.45)] transition-all duration-500 ease-out will-change-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none sm:w-52",
-                offset === 0 ? "cursor-default" : "cursor-pointer",
+                "absolute left-1/2 top-1/2 aspect-[3/4] w-40 overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 ease-out will-change-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none sm:w-52",
+                // The front card gets the depth cues — stronger shadow + a hair
+                // of ring; side cards press-scale for tap feedback.
+                offset === 0
+                  ? "cursor-default shadow-[0_18px_44px_-14px_rgb(0_0_0/0.55)] ring-1 ring-primary/30"
+                  : // brightness, not scale — the inline transform would override
+                    // any Tailwind scale utility.
+                    "cursor-pointer shadow-[0_12px_32px_-12px_rgb(0_0_0/0.45)] active:brightness-90",
                 hidden && "pointer-events-none"
               )}
               style={{
-                transform: `translate(-50%, -50%) translateX(${offset * 58}%) rotate(${offset * 7}deg) scale(${1 - abs * 0.12})`,
+                // translateY lifts the FRONT card and drops the neighbours a
+                // touch — the deck reads as an arc instead of a flat row.
+                transform: `translate(-50%, -50%) translateX(${offset * 58}%) translateY(${abs * 4}%) rotate(${offset * 7}deg) scale(${1 - abs * 0.12})`,
                 zIndex: 20 - abs,
                 opacity: hidden ? 0 : 1 - abs * 0.15,
               }}
