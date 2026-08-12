@@ -1942,9 +1942,14 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
             <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
               <div className="text-right">
                 {packagePrice !== null ? (
-                  <div className="text-2xl font-extrabold leading-none tabular-nums">
-                    ${packagePrice.toLocaleString("en-US")}
-                  </div>
+                  <>
+                    <p className="text-[11px] leading-none text-muted-foreground">
+                      החל מ־
+                    </p>
+                    <div className="mt-1 text-2xl font-extrabold leading-none tabular-nums">
+                      ${packagePrice.toLocaleString("en-US")}
+                    </div>
+                  </>
                 ) : (
                   <div className="text-lg font-extrabold text-destructive">
                     אזלו הכרטיסים

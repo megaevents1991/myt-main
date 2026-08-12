@@ -59,15 +59,25 @@ export const EventCard = ({
                 </span>
               )}
             </div>
-            <span
-              className={`text-2xl font-extrabold ${
-                sold ? "text-muted-foreground" : "text-foreground"
-              }`}
-            >
-              {price !== null
-                ? `$${price.toLocaleString("en-US")}`
-                : "-"}
-            </span>
+            {price !== null ? (
+              <div className="flex flex-col items-start">
+                <span className="text-[11px] leading-none text-muted-foreground">
+                  החל מ־
+                </span>
+                <span
+                  className={`text-2xl font-extrabold tabular-nums ${
+                    sold ? "text-muted-foreground" : "text-foreground"
+                  }`}
+                >
+                  ${price.toLocaleString("en-US")}
+                </span>
+                <span className="text-[11px] text-muted-foreground">לנוסע</span>
+              </div>
+            ) : (
+              <span className="text-2xl font-extrabold text-muted-foreground">
+                -
+              </span>
+            )}
           </div>
 
           {/* Event name (search grid only) + destination */}
