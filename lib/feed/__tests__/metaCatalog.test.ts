@@ -17,6 +17,7 @@ import {
   plainText,
   toCsv,
   toXml,
+  type EventTaxonomyInfo,
   type FeedItem,
 } from "../metaCatalog";
 
@@ -56,9 +57,15 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     ...over,
   }) as Event;
 
-const TAX = {
+const TAX: EventTaxonomyInfo = {
   categoryPath: ["Music", "Rock"],
   tagSlugs: ["berlin", "music", "rock"],
+  tags: [
+    { slug: "berlin", type: "city" },
+    { slug: "bryan-adams", type: "artist" },
+    { slug: "music", type: "vertical" },
+    { slug: "rock", type: "genre" },
+  ],
 };
 const CUTOFF = "2026-07-23"; // today + 7
 const TODAY = "2026-07-16";
@@ -125,11 +132,12 @@ assert.strictEqual(item.price, "1811.00 USD");
 assert.strictEqual(item.link, "https://www.mega-events.co.il/order/607");
 assert.strictEqual(item.expiration_date, "2026-10-03");
 assert.strictEqual(item.product_type, "Music > Rock");
+// vertical / league|genre / team|artist / city / status (spec 2026-08-12)
 assert.deepStrictEqual(item.custom_labels, [
-  "berlin",
   "music",
   "rock",
-  "",
+  "bryan-adams",
+  "berlin",
   "available",
 ]);
 assert.deepStrictEqual(item.internal_labels, [
@@ -291,7 +299,7 @@ assert.strictEqual(padded.title, "בריאן אדמס · ברלין · 2.10");
 assert.ok(!padded.description.includes("  "));
 const amp = buildFeedItem(
   baseEvent({ name: "AC/DC & Friends <live>" }),
-  { categoryPath: [], tagSlugs: [] },
+  { categoryPath: [], tagSlugs: [], tags: [] },
   CUTOFF,
   TODAY,
 ) as FeedItem;

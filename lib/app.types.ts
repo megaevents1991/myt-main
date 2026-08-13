@@ -446,6 +446,9 @@ export interface Category extends TemplateBase {
   subtitle: string | null;
   tag: string | null;
   sport: string | null;
+  /** Tree position - homepage tiles are roots only (parent_id null); a
+   *  non-root category is reached via the nav tree or its /c/ page instead. */
+  parent_id?: number | null;
   /** Artist/team page slugs grouped under this category (pre-migration rows
    *  still use their old Contentful entry-id string as the slug). */
   member_ids: string[];

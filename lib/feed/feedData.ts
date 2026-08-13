@@ -148,7 +148,7 @@ export async function getActivityItems(): Promise<ActivityBuildResult> {
   for (const event of events) {
     const built = buildActivityItem(
       event,
-      taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [] },
+      taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [], tags: [] },
       cutoffISO,
       classify(event.name),
     );
@@ -179,7 +179,7 @@ export async function getFeedItems(): Promise<FeedBuildResult> {
   for (const event of enriched) {
     const built = buildFeedItem(
       event,
-      taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [] },
+      taxonomyByEvent.get(event.id) ?? { categoryPath: [], tagSlugs: [], tags: [] },
       cutoffISO,
       todayISO,
     );
@@ -233,7 +233,8 @@ async function getTaxonomyByEvent(
     return parts;
   };
 
-  for (const id of eventIds) map.set(id, { categoryPath: [], tagSlugs: [] });
+  for (const id of eventIds)
+    map.set(id, { categoryPath: [], tagSlugs: [], tags: [] });
 
   for (const link of catLinks) {
     const info = map.get(link.event_id);
@@ -245,9 +246,15 @@ async function getTaxonomyByEvent(
   for (const link of tagLinks) {
     const info = map.get(link.event_id);
     const tag = tagById.get(link.other_id);
-    if (info && tag) info.tagSlugs.push(tag.slug);
+    if (info && tag) {
+      info.tagSlugs.push(tag.slug);
+      info.tags.push({ slug: tag.slug, type: tag.type });
+    }
   }
-  for (const info of map.values()) info.tagSlugs.sort();
+  for (const info of map.values()) {
+    info.tagSlugs.sort();
+    info.tags.sort((a, b) => a.slug.localeCompare(b.slug));
+  }
 
   return map;
 }

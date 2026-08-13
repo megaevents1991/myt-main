@@ -18,8 +18,9 @@ export const dynamicParams = true;
  * Dynamic taxonomy pages - one page per node of the backoffice category tree,
  * at its canonical nested path: /c/football, /c/football/premier-league, ...
  * The LAST segment resolves the node (slugs are globally unique); non-canonical
- * paths 301 to the canonical one. Events include every descendant node's
- * events (ancestors inferred at read time - Shopify-style).
+ * paths 301 to the canonical one. Membership is the node's OWN tags only -
+ * `getEventsInCategory` does not walk descendants, so a hub node (children,
+ * no tags of its own) renders its child tiles but no event grid.
  */
 
 export async function generateStaticParams() {
@@ -151,27 +152,31 @@ export default async function TaxonomyCategoryPage({
           </section>
         )}
 
-        {/* Events in this branch (node + all descendants) */}
-        <section aria-labelledby="category-events-heading">
-          <h2
-            id="category-events-heading"
-            className="mb-6 font-display text-2xl font-extrabold text-foreground"
-          >
-            חבילות ל{cat.name}
-          </h2>
-          {events.length > 0 ? (
-            <CategoryEventsBrowser
-              events={events}
-              tagsByEvent={tagsByEvent}
-              headingId="category-events-heading"
-            />
-          ) : (
-            <EmptyState
-              title="אין חבילות בקטגוריה זו כרגע"
-              description="הקטגוריה נבנית מתגיות - ברגע שאירוע יתויג בהתאם הוא יופיע כאן."
-            />
-          )}
-        </section>
+        {/* Events tagged with this node's OWN tags - not inherited from children.
+            A hub (no tags of its own, but has children) shows tiles above and
+            skips this section entirely: no heading, no empty-state either. */}
+        {(events.length > 0 || children.length === 0) && (
+          <section aria-labelledby="category-events-heading">
+            <h2
+              id="category-events-heading"
+              className="mb-6 font-display text-2xl font-extrabold text-foreground"
+            >
+              חבילות ל{cat.name}
+            </h2>
+            {events.length > 0 ? (
+              <CategoryEventsBrowser
+                events={events}
+                tagsByEvent={tagsByEvent}
+                headingId="category-events-heading"
+              />
+            ) : (
+              <EmptyState
+                title="אין חבילות בקטגוריה זו כרגע"
+                description="הקטגוריה נבנית מתגיות - ברגע שאירוע יתויג בהתאם הוא יופיע כאן."
+              />
+            )}
+          </section>
+        )}
       </div>
     </>
   );

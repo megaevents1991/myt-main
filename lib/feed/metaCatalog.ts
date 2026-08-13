@@ -7,6 +7,7 @@
  * availability exactly "in stock" / "out of stock").
  */
 import type { Event } from "@/lib/app.types";
+import type { TagType } from "@/lib/taxonomy.types";
 import {
   computePackagePrice,
   getTotalMarkup,
@@ -21,22 +22,49 @@ export const FEED_BRAND = "Mega Events";
  * needs it + identifier_exists=no to accept GTIN-less custom goods. */
 export const GOOGLE_PRODUCT_CATEGORY = "499969";
 
+export type TypedTagRef = { slug: string; type: TagType };
+
 /** Taxonomy info for one event, prepared by feedData from the link tables. */
 export type EventTaxonomyInfo = {
   /** Deepest category path, root-first (e.g. ["Music", "Rock"]). */
   categoryPath: string[];
   /** Feed-tag slugs, sorted alphabetically by feedData. */
   tagSlugs: string[];
+  /** Same tags with their type - drives the custom_label hierarchy. */
+  tags: TypedTagRef[];
 };
 
 /**
- * Tag slugs worth showing a campaign manager. Legacy Hebrew-only tags were
- * auto-slugged `item-<N>` (the backoffice now blocks creating new ones) - as
- * a custom label that's meaningless noise, so they're dropped from labels
- * (internal_labels keep the raw list for diagnostics).
+ * ONE label scheme for BOTH feeds (spec 2026-08-12):
+ *   0 vertical · 1 league|genre · 2 team|artist · 3 city · 4 availability.
+ * Fallbacks: vertical <- root category name <- CMS hint; city <- IATA code.
+ * Alphabetical pick inside a type keeps the label deterministic when an event
+ * carries two teams (fixtures always do).
  */
-export function usableTagSlugs(slugs: string[]): string[] {
-  return slugs.filter((s) => !/^item-\d+$/.test(s));
+export function buildCustomLabels(
+  taxonomy: EventTaxonomyInfo,
+  status: "available" | "sold_out",
+  cityIata: string | null | undefined,
+  hint?: "artist" | "football-team" | null,
+): [string, string, string, string, string] {
+  const byType = (t: TagType) =>
+    taxonomy.tags
+      .filter((x) => x.type === t && !/^item-\d+$/.test(x.slug))
+      .map((x) => x.slug)
+      .sort();
+  const first = (...types: TagType[]) => {
+    for (const t of types) {
+      const slugs = byType(t);
+      if (slugs.length) return slugs[0];
+    }
+    return "";
+  };
+  const vertical =
+    first("vertical") ||
+    taxonomy.categoryPath[0]?.trim().toLowerCase() ||
+    (hint === "artist" ? "music" : hint === "football-team" ? "football" : "");
+  const city = first("city") || (cityIata ?? "").trim().toLowerCase();
+  return [vertical, first("league", "genre"), first("team", "artist"), city, status];
 }
 
 export type FeedItem = {
@@ -198,14 +226,11 @@ export function buildFeedItem(
   const description = fromCms && fromCms !== title ? fromCms : generated;
 
   const status = soldOut ? "sold_out" : "available";
-  const labels = usableTagSlugs(taxonomy.tagSlugs).slice(0, 4);
-  const custom_labels: FeedItem["custom_labels"] = [
-    labels[0] ?? "",
-    labels[1] ?? "",
-    labels[2] ?? "",
-    labels[3] ?? "",
+  const custom_labels = buildCustomLabels(
+    taxonomy,
     status,
-  ];
+    event.location?.city_iata,
+  );
 
   const daysUntil = Math.max(
     0,

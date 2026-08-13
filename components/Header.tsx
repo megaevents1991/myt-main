@@ -10,7 +10,7 @@ import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { cn } from "@/lib/utils";
 
-type NavLink = { href: string; label: string };
+type NavLink = { href: string; label: string; children?: NavLink[] };
 
 // Always present, whatever the category tree looks like. /football and
 // /artists are the performer hubs (teams and artists) - a sibling pair, so
@@ -305,21 +305,71 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
             aria-label="ניווט"
             className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 md:flex"
           >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={isActive(link.href) ? "page" : undefined}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-main-foreground/10",
-                  isActive(link.href)
-                    ? "bg-main-foreground/10 text-main-foreground"
-                    : "text-main-foreground/80"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) =>
+              link.children?.length ? (
+                <div key={link.href} className="relative group">
+                  <Link
+                    href={link.href}
+                    aria-current={isActive(link.href) ? "page" : undefined}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-main-foreground/10",
+                      isActive(link.href)
+                        ? "bg-main-foreground/10 text-main-foreground"
+                        : "text-main-foreground/80"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                  <div className="invisible absolute right-0 top-full z-40 max-h-[70vh] min-w-56 overflow-y-auto rounded-xl border border-main-foreground/10 bg-main p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                    {link.children.map((child) =>
+                      child.children?.length ? (
+                        <div key={child.href} className="py-0.5">
+                          <Link
+                            href={child.href}
+                            className="block rounded-lg px-3 py-1.5 text-sm font-bold text-main-foreground hover:bg-main-foreground/10"
+                          >
+                            {child.label}
+                          </Link>
+                          <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
+                            {child.children.map((grandchild) => (
+                              <Link
+                                key={grandchild.href}
+                                href={grandchild.href}
+                                className="rounded-lg px-3 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
+                              >
+                                {grandchild.label}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className="block rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
+                        >
+                          {child.label}
+                        </Link>
+                      )
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? "page" : undefined}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-main-foreground/10",
+                    isActive(link.href)
+                      ? "bg-main-foreground/10 text-main-foreground"
+                      : "text-main-foreground/80"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              )
+            )}
           </nav>
         )}
 
@@ -366,7 +416,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
       <div
         className={cn(
           "overflow-hidden border-t border-main-foreground/10 transition-[max-height]",
-          menuOpen ? "max-h-96" : "max-h-0 border-t-0"
+          menuOpen ? "max-h-[80vh] overflow-y-auto" : "max-h-0 border-t-0"
         )}
       >
         <nav
@@ -374,14 +424,53 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
           className="container mx-auto flex flex-col gap-0 px-4 py-3"
         >
           {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
-            >
-              {link.label}
-            </Link>
+            <div key={link.href}>
+              <Link
+                href={link.href}
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
+              >
+                {link.label}
+              </Link>
+              {link.children?.length ? (
+                <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
+                  {link.children.map((child) =>
+                    child.children?.length ? (
+                      <div key={child.href}>
+                        <Link
+                          href={child.href}
+                          onClick={() => setMenuOpen(false)}
+                          className="block rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-main-foreground/10"
+                        >
+                          {child.label}
+                        </Link>
+                        <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
+                          {child.children.map((grandchild) => (
+                            <Link
+                              key={grandchild.href}
+                              href={grandchild.href}
+                              onClick={() => setMenuOpen(false)}
+                              className="block rounded-lg px-3 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
+                            >
+                              {grandchild.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={() => setMenuOpen(false)}
+                        className="block rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
+                      >
+                        {child.label}
+                      </Link>
+                    )
+                  )}
+                </div>
+              ) : null}
+            </div>
           ))}
           {/* Contact - plain inline links (ContactUs positions itself absolutely,
               which overlapped the header bar on mobile) */}
