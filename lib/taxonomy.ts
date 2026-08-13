@@ -129,8 +129,9 @@ export async function getAllTags(): Promise<EventTag[]> {
  * The header used to carry four hardcoded links, so the category tree the
  * backoffice builds was unreachable from anywhere but a homepage card.
  *
- * A node is kept when it (or any descendant) actually holds packages, so a
- * tag-less hub like יעדים survives purely to carry its children - "roots
+ * A node is kept when it (or any descendant) holds BOOKABLE packages -
+ * future events inside the availability window, matching the category pages.
+ * A tag-less hub like יעדים survives purely to carry its children - "roots
  * only" would hide it while its grandchildren still have live packages. Full
  * tree (not just roots), no cap: roots are 3 by design now. Cached for an ISR
  * window and invalidated with the `events` tag like the rest of the
@@ -143,19 +144,34 @@ export const getNavCategories = nextCache(
     const all = await getAllCategories();
     if (!all.length) return [];
 
-    const { data: links, error } = await supabase
-      .from("event_category_links")
-      .select("category_id")
-      .in(
-        "category_id",
-        all.map((c) => c.id),
+    // Count only BOOKABLE packages: a category whose events are all in the
+    // past (e.g. last season's ליגת האלופות) must not sit as a dead nav link.
+    // Same availability rule as the category pages themselves.
+    const [linksRes, futureRes] = await Promise.all([
+      supabase
+        .from("event_category_links")
+        .select("category_id,event_id")
+        .in(
+          "category_id",
+          all.map((c) => c.id),
+        ),
+      supabase
+        .from("events")
+        .select("id")
+        .is("is_deleted", null)
+        .gte("date", futureDateISO(AVAILABILITY_WINDOW_DAYS)),
+    ]);
+    if (linksRes.error || futureRes.error) {
+      console.error(
+        "getNavCategories failed:",
+        JSON.stringify(linksRes.error ?? futureRes.error),
       );
-    if (error) {
-      console.error("getNavCategories links failed:", JSON.stringify(error));
       return [];
     }
+    const futureIds = new Set((futureRes.data ?? []).map((e) => e.id as number));
     const counts = new Map<number, number>();
-    (links ?? []).forEach((l) => {
+    (linksRes.data ?? []).forEach((l) => {
+      if (!futureIds.has(l.event_id as number)) return;
       const id = l.category_id as number;
       counts.set(id, (counts.get(id) ?? 0) + 1);
     });
