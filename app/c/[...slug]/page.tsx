@@ -6,6 +6,8 @@ import { notFound, redirect } from "next/navigation";
 import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
 import { FootballTeamsCatalog } from "@/components/FootballTeamsCatalog";
+import { getAllFootballTeams } from "@/lib/football";
+import { getAllArtists } from "@/lib/artists";
 import { DetailHero } from "@/components/DetailHero";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -80,6 +82,34 @@ export default async function TaxonomyCategoryPage({
     );
   }
 
+  // Team/artist LEAVES reuse the rich CMS pages the site already has (hero,
+  // bio, tour dates) - /c/football/teams/real-madrid redirects to its CMS
+  // twin, matched by English then Hebrew name. No twin → the generic
+  // category page below still renders (Dor, 2026-08-13).
+  const parent = cat.parent_id != null ? all.find((c) => c.id === cat.parent_id) : null;
+  if (parent && (parent.slug === "teams" || parent.slug === "artists")) {
+    let twinHref: string | null = null;
+    try {
+      const entries =
+        parent.slug === "teams" ? await getAllFootballTeams() : await getAllArtists();
+      const en = (cat.name_english ?? "").trim().toLowerCase();
+      const he = cat.name.trim().toLowerCase();
+      const hit = (entries as { sys: { id: string }; fields: { name?: unknown; nameDBenglish?: unknown } }[]).find(
+        (e) => {
+          const cmsEn = String(e.fields.nameDBenglish ?? "").trim().toLowerCase();
+          const cmsName = String(e.fields.name ?? "").trim().toLowerCase();
+          return (en && (cmsEn === en || cmsName === en)) || cmsName === he;
+        },
+      );
+      if (hit) {
+        twinHref = `/${parent.slug === "teams" ? "football" : "artists"}/${hit.sys.id}`;
+      }
+    } catch (e) {
+      console.error("CMS twin lookup failed:", JSON.stringify(e));
+    }
+    if (twinHref) redirect(twinHref);
+  }
+
   const breadcrumbs = ancestorsOf(cat, all);
   const children = all
     .filter((c) => c.parent_id === cat.id)
@@ -127,15 +157,10 @@ export default async function TaxonomyCategoryPage({
           </ol>
         </nav>
 
-        {/* Child categories - walk DOWN the tree */}
+        {/* Child categories - walk DOWN the tree. No "קטגוריות" heading -
+            the tiles speak for themselves (Dor, 2026-08-13). */}
         {children.length > 0 && (
-          <section aria-labelledby="subcategories-heading" className="mb-10">
-            <h2
-              id="subcategories-heading"
-              className="mb-4 font-display text-2xl font-extrabold text-foreground"
-            >
-              קטגוריות
-            </h2>
+          <section aria-label="תת-קטגוריות" className="mb-10">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
               {children.map((child) => (
                 <Link
