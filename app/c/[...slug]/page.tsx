@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
-import { FootballTeamsCatalog } from "@/components/FootballTeamsCatalog";
+import { CmsCatalog } from "@/components/CmsCatalog";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
 import { ArtistCmsPage } from "@/components/ArtistCmsPage";
 import { getAllFootballTeams } from "@/lib/football";
@@ -73,14 +73,15 @@ export default async function TaxonomyCategoryPage({
     redirect(`/c/${canonical.join("/")}`);
   }
 
-  // The teams hub shows the full CMS team catalog ("הקבוצות שלנו" - same
-  // experience as /football) instead of bare taxonomy tiles (Dor, 2026-08-13).
-  if (cat.slug === "teams") {
+  // The teams/artists hubs show the full CMS catalogs ("הקבוצות שלנו" /
+  // "האומנים שלנו" - same experience as /football and /artists) instead of
+  // bare taxonomy tiles (Dor, 2026-08-13).
+  if (cat.slug === "teams" || cat.slug === "artists") {
     return (
       <>
         <ClientTracker />
         <HeaderTitle name={cat.name} />
-        <FootballTeamsCatalog title={cat.name} />
+        <CmsCatalog kind={cat.slug} title={cat.name} />
       </>
     );
   }
