@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { FootballTeamsCatalog } from "@/components/FootballTeamsCatalog";
+import { CmsCatalog } from "@/components/CmsCatalog";
 
 export const revalidate = 3600;
 
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default async function FootballsPage() {
-  return <FootballTeamsCatalog title="הקבוצות שלנו" />;
+  return <CmsCatalog kind="teams" title="הקבוצות שלנו" />;
 }

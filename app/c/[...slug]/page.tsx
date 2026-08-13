@@ -5,7 +5,12 @@ import { notFound, redirect } from "next/navigation";
 
 import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
-import { FootballTeamsCatalog } from "@/components/FootballTeamsCatalog";
+import { CmsCatalog } from "@/components/CmsCatalog";
+import { TeamCmsPage } from "@/components/TeamCmsPage";
+import { ArtistCmsPage } from "@/components/ArtistCmsPage";
+import { getAllFootballTeams } from "@/lib/football";
+import { getAllArtists } from "@/lib/artists";
+import type { FootballTeam } from "@/lib/app.types";
 import { DetailHero } from "@/components/DetailHero";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -68,16 +73,48 @@ export default async function TaxonomyCategoryPage({
     redirect(`/c/${canonical.join("/")}`);
   }
 
-  // The teams hub shows the full CMS team catalog ("הקבוצות שלנו" - same
-  // experience as /football) instead of bare taxonomy tiles (Dor, 2026-08-13).
-  if (cat.slug === "teams") {
+  // The teams/artists hubs show the full CMS catalogs ("הקבוצות שלנו" /
+  // "האומנים שלנו" - same experience as /football and /artists) instead of
+  // bare taxonomy tiles (Dor, 2026-08-13).
+  if (cat.slug === "teams" || cat.slug === "artists") {
     return (
       <>
         <ClientTracker />
         <HeaderTitle name={cat.name} />
-        <FootballTeamsCatalog title={cat.name} />
+        <CmsCatalog kind={cat.slug} title={cat.name} />
       </>
     );
+  }
+
+  // Team/artist LEAVES render the rich, already-designed CMS page body
+  // (hero, bio, tour dates, gallery) AT the taxonomy URL - same look as
+  // /football/<id> and /artists/<id>, matched by English then Hebrew name.
+  // No CMS twin → the generic category page below still renders
+  // (Dor, 2026-08-13).
+  const parent = cat.parent_id != null ? all.find((c) => c.id === cat.parent_id) : null;
+  if (parent && (parent.slug === "teams" || parent.slug === "artists")) {
+    let twin: FootballTeam | null = null;
+    try {
+      const entries =
+        parent.slug === "teams" ? await getAllFootballTeams() : await getAllArtists();
+      const en = (cat.name_english ?? "").trim().toLowerCase();
+      const he = cat.name.trim().toLowerCase();
+      twin =
+        entries.find((e) => {
+          const cmsEn = String(e.fields.nameDBenglish ?? "").trim().toLowerCase();
+          const cmsName = String(e.fields.name ?? "").trim().toLowerCase();
+          return (en && (cmsEn === en || cmsName === en)) || cmsName === he;
+        }) ?? null;
+    } catch (e) {
+      console.error("CMS twin lookup failed:", JSON.stringify(e));
+    }
+    if (twin?.fields?.name && twin.fields.nameDBenglish) {
+      return parent.slug === "teams" ? (
+        <TeamCmsPage team={twin} />
+      ) : (
+        <ArtistCmsPage artist={twin} />
+      );
+    }
   }
 
   const breadcrumbs = ancestorsOf(cat, all);
@@ -127,15 +164,10 @@ export default async function TaxonomyCategoryPage({
           </ol>
         </nav>
 
-        {/* Child categories - walk DOWN the tree */}
+        {/* Child categories - walk DOWN the tree. No "קטגוריות" heading -
+            the tiles speak for themselves (Dor, 2026-08-13). */}
         {children.length > 0 && (
-          <section aria-labelledby="subcategories-heading" className="mb-10">
-            <h2
-              id="subcategories-heading"
-              className="mb-4 font-display text-2xl font-extrabold text-foreground"
-            >
-              קטגוריות
-            </h2>
+          <section aria-label="תת-קטגוריות" className="mb-10">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
               {children.map((child) => (
                 <Link
