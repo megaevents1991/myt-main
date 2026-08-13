@@ -17,12 +17,12 @@
 import type { Event } from "@/lib/app.types";
 import { isEventSoldOut } from "@/lib/events/price";
 import {
+  buildCustomLabels,
   FEED_BRAND,
   feedPriceUSD,
   formatPriceUSD,
   orderLink,
   plainText,
-  usableTagSlugs,
   type EventTaxonomyInfo,
 } from "./metaCatalog";
 
@@ -230,16 +230,16 @@ export function buildActivityItem(
   // Category names carry stray whitespace in the DB ("Football ").
   const path = taxonomy.categoryPath.map((p) => p.trim()).filter(Boolean);
   const leaf = path.length > 1 ? path[path.length - 1] : "";
-  // Untagged events still get a usable targeting label from the CMS match.
-  const domainLabel =
-    path[0]?.toLowerCase() ||
-    (hint === "artist" ? "music" : hint === "football-team" ? "sport" : "");
   const subCategory = leaf || (hint === "football-team" ? "Football" : "");
-  // Backoffice feed tags → labels 2-4. This used to exist only in the Google
-  // feed - Commerce Manager never saw tag labels at all ("the custom labels
-  // from tags don't show up"). Legacy `item-N` slugs (auto-slugged
-  // Hebrew-only tags) are meaningless to a campaign filter and are dropped.
-  const tagLabels = usableTagSlugs(taxonomy.tagSlugs);
+  // Shared vertical/league|genre/team|artist/city/availability hierarchy -
+  // same builder the Google feed uses (spec 2026-08-12). This feed drops
+  // sold-out events above, so status is always "available" here.
+  const labels = buildCustomLabels(
+    taxonomy,
+    "available",
+    event.location?.city_iata,
+    hint,
+  );
 
   return {
     id: event.id,
@@ -257,11 +257,11 @@ export function buildActivityItem(
     // Deepest taxonomy segment = the genre/sport ("Rock", "Football").
     activity_sub_categories: subCategory,
     activity_date: eventDate,
-    custom_label_0: domainLabel,
-    custom_label_1: subCategory.toLowerCase(),
-    custom_label_2: tagLabels[0] ?? "",
-    custom_label_3: tagLabels[1] ?? "",
-    custom_label_4: tagLabels[2] ?? "",
+    custom_label_0: labels[0],
+    custom_label_1: labels[1],
+    custom_label_2: labels[2],
+    custom_label_3: labels[3],
+    custom_label_4: labels[4],
     video_url: isDirectVideoUrl(event.campaign_video_url)
       ? (event.campaign_video_url as string)
       : "",

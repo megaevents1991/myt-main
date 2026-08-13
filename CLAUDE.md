@@ -143,8 +143,12 @@ Required in `.env.local`:
   Supabase-Auth Google SSO + `user_profiles` staff roles as the backoffice (`lib/feed/feedAuth.ts`,
   routes under `app/api/feed-auth/`). Requires this app's callback URL
   (`https://www.mega-events.co.il/api/feed-auth/callback`) in the Supabase Auth redirect allowlist.
-- `product_type` / `custom_label_0-3` come from the backoffice event taxonomy
-  (`event_categories` path + `event_tags` slugs); `custom_label_4` = `available`/`sold_out`.
+- `product_type` = the `categories` tree path (deepest linked category, root-first).
+  `custom_label_0-4` = vertical / league\|genre / team\|artist / city / availability -
+  one scheme shared by both feeds, built by `buildCustomLabels` in
+  `lib/feed/metaCatalog.ts` from typed `event_tags` (`EventTag.type`) with
+  category-path/CMS-hint fallbacks for vertical and IATA fallback for city
+  (spec 2026-08-12).
 - Middleware skips `/feeds/` so the routes' own `Cache-Control` applies.
 
 ## Architecture

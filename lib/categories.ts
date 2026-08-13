@@ -5,6 +5,10 @@ import type { Category } from "@/lib/app.types";
  * Categories are a backoffice-managed CMS type, stored in the typed Supabase
  * `categories` table. This app reads the active ones for the homepage cards and
  * the /category/[slug] pages.
+ *
+ * Homepage tiles are roots only (`parent_id is null`) - a non-root category
+ * still gets its own /c/ page, it just isn't a homepage card; it's reached via
+ * the nav tree or its parent's category page instead.
  */
 export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
@@ -12,6 +16,7 @@ export async function getCategories(): Promise<Category[]> {
     .select("*")
     .eq("is_active", true)
     .eq("is_deleted", false)
+    .is("parent_id", null)
     .order("display_order", { ascending: true });
 
   if (error) {

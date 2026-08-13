@@ -6,6 +6,8 @@ import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { Event } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import type { EventTagChip } from "@/lib/taxonomy";
+import type { TagType } from "@/lib/taxonomy.types";
 import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,20 @@ const ALL = "__all__";
 
 const CONTROL =
   "h-11 w-full rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+
+/**
+ * Facet groups shown as chip rows. City and vertical are deliberately
+ * skipped - the city dropdown already covers city, and a vertical tag never
+ * narrows anything inside a category built from that same vertical.
+ */
+const TAG_GROUPS: { type: TagType; label: string }[] = [
+  { type: "league", label: "ליגות" },
+  { type: "team", label: "קבוצות" },
+  { type: "genre", label: "ז'אנרים" },
+  { type: "artist", label: "אומנים" },
+  { type: "other", label: "תגיות" },
+];
+const GROUP_CAP = 8;
 
 /** "לונדון, בריטניה" → "לונדון" - the city is what people filter by. */
 const cityOf = (event: Event) => (event.location?.name ?? "").split(",")[0].trim();
@@ -128,8 +144,8 @@ export function CategoryEventsBrowser({
   headingId,
 }: {
   events: Event[];
-  /** Feed tag names per event id - the sharpest slice of a category. */
-  tagsByEvent?: Record<number, string[]>;
+  /** Feed tag chips per event id - the sharpest slice of a category. */
+  tagsByEvent?: Record<number, EventTagChip[]>;
   headingId?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -194,36 +210,66 @@ export function CategoryEventsBrowser({
   }, [events]);
 
   /**
-   * The feed tags carried by the events on screen - the same tags the Meta
-   * catalogue targets on. Inside כדורגל these are "ליגה אנגלית", "ליגה
-   * איטלקית" and so on, which is the cut people actually want.
+   * The feed tags carried by the events on screen, grouped by type - the same
+   * tags the Meta catalogue targets on. Inside כדורגל these are "ליגה
+   * אנגלית", "ליגה איטלקית" and so on, which is the cut people actually want.
    *
    * A tag is dropped only when it cannot narrow anything: carried by one event
    * or by (nearly) all of them. Note what is NOT excluded - the tags that
    * COMPOSE this category. They looked redundant, but in כדורגל those are
    * exactly the league tags, and excluding them left the bar with nothing
    * useful on it.
+   *
+   * `type` falls back to "other" here too - pre-migration data (or any caller
+   * that skips getTagsForEvents' own fallback) must still land in a bucket
+   * instead of vanishing from every group's filter.
    */
-  const tagOptions = useMemo(() => {
-    const counts = new Map<string, number>();
+  const tagGroups = useMemo(() => {
+    const counts = new Map<string, { type: TagType; n: number }>();
     events.forEach((e) => {
-      (tagsByEvent[e.id] ?? []).forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
+      (tagsByEvent[e.id] ?? []).forEach((t) => {
+        const type = t.type ?? "other";
+        const cur = counts.get(t.name) ?? { type, n: 0 };
+        counts.set(t.name, { type: cur.type, n: cur.n + 1 });
+      });
     });
     const coversAll = Math.max(1, Math.floor(events.length * 0.95));
-    return [...counts.entries()]
-      .filter(([, n]) => n > 1 && n < coversAll)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, 12);
+    return TAG_GROUPS.map((g) => ({
+      ...g,
+      options: [...counts.entries()]
+        .filter(([, v]) => v.type === g.type && v.n > 1 && v.n < coversAll)
+        .sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]))
+        .slice(0, GROUP_CAP)
+        .map(([name, v]) => [name, v.n] as [string, number]),
+    })).filter((g) => g.options.length > 0);
   }, [events, tagsByEvent]);
+
+  /** Tag name → type, for grouping the current chip selection when filtering. */
+  const typeByName = useMemo(() => {
+    const m = new Map<string, TagType>();
+    Object.values(tagsByEvent).forEach((list) =>
+      list.forEach((t) => m.set(t.name, t.type ?? "other")),
+    );
+    return m;
+  }, [tagsByEvent]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const max = maxPrice === ALL ? null : Number(maxPrice);
     const arr = events.filter((e) => {
       if (hideSoldOut && isEventSoldOut(e)) return false;
-      // OR across chips: picking two leagues widens, it doesn't contradict.
-      if (tags.length && !tags.some((t) => (tagsByEvent[e.id] ?? []).includes(t))) {
-        return false;
+      // Standard faceting: OR within a group (two leagues widen, they don't
+      // contradict), AND across groups (a league + a team narrows both ways).
+      if (tags.length) {
+        const names = new Set((tagsByEvent[e.id] ?? []).map((t) => t.name));
+        const byGroup = new Map<TagType, string[]>();
+        tags.forEach((t) => {
+          const g = typeByName.get(t) ?? "other";
+          (byGroup.get(g) ?? byGroup.set(g, []).get(g)!).push(t);
+        });
+        for (const sel of byGroup.values()) {
+          if (!sel.some((t) => names.has(t))) return false;
+        }
       }
       if (city !== ALL && cityOf(e) !== city) return false;
       if (month !== ALL && monthKeyOf(e) !== month) return false;
@@ -254,7 +300,7 @@ export function CategoryEventsBrowser({
       return sort === "price_asc" ? pa - pb : pb - pa;
     });
     return arr;
-  }, [events, query, city, month, maxPrice, sort, hideSoldOut, tags, tagsByEvent]);
+  }, [events, query, city, month, maxPrice, sort, hideSoldOut, tags, tagsByEvent, typeByName]);
 
   // A narrower filter should show its results from the top, not mid-list.
   useEffect(
@@ -310,11 +356,11 @@ export function CategoryEventsBrowser({
           openOnMobile ? "block" : "hidden sm:block"
         )}
       >
-        {tagOptions.length > 0 && (
-          <div className="mb-4">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">תגיות</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי תגית">
-              {tagOptions.map(([tag, count]) => {
+        {tagGroups.map((g) => (
+          <div key={g.type} className="mb-4">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">{g.label}</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label={`סינון לפי ${g.label}`}>
+              {g.options.map(([tag, count]) => {
                 const on = tags.includes(tag);
                 return (
                   <button
@@ -338,7 +384,7 @@ export function CategoryEventsBrowser({
               })}
             </div>
           </div>
-        )}
+        ))}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-1">

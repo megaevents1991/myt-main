@@ -28,11 +28,27 @@ export type EventCategoryNode = EventCategory & {
   children: EventCategoryNode[];
 };
 
+/**
+ * Tag kind - drives the feed's custom_label mapping (vertical→0,
+ * league|genre→1, team|artist→2, city→3), nav grouping and facet groups.
+ */
+export const TAG_TYPES = [
+  "vertical",
+  "league",
+  "team",
+  "artist",
+  "genre",
+  "city",
+  "other",
+] as const;
+export type TagType = (typeof TAG_TYPES)[number];
+
 export type EventTag = {
   id: number;
   slug: string;
   name: string;
   name_english: string | null;
+  type: TagType;
   is_active: boolean;
   is_deleted: boolean;
   created_at: string;

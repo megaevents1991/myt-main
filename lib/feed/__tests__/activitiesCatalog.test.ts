@@ -12,6 +12,7 @@ import {
   toActivitiesCsv,
   type ActivityItem,
 } from "../activitiesCatalog";
+import type { EventTaxonomyInfo } from "../metaCatalog";
 
 const baseEvent = (over: Partial<Event> = {}): Event =>
   ({
@@ -53,11 +54,21 @@ const baseEvent = (over: Partial<Event> = {}): Event =>
     ...over,
   }) as Event;
 
-const MUSIC = {
+const MUSIC: EventTaxonomyInfo = {
   categoryPath: ["Music", "Rock"],
   tagSlugs: ["berlin", "music", "rock"],
+  tags: [
+    { slug: "berlin", type: "city" },
+    { slug: "guns-n-roses", type: "artist" },
+    { slug: "music", type: "vertical" },
+    { slug: "rock", type: "genre" },
+  ],
 };
-const SPORT = { categoryPath: ["Sports", "Football"], tagSlugs: ["world-cup"] };
+const SPORT: EventTaxonomyInfo = {
+  categoryPath: ["Sports", "Football"],
+  tagSlugs: ["world-cup"],
+  tags: [],
+};
 const CUTOFF = "2026-07-23";
 
 /* city strips the country */
@@ -80,11 +91,14 @@ assert.strictEqual(
 assert.strictEqual(activityCategoryOf({ type: "tx_event" }, MUSIC), "Concert");
 assert.strictEqual(activityCategoryOf({ type: "tx_event" }, SPORT), "Sports");
 assert.strictEqual(
-  activityCategoryOf({ type: "tx_event" }, { categoryPath: [], tagSlugs: [] }),
+  activityCategoryOf(
+    { type: "tx_event" },
+    { categoryPath: [], tagSlugs: [], tags: [] },
+  ),
   "Other",
 );
 /* untagged tx_event falls back to the CMS artist/team match */
-const NO_TAX = { categoryPath: [], tagSlugs: [] };
+const NO_TAX: EventTaxonomyInfo = { categoryPath: [], tagSlugs: [], tags: [] };
 assert.strictEqual(
   activityCategoryOf({ type: "tx_event" }, NO_TAX, "artist"),
   "Concert",
@@ -119,18 +133,18 @@ const fixture = buildActivityItem(
 ) as ActivityItem;
 assert.strictEqual(fixture.activity_category, "Sports");
 assert.strictEqual(fixture.activity_sub_categories, "Football");
-assert.strictEqual(fixture.custom_label_0, "sport");
+// vertical fallback now unified with the Google feed's "football" (was "sport").
+assert.strictEqual(fixture.custom_label_0, "football");
 /* sports titles carry no package suffix */
 assert.ok(!fixture.title.includes("טיסה+מלון"));
 
 /* DB category names carry stray whitespace - must not leak into the feed */
 const padded = buildActivityItem(
   baseEvent({ type: "sports_event" }),
-  { categoryPath: ["Sport", "Football "], tagSlugs: [] },
+  { categoryPath: ["Sport", "Football "], tagSlugs: [], tags: [] },
   CUTOFF,
 ) as ActivityItem;
 assert.strictEqual(padded.activity_sub_categories, "Football");
-assert.strictEqual(padded.custom_label_1, "football");
 
 /* concert item: full mapping, package suffix, city-only location */
 const item = buildActivityItem(baseEvent(), MUSIC, CUTOFF) as ActivityItem;
@@ -149,20 +163,28 @@ assert.strictEqual(item.activity_sub_categories, "Rock");
 assert.strictEqual(item.activity_date, "2026-10-02");
 assert.strictEqual(item.custom_label_0, "music");
 assert.strictEqual(item.custom_label_1, "rock");
-/* feed-tag slugs land in labels 2-4 (the CMO's campaign filters) */
-assert.strictEqual(item.custom_label_2, "berlin");
-assert.strictEqual(item.custom_label_3, "music");
-assert.strictEqual(item.custom_label_4, "rock");
+/* shared vertical/league|genre/team|artist/city/status hierarchy, same
+   builder as the Google feed (spec 2026-08-12) - status always "available"
+   here since sold-out events never reach this point. */
+assert.strictEqual(item.custom_label_2, "guns-n-roses");
+assert.strictEqual(item.custom_label_3, "berlin");
+assert.strictEqual(item.custom_label_4, "available");
 assert.ok(item.description.length > 0 && item.description !== item.title);
 
 /* legacy auto-slugged Hebrew tags ("item-N") are noise → dropped from labels */
 const legacyTags = buildActivityItem(
   baseEvent(),
-  { categoryPath: ["Music"], tagSlugs: ["item-4", "pop"] },
+  {
+    categoryPath: ["Music"],
+    tagSlugs: ["item-4", "pop"],
+    tags: [
+      { slug: "item-4", type: "genre" },
+      { slug: "pop", type: "genre" },
+    ],
+  },
   CUTOFF,
 ) as ActivityItem;
-assert.strictEqual(legacyTags.custom_label_2, "pop");
-assert.strictEqual(legacyTags.custom_label_3, "");
+assert.strictEqual(legacyTags.custom_label_1, "pop");
 /* no invented social proof - we have no ratings system */
 assert.strictEqual(item.rating_count, 0);
 assert.strictEqual(item.user_rating, 0);

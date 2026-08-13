@@ -6,6 +6,7 @@ import type {
   EventCategory,
   EventCategoryNode,
   EventTag,
+  TagType,
 } from "@/lib/taxonomy.types";
 import { buildTree, descendantIds, slugPathOf } from "@/lib/taxonomy-tree";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
@@ -33,10 +34,6 @@ export async function getAllCategories(): Promise<EventCategory[]> {
     return [];
   }
   return (data ?? []) as EventCategory[];
-}
-
-export async function getCategoryTree(): Promise<EventCategoryNode[]> {
-  return buildTree(await getAllCategories());
 }
 
 export async function getCategoryBySlug(
@@ -126,65 +123,23 @@ export async function getAllTags(): Promise<EventTag[]> {
   return (data ?? []) as EventTag[];
 }
 
-export async function getEventsByTag(
-  slug: string,
-): Promise<{ tag: EventTag | null; events: Event[] }> {
-  const { data: tag, error: tagErr } = await supabase
-    .from("event_tags")
-    .select("*")
-    .eq("slug", slug)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (tagErr) {
-    console.error("getEventsByTag tag failed:", JSON.stringify(tagErr));
-    return { tag: null, events: [] };
-  }
-  if (!tag) return { tag: null, events: [] };
-
-  const { data: links, error: linkErr } = await supabase
-    .from("event_tag_links")
-    .select("event_id")
-    .eq("tag_id", (tag as EventTag).id);
-  if (linkErr) {
-    console.error("getEventsByTag links failed:", JSON.stringify(linkErr));
-    return { tag: tag as EventTag, events: [] };
-  }
-  const eventIds = (links ?? []).map((l) => l.event_id as number);
-  if (!eventIds.length) return { tag: tag as EventTag, events: [] };
-
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("*")
-    .in("id", eventIds)
-    .is("is_deleted", null)
-    .gte("date", futureDateISO(AVAILABILITY_WINDOW_DAYS))
-    .order("date", { ascending: true });
-  if (error) {
-    console.error("getEventsByTag events failed:", JSON.stringify(error));
-    return { tag: tag as EventTag, events: [] };
-  }
-  return {
-    tag: tag as EventTag,
-    events: await enrichEventsWithFallbackImages(
-      (events ?? []).filter((e) => !e.is_test),
-    ),
-  };
-}
-
 /**
  * Categories for the site header.
  *
  * The header used to carry four hardcoded links, so the category tree the
  * backoffice builds was unreachable from anywhere but a homepage card.
  *
- * Only categories that are live AND actually hold packages appear: "roots
- * only" put an empty category in the nav while כדורגל - 139 packages - stayed
- * hidden because its parent was still switched off. Cached for an ISR window
- * and invalidated with the `events` tag like the rest of the catalogue, since
- * the root layout renders on every request.
+ * A node is kept when it (or any descendant) actually holds packages, so a
+ * tag-less hub like יעדים survives purely to carry its children - "roots
+ * only" would hide it while its grandchildren still have live packages. Full
+ * tree (not just roots), no cap: roots are 3 by design now. Cached for an ISR
+ * window and invalidated with the `events` tag like the rest of the
+ * catalogue, since the root layout renders on every request.
  */
+export type NavCategory = { href: string; label: string; children?: NavCategory[] };
+
 export const getNavCategories = nextCache(
-  async (): Promise<{ href: string; label: string }[]> => {
+  async (): Promise<NavCategory[]> => {
     const all = await getAllCategories();
     if (!all.length) return [];
 
@@ -205,32 +160,38 @@ export const getNavCategories = nextCache(
       counts.set(id, (counts.get(id) ?? 0) + 1);
     });
 
-    return all
-      .filter((c) => (counts.get(c.id) ?? 0) > 0)
-      .sort(
-        (a, b) =>
-          a.display_order - b.display_order || a.name.localeCompare(b.name),
-      )
-      .slice(0, 3)
-      .map((c) => ({
-        href: `/c/${slugPathOf(c, all).join("/")}`,
-        label: c.name,
-      }));
+    const keep = (node: EventCategoryNode): NavCategory | null => {
+      const children = node.children
+        .map(keep)
+        .filter((c): c is NavCategory => c !== null);
+      const count = counts.get(node.id) ?? 0;
+      if (count === 0 && children.length === 0) return null;
+      return {
+        href: `/c/${slugPathOf(node, all).join("/")}`,
+        label: node.name,
+        ...(children.length ? { children } : {}),
+      };
+    };
+    return buildTree(all).map(keep).filter((c): c is NavCategory => c !== null);
   },
   ["nav-categories"],
   { tags: ["events"], revalidate: 3600 },
 );
 
 /**
- * Tag names per event, for the category page's tag filter.
+ * Tag chips (name + type) per event, for the category page's typed facet
+ * groups.
  *
  * Tags are what compose a category, so they are also the sharpest way to slice
  * it: "ליגה אנגלית" inside כדורגל. Only tags that are live are returned - a
- * retired tag must not linger as a filter chip.
+ * retired tag must not linger as a filter chip. `type` falls back to "other"
+ * when the column is unset (pre-migration data).
  */
+export type EventTagChip = { name: string; type: TagType };
+
 export async function getTagsForEvents(
   eventIds: number[],
-): Promise<Record<number, string[]>> {
+): Promise<Record<number, EventTagChip[]>> {
   if (!eventIds.length) return {};
 
   const [linksRes, tagsRes] = await Promise.all([
@@ -240,7 +201,7 @@ export async function getTagsForEvents(
       .in("event_id", eventIds),
     supabase
       .from("event_tags")
-      .select("id,name")
+      .select("id,name,type")
       .eq("is_active", true)
       .eq("is_deleted", false),
   ]);
@@ -252,40 +213,17 @@ export async function getTagsForEvents(
     return {};
   }
 
-  const nameById = new Map<number, string>(
-    (tagsRes.data ?? []).map((t) => [t.id as number, t.name as string]),
+  const tagById = new Map<number, EventTagChip>(
+    (tagsRes.data ?? []).map((t) => [
+      t.id as number,
+      { name: t.name as string, type: (t.type as TagType) ?? "other" },
+    ]),
   );
-  const byEvent: Record<number, string[]> = {};
+  const byEvent: Record<number, EventTagChip[]> = {};
   (linksRes.data ?? []).forEach((l) => {
-    const name = nameById.get(l.tag_id as number);
-    if (!name) return;
-    (byEvent[l.event_id as number] ??= []).push(name);
+    const tag = tagById.get(l.tag_id as number);
+    if (!tag) return;
+    (byEvent[l.event_id as number] ??= []).push(tag);
   });
   return byEvent;
-}
-
-/** Tag names a category is composed of - excluded from its own filter chips. */
-export async function getCategoryTagNames(
-  categoryId: number,
-): Promise<string[]> {
-  const { data: links, error } = await supabase
-    .from("category_tags")
-    .select("tag_id")
-    .eq("category_id", categoryId);
-  if (error) {
-    console.error("getCategoryTagNames failed:", JSON.stringify(error));
-    return [];
-  }
-  const ids = (links ?? []).map((l) => l.tag_id as number);
-  if (!ids.length) return [];
-
-  const { data: tags, error: tagErr } = await supabase
-    .from("event_tags")
-    .select("name")
-    .in("id", ids);
-  if (tagErr) {
-    console.error("getCategoryTagNames tags failed:", JSON.stringify(tagErr));
-    return [];
-  }
-  return (tags ?? []).map((t) => t.name as string);
 }
