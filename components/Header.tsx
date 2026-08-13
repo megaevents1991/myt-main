@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Search, X } from "lucide-react";
+import { ChevronDown, Menu, Search, X } from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -42,6 +42,19 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   const navLinks: NavLink[] = [...categories, ...staticNavLinks];
   const [menuOpen, setMenuOpen] = useState(false);
+  // Mobile accordion: hrefs of tree nodes whose children are expanded. All
+  // collapsed by default so the menu opens short; cleared again on close.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!menuOpen) setExpanded(new Set());
+  }, [menuOpen]);
+  const toggleBranch = (href: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
   const floatingRef = useRef<HTMLDivElement>(null);
   // Shared-element hand-off: when the navbar appears, the floating corner
   // hamburger glides into the navbar's icon pill (and back). Holds the
@@ -423,51 +436,111 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
           aria-label="ניווט"
           className="container mx-auto flex flex-col gap-0 px-4 py-3"
         >
+          {/* Collapsible tree: the label still navigates; the chevron (44px
+              target) expands the branch. Everything starts collapsed so the
+              menu opens short. Height animates via the grid-rows trick -
+              transform-free, no layout jitter. */}
           {navLinks.map((link) => (
             <div key={link.href}>
-              <Link
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className="block rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
-              >
-                {link.label}
-              </Link>
+              <div className="flex items-center">
+                <Link
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="block min-h-11 flex-1 content-center rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
+                >
+                  {link.label}
+                </Link>
+                {link.children?.length ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleBranch(link.href)}
+                    aria-expanded={expanded.has(link.href)}
+                    aria-label={`הצג תת-קטגוריות של ${link.label}`}
+                    className="flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-main-foreground/10"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-4 transition-transform duration-200",
+                        expanded.has(link.href) && "rotate-180"
+                      )}
+                      aria-hidden
+                    />
+                  </button>
+                ) : null}
+              </div>
               {link.children?.length ? (
-                <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
-                  {link.children.map((child) =>
-                    child.children?.length ? (
-                      <div key={child.href}>
-                        <Link
-                          href={child.href}
-                          onClick={() => setMenuOpen(false)}
-                          className="block rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-main-foreground/10"
-                        >
-                          {child.label}
-                        </Link>
-                        <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
-                          {child.children.map((grandchild) => (
-                            <Link
-                              key={grandchild.href}
-                              href={grandchild.href}
-                              onClick={() => setMenuOpen(false)}
-                              className="block rounded-lg px-3 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
-                            >
-                              {grandchild.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        onClick={() => setMenuOpen(false)}
-                        className="block rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
-                      >
-                        {child.label}
-                      </Link>
-                    )
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    expanded.has(link.href) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
                   )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
+                      {link.children.map((child) =>
+                        child.children?.length ? (
+                          <div key={child.href}>
+                            <div className="flex items-center">
+                              <Link
+                                href={child.href}
+                                onClick={() => setMenuOpen(false)}
+                                className="block min-h-11 flex-1 content-center rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-main-foreground/10"
+                              >
+                                {child.label}
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => toggleBranch(child.href)}
+                                aria-expanded={expanded.has(child.href)}
+                                aria-label={`הצג תת-קטגוריות של ${child.label}`}
+                                className="flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-main-foreground/10"
+                              >
+                                <ChevronDown
+                                  className={cn(
+                                    "size-4 transition-transform duration-200",
+                                    expanded.has(child.href) && "rotate-180"
+                                  )}
+                                  aria-hidden
+                                />
+                              </button>
+                            </div>
+                            <div
+                              className={cn(
+                                "grid transition-[grid-template-rows] duration-200 ease-out",
+                                expanded.has(child.href)
+                                  ? "grid-rows-[1fr]"
+                                  : "grid-rows-[0fr]"
+                              )}
+                            >
+                              <div className="overflow-hidden">
+                                <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
+                                  {child.children.map((grandchild) => (
+                                    <Link
+                                      key={grandchild.href}
+                                      href={grandchild.href}
+                                      onClick={() => setMenuOpen(false)}
+                                      className="block min-h-11 content-center rounded-lg px-3 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
+                                    >
+                                      {grandchild.label}
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => setMenuOpen(false)}
+                            className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
+                          >
+                            {child.label}
+                          </Link>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>
