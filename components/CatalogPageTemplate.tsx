@@ -31,6 +31,8 @@ type CatalogPageTemplateProps = {
   imageAltPrefix: string;
   /** Set when the upstream fetch failed. */
   error?: boolean;
+  /** Hide the plain h1 - set when a DetailHero above already carries the title. */
+  hideTitle?: boolean;
 };
 
 const CatalogCard = ({
@@ -159,17 +161,20 @@ export const CatalogPageTemplate = ({
   cardLabelPrefix,
   imageAltPrefix,
   error = false,
+  hideTitle = false,
 }: CatalogPageTemplateProps) => {
   const onTour = items.filter((i) => i.available);
   const offTour = items.filter((i) => !i.available);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <header className="mb-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-          {title}
-        </h1>
-      </header>
+    <div id="catalog-grid" className="container mx-auto scroll-mt-20 px-4 py-8">
+      {!hideTitle && (
+        <header className="mb-6">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            {title}
+          </h1>
+        </header>
+      )}
 
       {error ? (
         <EmptyState
