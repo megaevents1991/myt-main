@@ -442,11 +442,14 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
               transform-free, no layout jitter. */}
           {navLinks.map((link) => (
             <div key={link.href}>
-              <div className="flex items-center">
+              {/* Chevron hugs the label (RTL: label right, arrow just to its
+                  left) instead of drifting to the far edge of the full-width
+                  menu row. */}
+              <div className="flex items-center justify-start">
                 <Link
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="block min-h-11 flex-1 content-center rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
+                  className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
                 >
                   {link.label}
                 </Link>
@@ -480,11 +483,11 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
                       {link.children.map((child) =>
                         child.children?.length ? (
                           <div key={child.href}>
-                            <div className="flex items-center">
+                            <div className="flex items-center justify-start">
                               <Link
                                 href={child.href}
                                 onClick={() => setMenuOpen(false)}
-                                className="block min-h-11 flex-1 content-center rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-main-foreground/10"
+                                className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-main-foreground/10"
                               >
                                 {child.label}
                               </Link>
