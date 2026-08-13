@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
+import { FootballTeamsCatalog } from "@/components/FootballTeamsCatalog";
 import { DetailHero } from "@/components/DetailHero";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -65,6 +66,18 @@ export default async function TaxonomyCategoryPage({
   const canonical = slugPathOf(cat, all);
   if (slug.join("/") !== canonical.join("/")) {
     redirect(`/c/${canonical.join("/")}`);
+  }
+
+  // The teams hub shows the full CMS team catalog ("הקבוצות שלנו" - same
+  // experience as /football) instead of bare taxonomy tiles (Dor, 2026-08-13).
+  if (cat.slug === "teams") {
+    return (
+      <>
+        <ClientTracker />
+        <HeaderTitle name={cat.name} />
+        <FootballTeamsCatalog title={cat.name} />
+      </>
+    );
   }
 
   const breadcrumbs = ancestorsOf(cat, all);
