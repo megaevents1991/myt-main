@@ -62,7 +62,7 @@ export const EventCard = ({
             {price !== null ? (
               <div className="flex flex-col items-start">
                 <span className="text-[11px] leading-none text-muted-foreground">
-                  החל מ־
+                  מחיר ממוצע
                 </span>
                 <span
                   className={`text-2xl font-extrabold tabular-nums ${

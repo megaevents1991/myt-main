@@ -315,7 +315,7 @@ export const HeroSearch = ({
           )}
         >
           <p className="flex items-center justify-end gap-2 border-b border-main-foreground/10 px-4 py-2.5 text-xs font-medium text-main-foreground/60">
-            אירועים תואמים · מחירים החל מ־ לנוסע
+            אירועים תואמים · מחיר ממוצע לנוסע
             <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
           </p>
           <ul className="myt-scroll max-h-[20rem] overflow-y-auto overscroll-contain">
@@ -330,7 +330,7 @@ export const HeroSearch = ({
                   >
                     {mPrice !== null && (
                       <span className="flex shrink-0 items-baseline gap-1 text-left text-sm text-main-foreground/60">
-                        החל מ־
+                        ממוצע לנוסע
                         <span className="text-base font-bold tabular-nums text-primary">
                           ${mPrice.toLocaleString("en-US")}
                         </span>
@@ -450,7 +450,7 @@ export const HeroSearch = ({
               <span className="text-main-foreground/60">
                 {price !== null ? (
                   <>
-                    החל מ־<span className="font-bold tabular-nums text-main-foreground">${price.toLocaleString("en-US")}</span> לנוסע
+                    ממוצע לנוסע <span className="font-bold tabular-nums text-main-foreground">${price.toLocaleString("en-US")}</span>
                   </>
                 ) : (
                   "מחיר יוצג בשלב הבא"

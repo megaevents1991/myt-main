@@ -91,7 +91,7 @@ export const PackageBanners = ({ events }: { events: Event[] }) => {
                       {price !== null && (
                         <span className="text-lg font-extrabold tabular-nums text-foreground">
                           <span className="text-[11px] font-normal text-muted-foreground">
-                            החל מ־{" "}
+                            ממוצע לנוסע{" "}
                           </span>
                           ${price.toLocaleString("en-US")}
                         </span>

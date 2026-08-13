@@ -1954,7 +1954,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
                 {packagePrice !== null ? (
                   <>
                     <p className="text-[11px] leading-none text-muted-foreground">
-                      החל מ־
+                      מחיר ממוצע
                     </p>
                     <div className="mt-1 text-2xl font-extrabold leading-none tabular-nums">
                       ${packagePrice.toLocaleString("en-US")}
