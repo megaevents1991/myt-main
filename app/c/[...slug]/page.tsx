@@ -76,12 +76,18 @@ export default async function TaxonomyCategoryPage({
   // The teams/artists hubs show the full CMS catalogs ("הקבוצות שלנו" /
   // "האומנים שלנו" - same experience as /football and /artists) instead of
   // bare taxonomy tiles (Dor, 2026-08-13).
+  // No HeaderTitle here on purpose - the old catalog pages keep the full
+  // navbar while scrolling, and these hubs must behave identically.
   if (cat.slug === "teams" || cat.slug === "artists") {
     return (
       <>
         <ClientTracker />
-        <HeaderTitle name={cat.name} />
-        <CmsCatalog kind={cat.slug} title={cat.name} />
+        <CmsCatalog
+          kind={cat.slug}
+          title={cat.name}
+          heroImageUrl={cat.image_url}
+          heroSubtitle={cat.subtitle}
+        />
       </>
     );
   }

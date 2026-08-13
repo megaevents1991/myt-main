@@ -1,4 +1,5 @@
 import { CatalogPageTemplate, type CatalogItem } from "@/components/CatalogPageTemplate";
+import { DetailHero } from "@/components/DetailHero";
 import { getAllFootballTeams } from "@/lib/football";
 import { getAllArtists } from "@/lib/artists";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
@@ -16,6 +17,7 @@ const KINDS = {
     gridLabel: "רשימת קבוצות הכדורגל",
     cardLabelPrefix: "עמוד קבוצת כדורגל",
     imageAltPrefix: "לוגו של קבוצת",
+    ctaLabel: "לכל הקבוצות",
   },
   artists: {
     fetch: getAllArtists,
@@ -23,17 +25,33 @@ const KINDS = {
     gridLabel: "רשימת האומנים",
     cardLabelPrefix: "עמוד האומן",
     imageAltPrefix: "תמונה של האומן",
+    ctaLabel: "לכל האומנים",
   },
 } as const;
 
 export async function CmsCatalog({
   kind,
   title,
+  heroImageUrl,
+  heroSubtitle,
 }: {
   kind: keyof typeof KINDS;
   title: string;
+  /** Category card image/subtitle when rendered as a /c/ hub. */
+  heroImageUrl?: string | null;
+  heroSubtitle?: string | null;
 }) {
   const cfg = KINDS[kind];
+  const hero = (
+    <DetailHero
+      name={title}
+      bio={heroSubtitle ? <p>{heroSubtitle}</p> : null}
+      imageUrl={heroImageUrl ?? undefined}
+      imageAlt={title}
+      ctaHref="#catalog-grid"
+      ctaLabel={cfg.ctaLabel}
+    />
+  );
   try {
     const items = await cfg.fetch();
     const isAvailable = await getAvailabilityChecker();
@@ -56,27 +74,35 @@ export async function CmsCatalog({
     }));
 
     return (
-      <CatalogPageTemplate
-        title={title}
-        hrefBase={cfg.hrefBase}
-        items={rows}
-        gridLabel={cfg.gridLabel}
-        cardLabelPrefix={cfg.cardLabelPrefix}
-        imageAltPrefix={cfg.imageAltPrefix}
-      />
+      <>
+        {hero}
+        <CatalogPageTemplate
+          title={title}
+          hrefBase={cfg.hrefBase}
+          items={rows}
+          gridLabel={cfg.gridLabel}
+          cardLabelPrefix={cfg.cardLabelPrefix}
+          imageAltPrefix={cfg.imageAltPrefix}
+          hideTitle
+        />
+      </>
     );
   } catch (error) {
     console.error(`Error fetching ${kind} catalog:`, error);
     return (
-      <CatalogPageTemplate
-        title={title}
-        hrefBase={cfg.hrefBase}
-        items={[]}
-        gridLabel={cfg.gridLabel}
-        cardLabelPrefix={cfg.cardLabelPrefix}
-        imageAltPrefix={cfg.imageAltPrefix}
-        error
-      />
+      <>
+        {hero}
+        <CatalogPageTemplate
+          title={title}
+          hrefBase={cfg.hrefBase}
+          items={[]}
+          gridLabel={cfg.gridLabel}
+          cardLabelPrefix={cfg.cardLabelPrefix}
+          imageAltPrefix={cfg.imageAltPrefix}
+          error
+          hideTitle
+        />
+      </>
     );
   }
 }
