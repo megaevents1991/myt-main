@@ -85,6 +85,12 @@ const nextConfig: import("next").NextConfig = {
   async redirects() {
     return [
       { source: "/category/:slug", destination: "/c/:slug", permanent: true },
+      // LEGACY-ROUTE: /c/ is canonical (docs/LEGACY-ROUTES-TODO.md). Config
+      // redirects give a real 308 at the CDN (a page-level permanentRedirect
+      // on a static route bakes to a 200 meta-refresh instead). Exact paths
+      // only - /football/:id and /artists/:id redirect per-person in-page.
+      { source: "/football", destination: "/c/football/teams", permanent: true },
+      { source: "/artists", destination: "/c/music/artists", permanent: true },
     ];
   },
 };

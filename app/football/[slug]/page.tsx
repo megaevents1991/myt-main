@@ -1,11 +1,12 @@
-import { getFootballTeamBySlug, getFootballTeamSlugs } from "@/lib/football";
+import { getFootballTeamBySlug } from "@/lib/football";
 import { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
 import { personCategoryHref } from "@/lib/cmsTwin";
 
-export const revalidate = 3600;
-export const dynamicParams = true; // Allow rendering pages for new teams on-demand
+// LEGACY-ROUTE: force-dynamic so the per-person 308 below is a real status
+// code - prerendering would bake it into a 200 meta-refresh page.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -41,16 +42,6 @@ export async function generateMetadata({
     };
   } catch {
     return { title: "Team Not Found - MYT" };
-  }
-}
-
-export async function generateStaticParams() {
-  try {
-    const slugs = await getFootballTeamSlugs();
-    return slugs.map((slug) => ({ slug }));
-  } catch (error) {
-    console.error('Error generating static params for football teams:', error);
-    return [];
   }
 }
 
