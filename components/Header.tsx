@@ -16,8 +16,9 @@ type NavLink = { href: string; label: string; children?: NavLink[] };
 // /artists are the performer hubs (teams and artists) - a sibling pair, so
 // neither is dropped when categories take the lead.
 const staticNavLinks: NavLink[] = [
-  { href: "/football", label: "קבוצות" },
-  { href: "/artists", label: "אומנים" },
+  // /c/ paths directly - no LEGACY-ROUTE redirect hop.
+  { href: "/c/football/teams", label: "קבוצות" },
+  { href: "/c/music/artists", label: "אומנים" },
   { href: "/faq", label: "שאלות נפוצות" },
   { href: "/about", label: "אודותינו" },
 ];

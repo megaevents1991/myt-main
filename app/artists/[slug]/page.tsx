@@ -1,7 +1,8 @@
 import { getArtistBySlug, getArtistSlugs } from "@/lib/artists";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ArtistCmsPage } from "@/components/ArtistCmsPage";
+import { personCategoryHref } from "@/lib/cmsTwin";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new artists on-demand
@@ -73,9 +74,16 @@ export default async function ArtistPage({
       notFound();
     }
 
+    // LEGACY-ROUTE: /c/ is canonical - 308 to the category twin when one
+    // exists (docs/LEGACY-ROUTES-TODO.md). No twin → render here as before.
+    const twinHref = await personCategoryHref("artists", artist);
+    if (twinHref) permanentRedirect(twinHref);
+
     // Body shared with the taxonomy leaf /c/music/artists/<slug>.
     return <ArtistCmsPage artist={artist} />;
   } catch (error) {
+    // permanentRedirect throws by design - never swallow it.
+    if (error && typeof error === "object" && "digest" in error) throw error;
     console.error('Error fetching artist:', error);
     notFound();
   }

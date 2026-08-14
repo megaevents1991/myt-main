@@ -18,6 +18,8 @@ export type CatalogItem = {
   artImageOffsetY?: number;
   /** True = we have a currently-available event (On-Tour). False = Wishlist. */
   available: boolean;
+  /** Canonical /c/ link. Falls back to `${hrefBase}/${id}` (LEGACY-ROUTE). */
+  href?: string;
 };
 
 type CatalogPageTemplateProps = {
@@ -136,7 +138,7 @@ const CatalogSection = ({
           : items.map((item) => (
               <Link
                 key={item.id}
-                href={`${hrefBase}/${item.id}`}
+                href={item.href ?? `${hrefBase}/${item.id}`}
                 aria-label={`${cardLabelPrefix} ${item.name}`}
                 className="group rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >

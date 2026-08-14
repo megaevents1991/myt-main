@@ -1,5 +1,6 @@
 import { CatalogPageTemplate, type CatalogItem } from "@/components/CatalogPageTemplate";
 import { DetailHero } from "@/components/DetailHero";
+import { buildPersonHrefIndex } from "@/lib/cmsTwin";
 import { getAllFootballTeams } from "@/lib/football";
 import { getAllArtists } from "@/lib/artists";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
@@ -55,9 +56,13 @@ export async function CmsCatalog({
   try {
     const items = await cfg.fetch();
     const isAvailable = await getAvailabilityChecker();
+    // Canonical /c/ links; a person with no category twin falls back to the
+    // LEGACY-ROUTE detail page (which itself 308s once a twin appears).
+    const hrefIndex = await buildPersonHrefIndex(kind, items);
 
     const rows: CatalogItem[] = items.map((p) => ({
       id: p.sys.id,
+      href: hrefIndex.get(p.sys.id),
       name: String(p.fields.name ?? ""),
       previewText: p.fields.previewText ? String(p.fields.previewText) : undefined,
       imageUrl: p.fields.heroBanner?.fields?.file?.url

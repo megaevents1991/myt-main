@@ -1,7 +1,8 @@
 import { getFootballTeamBySlug, getFootballTeamSlugs } from "@/lib/football";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
+import { personCategoryHref } from "@/lib/cmsTwin";
 
 export const revalidate = 3600;
 export const dynamicParams = true; // Allow rendering pages for new teams on-demand
@@ -73,9 +74,16 @@ export default async function FootballPage({
       notFound();
     }
 
+    // LEGACY-ROUTE: /c/ is canonical - 308 to the category twin when one
+    // exists (docs/LEGACY-ROUTES-TODO.md). No twin → render here as before.
+    const twinHref = await personCategoryHref("teams", team);
+    if (twinHref) permanentRedirect(twinHref);
+
     // Body shared with the taxonomy leaf /c/football/teams/<slug>.
     return <TeamCmsPage team={team} />;
   } catch (error) {
+    // permanentRedirect throws by design - never swallow it.
+    if (error && typeof error === "object" && "digest" in error) throw error;
     console.error('Error fetching football team:', error);
     notFound();
   }
