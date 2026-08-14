@@ -45,6 +45,9 @@ export async function GET(request: Request) {
       // Artists pages
       revalidatePath("/artists", "page");
       revalidatePath("/artists", "layout");
+
+      // Canonical taxonomy pages (/c/ tree - categories, hubs, leaves).
+      revalidatePath("/c", "layout");
       console.log("[Revalidation] ✓ Artists pages");
 
       // Blog pages

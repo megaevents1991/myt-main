@@ -1,15 +1,8 @@
-import type { Metadata } from "next";
-import { CmsCatalog } from "@/components/CmsCatalog";
+import { permanentRedirect } from "next/navigation";
 
-export const revalidate = 3600;
-
-export const metadata: Metadata = {
-  title: "הקבוצות שלנו - מגה איבנטס",
-  alternates: {
-    canonical: "https://www.mega-events.co.il/football",
-  },
-};
-
+// LEGACY-ROUTE: the /c/ tree is canonical (2026-08-14). This route survives
+// only for old links/campaigns/Google - delete it (and this redirect) per
+// docs/LEGACY-ROUTES-TODO.md once campaigns run on /c/ URLs.
 export default async function FootballsPage() {
-  return <CmsCatalog kind="teams" title="הקבוצות שלנו" />;
+  permanentRedirect("/c/football/teams");
 }
