@@ -16,6 +16,11 @@ import {
   extractIpFromRequest,
   extractUserAgentFromRequest,
 } from "@/lib/gtmAnalytics";
+import {
+  influencerPrimaryCode,
+  readUtmCookieFromHeader,
+  touchRows,
+} from "@/lib/utm";
 
 export async function POST(req: Request) {
   // Bad JSON / failed validation is a client error - return 400 before any
@@ -35,6 +40,10 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ error: "Invalid order data" }, { status: 400 });
   }
+
+  // Attribution cookie - server-set by middleware, server-read here. Fail-open:
+  // any parse problem behaves like "no cookie" (today's exact behavior).
+  const utmCookie = readUtmCookieFromHeader(req.headers.get("cookie"));
 
   // Surface offline inventory linkage as top-level columns so the backoffice
   // can query / JOIN without unpacking the order JSON blobs.
@@ -176,10 +185,12 @@ export async function POST(req: Request) {
     user_shown_price: validatedData.user_shown_price,
     event_id: validatedData.event_id,
     payment_info: payNow ? {} : null,
-    // Coupon-to-affiliate attribution: a coupon linked to a partner credits
-    // that partner, but only when the order has no affiliate of its own
-    // (existing link/utm attribution wins).
+    // Influencer-protected attribution wins: the myt_utm cookie's primary is
+    // immune to later campaign clicks (utm_source=google used to overwrite the
+    // influencer's code in localStorage and steal the credit). Falls back to
+    // the legacy client-sent value, then coupon attribution - today's chain.
     aff_partner_tracking_code:
+      influencerPrimaryCode(utmCookie) ||
       validatedData.aff_partner_tracking_code ||
       coupon?.partner_tracking_code ||
       "",
@@ -266,6 +277,23 @@ export async function POST(req: Request) {
       { error: "Failed to confirm order" },
       { status: 500 },
     );
+  }
+
+  // Attribution touches → utm_touches (position 0 = primary). Purely
+  // additive analytics data: a failure here must NEVER fail the booking.
+  if (id && utmCookie) {
+    try {
+      const rows = touchRows(utmCookie, id);
+      if (rows.length > 0) {
+        const { error: utmError } = await supabase
+          .from("utm_touches")
+          .insert(rows);
+        if (utmError)
+          console.error("utm_touches insert failed:", JSON.stringify(utmError));
+      }
+    } catch (e) {
+      console.error("utm_touches insert failed:", e);
+    }
   }
 
   // Hold offline inventory immediately - released only on cancellation.
