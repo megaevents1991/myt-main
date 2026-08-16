@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dayjs from "dayjs";
@@ -9,6 +9,7 @@ import Fuse from "fuse.js";
 import {
   ArrowUp,
   Check,
+  Loader2,
   Mic,
   Plane,
   Building2,
@@ -201,13 +202,19 @@ export const HeroSearch = ({
   };
 
   // Stage 2 CTA: go to the order flow for the assembled package.
+  // useTransition so the button can show a pending state the instant it's
+  // tapped - on mobile the /order page can take seconds to load and with no
+  // feedback the button reads as broken (taps register, nothing visible).
+  const [navigating, startNavigation] = useTransition();
   const goTo = (event: Event) => {
     trackEvent("heroSearchOrder", {
       eventId: event.id,
       eventName: event.name,
       query,
     });
-    router.push(`/order/${event.id}`);
+    startNavigation(() => {
+      router.push(`/order/${event.id}`);
+    });
   };
 
   // Stage 1 ↑/Enter: "see all results" → the full search page (grid + filters).
@@ -215,7 +222,9 @@ export const HeroSearch = ({
   const goToSearch = () => {
     const q = query.trim();
     trackEvent("heroSearchSeeAll", { query: q });
-    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+    startNavigation(() => {
+      router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+    });
   };
 
   const price = selected ? computePackagePrice(selected) : null;
@@ -296,10 +305,15 @@ export const HeroSearch = ({
           <button
             type="button"
             onClick={() => (selected ? goTo(selected) : goToSearch())}
+            disabled={navigating}
             aria-label={selected ? "המשך להזמנה" : "הצגת כל התוצאות"}
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 disabled:opacity-40 disabled:shadow-none"
+            className="flex size-10 shrink-0 touch-manipulation items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_20px_-4px_hsl(var(--brand-mint)/0.7)] transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40 disabled:shadow-none"
           >
-            <Search className="size-5" aria-hidden />
+            {navigating ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden />
+            ) : (
+              <Search className="size-5" aria-hidden />
+            )}
           </button>
         </HoverTip>
       </div>
@@ -460,10 +474,15 @@ export const HeroSearch = ({
             <button
               type="button"
               onClick={() => goTo(selected)}
-              disabled={assembling}
-              className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              disabled={assembling || navigating}
+              className="flex touch-manipulation items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50"
             >
-              {assembling ? "מרכיבים…" : "החבילה מוכנה"}
+              {navigating && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {navigating
+                ? "עוברים להזמנה…"
+                : assembling
+                  ? "מרכיבים…"
+                  : "החבילה מוכנה"}
             </button>
           </div>
 
