@@ -166,25 +166,16 @@ export async function VerticalHubPage({
             ? { href: `/c/${slugPathOf(teamsHub, all).join("/")}`, label: "לכל הקבוצות" }
             : undefined
         }
-      />
-
-      {/* Crest strip - the vertical's roster, a dark continuation of the cover
-          so the gallery cards glow the way the homepage hero carousel does. */}
-      {coverTeams.length > 0 && (
-        <section
-          className="bg-main px-4 pb-10 pt-2 md:px-6"
-          aria-label={`קבוצות ${category.name}`}
-          dir="rtl"
-        >
-          <div className="container mx-auto">
+        strip={
+          coverTeams.length > 0 ? (
             <TeamCardsRow
               teams={coverTeams}
               hrefById={Object.fromEntries(coverTeamHrefs)}
               size="compact"
             />
-          </div>
-        </section>
-      )}
+          ) : undefined
+        }
+      />
 
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
         <div className="container mx-auto space-y-12 lg:space-y-16">

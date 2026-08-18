@@ -23,6 +23,7 @@ export function HubCover({
   stats,
   primaryCta,
   secondaryCta,
+  strip,
 }: {
   /** Small label above the headline - the vertical / competition. */
   eyebrow: string;
@@ -34,6 +35,9 @@ export function HubCover({
   stats?: { value: string; label: string }[];
   primaryCta: { href: string; label: string };
   secondaryCta?: { href: string; label: string };
+  /** Full-width row (crest chips) rendered INSIDE the cover, on the same
+   * floodlit ground - no seam between hero and carousel. */
+  strip?: ReactNode;
 }) {
   return (
     <section
@@ -124,6 +128,8 @@ export function HubCover({
 
         <TrustBadges className="mt-8 justify-center text-main-foreground/70" />
       </div>
+
+      {strip && <div className="container mx-auto mt-10">{strip}</div>}
     </section>
   );
 }
