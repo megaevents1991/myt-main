@@ -20,6 +20,8 @@ import { ArtistBanners } from "@/components/ArtistBanners";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { ArtistVideos } from "@/components/ArtistVideos";
 import { TeamExtrasSection } from "@/components/vertical-hub/TeamExtrasSection";
+import { TEAM_EXTRAS } from "@/components/vertical-hub/teamExtras";
+import { normalizeName } from "@/lib/eventNameMatch";
 
 const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
@@ -78,6 +80,10 @@ export async function TeamCmsPage({ team }: { team: FootballTeam }) {
     : undefined;
 
   // Mobile bio collapses to its first sentence with a "קרא עוד.." toggle.
+  // Cover extras (redesign: "קאבר יותר מחרמן") - honours as chips, stadium
+  // city as the eyebrow. Teams without a TEAM_EXTRAS entry render the plain hero.
+  const extras = TEAM_EXTRAS[normalizeName(String(nameDBenglish ?? ""))];
+
   const bioPlain = documentToPlainText(bio as Document);
   const bioFirstSentence = firstSentence(bioPlain);
   const bioCanExpand = bioFirstSentence.length < bioPlain.length;
@@ -101,6 +107,8 @@ export async function TeamCmsPage({ team }: { team: FootballTeam }) {
         artImageScale={team.fields.artImageScale}
         artImageOffsetX={team.fields.artImageOffsetX}
         artImageOffsetY={team.fields.artImageOffsetY}
+        eyebrow={extras?.stadium ? `${extras.stadium.name} · ${extras.stadium.city}` : undefined}
+        chips={extras?.honours}
       />
 
       <ArtistBanners banners={banners} />

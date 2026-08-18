@@ -10,10 +10,9 @@ import { getAllFootballTeams, getFeaturedFootballTeams } from "@/lib/football";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
 import { isEventSoldOut } from "@/lib/events/price";
 
-import { HeroSearch } from "@/components/HeroSearch";
-import { HeroCarousel, type HeroCarouselItem } from "@/components/HeroCarousel";
-import { TrustBadges } from "@/components/ui/TrustBadges";
-import { Aurora } from "@/components/ui/Aurora";
+import { buildPersonHrefIndex } from "@/lib/cmsTwin";
+import { HubCover } from "@/components/vertical-hub/HubCover";
+import { TeamCardsRow } from "@/components/vertical-hub/TeamCardsRow";
 import { TrustSection } from "@/components/TrustSection";
 import { HubReviews } from "@/components/vertical-hub/HubReviews";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
@@ -30,9 +29,13 @@ import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
  * (/c/football now; /c/music next), per the redesign spec (ROAD MAP V1 →
  * כדורגל → עמוד כדורגל):
  *
- *   homepage-style cover (search + team carousel) → league tiles → SEO text →
- *   חבילות מומלצות → לקוחות משתפים → משחקים בולטים → כל החבילות (filters) →
- *   גלריה → אצטדיונים מומלצים → בידיים בטוחות → FAQ.
+ *   cover (lede + live counts) → crest strip → league tiles → חבילות מומלצות →
+ *   לקוחות משתפים → משחקים בולטים → כל החבילות (filters) → גלריה →
+ *   אצטדיונים מומלצים → על הוורטיקל → בידיים בטוחות → FAQ.
+ *
+ * The cover is deliberately NOT the homepage hero: no search (you already chose
+ * the vertical) and no full-height stage - it states what is bookable and hands
+ * you to the packages.
  *
  * Backoffice-managed content (SEO text, gallery, stadiums, FAQ) lives in
  * `categories.page_content` (jsonb) - every missing field hides its section,
@@ -97,11 +100,11 @@ export async function VerticalHubPage({
     ...(category.page_content ?? {}),
   };
 
-  // Hero-carousel ring: available teams only, featured order first - the same
-  // rule as the homepage carousel.
-  const heroItems: HeroCarouselItem[] = featuredFirst(featuredTeams, allTeams)
-    .filter((t) => isAvailable(String(t.fields.nameDBenglish ?? "")))
-    .map((entry) => ({ kind: "team" as const, entry }));
+  // Crest strip under the cover: bookable teams only, featured order first.
+  const coverTeams = featuredFirst(featuredTeams, allTeams).filter((t) =>
+    isAvailable(String(t.fields.nameDBenglish ?? "")),
+  );
+  const coverTeamHrefs = await buildPersonHrefIndex("teams", coverTeams);
 
   const available = events.filter((e) => !isEventSoldOut(e));
 
@@ -131,40 +134,56 @@ export async function VerticalHubPage({
 
   const faq = content.faq?.length ? content.faq : globalFaqItems;
 
+  // The lede is the first paragraph of the marketing text - the rest stays in
+  // the "about" block further down, so the cover says enough to orient you
+  // without turning into an essay.
+  const paragraphs = (content.seo_text ?? "").split("\n\n").filter(Boolean);
+  const [lede, ...restParagraphs] = paragraphs;
+
   return (
     <main>
-      {/* ---- Cover: homepage-style hero scoped to the vertical ---- */}
-      <section
-        className="relative flex min-h-[88svh] w-full flex-col justify-center gap-3 overflow-hidden bg-main px-4 pb-8 pt-24 text-white md:px-6 md:pb-10"
-        role="banner"
-      >
-        <Aurora intensity={0.5} />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-0"
-          style={{
-            background:
-              "radial-gradient(70% 55% at 50% 46%, hsl(160 55% 28% / 0.32), transparent 72%)",
-          }}
-        />
-        <div className="container relative z-10 mx-auto max-w-3xl text-center" dir="rtl">
-          <h1 className="mb-2 font-display text-3xl font-bold sm:text-4xl md:text-5xl lg:mb-3">
-            חבילות <span className="text-secondary">{category.name}</span> לאירופה
-            <span className="mt-1.5 block text-lg sm:text-2xl md:text-3xl">
-              {category.subtitle ?? "כרטיס, טיסה ומלון - חבילה אחת למשחק שלא שוכחים"}
-            </span>
-          </h1>
-        </div>
-        <div className="relative z-20 mt-4 md:mt-6">
-          <HeroSearch events={events} overlay />
-        </div>
-        <TrustBadges className="relative z-10 mt-3 justify-center text-main-foreground/80 md:mt-8" />
-        {heroItems.length > 0 && (
-          <div className="relative z-10 mt-1 sm:mt-2">
-            <HeroCarousel items={heroItems} />
+      {/* ---- Cover: content-sized, carries the lede. No search - that is the
+           homepage's job; here you already chose the vertical. ---- */}
+      <HubCover
+        eyebrow={`${category.name} באירופה`}
+        title={`חבילות ${category.name}`}
+        titleAccent="לכל המשחקים הגדולים"
+        lede={
+          lede ? (
+            <p>{lede}</p>
+          ) : (
+            <p>{category.subtitle ?? "כרטיס, טיסה ומלון - חבילה אחת למשחק שלא שוכחים."}</p>
+          )
+        }
+        stats={[
+          { value: String(available.length), label: "חבילות זמינות" },
+          { value: String(children.length), label: "ליגות" },
+          { value: String(coverTeams.length), label: "קבוצות" },
+        ]}
+        primaryCta={{ href: "#hub-all-heading", label: "לכל החבילות" }}
+        secondaryCta={
+          teamsHub
+            ? { href: `/c/${slugPathOf(teamsHub, all).join("/")}`, label: "לכל הקבוצות" }
+            : undefined
+        }
+      />
+
+      {/* Crest strip - the vertical's roster, straight under the cover. */}
+      {coverTeams.length > 0 && (
+        <section
+          className="border-b border-border bg-background px-4 py-6 md:px-6"
+          aria-label={`קבוצות ${category.name}`}
+          dir="rtl"
+        >
+          <div className="container mx-auto">
+            <TeamCardsRow
+              teams={coverTeams}
+              hrefById={Object.fromEntries(coverTeamHrefs)}
+              size="compact"
+            />
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
         <div className="container mx-auto space-y-12 lg:space-y-16">
@@ -212,14 +231,14 @@ export async function VerticalHubPage({
             </section>
           )}
 
-          {/* ---- SEO / marketing text ---- */}
-          {content.seo_text && (
+          {/* ---- About the vertical - the paragraphs the cover's lede didn't take ---- */}
+          {restParagraphs.length > 0 && (
             <section aria-labelledby="hub-about-heading">
               <SectionHeading id="hub-about-heading">
                 {content.seo_title ?? `חבילות ${category.name} בחו"ל`}
               </SectionHeading>
               <div className="max-w-4xl space-y-4 leading-relaxed text-muted-foreground">
-                {content.seo_text.split("\n\n").map((para, i) => (
+                {restParagraphs.map((para, i) => (
                   <p key={i}>{para}</p>
                 ))}
               </div>

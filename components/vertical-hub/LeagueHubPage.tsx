@@ -6,7 +6,7 @@ import { buildPersonHrefIndex } from "@/lib/cmsTwin";
 import { clubNamesMatchAnyScript } from "@/lib/eventNameMatch";
 import { isEventSoldOut } from "@/lib/events/price";
 
-import { DetailHero } from "@/components/DetailHero";
+import { HubCover } from "@/components/vertical-hub/HubCover";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import ClientTracker from "@/components/ClientTracker";
 import { TrustSection } from "@/components/TrustSection";
@@ -31,6 +31,17 @@ import { LEAGUE_CONTENT } from "@/components/vertical-hub/leagueContent";
  * team-type tags, and those tag names are matched to the CMS team cards via
  * normalizeName. A team with no CMS card simply doesn't get a card.
  */
+
+/**
+ * Hebrew definite article for a league name.
+ *
+ * "פרמייר ליג" → "הפרמייר ליג", but a name that is ALREADY definite or opens
+ * with ל ("לה ליגה", "ליגת האלופות") must not take another ה - "הלה ליגה" is
+ * not Hebrew.
+ */
+const definite = (name: string) =>
+  /^[הל]/.test(name.trim()) ? name : `ה${name}`;
+
 export async function LeagueHubPage({
   category,
 }: {
@@ -71,17 +82,22 @@ export async function LeagueHubPage({
     <>
       <ClientTracker />
       <HeaderTitle name={category.name} />
-      <DetailHero
-        name={category.name}
-        bio={
-          content?.intro ? (
-            <p>{content.intro}</p>
-          ) : category.subtitle ? (
-            <p>{category.subtitle}</p>
-          ) : null
+      <HubCover
+        eyebrow="ליגות הכדורגל של אירופה"
+        title={category.name}
+        lede={
+          <p>
+            {content?.intro ??
+              category.subtitle ??
+              `כל המשחקים ב${definite(category.name)} שאפשר להזמין אצלנו - כרטיס, טיסה ומלון בחבילה אחת.`}
+          </p>
         }
-        imageUrl={category.image_url ?? undefined}
-        imageAlt={`באנר ${category.name}`}
+        stats={[
+          { value: String(available.length), label: "חבילות זמינות" },
+          { value: String(leagueTeams.length), label: "קבוצות" },
+        ]}
+        primaryCta={{ href: "#league-all-heading", label: "לכל המשחקים" }}
+        secondaryCta={{ href: "/c/football", label: "לעמוד הכדורגל" }}
       />
 
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
@@ -90,7 +106,7 @@ export async function LeagueHubPage({
           {leagueTeams.length > 0 && (
             <section aria-labelledby="league-teams-heading">
               <SectionHeading id="league-teams-heading">
-                קבוצות ה{category.name}
+                קבוצות {definite(category.name)}
               </SectionHeading>
               <TeamCardsRow
                 teams={leagueTeams}
@@ -103,7 +119,7 @@ export async function LeagueHubPage({
           {featuredEvents.length > 0 && (
             <section aria-labelledby="league-featured-heading">
               <SectionHeading id="league-featured-heading">
-                משחקים בולטים ב{category.name}
+                משחקים בולטים ב{definite(category.name)}
               </SectionHeading>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
                 {featuredEvents.map((event) => (
@@ -118,7 +134,7 @@ export async function LeagueHubPage({
           {/* ---- All games + filters ---- */}
           <section aria-labelledby="league-all-heading">
             <SectionHeading id="league-all-heading">
-              כל משחקי ה{category.name}
+              כל המשחקים ב{definite(category.name)}
             </SectionHeading>
             {events.length > 0 ? (
               <CategoryEventsBrowser
@@ -139,7 +155,7 @@ export async function LeagueHubPage({
             <section aria-label="גלריה">
               <ExperienceCarousel
                 images={content?.gallery}
-                title={`רגעים מה${category.name}`}
+                title={`רגעים מ${definite(category.name)}`}
                 subtitle="לקוחות מגה איבנטס במשחקים הגדולים"
               />
             </section>
@@ -149,7 +165,7 @@ export async function LeagueHubPage({
           {(content?.facts?.length ?? 0) > 0 && (
             <section aria-labelledby="league-facts-heading">
               <SectionHeading id="league-facts-heading">
-                מידע מעניין על ה{category.name}
+                מידע מעניין על {definite(category.name)}
               </SectionHeading>
               <div className="grid gap-4 sm:grid-cols-2" role="list">
                 {content?.facts?.map((f) => (

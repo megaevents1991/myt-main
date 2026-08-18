@@ -16,14 +16,25 @@ import { isTightCrest } from "@/lib/eventArt";
 export const TeamCardsRow = ({
   teams,
   hrefById,
+  size = "default",
 }: {
   teams: FootballTeam[];
   /** Canonical /c/ link per team sys.id (falls back to the legacy route). */
   hrefById?: Record<string, string>;
+  /** "compact" = the crest strip that sits right under a hub cover: more
+   * crests in view, so the row reads as the vertical's roster rather than a
+   * feature carousel. */
+  size?: "default" | "compact";
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (teams.length === 0) return null;
+
+  const compact = size === "compact";
+  const cardWidth = compact
+    ? "w-[38%] shrink-0 snap-start sm:w-[168px]"
+    : "w-[44%] shrink-0 snap-start sm:w-[240px]";
+  const cardHeight = compact ? "180px" : "245px";
 
   const scrollRow = (dir: "next" | "prev") => {
     const el = scrollRef.current;
@@ -77,11 +88,11 @@ export const TeamCardsRow = ({
               href={hrefById?.[team.sys.id] ?? `/football/${team.sys.id}`}
               role="listitem"
               aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
-              className="block w-[44%] shrink-0 snap-start transition-opacity hover:opacity-90 sm:w-[240px]"
+              className={`block transition-opacity hover:opacity-90 ${cardWidth}`}
             >
               <div
                 className="flex h-full w-full flex-col rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-card-hover"
-                style={{ height: "245px" }}
+                style={{ height: cardHeight }}
               >
                 <div className="group relative flex-1 overflow-hidden rounded-t-2xl">
                   <EventArt
@@ -125,14 +136,14 @@ export const TeamCardsRow = ({
                           : "object-center scale-[1.4]"
                         : undefined
                     }
-                    sizes="(max-width: 640px) 45vw, 240px"
+                    sizes={compact ? "(max-width: 640px) 40vw, 168px" : "(max-width: 640px) 45vw, 240px"}
                     className="h-full w-full"
                   />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
-                <div className="flex-none p-3 text-center">
+                <div className={`flex-none text-center ${compact ? "p-2" : "p-3"}`}>
                   <h3
-                    className="text-md mb-1 line-clamp-2 font-bold text-foreground"
+                    className={`mb-1 line-clamp-2 font-bold text-foreground ${compact ? "text-sm" : "text-md"}`}
                     style={{ lineHeight: "1.2" }}
                     title={team.fields.name || ""}
                   >
