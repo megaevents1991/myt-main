@@ -23,6 +23,7 @@ import { FAQStructuredData } from "@/components/FAQStructuredData";
 import { faqItems as globalFaqItems } from "@/components/ui/FAQ";
 import { HubEventsCarousel } from "@/components/vertical-hub/HubEventsCarousel";
 import { StadiumCards } from "@/components/vertical-hub/StadiumCards";
+import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
 
 /**
  * Vertical hub page - the rich, homepage-style experience for a ROOT vertical
@@ -57,20 +58,19 @@ const featuredFirst = (featured: FootballTeam[], all: FootballTeam[]) => {
   return [...featured, ...all.filter((x) => !seen.has(x.sys.id))];
 };
 
-/** The homepage section heading - secondary cubes + display type. */
-const SectionHeading = ({ id, children }: { id: string; children: React.ReactNode }) => (
-  <div className="mb-4 mt-2 flex flex-row items-stretch justify-start lg:mb-6">
-    <div className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} aria-hidden />
-    <div className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 23 }} aria-hidden />
-    <div className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} aria-hidden />
-    <h2
-      id={id}
-      className="mx-2 text-center font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl"
-    >
-      {children}
-    </h2>
-  </div>
-);
+/** Events carrying a "featured" tag (משחקים בולטים); falls back to the
+ * soonest `cap` available events while nothing is tagged yet. Shared by the
+ * vertical hub and the league pages. */
+export function pickFeatured<T extends { id: number }>(
+  available: T[],
+  tagsByEvent: Record<number, { name: string }[]>,
+  cap = 4,
+): T[] {
+  const tagged = available.filter((e) =>
+    (tagsByEvent[e.id] ?? []).some((t) => FEATURED_TAG_NAMES.has(normalizeTag(t.name))),
+  );
+  return (tagged.length ? tagged : available).slice(0, cap);
+}
 
 export async function VerticalHubPage({
   category,
@@ -105,12 +105,8 @@ export async function VerticalHubPage({
 
   const available = events.filter((e) => !isEventSoldOut(e));
 
-  // משחקים בולטים: events carrying a "featured" tag; while nothing is tagged
-  // yet, fall back to the soonest available games so the section isn't empty.
-  const taggedFeatured = available.filter((e) =>
-    (tagsByEvent[e.id] ?? []).some((t) => FEATURED_TAG_NAMES.has(normalizeTag(t.name))),
-  );
-  const featuredEvents = (taggedFeatured.length ? taggedFeatured : available).slice(0, 4);
+  // משחקים בולטים: backoffice tags an event "בולט"; soonest-4 fallback until then.
+  const featuredEvents = pickFeatured(available, tagsByEvent);
 
   // חבילות מומלצות: the rest of the available pool, so the two sections don't
   // open with the exact same cards.

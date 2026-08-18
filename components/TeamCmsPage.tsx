@@ -19,6 +19,7 @@ import { FAQ } from "@/components/ui/FAQ";
 import { ArtistBanners } from "@/components/ArtistBanners";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { ArtistVideos } from "@/components/ArtistVideos";
+import { TeamExtrasSection } from "@/components/vertical-hub/TeamExtrasSection";
 
 const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
@@ -155,6 +156,10 @@ export async function TeamCmsPage({ team }: { team: FootballTeam }) {
           </div>
         )}
       </section>
+
+      {/* Redesign extras - stadium / city / matchday / honours (content-keyed;
+          teams without a TEAM_EXTRAS entry render nothing here). */}
+      <TeamExtrasSection nameDBenglish={String(nameDBenglish)} />
 
       <ArtistVideos videos={videos} />
       <ExperienceCarousel images={gallery} />

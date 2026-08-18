@@ -18,6 +18,14 @@ import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
 import ClientTracker from "@/components/ClientTracker";
 import { VerticalHubPage } from "@/components/vertical-hub/VerticalHubPage";
 import { FOOTBALL_HUB_CONTENT } from "@/components/vertical-hub/footballContent";
+import { LeagueHubPage } from "@/components/vertical-hub/LeagueHubPage";
+
+// Intro line above the child tiles on the picker hubs (redesign spec:
+// "אפשר להוסיף גם שורה בטקסט מעל הליגות").
+const HUB_INTRO_LINE: Record<string, string> = {
+  leagues: "בחרו את הליגה האהובה עליכם",
+  genres: "איזה סגנון מוזיקה אתם מחפשים?",
+};
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -117,6 +125,13 @@ export default async function TaxonomyCategoryPage({
   // No CMS twin → the generic category page below still renders
   // (Dor, 2026-08-13).
   const parent = cat.parent_id != null ? all.find((c) => c.id === cat.parent_id) : null;
+
+  // LEAGUE PAGES - rich league experience (redesign spec: עמוד ליגה): league
+  // text, the league's teams carousel, featured games, filters, facts.
+  if (parent?.slug === "leagues") {
+    return <LeagueHubPage category={cat} />;
+  }
+
   if (parent && (parent.slug === "teams" || parent.slug === "artists")) {
     let twin: FootballTeam | null = null;
     try {
@@ -193,6 +208,11 @@ export default async function TaxonomyCategoryPage({
             the tiles speak for themselves (Dor, 2026-08-13). */}
         {children.length > 0 && (
           <section aria-label="תת-קטגוריות" className="mb-10">
+            {HUB_INTRO_LINE[cat.slug] && (
+              <p className="mb-4 text-center font-display text-xl font-bold text-foreground sm:text-2xl">
+                {HUB_INTRO_LINE[cat.slug]}
+              </p>
+            )}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
               {children.map((child) => (
                 <Link
