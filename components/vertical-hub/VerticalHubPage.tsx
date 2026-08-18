@@ -7,6 +7,7 @@ import type { CategoryPageContent, EventCategory } from "@/lib/taxonomy.types";
 import { getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
 import { getAllFootballTeams, getFeaturedFootballTeams } from "@/lib/football";
+import { getAllArtists, getFeaturedArtists } from "@/lib/artists";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
 import { isEventSoldOut } from "@/lib/events/price";
 
@@ -56,7 +57,7 @@ const FEATURED_TAG_NAMES = new Set([
 const normalizeTag = (s: string) => s.toLowerCase().replace(/[\s_-]+/g, "");
 
 /** Homepage-identical ordering: featured (backoffice `featured_order`) first. */
-const featuredFirst = (featured: FootballTeam[], all: FootballTeam[]) => {
+const featuredFirst = <T extends { sys: { id: string } }>(featured: T[], all: T[]): T[] => {
   const seen = new Set(featured.map((x) => x.sys.id));
   return [...featured, ...all.filter((x) => !seen.has(x.sys.id))];
 };
@@ -75,22 +76,72 @@ export function pickFeatured<T extends { id: number }>(
   return (tagged.length ? tagged : available).slice(0, cap);
 }
 
+/**
+ * Per-vertical wording + which CMS people ride the cover strip. The page
+ * structure is identical; only the vocabulary and the roster source differ.
+ * Genre tiles are intentionally OFF for music (redesign spec: "לא צריך את
+ * הקוביות השחורות" - genres stay as filters in the browser).
+ */
+const HUB_KINDS = {
+  football: {
+    peopleKind: "teams" as const,
+    fetchFeatured: getFeaturedFootballTeams,
+    fetchAll: getAllFootballTeams,
+    eyebrow: (name: string) => `${name} באירופה`,
+    titleAccent: "לכל המשחקים הגדולים",
+    fallbackLede: "כרטיס, טיסה ומלון - חבילה אחת למשחק שלא שוכחים.",
+    statChildren: "ליגות",
+    statPeople: "קבוצות",
+    peopleCta: "לכל הקבוצות",
+    showChildTiles: true,
+    tilesHeading: "הליגות הגדולות",
+    featuredHeading: "משחקים בולטים זמינים באתר",
+    allHeading: (name: string) => `כל חבילות ה${name}`,
+    motif: "pitch" as const,
+    galleryTitle: "רגעים מהמשחקים",
+    gallerySubtitle: "לקוחות מגה איבנטס במשחקים הגדולים באירופה",
+  },
+  music: {
+    peopleKind: "artists" as const,
+    fetchFeatured: getFeaturedArtists,
+    fetchAll: getAllArtists,
+    eyebrow: () => "ההופעות הגדולות בעולם",
+    titleAccent: "לכל ההופעות הגדולות",
+    fallbackLede: "כרטיס, טיסה ומלון - חבילה אחת להופעה שלא שוכחים.",
+    statChildren: "ז'אנרים",
+    statPeople: "אמנים",
+    peopleCta: "לכל האמנים",
+    showChildTiles: false,
+    tilesHeading: "",
+    featuredHeading: "הופעות בולטות זמינות באתר",
+    allHeading: () => "כל ההופעות",
+    motif: "stage" as const,
+    galleryTitle: "רגעים מההופעות",
+    gallerySubtitle: "לקוחות מגה איבנטס במופעים הגדולים בעולם",
+  },
+} satisfies Record<string, unknown>;
+
+export type HubKind = keyof typeof HUB_KINDS;
+
 export async function VerticalHubPage({
   category,
   all,
+  kind,
   fallbackContent,
 }: {
   category: EventCategory;
   all: EventCategory[];
+  kind: HubKind;
   /** Bundled content used until `categories.page_content` is migrated + filled;
    * DB fields win field-by-field once they exist. */
   fallbackContent?: CategoryPageContent;
 }) {
-  const [{ events }, featuredTeams, allTeams, isAvailable] = await Promise.all([
-    // Whole vertical: the root node + every league/team beneath it.
+  const cfg = HUB_KINDS[kind];
+  const [{ events }, featuredPeople, allPeople, isAvailable] = await Promise.all([
+    // Whole vertical: the root node + every league/genre/person beneath it.
     getEventsInCategory(category.slug, { includeDescendants: true }),
-    getFeaturedFootballTeams().catch(() => [] as FootballTeam[]),
-    getAllFootballTeams().catch(() => [] as FootballTeam[]),
+    cfg.fetchFeatured().catch(() => [] as FootballTeam[]),
+    cfg.fetchAll().catch(() => [] as FootballTeam[]),
     getAvailabilityChecker(),
   ]);
   const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
@@ -100,11 +151,11 @@ export async function VerticalHubPage({
     ...(category.page_content ?? {}),
   };
 
-  // Crest strip under the cover: bookable teams only, featured order first.
-  const coverTeams = featuredFirst(featuredTeams, allTeams).filter((t) =>
+  // Cover strip: bookable people only, featured order first.
+  const coverPeople = featuredFirst(featuredPeople, allPeople).filter((t) =>
     isAvailable(String(t.fields.nameDBenglish ?? "")),
   );
-  const coverTeamHrefs = await buildPersonHrefIndex("teams", coverTeams);
+  const coverPeopleHrefs = await buildPersonHrefIndex(cfg.peopleKind, coverPeople);
 
   const available = events.filter((e) => !isEventSoldOut(e));
 
@@ -123,14 +174,17 @@ export async function VerticalHubPage({
   // show actual leagues instead of one opaque "ליגות" tile.
   const byOrder = (a: EventCategory, b: EventCategory) =>
     a.display_order - b.display_order || a.name.localeCompare(b.name);
+  const peopleHubSlug = cfg.peopleKind;
   const children = all
-    .filter((c) => c.parent_id === category.id && c.slug !== "teams")
+    .filter((c) => c.parent_id === category.id && c.slug !== peopleHubSlug)
     .sort(byOrder)
     .flatMap((child) => {
       const grandchildren = all.filter((c) => c.parent_id === child.id).sort(byOrder);
       return grandchildren.length ? grandchildren : [child];
     });
-  const teamsHub = all.find((c) => c.parent_id === category.id && c.slug === "teams");
+  const peopleHub = all.find(
+    (c) => c.parent_id === category.id && c.slug === peopleHubSlug,
+  );
 
   const faq = content.faq?.length ? content.faq : globalFaqItems;
 
@@ -145,32 +199,27 @@ export async function VerticalHubPage({
       {/* ---- Cover: content-sized, carries the lede. No search - that is the
            homepage's job; here you already chose the vertical. ---- */}
       <HubCover
-        eyebrow={`${category.name} באירופה`}
+        motif={cfg.motif}
+        eyebrow={cfg.eyebrow(category.name)}
         title={`חבילות ${category.name}`}
-        titleAccent="לכל המשחקים הגדולים"
-        lede={
-          lede ? (
-            <p>{lede}</p>
-          ) : (
-            <p>{category.subtitle ?? "כרטיס, טיסה ומלון - חבילה אחת למשחק שלא שוכחים."}</p>
-          )
-        }
+        titleAccent={cfg.titleAccent}
+        lede={lede ? <p>{lede}</p> : <p>{category.subtitle ?? cfg.fallbackLede}</p>}
         stats={[
           { value: String(available.length), label: "חבילות זמינות" },
-          { value: String(children.length), label: "ליגות" },
-          { value: String(coverTeams.length), label: "קבוצות" },
+          { value: String(children.length), label: cfg.statChildren },
+          { value: String(coverPeople.length), label: cfg.statPeople },
         ]}
         primaryCta={{ href: "#hub-all-heading", label: "לכל החבילות" }}
         secondaryCta={
-          teamsHub
-            ? { href: `/c/${slugPathOf(teamsHub, all).join("/")}`, label: "לכל הקבוצות" }
+          peopleHub
+            ? { href: `/c/${slugPathOf(peopleHub, all).join("/")}`, label: cfg.peopleCta }
             : undefined
         }
         strip={
-          coverTeams.length > 0 ? (
+          coverPeople.length > 0 ? (
             <TeamCardsRow
-              teams={coverTeams}
-              hrefById={Object.fromEntries(coverTeamHrefs)}
+              teams={coverPeople}
+              hrefById={Object.fromEntries(coverPeopleHrefs)}
               size="compact"
             />
           ) : undefined
@@ -180,9 +229,9 @@ export async function VerticalHubPage({
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
         <div className="container mx-auto space-y-12 lg:space-y-16">
           {/* ---- League tiles (child categories) ---- */}
-          {children.length > 0 && (
-            <section aria-label="ליגות">
-              <SectionHeading id="hub-leagues-heading">הליגות הגדולות</SectionHeading>
+          {cfg.showChildTiles && children.length > 0 && (
+            <section aria-label={cfg.tilesHeading}>
+              <SectionHeading id="hub-leagues-heading">{cfg.tilesHeading}</SectionHeading>
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" role="list">
                 {children.map((child) => (
                   <Link
@@ -222,14 +271,14 @@ export async function VerticalHubPage({
                     )}
                   </Link>
                 ))}
-                {teamsHub && (
+                {peopleHub && (
                   <Link
-                    href={`/c/${slugPathOf(teamsHub, all).join("/")}`}
+                    href={`/c/${slugPathOf(peopleHub, all).join("/")}`}
                     role="listitem"
                     className="group relative flex h-32 items-center justify-center overflow-hidden rounded-2xl border border-border bg-main shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover"
                   >
                     <span className="font-display text-lg font-extrabold text-main-foreground">
-                      לכל הקבוצות ←
+                      {cfg.peopleCta} ←
                     </span>
                   </Link>
                 )}
@@ -269,12 +318,12 @@ export async function VerticalHubPage({
           {featuredEvents.length > 0 && (
             <section aria-labelledby="hub-featured-heading">
               <SectionHeading id="hub-featured-heading">
-                משחקים בולטים זמינים באתר
+                {cfg.featuredHeading}
               </SectionHeading>
               <div
                 className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
                 role="list"
-                aria-label="משחקים בולטים"
+                aria-label={cfg.featuredHeading}
               >
                 {featuredEvents.map((event) => (
                   <div key={event.id}>
@@ -287,7 +336,7 @@ export async function VerticalHubPage({
 
           {/* ---- כל החבילות + filters ---- */}
           <section aria-labelledby="hub-all-heading">
-            <SectionHeading id="hub-all-heading">כל חבילות ה{category.name}</SectionHeading>
+            <SectionHeading id="hub-all-heading">{cfg.allHeading(category.name)}</SectionHeading>
             {events.length > 0 ? (
               <CategoryEventsBrowser
                 events={events}
@@ -304,8 +353,8 @@ export async function VerticalHubPage({
             <section aria-label="גלריה">
               <ExperienceCarousel
                 images={content.gallery}
-                title="רגעים מהמשחקים"
-                subtitle="לקוחות מגה איבנטס במשחקים הגדולים באירופה"
+                title={cfg.galleryTitle}
+                subtitle={cfg.gallerySubtitle}
               />
             </section>
           )}

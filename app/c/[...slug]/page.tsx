@@ -18,7 +18,9 @@ import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
 import ClientTracker from "@/components/ClientTracker";
 import { VerticalHubPage } from "@/components/vertical-hub/VerticalHubPage";
 import { FOOTBALL_HUB_CONTENT } from "@/components/vertical-hub/footballContent";
+import { MUSIC_HUB_CONTENT } from "@/components/vertical-hub/musicContent";
 import { LeagueHubPage } from "@/components/vertical-hub/LeagueHubPage";
+import { GenreHubPage } from "@/components/vertical-hub/GenreHubPage";
 
 // Intro line above the child tiles on the picker hubs (redesign spec:
 // "אפשר להוסיף גם שורה בטקסט מעל הליגות").
@@ -83,10 +85,10 @@ export default async function TaxonomyCategoryPage({
     redirect(`/c/${canonical.join("/")}`);
   }
 
-  // ROOT VERTICAL HUB - the rich homepage-style experience (redesign spec:
-  // ROAD MAP V1 → כדורגל → עמוד כדורגל). Football now; music once its content
-  // and CMS wiring are ready.
-  if (cat.slug === "football") {
+  // ROOT VERTICAL HUBS - the rich homepage-style experience (redesign spec:
+  // ROAD MAP V1 → עמוד כדורגל / עמוד מוזיקה).
+  if (cat.slug === "football" || cat.slug === "music") {
+    const kind = cat.slug === "football" ? ("football" as const) : ("music" as const);
     return (
       <>
         <ClientTracker />
@@ -94,7 +96,8 @@ export default async function TaxonomyCategoryPage({
         <VerticalHubPage
           category={cat}
           all={all}
-          fallbackContent={FOOTBALL_HUB_CONTENT}
+          kind={kind}
+          fallbackContent={kind === "football" ? FOOTBALL_HUB_CONTENT : MUSIC_HUB_CONTENT}
         />
       </>
     );
@@ -130,6 +133,11 @@ export default async function TaxonomyCategoryPage({
   // text, the league's teams carousel, featured games, filters, facts.
   if (parent?.slug === "leagues") {
     return <LeagueHubPage category={cat} />;
+  }
+
+  // GENRE PAGES - the music twin of the league pages (redesign spec: עמוד ז'אנר).
+  if (parent?.slug === "genres") {
+    return <GenreHubPage category={cat} />;
   }
 
   if (parent && (parent.slug === "teams" || parent.slug === "artists")) {

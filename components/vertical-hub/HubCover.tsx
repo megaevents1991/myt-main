@@ -24,6 +24,7 @@ export function HubCover({
   primaryCta,
   secondaryCta,
   strip,
+  motif = "pitch",
 }: {
   /** Small label above the headline - the vertical / competition. */
   eyebrow: string;
@@ -38,6 +39,8 @@ export function HubCover({
   /** Full-width row (crest chips) rendered INSIDE the cover, on the same
    * floodlit ground - no seam between hero and carousel. */
   strip?: ReactNode;
+  /** Ground geometry: football pitch lines or concentric stage/sound arcs. */
+  motif?: "pitch" | "stage";
 }) {
   return (
     <section
@@ -57,7 +60,8 @@ export function HubCover({
             "radial-gradient(90% 60% at 50% 108%, hsl(160 55% 24% / 0.55), transparent 72%)",
         }}
       />
-      {/* Pitch geometry - center circle + penalty area, hairline, bottom-anchored. */}
+      {/* Ground geometry, hairline + bottom-anchored: pitch lines for football,
+          concentric stage/sound arcs for music. */}
       <svg
         aria-hidden
         viewBox="0 0 800 300"
@@ -67,10 +71,22 @@ export function HubCover({
         stroke="currentColor"
         strokeWidth="1.5"
       >
-        <circle cx="400" cy="300" r="120" />
-        <circle cx="400" cy="300" r="4" fill="currentColor" stroke="none" />
-        <path d="M180 300v-70h440v70" />
-        <path d="M300 300v-28h200v28" />
+        {motif === "pitch" ? (
+          <>
+            <circle cx="400" cy="300" r="120" />
+            <circle cx="400" cy="300" r="4" fill="currentColor" stroke="none" />
+            <path d="M180 300v-70h440v70" />
+            <path d="M300 300v-28h200v28" />
+          </>
+        ) : (
+          <>
+            <circle cx="400" cy="300" r="60" />
+            <circle cx="400" cy="300" r="120" />
+            <circle cx="400" cy="300" r="180" />
+            <circle cx="400" cy="300" r="240" />
+            <circle cx="400" cy="300" r="4" fill="currentColor" stroke="none" />
+          </>
+        )}
       </svg>
 
       <div className="container mx-auto max-w-4xl text-center">
