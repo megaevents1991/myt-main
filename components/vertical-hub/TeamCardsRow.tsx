@@ -32,9 +32,9 @@ export const TeamCardsRow = ({
 
   const compact = size === "compact";
   const cardWidth = compact
-    ? "w-[38%] shrink-0 snap-start sm:w-[168px]"
+    ? "w-[40%] shrink-0 snap-start sm:w-[180px]"
     : "w-[44%] shrink-0 snap-start sm:w-[240px]";
-  const cardHeight = compact ? "180px" : "245px";
+  const cardHeight = compact ? "210px" : "245px";
 
   const scrollRow = (dir: "next" | "prev") => {
     const el = scrollRef.current;
@@ -91,10 +91,20 @@ export const TeamCardsRow = ({
               className={`block transition-opacity hover:opacity-90 ${cardWidth}`}
             >
               <div
-                className="flex h-full w-full flex-col rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-card-hover"
+                className={
+                  compact
+                    ? "relative h-full w-full overflow-hidden rounded-2xl shadow-card ring-1 ring-white/15 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_18px_44px_-14px_hsl(var(--brand-mint)/0.5)] hover:ring-secondary/60"
+                    : "flex h-full w-full flex-col rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-card-hover"
+                }
                 style={{ height: cardHeight }}
               >
-                <div className="group relative flex-1 overflow-hidden rounded-t-2xl">
+                <div
+                  className={
+                    compact
+                      ? "group relative h-full overflow-hidden rounded-2xl"
+                      : "group relative flex-1 overflow-hidden rounded-t-2xl"
+                  }
+                >
                   <EventArt
                     id={team.sys.id}
                     imageUrl={
@@ -141,15 +151,24 @@ export const TeamCardsRow = ({
                   />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
-                <div className={`flex-none text-center ${compact ? "p-2" : "p-3"}`}>
+                {compact ? (
                   <h3
-                    className={`mb-1 line-clamp-2 font-bold text-foreground ${compact ? "text-sm" : "text-md"}`}
-                    style={{ lineHeight: "1.2" }}
+                    className="absolute inset-x-2 bottom-2 z-10 truncate text-center text-sm font-bold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.9)]"
                     title={team.fields.name || ""}
                   >
                     {team.fields.name || ""}
                   </h3>
-                </div>
+                ) : (
+                  <div className="flex-none p-3 text-center">
+                    <h3
+                      className="text-md mb-1 line-clamp-2 font-bold text-foreground"
+                      style={{ lineHeight: "1.2" }}
+                      title={team.fields.name || ""}
+                    >
+                      {team.fields.name || ""}
+                    </h3>
+                  </div>
+                )}
               </div>
             </Link>
           );

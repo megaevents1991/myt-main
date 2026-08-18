@@ -168,10 +168,11 @@ export async function VerticalHubPage({
         }
       />
 
-      {/* Crest strip - the vertical's roster, straight under the cover. */}
+      {/* Crest strip - the vertical's roster, a dark continuation of the cover
+          so the gallery cards glow the way the homepage hero carousel does. */}
       {coverTeams.length > 0 && (
         <section
-          className="border-b border-border bg-background px-4 py-6 md:px-6"
+          className="bg-main px-4 pb-10 pt-2 md:px-6"
           aria-label={`קבוצות ${category.name}`}
           dir="rtl"
         >
@@ -308,7 +309,7 @@ export async function VerticalHubPage({
           {(content.stadiums?.length ?? 0) > 0 && (
             <section aria-labelledby="hub-stadiums-heading">
               <SectionHeading id="hub-stadiums-heading">אצטדיונים מומלצים</SectionHeading>
-              <StadiumCards stadiums={content.stadiums ?? []} />
+              <StadiumCards stadiums={content.stadiums ?? []} variant="carousel" />
             </section>
           )}
         </div>

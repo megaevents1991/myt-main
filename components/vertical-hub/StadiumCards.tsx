@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
-import { Landmark, MapPin, Users } from "lucide-react";
+import { useRef } from "react";
+import { ChevronLeft, ChevronRight, Landmark, MapPin, Users } from "lucide-react";
 
 import type { CategoryStadium } from "@/lib/taxonomy.types";
 
@@ -9,20 +12,47 @@ import type { CategoryStadium } from "@/lib/taxonomy.types";
  * Works with or without a photo: no photo → brand gradient with a stadium
  * glyph, so the section still looks intentional before images are uploaded.
  */
-export const StadiumCards = ({ stadiums }: { stadiums: CategoryStadium[] }) => {
+export const StadiumCards = ({
+  stadiums,
+  variant = "grid",
+}: {
+  stadiums: CategoryStadium[];
+  /** "carousel" = RTL scroll row with arrows (hub page); "grid" = static
+   * columns (team page, single card). */
+  variant?: "grid" | "carousel";
+}) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   if (!stadiums.length) return null;
 
-  return (
+  const scrollRow = (dir: "next" | "prev") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = Math.round(el.clientWidth * 0.8);
+    // RTL: "next" reveals content to the left (negative scrollLeft).
+    el.scrollBy({ left: dir === "next" ? -amount : amount, behavior: "smooth" });
+  };
+  const arrowBtn =
+    "absolute top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-main text-main-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
+
+  const cards = (
     <div
+      ref={variant === "carousel" ? scrollRef : undefined}
       role="list"
       aria-label="אצטדיונים מומלצים"
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      className={
+        variant === "carousel"
+          ? "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      }
     >
       {stadiums.map((s) => (
         <article
           key={s.name}
           role="listitem"
-          className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover"
+          className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover ${
+            variant === "carousel" ? "w-[82%] shrink-0 snap-start sm:w-[340px]" : ""
+          }`}
         >
           <div className="relative h-40 w-full overflow-hidden bg-main">
             {s.image_url ? (
@@ -69,6 +99,34 @@ export const StadiumCards = ({ stadiums }: { stadiums: CategoryStadium[] }) => {
           </div>
         </article>
       ))}
+    </div>
+  );
+
+  if (variant !== "carousel") return cards;
+
+  return (
+    <div className="relative" dir="rtl">
+      {stadiums.length > 3 && (
+        <>
+          <button
+            type="button"
+            aria-label="הקודם"
+            onClick={() => scrollRow("prev")}
+            className={`${arrowBtn} right-0 translate-x-1/2`}
+          >
+            <ChevronRight className="size-5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            aria-label="הבא"
+            onClick={() => scrollRow("next")}
+            className={`${arrowBtn} left-0 -translate-x-1/2`}
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </button>
+        </>
+      )}
+      {cards}
     </div>
   );
 };

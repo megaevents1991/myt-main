@@ -37,6 +37,7 @@ export function HubCover({
 }) {
   return (
     <section
+      id="detail-hero"
       className="relative isolate overflow-hidden bg-main px-4 pb-10 pt-24 text-main-foreground md:px-6 md:pb-12 md:pt-28"
       role="banner"
       dir="rtl"
