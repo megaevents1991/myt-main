@@ -3,7 +3,7 @@ import type { EventCategory } from "@/lib/taxonomy.types";
 import { getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { getAllFootballTeams } from "@/lib/football";
 import { buildPersonHrefIndex } from "@/lib/cmsTwin";
-import { normalizeName } from "@/lib/eventNameMatch";
+import { clubNamesMatchAnyScript } from "@/lib/eventNameMatch";
 import { isEventSoldOut } from "@/lib/events/price";
 
 import { DetailHero } from "@/components/DetailHero";
@@ -44,18 +44,23 @@ export async function LeagueHubPage({
 
   const content = LEAGUE_CONTENT[category.slug];
 
-  // Teams of THIS league: team-type tag names on the league's events,
-  // normalized-matched to the CMS cards.
+  // Teams of THIS league: team-type tag names on the league's events, matched
+  // to the CMS cards. Club-qualifier drift between the two is the norm ("FC
+  // ברצלונה" the tag vs "ברצלונה" the card, "Tottenham Hotspur FC" vs
+  // "טוטנהאם"), so match on identifying tokens - exact equality silently
+  // dropped Barcelona from לה ליגה.
   const teamTagNames = new Set<string>();
   Object.values(tagsByEvent).forEach((chips) =>
     chips.forEach((c) => {
-      if (c.type === "team") teamTagNames.add(normalizeName(c.name));
+      if (c.type === "team") teamTagNames.add(c.name);
     }),
   );
   const leagueTeams = allTeams.filter((t) => {
-    const en = normalizeName(String(t.fields.nameDBenglish ?? ""));
-    const he = normalizeName(String(t.fields.name ?? ""));
-    return (en && teamTagNames.has(en)) || (he && teamTagNames.has(he));
+    const en = String(t.fields.nameDBenglish ?? "");
+    const he = String(t.fields.name ?? "");
+    return [...teamTagNames].some(
+      (tag) => clubNamesMatchAnyScript(tag, en) || clubNamesMatchAnyScript(tag, he),
+    );
   });
   const hrefIndex = await buildPersonHrefIndex("teams", leagueTeams);
 
