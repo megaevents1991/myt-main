@@ -64,7 +64,7 @@ export const StadiumCards = ({
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(80%_120%_at_50%_0%,hsl(160_55%_28%/0.9),hsl(var(--main)))]">
+              <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(80%_120%_at_50%_0%,hsl(160_55%_28%/0.9),hsl(var(--surface-inverse)))]">
                 <Landmark
                   className="size-14 text-main-foreground/70"
                   aria-hidden

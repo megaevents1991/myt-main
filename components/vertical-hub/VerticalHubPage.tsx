@@ -201,20 +201,34 @@ export async function VerticalHubPage({
                     className="group relative block h-32 overflow-hidden rounded-2xl border border-border shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover"
                   >
                     {child.image_url ? (
-                      <Image
-                        src={child.image_url}
-                        alt={child.name}
-                        fill
-                        sizes="(max-width: 640px) 45vw, 300px"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
+                      <>
+                        <Image
+                          src={child.image_url}
+                          alt={child.name}
+                          fill
+                          sizes="(max-width: 640px) 45vw, 300px"
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
+                        <h3 className="absolute inset-x-4 bottom-3 text-lg font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
+                          {child.name}
+                        </h3>
+                      </>
                     ) : (
-                      <div className="h-full w-full bg-main" />
+                      // No tile image yet (creative pending) - floodlit ground with
+                      // the league name as the tile, matching the cover's world.
+                      <div
+                        className="flex h-full w-full items-center justify-center"
+                        style={{
+                          background:
+                            "radial-gradient(80% 90% at 50% -20%, hsl(150 60% 62% / 0.22), hsl(var(--surface-inverse)))",
+                        }}
+                      >
+                        <h3 className="px-3 text-center font-display text-xl font-extrabold text-main-foreground transition-colors group-hover:text-secondary">
+                          {child.name}
+                        </h3>
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
-                    <h3 className="absolute inset-x-4 bottom-3 text-lg font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
-                      {child.name}
-                    </h3>
                   </Link>
                 ))}
                 {teamsHub && (

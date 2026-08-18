@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -32,9 +33,8 @@ export const TeamCardsRow = ({
 
   const compact = size === "compact";
   const cardWidth = compact
-    ? "w-[40%] shrink-0 snap-start sm:w-[180px]"
+    ? "w-[31%] shrink-0 snap-start sm:w-[148px]"
     : "w-[44%] shrink-0 snap-start sm:w-[240px]";
-  const cardHeight = compact ? "210px" : "245px";
 
   const scrollRow = (dir: "next" | "prev") => {
     const el = scrollRef.current;
@@ -88,23 +88,48 @@ export const TeamCardsRow = ({
               href={hrefById?.[team.sys.id] ?? `/football/${team.sys.id}`}
               role="listitem"
               aria-label={`עמוד קבוצת כדורגל ${team.fields.name || "לא ידוע"}`}
-              className={`block transition-opacity hover:opacity-90 ${cardWidth}`}
+              className={`group block ${cardWidth} ${compact ? "" : "transition-opacity hover:opacity-90"}`}
             >
+              {compact ? (
+                <div className="flex flex-col items-center gap-2.5 py-1">
+                  <div
+                    className="relative flex size-24 items-center justify-center rounded-full ring-1 ring-white/10 transition-all duration-300 group-hover:-translate-y-1 group-hover:ring-secondary/70 group-hover:shadow-[0_14px_44px_-10px_hsl(var(--brand-mint)/0.55)] sm:size-32"
+                    style={{
+                      background:
+                        "radial-gradient(65% 65% at 50% 38%, hsl(150 60% 62% / 0.16), hsl(160 55% 20% / 0.4) 72%, transparent 100%)",
+                    }}
+                  >
+                    {team.fields.artImageUrl ? (
+                      <Image
+                        src={team.fields.artImageUrl}
+                        alt={`סמל ${team.fields.name || ""}`}
+                        fill
+                        sizes="(max-width: 640px) 30vw, 128px"
+                        className="object-contain p-4 drop-shadow-[0_6px_14px_rgba(0,0,0,0.55)] transition-transform duration-300 group-hover:scale-105 sm:p-5"
+                      />
+                    ) : team.fields.heroBanner?.fields?.file?.url ? (
+                      <Image
+                        src={"https:" + team.fields.heroBanner.fields.file.url}
+                        alt={`תמונה של ${team.fields.name || ""}`}
+                        fill
+                        sizes="(max-width: 640px) 30vw, 128px"
+                        className="rounded-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                  <h3
+                    className="max-w-full truncate text-center text-sm font-bold text-main-foreground/90"
+                    title={team.fields.name || ""}
+                  >
+                    {team.fields.name || ""}
+                  </h3>
+                </div>
+              ) : (
               <div
-                className={
-                  compact
-                    ? "relative h-full w-full overflow-hidden rounded-2xl shadow-card ring-1 ring-white/15 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_18px_44px_-14px_hsl(var(--brand-mint)/0.5)] hover:ring-secondary/60"
-                    : "flex h-full w-full flex-col rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-card-hover"
-                }
-                style={{ height: cardHeight }}
+                className="flex h-full w-full flex-col rounded-2xl border border-border bg-card shadow-card transition-shadow hover:shadow-card-hover"
+                style={{ height: "245px" }}
               >
-                <div
-                  className={
-                    compact
-                      ? "group relative h-full overflow-hidden rounded-2xl"
-                      : "group relative flex-1 overflow-hidden rounded-t-2xl"
-                  }
-                >
+                <div className="group relative flex-1 overflow-hidden rounded-t-2xl">
                   <EventArt
                     id={team.sys.id}
                     imageUrl={
@@ -146,30 +171,22 @@ export const TeamCardsRow = ({
                           : "object-center scale-[1.4]"
                         : undefined
                     }
-                    sizes={compact ? "(max-width: 640px) 40vw, 168px" : "(max-width: 640px) 45vw, 240px"}
+                    sizes="(max-width: 640px) 45vw, 240px"
                     className="h-full w-full"
                   />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
-                {compact ? (
+                <div className="flex-none p-3 text-center">
                   <h3
-                    className="absolute inset-x-2 bottom-2 z-10 truncate text-center text-sm font-bold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.9)]"
+                    className="text-md mb-1 line-clamp-2 font-bold text-foreground"
+                    style={{ lineHeight: "1.2" }}
                     title={team.fields.name || ""}
                   >
                     {team.fields.name || ""}
                   </h3>
-                ) : (
-                  <div className="flex-none p-3 text-center">
-                    <h3
-                      className="text-md mb-1 line-clamp-2 font-bold text-foreground"
-                      style={{ lineHeight: "1.2" }}
-                      title={team.fields.name || ""}
-                    >
-                      {team.fields.name || ""}
-                    </h3>
-                  </div>
-                )}
+                </div>
               </div>
+              )}
             </Link>
           );
         })}
