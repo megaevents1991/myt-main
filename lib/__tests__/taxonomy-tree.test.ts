@@ -28,6 +28,7 @@ const cat = (
   name_english: null,
   image_url: null,
   subtitle: null,
+  page_content: null,
   display_order,
   is_active: true,
   is_deleted: false,

@@ -16,6 +16,8 @@ import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
 import ClientTracker from "@/components/ClientTracker";
+import { VerticalHubPage } from "@/components/vertical-hub/VerticalHubPage";
+import { FOOTBALL_HUB_CONTENT } from "@/components/vertical-hub/footballContent";
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -71,6 +73,23 @@ export default async function TaxonomyCategoryPage({
   const canonical = slugPathOf(cat, all);
   if (slug.join("/") !== canonical.join("/")) {
     redirect(`/c/${canonical.join("/")}`);
+  }
+
+  // ROOT VERTICAL HUB - the rich homepage-style experience (redesign spec:
+  // ROAD MAP V1 → כדורגל → עמוד כדורגל). Football now; music once its content
+  // and CMS wiring are ready.
+  if (cat.slug === "football") {
+    return (
+      <>
+        <ClientTracker />
+        <HeaderTitle name={cat.name} />
+        <VerticalHubPage
+          category={cat}
+          all={all}
+          fallbackContent={FOOTBALL_HUB_CONTENT}
+        />
+      </>
+    );
   }
 
   // The teams/artists hubs show the full CMS catalogs ("הקבוצות שלנו" /

@@ -21,6 +21,41 @@ export type EventCategory = {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+  /**
+   * Rich hub-page content (vertical hubs like כדורגל) - null on plain nodes.
+   * OPTIONAL until the `categories.page_content` jsonb column is migrated;
+   * meanwhile the hub pages fall back to bundled content
+   * (components/vertical-hub/footballContent.ts).
+   */
+  page_content?: CategoryPageContent | null;
+};
+
+/** A recommended stadium card on a vertical hub page. */
+export type CategoryStadium = {
+  name: string;
+  city: string;
+  /** e.g. "74,000 מקומות" - free text, shown as a meta chip. */
+  capacity?: string;
+  /** Home team(s) - free text meta chip. */
+  teams?: string;
+  description: string;
+  image_url?: string | null;
+};
+
+/**
+ * Backoffice-managed content for a vertical hub page (/c/football, /c/music).
+ * Stored as `categories.page_content` (jsonb). Every field optional - a
+ * missing field simply hides its section on the page.
+ */
+export type CategoryPageContent = {
+  /** Long-form marketing/SEO text shown under the hero. */
+  seo_text?: string;
+  /** Heading above the SEO text; falls back to a generic one. */
+  seo_title?: string;
+  /** Gallery image URLs (ExperienceCarousel). */
+  gallery?: string[];
+  stadiums?: CategoryStadium[];
+  faq?: { question: string; answer: string }[];
 };
 
 // Built in memory from a flat EventCategory[] for tree UI + traversal.
