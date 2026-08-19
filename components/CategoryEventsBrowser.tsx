@@ -145,6 +145,138 @@ function Dropdown({
   );
 }
 
+/**
+ * Checkbox dropdown - same look as Dropdown, but selections toggle and the
+ * list stays open (you're picking "ספטמבר וגם אוקטובר", not either-or).
+ */
+function MultiDropdown({
+  label,
+  allLabel,
+  values,
+  options,
+  onChange,
+}: {
+  label: string;
+  /** Button text while nothing is picked, and the clear-row text. */
+  allLabel: string;
+  values: string[];
+  options: { value: string; label: string }[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const summary =
+    values.length === 0
+      ? allLabel
+      : values.length === 1
+        ? options.find((o) => o.value === values[0])?.label ?? allLabel
+        : `${values.length} נבחרו`;
+
+  const toggle = (v: string) =>
+    onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={cn(CONTROL, "flex items-center justify-between gap-2 hover:bg-foreground/[0.03]")}
+      >
+        <span className="flex-1 truncate text-right">{summary}</span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180"
+          )}
+          aria-hidden
+        />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={label}
+          aria-multiselectable
+          className="absolute z-30 mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-border bg-card shadow-lg"
+        >
+          <li role="option" aria-selected={values.length === 0}>
+            <button
+              type="button"
+              onClick={() => {
+                onChange([]);
+                setOpen(false);
+              }}
+              className={cn(
+                "block w-full px-4 py-3 text-right text-sm transition-colors hover:bg-foreground/5",
+                values.length === 0 ? "font-bold text-primary" : "font-medium text-foreground"
+              )}
+            >
+              {allLabel}
+            </button>
+          </li>
+          {options.map((o) => {
+            const on = values.includes(o.value);
+            return (
+              <li key={o.value} role="option" aria-selected={on}>
+                <button
+                  type="button"
+                  onClick={() => toggle(o.value)}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 border-t border-border px-4 py-3 text-right text-sm transition-colors hover:bg-foreground/5",
+                    on ? "font-bold text-primary" : "font-medium text-foreground"
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center rounded border",
+                      on
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card"
+                    )}
+                  >
+                    {on && (
+                      <svg viewBox="0 0 10 8" className="size-2.5" fill="none">
+                        <path
+                          d="M1 4l2.5 2.5L9 1"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="flex-1">{o.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function CategoryEventsBrowser({
   events,
   tagsByEvent = {},
@@ -160,7 +292,8 @@ export function CategoryEventsBrowser({
 }) {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState(ALL);
-  const [month, setMonth] = useState(ALL);
+  // Multi-select: a trip can span "ספטמבר או אוקטובר" - OR within the group.
+  const [months, setMonths] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(ALL);
   const [sort, setSort] = useState<SortKey>("date");
   const [hideSoldOut, setHideSoldOut] = useState(false);
@@ -193,15 +326,13 @@ export function CategoryEventsBrowser({
       const k = monthKeyOf(e);
       if (k) keys.set(k, (keys.get(k) ?? 0) + 1);
     });
-    return [
-      { value: ALL, label: "כל התאריכים" },
-      ...[...keys.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([k, n]) => ({
-          value: k,
-          label: `${dayjs(`${k}-01`).locale("he").format("MMMM YYYY")} (${n})`,
-        })),
-    ];
+    // No ALL entry - the multi dropdown renders its own "clear" row.
+    return [...keys.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, n]) => ({
+        value: k,
+        label: `${dayjs(`${k}-01`).locale("he").format("MMMM YYYY")} (${n})`,
+      }));
   }, [events]);
 
   // Price bounds for the slider (redesign spec: "מחירים סרגל מחיר") - from the
@@ -279,7 +410,7 @@ export function CategoryEventsBrowser({
         }
       }
       if (city !== ALL && cityOf(e) !== city) return false;
-      if (month !== ALL && monthKeyOf(e) !== month) return false;
+      if (months.length && !months.includes(monthKeyOf(e))) return false;
       if (max != null) {
         const p = computePackagePrice(e);
         if (p == null || p > max) return false;
@@ -307,18 +438,18 @@ export function CategoryEventsBrowser({
       return sort === "price_asc" ? pa - pb : pb - pa;
     });
     return arr;
-  }, [events, query, city, month, maxPrice, sort, hideSoldOut, tags, tagsByEvent, typeByName]);
+  }, [events, query, city, months, maxPrice, sort, hideSoldOut, tags, tagsByEvent, typeByName]);
 
   // A narrower filter should show its results from the top, not mid-list.
   useEffect(
     () => setVisible(PAGE_SIZE),
-    [query, city, month, maxPrice, sort, hideSoldOut, tags]
+    [query, city, months, maxPrice, sort, hideSoldOut, tags]
   );
 
   const dirty =
     query.trim() !== "" ||
     city !== ALL ||
-    month !== ALL ||
+    months.length > 0 ||
     maxPrice !== ALL ||
     hideSoldOut ||
     tags.length > 0;
@@ -330,7 +461,7 @@ export function CategoryEventsBrowser({
   const clear = () => {
     setQuery("");
     setCity(ALL);
-    setMonth(ALL);
+    setMonths([]);
     setMaxPrice(ALL);
     setHideSoldOut(false);
     setTags([]);
@@ -403,7 +534,13 @@ export function CategoryEventsBrowser({
           {!hideCityFacet && (
             <Dropdown label="עיר" value={city} options={cityOptions} onChange={setCity} />
           )}
-          <Dropdown label="חודש" value={month} options={monthOptions} onChange={setMonth} />
+          <MultiDropdown
+            label="חודש"
+            allLabel="כל התאריכים"
+            values={months}
+            options={monthOptions}
+            onChange={setMonths}
+          />
           <Dropdown
             label="מיון"
             value={sort}
