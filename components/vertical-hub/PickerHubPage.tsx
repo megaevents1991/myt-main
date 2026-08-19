@@ -9,6 +9,7 @@ import { getAllArtists } from "@/lib/artists";
 import { clubNamesMatchAnyScript } from "@/lib/eventNameMatch";
 import { slugPathOf } from "@/lib/taxonomy-tree";
 import { isEventSoldOut } from "@/lib/events/price";
+import { EVENT_ART_BLOB_SHAPES, EVENT_ART_COLORS } from "@/lib/eventArt";
 
 import { HubCover } from "@/components/vertical-hub/HubCover";
 import { HeaderTitle } from "@/components/HeaderTitle";
@@ -72,23 +73,27 @@ export async function PickerHubPage({
   });
   const available = events.filter((e) => !isEventSoldOut(e));
 
-  // Destinations only: up to 3 cut-out blobs per city tile - the artists and
-  // teams catalogued to that city (redesign spec).
+  // Destinations + genres: up to 3 cut-out blobs per tile - the people
+  // catalogued to that city/genre (redesign spec; genres joined 2026-08-19,
+  // artists only - crests don't belong on a music tile).
   const collage: Record<number, string[]> = {};
-  if (kind === "destinations") {
+  if (kind === "destinations" || kind === "genres") {
     const [teams, artists] = await Promise.all([
-      getAllFootballTeams().catch(() => [] as FootballTeam[]),
+      kind === "destinations"
+        ? getAllFootballTeams().catch(() => [] as FootballTeam[])
+        : Promise.resolve([] as FootballTeam[]),
       getAllArtists().catch(() => [] as Artist[]),
     ]);
     const people = [...artists, ...teams].filter((p) => p.fields.artImageUrl);
     await Promise.all(
-      children.map(async (city) => {
-        const { events: cityEvents } = await getEventsInCategory(city.slug);
-        const tagsBy = await getTagsForEvents(cityEvents.slice(0, 40).map((e) => e.id));
+      children.map(async (child) => {
+        const { events: childEvents } = await getEventsInCategory(child.slug);
+        const tagsBy = await getTagsForEvents(childEvents.slice(0, 40).map((e) => e.id));
         const names = new Set<string>();
         Object.values(tagsBy).forEach((chips) =>
           chips.forEach((c) => {
-            if (c.type === "team" || c.type === "artist") names.add(c.name);
+            if (c.type === "artist" || (kind === "destinations" && c.type === "team"))
+              names.add(c.name);
           }),
         );
         const arts: string[] = [];
@@ -103,7 +108,7 @@ export async function PickerHubPage({
           )
             arts.push(String(p.fields.artImageUrl));
         }
-        collage[city.id] = arts;
+        collage[child.id] = arts;
       }),
     );
   }
@@ -134,7 +139,13 @@ export async function PickerHubPage({
             {cfg.introLine}
           </p>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3" role="list">
-            {children.map((child) => (
+            {children.map((child, idx) => {
+              // Brand blob per tile - color/shape spread by position (steps 1
+              // and 5, coprime with the pool sizes) so neighbours never match.
+              const blobShape =
+                EVENT_ART_BLOB_SHAPES[(idx * 5 + 1) % EVENT_ART_BLOB_SHAPES.length];
+              const blobColor = EVENT_ART_COLORS[idx % EVENT_ART_COLORS.length];
+              return (
               <Link
                 key={child.id}
                 href={`/c/${slugPathOf(child, all).join("/")}`}
@@ -156,13 +167,26 @@ export async function PickerHubPage({
                     </h3>
                   </>
                 ) : (
-                  <div
-                    className="relative flex h-full w-full flex-col items-center justify-end overflow-hidden pb-3"
-                    style={{
-                      background:
-                        "radial-gradient(80% 90% at 50% -20%, hsl(150 60% 62% / 0.22), hsl(var(--surface-inverse)))",
-                    }}
-                  >
+                  <div className="relative flex h-full w-full flex-col items-center justify-end overflow-hidden bg-[hsl(var(--surface-inverse))] pb-3">
+                    {/* Brand blob ground - same pool as the event cards. */}
+                    <svg
+                      className="absolute inset-0 h-full w-full opacity-80 transition-transform duration-300 group-hover:scale-105"
+                      viewBox={`0 0 ${blobShape.w} ${blobShape.h}`}
+                      preserveAspectRatio="xMidYMid slice"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d={blobShape.d}
+                        fill={`hsl(${blobColor})`}
+                        transform={
+                          blobShape.mirror
+                            ? `translate(${blobShape.w},0) scale(-1,1)`
+                            : undefined
+                        }
+                      />
+                    </svg>
+                    {/* Legibility ground under the name, over the blob. */}
+                    <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 to-transparent" />
                     {(collage[child.id]?.length ?? 0) > 0 && (
                       <div
                         aria-hidden
@@ -182,13 +206,14 @@ export async function PickerHubPage({
                         ))}
                       </div>
                     )}
-                    <h3 className="relative z-10 px-3 text-center font-display text-xl font-extrabold text-main-foreground [text-shadow:0_2px_10px_rgba(0,0,0,0.8)] transition-colors group-hover:text-secondary">
+                    <h3 className="relative z-10 px-3 text-center font-display text-xl font-extrabold text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.8)] transition-colors group-hover:text-secondary">
                       {child.name}
                     </h3>
                   </div>
                 )}
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

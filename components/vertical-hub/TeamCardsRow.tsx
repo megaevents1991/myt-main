@@ -6,8 +6,12 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { FootballTeam } from "@/lib/app.types";
-import { EventArt, EVENT_ART_BLOB_SHAPES } from "@/components/ui/EventArt";
-import { EVENT_ART_COLORS, getEventArt, isTightCrest } from "@/lib/eventArt";
+import { EventArt } from "@/components/ui/EventArt";
+import {
+  EVENT_ART_BLOB_SHAPES,
+  EVENT_ART_COLORS,
+  isTightCrest,
+} from "@/lib/eventArt";
 
 /**
  * League-page teams carousel - the homepage compact team card (blob art +
@@ -74,7 +78,7 @@ export const TeamCardsRow = ({
         aria-label="קבוצות הליגה"
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {teams.map((team) => {
+        {teams.map((team, idx) => {
           // Same crest-sizing rules as the homepage compact card: photo-bg
           // shapes ignore the backoffice dials unless the crest is a tight
           // (unpadded) badge; blob shapes honor them as-is.
@@ -82,17 +86,14 @@ export const TeamCardsRow = ({
           const tightCrest = isTightCrest(team.fields.artImageUrl);
           const crestScale = team.fields.artImageScale ?? 0.65;
           const crestOffsetY = team.fields.artImageOffsetY ?? -12;
-          // Compact chips: the person's brand blob (homepage card art) behind
-          // the crest/cut-out. Photo shape indices (6+) fold back into the
-          // blob pool - chips never render a photo background.
-          const chipArt = getEventArt(team.sys.id, {
-            colorIndex: team.fields.artColorIndex ?? undefined,
-            shapeIndex: team.fields.artShapeIndex ?? undefined,
-          });
+          // Compact chips: brand blob behind the crest/cut-out. Color+shape
+          // spread BY ROW POSITION, not by the person's own art dials - most
+          // teams are dialed to the same mint, which made the whole strip one
+          // color (Dor, 2026-08-19). Steps 1 (colors, cycle of 6) and 5
+          // (shapes, coprime with 6) guarantee neighbours differ in both.
           const chipShape =
-            EVENT_ART_BLOB_SHAPES[chipArt.shapeIndex % EVENT_ART_BLOB_SHAPES.length];
-          const chipColor =
-            EVENT_ART_COLORS[chipArt.colorIndex % EVENT_ART_COLORS.length];
+            EVENT_ART_BLOB_SHAPES[(idx * 5 + 2) % EVENT_ART_BLOB_SHAPES.length];
+          const chipColor = EVENT_ART_COLORS[idx % EVENT_ART_COLORS.length];
           return (
             <Link
               key={team.sys.id}
