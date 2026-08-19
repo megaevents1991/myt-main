@@ -203,6 +203,11 @@ export default function OrderReview({
   const [settlementMethod, setSettlementMethod] =
     useState<SettlementMethod>("customer_card");
   const [settlementError, setSettlementError] = useState<string | null>(null);
+  // Agent picked voucher settlement: every CTA takes the no-card path, so the
+  // "talk to a representative" secondary button relabels to what it actually
+  // does now - submit the order against the voucher.
+  const voucherSettlementActive =
+    isAgentMode && isAgentVisitor && settlementMethod === "voucher";
 
   const trackAnalyticsEvent = (event: import("@/lib/app.types").Event) => {
     try {
@@ -1893,11 +1898,21 @@ export default function OrderReview({
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
                   disabled={isSubmitting}
-                  aria-label="צור קשר עם נציג"
+                  aria-label={
+                    voucherSettlementActive
+                      ? "שליחת ההזמנה עם שובר"
+                      : "צור קשר עם נציג"
+                  }
                 >
-                  ?רוצים לפצל תשלום
-                  <br />
-                  דברו עם נציג
+                  {voucherSettlementActive ? (
+                    "שלח הזמנה עם שובר"
+                  ) : (
+                    <>
+                      ?רוצים לפצל תשלום
+                      <br />
+                      דברו עם נציג
+                    </>
+                  )}
                 </Button>
                 {isHoldAllowed && (
                   <Button
@@ -2356,11 +2371,21 @@ export default function OrderReview({
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
                   disabled={isSubmitting}
-                  aria-label="צור קשר עם נציג"
+                  aria-label={
+                    voucherSettlementActive
+                      ? "שליחת ההזמנה עם שובר"
+                      : "צור קשר עם נציג"
+                  }
                 >
-                  ?רוצים לפצל תשלום
-                  <br />
-                  דברו עם נציג
+                  {voucherSettlementActive ? (
+                    "שלח הזמנה עם שובר"
+                  ) : (
+                    <>
+                      ?רוצים לפצל תשלום
+                      <br />
+                      דברו עם נציג
+                    </>
+                  )}
                 </Button>
                 {isHoldAllowed && (
                   <Button
@@ -2395,11 +2420,21 @@ export default function OrderReview({
                 variant={"link"}
                 className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
                 disabled={isSubmitting}
-                aria-label="צור קשר עם נציג"
+                aria-label={
+                  voucherSettlementActive
+                    ? "שליחת ההזמנה עם שובר"
+                    : "צור קשר עם נציג"
+                }
               >
-                ?רוצים לפצל תשלום
-                <br />
-                דברו עם נציג
+                {voucherSettlementActive ? (
+                  "שלח הזמנה עם שובר"
+                ) : (
+                  <>
+                    ?רוצים לפצל תשלום
+                    <br />
+                    דברו עם נציג
+                  </>
+                )}
               </Button>
               {isHoldAllowed && (
                 <Button
