@@ -335,6 +335,31 @@ export const HotelSelection = () => {
       });
     }
 
+    // Near-checkin searches often return ONLY non-refundable rates (the free
+    // cancellation deadline already passed for every hotel), and the default
+    // "free cancellation" filter then hides all of them - the customer sees an
+    // empty list while the API returned a full page of hotels. When that filter
+    // is still at its default and nothing survived, relax it to both options.
+    let freeCancellationToSet = freeCancellation;
+    const freeCancellationAtDefault =
+      freeCancellation.length === 1 &&
+      freeCancellation[0] === "withFreeCancellation";
+
+    if (!hotelsToSet.length && freeCancellationAtDefault) {
+      freeCancellationToSet = ["withFreeCancellation", "withoutFreeCancellation"];
+
+      hotelsToSet = applyFiltersAndSorting({
+        hotels: data.data.hotels,
+        priceRange: [0, maxPrice],
+        rating: ratingToSet,
+        hotelsInfo,
+        meal,
+        kind: kindToSet,
+        freeCancellation: freeCancellationToSet,
+        distanceFromCenter: distanceRangeToSet,
+      });
+    }
+
     // Every hotel filtered out even after the relax pass: keep the computed
     // filter ranges so the customer can widen them, show the empty state.
     if (!hotelsToSet.length) {
@@ -380,6 +405,14 @@ export const HotelSelection = () => {
         ...prev,
         rating: ratingToSet,
         kind: kindToSet,
+      }));
+    }
+
+    if (freeCancellationToSet !== freeCancellation) {
+      setFreeCancellation(freeCancellationToSet);
+      setSelectedHotelFilters((prev) => ({
+        ...prev,
+        freeCancellation: freeCancellationToSet,
       }));
     }
 

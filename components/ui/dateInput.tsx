@@ -4,6 +4,7 @@ import { Calendar } from "lucide-react";
 import { isMobile } from "react-device-detect";
 import { useClickOutside, useMediaQuery } from "@mantine/hooks";
 import { Tooltip } from "@mantine/core";
+import { getMinTravelDate } from "@/lib/getDefaultDateRange";
 
 export const DateRange = ({
   dateRange,
@@ -40,6 +41,10 @@ export const DateRange = ({
       className="w-full"
       size="md"
       type="range"
+      // Searches for today/past dates break the vendors (Amadeus 500s on past
+      // departures; same-day Ratehawk rates are all non-refundable and get
+      // filtered to nothing) - block them at the picker.
+      minDate={getMinTravelDate()}
       highlightToday
       rightSection={
         matches ? (
