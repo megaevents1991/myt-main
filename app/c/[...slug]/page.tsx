@@ -163,7 +163,7 @@ export default async function TaxonomyCategoryPage({
     }
     if (twin?.fields?.name && twin.fields.nameDBenglish) {
       return parent.slug === "teams" ? (
-        <TeamCmsPage team={twin} />
+        <TeamCmsPage team={twin} pageContent={cat.page_content} />
       ) : (
         <ArtistCmsPage artist={twin} />
       );

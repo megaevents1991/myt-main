@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>רידיזיין עמודי קטגוריות - מדריך תוכן וחומרים חסרים</title>
+<style>
+  :root{
+    --ink:#101418; --muted:#5c6670; --line:#e3e7ea; --bg:#faf9f5; --card:#fff;
+    --mint:#3ddc84; --dark:#0b2e22; --dark2:#123c2d; --amber:#b45309; --ok:#15803d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Arial,Helvetica,sans-serif;line-height:1.65}
+  .wrap{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  header.hero{background:linear-gradient(160deg,var(--dark),var(--dark2));color:#eef7f1;border-radius:18px;padding:36px 32px;margin-bottom:28px}
+  header.hero h1{margin:0 0 6px;font-size:28px}
+  header.hero p{margin:0;color:#bcd6c8;font-size:15px}
+  .pill{display:inline-block;background:var(--mint);color:#06281a;font-weight:700;font-size:12px;border-radius:999px;padding:3px 12px;margin-bottom:14px}
+  h2{font-size:21px;margin:38px 0 12px;padding-right:12px;border-right:6px solid var(--mint)}
+  h3{font-size:16px;margin:22px 0 8px}
+  p.note{color:var(--muted);font-size:14px;margin:6px 0 14px}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px;margin:10px 0 6px}
+  th{background:#f0f3f1;text-align:right;padding:10px 12px;font-size:13px;color:#33403a}
+  td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:#fbfcfb}
+  .steps{counter-reset:st;list-style:none;padding:0;margin:14px 0}
+  .steps li{counter-increment:st;position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 58px 14px 16px;margin-bottom:10px}
+  .steps li::before{content:counter(st);position:absolute;right:14px;top:12px;width:30px;height:30px;border-radius:50%;background:var(--dark);color:var(--mint);font-weight:800;display:flex;align-items:center;justify-content:center}
+  .steps b{display:block;margin-bottom:2px}
+  code,kbd{background:#eef1ef;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:13px;direction:ltr;display:inline-block}
+  .tag{font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px;white-space:nowrap}
+  .tag.edit{background:#e7f6ec;color:var(--ok)}
+  .tag.miss{background:#fdf0e3;color:var(--amber)}
+  .tag.done{background:#e7f6ec;color:var(--ok)}
+  .callout{background:#eef7f1;border:1px solid #cfe8da;border-radius:12px;padding:14px 16px;font-size:14px;margin:14px 0}
+  .callout.warn{background:#fdf6ec;border-color:#f0dfc4}
+  footer{margin-top:40px;color:var(--muted);font-size:12.5px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="pill">ROAD MAP V1 · עודכן 2026-08-19</span>
+  <h1>רידיזיין עמודי קטגוריות - מדריך תוכן וחומרים חסרים</h1>
+  <p>לצוות הקריאייטיב, השיווק והתוכן · סניף <code>feat/vertical-hubs</code> · כל התוכן נערך מהבק-אופיס</p>
+</header>
+
+<h2>1. איך עורכים תוכן של עמוד קטגוריה? (צעד-צעד)</h2>
+<p class="note">כל הטקסטים של עמודי הכדורגל, המוזיקה, הליגות, הז'אנרים, היעדים והקבוצות - נערכים במקום אחד. התוכן הנוכחי כבר טעון בכל 34 הקטגוריות: פותחים, עורכים, שומרים.</p>
+<ol class="steps">
+  <li><b>נכנסים לבק-אופיס</b> ומתחברים כרגיל.</li>
+  <li><b>בתפריט הצד: Templates (תבניות) → Categories</b> - רשימת כל הקטגוריות.</li>
+  <li><b>מאתרים את הקטגוריה</b> שרוצים לערוך (למשל: כדורגל, פרמייר ליג, לונדון, טוטנהאם) ולוחצים <b>Edit</b>.</li>
+  <li><b>גוללים לבלוק "תוכן עמוד הקטגוריה"</b> ולוחצים עליו כדי לפתוח (אם יש כבר תוכן - הוא נפתח אוטומטית).</li>
+  <li><b>עורכים את השדות הרלוונטיים</b> (פירוט איזה שדה שייך לאיזה עמוד - בטבלה למטה). שדה שנשאר ריק - הסקשן שלו פשוט לא מוצג באתר.</li>
+  <li><b>שומרים</b> בכפתור השמירה למטה.</li>
+  <li><b>האתר מתעדכן תוך עד שעה</b> (מטמון). צריך מיד? כפתור ה-Revalidate במסך התבניות מרענן את האתר.</li>
+</ol>
+
+<h3>איזה שדה מופיע איפה?</h3>
+<table>
+  <tr><th>שדה בטופס</th><th>איפה זה מוצג באתר</th><th>רלוונטי ל</th></tr>
+  <tr><td><b>פתיח על הקאבר</b></td><td>הטקסט על הבאנר הכהה למעלה</td><td>ליגות, ז'אנרים, יעדים (בוורטיקלים מחליף את הפסקה הראשונה)</td></tr>
+  <tr><td><b>כותרת + טקסט שיווקי / SEO</b></td><td>בלוק הטקסט הארוך בעמוד (שורה ריקה = פסקה חדשה)</td><td>כדורגל, מוזיקה</td></tr>
+  <tr><td><b>גלריית תמונות</b></td><td>קרוסלת "רגעים מ..."</td><td>כל עמוד (מוסתר עד שמעלים תמונות)</td></tr>
+  <tr><td><b>אצטדיונים / אולמות מומלצים</b></td><td>קרוסלת האצטדיונים (כדורגל) או כרטיס האצטדיון בעמוד קבוצה</td><td>כדורגל, קבוצות</td></tr>
+  <tr><td><b>כרטיסי מידע</b></td><td>"מידע מעניין על..." (ליגה/ז'אנר) · "טוב לדעת ב..." (יעד)</td><td>ליגות, ז'אנרים, יעדים</td></tr>
+  <tr><td><b>שאלות נפוצות</b></td><td>אקורדיון ה-FAQ בתחתית</td><td>כדורגל, מוזיקה (ריק = שאלות כלליות של האתר)</td></tr>
+  <tr><td><b>עמוד קבוצה: עיר / טיפים / הישגים</b></td><td>סקשן "המשחק, העיר והאצטדיון" + שבבי ההישגים על הקאבר</td><td>קטגוריות קבוצה בלבד (טוטנהאם, ארסנל...)</td></tr>
+</table>
+
+<div class="callout">💡 <b>אירועים בולטים:</b> לא נערך כאן - מוסיפים לאירוע תגית בשם <code>בולט</code> (Templates → תגיות) והוא עולה לסקשן "בולטים" בעמוד הרלוונטי. בלי תגיות - מוצגים 4 הקרובים אוטומטית.</div>
+
+<h2>2. תמונות חסרות - כדורגל</h2>
+<table>
+  <tr><th>#</th><th>מה חסר</th><th>כמות</th><th>מפרט</th><th>איפה מופיע</th></tr>
+  <tr><td>1</td><td>גלריית "רגעים מהמשחקים"</td><td>6-8</td><td>~1600px לרוחב, לקוחות/אוהדים ביציע - לא סטוק</td><td>עמוד הכדורגל</td></tr>
+  <tr><td>2</td><td>תמונות אצטדיונים</td><td>9</td><td>~1200×800: אולד טראפורד, אנפילד, טוטנהאם, ברנבאו, אליאנץ, סן סירו, האמירויות, סטמפורד ברידג', קאמפ נואו</td><td>כרטיסי האצטדיונים (כרגע גרדיאנט מעוצב)</td></tr>
+  <tr><td>3</td><td>תמונות ליגות (טייל)</td><td>4</td><td>~600×400, כהות בתחתית: לה ליגה, סריה A, בונדסליגה, ארדיוויזיה (לפרמייר ליג וליגת האלופות יש)</td><td>טיילים בעמוד הכדורגל והליגות</td></tr>
+  <tr><td>4</td><td>גלריה פר-ליגה</td><td>4-6 לליגה</td><td>כמו הגלריה הראשית</td><td>עמודי הליגות (אופציונלי)</td></tr>
+</table>
+
+<h2>3. תמונות חסרות - מוזיקה</h2>
+<table>
+  <tr><th>#</th><th>מה חסר</th><th>כמות</th><th>מפרט</th></tr>
+  <tr><td>5</td><td>תמונות ז'אנרים (טייל)</td><td>7</td><td>~600×400: פופ, רוק, היפ הופ, רוק קלאסי, קלאסי, קאנטרי + באנר עמוד הז'אנרים</td></tr>
+  <tr><td>6</td><td>גלריית "רגעים מההופעות"</td><td>6-8</td><td>לקוחות בהופעות - כמו גלריית הכדורגל</td></tr>
+</table>
+
+<h2>4. תמונות חסרות - יעדים</h2>
+<table>
+  <tr><th>#</th><th>מה חסר</th><th>כמות</th><th>מפרט</th></tr>
+  <tr><td>7</td><td>תמונות ערים (טייל)</td><td>12</td><td>~600×400: לונדון, פריז, מדריד, מילאנו, ברצלונה, אמסטרדם, ברלין, מינכן, פראג, ליסבון, רומא, דיסלדורף. בינתיים הטיילים מציגים קולאז' אוטומטי של האמנים/קבוצות של כל עיר</td></tr>
+  <tr><td>8</td><td>קאברים לעמודי יעד</td><td>12</td><td>~1600×900 "תמונת קאבר מדליקה" לכל עיר</td></tr>
+  <tr><td>9</td><td>קאברים משודרגים לקבוצות/אמנים מובילים</td><td>לפי תנועה</td><td>האפיון: "קאבר יותר מחרמן" - להתחיל מהעמודים עם הכי הרבה תנועה</td></tr>
+</table>
+
+<h2>5. תוכן חסר (נערך מהבק-אופיס)</h2>
+<table>
+  <tr><th>מה</th><th>סטטוס</th><th>פרטים</th></tr>
+  <tr><td>תיוג "בולט" לאירועים</td><td><span class="tag miss">חסר</span></td><td>ליצור תגית <code>בולט</code> ולתייג משחקים/הופעות. עד אז - 4 הקרובים אוטומטית</td></tr>
+  <tr><td>תוכן קבוצות</td><td><span class="tag edit">נערך בבק-אופיס</span></td><td>קיים: טוטנהאם, ארסנל, צ'לסי, ברצלונה, ריאל, באיירן, אינטר, מילאן. חסר: אתלטיקו, PSG, אייאקס, א.ס רומא, קריסטל פאלאס</td></tr>
+  <tr><td>"מידע מעניין" לליגות</td><td><span class="tag edit">נערך בבק-אופיס</span></td><td>פרמייר ליג - 4 כרטיסים; שאר הליגות כרטיס אחד, כדאי 3-4</td></tr>
+  <tr><td>תוכן יעדים</td><td><span class="tag edit">נערך בבק-אופיס</span></td><td>6 ערים מלאות (לונדון, מדריד, ברצלונה, מילאנו, אמסטרדם, מינכן); ל-6 הנותרות יש פתיח בלבד - להוסיף כרטיסי "טוב לדעת"</td></tr>
+  <tr><td>תת-כותרות (subtitle)</td><td><span class="tag miss">חסר</span></td><td>ליגות, ז'אנרים, פרמייר ליג, לה ליגה, סריה A, בונדסליגה, ארדיוויזיה - מוצג בהירו וב-SEO</td></tr>
+  <tr><td>מקור "לקוחות משתפים"</td><td><span class="tag miss">החלטה של דור</span></td><td>כרגע ביקורות גוגל (Elfsight). רוצים סטוריז/וואטסאפ? צריך מקור</td></tr>
+  <tr><td>פסטיבלים</td><td><span class="tag miss">אין ישות</span></td><td>הקטגוריה כבויה; כשיהיו פסטיבלים אמיתיים - מפעילים ומוסיפים קרוסלה</td></tr>
+  <tr><td>עמוד אמן מורחב (טור, להיטים, פרסים)</td><td><span class="tag miss">חסר</span></td><td>תשתית קיימת (שבבים על הקאבר) - חסר תוכן פר-אמן</td></tr>
+</table>
+
+<h2>6. פתוח בצד של דור (טכני)</h2>
+<table>
+  <tr><th>מה</th><th>סטטוס</th></tr>
+  <tr><td>עמודת page_content + טעינת כל התוכן הקיים (34 קטגוריות)</td><td><span class="tag done">✅ בוצע</span></td></tr>
+  <tr><td>מחיקת 20 שיוכי תגיות שגויים (מוזיקה בכדורגל)</td><td><span class="tag done">✅ בוצע</span></td></tr>
+  <tr><td>כרטיסי CMS חסרים: מנצ'סטר יונייטד, ליברפול, מנצ'סטר סיטי, ניוקאסל</td><td><span class="tag miss">פתוח</span> - קיימות קטגוריות בלי עמוד קבוצה; ליצור ב-Templates</td></tr>
+  <tr><td>טוקן Vercel פג (VERCEL_TOKEN)</td><td><span class="tag miss">פתוח</span> - לחדש כדי שקלוד יפעיל/ינטר דיפלוימנטים</td></tr>
+  <tr><td>שינוי שמות תגיות ליגה ב-DB ("ליגה אנגלית"→"פרמייר ליג")</td><td><span class="tag miss">פתוח</span> - כרגע מיפוי תצוגה בקוד; שינוי אמיתי בתיאום עם ה-Meta feed</td></tr>
+</table>
+
+<div class="callout warn">📁 <b>העלאת תמונות:</b> לבאקט <code>templates</code> בסופאבייס (מאושר ב-next/image), או דרך שדות הגלריה/האצטדיון בטופס עצמו - יש בהם כפתור העלאה.</div>
+
+<footer>מגה איבנטס · רידיזיין עמודי קטגוריות · נבנה על ידי קלוד · 2026-08-19</footer>
+</div>
+</body>
+</html>

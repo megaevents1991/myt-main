@@ -47,7 +47,11 @@ export type CategoryStadium = {
  * Stored as `categories.page_content` (jsonb). Every field optional - a
  * missing field simply hides its section on the page.
  */
+export type CategoryFactCard = { title: string; text: string };
+
 export type CategoryPageContent = {
+  /** Cover lede - league/genre/destination pages ("טקסט על הבאנר"). */
+  intro?: string;
   /** Long-form marketing/SEO text shown under the hero. */
   seo_text?: string;
   /** Heading above the SEO text; falls back to a generic one. */
@@ -55,7 +59,13 @@ export type CategoryPageContent = {
   /** Gallery image URLs (ExperienceCarousel). */
   gallery?: string[];
   stadiums?: CategoryStadium[];
+  /** "מידע מעניין" (leagues/genres) / "טוב לדעת" (destinations) cards. */
+  facts?: CategoryFactCard[];
   faq?: { question: string; answer: string }[];
+  /** Team-category extras (עמוד קבוצה): city blurb, matchday tips, honours. */
+  city_info?: CategoryFactCard;
+  matchday?: CategoryFactCard[];
+  honours?: string[];
 };
 
 // Built in memory from a flat EventCategory[] for tree UI + traversal.

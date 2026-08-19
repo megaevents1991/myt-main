@@ -203,7 +203,15 @@ export async function VerticalHubPage({
         eyebrow={cfg.eyebrow(category.name)}
         title={`חבילות ${category.name}`}
         titleAccent={cfg.titleAccent}
-        lede={lede ? <p>{lede}</p> : <p>{category.subtitle ?? cfg.fallbackLede}</p>}
+        lede={
+          content.intro ? (
+            <p>{content.intro}</p>
+          ) : lede ? (
+            <p>{lede}</p>
+          ) : (
+            <p>{category.subtitle ?? cfg.fallbackLede}</p>
+          )
+        }
         stats={[
           { value: String(available.length), label: "חבילות זמינות" },
           { value: String(children.length), label: cfg.statChildren },

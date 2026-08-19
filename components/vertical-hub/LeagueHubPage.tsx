@@ -53,7 +53,17 @@ export async function LeagueHubPage({
   ]);
   const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
-  const content = LEAGUE_CONTENT[category.slug];
+  // DB-first content: whatever the backoffice wrote in page_content wins
+  // field-by-field; the bundled launch copy fills the gaps.
+  const local = LEAGUE_CONTENT[category.slug];
+  const content = {
+    intro: local?.intro,
+    facts: local?.facts,
+    gallery: local?.gallery,
+    ...(Object.fromEntries(
+      Object.entries(category.page_content ?? {}).filter(([, v]) => v != null),
+    ) as typeof category.page_content),
+  };
 
   // Teams of THIS league: team-type tag names on the league's events, matched
   // to the CMS cards. Club-qualifier drift between the two is the norm ("FC

@@ -36,7 +36,16 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
   ]);
   const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
-  const content = GENRE_CONTENT[category.slug];
+  // DB-first content - backoffice page_content wins over the bundled copy.
+  const local = GENRE_CONTENT[category.slug];
+  const content = {
+    intro: local?.intro,
+    facts: local?.facts,
+    gallery: local?.gallery,
+    ...(Object.fromEntries(
+      Object.entries(category.page_content ?? {}).filter(([, v]) => v != null),
+    ) as typeof category.page_content),
+  };
 
   // Artists of THIS genre: artist-type tag names on the genre's events.
   const artistTagNames = new Set<string>();

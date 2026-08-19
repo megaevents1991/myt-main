@@ -54,7 +54,17 @@ export async function DestinationHubPage({
   ]);
   const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
-  const content = DESTINATION_CONTENT[category.slug];
+  // DB-first content - backoffice page_content wins over the bundled copy.
+  // The local file's `info` cards live in the shared shape as `facts`.
+  const local = DESTINATION_CONTENT[category.slug];
+  const content = {
+    intro: local?.intro,
+    facts: local?.info,
+    gallery: local?.gallery,
+    ...(Object.fromEntries(
+      Object.entries(category.page_content ?? {}).filter(([, v]) => v != null),
+    ) as typeof category.page_content),
+  };
 
   // Who plays here: team+artist tags on the city's events, matched to CMS cards.
   const personTagNames = { team: new Set<string>(), artist: new Set<string>() };
@@ -161,13 +171,13 @@ export async function DestinationHubPage({
           </section>
 
           {/* ---- מידע מועיל ללקוח ---- */}
-          {(content?.info?.length ?? 0) > 0 && (
+          {(content?.facts?.length ?? 0) > 0 && (
             <section aria-labelledby="destination-info-heading">
               <SectionHeading id="destination-info-heading">
                 טוב לדעת ב{category.name}
               </SectionHeading>
               <div className="grid gap-4 sm:grid-cols-2" role="list">
-                {content?.info?.map((card) => {
+                {content?.facts?.map((card) => {
                   const Icon = infoIcon(card.title);
                   return (
                     <div
