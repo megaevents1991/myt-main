@@ -38,18 +38,32 @@ describe("parseUtmParams", () => {
       "utm_source=google&utm_medium=cpc&utm_campaign=x&utm_term=y&utm_content=z&gclid=g1&fbclid=f1",
     );
     expect(parseUtmParams(sp)).toEqual({
-      s: "google", m: "cpc", c: "x", t: "y", ct: "z", g: "g1", f: "f1",
+      s: "google",
+      m: "cpc",
+      c: "x",
+      t: "y",
+      ct: "z",
+      g: "g1",
+      f: "f1",
     });
   });
 
   it("a bare gclid still creates a touch (google auto-tagging)", () => {
     expect(parseUtmParams(new URLSearchParams("gclid=abc"))).toEqual({
-      s: null, m: null, c: null, t: null, ct: null, g: "abc", f: null,
+      s: null,
+      m: null,
+      c: null,
+      t: null,
+      ct: null,
+      g: "abc",
+      f: null,
     });
   });
 
   it("trims and caps values at 200 chars", () => {
-    const sp = new URLSearchParams(`utm_source=${" x".repeat(1) + "a".repeat(300)}`);
+    const sp = new URLSearchParams(
+      `utm_source=${" x".repeat(1) + "a".repeat(300)}`,
+    );
     const got = parseUtmParams(sp);
     expect(got?.s?.length).toBeLessThanOrEqual(200);
     expect(got?.s?.startsWith("x")).toBe(true);
@@ -89,7 +103,15 @@ describe("readUtmCookieFromHeader", () => {
 });
 
 describe("applyUtmCapture", () => {
-  const incoming = { s: "facebook", m: "paid", c: "c2", t: null, ct: null, g: null, f: "fb1" };
+  const incoming = {
+    s: "facebook",
+    m: "paid",
+    c: "c2",
+    t: null,
+    ct: null,
+    g: null,
+    f: "fb1",
+  };
 
   it("first capture → becomes primary, empty history", () => {
     const got = applyUtmCapture(null, incoming, false, NOW);
@@ -99,7 +121,15 @@ describe("applyUtmCapture", () => {
 
   it("identical set to primary → returns existing unchanged (refresh only)", () => {
     const existing: UtmCookie = { v: 1, p: touch(), h: [] };
-    const same = { s: "google", m: "cpc", c: "summer_f1", t: null, ct: null, g: null, f: null };
+    const same = {
+      s: "google",
+      m: "cpc",
+      c: "summer_f1",
+      t: null,
+      ct: null,
+      g: null,
+      f: null,
+    };
     expect(applyUtmCapture(existing, same, false, NOW)).toBe(existing);
   });
 
@@ -121,7 +151,15 @@ describe("applyUtmCapture", () => {
   it("influencer over influencer → NEW influencer wins", () => {
     const oldInf = touch({ s: "dani_promo", inf: true });
     const existing: UtmCookie = { v: 1, p: oldInf, h: [] };
-    const newInf = { s: "roni_promo", m: "influencer", c: null, t: null, ct: null, g: null, f: null };
+    const newInf = {
+      s: "roni_promo",
+      m: "influencer",
+      c: null,
+      t: null,
+      ct: null,
+      g: null,
+      f: null,
+    };
     const got = applyUtmCapture(existing, newInf, true, NOW);
     expect(got.p.s).toBe("roni_promo");
     expect(got.p.inf).toBe(true);
@@ -153,7 +191,8 @@ describe("serializeUtmCookie size guard", () => {
   });
 
   it("budget measured on the ENCODED value (Hebrew utms would otherwise pass raw and die on the wire)", () => {
-    const heb = (i: number) => touch({ c: `קמפיין_חורף_${"א".repeat(120)}_${i}`, s: "פייסבוק_ישראל" });
+    const heb = (i: number) =>
+      touch({ c: `קמפיין_חורף_${"א".repeat(120)}_${i}`, s: "פייסבוק_ישראל" });
     const cookie: UtmCookie = { v: 1, p: heb(0), h: [1, 2, 3, 4, 5].map(heb) };
     const raw = serializeUtmCookie(cookie);
     expect(encodeURIComponent(raw).length).toBeLessThanOrEqual(3800);
@@ -174,7 +213,11 @@ describe("utmCookieFits", () => {
 
 describe("checkout helpers", () => {
   it("influencerPrimaryCode: influencer primary → its source", () => {
-    const c: UtmCookie = { v: 1, p: touch({ s: "dani_promo", inf: true }), h: [] };
+    const c: UtmCookie = {
+      v: 1,
+      p: touch({ s: "dani_promo", inf: true }),
+      h: [],
+    };
     expect(influencerPrimaryCode(c)).toBe("dani_promo");
   });
 
@@ -187,14 +230,25 @@ describe("checkout helpers", () => {
   });
 
   it("touchRows maps primary to position 0, history to 1..n", () => {
-    const c: UtmCookie = { v: 1, p: touch({ s: "dani", inf: true }), h: [touch({ s: "google" })] };
+    const c: UtmCookie = {
+      v: 1,
+      p: touch({ s: "dani", inf: true }),
+      h: [touch({ s: "google" })],
+    };
     const rows = touchRows(c, 42);
     expect(rows).toHaveLength(2);
     expect(rows[0]).toEqual({
-      reservation_id: 42, position: 0,
-      utm_source: "dani", utm_medium: "cpc", utm_campaign: "summer_f1",
-      utm_term: null, utm_content: null, gclid: null, fbclid: null,
-      is_influencer: true, visited_at: touch().at,
+      reservation_id: 42,
+      position: 0,
+      utm_source: "dani",
+      utm_medium: "cpc",
+      utm_campaign: "summer_f1",
+      utm_term: null,
+      utm_content: null,
+      gclid: null,
+      fbclid: null,
+      is_influencer: true,
+      visited_at: touch().at,
     });
     expect(rows[1].position).toBe(1);
     expect(rows[1].utm_source).toBe("google");
@@ -207,9 +261,27 @@ describe("checkout helpers", () => {
 
 describe("sameTouch", () => {
   it("ignores inf/at, compares the 7 params", () => {
-    expect(sameTouch(touch({ inf: true, at: "other" }), {
-      s: "google", m: "cpc", c: "summer_f1", t: null, ct: null, g: null, f: null,
-    })).toBe(true);
-    expect(sameTouch(touch(), { s: "google", m: "cpc", c: "DIFF", t: null, ct: null, g: null, f: null })).toBe(false);
+    expect(
+      sameTouch(touch({ inf: true, at: "other" }), {
+        s: "google",
+        m: "cpc",
+        c: "summer_f1",
+        t: null,
+        ct: null,
+        g: null,
+        f: null,
+      }),
+    ).toBe(true);
+    expect(
+      sameTouch(touch(), {
+        s: "google",
+        m: "cpc",
+        c: "DIFF",
+        t: null,
+        ct: null,
+        g: null,
+        f: null,
+      }),
+    ).toBe(false);
   });
 });

@@ -151,10 +151,12 @@ export const FlightSelection = () => {
   // captured at call time may be stale by then (the customer can switch tabs
   // while a search is in flight).
   const isIsraeliFilterRef = useRef(false);
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(event.def_date_depart),
-    new Date(event.def_date_return),
-  ]);
+  // getDefaultDateRange (not raw def_date_depart/return) - it clamps stale
+  // event defaults to the min travel date so the initial search never asks
+  // Amadeus for a same-day/past departure.
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
+    getDefaultDateRange(event)
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"best" | "cheapest" | "israeli">("best");
   const matches = useMediaQuery("(min-width: 1024px)");
@@ -555,11 +557,7 @@ export const FlightSelection = () => {
 
   const handleDatePopoverClose = () => {
     if (!dateRange[0] || !dateRange[1]) {
-      const defaultDates: [Date, Date] = [
-        new Date(event.def_date_depart),
-        new Date(event.def_date_return),
-      ];
-      setDateRange(defaultDates);
+      setDateRange(getDefaultDateRange(event));
       return;
     }
 

@@ -21,6 +21,64 @@ export type EventCategory = {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+  /**
+   * Rich hub-page content (vertical hubs like כדורגל) - null on plain nodes.
+   * OPTIONAL until the `categories.page_content` jsonb column is migrated;
+   * meanwhile the hub pages fall back to bundled content
+   * (components/vertical-hub/footballContent.ts).
+   */
+  page_content?: CategoryPageContent | null;
+};
+
+/** A recommended stadium card on a vertical hub page. */
+export type CategoryStadium = {
+  name: string;
+  city: string;
+  /** e.g. "74,000 מקומות" - free text, shown as a meta chip. */
+  capacity?: string;
+  /** Home team(s) - free text meta chip. */
+  teams?: string;
+  description: string;
+  image_url?: string | null;
+};
+
+/**
+ * Backoffice-managed content for a vertical hub page (/c/football, /c/music).
+ * Stored as `categories.page_content` (jsonb). Every field optional - a
+ * missing field simply hides its section on the page.
+ */
+export type CategoryFactCard = { title: string; text: string };
+
+export type CategoryPageContent = {
+  /** Cover lede - league/genre/destination pages ("טקסט על הבאנר"). */
+  intro?: string;
+  /** Long-form marketing/SEO text shown under the hero. */
+  seo_text?: string;
+  /** Heading above the SEO text; falls back to a generic one. */
+  seo_title?: string;
+  /** Gallery image URLs (ExperienceCarousel). */
+  gallery?: string[];
+  /**
+   * Rotating background photos for the category's PICKER TILE (יעדים grid).
+   * Multiple images crossfade; a single image renders static. Overrides the
+   * tile's image_url/fallback art.
+   */
+  tile_images?: string[];
+  stadiums?: CategoryStadium[];
+  /** "מידע מעניין" (leagues/genres) / "טוב לדעת" (destinations) cards. */
+  facts?: CategoryFactCard[];
+  faq?: { question: string; answer: string }[];
+  /** Team-category extras (עמוד קבוצה): city blurb, matchday tips, honours. */
+  city_info?: CategoryFactCard;
+  matchday?: CategoryFactCard[];
+  honours?: string[];
+  /**
+   * Hand-picked "בולטים" events (ordered event ids, backoffice curation).
+   * Empty/missing = automatic ("בולט" tag, else soonest available).
+   */
+  featured_event_ids?: number[];
+  /** Hand-picked "חבילות מומלצות" (vertical hubs). Empty/missing = automatic. */
+  recommended_event_ids?: number[];
 };
 
 // Built in memory from a flat EventCategory[] for tree UI + traversal.

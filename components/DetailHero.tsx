@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { TrustBadges } from "@/components/ui/TrustBadges";
-import { Aurora } from "@/components/ui/Aurora";
 import { MYT } from "@/components/ui/myt";
 import { EventArt } from "@/components/ui/EventArt";
 import { BioReadMore } from "@/components/BioReadMore";
@@ -33,6 +32,8 @@ export const DetailHero = ({
   artImageOffsetY,
   ctaHref = "#upcoming-events",
   ctaLabel = "לפרטים והזמנה",
+  eyebrow,
+  chips,
 }: {
   name: string;
   nameEnglish?: string;
@@ -62,12 +63,38 @@ export const DetailHero = ({
   artImageOffsetY?: number | null;
   ctaHref?: string;
   ctaLabel?: string;
+  /** Small label above the name - competition / league / genre. */
+  eyebrow?: string;
+  /** Honour/genre chips under the bio (e.g. "20 אליפויות אנגליה"). */
+  chips?: string[];
 }) => {
   const tightCrest = isTightCrest(artImageUrl);
   const videoId = youtubeId(heroVideoUrl);
   return (
-  <section id="detail-hero" className="relative overflow-hidden bg-main text-main-foreground">
-    <Aurora intensity={0.4} />
+  <section id="detail-hero" className="relative isolate overflow-hidden bg-main text-main-foreground">
+    {/* Floodlights - the same light language as the vertical-hub covers, so
+        team/artist pages and hub pages read as one family. */}
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10"
+      style={{
+        background:
+          "radial-gradient(60% 55% at 18% -10%, hsl(150 60% 62% / 0.26), transparent 70%)," +
+          "radial-gradient(60% 55% at 82% -10%, hsl(150 60% 62% / 0.2), transparent 70%)," +
+          "radial-gradient(90% 60% at 50% 108%, hsl(160 55% 24% / 0.5), transparent 72%)",
+      }}
+    />
+    {/* Ghost name - the latin name as oversized jersey typography behind the
+        content. Ambient identity, not information: hidden from readers. */}
+    {(nameEnglish || name) && (
+      <div
+        aria-hidden
+        dir="ltr"
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 select-none overflow-hidden whitespace-nowrap text-center font-display text-[22vw] font-extrabold uppercase leading-[0.8] tracking-tighter text-main-foreground/[0.05] md:text-[16vw]"
+      >
+        {nameEnglish ?? name}
+      </div>
+    )}
     {/* Way home - the hero carries its own wordmark link, CENTERED so the
         floating corner controls (hamburger right, quick-actions left) never
         overlap it. */}
@@ -136,12 +163,21 @@ export const DetailHero = ({
       )}
 
       <div className="flex flex-col gap-5">
-        <h1 className="order-1 font-display text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
-          {name}
-          {nameEnglish && (
-            <span className="hidden text-main-foreground/70 md:block">{nameEnglish}</span>
+        <div className="order-1">
+          {eyebrow && (
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-secondary">
+              {eyebrow}
+            </p>
           )}
-        </h1>
+          <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
+            {name}
+            {nameEnglish && (
+              <span className="hidden text-2xl text-main-foreground/60 md:mt-1 md:block">
+                {nameEnglish}
+              </span>
+            )}
+          </h1>
+        </div>
         {/* Trust row sits right under the name on mobile; below the bio on
             desktop (order swap). */}
         <TrustBadges className="order-2 text-main-foreground/75 sm:order-3" />
@@ -157,6 +193,26 @@ export const DetailHero = ({
             {bio}
           </div>
         )}
+        {(chips?.length ?? 0) > 0 && (
+          <div className="order-4 flex flex-wrap gap-2" aria-label="הישגים">
+            {chips?.map((c) => (
+              <span
+                key={c}
+                className="rounded-full border border-main-foreground/20 bg-main-foreground/5 px-3 py-1 text-xs font-bold text-main-foreground/85"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="order-5">
+          <Link
+            href={ctaHref}
+            className="inline-block rounded-full bg-secondary px-7 py-3 font-bold text-main shadow-[0_10px_30px_-10px_hsl(var(--brand-mint)/0.8)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-main"
+          >
+            {ctaLabel}
+          </Link>
+        </div>
       </div>
     </div>
   </section>

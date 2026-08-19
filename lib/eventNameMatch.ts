@@ -100,6 +100,26 @@ export function clubNamesMatch(a: string, b: string): boolean {
   return tokensEqual(significantTokens(a), significantTokens(b));
 }
 
+/**
+ * Same-club check that ALSO works on Hebrew names.
+ *
+ * `clubNamesMatch` compares LATIN identifying tokens, so a Hebrew name reduces
+ * to zero tokens and never matches - which silently dropped the tag "FC
+ * ברצלונה" against the CMS card "ברצלונה", leaving Barcelona out of the
+ * לה ליגה teams carousel. Here the club qualifiers are stripped whatever the
+ * script and the remainder is compared canonically, so "FC ברצלונה" ≡
+ * "ברצלונה" and "Tottenham Hotspur FC" ≡ "Tottenham Hotspur" both resolve.
+ */
+export function clubNamesMatchAnyScript(a: string, b: string): boolean {
+  const strip = (s: string) =>
+    normalizeName(s)
+      .split(/\s+/)
+      .filter((t) => t && !GENERIC_TOKENS.has(t) && !/^\d{4}$/.test(t))
+      .join(" ");
+  const [x, y] = [strip(a), strip(b)];
+  return !!x && x === y;
+}
+
 /** Split "X vs Y" (after any "Competition:" prefix) into sides, else null. */
 function fixtureSides(eventName: string): string[] | null {
   const noPrefix = eventName.replace(/^[^:]+:\s*/, "");

@@ -16,6 +16,13 @@ import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
 import ClientTracker from "@/components/ClientTracker";
+import { VerticalHubPage } from "@/components/vertical-hub/VerticalHubPage";
+import { FOOTBALL_HUB_CONTENT } from "@/components/vertical-hub/footballContent";
+import { MUSIC_HUB_CONTENT } from "@/components/vertical-hub/musicContent";
+import { LeagueHubPage } from "@/components/vertical-hub/LeagueHubPage";
+import { GenreHubPage } from "@/components/vertical-hub/GenreHubPage";
+import { PickerHubPage } from "@/components/vertical-hub/PickerHubPage";
+import { DestinationHubPage } from "@/components/vertical-hub/DestinationHubPage";
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -73,6 +80,29 @@ export default async function TaxonomyCategoryPage({
     redirect(`/c/${canonical.join("/")}`);
   }
 
+  // ROOT VERTICAL HUBS - the rich homepage-style experience (redesign spec:
+  // ROAD MAP V1 → עמוד כדורגל / עמוד מוזיקה).
+  if (cat.slug === "football" || cat.slug === "music") {
+    const kind = cat.slug === "football" ? ("football" as const) : ("music" as const);
+    return (
+      <>
+        <ClientTracker />
+        <HeaderTitle name={cat.name} />
+        <VerticalHubPage
+          category={cat}
+          all={all}
+          kind={kind}
+          fallbackContent={kind === "football" ? FOOTBALL_HUB_CONTENT : MUSIC_HUB_CONTENT}
+        />
+      </>
+    );
+  }
+
+  // PICKER HUBS - עמוד הליגות / הז'אנרים / היעדים: floodlit cover + tile grid.
+  if (cat.slug === "leagues" || cat.slug === "genres" || cat.slug === "destinations") {
+    return <PickerHubPage category={cat} all={all} kind={cat.slug} />;
+  }
+
   // The teams/artists hubs show the full CMS catalogs ("הקבוצות שלנו" /
   // "האומנים שלנו" - same experience as /football and /artists) instead of
   // bare taxonomy tiles (Dor, 2026-08-13).
@@ -98,6 +128,23 @@ export default async function TaxonomyCategoryPage({
   // No CMS twin → the generic category page below still renders
   // (Dor, 2026-08-13).
   const parent = cat.parent_id != null ? all.find((c) => c.id === cat.parent_id) : null;
+
+  // LEAGUE PAGES - rich league experience (redesign spec: עמוד ליגה): league
+  // text, the league's teams carousel, featured games, filters, facts.
+  if (parent?.slug === "leagues") {
+    return <LeagueHubPage category={cat} />;
+  }
+
+  // GENRE PAGES - the music twin of the league pages (redesign spec: עמוד ז'אנר).
+  if (parent?.slug === "genres") {
+    return <GenreHubPage category={cat} />;
+  }
+
+  // DESTINATION PAGES - city experience (redesign spec: עמוד יעד).
+  if (parent?.slug === "destinations") {
+    return <DestinationHubPage category={cat} all={all} />;
+  }
+
   if (parent && (parent.slug === "teams" || parent.slug === "artists")) {
     let twin: FootballTeam | null = null;
     try {
@@ -116,7 +163,7 @@ export default async function TaxonomyCategoryPage({
     }
     if (twin?.fields?.name && twin.fields.nameDBenglish) {
       return parent.slug === "teams" ? (
-        <TeamCmsPage team={twin} />
+        <TeamCmsPage team={twin} pageContent={cat.page_content} />
       ) : (
         <ArtistCmsPage artist={twin} />
       );

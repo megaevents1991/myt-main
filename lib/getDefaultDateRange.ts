@@ -1,5 +1,17 @@
 import { Event, Flight } from "./app.types";
 
+// Earliest searchable travel date: tomorrow (00:00 local). Same-day and past
+// searches break both vendors - Amadeus rejects past departure dates outright
+// (search 500s), and Ratehawk returns only non-refundable or zero rates - so
+// stale event defaults (def_date_depart <= today) must never reach a search
+// request, and the date pickers must not offer such dates.
+export const getMinTravelDate = (): Date => {
+  const min = new Date();
+  min.setHours(0, 0, 0, 0);
+  min.setDate(min.getDate() + 1);
+  return min;
+};
+
 export const getDefaultDateRange = (
   event: Event,
   flight?: Flight
@@ -28,9 +40,29 @@ export const getDefaultDateRange = (
     ? new Date(flight.inbound.departureTime)
     : null;
 
-  const checkOutDate = returnDepartureTime
+  let checkOutDate = returnDepartureTime
     ? new Date(returnDepartureTime)
     : new Date(event.def_date_return);
+
+  // No real flight dates - the range comes from the event's stored defaults,
+  // which go stale as the event approaches (def_date_depart passes "today").
+  // Clamp the check-in to the min travel date and keep the intended trip
+  // length. Flight-derived dates are left alone: they reflect a bookable
+  // itinerary the customer actually chose.
+  if (!arrivalTime && checkInDate < getMinTravelDate()) {
+    const defaultNights = Math.round(
+      (new Date(event.def_date_return).getTime() -
+        new Date(event.def_date_depart).getTime()) /
+        (24 * 60 * 60 * 1000)
+    );
+    const nights = defaultNights >= 1 ? defaultNights : 1;
+
+    checkInDate = getMinTravelDate();
+    if (!returnDepartureTime && checkOutDate <= checkInDate) {
+      checkOutDate = new Date(checkInDate);
+      checkOutDate.setDate(checkOutDate.getDate() + nights);
+    }
+  }
 
   return [checkInDate, checkOutDate];
 };

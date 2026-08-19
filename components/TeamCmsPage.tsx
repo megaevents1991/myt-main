@@ -19,6 +19,10 @@ import { FAQ } from "@/components/ui/FAQ";
 import { ArtistBanners } from "@/components/ArtistBanners";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { ArtistVideos } from "@/components/ArtistVideos";
+import { TeamExtrasSection } from "@/components/vertical-hub/TeamExtrasSection";
+import { TEAM_EXTRAS } from "@/components/vertical-hub/teamExtras";
+import { normalizeName } from "@/lib/eventNameMatch";
+import type { CategoryPageContent } from "@/lib/taxonomy.types";
 
 const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
@@ -54,7 +58,14 @@ const bioOptions: Options = {
  * gallery, trust, FAQ) - shared by /football/[slug] and the taxonomy leaf
  * /c/football/teams/<slug>, so both URLs look identical.
  */
-export async function TeamCmsPage({ team }: { team: FootballTeam }) {
+export async function TeamCmsPage({
+  team,
+  pageContent,
+}: {
+  team: FootballTeam;
+  /** The team CATEGORY's page_content (backoffice) - wins over bundled extras. */
+  pageContent?: CategoryPageContent | null;
+}) {
   const { name, nameDBenglish, bio, heroBanner, heroVideoUrl, banners, gallery, videos } = team.fields;
 
   const { events } = await getEventsByName(String(nameDBenglish));
@@ -77,6 +88,14 @@ export async function TeamCmsPage({ team }: { team: FootballTeam }) {
     : undefined;
 
   // Mobile bio collapses to its first sentence with a "קרא עוד.." toggle.
+  // Cover extras (redesign: "קאבר יותר מחרמן") - honours as chips, stadium
+  // city as the eyebrow. Teams without a TEAM_EXTRAS entry render the plain hero.
+  const bundled = TEAM_EXTRAS[normalizeName(String(nameDBenglish ?? ""))];
+  const extras = {
+    stadium: pageContent?.stadiums?.[0] ?? bundled?.stadium,
+    honours: pageContent?.honours ?? bundled?.honours,
+  };
+
   const bioPlain = documentToPlainText(bio as Document);
   const bioFirstSentence = firstSentence(bioPlain);
   const bioCanExpand = bioFirstSentence.length < bioPlain.length;
@@ -100,6 +119,8 @@ export async function TeamCmsPage({ team }: { team: FootballTeam }) {
         artImageScale={team.fields.artImageScale}
         artImageOffsetX={team.fields.artImageOffsetX}
         artImageOffsetY={team.fields.artImageOffsetY}
+        eyebrow={extras?.stadium ? `${extras.stadium.name} · ${extras.stadium.city}` : undefined}
+        chips={extras?.honours}
       />
 
       <ArtistBanners banners={banners} />
@@ -155,6 +176,10 @@ export async function TeamCmsPage({ team }: { team: FootballTeam }) {
           </div>
         )}
       </section>
+
+      {/* Redesign extras - stadium / city / matchday / honours (content-keyed;
+          teams without a TEAM_EXTRAS entry render nothing here). */}
+      <TeamExtrasSection nameDBenglish={String(nameDBenglish)} override={pageContent} />
 
       <ArtistVideos videos={videos} />
       <ExperienceCarousel images={gallery} />
