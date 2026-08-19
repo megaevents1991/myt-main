@@ -15,6 +15,7 @@ import { HubCover } from "@/components/vertical-hub/HubCover";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import ClientTracker from "@/components/ClientTracker";
 import { TrustSection } from "@/components/TrustSection";
+import { RotatingTileImage } from "@/components/vertical-hub/RotatingTileImage";
 
 /**
  * Picker hubs - עמוד הליגות ועמוד הז'אנרים (redesign spec items: "טקסט על
@@ -170,6 +171,7 @@ export async function PickerHubPage({
               const blobShape =
                 EVENT_ART_BLOB_SHAPES[(idx * 5 + 1) % EVENT_ART_BLOB_SHAPES.length];
               const blobColor = EVENT_ART_COLORS[idx % EVENT_ART_COLORS.length];
+              const tileImages = (child.page_content?.tile_images ?? []).filter(Boolean);
               return (
               <Link
                 key={child.id}
@@ -177,7 +179,27 @@ export async function PickerHubPage({
                 role="listitem"
                 className="group relative block h-40 overflow-hidden rounded-2xl border border-border shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:h-48"
               >
-                {child.image_url ? (
+                {tileImages.length > 0 ? (
+                  // Rotating city photos (backoffice: תמונות רקע לטייל).
+                  <>
+                    <RotatingTileImage
+                      images={tileImages}
+                      alt={child.name}
+                      offsetMs={(idx % 6) * 900}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute inset-x-3 bottom-3 text-center">
+                      <h3 className="text-xl font-extrabold text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.85)] transition-colors group-hover:text-secondary">
+                        {child.name}
+                      </h3>
+                      {eventCounts[child.id] != null && eventCounts[child.id] > 0 && (
+                        <p className="text-xs font-medium text-white/75 [text-shadow:0_1px_6px_rgba(0,0,0,0.85)]">
+                          {eventCounts[child.id]} אירועים
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : child.image_url ? (
                   <>
                     <Image
                       src={child.image_url}

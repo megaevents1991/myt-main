@@ -58,6 +58,12 @@ export type CategoryPageContent = {
   seo_title?: string;
   /** Gallery image URLs (ExperienceCarousel). */
   gallery?: string[];
+  /**
+   * Rotating background photos for the category's PICKER TILE (יעדים grid).
+   * Multiple images crossfade; a single image renders static. Overrides the
+   * tile's image_url/fallback art.
+   */
+  tile_images?: string[];
   stadiums?: CategoryStadium[];
   /** "מידע מעניין" (leagues/genres) / "טוב לדעת" (destinations) cards. */
   facts?: CategoryFactCard[];
