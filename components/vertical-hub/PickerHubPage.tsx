@@ -73,10 +73,12 @@ export async function PickerHubPage({
   });
   const available = events.filter((e) => !isEventSoldOut(e));
 
-  // Destinations + genres: up to 3 cut-out blobs per tile - the people
-  // catalogued to that city/genre (redesign spec; genres joined 2026-08-19,
-  // artists only - crests don't belong on a music tile).
-  const collage: Record<number, string[]> = {};
+  // Destinations + genres: a 3-circle cluster per tile (hero + two sides) -
+  // the people catalogued to that city/genre. Genres show artists only;
+  // crests don't belong on a music tile.
+  type CollagePick = { url: string; crest: boolean };
+  const collage: Record<number, CollagePick[]> = {};
+  const eventCounts: Record<number, number> = {};
   if (kind === "destinations" || kind === "genres") {
     const [teams, artists] = await Promise.all([
       kind === "destinations"
@@ -84,8 +86,21 @@ export async function PickerHubPage({
         : Promise.resolve([] as FootballTeam[]),
       getAllArtists().catch(() => [] as Artist[]),
     ]);
-    const people = [...artists, ...teams].filter((p) => p.fields.artImageUrl);
-    await Promise.all(
+    const people: { url: string; crest: boolean; en: string; he: string }[] = [
+      ...artists.map((p) => ({ crest: false, p })),
+      ...teams.map((p) => ({ crest: true, p })),
+    ]
+      .filter(({ p }) => p.fields.artImageUrl)
+      .map(({ p, crest }) => ({
+        url: String(p.fields.artImageUrl),
+        crest,
+        en: String(p.fields.nameDBenglish ?? ""),
+        he: String(p.fields.name ?? ""),
+      }));
+
+    // Fetch + match in parallel; pick sequentially so a shared "used" set can
+    // spread the roster - without it every tile opened with the same trio.
+    const matchedByChild = await Promise.all(
       children.map(async (child) => {
         const { events: childEvents } = await getEventsInCategory(child.slug);
         const tagsBy = await getTagsForEvents(childEvents.slice(0, 40).map((e) => e.id));
@@ -96,21 +111,31 @@ export async function PickerHubPage({
               names.add(c.name);
           }),
         );
-        const arts: string[] = [];
-        for (const p of people) {
-          if (arts.length >= 3) break;
-          const en = String(p.fields.nameDBenglish ?? "");
-          const he = String(p.fields.name ?? "");
-          if (
-            [...names].some(
-              (t) => clubNamesMatchAnyScript(t, en) || clubNamesMatchAnyScript(t, he),
-            )
-          )
-            arts.push(String(p.fields.artImageUrl));
-        }
-        collage[child.id] = arts;
+        const matched = people.filter(({ en, he }) =>
+          [...names].some(
+            (t) => clubNamesMatchAnyScript(t, en) || clubNamesMatchAnyScript(t, he),
+          ),
+        );
+        return { id: child.id, matched, count: childEvents.length };
       }),
     );
+    const used = new Set<string>();
+    for (const { id, matched, count } of matchedByChild) {
+      eventCounts[id] = count;
+      if (!matched.length) {
+        collage[id] = [];
+        continue;
+      }
+      // Rotate the start per tile + prefer people no tile has shown yet.
+      const off = id % matched.length;
+      const rotated = [...matched.slice(off), ...matched.slice(0, off)];
+      const picks = [
+        ...rotated.filter((m) => !used.has(m.url)),
+        ...rotated.filter((m) => used.has(m.url)),
+      ].slice(0, 3);
+      picks.forEach((m) => used.add(m.url));
+      collage[id] = picks.map(({ url, crest }) => ({ url, crest }));
+    }
   }
 
   return (
@@ -150,7 +175,7 @@ export async function PickerHubPage({
                 key={child.id}
                 href={`/c/${slugPathOf(child, all).join("/")}`}
                 role="listitem"
-                className="group relative block h-36 overflow-hidden rounded-2xl border border-border shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:h-44"
+                className="group relative block h-40 overflow-hidden rounded-2xl border border-border shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:h-48"
               >
                 {child.image_url ? (
                   <>
@@ -168,9 +193,9 @@ export async function PickerHubPage({
                   </>
                 ) : (
                   <div className="relative flex h-full w-full flex-col items-center justify-end overflow-hidden bg-[hsl(var(--surface-inverse))] pb-3">
-                    {/* Brand blob ground - same pool as the event cards. */}
+                    {/* Brand blob halo - sits high behind the circle cluster. */}
                     <svg
-                      className="absolute inset-0 h-full w-full opacity-80 transition-transform duration-300 group-hover:scale-105"
+                      className="absolute -top-1/4 left-1/2 h-[130%] w-[130%] -translate-x-1/2 opacity-40 transition-transform duration-300 group-hover:scale-105"
                       viewBox={`0 0 ${blobShape.w} ${blobShape.h}`}
                       preserveAspectRatio="xMidYMid slice"
                       aria-hidden="true"
@@ -186,29 +211,58 @@ export async function PickerHubPage({
                       />
                     </svg>
                     {/* Legibility ground under the name, over the blob. */}
-                    <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
+                    {/* Option B (Dor): hero circle + two side circles, uniform
+                        crop so mixed cut-out scales read as one set. */}
                     {(collage[child.id]?.length ?? 0) > 0 && (
                       <div
                         aria-hidden
-                        className="absolute inset-x-0 top-2 flex items-end justify-center"
+                        className="absolute inset-x-0 top-3 flex items-end justify-center sm:top-4"
                       >
-                        {collage[child.id].map((src, i) => (
-                          <Image
-                            key={src}
-                            src={src}
-                            alt=""
-                            width={96}
-                            height={96}
-                            className={`h-20 w-20 object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.55)] sm:h-24 sm:w-24 ${
-                              i === 1 ? "z-10 -mx-4 scale-110" : "opacity-90"
-                            }`}
-                          />
-                        ))}
+                        {[collage[child.id][1], collage[child.id][0], collage[child.id][2]]
+                          .filter((p): p is { url: string; crest: boolean } => p != null)
+                          .map((p, i, arr) => {
+                            const hero = arr.length === 1 || p === collage[child.id][0];
+                            return (
+                              <div
+                                key={p.url}
+                                className={
+                                  hero
+                                    ? "relative z-10 -mx-3 size-20 shrink-0 overflow-hidden rounded-full shadow-[0_14px_30px_-10px_rgba(0,0,0,0.85)] sm:size-24"
+                                    : "relative size-12 shrink-0 overflow-hidden rounded-full opacity-90 shadow-[0_6px_16px_-6px_rgba(0,0,0,0.7)] sm:size-14"
+                                }
+                                style={{
+                                  background:
+                                    "radial-gradient(70% 70% at 50% 32%, rgba(255,255,255,0.14), rgba(0,0,0,0.35))",
+                                  ...(hero
+                                    ? { boxShadow: `0 0 0 2px hsl(${blobColor} / 0.7), 0 14px 30px -10px rgba(0,0,0,0.85)` }
+                                    : {}),
+                                }}
+                              >
+                                <Image
+                                  src={p.url}
+                                  alt=""
+                                  fill
+                                  sizes="96px"
+                                  className={
+                                    p.crest
+                                      ? "object-contain p-2.5"
+                                      : "rounded-full object-cover object-top"
+                                  }
+                                />
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
                     <h3 className="relative z-10 px-3 text-center font-display text-xl font-extrabold text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.8)] transition-colors group-hover:text-secondary">
                       {child.name}
                     </h3>
+                    {eventCounts[child.id] != null && eventCounts[child.id] > 0 && (
+                      <p className="relative z-10 text-xs font-medium text-white/70 [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
+                        {eventCounts[child.id]} אירועים
+                      </p>
+                    )}
                   </div>
                 )}
               </Link>
