@@ -1887,32 +1887,32 @@ export default function OrderReview({
                 onClick={(e) => handleSubmit(e, true)}
                 className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] hidden md:block"
                 disabled={isSubmitting}
-                aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
+                aria-label={
+                  voucherSettlementActive
+                    ? "שליחת ההזמנה עם שובר"
+                    : "המשך לתשלום מאובטח בכרטיס אשראי"
+                }
               >
-                המשך לתשלום מאובטח
+                {voucherSettlementActive
+                  ? "שלח הזמנה עם שובר"
+                  : "המשך לתשלום מאובטח"}
               </Button>
 
+              {/* Voucher settlement has exactly one path - the secondary CTAs
+                  (rep / 24h hold) would silently do the same submit, so they
+                  hide instead of lying. */}
+              {!voucherSettlementActive && (
               <div className="hidden md:flex gap-2 mt-0">
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
                   disabled={isSubmitting}
-                  aria-label={
-                    voucherSettlementActive
-                      ? "שליחת ההזמנה עם שובר"
-                      : "צור קשר עם נציג"
-                  }
+                  aria-label="צור קשר עם נציג"
                 >
-                  {voucherSettlementActive ? (
-                    "שלח הזמנה עם שובר"
-                  ) : (
-                    <>
-                      ?רוצים לפצל תשלום
-                      <br />
-                      דברו עם נציג
-                    </>
-                  )}
+                  ?רוצים לפצל תשלום
+                  <br />
+                  דברו עם נציג
                 </Button>
                 {isHoldAllowed && (
                   <Button
@@ -1928,6 +1928,7 @@ export default function OrderReview({
                   </Button>
                 )}
               </div>
+              )}
             </div>
             <div className="space-y-6 order-2 md:order-1">
               <Card
@@ -2349,7 +2350,11 @@ export default function OrderReview({
                 onClick={(e) => handleSubmit(e, true)}
                 className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] block md:hidden"
                 disabled={isSubmitting}
-                aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
+                aria-label={
+                  voucherSettlementActive
+                    ? "שליחת ההזמנה עם שובר"
+                    : "המשך לתשלום מאובטח בכרטיס אשראי"
+                }
               >
                 <ButtonSummary
                   finalPurchasePrice={finalPurchasePrice}
@@ -2362,30 +2367,22 @@ export default function OrderReview({
                   isSticky={false}
                     affDiscount={effectiveDiscountTotalUsd}
                   isCouponDiscount={couponWins}
+                  label={voucherSettlementActive ? "שלח הזמנה עם שובר" : undefined}
                 />
               </Button>
 
+              {!voucherSettlementActive && (
               <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
                 <Button
                   onClick={handleSubmit}
                   variant={"link"}
                   className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
                   disabled={isSubmitting}
-                  aria-label={
-                    voucherSettlementActive
-                      ? "שליחת ההזמנה עם שובר"
-                      : "צור קשר עם נציג"
-                  }
+                  aria-label="צור קשר עם נציג"
                 >
-                  {voucherSettlementActive ? (
-                    "שלח הזמנה עם שובר"
-                  ) : (
-                    <>
-                      ?רוצים לפצל תשלום
-                      <br />
-                      דברו עם נציג
-                    </>
-                  )}
+                  ?רוצים לפצל תשלום
+                  <br />
+                  דברו עם נציג
                 </Button>
                 {isHoldAllowed && (
                   <Button
@@ -2401,6 +2398,7 @@ export default function OrderReview({
                   </Button>
                 )}
               </div>
+              )}
             </div>
           </div>
         </main>
@@ -2413,28 +2411,18 @@ export default function OrderReview({
           className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-50 md:hidden"
         >
           {/* Additional Options Dropdown */}
-          {showStickyOptions && (
+          {showStickyOptions && !voucherSettlementActive && (
             <div className="mb-4 flex gap-2">
               <Button
                 onClick={handleSubmit}
                 variant={"link"}
                 className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
                 disabled={isSubmitting}
-                aria-label={
-                  voucherSettlementActive
-                    ? "שליחת ההזמנה עם שובר"
-                    : "צור קשר עם נציג"
-                }
+                aria-label="צור קשר עם נציג"
               >
-                {voucherSettlementActive ? (
-                  "שלח הזמנה עם שובר"
-                ) : (
-                  <>
-                    ?רוצים לפצל תשלום
-                    <br />
-                    דברו עם נציג
-                  </>
-                )}
+                ?רוצים לפצל תשלום
+                <br />
+                דברו עם נציג
               </Button>
               {isHoldAllowed && (
                 <Button
@@ -2454,19 +2442,25 @@ export default function OrderReview({
 
           {/* Main Buttons Row */}
           <div className="flex gap-2">
-            <Button
-              onClick={() => setShowStickyOptions(!showStickyOptions)}
-              variant="outline"
-              className="w-[20%] h-[52px] text-[12px] leading-tight border-[#0A1A14] text-[#0A1A14] dark:border-foreground/60 dark:text-foreground dark:hover:bg-foreground/10 hover:bg-[#0A1A14]/10 whitespace-normal break-words px-1"
-              aria-label="אפשרויות נוספות"
-            >
-              {showStickyOptions ? "סגור" : "אפשרויות נוספות"}
-            </Button>
+            {!voucherSettlementActive && (
+              <Button
+                onClick={() => setShowStickyOptions(!showStickyOptions)}
+                variant="outline"
+                className="w-[20%] h-[52px] text-[12px] leading-tight border-[#0A1A14] text-[#0A1A14] dark:border-foreground/60 dark:text-foreground dark:hover:bg-foreground/10 hover:bg-[#0A1A14]/10 whitespace-normal break-words px-1"
+                aria-label="אפשרויות נוספות"
+              >
+                {showStickyOptions ? "סגור" : "אפשרויות נוספות"}
+              </Button>
+            )}
             <Button
               onClick={(e) => handleSubmit(e, true)}
               className="flex-1 bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] w-full justify-between"
               disabled={isSubmitting}
-              aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
+              aria-label={
+                voucherSettlementActive
+                  ? "שליחת ההזמנה עם שובר"
+                  : "המשך לתשלום מאובטח בכרטיס אשראי"
+              }
             >
               <ButtonSummary
                 finalPurchasePrice={finalPurchasePrice}
@@ -2479,6 +2473,7 @@ export default function OrderReview({
                 isSticky
                 affDiscount={effectiveDiscountTotalUsd}
                 isCouponDiscount={couponWins}
+                label={voucherSettlementActive ? "שלח הזמנה עם שובר" : undefined}
               />
             </Button>
           </div>

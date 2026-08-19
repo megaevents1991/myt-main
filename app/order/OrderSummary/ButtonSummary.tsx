@@ -13,6 +13,7 @@ export const ButtonSummary = ({
   isSticky = false,
   affDiscount = 0,
   isCouponDiscount = false,
+  label,
 }: {
   finalPurchasePrice: number;
   finalPurchasePriceILS: number;
@@ -26,6 +27,8 @@ export const ButtonSummary = ({
   affDiscount?: number;
   // true when the winning discount came from a coupon (changes the label)
   isCouponDiscount?: boolean;
+  /** Overrides the CTA text - e.g. voucher settlement never reaches the card gateway. */
+  label?: string;
 }) => {
   const {
     finalPurchasePrice: finalPurchasePriceFormatted,
@@ -50,7 +53,7 @@ export const ButtonSummary = ({
       dir="rtl"
     >
       <span className={cn("font-bold", isMobile && "text-md", "leading-[1.15]")}> 
-        {isSticky ? "המשך לתשלום" : "המשך לתשלום מאובטח"}
+        {label ?? (isSticky ? "המשך לתשלום" : "המשך לתשלום מאובטח")}
       </span>
       {isMobile && (
         <div className="flex flex-col items-end">
