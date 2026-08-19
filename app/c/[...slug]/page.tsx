@@ -22,6 +22,7 @@ import { MUSIC_HUB_CONTENT } from "@/components/vertical-hub/musicContent";
 import { LeagueHubPage } from "@/components/vertical-hub/LeagueHubPage";
 import { GenreHubPage } from "@/components/vertical-hub/GenreHubPage";
 import { PickerHubPage } from "@/components/vertical-hub/PickerHubPage";
+import { DestinationHubPage } from "@/components/vertical-hub/DestinationHubPage";
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -97,8 +98,8 @@ export default async function TaxonomyCategoryPage({
     );
   }
 
-  // PICKER HUBS - עמוד הליגות / עמוד הז'אנרים: floodlit cover + tile grid.
-  if (cat.slug === "leagues" || cat.slug === "genres") {
+  // PICKER HUBS - עמוד הליגות / הז'אנרים / היעדים: floodlit cover + tile grid.
+  if (cat.slug === "leagues" || cat.slug === "genres" || cat.slug === "destinations") {
     return <PickerHubPage category={cat} all={all} kind={cat.slug} />;
   }
 
@@ -137,6 +138,11 @@ export default async function TaxonomyCategoryPage({
   // GENRE PAGES - the music twin of the league pages (redesign spec: עמוד ז'אנר).
   if (parent?.slug === "genres") {
     return <GenreHubPage category={cat} />;
+  }
+
+  // DESTINATION PAGES - city experience (redesign spec: עמוד יעד).
+  if (parent?.slug === "destinations") {
+    return <DestinationHubPage category={cat} all={all} />;
   }
 
   if (parent && (parent.slug === "teams" || parent.slug === "artists")) {

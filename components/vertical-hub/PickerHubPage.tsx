@@ -1,8 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import type { Artist, FootballTeam } from "@/lib/app.types";
 import type { EventCategory } from "@/lib/taxonomy.types";
-import { getEventsInCategory } from "@/lib/taxonomy";
+import { getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
+import { getAllFootballTeams } from "@/lib/football";
+import { getAllArtists } from "@/lib/artists";
+import { clubNamesMatchAnyScript } from "@/lib/eventNameMatch";
 import { slugPathOf } from "@/lib/taxonomy-tree";
 import { isEventSoldOut } from "@/lib/events/price";
 
@@ -35,6 +39,15 @@ const PICKERS = {
     backHref: "/c/music",
     backLabel: "לעמוד המוזיקה",
   },
+  destinations: {
+    motif: "stage" as const,
+    eyebrow: "טסים לאירוע",
+    lede: "בוחרים עיר - ורואים את כל המשחקים וההופעות שמחכים בה. כרטיס, טיסה ומלון בחבילה אחת.",
+    introLine: "לאן בא לכם?",
+    statLabel: "יעדים",
+    backHref: "/",
+    backLabel: "לעמוד הבית",
+  },
 } as const;
 
 export type PickerKind = keyof typeof PICKERS;
@@ -58,6 +71,42 @@ export async function PickerHubPage({
     includeDescendants: true,
   });
   const available = events.filter((e) => !isEventSoldOut(e));
+
+  // Destinations only: up to 3 cut-out blobs per city tile - the artists and
+  // teams catalogued to that city (redesign spec).
+  const collage: Record<number, string[]> = {};
+  if (kind === "destinations") {
+    const [teams, artists] = await Promise.all([
+      getAllFootballTeams().catch(() => [] as FootballTeam[]),
+      getAllArtists().catch(() => [] as Artist[]),
+    ]);
+    const people = [...artists, ...teams].filter((p) => p.fields.artImageUrl);
+    await Promise.all(
+      children.map(async (city) => {
+        const { events: cityEvents } = await getEventsInCategory(city.slug);
+        const tagsBy = await getTagsForEvents(cityEvents.slice(0, 40).map((e) => e.id));
+        const names = new Set<string>();
+        Object.values(tagsBy).forEach((chips) =>
+          chips.forEach((c) => {
+            if (c.type === "team" || c.type === "artist") names.add(c.name);
+          }),
+        );
+        const arts: string[] = [];
+        for (const p of people) {
+          if (arts.length >= 3) break;
+          const en = String(p.fields.nameDBenglish ?? "");
+          const he = String(p.fields.name ?? "");
+          if (
+            [...names].some(
+              (t) => clubNamesMatchAnyScript(t, en) || clubNamesMatchAnyScript(t, he),
+            )
+          )
+            arts.push(String(p.fields.artImageUrl));
+        }
+        collage[city.id] = arts;
+      }),
+    );
+  }
 
   return (
     <>
@@ -108,13 +157,32 @@ export async function PickerHubPage({
                   </>
                 ) : (
                   <div
-                    className="flex h-full w-full items-center justify-center"
+                    className="relative flex h-full w-full flex-col items-center justify-end overflow-hidden pb-3"
                     style={{
                       background:
                         "radial-gradient(80% 90% at 50% -20%, hsl(150 60% 62% / 0.22), hsl(var(--surface-inverse)))",
                     }}
                   >
-                    <h3 className="px-3 text-center font-display text-xl font-extrabold text-main-foreground transition-colors group-hover:text-secondary">
+                    {(collage[child.id]?.length ?? 0) > 0 && (
+                      <div
+                        aria-hidden
+                        className="absolute inset-x-0 top-2 flex items-end justify-center"
+                      >
+                        {collage[child.id].map((src, i) => (
+                          <Image
+                            key={src}
+                            src={src}
+                            alt=""
+                            width={96}
+                            height={96}
+                            className={`h-20 w-20 object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.55)] sm:h-24 sm:w-24 ${
+                              i === 1 ? "z-10 -mx-4 scale-110" : "opacity-90"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <h3 className="relative z-10 px-3 text-center font-display text-xl font-extrabold text-main-foreground [text-shadow:0_2px_10px_rgba(0,0,0,0.8)] transition-colors group-hover:text-secondary">
                       {child.name}
                     </h3>
                   </div>

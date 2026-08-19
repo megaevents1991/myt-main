@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
+import "dayjs/locale/he";
+import { Slider } from "@mantine/core";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { Event } from "@/lib/app.types";
@@ -11,6 +13,7 @@ import type { TagType } from "@/lib/taxonomy.types";
 import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
+import { displayTagName } from "@/lib/tagDisplay";
 
 /**
  * The category page's event browser.
@@ -50,7 +53,11 @@ const TAG_GROUPS: { type: TagType; label: string }[] = [
   { type: "artist", label: "אומנים" },
   { type: "other", label: "תגיות" },
 ];
+/** Chip rows: quick toggles. Dropdown groups: long lists (teams, artists, genres). */
+const CHIP_TYPES = new Set<TagType>(["league", "other"]);
+const DROPDOWN_TYPES = new Set<TagType>(["team", "genre", "artist"]);
 const GROUP_CAP = 8;
+const DROPDOWN_CAP = 40;
 
 /** "לונדון, בריטניה" → "לונדון" - the city is what people filter by. */
 const cityOf = (event: Event) => (event.location?.name ?? "").split(",")[0].trim();
@@ -142,11 +149,14 @@ export function CategoryEventsBrowser({
   events,
   tagsByEvent = {},
   headingId,
+  hideCityFacet = false,
 }: {
   events: Event[];
   /** Feed tag chips per event id - the sharpest slice of a category. */
   tagsByEvent?: Record<number, EventTagChip[]>;
   headingId?: string;
+  /** On a city page every event shares the city - drop the redundant filter. */
+  hideCityFacet?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState(ALL);
@@ -185,28 +195,21 @@ export function CategoryEventsBrowser({
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([k, n]) => ({
           value: k,
-          label: `${dayjs(`${k}-01`).format("MM/YYYY")} (${n})`,
+          label: `${dayjs(`${k}-01`).locale("he").format("MMMM YYYY")} (${n})`,
         })),
     ];
   }, [events]);
 
-  // Price steps come from the actual spread, so the options are never empty
-  // and never all-inclusive.
-  const priceOptions = useMemo(() => {
+  // Price bounds for the slider (redesign spec: "מחירים סרגל מחיר") - from the
+  // real spread, rounded to $100 so the handle lands on readable numbers.
+  const priceBounds = useMemo(() => {
     const prices = events
       .map((e) => computePackagePrice(e))
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-    if (prices.length < 4) return [{ value: ALL, label: "כל המחירים" }];
-    const step = (n: number) => Math.ceil(n / 100) * 100;
-    const quartiles = [0.25, 0.5, 0.75].map((q) => step(prices[Math.floor(prices.length * q)]));
-    return [
-      { value: ALL, label: "כל המחירים" },
-      ...[...new Set(quartiles)].map((p) => ({
-        value: String(p),
-        label: `עד $${p.toLocaleString("en-US")}`,
-      })),
-    ];
+      .filter((p): p is number => p != null && p > 0);
+    if (prices.length < 2) return null;
+    const min = Math.floor(Math.min(...prices) / 100) * 100;
+    const max = Math.ceil(Math.max(...prices) / 100) * 100;
+    return min < max ? { min, max } : null;
   }, [events]);
 
   /**
@@ -239,7 +242,7 @@ export function CategoryEventsBrowser({
       options: [...counts.entries()]
         .filter(([, v]) => v.type === g.type && v.n > 1 && v.n < coversAll)
         .sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]))
-        .slice(0, GROUP_CAP)
+        .slice(0, DROPDOWN_TYPES.has(g.type) ? DROPDOWN_CAP : GROUP_CAP)
         .map(([name, v]) => [name, v.n] as [string, number]),
     })).filter((g) => g.options.length > 0);
   }, [events, tagsByEvent]);
@@ -328,6 +331,15 @@ export function CategoryEventsBrowser({
   const toggleTag = (tag: string) =>
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
 
+  /** Single-select per dropdown group; ALL clears that group's pick. */
+  const selectedOfType = (type: TagType) =>
+    tags.find((t) => (typeByName.get(t) ?? "other") === type) ?? ALL;
+  const selectOfType = (type: TagType, v: string) =>
+    setTags((prev) => [
+      ...prev.filter((t) => (typeByName.get(t) ?? "other") !== type),
+      ...(v === ALL ? [] : [v]),
+    ]);
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
@@ -356,7 +368,9 @@ export function CategoryEventsBrowser({
           openOnMobile ? "block" : "hidden sm:block"
         )}
       >
-        {tagGroups.map((g) => (
+        {tagGroups
+          .filter((g) => CHIP_TYPES.has(g.type))
+          .map((g) => (
           <div key={g.type} className="mb-4">
             <p className="mb-2 text-xs font-semibold text-muted-foreground">{g.label}</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label={`סינון לפי ${g.label}`}>
@@ -375,7 +389,7 @@ export function CategoryEventsBrowser({
                         : "border-border bg-card text-foreground hover:bg-foreground/[0.03]"
                     )}
                   >
-                    {tag}
+                    {displayTagName(tag, g.type)}
                     <span className={cn("text-xs font-medium", on ? "opacity-80" : "text-muted-foreground")}>
                       {count}
                     </span>
@@ -410,9 +424,27 @@ export function CategoryEventsBrowser({
             </div>
           </div>
 
-          <Dropdown label="עיר" value={city} options={cityOptions} onChange={setCity} />
+          {!hideCityFacet && (
+            <Dropdown label="עיר" value={city} options={cityOptions} onChange={setCity} />
+          )}
           <Dropdown label="חודש" value={month} options={monthOptions} onChange={setMonth} />
-          <Dropdown label="מחיר" value={maxPrice} options={priceOptions} onChange={setMaxPrice} />
+          {tagGroups
+            .filter((g) => DROPDOWN_TYPES.has(g.type))
+            .map((g) => (
+              <Dropdown
+                key={g.type}
+                label={g.label}
+                value={selectedOfType(g.type)}
+                options={[
+                  { value: ALL, label: `כל ה${g.label}` },
+                  ...g.options.map(([tag, count]) => ({
+                    value: tag,
+                    label: `${displayTagName(tag, g.type)} (${count})`,
+                  })),
+                ]}
+                onChange={(v) => selectOfType(g.type, v)}
+              />
+            ))}
           <Dropdown
             label="מיון"
             value={sort}
@@ -420,6 +452,30 @@ export function CategoryEventsBrowser({
             onChange={(v) => setSort(v as SortKey)}
           />
         </div>
+
+        {/* Price slider - "סרגל מחיר" (redesign spec). ALL = handle parked at max. */}
+        {priceBounds && (
+          <div className="mt-4 max-w-sm" dir="ltr">
+            <p className="mb-1.5 text-right text-xs font-semibold text-muted-foreground" dir="rtl">
+              מחיר מקסימלי לנוסע:{" "}
+              <span className="font-bold text-foreground">
+                {maxPrice === ALL
+                  ? "ללא הגבלה"
+                  : `$${Number(maxPrice).toLocaleString("en-US")}`}
+              </span>
+            </p>
+            <Slider
+              min={priceBounds.min}
+              max={priceBounds.max}
+              step={100}
+              value={maxPrice === ALL ? priceBounds.max : Number(maxPrice)}
+              onChange={(v) => setMaxPrice(v >= priceBounds.max ? ALL : String(v))}
+              label={(v) => `$${v.toLocaleString("en-US")}`}
+              color="teal"
+              aria-label="מחיר מקסימלי"
+            />
+          </div>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="flex h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
