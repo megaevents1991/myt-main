@@ -168,6 +168,10 @@ export function CategoryEventsBrowser({
   const [visible, setVisible] = useState(PAGE_SIZE);
   // Mobile keeps the filters one tap away instead of pushing the grid down.
   const [openOnMobile, setOpenOnMobile] = useState(false);
+  // The bar shows only search/city/month/sort; chips, long dropdowns, the
+  // price slider and the sold-out toggle live behind "חיפוש מתקדם" so the
+  // desktop panel stays one row tall.
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const cityOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -319,6 +323,10 @@ export function CategoryEventsBrowser({
     hideSoldOut ||
     tags.length > 0;
 
+  // Advanced-only filters that are active while the advanced block is closed -
+  // the toggle shows a dot so a hidden filter never narrows silently.
+  const advancedDirty = maxPrice !== ALL || hideSoldOut || tags.length > 0;
+
   const clear = () => {
     setQuery("");
     setCity(ALL);
@@ -368,39 +376,7 @@ export function CategoryEventsBrowser({
           openOnMobile ? "block" : "hidden sm:block"
         )}
       >
-        {tagGroups
-          .filter((g) => CHIP_TYPES.has(g.type))
-          .map((g) => (
-          <div key={g.type} className="mb-4">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">{g.label}</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label={`סינון לפי ${g.label}`}>
-              {g.options.map(([tag, count]) => {
-                const on = tags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleTag(tag)}
-                    aria-pressed={on}
-                    className={cn(
-                      "flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors",
-                      on
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-foreground hover:bg-foreground/[0.03]"
-                    )}
-                  >
-                    {displayTagName(tag, g.type)}
-                    <span className={cn("text-xs font-medium", on ? "opacity-80" : "text-muted-foreground")}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <label
               htmlFor="category-search"
@@ -428,23 +404,6 @@ export function CategoryEventsBrowser({
             <Dropdown label="עיר" value={city} options={cityOptions} onChange={setCity} />
           )}
           <Dropdown label="חודש" value={month} options={monthOptions} onChange={setMonth} />
-          {tagGroups
-            .filter((g) => DROPDOWN_TYPES.has(g.type))
-            .map((g) => (
-              <Dropdown
-                key={g.type}
-                label={g.label}
-                value={selectedOfType(g.type)}
-                options={[
-                  { value: ALL, label: `כל ה${g.label}` },
-                  ...g.options.map(([tag, count]) => ({
-                    value: tag,
-                    label: `${displayTagName(tag, g.type)} (${count})`,
-                  })),
-                ]}
-                onChange={(v) => selectOfType(g.type, v)}
-              />
-            ))}
           <Dropdown
             label="מיון"
             value={sort}
@@ -453,40 +412,135 @@ export function CategoryEventsBrowser({
           />
         </div>
 
-        {/* Price slider - "סרגל מחיר" (redesign spec). ALL = handle parked at max. */}
-        {priceBounds && (
-          <div className="mt-4 max-w-sm" dir="ltr">
-            <p className="mb-1.5 text-right text-xs font-semibold text-muted-foreground" dir="rtl">
-              מחיר מקסימלי לנוסע:{" "}
-              <span className="font-bold text-foreground">
-                {maxPrice === ALL
-                  ? "ללא הגבלה"
-                  : `$${Number(maxPrice).toLocaleString("en-US")}`}
-              </span>
-            </p>
-            <Slider
-              min={priceBounds.min}
-              max={priceBounds.max}
-              step={100}
-              value={maxPrice === ALL ? priceBounds.max : Number(maxPrice)}
-              onChange={(v) => setMaxPrice(v >= priceBounds.max ? ALL : String(v))}
-              label={(v) => `$${v.toLocaleString("en-US")}`}
-              color="teal"
-              aria-label="מחיר מקסימלי"
-            />
+        {/* ---- חיפוש מתקדם: chips, long dropdowns, price slider, sold-out ---- */}
+        {advancedOpen && (
+          <div
+            id="advanced-filters"
+            className="mt-4 space-y-4 border-t border-border pt-4"
+          >
+            {tagGroups
+              .filter((g) => CHIP_TYPES.has(g.type))
+              .map((g) => (
+                <div key={g.type}>
+                  <p className="mb-2 text-xs font-semibold text-muted-foreground">{g.label}</p>
+                  <div
+                    className="flex flex-wrap gap-2"
+                    role="group"
+                    aria-label={`סינון לפי ${g.label}`}
+                  >
+                    {g.options.map(([tag, count]) => {
+                      const on = tags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          aria-pressed={on}
+                          className={cn(
+                            "flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors",
+                            on
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-foreground hover:bg-foreground/[0.03]"
+                          )}
+                        >
+                          {displayTagName(tag, g.type)}
+                          <span
+                            className={cn(
+                              "text-xs font-medium",
+                              on ? "opacity-80" : "text-muted-foreground"
+                            )}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+            {tagGroups.some((g) => DROPDOWN_TYPES.has(g.type)) && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {tagGroups
+                  .filter((g) => DROPDOWN_TYPES.has(g.type))
+                  .map((g) => (
+                    <Dropdown
+                      key={g.type}
+                      label={g.label}
+                      value={selectedOfType(g.type)}
+                      options={[
+                        { value: ALL, label: `כל ה${g.label}` },
+                        ...g.options.map(([tag, count]) => ({
+                          value: tag,
+                          label: `${displayTagName(tag, g.type)} (${count})`,
+                        })),
+                      ]}
+                      onChange={(v) => selectOfType(g.type, v)}
+                    />
+                  ))}
+              </div>
+            )}
+
+            {/* Price slider - "סרגל מחיר" (redesign spec). ALL = handle parked at max. */}
+            {priceBounds && (
+              <div className="max-w-sm" dir="ltr">
+                <p
+                  className="mb-1.5 text-right text-xs font-semibold text-muted-foreground"
+                  dir="rtl"
+                >
+                  מחיר מקסימלי לנוסע:{" "}
+                  <span className="font-bold text-foreground">
+                    {maxPrice === ALL
+                      ? "ללא הגבלה"
+                      : `$${Number(maxPrice).toLocaleString("en-US")}`}
+                  </span>
+                </p>
+                <Slider
+                  min={priceBounds.min}
+                  max={priceBounds.max}
+                  step={100}
+                  value={maxPrice === ALL ? priceBounds.max : Number(maxPrice)}
+                  onChange={(v) => setMaxPrice(v >= priceBounds.max ? ALL : String(v))}
+                  label={(v) => `$${v.toLocaleString("en-US")}`}
+                  color="teal"
+                  aria-label="מחיר מקסימלי"
+                />
+              </div>
+            )}
+
+            <label className="flex h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={hideSoldOut}
+                onChange={(e) => setHideSoldOut(e.target.checked)}
+                className="size-4 accent-[hsl(var(--primary))]"
+              />
+              רק חבילות זמינות
+            </label>
           </div>
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="flex h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={hideSoldOut}
-              onChange={(e) => setHideSoldOut(e.target.checked)}
-              className="size-4 accent-[hsl(var(--primary))]"
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            aria-expanded={advancedOpen}
+            aria-controls="advanced-filters"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-foreground/[0.03]"
+          >
+            <SlidersHorizontal className="size-4" aria-hidden />
+            חיפוש מתקדם
+            {advancedDirty && !advancedOpen && (
+              <span className="size-2 rounded-full bg-primary" aria-hidden />
+            )}
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                advancedOpen && "rotate-180"
+              )}
+              aria-hidden
             />
-            רק חבילות זמינות
-          </label>
+          </button>
           {dirty && (
             <button
               type="button"

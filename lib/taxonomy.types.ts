@@ -66,6 +66,13 @@ export type CategoryPageContent = {
   city_info?: CategoryFactCard;
   matchday?: CategoryFactCard[];
   honours?: string[];
+  /**
+   * Hand-picked "בולטים" events (ordered event ids, backoffice curation).
+   * Empty/missing = automatic ("בולט" tag, else soonest available).
+   */
+  featured_event_ids?: number[];
+  /** Hand-picked "חבילות מומלצות" (vertical hubs). Empty/missing = automatic. */
+  recommended_event_ids?: number[];
 };
 
 // Built in memory from a flat EventCategory[] for tree UI + traversal.

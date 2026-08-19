@@ -4,21 +4,19 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { Event } from "@/lib/app.types";
-import { EventCard } from "@/components/EventCard";
+import { HubEventCard } from "@/components/vertical-hub/HubEventCard";
 
 /**
- * Horizontal event-card row for the vertical hub pages (חבילות מומלצות).
- * Native RTL-aware overflow scrolling with arrow controls - same approach as
- * the homepage carousels (Mantine/Embla mis-scrolled in RTL, so plain
- * overflow + custom controls).
+ * Horizontal event-card row for the vertical hub pages (חבילות מומלצות) -
+ * the homepage card design in a native RTL-aware scroll row with arrow
+ * controls, same approach as the homepage carousels (Mantine/Embla
+ * mis-scrolled in RTL, so plain overflow + custom controls).
  */
 export const HubEventsCarousel = ({
   events,
-  showName = true,
   ariaLabel,
 }: {
   events: Event[];
-  showName?: boolean;
   ariaLabel: string;
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -67,9 +65,9 @@ export const HubEventsCarousel = ({
         {events.map((event) => (
           <div
             key={event.id}
-            className="w-[85%] shrink-0 snap-start sm:w-[300px]"
+            className="w-[85%] shrink-0 snap-start sm:w-[320px]"
           >
-            <EventCard event={event} showName={showName} />
+            <HubEventCard event={event} />
           </div>
         ))}
       </div>

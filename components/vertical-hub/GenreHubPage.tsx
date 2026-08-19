@@ -12,7 +12,7 @@ import ClientTracker from "@/components/ClientTracker";
 import { TrustSection } from "@/components/TrustSection";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
-import { EventCard } from "@/components/EventCard";
+import { HubEventCard } from "@/components/vertical-hub/HubEventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
 import { TeamCardsRow } from "@/components/vertical-hub/TeamCardsRow";
@@ -64,7 +64,12 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
   const hrefIndex = await buildPersonHrefIndex("artists", genreArtists);
 
   const available = events.filter((e) => !isEventSoldOut(e));
-  const featuredEvents = pickFeatured(available, tagsByEvent);
+  const featuredEvents = pickFeatured(
+    available,
+    tagsByEvent,
+    4,
+    content?.featured_event_ids,
+  );
 
   return (
     <>
@@ -106,11 +111,9 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
               <SectionHeading id="genre-featured-heading">
                 הופעות בולטות
               </SectionHeading>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
+              <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
                 {featuredEvents.map((event) => (
-                  <div key={event.id}>
-                    <EventCard event={event} showName />
-                  </div>
+                  <HubEventCard key={event.id} event={event} />
                 ))}
               </div>
             </section>

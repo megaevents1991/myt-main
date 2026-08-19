@@ -35,6 +35,10 @@ const SHAPES = [
   ...BASE_SHAPES.map((s) => ({ ...s, mirror: true })),
 ];
 
+/** The brand blob paths, for surfaces that draw their own blob (e.g. the
+ * hub cover's crest chips) - same pool the cards use, so colors/shapes match. */
+export const EVENT_ART_BLOB_SHAPES = SHAPES;
+
 // Photo backgrounds - shapeIndex 6-8, set explicitly in the backoffice picker
 // (the deterministic default only picks 0-5). The cut-out sits on the photo
 // instead of a neon blob. Files duplicated in the backoffice public folder.

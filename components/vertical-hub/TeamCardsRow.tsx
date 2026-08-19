@@ -6,8 +6,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { FootballTeam } from "@/lib/app.types";
-import { EventArt } from "@/components/ui/EventArt";
-import { isTightCrest } from "@/lib/eventArt";
+import { EventArt, EVENT_ART_BLOB_SHAPES } from "@/components/ui/EventArt";
+import { EVENT_ART_COLORS, getEventArt, isTightCrest } from "@/lib/eventArt";
 
 /**
  * League-page teams carousel - the homepage compact team card (blob art +
@@ -82,6 +82,17 @@ export const TeamCardsRow = ({
           const tightCrest = isTightCrest(team.fields.artImageUrl);
           const crestScale = team.fields.artImageScale ?? 0.65;
           const crestOffsetY = team.fields.artImageOffsetY ?? -12;
+          // Compact chips: the person's brand blob (homepage card art) behind
+          // the crest/cut-out. Photo shape indices (6+) fold back into the
+          // blob pool - chips never render a photo background.
+          const chipArt = getEventArt(team.sys.id, {
+            colorIndex: team.fields.artColorIndex ?? undefined,
+            shapeIndex: team.fields.artShapeIndex ?? undefined,
+          });
+          const chipShape =
+            EVENT_ART_BLOB_SHAPES[chipArt.shapeIndex % EVENT_ART_BLOB_SHAPES.length];
+          const chipColor =
+            EVENT_ART_COLORS[chipArt.colorIndex % EVENT_ART_COLORS.length];
           return (
             <Link
               key={team.sys.id}
@@ -93,19 +104,39 @@ export const TeamCardsRow = ({
               {compact ? (
                 <div className="flex flex-col items-center gap-2.5 py-1">
                   <div
-                    className="relative flex size-24 items-center justify-center rounded-full ring-1 ring-white/10 transition-all duration-300 group-hover:-translate-y-1 group-hover:ring-secondary/70 group-hover:shadow-[0_14px_44px_-10px_hsl(var(--brand-mint)/0.55)] sm:size-32"
+                    className="relative flex size-24 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/10 transition-all duration-300 group-hover:-translate-y-1 group-hover:ring-secondary/70 group-hover:shadow-[0_14px_44px_-10px_hsl(var(--brand-mint)/0.55)] sm:size-32"
                     style={{
                       background:
                         "radial-gradient(65% 65% at 50% 38%, hsl(150 60% 62% / 0.16), hsl(160 55% 20% / 0.4) 72%, transparent 100%)",
                     }}
                   >
+                    {/* Brand blob behind the crest - same color/shape pool as
+                        the person's homepage card, so the chip echoes it. */}
+                    {team.fields.artImageUrl && (
+                      <svg
+                        className="absolute inset-0 h-full w-full opacity-80"
+                        viewBox={`0 0 ${chipShape.w} ${chipShape.h}`}
+                        preserveAspectRatio="xMidYMid slice"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d={chipShape.d}
+                          fill={`hsl(${chipColor})`}
+                          transform={
+                            chipShape.mirror
+                              ? `translate(${chipShape.w},0) scale(-1,1)`
+                              : undefined
+                          }
+                        />
+                      </svg>
+                    )}
                     {team.fields.artImageUrl ? (
                       <Image
                         src={team.fields.artImageUrl}
                         alt={`סמל ${team.fields.name || ""}`}
                         fill
                         sizes="(max-width: 640px) 30vw, 128px"
-                        className="object-contain p-4 drop-shadow-[0_6px_14px_rgba(0,0,0,0.55)] transition-transform duration-300 group-hover:scale-105 sm:p-5"
+                        className="z-[1] object-contain p-4 drop-shadow-[0_6px_14px_rgba(0,0,0,0.55)] transition-transform duration-300 group-hover:scale-105 sm:p-5"
                       />
                     ) : team.fields.heroBanner?.fields?.file?.url ? (
                       <Image
@@ -113,7 +144,7 @@ export const TeamCardsRow = ({
                         alt={`תמונה של ${team.fields.name || ""}`}
                         fill
                         sizes="(max-width: 640px) 30vw, 128px"
-                        className="rounded-full object-cover"
+                        className="z-[1] rounded-full object-cover"
                       />
                     ) : null}
                   </div>

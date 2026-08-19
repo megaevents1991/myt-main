@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import type { FootballTeam } from "@/lib/app.types";
-import { EventCard } from "@/components/EventCard";
+import { HubEventCard } from "@/components/vertical-hub/HubEventCard";
 import type { CategoryPageContent, EventCategory } from "@/lib/taxonomy.types";
 import { getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
@@ -62,14 +62,33 @@ const featuredFirst = <T extends { sys: { id: string } }>(featured: T[], all: T[
   return [...featured, ...all.filter((x) => !seen.has(x.sys.id))];
 };
 
-/** Events carrying a "featured" tag (משחקים בולטים); falls back to the
- * soonest `cap` available events while nothing is tagged yet. Shared by the
- * vertical hub and the league pages. */
+/** Resolve a backoffice-curated id list against the available pool, keeping
+ * the curated order. Ids that are sold out / gone just drop. */
+export function pickCurated<T extends { id: number }>(
+  available: T[],
+  manualIds: number[] | null | undefined,
+  cap: number,
+): T[] {
+  if (!manualIds?.length) return [];
+  const byId = new Map(available.map((e) => [e.id, e]));
+  return manualIds
+    .map((id) => byId.get(id))
+    .filter((e): e is T => e != null)
+    .slice(0, cap);
+}
+
+/** Events for the בולטים section. Priority: the backoffice's hand-picked list
+ * (page_content.featured_event_ids) → events carrying a "featured" tag →
+ * the soonest `cap` available events. Shared by the vertical hub and the
+ * league/genre/destination pages. */
 export function pickFeatured<T extends { id: number }>(
   available: T[],
   tagsByEvent: Record<number, { name: string }[]>,
   cap = 4,
+  manualIds?: number[] | null,
 ): T[] {
+  const curated = pickCurated(available, manualIds, 8);
+  if (curated.length) return curated;
   const tagged = available.filter((e) =>
     (tagsByEvent[e.id] ?? []).some((t) => FEATURED_TAG_NAMES.has(normalizeTag(t.name))),
   );
@@ -159,14 +178,17 @@ export async function VerticalHubPage({
 
   const available = events.filter((e) => !isEventSoldOut(e));
 
-  // משחקים בולטים: backoffice tags an event "בולט"; soonest-4 fallback until then.
-  const featuredEvents = pickFeatured(available, tagsByEvent);
+  // משחקים בולטים: backoffice hand-pick (page_content) → "בולט" tag → soonest-4.
+  const featuredEvents = pickFeatured(available, tagsByEvent, 4, content.featured_event_ids);
 
-  // חבילות מומלצות: the rest of the available pool, so the two sections don't
-  // open with the exact same cards.
+  // חבילות מומלצות: backoffice hand-pick first; otherwise the rest of the
+  // available pool, so the two sections don't open with the exact same cards.
   const featuredIds = new Set(featuredEvents.map((e) => e.id));
   const recommendedPool = available.filter((e) => !featuredIds.has(e.id));
-  const recommended = (recommendedPool.length ? recommendedPool : available).slice(0, 12);
+  const curatedRecommended = pickCurated(available, content.recommended_event_ids, 12);
+  const recommended = curatedRecommended.length
+    ? curatedRecommended
+    : (recommendedPool.length ? recommendedPool : available).slice(0, 12);
 
   // League tiles - the node's child categories (minus the CMS teams hub, which
   // the hero carousel already covers). A pure hub child (e.g. the "ליגות" node
@@ -329,14 +351,12 @@ export async function VerticalHubPage({
                 {cfg.featuredHeading}
               </SectionHeading>
               <div
-                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4"
                 role="list"
                 aria-label={cfg.featuredHeading}
               >
                 {featuredEvents.map((event) => (
-                  <div key={event.id}>
-                    <EventCard event={event} showName />
-                  </div>
+                  <HubEventCard key={event.id} event={event} />
                 ))}
               </div>
             </section>

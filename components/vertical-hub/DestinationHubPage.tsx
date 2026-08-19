@@ -18,7 +18,7 @@ import ClientTracker from "@/components/ClientTracker";
 import { TrustSection } from "@/components/TrustSection";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
-import { EventCard } from "@/components/EventCard";
+import { HubEventCard } from "@/components/vertical-hub/HubEventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
 import { TeamCardsRow } from "@/components/vertical-hub/TeamCardsRow";
@@ -97,7 +97,12 @@ export async function DestinationHubPage({
   const hrefById = Object.fromEntries([...teamHrefs, ...artistHrefs]);
 
   const available = events.filter((e) => !isEventSoldOut(e));
-  const featuredEvents = pickFeatured(available, tagsByEvent);
+  const featuredEvents = pickFeatured(
+    available,
+    tagsByEvent,
+    4,
+    content?.featured_event_ids,
+  );
 
   // יעדים נוספים - the sibling cities, for the closing carousel.
   const otherCities = all
@@ -140,11 +145,9 @@ export async function DestinationHubPage({
               <SectionHeading id="destination-featured-heading">
                 אירועים בולטים ב{category.name}
               </SectionHeading>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
+              <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
                 {featuredEvents.map((event) => (
-                  <div key={event.id}>
-                    <EventCard event={event} showName />
-                  </div>
+                  <HubEventCard key={event.id} event={event} />
                 ))}
               </div>
             </section>
