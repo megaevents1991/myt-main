@@ -4,6 +4,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
 import { getTotalPersons } from "@/lib/price.utils";
 import {
+  getAddedBagsTotalUsd,
   priceOutsidePackBoundaries,
   shortenAirlineName,
 } from "./order-review.utils";
@@ -166,6 +167,17 @@ export function useOrderVars() {
       return 0;
     }
 
+    // Paid baggage upsell ("הוסף מזוודה"/"הוסף טרולי") chosen on the
+    // summary - a single flat addition to the package total, same treatment
+    // as any other over-base pick (flightPriceAddition/hotelPriceAddition
+    // below), so it flows through affiliate/coupon %, ILS conversion and the
+    // agent-commission base exactly like the rest of the total does. Gated
+    // on !flightSkipped so a stale added_bags on a since-skipped flight can
+    // never leak into the total.
+    const addedBagsUsd = flightSkipped
+      ? 0
+      : getAddedBagsTotalUsd(selectedFlight?.added_bags);
+
     // ── Ticket-only override (wins over everything) ────────────────────────
     // Customer skipped BOTH flight and hotel and the event has a ticket-only
     // markup set → price is exactly ticket cost + that markup. No global
@@ -173,7 +185,8 @@ export function useOrderVars() {
     if (isTicketOnlyOverride(event, flightSkipped, skipHotel)) {
       const ticketOnly = getTicketOnlyMarkup(event) ?? 0;
       return Math.ceil(
-        ((eventTicket.price || 0) + ticketOnly) * numberOfEventTickets,
+        ((eventTicket.price || 0) + ticketOnly) * numberOfEventTickets +
+          addedBagsUsd,
       );
     }
 
@@ -201,7 +214,8 @@ export function useOrderVars() {
       return Math.ceil(
         ((eventTicket.price || 0) + perTicketMarkup) * numberOfEventTickets +
           flightComponent +
-          hotelComponent
+          hotelComponent +
+          addedBagsUsd
       );
     }
     // ── Legacy pricing (no component markups) - unchanged ──────────────────
@@ -227,7 +241,8 @@ export function useOrderVars() {
         flightComponent +
         hotelComponent +
         skipFlightMarkup +
-        hotelSkipAddition
+        hotelSkipAddition +
+        addedBagsUsd
     );
   }, [
     eventTicket,

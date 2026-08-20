@@ -8,6 +8,8 @@ import { FlightSummary } from "./FlightSummary";
 import dayjs from "dayjs";
 import { cn } from "@/lib/utils";
 import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
+import type { BreakfastUpgrade } from "../order-review.utils";
+import type { BagPricingOptions } from "../hooks/useBagPricing";
 
 export const Review = ({
   agentCommission,
@@ -25,6 +27,12 @@ export const Review = ({
   skipHotel,
   flightSkipped,
   onEdit,
+  breakfastUpgrade,
+  onAddBreakfast,
+  bagOptions,
+  onToggleCheckedBag,
+  onToggleCabinBag,
+  showUpsells,
 }: {
   agentCommission: number;
   /** Any signed agent code - commission may be 0. Falls back to commission>0. */
@@ -46,6 +54,18 @@ export const Review = ({
   flightSkipped?: boolean;
   /** Navigate back to an order step (1 ticket / 2 flight / 3 hotel) to modify. */
   onEdit?: (step: 1 | 2 | 3) => void;
+  /** Included-info + paid upsells (breakfast rate-swap, baggage ancillary) -
+   *  see OrderReview.tsx for how these are computed/wired. Every upsell prop
+   *  is optional so Review keeps working wherever it's used without them. */
+  breakfastUpgrade?: BreakfastUpgrade | null;
+  onAddBreakfast?: () => void;
+  bagOptions?: BagPricingOptions;
+  onToggleCheckedBag?: () => void;
+  onToggleCabinBag?: () => void;
+  /** Interactive upsells only in the live, editable order flow - off on the
+   *  hold-recovery/pay-link page (price already locked) and on an
+   *  agent-locked prepared package. Included-info always shows regardless. */
+  showUpsells?: boolean;
 }) => {
   const items = useMemo(
     () => [
@@ -84,6 +104,9 @@ export const Review = ({
             isAgent={isAgent}
             hotelPriceAddition={hotelPriceAddition}
             totalGuests={totalGuests}
+            breakfastUpgrade={breakfastUpgrade}
+            showUpsells={showUpsells}
+            onAddBreakfast={onAddBreakfast}
           />
         ),
       }] : []),
@@ -102,6 +125,10 @@ export const Review = ({
             airlineFullName={airlineFullName}
             flightPriceAddition={flightPriceAddition}
             selectedFlight={selectedFlight}
+            bagOptions={bagOptions}
+            showUpsells={showUpsells}
+            onToggleCheckedBag={onToggleCheckedBag}
+            onToggleCabinBag={onToggleCabinBag}
           />
         ),
       }] : []),
@@ -120,6 +147,12 @@ export const Review = ({
       selectedFlight,
       skipHotel,
       flightSkipped,
+      breakfastUpgrade,
+      onAddBreakfast,
+      bagOptions,
+      showUpsells,
+      onToggleCheckedBag,
+      onToggleCabinBag,
     ]
   );
 

@@ -119,6 +119,30 @@ export type Flight = {
   // (before customer-facing normalization).
   offlineId?: number;
   offlineRawPrice?: number;
+  // Baggage upsell ("הוסף מזוודה") the customer/agent added on the order
+  // summary - priced live via Amadeus Flight Offers Pricing (include=bags,
+  // app/api/flights/bag-pricing) against this SAME offer. Rides along with
+  // the rest of the Flight object into reservations.flight_order_info (JSON
+  // column, no migration) so ops can fulfill it and so a resumed
+  // payment_link hold shows/keeps charging for it. null = explicitly
+  // removed by a toggle; undefined = never added. One bag/traveler, v1.
+  added_bags?: AddedBagsInfo | null;
+};
+
+export type AddedBagsInfo = {
+  /** Always 1 in v1 - one checked bag per traveler. */
+  checked_qty_per_pax: number;
+  unit_price_usd: number;
+  /** Checked-bag component total only (unit_price_usd * numOfTravelers) -
+   *  see order-review.utils.ts's getAddedBagsTotalUsd for the combined
+   *  (checked + cabin) figure that actually enters the price. */
+  total_usd: number;
+  /** Optional cabin/trolley ("טרולי") add-on, priced + toggled independently. */
+  cabin?: {
+    qty_per_pax: number;
+    unit_price_usd: number;
+    total_usd: number;
+  };
 };
 
 export type FlightSegment = {

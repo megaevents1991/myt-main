@@ -33,9 +33,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
-import { type Fields, validate } from "./order-review.utils";
+import { type Fields, findBreakfastUpgrade, validate } from "./order-review.utils";
 import { LoaderWrapper } from "@/components/ui/loader";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AgentMode from "@/components/AgentMode";
 import { SavePackageLink } from "@/components/SavePackageLink";
 import type { PartnerSession } from "@/lib/partner-auth/session";
@@ -50,6 +50,8 @@ import { Review } from "./OrderSummary/Review";
 import { PriceSummary } from "./OrderSummary/PriceSummary";
 import { ButtonSummary } from "./OrderSummary/ButtonSummary";
 import { MobileHeader } from "./OrderSummary/MobileHeader";
+import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+import { useBagPricing } from "./hooks/useBagPricing";
 
 const TermsError = () => (
   <p className="text-sm text-red-500 text-center mt-1">
@@ -72,6 +74,8 @@ export default function OrderReview({
   const {
     flight: selectedFlight,
     hotel: selectedHotel,
+    setFlight,
+    setHotel,
     eventTicket,
     event,
     personLink,
@@ -86,7 +90,65 @@ export default function OrderReview({
   // Agent-locked prepared package - the summary's edit affordances go inert.
   const { packageLocked, setPackageLocked } = useContext(OrderContext);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isMobile } = useIsMobile();
+  // Agent quote link (?quote&qsig): the offer's content and total, verified
+  // server-side by signature (/api/quote-offer). While valid and the customer
+  // hasn't edited the composition, the AGENT'S total is the price - dearer
+  // than site price sends the delta to the agent, cheaper comes out of their
+  // commission (the doc's rule); the confirm-order floor, already relaxed by
+  // that partner's commission, still backstops gross underpricing.
+  // Declared here (ahead of finalPurchasePrice, its original spot) so
+  // quotePriceActive already exists for showUpsells below.
+  type QuoteOffer = {
+    id: number;
+    title: string | null;
+    customer_name: string | null;
+    line_items: { label: string; qty: number; unit_price: number }[];
+    total_usd: number;
+    valid_until: string | null;
+    expired: boolean;
+    /** Agent-session-only: the margin priced above the system baseline -
+     *  the API omits it for the customer opening the same link. */
+    agent_uplift_usd?: number;
+  };
+  const [quoteOffer, setQuoteOffer] = useState<QuoteOffer | null>(null);
+  // Editing any component invalidates the quoted composition - price reverts
+  // to live site pricing (the offer card stays visible for reference).
+  const [quotePriceDropped, setQuotePriceDropped] = useState(false);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const quoteId = params.get("quote");
+      const qsig = params.get("qsig");
+      if (!quoteId || !qsig) return;
+      fetch(`/api/quote-offer?quote=${encodeURIComponent(quoteId)}&qsig=${encodeURIComponent(qsig)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && typeof data.total_usd === "number") setQuoteOffer(data);
+        })
+        .catch(() => {});
+    } catch {
+      /* malformed URL - plain flow */
+    }
+  }, []);
+  const quotePriceActive =
+    !!quoteOffer && !quoteOffer.expired && !quotePriceDropped && quoteOffer.total_usd > 0;
+  // Hold-recovery/pay-link page (?orderId=, same param useHandleExistingOrder
+  // reads to prefill this screen - app/hooks/useHandleExistingOrder.ts): the
+  // price is already locked, so included-info still shows but no NEW upsell
+  // is offered - only an already-chosen add-on (persisted on the resumed
+  // flight/hotel) stays visible. A locked prepared package is the same
+  // "may not change the composition" posture the עריכה/+להוספה affordances
+  // already respect below.
+  const isResumedOrder = !!searchParams.get("orderId");
+  // Invariant: a quoted price covers the composition AS OFFERED - no paid
+  // add-ons may ride on top of a pinned quote total (quotePriceActive), same
+  // "may not change what's charged" posture as a resumed/locked order.
+  // Included-info display stays visible regardless - only the upsell
+  // BUTTONS are gated by showUpsells.
+  const showUpsells = !isResumedOrder && !packageLocked && !quotePriceActive;
+  const { hotelsData } = useContext(HotelFetchContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
   const {
@@ -153,6 +215,111 @@ export default function OrderReview({
     getAffiliateDiscountTotalUsd,
     getAffiliateDiscountPerTicketUsd,
   } = useOrderVars();
+
+  // ── Included-info + paid upsells (breakfast rate-swap, baggage ancillary) ──
+  // Breakfast: the SAME room's cheapest breakfast-included sibling rate,
+  // found in the hotel search state already sitting in HotelFetchContext
+  // (the serp the customer picked selectedHotel from) - a plain rate swap,
+  // no new fetch, no schema change. Returns null (button hides) whenever
+  // that state doesn't actually back selectedHotel - offline hotel, or a
+  // hotelsData search for different dates (package-prefilled / resumed
+  // order / a later date change) - see order-review.utils.ts for the exact
+  // guards.
+  const breakfastUpgrade = useMemo(
+    () => findBreakfastUpgrade(selectedHotel, hotelsData),
+    [selectedHotel, hotelsData]
+  );
+  const handleAddBreakfast = useCallback(() => {
+    if (!selectedHotel || !breakfastUpgrade) return;
+    setHotel({
+      ...selectedHotel,
+      rate: breakfastUpgrade.rate,
+      price:
+        breakfastUpgrade.rate.payment_options?.payment_types?.[0]
+          ?.show_amount ?? selectedHotel.price,
+    });
+  }, [selectedHotel, breakfastUpgrade, setHotel]);
+
+  // Baggage: live Amadeus Flight Offers Pricing (include=bags) for the
+  // selected offer - one call per flight id, skipped entirely when upsells
+  // are off (resumed order / locked package) or the flight has no real
+  // Amadeus offer (offline, skipped).
+  const { bagOptions } = useBagPricing(
+    selectedFlight,
+    showUpsells && !flightSkipped
+  );
+  const handleToggleCheckedBag = useCallback(() => {
+    if (!selectedFlight) return;
+    if ((selectedFlight.added_bags?.checked_qty_per_pax ?? 0) > 0) {
+      // Remove: keep a still-chosen cabin add-on, drop the checked one.
+      setFlight((prev) => {
+        if (!prev) return prev;
+        if (prev.added_bags?.cabin) {
+          return {
+            ...prev,
+            added_bags: {
+              checked_qty_per_pax: 0,
+              unit_price_usd: 0,
+              total_usd: 0,
+              cabin: prev.added_bags.cabin,
+            },
+          };
+        }
+        return { ...prev, added_bags: null };
+      });
+      return;
+    }
+    if (!bagOptions?.checked) return;
+    const qty = selectedFlight.numOfTravelers || 1;
+    const { unitPriceUsd } = bagOptions.checked;
+    setFlight((prev) =>
+      prev
+        ? {
+            ...prev,
+            added_bags: {
+              ...prev.added_bags,
+              checked_qty_per_pax: 1,
+              unit_price_usd: unitPriceUsd,
+              total_usd: unitPriceUsd * qty,
+            },
+          }
+        : prev
+    );
+  }, [selectedFlight, bagOptions, setFlight]);
+  const handleToggleCabinBag = useCallback(() => {
+    if (!selectedFlight) return;
+    if (selectedFlight.added_bags?.cabin) {
+      // Remove: keep a still-chosen checked add-on, drop the cabin one - or
+      // clear added_bags entirely once nothing is left on it.
+      setFlight((prev) => {
+        if (!prev?.added_bags) return prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { cabin: _cabin, ...rest } = prev.added_bags;
+        return {
+          ...prev,
+          added_bags: rest.checked_qty_per_pax > 0 ? rest : null,
+        };
+      });
+      return;
+    }
+    if (!bagOptions?.cabin) return;
+    const qty = selectedFlight.numOfTravelers || 1;
+    const { unitPriceUsd } = bagOptions.cabin;
+    setFlight((prev) =>
+      prev
+        ? {
+            ...prev,
+            added_bags: {
+              checked_qty_per_pax: 0,
+              unit_price_usd: 0,
+              total_usd: 0,
+              ...prev.added_bags,
+              cabin: { qty_per_pax: 1, unit_price_usd: unitPriceUsd, total_usd: unitPriceUsd * qty },
+            },
+          }
+        : prev
+    );
+  }, [selectedFlight, bagOptions, setFlight]);
 
   // Coupon (customer-entered code). Validated by /api/coupons/validate and
   // re-validated server-side in confirm-order. Never stacks with the
@@ -267,47 +434,9 @@ export default function OrderReview({
     [couponDiscountUsd, getAffiliateDiscountTotalUsd, affDiscount]
   );
 
-  // Agent quote link (?quote&qsig): the offer's content and total, verified
-  // server-side by signature (/api/quote-offer). While valid and the customer
-  // hasn't edited the composition, the AGENT'S total is the price - dearer
-  // than site price sends the delta to the agent, cheaper comes out of their
-  // commission (the doc's rule); the confirm-order floor, already relaxed by
-  // that partner's commission, still backstops gross underpricing.
-  type QuoteOffer = {
-    id: number;
-    title: string | null;
-    customer_name: string | null;
-    line_items: { label: string; qty: number; unit_price: number }[];
-    total_usd: number;
-    valid_until: string | null;
-    expired: boolean;
-    /** Agent-session-only: the margin priced above the system baseline -
-     *  the API omits it for the customer opening the same link. */
-    agent_uplift_usd?: number;
-  };
-  const [quoteOffer, setQuoteOffer] = useState<QuoteOffer | null>(null);
-  // Editing any component invalidates the quoted composition - price reverts
-  // to live site pricing (the offer card stays visible for reference).
-  const [quotePriceDropped, setQuotePriceDropped] = useState(false);
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const quoteId = params.get("quote");
-      const qsig = params.get("qsig");
-      if (!quoteId || !qsig) return;
-      fetch(`/api/quote-offer?quote=${encodeURIComponent(quoteId)}&qsig=${encodeURIComponent(qsig)}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data && typeof data.total_usd === "number") setQuoteOffer(data);
-        })
-        .catch(() => {});
-    } catch {
-      /* malformed URL - plain flow */
-    }
-  }, []);
-  const quotePriceActive =
-    !!quoteOffer && !quoteOffer.expired && !quotePriceDropped && quoteOffer.total_usd > 0;
-
+  // quoteOffer / quotePriceDropped / quotePriceActive are now declared above
+  // (near isResumedOrder/showUpsells) - showUpsells needs quotePriceActive
+  // before this point in the component.
   const finalPurchasePrice = useMemo(
     () =>
       quotePriceActive && quoteOffer
@@ -1470,6 +1599,12 @@ export default function OrderReview({
                   eventTicketPriceAddition={eventTicketPriceAddition}
                   skipHotel={skipHotel}
                   flightSkipped={flightSkipped}
+                  breakfastUpgrade={breakfastUpgrade}
+                  onAddBreakfast={handleAddBreakfast}
+                  bagOptions={bagOptions}
+                  onToggleCheckedBag={handleToggleCheckedBag}
+                  onToggleCabinBag={handleToggleCabinBag}
+                  showUpsells={showUpsells}
                   // Back-navigation from the summary: each section jumps to its
                   // step (1 ticket / 2 flight / 3 hotel); via onEditStep the
                   // flow returns HERE right after the edited step is confirmed.
