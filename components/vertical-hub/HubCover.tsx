@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { TrustBadges } from "@/components/ui/TrustBadges";
@@ -20,9 +19,6 @@ export function HubCover({
   title,
   titleAccent,
   lede,
-  stats,
-  primaryCta,
-  secondaryCta,
   strip,
   motif = "pitch",
 }: {
@@ -32,10 +28,6 @@ export function HubCover({
   /** Second headline line, rendered in the brand mint. */
   titleAccent?: string;
   lede?: ReactNode;
-  /** Fixture-board strip: what is actually bookable right now. */
-  stats?: { value: string; label: string }[];
-  primaryCta: { href: string; label: string };
-  secondaryCta?: { href: string; label: string };
   /** Full-width row (crest chips) rendered INSIDE the cover, on the same
    * floodlit ground - no seam between hero and carousel. */
   strip?: ReactNode;
@@ -106,42 +98,10 @@ export function HubCover({
           </div>
         )}
 
-        {/* Fixture board - hairline-divided counts, tabular so they don't jitter. */}
-        {stats && stats.length > 0 && (
-          <dl className="mx-auto mt-7 flex max-w-lg items-stretch justify-center divide-x divide-x-reverse divide-main-foreground/15">
-            {stats.map((s) => (
-              <div key={s.label} className="flex-1 px-4">
-                <dt className="sr-only">{s.label}</dt>
-                <dd>
-                  <span className="block font-display text-2xl font-bold tabular-nums md:text-3xl">
-                    {s.value}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-main-foreground/60">
-                    {s.label}
-                  </span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        )}
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href={primaryCta.href}
-            className="rounded-full bg-secondary px-7 py-3 font-bold text-main shadow-[0_10px_30px_-10px_hsl(var(--brand-mint)/0.8)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-main"
-          >
-            {primaryCta.label}
-          </Link>
-          {secondaryCta && (
-            <Link
-              href={secondaryCta.href}
-              className="rounded-full border border-main-foreground/25 px-7 py-3 font-bold transition-colors hover:bg-main-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-            >
-              {secondaryCta.label}
-            </Link>
-          )}
-        </div>
-
+        {/* No fixture-board counts and no CTA buttons here - the creative
+            review (ROAD MAP V1, 2026-08-20) removed both from every hub
+            cover: the numbers read as filler and the buttons duplicated the
+            menu. The lede + trust line carry the cover. */}
         <TrustBadges className="mt-8 justify-center text-main-foreground/70" />
       </div>
 

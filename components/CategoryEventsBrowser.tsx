@@ -282,6 +282,8 @@ export function CategoryEventsBrowser({
   tagsByEvent = {},
   headingId,
   hideCityFacet = false,
+  searchPlaceholder = "קבוצה, אמן או עיר",
+  hideTagTypes = [],
 }: {
   events: Event[];
   /** Feed tag chips per event id - the sharpest slice of a category. */
@@ -289,6 +291,12 @@ export function CategoryEventsBrowser({
   headingId?: string;
   /** On a city page every event shares the city - drop the redundant filter. */
   hideCityFacet?: boolean;
+  /** Per-page wording (creative 2026-08-20): football "קבוצה, ליגה או עיר",
+   * music "אמן או עיר", destination "קבוצה או אמן". */
+  searchPlaceholder?: string;
+  /** Facet groups that make no sense on this page (e.g. the genre dropdown
+   * ON a genre page, artists on a league page). */
+  hideTagTypes?: TagType[];
 }) {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState(ALL);
@@ -372,7 +380,7 @@ export function CategoryEventsBrowser({
       });
     });
     const coversAll = Math.max(1, Math.floor(events.length * 0.95));
-    return TAG_GROUPS.map((g) => ({
+    return TAG_GROUPS.filter((g) => !hideTagTypes.includes(g.type)).map((g) => ({
       ...g,
       options: [...counts.entries()]
         .filter(([, v]) => v.type === g.type && v.n > 1 && v.n < coversAll)
@@ -380,7 +388,8 @@ export function CategoryEventsBrowser({
         .slice(0, DROPDOWN_TYPES.has(g.type) ? DROPDOWN_CAP : GROUP_CAP)
         .map(([name, v]) => [name, v.n] as [string, number]),
     })).filter((g) => g.options.length > 0);
-  }, [events, tagsByEvent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hideTagTypes is a per-page constant
+  }, [events, tagsByEvent, hideTagTypes.join(",")]);
 
   /** Tag name → type, for grouping the current chip selection when filtering. */
   const typeByName = useMemo(() => {
@@ -525,7 +534,7 @@ export function CategoryEventsBrowser({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="קבוצה, אמן או עיר"
+                placeholder={searchPlaceholder}
                 className={cn(CONTROL, "pr-9 font-medium placeholder:font-normal")}
               />
             </div>

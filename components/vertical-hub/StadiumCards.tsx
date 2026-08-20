@@ -43,7 +43,11 @@ export const StadiumCards = ({
       className={
         variant === "carousel"
           ? "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          : // A single card (team page) fills its cell - the 3-col grid used
+            // to squeeze it to a third of the row (creative: "לסדר בנייח").
+            stadiums.length > 1
+            ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            : "grid h-full gap-4"
       }
     >
       {stadiums.map((s) => (

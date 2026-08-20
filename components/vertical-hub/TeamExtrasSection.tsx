@@ -35,7 +35,9 @@ export const TeamExtrasSection = ({
     >
       <SectionHeading id="team-extras-heading">המשחק, העיר והאצטדיון</SectionHeading>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Desktop: stadium card takes one column full-height, city + tips
+          share the remaining two - no dead space (creative: "לסדר בנייח"). */}
+      <div className="grid gap-4 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
         {/* Stadium - reuses the hub's stadium card design. */}
         {stadium && (
           <div className="lg:row-span-2">
@@ -45,7 +47,7 @@ export const TeamExtrasSection = ({
 
         {/* City info */}
         {city && (
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-card lg:col-span-2">
             <h3 className="mb-2 flex items-center gap-2 font-display text-lg font-bold text-foreground">
               <MapPin className="size-5 text-primary" aria-hidden />
               {city.title}
@@ -56,7 +58,7 @@ export const TeamExtrasSection = ({
 
         {/* Matchday tips */}
         {(matchday?.length ?? 0) > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-card lg:col-span-2">
             <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-bold text-foreground">
               <Info className="size-5 text-primary" aria-hidden />
               טיפים ליום המשחק

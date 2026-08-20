@@ -8,6 +8,8 @@
  * still renders - it just skips the text/facts sections.
  */
 
+import type { CategoryStadium } from "@/lib/taxonomy.types";
+
 export type LeagueFact = { title: string; text: string };
 
 export type LeagueContent = {
@@ -17,6 +19,8 @@ export type LeagueContent = {
   facts?: LeagueFact[];
   /** Gallery image URLs - empty until the creative team supplies them. */
   gallery?: string[];
+  /** "אצטדיוני הליגה" cards (creative 2026-08-20: PL like the football page). */
+  stadiums?: CategoryStadium[];
 };
 
 export const LEAGUE_CONTENT: Record<string, LeagueContent> = {
@@ -42,6 +46,40 @@ export const LEAGUE_CONTENT: Record<string, LeagueContent> = {
       },
     ],
     gallery: [],
+    stadiums: [
+      {
+        name: "אולד טראפורד",
+        city: "מנצ'סטר, אנגליה",
+        capacity: "כ-74,000 מקומות",
+        teams: "הבית של מנצ'סטר יונייטד",
+        description:
+          '"תיאטרון החלומות" - האצטדיון האגדי של יונייטד ומהגדולים באנגליה. חוויית משחק עוצמתית, מוזיאון מועדון מומלץ וסיורי אצטדיון בימים ללא משחק.',
+      },
+      {
+        name: "אנפילד",
+        city: "ליברפול, אנגליה",
+        capacity: "כ-61,000 מקומות",
+        teams: "הבית של ליברפול",
+        description:
+          "היציע המפורסם בעולם - ה-Kop - ושירת You'll Never Walk Alone לפני שריקת הפתיחה הם חוויה שמצדיקה את הטיסה לבדה. אווירה שאין לה מתחרות באירופה.",
+      },
+      {
+        name: "אצטדיון האמירויות",
+        city: "לונדון, אנגליה",
+        capacity: "כ-60,000 מקומות",
+        teams: "הבית של ארסנל",
+        description:
+          "הבית של ארסנל מאז 2006 - אצטדיון מודרני ומרשים בצפון לונדון, במרחק הליכה מהייבורי ההיסטורי. סיורי אצטדיון ומוזיאון המועדון פועלים כל השבוע.",
+      },
+      {
+        name: "אצטדיון טוטנהאם הוטספר",
+        city: "לונדון, אנגליה",
+        capacity: "כ-62,000 מקומות",
+        teams: "הבית של טוטנהאם",
+        description:
+          "האצטדיון המודרני והמרשים באנגליה - נפתח ב-2019 עם יציע דרומי חד-שכבתי ענק, מסעדות ומתחמי בילוי בתוך האצטדיון עצמו. נוח במיוחד למשפחות.",
+      },
+    ],
   },
   "champions-league": {
     intro:

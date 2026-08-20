@@ -12,16 +12,20 @@ import { cn } from "@/lib/utils";
 
 type NavLink = { href: string; label: string; children?: NavLink[] };
 
-// Always present, whatever the category tree looks like. /football and
-// /artists are the performer hubs (teams and artists) - a sibling pair, so
-// neither is dropped when categories take the lead.
+// Always present, whatever the category tree looks like. The creative menu
+// spec (2026-08-20) trimmed the bar to: כדורגל | הופעות | יעדים | שאלות
+// נפוצות | אודות - קבוצות/אומנים live inside the dropdowns now.
 const staticNavLinks: NavLink[] = [
-  // /c/ paths directly - no LEGACY-ROUTE redirect hop.
-  { href: "/c/football/teams", label: "קבוצות" },
-  { href: "/c/music/artists", label: "אומנים" },
   { href: "/faq", label: "שאלות נפוצות" },
-  { href: "/about", label: "אודותינו" },
+  { href: "/about", label: "אודות" },
 ];
+
+// Nav-only relabels for category roots whose DB name is too long for the bar
+// ("הופעות מוזיקה" → "הופעות"). Keyed by href so a rename in the backoffice
+// doesn't silently break the override.
+const NAV_LABEL_OVERRIDES: Record<string, string> = {
+  "/c/music": "הופעות",
+};
 
 // Shared round icon-button styling for the header action cluster.
 const iconBtn =
@@ -41,7 +45,13 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  *   the structure people navigate; a new root category appears here on its own.
  */
 export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
-  const navLinks: NavLink[] = [...categories, ...staticNavLinks];
+  const navLinks: NavLink[] = [
+    ...categories.map((c) => ({
+      ...c,
+      label: NAV_LABEL_OVERRIDES[c.href] ?? c.label,
+    })),
+    ...staticNavLinks,
+  ];
   const [menuOpen, setMenuOpen] = useState(false);
   // Mobile accordion: hrefs of tree nodes whose children are expanded. All
   // collapsed by default so the menu opens short; cleared again on close.

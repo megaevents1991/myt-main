@@ -96,7 +96,13 @@ export async function ArtistCmsPage({ artist }: { artist: FootballTeam }) {
       </section>
 
       <ArtistVideos videos={videos} />
-      <ExperienceCarousel images={gallery} />
+      {/* Distinct title - the default one repeated TrustSection's "בידיים
+          בטוחות" line on the same page (creative 2026-08-20). */}
+      <ExperienceCarousel
+        images={gallery}
+        title="רגעים מההופעות"
+        subtitle="לקוחות מגה איבנטס במופעים הגדולים בעולם"
+      />
       <TrustSection />
       <FAQ />
     </>

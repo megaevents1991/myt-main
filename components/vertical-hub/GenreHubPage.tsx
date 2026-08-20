@@ -4,7 +4,6 @@ import { getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { getAllArtists } from "@/lib/artists";
 import { buildPersonHrefIndex } from "@/lib/cmsTwin";
 import { clubNamesMatchAnyScript } from "@/lib/eventNameMatch";
-import { isEventSoldOut } from "@/lib/events/price";
 
 import { HubCover } from "@/components/vertical-hub/HubCover";
 import { HeaderTitle } from "@/components/HeaderTitle";
@@ -12,11 +11,9 @@ import ClientTracker from "@/components/ClientTracker";
 import { TrustSection } from "@/components/TrustSection";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
-import { HubEventCard } from "@/components/vertical-hub/HubEventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
 import { TeamCardsRow } from "@/components/vertical-hub/TeamCardsRow";
-import { pickFeatured } from "@/components/vertical-hub/VerticalHubPage";
 import { GENRE_CONTENT } from "@/components/vertical-hub/genreContent";
 
 /**
@@ -42,8 +39,12 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
     intro: local?.intro,
     facts: local?.facts,
     gallery: local?.gallery,
+    // An empty backoffice array must not shadow bundled content - only a
+    // field someone actually filled wins.
     ...(Object.fromEntries(
-      Object.entries(category.page_content ?? {}).filter(([, v]) => v != null),
+      Object.entries(category.page_content ?? {}).filter(
+        ([, v]) => v != null && (!Array.isArray(v) || v.length > 0),
+      ),
     ) as typeof category.page_content),
   };
 
@@ -63,14 +64,6 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
   });
   const hrefIndex = await buildPersonHrefIndex("artists", genreArtists);
 
-  const available = events.filter((e) => !isEventSoldOut(e));
-  const featuredEvents = pickFeatured(
-    available,
-    tagsByEvent,
-    4,
-    content?.featured_event_ids,
-  );
-
   return (
     <>
       <ClientTracker />
@@ -86,12 +79,6 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
               `כל הופעות ה${category.name} שאפשר להזמין אצלנו - כרטיס, טיסה ומלון בחבילה אחת.`}
           </p>
         }
-        stats={[
-          { value: String(available.length), label: "חבילות זמינות" },
-          { value: String(genreArtists.length), label: "אמנים" },
-        ]}
-        primaryCta={{ href: "#genre-all-heading", label: "לכל ההופעות" }}
-        secondaryCta={{ href: "/c/music", label: "לעמוד המוזיקה" }}
         strip={
           genreArtists.length > 0 ? (
             <TeamCardsRow
@@ -105,21 +92,9 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
 
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
         <div className="container mx-auto space-y-12 lg:space-y-16">
-          {/* ---- הופעות בולטות ---- */}
-          {featuredEvents.length > 0 && (
-            <section aria-labelledby="genre-featured-heading">
-              <SectionHeading id="genre-featured-heading">
-                הופעות בולטות
-              </SectionHeading>
-              <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
-                {featuredEvents.map((event) => (
-                  <HubEventCard key={event.id} event={event} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ---- All shows + filters (facets scoped to this genre's pool) ---- */}
+          {/* ---- All shows + filters, straight away - no בולטות section
+               (creative 2026-08-20: "בלי הופעות בולטות ישר כל ההופעות").
+               The genre facet is hidden - this page IS the genre. ---- */}
           <section aria-labelledby="genre-all-heading">
             <SectionHeading id="genre-all-heading">כל ההופעות</SectionHeading>
             {events.length > 0 ? (
@@ -127,6 +102,8 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
                 events={events}
                 tagsByEvent={tagsByEvent}
                 headingId="genre-all-heading"
+                searchPlaceholder="אמן או עיר"
+                hideTagTypes={["team", "league", "genre"]}
               />
             ) : (
               <EmptyState
