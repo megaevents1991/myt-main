@@ -46,6 +46,21 @@ type OrderConfirmationData = {
   isPaid: PaymentStatus;
   partnerTrackingCode: string | null;
   eventId: number;
+  /** The reservation's own referring code, independent of partnerTrackingCode
+   *  above (which is the URL's promoCode - "dummy_code"/null for every
+   *  agent-created booking, see confirm-order/route.ts). Needed to carry
+   *  attribution into the payment-link recovery URL. */
+  affPartnerTrackingCode: string | null;
+  /** partner_settlement_method === "payment_link" - agent-facing copy swap:
+   *  this IS the "success state" for "לינק תשלום ללקוח" (OrderReview.tsx),
+   *  reusing this page's existing recovery-link section rather than a new one. */
+  isPaymentLink: boolean;
+  /** This reservation's own primary utm_content (e.g. "ag-<slug>" for a
+   *  specific office agent), carried into the recovery link so the customer's
+   *  eventual payment resolves back to the SAME agent - see the GET route's
+   *  own comment (app/api/confirm-order/[id]/route.ts). Only ever populated
+   *  for a payment-link hold. */
+  primaryUtmContent: string | null;
 };
 
 export default function ConfirmationPage() {
@@ -175,6 +190,20 @@ export default function ConfirmationPage() {
           isPaid,
           partnerTrackingCode: promoCode === "dummy_code" ? null : promoCode,
           eventId: orderData.event_id,
+          affPartnerTrackingCode: orderData.aff_partner_tracking_code || null,
+          // partner_settlement_method/primary_utm_content aren't modeled on
+          // the shared OrderData type (server-only additions, see
+          // confirm-order/[id]/route.ts) - narrow cast at this one read site
+          // rather than widening the shared type.
+          isPaymentLink:
+            (
+              orderData as OrderData & {
+                partner_settlement_method?: string | null;
+              }
+            ).partner_settlement_method === "payment_link",
+          primaryUtmContent:
+            (orderData as OrderData & { primary_utm_content?: string | null })
+              .primary_utm_content ?? null,
         };
         setOrderConfirmationData(orderDataToShow);
 
@@ -223,20 +252,47 @@ export default function ConfirmationPage() {
 
   const getOrderRecoveryUrl = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/order/${orderConfirmationData.eventId}?orderId=${orderId}`;
+    const url = new URL(`${baseUrl}/order/${orderConfirmationData.eventId}`);
+    url.searchParams.set("orderId", String(orderId));
+    // Payment-link holds are agent-created: the customer almost always opens
+    // this link on a DIFFERENT device than the agent's, so there is no
+    // localStorage/cookie carrying the agent's tracking code there yet.
+    // Carrying utm_source on the link itself is how attribution already
+    // works everywhere else in the app (lib/agent-links.ts partnerLink) - the
+    // existing UTM-capture pipeline (middleware -> myt_utm cookie ->
+    // confirm-order) picks it up on first load with no other change needed.
+    if (orderConfirmationData.isPaymentLink && orderConfirmationData.affPartnerTrackingCode) {
+      url.searchParams.set("utm_source", orderConfirmationData.affPartnerTrackingCode);
+      // Relay this hold's OWN primary utm_content verbatim (e.g. an office
+      // agent's "ag-<slug>" tag) so the customer's eventual payment - a brand
+      // NEW reservation, see confirm-order/route.ts - still resolves back to
+      // the SAME specific agent via utm_touches, not just the shared office
+      // code above. Absent for a solo partner / a hold created with no prior
+      // per-agent link - fine, notifyAgentOfPaymentLinkPaid's partners.email
+      // fallback (lib/agent-notify.ts) covers that case.
+      if (orderConfirmationData.primaryUtmContent) {
+        url.searchParams.set("utm_content", orderConfirmationData.primaryUtmContent);
+      }
+    }
+    return url.toString();
   };
 
   const OrderRecoverySection = () => {
     const recoveryUrl = getOrderRecoveryUrl();
-    
+    const isPaymentLink = orderConfirmationData.isPaymentLink;
+
     return (
       <div className="bg-secondary/5 border border-secondary/20 rounded-lg p-4 mb-4">
         <div className="flex items-center gap-2 mb-3" dir="rtl">
           <Link2 className="h-5 w-5 text-secondary" />
-          <h3 className="font-semibold text-secondary">קישור להשלמת ההזמנה</h3>
+          <h3 className="font-semibold text-secondary">
+            {isPaymentLink ? "קישור לתשלום עבור הלקוח" : "קישור להשלמת ההזמנה"}
+          </h3>
         </div>
         <p className="text-sm text-secondary/80 mb-3" dir="rtl">
-          שמרו את הקישור כדי לגשת להזמנה שלכם ב-24 שעות הקרובות ולשלם במועד מאוחר יותר אם תרצו
+          {isPaymentLink
+            ? "שלחו ללקוח את הקישור הבא לתשלום מאובטח - ההזמנה שמורה ותקפה ל-24 השעות הקרובות."
+            : "שמרו את הקישור כדי לגשת להזמנה שלכם ב-24 שעות הקרובות ולשלם במועד מאוחר יותר אם תרצו"}
         </p>
         <div 
           className={`relative cursor-pointer rounded-lg border-2 transition-all duration-200 ${
@@ -271,12 +327,12 @@ export default function ConfirmationPage() {
           )}
         </div>
         <div className="mt-3 flex justify-center">
-          <Button 
+          <Button
             onClick={() => window.open(recoveryUrl, '_blank')}
             className="bg-secondary hover:bg-secondary/90 text-white px-4 py-2 text-sm"
             dir="rtl"
           >
-            עבור להשלמת ההזמנה
+            {isPaymentLink ? "תצוגה מקדימה של הקישור" : "עבור להשלמת ההזמנה"}
           </Button>
         </div>
       </div>

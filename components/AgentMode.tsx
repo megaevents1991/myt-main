@@ -1,4 +1,4 @@
-import { ToggleLeft, ToggleRight, CreditCard, Wallet, TicketCheck } from "lucide-react";
+import { ToggleLeft, ToggleRight, Wallet, TicketCheck, Link2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SettlementMethod } from "@/lib/app.types";
 
@@ -18,6 +18,9 @@ interface AgentModeProps {
    *  charges, incl. the commission-netted agent-card figure. */
   finalPurchasePriceUsd?: number;
   settlementError?: string | null;
+  /** 24h hold mechanism is available for this event - gates "לינק תשלום
+   *  ללקוח", which IS a hold under the hood (see confirm-order/utils.ts). */
+  holdAllowed?: boolean;
 }
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -29,6 +32,7 @@ function SettlementMethodPicker({
   voucherAllowed,
   voucherBalanceUsd = 0,
   finalPurchasePriceUsd = 0,
+  holdAllowed = true,
 }: {
   settlementMethod: SettlementMethod;
   onSettlementMethodChange: (method: SettlementMethod) => void;
@@ -36,6 +40,7 @@ function SettlementMethodPicker({
   voucherAllowed: boolean;
   voucherBalanceUsd?: number;
   finalPurchasePriceUsd?: number;
+  holdAllowed?: boolean;
 }) {
   const full = finalPurchasePriceUsd;
   const netAgent = agentCommissionUsd > 0 ? Math.max(0, full - agentCommissionUsd) : full;
@@ -53,12 +58,18 @@ function SettlementMethodPicker({
     show: boolean;
   }> = [
     {
-      value: "customer_card",
-      icon: CreditCard,
-      label: "אשראי הלקוח",
+      // "אשראי הלקוח" (customer_card) was removed from here entirely
+      // (2026-08-20, legal - an agent must never type the CUSTOMER's card).
+      // "payment_link" is its replacement: same no-agent-typed-card intent,
+      // but the customer pays on their OWN device via a link instead of this
+      // screen. Under the hood it's a 24Save-style hold (confirm-order/
+      // utils.ts resolveAgentSettlement), so it only shows when holds are.
+      value: "payment_link",
+      icon: Link2,
+      label: "לינק תשלום ללקוח",
       amount: full > 0 ? <span>יחויב: <b dir="ltr">{usd(full)}</b></span> : "מחיר מלא",
-      hint: "הלקוח מזין את פרטי האשראי שלו - כרגיל.",
-      show: true,
+      hint: "ההזמנה תישמר 24 שעות; שלחו ללקוח לינק לתשלום מאובטח.",
+      show: holdAllowed,
     },
     {
       value: "agent_card",
@@ -175,6 +186,7 @@ function AgentMode({
   voucherBalanceUsd,
   finalPurchasePriceUsd,
   settlementError,
+  holdAllowed = true,
 }: AgentModeProps) {
   return (
     <div
@@ -218,6 +230,7 @@ function AgentMode({
             voucherAllowed={voucherAllowed}
             voucherBalanceUsd={voucherBalanceUsd}
             finalPurchasePriceUsd={finalPurchasePriceUsd}
+            holdAllowed={holdAllowed}
           />
           {settlementError && (
             <p className="text-sm font-medium text-red-600 dark:text-red-400" role="alert">

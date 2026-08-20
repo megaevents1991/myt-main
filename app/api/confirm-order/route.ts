@@ -160,11 +160,29 @@ export async function POST(req: Request) {
     );
   }
 
+  // Resolved once, here, so both resolveAgentSettlement's resumed_order_id
+  // binding below AND the reservation insert further down read the exact
+  // same value - hoisted up from the reservationPayload literal it used to
+  // live in alone. Influencer-protected attribution wins: the myt_utm
+  // cookie's primary is immune to later campaign clicks (utm_source=google
+  // used to overwrite the influencer's code in localStorage and steal the
+  // credit). Falls back to the legacy client-sent value, then coupon
+  // attribution - today's chain.
+  const resolvedAffPartnerTrackingCode =
+    influencerPrimaryCode(utmCookie) ||
+    validatedData.aff_partner_tracking_code ||
+    coupon?.partner_tracking_code ||
+    "";
+
   // Agent booking-on-behalf: decides whether this order is charged in full,
   // netted for the agent's own card, or settled by voucher (no charge at
   // all). Must run after the floor check above so a voucher/agent_card order
   // still has to clear it on the full price the client submitted.
-  const settlement = await resolveAgentSettlement(validatedData, payNow);
+  const settlement = await resolveAgentSettlement(
+    validatedData,
+    payNow,
+    resolvedAffPartnerTrackingCode,
+  );
   if (!settlement.ok) {
     console.error("Rejected order - agent settlement:", settlement.reason);
     return NextResponse.json(
@@ -185,15 +203,9 @@ export async function POST(req: Request) {
     user_shown_price: validatedData.user_shown_price,
     event_id: validatedData.event_id,
     payment_info: payNow ? {} : null,
-    // Influencer-protected attribution wins: the myt_utm cookie's primary is
-    // immune to later campaign clicks (utm_source=google used to overwrite the
-    // influencer's code in localStorage and steal the credit). Falls back to
-    // the legacy client-sent value, then coupon attribution - today's chain.
-    aff_partner_tracking_code:
-      influencerPrimaryCode(utmCookie) ||
-      validatedData.aff_partner_tracking_code ||
-      coupon?.partner_tracking_code ||
-      "",
+    // Resolved once, above (before resolveAgentSettlement) - see the
+    // comment there.
+    aff_partner_tracking_code: resolvedAffPartnerTrackingCode,
     // Always the FULL, undiscounted total - see resolveAgentSettlement.
     final_purchase_price_ils: settlement.finalPurchasePriceIls,
     exchange_rate_usd_ils_100: validatedData.exchange_rate_usd_ils_100,

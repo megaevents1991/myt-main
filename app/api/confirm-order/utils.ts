@@ -77,6 +77,9 @@ export const validateOrderData = async (
       coupon_base_total_usd: yup.number().nullable(),
       source_share_token: yup.string().nullable(),
       quote_id: yup.number().nullable(),
+      // Not a DB column - see resolveAgentSettlement's payment-link
+      // propagation branch just above where it's read.
+      resumed_order_id: yup.number().nullable(),
     });
 
     await dynamicOrderSchema.validate(data);
@@ -240,6 +243,23 @@ export const validatePurchasePriceFloor = async (
 };
 
 /**
+ * The status this app writes for a price hold (route.ts:
+ * `status: onlySave ? "24Save" : "Pending"`). Duplicated locally rather than
+ * imported from lib/agent-reservations-actions.ts's own HOLD_STATUS: that
+ * file starts with "use server", and a "use server" file may only export
+ * async functions - exporting a plain string const from it fails the build.
+ */
+const HOLD_STATUS = "24Save";
+
+/**
+ * Recovery window for a resumed hold - same 25h cutoff already enforced by
+ * /api/find-order and shown to partners via agent-reservations-actions.ts's
+ * HOLD_WINDOW_MS (25 advertised-as-24 hours, not importable here for the
+ * same "use server" reason as HOLD_STATUS above).
+ */
+const RESUMED_HOLD_WINDOW_MS = 25 * 60 * 60 * 1000;
+
+/**
  * Decides how an agent-entered booking actually gets charged.
  *
  * `final_purchase_price_ils` always stays the FULL, undiscounted total -
@@ -256,10 +276,18 @@ export const validatePurchasePriceFloor = async (
  * partner data - never from anything the client claims about its own
  * discount. A request with no settlement_method (every non-agent-assisted
  * order) short-circuits immediately without even querying `partners`.
+ *
+ * @param resolvedAffPartnerTrackingCode the SAME attribution code route.ts
+ *   is about to write onto this submission's own reservation row
+ *   (influencer-cookie priority > client value > coupon partner code, see
+ *   route.ts) - used only to bind resumed_order_id inheritance below to a
+ *   hold that shares this submission's attribution, never to look up a
+ *   partner or gate anything else.
  */
 export const resolveAgentSettlement = async (
   data: OrderData,
   payNow: boolean,
+  resolvedAffPartnerTrackingCode: string,
 ): Promise<
   | {
       ok: true;
@@ -276,6 +304,95 @@ export const resolveAgentSettlement = async (
     finalPurchasePriceIls: Number(data.final_purchase_price_ils),
     agentCardDiscountIls: 0,
   };
+
+  // A payment-link hold's customer completes payment from THEIR OWN browser
+  // (never in agent mode), so THIS request never claims settlement_method
+  // itself - resuming a hold and paying always inserts a fresh reservation
+  // (no update-in-place; see /api/find-order + OrderReview's handleSubmit),
+  // so without this, the row that actually reaches Paid would never carry
+  // any marker at all. Instead the request names the hold it was resumed
+  // from (resumed_order_id, read from ?orderId= client-side the same way
+  // source_share_token reads ?pkg= - see OrderReview.tsx) and the marker is
+  // inherited from THAT row's OWN, already-verified partner_settlement_method
+  // - a fresh server read, never the client's word for what it is. This does
+  // NOT require requireAgent(): the live agent session was already checked
+  // once, at the moment the referenced hold itself was created below.
+  if (!requested) {
+    const resumedOrderId = Number(
+      (data as { resumed_order_id?: number | null }).resumed_order_id,
+    );
+    if (Number.isFinite(resumedOrderId) && resumedOrderId > 0) {
+      try {
+        const { data: resumedFrom } = await supabase
+          .from("reservations")
+          .select(
+            "partner_settlement_method,aff_partner_tracking_code,created_at,status",
+          )
+          .eq("id", resumedOrderId)
+          .maybeSingle();
+        const row = resumedFrom as
+          | {
+              partner_settlement_method?: string | null;
+              aff_partner_tracking_code?: string | null;
+              created_at?: string | null;
+              status?: string | null;
+            }
+          | null;
+
+        // Bind inheritance to THIS submission, not just "some row that once
+        // was a payment_link hold" - all four must hold, or a plain order
+        // (or a mismatched reservation link) could inherit a stranger's
+        // agent marker:
+        // 1. the row really is a payment_link hold's own verified marker;
+        const isPaymentLinkHold = row?.partner_settlement_method === "payment_link";
+        // 2. its attribution is a real code (empty string doesn't count)
+        //    and matches the code THIS submission is about to be attributed
+        //    to - not the raw, unresolved client value;
+        const sameAttribution =
+          !!row?.aff_partner_tracking_code &&
+          row?.aff_partner_tracking_code === resolvedAffPartnerTrackingCode;
+        // 3. still inside the 25h recovery window /api/find-order enforces
+        //    for the same hold;
+        const createdAtMs = row?.created_at
+          ? new Date(row.created_at).getTime()
+          : NaN;
+        const withinHoldWindow =
+          Number.isFinite(createdAtMs) &&
+          Date.now() - createdAtMs <= RESUMED_HOLD_WINDOW_MS;
+        // 4. the hold hasn't since moved on (paid, cancelled, ...) - only
+        //    the exact hold status is inheritable.
+        const stillOnHold = row?.status === HOLD_STATUS;
+
+        if (isPaymentLinkHold && sameAttribution && withinHoldWindow && stillOnHold) {
+          const fullPriceIls = Number(data.final_purchase_price_ils);
+          return {
+            ok: true,
+            method: "payment_link",
+            finalPurchasePriceIls: Number.isFinite(fullPriceIls)
+              ? fullPriceIls
+              : 0,
+            agentCardDiscountIls: 0,
+          };
+        }
+        if (row) {
+          // A real row was found but doesn't bind to this submission -
+          // never silently inherit it. Behave like a plain order (same
+          // fail-open posture as the rest of this function) rather than
+          // rejecting the checkout over a mismatched marker.
+          console.warn(
+            "resolveAgentSettlement: resumed_order_id did not bind (attribution/window/status mismatch) - skipping inheritance",
+          );
+        }
+      } catch (e) {
+        // Never let a lookup failure block a normal order - fall through to
+        // the generic fallback below, same posture as everything else here.
+        console.error(
+          "resolveAgentSettlement: resumed_order_id lookup failed:",
+          e instanceof Error ? e.message : String(e),
+        );
+      }
+    }
+  }
 
   if (!requested || !data.aff_partner_tracking_code) return fallback;
 
@@ -301,14 +418,19 @@ export const resolveAgentSettlement = async (
     if (partner.type !== "agent" || partner.is_active === false)
       return fallback;
 
-    // agent_card/voucher grant something a plain requester shouldn't be able
-    // to get just by knowing (or guessing - checkCode's commission field is
-    // openly readable) someone else's tracking code: a real charge reduction,
-    // or skipping the card entirely. Require the request to actually carry
-    // THAT agent's signed-in /agent session, not merely name their code.
-    // customer_card asks for nothing beyond today's default, so it isn't
-    // gated - anyone can already trigger that path today.
-    if (requested === "voucher" || requested === "agent_card") {
+    // agent_card/voucher/payment_link grant something a plain requester
+    // shouldn't be able to get just by knowing (or guessing - checkCode's
+    // commission field is openly readable) someone else's tracking code: a
+    // real charge reduction, skipping the card entirely, or (payment_link) an
+    // attributed hold that later emails "the creating agent". Require the
+    // request to actually carry THAT agent's signed-in /agent session, not
+    // merely name their code. customer_card asks for nothing beyond today's
+    // default, so it isn't gated - anyone can already trigger that path today.
+    if (
+      requested === "voucher" ||
+      requested === "agent_card" ||
+      requested === "payment_link"
+    ) {
       // requireAgent() re-reads the live profile (not just the cookie), the
       // same rigor requirePartner() exists for - an agent deactivated
       // mid-session must lose this the moment it happens, not up to a week
@@ -349,6 +471,21 @@ export const resolveAgentSettlement = async (
       return {
         ok: true,
         method: "voucher",
+        finalPurchasePriceIls: fullPriceIls,
+        agentCardDiscountIls: 0,
+      };
+    }
+
+    if (requested === "payment_link") {
+      // "לינק תשלום ללקוח": the agent never touches a card at all - the
+      // reservation is created exactly like a 24Save hold (client always
+      // sends onlySave=true/payNow=false for this method, see OrderReview's
+      // handleSubmit override) and the CUSTOMER later pays their own card
+      // through the copyable recovery link. Full price, no discount - the
+      // agent's commission is unaffected by how the customer chooses to pay.
+      return {
+        ok: true,
+        method: "payment_link",
         finalPurchasePriceIls: fullPriceIls,
         agentCardDiscountIls: 0,
       };
@@ -456,7 +593,23 @@ export const resolveAgentSettlement = async (
       };
     }
 
-    // "customer_card" - explicit, unchanged full price.
+    // "customer_card" - explicit, unchanged full price. Still accepted for
+    // genuine legacy/non-agent submissions (old clients, historical data),
+    // which is why this branch stays ungated by requireAgent() like every
+    // other path here - "anyone can already trigger that path today" (see
+    // the comment above). But an agent-context order must NEVER settle on
+    // the CUSTOMER's own card (legal) - even via stale client state. The
+    // agent-mode picker removed this option entirely (2026-08-20), yet a
+    // stale/expired /agent session's cached form can still resubmit
+    // settlement_method: "customer_card" while marking is_agent_booking:
+    // true, so reject on that server-trusted flag instead of relying on the
+    // picker having never offered it.
+    if (data.is_agent_booking === true) {
+      return {
+        ok: false,
+        reason: "customer_card settlement is not allowed for agent bookings",
+      };
+    }
     return {
       ok: true,
       method: "customer_card",

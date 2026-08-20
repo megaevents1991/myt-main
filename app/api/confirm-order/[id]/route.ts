@@ -20,7 +20,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("reservations")
       .select(
-        "event_id, event_order_info, flight_order_info, hotel_order_info, booking_reference, aff_partner_tracking_code, final_purchase_price_ils, payment_info",
+        "event_id, event_order_info, flight_order_info, hotel_order_info, booking_reference, aff_partner_tracking_code, final_purchase_price_ils, payment_info, partner_settlement_method",
       )
       .eq("id", id)
       .limit(1)
@@ -34,9 +34,31 @@ export async function GET(
     const isPaid =
       !!data.payment_info && Object.keys(data.payment_info).length > 0;
 
+    // Payment-link hold only: the confirmation page carries this reservation's
+    // OWN primary utm_content (if any) forward onto the copyable recovery
+    // link, so a customer paying through it produces a NEW reservation (see
+    // confirm-order/route.ts - resuming a hold always inserts fresh, never
+    // updates in place) that still resolves back to the SAME specific agent
+    // via utm_touches - exactly the pipeline notifyAgentOfPaymentLinkPaid
+    // (lib/agent-notify.ts) reads from. Whatever this value is (an "ag-<slug>"
+    // office-agent tag, unrelated marketing content, or absent) is carried
+    // through verbatim - this route never interprets it, only relays it.
+    let primaryUtmContent: string | null = null;
+    if (data.partner_settlement_method === "payment_link") {
+      const { data: touch } = await supabase
+        .from("utm_touches")
+        .select("utm_content")
+        .eq("reservation_id", id)
+        .eq("position", 0)
+        .maybeSingle();
+      primaryUtmContent =
+        (touch as { utm_content?: string | null } | null)?.utm_content ?? null;
+    }
+
     return NextResponse.json({
       ...data,
       payment_info: isPaid ? { paid: true } : {},
+      primary_utm_content: primaryUtmContent,
     });
   } catch (error) {
     console.error("Error fetching order data:", error);

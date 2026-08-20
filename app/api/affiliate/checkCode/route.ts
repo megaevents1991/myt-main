@@ -65,7 +65,13 @@ export async function GET(request: Request) {
           .from("user_profiles")
           .select("logo_url, display_name")
           .eq("partner_tracking_code", data.partner_tracking_code)
-          .in("role", ["agent", "affiliate"])
+          .in("role", ["agent", "affiliate", "office_manager"])
+          // A tracking code can now carry several portal users (office
+          // agents feature) - order+limit(1) prefers the manager row
+          // (alphabetical desc puts "office_manager" first) instead of
+          // erroring on more-than-one-row like a bare maybeSingle() would.
+          .order("role", { ascending: false })
+          .limit(1)
           .maybeSingle();
         partnerLogoUrl =
           (profile as { logo_url?: string | null } | null)?.logo_url ?? null;

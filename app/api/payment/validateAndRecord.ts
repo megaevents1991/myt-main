@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { sendUserEmail } from "@/app/api/sendUserEmail";
 import { OrderData } from "@/lib/app.types";
 import { buildTxQueryXML } from "./[id]/[txId]/[promoCode]/buildTxQueryXML";
+import { notifyAgentOfPaymentLinkPaid } from "@/lib/agent-notify";
 
 const url = process.env.NEXT_SECRET_CG_GATEWAY_URL || "";
 const terminalNumber = process.env.NEXT_SECRET_CG_TERMINAL || "";
@@ -19,10 +20,14 @@ const mid = process.env.NEXT_SECRET_CG_MID || "";
  *    used to abort this route before the update, so real payments sat as
  *    Pending until the backoffice flagged them Lost.)
  * 2. Only then send the customer email, wrapped so its failure is non-fatal.
+ *    A reservation created via "לינק תשלום ללקוח" (partner_settlement_method
+ *    === "payment_link") also notifies the agent who created it here, right
+ *    alongside the customer email - see lib/agent-notify.ts.
  *
  * Idempotent: safe to call from both the CreditGuard server callback and the
  * client confirmation page - the second call rewrites the same values and the
- * `confirmation_email_sent` flag stops a duplicate email.
+ * `confirmation_email_sent` flag stops a duplicate email (and, the same way,
+ * a duplicate agent notification).
  */
 export async function validateAndRecordPayment({
   orderId,
@@ -105,6 +110,24 @@ export async function validateAndRecordPayment({
         partnerTrackingCode: promoCode,
         orderId: parseInt(orderId),
       });
+
+      // Agent notification for "לינק תשלום ללקוח" holds - only on an actual
+      // Paid transition, and only nested inside the SAME confirmation_email_sent
+      // gate as the customer email above, so a second call to this function
+      // (CreditGuard's server callback AND the client confirmation page both
+      // call validateAndRecordPayment for every payment, see this file's own
+      // doc comment) never double-sends it either. Never throws past its own
+      // boundary - see lib/agent-notify.ts.
+      // partner_settlement_method isn't modeled on the shared OrderData type
+      // (server-only marker) - narrow cast at this one read site rather than
+      // widening the shared type.
+      if (
+        isSuccess &&
+        (orderData as OrderData & { partner_settlement_method?: string | null })
+          .partner_settlement_method === "payment_link"
+      ) {
+        await notifyAgentOfPaymentLinkPaid(parseInt(orderId), orderData);
+      }
 
       await supabase
         .from("reservations")

@@ -3,6 +3,7 @@ import {
   verifyPassword,
   getPartnerProfile,
   PARTNER_SESSION_COOKIE,
+  toEffectiveRole,
 } from "@/lib/partner-auth";
 import {
   createPartnerSession,
@@ -83,6 +84,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // office_manager is the backoffice's manager-of-agents role; on main it IS
+  // an agent - map it before minting the session, or a direct office_manager
+  // login would encode role "office_manager" into the cookie and
+  // verifyPartnerSession would then reject it on the very next request
+  // (PARTNER_ROLES only allows "agent" | "affiliate").
+  const effectiveRole = toEffectiveRole(profile.role);
+
   // Signing throws when NEXT_SECRET_SESSION_SECRET is unset. Unwrapped it
   // becomes a 500 that the form reports as "login failed", sending everyone
   // to check their password over a missing env var.
@@ -91,7 +99,7 @@ export async function POST(request: Request) {
     cookieValue = await createPartnerSession({
       sub: profile.id,
       email: profile.email,
-      role: profile.role,
+      role: effectiveRole,
       partner_code: profile.partner_tracking_code,
       display_name: profile.display_name,
     });
@@ -105,7 +113,7 @@ export async function POST(request: Request) {
 
   const response = NextResponse.json({
     ok: true,
-    role: profile.role,
+    role: effectiveRole,
     display_name: profile.display_name,
   });
   response.cookies.set(PARTNER_SESSION_COOKIE, cookieValue, {

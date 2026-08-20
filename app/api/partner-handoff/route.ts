@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getPartnerProfile,
   PARTNER_SESSION_COOKIE,
+  toEffectiveRole,
   verifyPartnerSession,
 } from "@/lib/partner-auth";
 import {
@@ -66,9 +67,18 @@ export async function GET(request: Request) {
   if (
     !profile ||
     !profile.is_active ||
-    profile.role !== session.role ||
     profile.partner_tracking_code !== session.partner_code
   ) {
+    return NextResponse.redirect(redirectTo);
+  }
+  // office_manager is the backoffice's manager-of-agents role; on main it IS
+  // an agent - the backoffice mints this handoff token with role "agent" for
+  // one (see the backoffice's lib/auth/partner-handoff.ts), so compare (and
+  // below, mint the main-side session) through the same effective-role
+  // mapping rather than the raw DB role, or every office_manager handoff
+  // would reject right here.
+  const effectiveRole = toEffectiveRole(profile.role);
+  if (effectiveRole !== session.role) {
     return NextResponse.redirect(redirectTo);
   }
 
@@ -77,7 +87,7 @@ export async function GET(request: Request) {
     cookieValue = await createPartnerSession({
       sub: profile.id,
       email: profile.email,
-      role: profile.role,
+      role: effectiveRole,
       partner_code: profile.partner_tracking_code,
       display_name: profile.display_name,
     });

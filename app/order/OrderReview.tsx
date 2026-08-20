@@ -199,15 +199,25 @@ export default function OrderReview({
   // How this booking gets settled when an agent is entering it on the
   // customer's behalf. Only ever read server-side when isAgentMode is on -
   // see the settlement_method branch in confirm-order/utils.ts. Defaults to
-  // customer_card, which is exactly today's behavior for every other order.
+  // payment_link (never customer_card - "אשראי הלקוח" was removed from the
+  // agent settlement UI 2026-08-20, legal: an agent must never type the
+  // CUSTOMER's card - so an agent who never touches the picker must not
+  // silently fall into that removed path either). Irrelevant for every other
+  // order: non-agent submissions always send settlement_method: undefined
+  // regardless of this state's value (see updatedFormData below).
   const [settlementMethod, setSettlementMethod] =
-    useState<SettlementMethod>("customer_card");
+    useState<SettlementMethod>("payment_link");
   const [settlementError, setSettlementError] = useState<string | null>(null);
   // Agent picked voucher settlement: every CTA takes the no-card path, so the
   // "talk to a representative" secondary button relabels to what it actually
   // does now - submit the order against the voucher.
   const voucherSettlementActive =
     isAgentMode && isAgentVisitor && settlementMethod === "voucher";
+  // Agent picked "לינק תשלום ללקוח": every CTA creates a 24Save-style hold
+  // instead of charging any card - see the handleSubmit override below and
+  // resolveAgentSettlement's payment_link branch (confirm-order/utils.ts).
+  const paymentLinkSettlementActive =
+    isAgentMode && isAgentVisitor && settlementMethod === "payment_link";
 
   const trackAnalyticsEvent = (event: import("@/lib/app.types").Event) => {
     try {
@@ -819,9 +829,10 @@ export default function OrderReview({
     }
 
     if (!response.ok) {
-      // Agent picked agent_card/voucher without (or no longer) holding a real
-      // /agent session for that code - surface it distinctly so the UI can
-      // fall back to customer_card instead of the generic failure modal.
+      // Agent picked agent_card/voucher/payment_link without (or no longer)
+      // holding a real /agent session for that code - surface it distinctly
+      // so the UI can fall back to payment_link instead of the generic
+      // failure modal.
       if (response.status === 400) {
         const body = await response.json().catch(() => null);
         if (body?.error === "SETTLEMENT_NOT_ALLOWED") {
@@ -874,6 +885,19 @@ export default function OrderReview({
     if (isVoucherSettlement) {
       payNow = false;
       onlySave = false;
+    }
+    // "לינק תשלום ללקוח": whichever CTA was clicked, this is always a 24Save
+    // hold and never a direct charge - the customer pays on their own device
+    // through the recovery link, never on this screen. Forced regardless of
+    // the clicked button's own payNow/onlySave args, same as voucher above
+    // (which is exactly why the secondary CTAs - "talk to a rep" would
+    // otherwise silently create a hold too - hide while this is active; see
+    // the 3 CTA render blocks below).
+    const isPaymentLinkSettlement =
+      isAgentMode && isAgentVisitor && settlementMethod === "payment_link";
+    if (isPaymentLinkSettlement) {
+      payNow = false;
+      onlySave = true;
     }
     // Safety: if hold is not allowed for this event, force onlySave off
     if (onlySave && !isHoldAllowed) {
@@ -993,6 +1017,28 @@ export default function OrderReview({
         }
       })(),
       quote_id: quoteOffer?.id ?? null,
+      // Set only when this screen was opened via a hold's recovery link
+      // (?orderId=, same param useHandleExistingOrder reads to prefill this
+      // form - see app/hooks/useHandleExistingOrder.ts). NOT a DB column /
+      // never persisted - resolveAgentSettlement (confirm-order/utils.ts)
+      // reads it once, server-side, to look up THAT reservation's OWN
+      // already-verified partner_settlement_method and, only for
+      // "payment_link", carry the same marker onto whatever NEW reservation
+      // THIS submission creates. Needed because resuming a hold and paying
+      // always inserts a fresh row (no update-in-place) - without this, the
+      // row that actually reaches Paid would never carry the marker the
+      // agent-notification hook keys off, however it's the customer's own
+      // browser making this request, never an agent session, so it can't
+      // send settlement_method itself the way the agent's hold-creation did.
+      resumed_order_id: (() => {
+        try {
+          const v = new URLSearchParams(window.location.search).get("orderId");
+          const n = v ? Number(v) : NaN;
+          return Number.isFinite(n) && n > 0 ? n : null;
+        } catch {
+          return null;
+        }
+      })(),
     };
 
     try {
@@ -1045,14 +1091,19 @@ export default function OrderReview({
         setCouponInput("");
         setCouponStatus("expired");
       } else if (error instanceof Error && error.message === "SETTLEMENT_NOT_ALLOWED") {
-        // The server re-verifies agent_card/voucher against a real /agent
-        // session - a stale login, a raw link opened without signing in, or
-        // picking someone else's code all land here. Fall back to the
-        // always-available option instead of the generic failure modal, which
-        // would wrongly tell the agent "you weren't charged, try again."
-        setSettlementMethod("customer_card");
+        // The server re-verifies agent_card/voucher/payment_link against a
+        // real /agent session - a stale login, a raw link opened without
+        // signing in, or picking someone else's code all land here. Fall
+        // back to payment_link, NOT customer_card - customer_card was
+        // removed from this picker entirely (2026-08-20, legal: an agent
+        // must never type the CUSTOMER's card), so silently reinstating it
+        // here would let a stale session slip onto the exact flow the
+        // removal exists to prevent. payment_link is gated by the same
+        // requireAgent() check server-side, so a retry here fails the same
+        // way (safely) until the agent actually reconnects.
+        setSettlementMethod("payment_link");
         setSettlementError(
-          "לא ניתן להשתמש באפשרות זו - יש להתחבר לאזור הסוכן ולנסות שוב. ההזמנה לא נשלחה.",
+          "לא ניתן להשתמש באפשרות זו - יש להתחבר מחדש לאזור הסוכן ולנסות שוב.",
         );
       } else {
         setSubmitFailed(true);
@@ -1254,6 +1305,7 @@ export default function OrderReview({
                 voucherBalanceUsd={voucherBalanceUsd}
                 finalPurchasePriceUsd={finalPurchasePrice}
                 settlementError={settlementError}
+                holdAllowed={isHoldAllowed}
               />
             </div>
           )}
@@ -1890,18 +1942,23 @@ export default function OrderReview({
                 aria-label={
                   voucherSettlementActive
                     ? "שליחת ההזמנה עם שובר"
-                    : "המשך לתשלום מאובטח בכרטיס אשראי"
+                    : paymentLinkSettlementActive
+                      ? "יצירת קישור תשלום ללקוח"
+                      : "המשך לתשלום מאובטח בכרטיס אשראי"
                 }
               >
                 {voucherSettlementActive
                   ? "שלח הזמנה עם שובר"
-                  : "המשך לתשלום מאובטח"}
+                  : paymentLinkSettlementActive
+                    ? "צור קישור לתשלום"
+                    : "המשך לתשלום מאובטח"}
               </Button>
 
-              {/* Voucher settlement has exactly one path - the secondary CTAs
-                  (rep / 24h hold) would silently do the same submit, so they
-                  hide instead of lying. */}
-              {!voucherSettlementActive && (
+              {/* Voucher/payment-link settlement each have exactly one path -
+                  the secondary CTAs (rep / 24h hold) would silently do the
+                  same submit (see the handleSubmit overrides), so they hide
+                  instead of lying. */}
+              {!voucherSettlementActive && !paymentLinkSettlementActive && (
               <div className="hidden md:flex gap-2 mt-0">
                 <Button
                   onClick={handleSubmit}
@@ -2353,7 +2410,9 @@ export default function OrderReview({
                 aria-label={
                   voucherSettlementActive
                     ? "שליחת ההזמנה עם שובר"
-                    : "המשך לתשלום מאובטח בכרטיס אשראי"
+                    : paymentLinkSettlementActive
+                      ? "יצירת קישור תשלום ללקוח"
+                      : "המשך לתשלום מאובטח בכרטיס אשראי"
                 }
               >
                 <ButtonSummary
@@ -2367,11 +2426,17 @@ export default function OrderReview({
                   isSticky={false}
                     affDiscount={effectiveDiscountTotalUsd}
                   isCouponDiscount={couponWins}
-                  label={voucherSettlementActive ? "שלח הזמנה עם שובר" : undefined}
+                  label={
+                    voucherSettlementActive
+                      ? "שלח הזמנה עם שובר"
+                      : paymentLinkSettlementActive
+                        ? "צור קישור לתשלום"
+                        : undefined
+                  }
                 />
               </Button>
 
-              {!voucherSettlementActive && (
+              {!voucherSettlementActive && !paymentLinkSettlementActive && (
               <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
                 <Button
                   onClick={handleSubmit}
@@ -2411,7 +2476,7 @@ export default function OrderReview({
           className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-50 md:hidden"
         >
           {/* Additional Options Dropdown */}
-          {showStickyOptions && !voucherSettlementActive && (
+          {showStickyOptions && !voucherSettlementActive && !paymentLinkSettlementActive && (
             <div className="mb-4 flex gap-2">
               <Button
                 onClick={handleSubmit}
@@ -2442,7 +2507,7 @@ export default function OrderReview({
 
           {/* Main Buttons Row */}
           <div className="flex gap-2">
-            {!voucherSettlementActive && (
+            {!voucherSettlementActive && !paymentLinkSettlementActive && (
               <Button
                 onClick={() => setShowStickyOptions(!showStickyOptions)}
                 variant="outline"
@@ -2459,7 +2524,9 @@ export default function OrderReview({
               aria-label={
                 voucherSettlementActive
                   ? "שליחת ההזמנה עם שובר"
-                  : "המשך לתשלום מאובטח בכרטיס אשראי"
+                  : paymentLinkSettlementActive
+                    ? "יצירת קישור תשלום ללקוח"
+                    : "המשך לתשלום מאובטח בכרטיס אשראי"
               }
             >
               <ButtonSummary
@@ -2473,7 +2540,13 @@ export default function OrderReview({
                 isSticky
                 affDiscount={effectiveDiscountTotalUsd}
                 isCouponDiscount={couponWins}
-                label={voucherSettlementActive ? "שלח הזמנה עם שובר" : undefined}
+                label={
+                  voucherSettlementActive
+                    ? "שלח הזמנה עם שובר"
+                    : paymentLinkSettlementActive
+                      ? "צור קישור לתשלום"
+                      : undefined
+                }
               />
             </Button>
           </div>

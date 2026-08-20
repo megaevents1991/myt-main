@@ -352,11 +352,19 @@ export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
  * How an agent-entered booking gets settled - see confirm-order/utils.ts'
  * resolveAgentSettlement. Only ever meaningful when is_agent_booking is true;
  * absent/undefined means the normal customer-pays-full-price path.
+ *
+ * "customer_card" is kept for type/historical-data validity (old reservations,
+ * the yup schema, resolveAgentSettlement's fallback) but is REMOVED from the
+ * agent settlement UI (2026-08-20, legal - an agent must never type the
+ * CUSTOMER's card) - "payment_link" is its replacement there: same no-agent-
+ * card-typed intent, but the customer pays on their own device via a link
+ * instead of the agent's screen.
  */
 export const SETTLEMENT_METHODS = [
   "customer_card",
   "agent_card",
   "voucher",
+  "payment_link",
 ] as const;
 export type SettlementMethod = (typeof SETTLEMENT_METHODS)[number];
 

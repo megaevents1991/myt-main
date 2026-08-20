@@ -64,15 +64,38 @@ export async function verifyPassword(
   }
 }
 
+/**
+ * `user_profiles.role` values this module will hand back a profile for.
+ * `office_manager` is the backoffice's manager-of-agents role (added
+ * 2026-08-19) - it is not a `PartnerRole` itself (that stays "agent" |
+ * "affiliate", the only two values a main-side SESSION may ever carry), but
+ * the live DB profile can genuinely hold it, so the type has to allow it.
+ * Every caller that branches on `.role` must go through `toEffectiveRole`
+ * below rather than compare the raw value.
+ */
+export type ProfileRole = PartnerRole | "office_manager";
+
 export type PartnerProfile = {
   id: string;
   email: string;
   display_name: string | null;
-  role: PartnerRole;
+  role: ProfileRole;
   partner_tracking_code: string;
   logo_url: string | null;
   is_active: boolean;
 };
+
+/**
+ * Maps a live `user_profiles` role to the `PartnerRole` a main-side session
+ * is minted with. `office_manager` is the backoffice's manager-of-agents
+ * role - on main it IS an agent (same quote tools, same agent_card/voucher
+ * settlement), so it collapses to "agent" here and everywhere downstream
+ * (`requireAgent`, `resolveAgentSettlement`, `isAgentVisitor`) sees a plain
+ * agent and needs no changes of its own.
+ */
+export function toEffectiveRole(role: ProfileRole): PartnerRole {
+  return role === "office_manager" ? "agent" : role;
+}
 
 /**
  * The partner profile for a signed-in user, or null when they are not a
@@ -95,7 +118,12 @@ export async function getPartnerProfile(
     return null;
   }
   if (!data) return null;
-  if (data.role !== "agent" && data.role !== "affiliate") return null;
+  if (
+    data.role !== "agent" &&
+    data.role !== "affiliate" &&
+    data.role !== "office_manager"
+  )
+    return null;
   if (!data.partner_tracking_code) return null;
   return data as PartnerProfile;
 }
@@ -122,9 +150,15 @@ export async function requirePartner(): Promise<PartnerSession> {
   if (
     !profile ||
     !profile.is_active ||
-    profile.role !== session.role ||
     profile.partner_tracking_code !== session.partner_code
   ) {
+    throw new Error("Unauthorized");
+  }
+  // session.role is always minted as the EFFECTIVE role (see partner-handoff
+  // and the login route), so re-validate the fresh DB role through the same
+  // mapping - comparing the raw role here would reject every office_manager
+  // session the moment it re-checks (i.e. the very next request after login).
+  if (toEffectiveRole(profile.role) !== session.role) {
     throw new Error("Unauthorized");
   }
   return session;
