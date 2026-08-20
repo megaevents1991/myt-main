@@ -53,3 +53,4 @@ node_modules
 snapshoot
 # UX review screenshots (local tooling)
 .ux-review/
+bash.exe.stackdump
