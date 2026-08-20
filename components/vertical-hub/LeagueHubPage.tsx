@@ -12,7 +12,8 @@ import ClientTracker from "@/components/ClientTracker";
 import { TrustSection } from "@/components/TrustSection";
 import { ExperienceCarousel } from "@/components/ExperienceCarousel";
 import { CategoryEventsBrowser } from "@/components/CategoryEventsBrowser";
-import { HubEventCard } from "@/components/vertical-hub/HubEventCard";
+import { HubEventsCarousel } from "@/components/vertical-hub/HubEventsCarousel";
+import { StadiumCards } from "@/components/vertical-hub/StadiumCards";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
 import { TeamCardsRow } from "@/components/vertical-hub/TeamCardsRow";
@@ -60,8 +61,13 @@ export async function LeagueHubPage({
     intro: local?.intro,
     facts: local?.facts,
     gallery: local?.gallery,
+    stadiums: local?.stadiums,
+    // An empty backoffice array must not shadow bundled content - only a
+    // field someone actually filled wins.
     ...(Object.fromEntries(
-      Object.entries(category.page_content ?? {}).filter(([, v]) => v != null),
+      Object.entries(category.page_content ?? {}).filter(
+        ([, v]) => v != null && (!Array.isArray(v) || v.length > 0),
+      ),
     ) as typeof category.page_content),
   };
 
@@ -86,10 +92,11 @@ export async function LeagueHubPage({
   const hrefIndex = await buildPersonHrefIndex("teams", leagueTeams);
 
   const available = events.filter((e) => !isEventSoldOut(e));
+  // Slider of up to 8 (creative 2026-08-20: "סליידר עד 8 משחקים").
   const featuredEvents = pickFeatured(
     available,
     tagsByEvent,
-    4,
+    8,
     content?.featured_event_ids,
   );
 
@@ -107,40 +114,32 @@ export async function LeagueHubPage({
               `כל המשחקים ב${definite(category.name)} שאפשר להזמין אצלנו - כרטיס, טיסה ומלון בחבילה אחת.`}
           </p>
         }
-        stats={[
-          { value: String(available.length), label: "חבילות זמינות" },
-          { value: String(leagueTeams.length), label: "קבוצות" },
-        ]}
-        primaryCta={{ href: "#league-all-heading", label: "לכל המשחקים" }}
-        secondaryCta={{ href: "/c/football", label: "לעמוד הכדורגל" }}
+        strip={
+          // Same structure as the football page (creative 2026-08-20): the
+          // league's crests ride the cover as a compact roster strip - the
+          // old big-card section below is gone ("זה עף כי עובר לסליידר").
+          leagueTeams.length > 0 ? (
+            <TeamCardsRow
+              teams={leagueTeams}
+              hrefById={Object.fromEntries(hrefIndex)}
+              size="compact"
+            />
+          ) : undefined
+        }
       />
 
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
         <div className="container mx-auto space-y-12 lg:space-y-16">
-          {/* ---- League teams carousel ---- */}
-          {leagueTeams.length > 0 && (
-            <section aria-labelledby="league-teams-heading">
-              <SectionHeading id="league-teams-heading">
-                קבוצות {definite(category.name)}
-              </SectionHeading>
-              <TeamCardsRow
-                teams={leagueTeams}
-                hrefById={Object.fromEntries(hrefIndex)}
-              />
-            </section>
-          )}
-
-          {/* ---- משחקים בולטים ---- */}
+          {/* ---- משחקים בולטים - slider, up to 8 ---- */}
           {featuredEvents.length > 0 && (
             <section aria-labelledby="league-featured-heading">
               <SectionHeading id="league-featured-heading">
                 משחקים בולטים ב{definite(category.name)}
               </SectionHeading>
-              <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
-                {featuredEvents.map((event) => (
-                  <HubEventCard key={event.id} event={event} />
-                ))}
-              </div>
+              <HubEventsCarousel
+                events={featuredEvents}
+                ariaLabel={`משחקים בולטים ב${definite(category.name)}`}
+              />
             </section>
           )}
 
@@ -154,6 +153,8 @@ export async function LeagueHubPage({
                 events={events}
                 tagsByEvent={tagsByEvent}
                 headingId="league-all-heading"
+                searchPlaceholder="קבוצה או עיר"
+                hideTagTypes={["artist", "genre"]}
               />
             ) : (
               <EmptyState
@@ -171,6 +172,17 @@ export async function LeagueHubPage({
                 title={`רגעים מ${definite(category.name)}`}
                 subtitle="לקוחות מגה איבנטס במשחקים הגדולים"
               />
+            </section>
+          )}
+
+          {/* ---- League stadiums (creative 2026-08-20: "להוסיף אצטדיונים
+               בפרמייר ליג כמו בעמוד כדורגל") ---- */}
+          {(content?.stadiums?.length ?? 0) > 0 && (
+            <section aria-labelledby="league-stadiums-heading">
+              <SectionHeading id="league-stadiums-heading">
+                אצטדיוני {definite(category.name)}
+              </SectionHeading>
+              <StadiumCards stadiums={content?.stadiums ?? []} variant="carousel" />
             </section>
           )}
 

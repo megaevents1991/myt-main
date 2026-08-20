@@ -61,8 +61,12 @@ export async function DestinationHubPage({
     intro: local?.intro,
     facts: local?.info,
     gallery: local?.gallery,
+    // An empty backoffice array must not shadow bundled content - only a
+    // field someone actually filled wins.
     ...(Object.fromEntries(
-      Object.entries(category.page_content ?? {}).filter(([, v]) => v != null),
+      Object.entries(category.page_content ?? {}).filter(
+        ([, v]) => v != null && (!Array.isArray(v) || v.length > 0),
+      ),
     ) as typeof category.page_content),
   };
 
@@ -97,11 +101,15 @@ export async function DestinationHubPage({
   const hrefById = Object.fromEntries([...teamHrefs, ...artistHrefs]);
 
   const available = events.filter((e) => !isEventSoldOut(e));
+  // Only hand-picked / "בולט"-tagged events - an uncurated city goes straight
+  // to the full list (creative 2026-08-20: "אם לא שמנו אירועים בולטים שלא
+  // יהיה את זה בכלל").
   const featuredEvents = pickFeatured(
     available,
     tagsByEvent,
     4,
     content?.featured_event_ids,
+    { soonestFallback: false },
   );
 
   // יעדים נוספים - the sibling cities, for the closing carousel.
@@ -124,12 +132,6 @@ export async function DestinationHubPage({
               `כל האירועים ב${category.name} - כרטיס, טיסה ומלון בחבילה אחת.`}
           </p>
         }
-        stats={[
-          { value: String(available.length), label: "חבילות זמינות" },
-          { value: String(cityPeople.length), label: "קבוצות ואמנים" },
-        ]}
-        primaryCta={{ href: "#destination-all-heading", label: "לכל האירועים" }}
-        secondaryCta={{ href: "/c/destinations", label: "לכל היעדים" }}
         strip={
           cityPeople.length > 0 ? (
             <TeamCardsRow teams={cityPeople} hrefById={hrefById} size="compact" />
@@ -164,6 +166,7 @@ export async function DestinationHubPage({
                 tagsByEvent={tagsByEvent}
                 headingId="destination-all-heading"
                 hideCityFacet
+                searchPlaceholder="קבוצה או אמן"
               />
             ) : (
               <EmptyState
@@ -221,17 +224,22 @@ export async function DestinationHubPage({
                 className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 role="list"
               >
-                {otherCities.map((city) => (
+                {otherCities.map((city) => {
+                  // Same skyline photos as the main יעדים grid (creative:
+                  // "יעדים נוספים שיהיה את התמונות כמו שיש בחוץ").
+                  const tileImg =
+                    city.page_content?.tile_images?.find(Boolean) ?? city.image_url;
+                  return (
                   <Link
                     key={city.id}
                     href={`/c/${slugPathOf(city, all).join("/")}`}
                     role="listitem"
                     className="group relative block h-32 w-[60%] shrink-0 snap-start overflow-hidden rounded-2xl border border-border shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:w-[240px]"
                   >
-                    {city.image_url ? (
+                    {tileImg ? (
                       <>
                         <Image
-                          src={city.image_url}
+                          src={tileImg}
                           alt={city.name}
                           fill
                           sizes="(max-width: 640px) 60vw, 240px"
@@ -256,7 +264,8 @@ export async function DestinationHubPage({
                       </div>
                     )}
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}

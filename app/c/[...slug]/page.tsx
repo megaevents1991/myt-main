@@ -98,9 +98,14 @@ export default async function TaxonomyCategoryPage({
     );
   }
 
-  // PICKER HUBS - עמוד הליגות / הז'אנרים / היעדים: floodlit cover + tile grid.
-  if (cat.slug === "leagues" || cat.slug === "genres" || cat.slug === "destinations") {
-    return <PickerHubPage category={cat} all={all} kind={cat.slug} />;
+  // The leagues/genres picker pages are gone (creative review 2026-08-20):
+  // their grids live on the vertical hubs now. 301 old links to the hubs.
+  if (cat.slug === "leagues") redirect("/c/football");
+  if (cat.slug === "genres") redirect("/c/music");
+
+  // PICKER HUB - עמוד היעדים: skyline tiles + rotating faces + free-text filter.
+  if (cat.slug === "destinations") {
+    return <PickerHubPage category={cat} all={all} />;
   }
 
   // The teams/artists hubs show the full CMS catalogs ("הקבוצות שלנו" /

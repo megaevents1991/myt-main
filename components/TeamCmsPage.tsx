@@ -13,6 +13,7 @@ import ClientTracker from "@/components/ClientTracker";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { DetailHero } from "@/components/DetailHero";
 import { ArtistEventsFilter } from "@/components/ArtistEventsFilter";
+import { HomeAwayEvents } from "@/components/HomeAwayEvents";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TrustSection } from "@/components/TrustSection";
 import { FAQ } from "@/components/ui/FAQ";
@@ -26,20 +27,6 @@ import type { CategoryPageContent } from "@/lib/taxonomy.types";
 
 const Bold = ({ children }: { children: ReactNode }) => (
   <strong className="font-bold">{children}</strong>
-);
-
-/** Green-cube section heading - same look as the catalog's "זמין באתר" rows. */
-const CubeHeading = ({ children }: { children: ReactNode }) => (
-  <div className="mb-4 flex flex-row items-stretch justify-start lg:mb-6">
-    <div aria-hidden className="mx-1 bg-secondary" style={{ height: 40, width: 23 }} />
-    <div aria-hidden className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 23 }} />
-    <div aria-hidden className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} />
-    <div>
-      <h3 className="mx-2 font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-        {children}
-      </h3>
-    </div>
-  </div>
 );
 
 const bioOptions: Options = {
@@ -146,26 +133,13 @@ export async function TeamCmsPage({
           <ArtistEventsFilter events={events} title={String(name)} showName />
         ) : (
           <div className="flex flex-col gap-10">
-            {homeEvents.length > 0 && (
-              <div>
-                <CubeHeading>משחקי בית</CubeHeading>
-                <ArtistEventsFilter
-                  events={homeEvents}
-                  title={String(name)}
-                  showName
-                />
-              </div>
-            )}
-            {awayEvents.length > 0 && (
-              <div>
-                <CubeHeading>משחקי חוץ</CubeHeading>
-                <ArtistEventsFilter
-                  events={awayEvents}
-                  title={String(name)}
-                  showName
-                />
-              </div>
-            )}
+            {/* Home/away with a toggle - the picked kind on top, the other
+                below (creative 2026-08-20). */}
+            <HomeAwayEvents
+              homeEvents={homeEvents}
+              awayEvents={awayEvents}
+              title={String(name)}
+            />
             {unclassifiedEvents.length > 0 && (
               <ArtistEventsFilter
                 events={unclassifiedEvents}
@@ -182,7 +156,13 @@ export async function TeamCmsPage({
       <TeamExtrasSection nameDBenglish={String(nameDBenglish)} override={pageContent} />
 
       <ArtistVideos videos={videos} />
-      <ExperienceCarousel images={gallery} />
+      {/* "חוויות מהדשא" (creative 2026-08-20) - backoffice page_content
+          gallery wins; the CMS card's gallery fills in behind it. */}
+      <ExperienceCarousel
+        images={pageContent?.gallery?.length ? pageContent.gallery : gallery}
+        title="חוויות מהדשא"
+        subtitle="לקוחות מגה איבנטס במשחקים הגדולים באירופה"
+      />
       <TrustSection />
       <FAQ />
     </>
