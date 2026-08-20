@@ -9,7 +9,9 @@ export const SectionHeading = ({ id, children }: { id: string; children: ReactNo
     <div className="mx-1 hidden bg-secondary sm:block" style={{ height: 40, width: 46 }} aria-hidden />
     <h2
       id={id}
-      className="mx-2 text-center font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl"
+      // scroll-mt: the menu deep-links to section ids (#hub-tiles-heading) -
+      // without it the fixed header covers the heading on arrival.
+      className="mx-2 scroll-mt-24 text-center font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl"
     >
       {children}
     </h2>

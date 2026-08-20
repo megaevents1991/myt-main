@@ -47,10 +47,12 @@ function RotatingFace({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     setAnimate(true);
     let interval: ReturnType<typeof setInterval> | undefined;
+    // First face swap shortly after arrival - same no-long-delay rule as the
+    // skyline photos (Dor 20.8).
     const kickoff = setTimeout(() => {
       interval = setInterval(() => setIdx((i) => (i + 1) % picks.length), intervalMs);
       setIdx((i) => (i + 1) % picks.length);
-    }, offsetMs + intervalMs);
+    }, offsetMs + 1600);
     return () => {
       clearTimeout(kickoff);
       if (interval) clearInterval(interval);
@@ -159,7 +161,7 @@ export function DestinationTiles({
                   <RotatingTileImage
                     images={child.images}
                     alt={child.name}
-                    offsetMs={(idx % 6) * 900}
+                    offsetMs={(idx % 6) * 400}
                   />
                 ) : child.imageUrl ? (
                   <Image
@@ -190,7 +192,7 @@ export function DestinationTiles({
                       <RotatingFace
                         key={s}
                         picks={slot}
-                        offsetMs={(idx % 6) * 900 + s * 2000}
+                        offsetMs={(idx % 6) * 300 + s * 800}
                         className={cn("size-11 sm:size-14", s > 0 && "-mr-2.5")}
                       />
                     ))}

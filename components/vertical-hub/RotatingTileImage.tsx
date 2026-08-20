@@ -33,13 +33,16 @@ export const RotatingTileImage = ({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     setAnimate(true);
     let interval: ReturnType<typeof setInterval> | undefined;
+    // First swap almost on arrival (Dor 20.8: the old offset+interval wait
+    // meant up to ~10s of a static grid); the per-tile offset still staggers
+    // so the grid doesn't blink in unison.
     const kickoff = setTimeout(() => {
       interval = setInterval(
         () => setIdx((i) => (i + 1) % images.length),
         intervalMs,
       );
       setIdx((i) => (i + 1) % images.length);
-    }, offsetMs + intervalMs);
+    }, offsetMs + 1000);
     return () => {
       clearTimeout(kickoff);
       if (interval) clearInterval(interval);

@@ -295,12 +295,6 @@ export async function VerticalHubPage({
             </section>
           )}
 
-          {/* ---- לקוחות משתפים - the widget draws its own title, so no
-               SectionHeading (creative: "להוריד יש פעמיים"). ---- */}
-          <section aria-label="לקוחות משתפים">
-            <HubReviews />
-          </section>
-
           {/* ---- החבילות המשתלמות ביותר (football) ---- */}
           {cfg.dealsHeading && deals.length > 0 && (
             <section aria-labelledby="hub-deals-heading">
@@ -357,6 +351,13 @@ export async function VerticalHubPage({
               </div>
             </section>
           )}
+
+          {/* ---- לקוחות משתפים - moved to the page bottom (Dor 20.8); the
+               widget draws its own title, so no SectionHeading either
+               (creative: "להוריד יש פעמיים"). ---- */}
+          <section aria-label="לקוחות משתפים">
+            <HubReviews />
+          </section>
         </div>
       </div>
 
