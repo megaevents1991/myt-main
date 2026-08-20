@@ -27,6 +27,23 @@ const NAV_LABEL_OVERRIDES: Record<string, string> = {
   "/c/music": "הופעות",
 };
 
+// The leagues/genres picker PAGES are gone (they 301 to the hubs) - the
+// dropdown's parent items deep-link to the tiles section on the hub instead
+// of bouncing through a redirect (Dor 20.8: "באג בליגות - שולח לעמוד כדורגל").
+const NAV_HREF_OVERRIDES: Record<string, string> = {
+  "/c/football/leagues": "/c/football#hub-tiles-heading",
+  "/c/music/genres": "/c/music#hub-tiles-heading",
+};
+
+const applyNavOverrides = (link: NavLink): NavLink => ({
+  ...link,
+  href: NAV_HREF_OVERRIDES[link.href] ?? link.href,
+  label: NAV_LABEL_OVERRIDES[link.href] ?? link.label,
+  ...(link.children?.length
+    ? { children: link.children.map(applyNavOverrides) }
+    : {}),
+});
+
 // Shared round icon-button styling for the header action cluster.
 const iconBtn =
   "inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-main-foreground/10";
@@ -46,10 +63,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  */
 export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   const navLinks: NavLink[] = [
-    ...categories.map((c) => ({
-      ...c,
-      label: NAV_LABEL_OVERRIDES[c.href] ?? c.label,
-    })),
+    ...categories.map(applyNavOverrides),
     ...staticNavLinks,
   ];
   const [menuOpen, setMenuOpen] = useState(false);
