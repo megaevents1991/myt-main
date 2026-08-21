@@ -201,7 +201,8 @@ export const FlightSummary = ({
           inventory CAN differ per leg, so it gets its own row per direction. */}
       <div className="mt-1.5 space-y-1 px-2" dir="rtl">
         {!selectedFlight.isOffline ? (
-          <>
+          // One row: "כולל מזוודה | כולל טרולי" (creative 21.8).
+          <div className="flex items-center gap-1.5" dir="rtl">
             <BaggageLine
               iconSrc="/icons/noun-luggage-3710164.svg"
               iconSize={18}
@@ -209,6 +210,9 @@ export const FlightSummary = ({
               includedLabel="כולל מזוודה"
               notIncludedLabel="ללא מזוודה"
             />
+            <span className="text-[12px] text-muted-foreground/50" aria-hidden>
+              |
+            </span>
             <BaggageLine
               iconSrc="/icons/noun-luggage-3710176.svg"
               iconSize={16}
@@ -216,7 +220,7 @@ export const FlightSummary = ({
               includedLabel="כולל טרולי"
               notIncludedLabel="ללא טרולי"
             />
-          </>
+          </div>
         ) : (
           <>
             <BaggageLine

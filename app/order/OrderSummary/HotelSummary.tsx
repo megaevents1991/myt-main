@@ -82,13 +82,33 @@ export const HotelSummary = ({
         <div>עד-</div>
         <div>{dayjs(selectedHotel.checkout).format("DD/MM/YYYY")}</div>
       </div>
-      {/* What's included - quiet, always shown regardless of viewer. */}
+      {/* What's included - quiet, always shown regardless of viewer. The
+          breakfast upsell sits INLINE on this row (creative 21.8: "אי אפשר
+          שיהיה הוסף עם הסכום?") instead of a separate chip below. */}
       <div
-        className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted-foreground"
+        className="mt-1.5 flex flex-wrap items-center justify-between gap-1.5 text-[12px] text-muted-foreground"
         dir="rtl"
       >
-        <Coffee className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-        <span>{mealPlanLabel(selectedHotel.rate)}</span>
+        <span className="flex items-center gap-1.5">
+          <Coffee className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span>{mealPlanLabel(selectedHotel.rate)}</span>
+        </span>
+        {!selectedHotel.breakfast_upgrade &&
+          showUpsells &&
+          breakfastUpgrade &&
+          onAddBreakfast && (
+            <button
+              type="button"
+              onClick={onAddBreakfast}
+              className="rounded-md border border-dashed border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
+              aria-label={`הוסף ארוחת בוקר, תוספת ${Math.ceil(breakfastUpgrade.deltaUsd)} דולר לכל השהות`}
+            >
+              הוסף ארוחת בוקר{" "}
+              <span className="tabular-nums" dir="ltr">
+                +${Math.ceil(breakfastUpgrade.deltaUsd).toLocaleString("en-US")}
+              </span>
+            </button>
+          )}
       </div>
       {/* Added breakfast - confirmed line with the delta + removal, mirroring
           the bag toggles (Dor 20.8: "שיש מחיר תופסת ליד וגם אופציה להסרה
@@ -114,22 +134,6 @@ export const HotelSummary = ({
             </button>
           )}
         </div>
-      )}
-      {/* Breakfast upsell - rate swap to the same room's cheapest
-          breakfast-included sibling, zero schema change. */}
-      {showUpsells && breakfastUpgrade && onAddBreakfast && (
-        <button
-          type="button"
-          onClick={onAddBreakfast}
-          dir="rtl"
-          className="mt-2 flex w-full items-center justify-between rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
-          aria-label={`הוסף ארוחת בוקר, תוספת ${Math.ceil(breakfastUpgrade.deltaUsd)} דולר לכל השהות`}
-        >
-          <span>הוסף ארוחת בוקר</span>
-          <span className="tabular-nums" dir="ltr">
-            +${Math.ceil(breakfastUpgrade.deltaUsd).toLocaleString("en-US")}
-          </span>
-        </button>
       )}
     </div>
   );
