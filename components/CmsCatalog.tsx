@@ -18,7 +18,6 @@ const KINDS = {
     gridLabel: "רשימת קבוצות הכדורגל",
     cardLabelPrefix: "עמוד קבוצת כדורגל",
     imageAltPrefix: "לוגו של קבוצת",
-    ctaLabel: "לכל הקבוצות",
   },
   artists: {
     fetch: getAllArtists,
@@ -26,7 +25,6 @@ const KINDS = {
     gridLabel: "רשימת האומנים",
     cardLabelPrefix: "עמוד האומן",
     imageAltPrefix: "תמונה של האומן",
-    ctaLabel: "לכל האומנים",
   },
 } as const;
 
@@ -49,8 +47,6 @@ export async function CmsCatalog({
       bio={heroSubtitle ? <p>{heroSubtitle}</p> : null}
       imageUrl={heroImageUrl ?? undefined}
       imageAlt={title}
-      ctaHref="#catalog-grid"
-      ctaLabel={cfg.ctaLabel}
     />
   );
   try {
