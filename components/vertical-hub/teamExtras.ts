@@ -25,6 +25,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   "tottenham hotspur fc": {
     stadium: {
       name: "אצטדיון טוטנהאם הוטספר",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/stadium-3-1787320394098.jpg",
       city: "לונדון, אנגליה",
       capacity: "כ-62,000 מקומות",
       description:
@@ -45,6 +46,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   arsenal: {
     stadium: {
       name: "אצטדיון האמירויות",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/stadium-2-1787319817469.jpg",
       city: "לונדון, אנגליה",
       capacity: "כ-60,000 מקומות",
       description:
@@ -65,6 +67,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   chelsea: {
     stadium: {
       name: "סטמפורד ברידג'",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/stamford-bridge-1787323254567.jpg",
       city: "לונדון, אנגליה",
       capacity: "כ-40,000 מקומות",
       description:
@@ -85,6 +88,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   barcelona: {
     stadium: {
       name: "ספוטיפיי קאמפ נואו",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/camp-nou-1787323256587.jpg",
       city: "ברצלונה, ספרד",
       capacity: "כ-105,000 מקומות (בסיום השיפוץ)",
       description:
@@ -105,6 +109,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   "real madrid": {
     stadium: {
       name: "סנטיאגו ברנבאו",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/stadium-4-1787319821686.jpg",
       city: "מדריד, ספרד",
       capacity: "כ-80,000 מקומות",
       description:
@@ -125,6 +130,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   "fc bayern munich": {
     stadium: {
       name: "אליאנץ ארנה",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/stadium-5-1787319823190.jpg",
       city: "מינכן, גרמניה",
       capacity: "כ-75,000 מקומות",
       description:
@@ -145,6 +151,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   "inter milan": {
     stadium: {
       name: "סן סירו",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/san-siro-1787323248210.jpg",
       city: "מילאנו, איטליה",
       capacity: "כ-75,000 מקומות",
       description:
@@ -165,6 +172,7 @@ export const TEAM_EXTRAS: Record<string, TeamExtras> = {
   "ac milan": {
     stadium: {
       name: "סן סירו",
+      image_url: "https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/templates/stadiums/san-siro-1787323248210.jpg",
       city: "מילאנו, איטליה",
       capacity: "כ-75,000 מקומות",
       description:

@@ -42,7 +42,7 @@ export const HeroVideoReveal = ({
         // 16:9 clip scaled to cover the square circle (same math as the
         // direct-video hero in DetailHero).
         <iframe
-          src={youtubeEmbed(videoId, { autoplay: true, mute: true, loop: true })}
+          src={youtubeEmbed(videoId, { autoplay: true, mute: true, loop: true, controls: false })}
           title={title}
           allow="autoplay; encrypted-media; picture-in-picture"
           className="pointer-events-none absolute left-1/2 top-1/2 h-full w-[177.78%] -translate-x-1/2 -translate-y-1/2"

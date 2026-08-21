@@ -163,7 +163,7 @@ export const DetailHero = ({
                 // No art at all - the clip carries the circle from the start.
                 return (
                   <iframe
-                    src={youtubeEmbed(videoId, { autoplay: true, mute: true, loop: true })}
+                    src={youtubeEmbed(videoId, { autoplay: true, mute: true, loop: true, controls: false })}
                     title={imageAlt}
                     allow="autoplay; encrypted-media; picture-in-picture"
                     className="pointer-events-none absolute left-1/2 top-1/2 h-full w-[177.78%] -translate-x-1/2 -translate-y-1/2"

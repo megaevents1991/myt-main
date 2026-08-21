@@ -8,7 +8,7 @@ export const youtubeId = (url?: string | null): string | null => {
 /** Privacy-friendly embed URL for a YouTube id. */
 export const youtubeEmbed = (
   id: string,
-  opts: { autoplay?: boolean; mute?: boolean; loop?: boolean } = {}
+  opts: { autoplay?: boolean; mute?: boolean; loop?: boolean; controls?: boolean } = {}
 ): string => {
   const p = new URLSearchParams({ rel: "0", modestbranding: "1", playsinline: "1" });
   if (opts.autoplay) p.set("autoplay", "1");
@@ -16,6 +16,13 @@ export const youtubeEmbed = (
   if (opts.loop) {
     p.set("loop", "1");
     p.set("playlist", id);
+  }
+  // Ambient/decorative embeds (hero bubble): no player chrome at all - the
+  // pause/seek buttons flashed over the clip's first second otherwise.
+  if (opts.controls === false) {
+    p.set("controls", "0");
+    p.set("disablekb", "1");
+    p.set("iv_load_policy", "3");
   }
   return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
 };
