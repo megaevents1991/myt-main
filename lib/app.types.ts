@@ -130,10 +130,12 @@ export type Flight = {
 };
 
 export type AddedBagsInfo = {
-  /** Always 1 in v1 - one checked bag per traveler. */
+  /** Checked bags per traveler - 1 or 2 (the summary's quantity picker). */
   checked_qty_per_pax: number;
+  /** Effective per-bag price (per-pax total / qty) - qty × this ≈ the per-pax
+   *  charge, so ops' qty·unit math still adds up at 2 bags. */
   unit_price_usd: number;
-  /** Checked-bag component total only (unit_price_usd * numOfTravelers) -
+  /** Checked-bag component total only (per-pax total * numOfTravelers) -
    *  see order-review.utils.ts's getAddedBagsTotalUsd for the combined
    *  (checked + cabin) figure that actually enters the price. */
   total_usd: number;
@@ -165,6 +167,19 @@ export type FlightSegment = {
   cabinBagKg?: number | null;
 };
 
+/**
+ * Breakfast upsell chosen on the order summary (a rate swap to the same
+ * room's breakfast-included sibling). `prev_rate` exists only IN-SESSION so
+ * "הסרה" can restore the original pick - it is stripped before the hotel
+ * object is persisted to reservations.hotel_order_info (only the delta and
+ * the previous price ride along, so ops can see what the upsell added).
+ */
+export type BreakfastUpgradeInfo = {
+  delta_usd: number;
+  prev_price: string;
+  prev_rate?: Rate;
+};
+
 export type OrderHotel = {
   rate: Rate;
   address: string;
@@ -174,6 +189,8 @@ export type OrderHotel = {
   guests: Guest[];
   checkin: string;
   checkout: string;
+  /** Set while a breakfast upsell is applied; undefined otherwise. */
+  breakfast_upgrade?: BreakfastUpgradeInfo | null;
   isOffline?: boolean;
   // When isOffline is true: the offline_hotels.id values consumed by this
   // booking (one entry per room unit, so a triple+double combo yields two

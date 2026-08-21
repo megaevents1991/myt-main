@@ -33,6 +33,9 @@ type PricingResponseBody = {
 type BagPricingOption = {
   unitPriceUsd: number;
   totalUsd: number;
+  /** Price (per pax) for TWO checked bags, when the carrier files a
+   *  quantity-2 ancillary. Absent → the UI charges 2 × unitPriceUsd. */
+  twoBagsTotalPerPaxUsd?: number;
 };
 
 type BagPricingOptions = {
@@ -57,14 +60,16 @@ const toUsd = (amount: string, currencyCode: string): number | null => {
   return null;
 };
 
-// One bag per traveler, v1 - the "single unit" ancillary line is the one
-// with quantity 1 (Amadeus lists incremental quantities as separate items).
-const cheapestSingleUnit = (
+// Amadeus lists incremental quantities as separate ancillary items - the
+// qty-1 line prices a single bag, the qty-2 line (when the carrier files
+// one) prices the pair.
+const cheapestOfQty = (
   items: BaggageItem[],
+  quantity: number,
   matchesName: (name: string) => boolean,
 ): BaggageItem | null =>
   items
-    .filter((item) => item.quantity === 1 && matchesName(item.name || ""))
+    .filter((item) => item.quantity === quantity && matchesName(item.name || ""))
     .reduce<BaggageItem | null>((best, item) => {
       const price = parseFloat(item.price?.amount ?? "");
       if (!Number.isFinite(price)) return best;
@@ -126,8 +131,9 @@ export async function POST(request: Request) {
 
     const bagOptions: BagPricingOptions = {};
 
-    const checkedItem = cheapestSingleUnit(
+    const checkedItem = cheapestOfQty(
       bagItems,
+      1,
       (name) => name === "CHECKED_BAG",
     );
     if (checkedItem) {
@@ -138,11 +144,21 @@ export async function POST(request: Request) {
       if (unitPriceUsd != null) {
         const unit = Math.ceil(unitPriceUsd);
         bagOptions.checked = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };
+        // Second-bag pricing: prefer the carrier's own qty-2 ancillary (its
+        // amount covers BOTH bags); UI falls back to 2×unit when absent.
+        const twoBagItem = cheapestOfQty(bagItems, 2, (name) => name === "CHECKED_BAG");
+        if (twoBagItem) {
+          const twoUsd = toUsd(twoBagItem.price.amount, twoBagItem.price.currencyCode);
+          if (twoUsd != null && twoUsd >= unitPriceUsd) {
+            bagOptions.checked.twoBagsTotalPerPaxUsd = Math.ceil(twoUsd);
+          }
+        }
       }
     }
 
-    const cabinItem = cheapestSingleUnit(
+    const cabinItem = cheapestOfQty(
       bagItems,
+      1,
       (name) => name !== "CHECKED_BAG" && name.toUpperCase().includes("CABIN"),
     );
     if (cabinItem) {
