@@ -102,7 +102,7 @@ export const FlightSummary = ({
   isAgent,
   bagOptions,
   showUpsells,
-  onToggleCheckedBag,
+  onSetCheckedBagQty,
   onToggleCabinBag,
 }: {
   selectedFlight: Flight;
@@ -118,7 +118,8 @@ export const FlightSummary = ({
   /** Interactive upsells only in the live order flow - off on the
    *  hold-recovery/pay-link page and on an agent-locked prepared package. */
   showUpsells?: boolean;
-  onToggleCheckedBag?: () => void;
+  /** 0 removes; 1/2 set the checked-bag quantity per traveler. */
+  onSetCheckedBagQty?: (qtyPerPax: 0 | 1 | 2) => void;
   onToggleCabinBag?: () => void;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;
@@ -257,20 +258,75 @@ export const FlightSummary = ({
         {/* A paid add-on already charged stays visible even if checkedIncluded
             later flips true (e.g. an עריכה flight swap) - only the "offer to
             add" side is gated on it being not-already-free. */}
-        {(checkedAdded || (!checkedIncluded && showUpsells && bagOptions?.checked)) && (
-          <BagUpsellToggle
-            addedLabel={checkedAdded ? `מזוודות (${addedBags!.checked_qty_per_pax * numOfTravelers})` : null}
-            addedTotalUsd={addedBags?.total_usd || 0}
-            addLabel="הוסף מזוודה לכל נוסע"
-            // unitPriceUsd × numOfTravelers, same source the applied charge
-            // uses (OrderReview.tsx's handleToggleCheckedBag) - not the
-            // server's own totalUsd (unitPrice × flightOffer.travelerPricings
-            // .length), which can diverge from numOfTravelers and show a
-            // button total that doesn't match what actually gets charged.
-            unitTotalUsd={(bagOptions?.checked?.unitPriceUsd || 0) * numOfTravelers}
-            removable={!!showUpsells}
-            onToggle={() => onToggleCheckedBag?.()}
-          />
+        {!checkedAdded && !checkedIncluded && showUpsells && bagOptions?.checked && (
+          <button
+            type="button"
+            onClick={() => onSetCheckedBagQty?.(1)}
+            dir="rtl"
+            className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
+            aria-label={`הוסף מזוודה לכל נוסע, ${Math.ceil(bagOptions.checked.unitPriceUsd)} דולר למזוודה`}
+          >
+            <span>הוסף מזוודה לכל נוסע</span>
+            {/* Per-bag price (Dor 20.8: "מחיר פר מזוודה") - the confirmed
+                line below shows the all-travelers total once added. */}
+            <span className="tabular-nums" dir="ltr">
+              +${Math.ceil(bagOptions.checked.unitPriceUsd).toLocaleString("en-US")}{" "}
+              <span dir="rtl">למזוודה</span>
+            </span>
+          </button>
+        )}
+        {checkedAdded && (
+          <div
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-forest/40 bg-forest/5 px-2.5 py-1.5 text-[12px] dark:border-glow/40 dark:bg-glow/10"
+            dir="rtl"
+          >
+            <span className="font-semibold text-forest dark:text-glow">
+              מזוודות ({addedBags!.checked_qty_per_pax * numOfTravelers}){" "}
+              <span className="tabular-nums" dir="ltr">
+                +${Math.ceil(addedBags!.total_usd || 0).toLocaleString("en-US")}
+              </span>
+            </span>
+            <span className="flex items-center gap-2">
+              {/* Quantity per traveler - 1 or 2 (Dor 20.8). Editable only in
+                  the live flow with pricing on hand; a resumed order shows
+                  the locked line. */}
+              {showUpsells && bagOptions?.checked && (
+                <span
+                  className="flex items-center gap-1"
+                  role="group"
+                  aria-label="כמות מזוודות לכל נוסע"
+                >
+                  {([1, 2] as const).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() =>
+                        q !== addedBags!.checked_qty_per_pax && onSetCheckedBagQty?.(q)
+                      }
+                      aria-pressed={addedBags!.checked_qty_per_pax === q}
+                      aria-label={q === 1 ? "מזוודה אחת לכל נוסע" : "שתי מזוודות לכל נוסע"}
+                      className={
+                        addedBags!.checked_qty_per_pax === q
+                          ? "size-6 rounded-md bg-forest text-[11px] font-bold text-white dark:bg-glow dark:text-black"
+                          : "size-6 rounded-md border border-border text-[11px] font-bold text-muted-foreground hover:border-forest hover:text-forest dark:hover:border-glow dark:hover:text-glow"
+                      }
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </span>
+              )}
+              {showUpsells && (
+                <button
+                  type="button"
+                  onClick={() => onSetCheckedBagQty?.(0)}
+                  className="shrink-0 text-[11px] text-muted-foreground underline"
+                >
+                  הסרה
+                </button>
+              )}
+            </span>
+          </div>
         )}
         {(cabinAdded || (!cabinIncluded && showUpsells && bagOptions?.cabin)) && (
           <BagUpsellToggle

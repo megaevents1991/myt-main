@@ -14,6 +14,7 @@ export const HotelSummary = ({
   breakfastUpgrade,
   showUpsells,
   onAddBreakfast,
+  onRemoveBreakfast,
 }: {
   selectedHotel: OrderHotel;
   agentCommission: number;
@@ -29,6 +30,8 @@ export const HotelSummary = ({
    *  on an agent-locked prepared package. */
   showUpsells?: boolean;
   onAddBreakfast?: () => void;
+  /** Restores the pre-upsell rate (the "הסרה" link on the added chip). */
+  onRemoveBreakfast?: () => void;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;
   return (
@@ -87,6 +90,31 @@ export const HotelSummary = ({
         <Coffee className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
         <span>{mealPlanLabel(selectedHotel.rate)}</span>
       </div>
+      {/* Added breakfast - confirmed line with the delta + removal, mirroring
+          the bag toggles (Dor 20.8: "שיש מחיר תופסת ליד וגם אופציה להסרה
+          כמו בטיסה"). Still shown (locked) on the pay-link page. */}
+      {selectedHotel.breakfast_upgrade && (
+        <div
+          className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-forest/40 bg-forest/5 px-2.5 py-1.5 text-[12px] dark:border-glow/40 dark:bg-glow/10"
+          dir="rtl"
+        >
+          <span className="font-semibold text-forest dark:text-glow">
+            ארוחת בוקר נוספה{" "}
+            <span className="tabular-nums" dir="ltr">
+              +${Math.ceil(selectedHotel.breakfast_upgrade.delta_usd).toLocaleString("en-US")}
+            </span>
+          </span>
+          {showUpsells && selectedHotel.breakfast_upgrade.prev_rate && onRemoveBreakfast && (
+            <button
+              type="button"
+              onClick={onRemoveBreakfast}
+              className="shrink-0 text-[11px] text-muted-foreground underline"
+            >
+              הסרה
+            </button>
+          )}
+        </div>
+      )}
       {/* Breakfast upsell - rate swap to the same room's cheapest
           breakfast-included sibling, zero schema change. */}
       {showUpsells && breakfastUpgrade && onAddBreakfast && (

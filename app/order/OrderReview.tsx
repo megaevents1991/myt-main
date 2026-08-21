@@ -237,8 +237,25 @@ export default function OrderReview({
       price:
         breakfastUpgrade.rate.payment_options?.payment_types?.[0]
           ?.show_amount ?? selectedHotel.price,
+      // Keeps the previous pick so "הסרה" can restore it - mirrors the bag
+      // toggles. prev_rate is in-session only (stripped before persisting).
+      breakfast_upgrade: {
+        delta_usd: breakfastUpgrade.deltaUsd,
+        prev_price: selectedHotel.price,
+        prev_rate: selectedHotel.rate,
+      },
     });
   }, [selectedHotel, breakfastUpgrade, setHotel]);
+  const handleRemoveBreakfast = useCallback(() => {
+    const upgrade = selectedHotel?.breakfast_upgrade;
+    if (!selectedHotel || !upgrade?.prev_rate) return;
+    setHotel({
+      ...selectedHotel,
+      rate: upgrade.prev_rate,
+      price: upgrade.prev_price,
+      breakfast_upgrade: undefined,
+    });
+  }, [selectedHotel, setHotel]);
 
   // Baggage: live Amadeus Flight Offers Pricing (include=bags) for the
   // selected offer - one call per flight id, skipped entirely when upsells
@@ -248,44 +265,55 @@ export default function OrderReview({
     selectedFlight,
     showUpsells && !flightSkipped
   );
-  const handleToggleCheckedBag = useCallback(() => {
-    if (!selectedFlight) return;
-    if ((selectedFlight.added_bags?.checked_qty_per_pax ?? 0) > 0) {
-      // Remove: keep a still-chosen cabin add-on, drop the checked one.
-      setFlight((prev) => {
-        if (!prev) return prev;
-        if (prev.added_bags?.cabin) {
-          return {
-            ...prev,
-            added_bags: {
-              checked_qty_per_pax: 0,
-              unit_price_usd: 0,
-              total_usd: 0,
-              cabin: prev.added_bags.cabin,
-            },
-          };
-        }
-        return { ...prev, added_bags: null };
-      });
-      return;
-    }
-    if (!bagOptions?.checked) return;
-    const qty = selectedFlight.numOfTravelers || 1;
-    const { unitPriceUsd } = bagOptions.checked;
-    setFlight((prev) =>
-      prev
-        ? {
-            ...prev,
-            added_bags: {
-              ...prev.added_bags,
-              checked_qty_per_pax: 1,
-              unit_price_usd: unitPriceUsd,
-              total_usd: unitPriceUsd * qty,
-            },
+  /** Set the checked-bag quantity per traveler: 0 removes, 1/2 (re)price.
+   *  Two bags use the carrier's own qty-2 ancillary when Amadeus filed one;
+   *  otherwise 2 × the single-bag price. */
+  const handleSetCheckedBagQty = useCallback(
+    (qtyPerPax: 0 | 1 | 2) => {
+      if (!selectedFlight) return;
+      if (qtyPerPax === 0) {
+        // Remove: keep a still-chosen cabin add-on, drop the checked one.
+        setFlight((prev) => {
+          if (!prev) return prev;
+          if (prev.added_bags?.cabin) {
+            return {
+              ...prev,
+              added_bags: {
+                checked_qty_per_pax: 0,
+                unit_price_usd: 0,
+                total_usd: 0,
+                cabin: prev.added_bags.cabin,
+              },
+            };
           }
-        : prev
-    );
-  }, [selectedFlight, bagOptions, setFlight]);
+          return { ...prev, added_bags: null };
+        });
+        return;
+      }
+      if (!bagOptions?.checked) return;
+      const pax = selectedFlight.numOfTravelers || 1;
+      const { unitPriceUsd, twoBagsTotalPerPaxUsd } = bagOptions.checked;
+      const perPaxTotal =
+        qtyPerPax === 2
+          ? twoBagsTotalPerPaxUsd ?? unitPriceUsd * 2
+          : unitPriceUsd;
+      setFlight((prev) =>
+        prev
+          ? {
+              ...prev,
+              added_bags: {
+                ...prev.added_bags,
+                checked_qty_per_pax: qtyPerPax,
+                // Effective per-bag price, so ops' qty × unit still adds up.
+                unit_price_usd: Math.ceil(perPaxTotal / qtyPerPax),
+                total_usd: perPaxTotal * pax,
+              },
+            }
+          : prev
+      );
+    },
+    [selectedFlight, bagOptions, setFlight]
+  );
   const handleToggleCabinBag = useCallback(() => {
     if (!selectedFlight) return;
     if (selectedFlight.added_bags?.cabin) {
@@ -1117,7 +1145,23 @@ export default function OrderReview({
       // A skipped-flight order never carries flight data, even if a late
       // flight search re-populated `flight` after the skip.
       flight_order_info: flightSkipped ? {} : selectedFlight || {},
-      hotel_order_info: skipHotel ? {} : (selectedHotel || {}),
+      // prev_rate is an in-session restore anchor only - a full Rate object
+      // that would bloat the reservation JSON; ops just needs the delta.
+      hotel_order_info: skipHotel
+        ? {}
+        : selectedHotel
+          ? {
+              ...selectedHotel,
+              ...(selectedHotel.breakfast_upgrade
+                ? {
+                    breakfast_upgrade: {
+                      delta_usd: selectedHotel.breakfast_upgrade.delta_usd,
+                      prev_price: selectedHotel.breakfast_upgrade.prev_price,
+                    },
+                  }
+                : {}),
+            }
+          : {},
       user_shown_price: finalPurchasePrice,
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
       final_purchase_price_ils: finalPurchasePriceILS,
@@ -1601,8 +1645,9 @@ export default function OrderReview({
                   flightSkipped={flightSkipped}
                   breakfastUpgrade={breakfastUpgrade}
                   onAddBreakfast={handleAddBreakfast}
+                  onRemoveBreakfast={handleRemoveBreakfast}
                   bagOptions={bagOptions}
-                  onToggleCheckedBag={handleToggleCheckedBag}
+                  onSetCheckedBagQty={handleSetCheckedBagQty}
                   onToggleCabinBag={handleToggleCabinBag}
                   showUpsells={showUpsells}
                   // Back-navigation from the summary: each section jumps to its

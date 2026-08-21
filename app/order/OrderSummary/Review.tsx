@@ -29,8 +29,9 @@ export const Review = ({
   onEdit,
   breakfastUpgrade,
   onAddBreakfast,
+  onRemoveBreakfast,
   bagOptions,
-  onToggleCheckedBag,
+  onSetCheckedBagQty,
   onToggleCabinBag,
   showUpsells,
 }: {
@@ -59,8 +60,9 @@ export const Review = ({
    *  is optional so Review keeps working wherever it's used without them. */
   breakfastUpgrade?: BreakfastUpgrade | null;
   onAddBreakfast?: () => void;
+  onRemoveBreakfast?: () => void;
   bagOptions?: BagPricingOptions;
-  onToggleCheckedBag?: () => void;
+  onSetCheckedBagQty?: (qtyPerPax: 0 | 1 | 2) => void;
   onToggleCabinBag?: () => void;
   /** Interactive upsells only in the live, editable order flow - off on the
    *  hold-recovery/pay-link page (price already locked) and on an
@@ -107,6 +109,7 @@ export const Review = ({
             breakfastUpgrade={breakfastUpgrade}
             showUpsells={showUpsells}
             onAddBreakfast={onAddBreakfast}
+            onRemoveBreakfast={onRemoveBreakfast}
           />
         ),
       }] : []),
@@ -127,7 +130,7 @@ export const Review = ({
             selectedFlight={selectedFlight}
             bagOptions={bagOptions}
             showUpsells={showUpsells}
-            onToggleCheckedBag={onToggleCheckedBag}
+            onSetCheckedBagQty={onSetCheckedBagQty}
             onToggleCabinBag={onToggleCabinBag}
           />
         ),
@@ -149,9 +152,10 @@ export const Review = ({
       flightSkipped,
       breakfastUpgrade,
       onAddBreakfast,
+      onRemoveBreakfast,
       bagOptions,
       showUpsells,
-      onToggleCheckedBag,
+      onSetCheckedBagQty,
       onToggleCabinBag,
     ]
   );

@@ -9,6 +9,9 @@ import type { Flight } from "@/lib/app.types";
 export type BagPricingOption = {
   unitPriceUsd: number;
   totalUsd: number;
+  /** Per-pax price for TWO checked bags (carrier-filed qty-2 ancillary);
+   *  absent → two bags charge 2 × unitPriceUsd. */
+  twoBagsTotalPerPaxUsd?: number;
 };
 export type BagPricingOptions = {
   checked?: BagPricingOption;
