@@ -130,16 +130,21 @@ export type Flight = {
 };
 
 export type AddedBagsInfo = {
-  /** Checked bags per traveler - 1 or 2 (the summary's quantity picker). */
-  checked_qty_per_pax: number;
-  /** Effective per-bag price (per-pax total / qty) - qty × this ≈ the per-pax
-   *  charge, so ops' qty·unit math still adds up at 2 bags. */
+  /** TOTAL checked bags on the booking (the −/+ picker, 1..2×travelers) -
+   *  a couple can take a single shared bag (Dor 20.8: the old per-pax model
+   *  forced bags in multiples of the traveler count). */
+  checked_qty?: number;
+  /** LEGACY (pre-20.8 orders): bags per traveler. Readers must treat it as
+   *  checked_qty = checked_qty_per_pax × numOfTravelers. */
+  checked_qty_per_pax?: number;
+  /** Effective per-bag price (total / qty). */
   unit_price_usd: number;
-  /** Checked-bag component total only (per-pax total * numOfTravelers) -
-   *  see order-review.utils.ts's getAddedBagsTotalUsd for the combined
-   *  (checked + cabin) figure that actually enters the price. */
+  /** Checked-bag component total only - see order-review.utils.ts's
+   *  getAddedBagsTotalUsd for the combined (checked + cabin) figure that
+   *  actually enters the price. */
   total_usd: number;
-  /** Optional cabin/trolley ("טרולי") add-on, priced + toggled independently. */
+  /** Optional cabin/trolley ("טרולי") add-on, priced + toggled independently
+   *  (still one per traveler - a trolley is personal). */
   cabin?: {
     qty_per_pax: number;
     unit_price_usd: number;
