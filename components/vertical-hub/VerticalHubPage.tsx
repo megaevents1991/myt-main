@@ -1,6 +1,10 @@
 import type { FootballTeam } from "@/lib/app.types";
 import type { CategoryPageContent, EventCategory } from "@/lib/taxonomy.types";
-import { getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
+import {
+  getEventIdsByCategories,
+  getEventsInCategory,
+  getTagsForEvents,
+} from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
 import { getAllFootballTeams, getFeaturedFootballTeams } from "@/lib/football";
 import { getAllArtists, getFeaturedArtists } from "@/lib/artists";
@@ -186,16 +190,43 @@ export async function VerticalHubPage({
     return (tagged.length ? tagged : available).slice(0, 12);
   })();
 
-  // החבילות המשתלמות ביותר: the 8 cheapest bookable packages on the site -
-  // pure math, no curation (creative 2026-08-20: "8 משחקים הזולים ביותר").
-  const deals = cfg.dealsHeading
-    ? available
-        .map((e) => ({ e, p: computePackagePrice(e) }))
-        .filter((x): x is { e: (typeof available)[number]; p: number } => x.p != null)
-        .sort((a, b) => a.p - b.p)
-        .slice(0, 8)
-        .map((x) => x.e)
-    : [];
+  // החבילות המשתלמות ביותר: cheapest bookable packages, capped per league
+  // (creative 2026-08-21: "2-3 משחקים מכל ליגה מקסימום") so one cheap league
+  // can't monopolize the row. First pass allows 2 per league for maximum
+  // spread; a second pass relaxes to 3 to fill up to 8 slots. Hard cap 3 -
+  // a thin catalog shows a shorter row rather than a monotone one.
+  const deals: typeof available = [];
+  if (cfg.dealsHeading) {
+    const leaguesHub = all.find(
+      (c) => c.parent_id === category.id && c.slug === "leagues",
+    );
+    const leagueCats = leaguesHub
+      ? all.filter((c) => c.parent_id === leaguesHub.id)
+      : [];
+    const leagueEventIds = await getEventIdsByCategories(leagueCats.map((c) => c.id));
+    const leagueOf = (eventId: number): number => {
+      for (const [cid, ids] of leagueEventIds) if (ids.has(eventId)) return cid;
+      return -1; // cups/friendlies bucket together under the same cap
+    };
+    const pool = available
+      .map((e) => ({ e, p: computePackagePrice(e) }))
+      .filter((x): x is { e: (typeof available)[number]; p: number } => x.p != null)
+      .sort((a, b) => a.p - b.p);
+    const perLeague = new Map<number, number>();
+    const picked = new Set<number>();
+    for (const cap of [2, 3]) {
+      for (const { e } of pool) {
+        if (deals.length >= 8) break;
+        if (picked.has(e.id)) continue;
+        const lg = leagueOf(e.id);
+        if ((perLeague.get(lg) ?? 0) >= cap) continue;
+        perLeague.set(lg, (perLeague.get(lg) ?? 0) + 1);
+        picked.add(e.id);
+        deals.push(e);
+      }
+      if (deals.length >= 8) break;
+    }
+  }
 
   // Tiles - the node's child categories (minus the CMS people hub). A pure
   // hub child (the "ליגות"/"ז'אנרים" grouping node) is flattened to ITS
@@ -279,6 +310,8 @@ export async function VerticalHubPage({
                     name: child.name,
                     href: `/c/${slugPathOf(child, all).join("/")}`,
                     imageUrl: child.image_url,
+                    images: child.page_content?.tile_images ?? undefined,
+                    logoUrl: child.page_content?.logo_url ?? null,
                   }))}
                 />
               )}

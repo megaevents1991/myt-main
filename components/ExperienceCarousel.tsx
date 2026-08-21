@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -117,18 +118,28 @@ export const ExperienceCarousel = ({
                 opacity: hidden ? 0 : 1 - abs * 0.15,
               }}
             >
-              {/* Gallery images are cut-out PNGs (backoffice upload pipeline)
-                  — object-cover on a white card beheads them. EventArt gives
-                  each print the brand blob card instead, color/shape derived
-                  from the image URL so every print differs. */}
-              <EventArt
-                id={src}
-                imageUrl={src}
-                alt=""
-                className="h-full w-full"
-                sizes="(max-width: 640px) 40vw, 208px"
-                hoverZoom={false}
-              />
+              {/* Two source pipelines: cut-out PNGs get the brand blob card
+                  (object-cover would behead them); full-frame JPEG photos
+                  (club/city shots) fill the card edge-to-edge - a photo on a
+                  blob reads broken, not branded. */}
+              {/\.jpe?g($|\?)/i.test(src) ? (
+                <Image
+                  src={src}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 40vw, 208px"
+                  className="object-cover"
+                />
+              ) : (
+                <EventArt
+                  id={src}
+                  imageUrl={src}
+                  alt=""
+                  className="h-full w-full"
+                  sizes="(max-width: 640px) 40vw, 208px"
+                  hoverZoom={false}
+                />
+              )}
             </button>
           );
         })}

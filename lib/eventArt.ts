@@ -102,7 +102,10 @@ export const getEventArt = (
   const h = hash(String(id));
   return {
     colorIndex: overrides?.colorIndex ?? h % EVENT_ART_COLORS.length,
-    // bit-shift so shape doesn't correlate with colour
-    shapeIndex: overrides?.shapeIndex ?? (h >> 3) % EVENT_ART_SHAPES,
+    // bit-shift so shape doesn't correlate with colour. UNSIGNED shift - the
+    // hash is a uint32, and `>>` reinterprets values above 2^31 as negative,
+    // making shapeIndex negative and SHAPES[i] undefined (client crash that
+    // took the whole gallery down for ids that hash high).
+    shapeIndex: overrides?.shapeIndex ?? (h >>> 3) % EVENT_ART_SHAPES,
   };
 };

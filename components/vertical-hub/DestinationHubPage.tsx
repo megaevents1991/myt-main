@@ -23,7 +23,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SectionHeading } from "@/components/vertical-hub/SectionHeading";
 import { TeamCardsRow } from "@/components/vertical-hub/TeamCardsRow";
 import { pickFeatured } from "@/components/vertical-hub/VerticalHubPage";
-import { DESTINATION_CONTENT } from "@/components/vertical-hub/destinationContent";
+import {
+  CITY_TEAM_NAMES,
+  DESTINATION_CONTENT,
+} from "@/components/vertical-hub/destinationContent";
 
 /** Icon per useful-info card, keyed by what the title opens with. */
 const infoIcon = (title: string) => {
@@ -86,7 +89,17 @@ export async function DestinationHubPage({
         (tag) => clubNamesMatchAnyScript(tag, en) || clubNamesMatchAnyScript(tag, he),
       );
     });
-  const cityTeams = matchPeople(allTeams, personTagNames.team);
+  // Teams: only clubs whose HOME is this city (creative 2026-08-21: "לא
+  // להציג את מדריד בברצלונה והפוך") - visiting sides play here but don't
+  // belong here. Artists keep the play-here rule ("קצת שונה מאמנים").
+  const homeNames = CITY_TEAM_NAMES[category.slug] ?? [];
+  const cityTeams = matchPeople(allTeams, personTagNames.team).filter((t) => {
+    const en = String(t.fields.nameDBenglish ?? "");
+    const he = String(t.fields.name ?? "");
+    return homeNames.some(
+      (home) => clubNamesMatchAnyScript(home, en) || clubNamesMatchAnyScript(home, he),
+    );
+  });
   const cityArtists = matchPeople(allArtists, personTagNames.artist);
   // Interleave so the strip alternates faces and crests.
   const cityPeople: (FootballTeam | Artist)[] = [];

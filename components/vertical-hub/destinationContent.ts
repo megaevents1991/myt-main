@@ -15,6 +15,38 @@ export type DestinationContent = {
   gallery?: string[];
 };
 
+/**
+ * Which clubs are AT HOME in each destination city - the cover strip shows
+ * only these (creative 2026-08-21: "רק את הקבוצות שמשוייכות לעיר עצמה - לא
+ * להציג את מדריד בברצלונה והפוך"). Matched against the CMS team names via
+ * clubNamesMatchAnyScript, so either script works. Artists are intentionally
+ * NOT constrained this way ("זה צריך להיות קצת שונה מאמנים") - a performer
+ * belongs on every city they play in. `football_teams` has no home-city
+ * column, so this static map is the source of truth until one exists.
+ */
+export const CITY_TEAM_NAMES: Record<string, string[]> = {
+  london: [
+    "Arsenal",
+    "Chelsea",
+    "Tottenham",
+    "West Ham",
+    "Crystal Palace",
+    "Fulham",
+    "Brentford",
+  ],
+  paris: ["Paris Saint Germain"],
+  madrid: ["Real Madrid", "Atletico Madrid"],
+  milan: ["AC Milan", "Inter Milan"],
+  barcelona: ["Barcelona", "Espanyol"],
+  amsterdam: ["AFC Ajax"],
+  berlin: ["Hertha Berlin", "Union Berlin"],
+  munich: ["Bayern Munich"],
+  prague: ["Sparta Prague", "Slavia Prague"],
+  lisbon: ["Benfica", "Sporting CP"],
+  rome: ["AS Roma", "Lazio"],
+  dusseldorf: ["Fortuna Dusseldorf"],
+};
+
 export const DESTINATION_CONTENT: Record<string, DestinationContent> = {
   london: {
     intro:

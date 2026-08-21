@@ -107,6 +107,32 @@ export async function getEventsInCategory(
   };
 }
 
+/**
+ * event_id sets per category, for slicing a pool of events by a group of
+ * sibling categories (e.g. "which league does each deal belong to" - the
+ * החבילות המשתלמות league-diversity cap). One query, no tree walk.
+ */
+export async function getEventIdsByCategories(
+  categoryIds: number[],
+): Promise<Map<number, Set<number>>> {
+  const map = new Map<number, Set<number>>();
+  if (!categoryIds.length) return map;
+  const { data, error } = await supabase
+    .from("event_category_links")
+    .select("category_id,event_id")
+    .in("category_id", categoryIds);
+  if (error) {
+    console.error("getEventIdsByCategories failed:", JSON.stringify(error));
+    return map;
+  }
+  (data ?? []).forEach((l) => {
+    const cid = l.category_id as number;
+    if (!map.has(cid)) map.set(cid, new Set());
+    map.get(cid)!.add(l.event_id as number);
+  });
+  return map;
+}
+
 /* ---------- tags (product feed / promotions) ---------- */
 
 export async function getAllTags(): Promise<EventTag[]> {

@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { HeroVideoReveal } from "@/components/HeroVideoReveal";
 import { TrustBadges } from "@/components/ui/TrustBadges";
 import { MYT } from "@/components/ui/myt";
 import { EventArt } from "@/components/ui/EventArt";
@@ -104,16 +105,12 @@ export const DetailHero = ({
         <div className="relative mx-auto w-full max-w-xs md:max-w-sm">
           <div className="absolute inset-0 -rotate-6 rounded-[40%_60%_55%_45%/55%_45%_60%_40%] bg-primary shadow-[0_0_60px_-10px_hsl(var(--brand-mint)/0.6)]" />
           <div className="relative aspect-square overflow-hidden rounded-[40%_60%_55%_45%/55%_45%_60%_40%]">
-            {videoId ? (
-              // 16:9 clip scaled to cover the square circle.
-              <iframe
-                src={youtubeEmbed(videoId, { autoplay: true, mute: true, loop: true })}
-                title={imageAlt}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                className="pointer-events-none absolute left-1/2 top-1/2 h-full w-[177.78%] -translate-x-1/2 -translate-y-1/2"
-                aria-hidden
-              />
-            ) : artImageUrl ? (
+            {(() => {
+              // The still art for the circle - blob card art when set, else
+              // the plain hero image. Built once so the video path can reuse
+              // it: with a hero video, the rule (Dor 21.8) is art FIRST,
+              // crossfade into the looping clip a few seconds in.
+              const artNode = artImageUrl ? (
               // Same art as the homepage card - colored blob + shape from the
               // backoffice art_* fields - clipped by the hero's existing mask.
               // The subject is CENTERED in the circle (not bottom-anchored) and
@@ -144,16 +141,38 @@ export const DetailHero = ({
                 hoverZoom={false}
                 className="absolute inset-0 h-full w-full"
               />
-            ) : (
-              <Image
-                src={imageUrl as string}
-                alt={imageAlt}
-                fill
-                priority
-                sizes="(max-width: 768px) 90vw, 40vw"
-                className="object-cover"
-              />
-            )}
+              ) : imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={imageAlt}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 90vw, 40vw"
+                  className="object-cover"
+                />
+              ) : null;
+
+              if (videoId && artNode) {
+                return (
+                  <HeroVideoReveal videoId={videoId} title={imageAlt}>
+                    {artNode}
+                  </HeroVideoReveal>
+                );
+              }
+              if (videoId) {
+                // No art at all - the clip carries the circle from the start.
+                return (
+                  <iframe
+                    src={youtubeEmbed(videoId, { autoplay: true, mute: true, loop: true })}
+                    title={imageAlt}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-full w-[177.78%] -translate-x-1/2 -translate-y-1/2"
+                    aria-hidden
+                  />
+                );
+              }
+              return artNode;
+            })()}
           </div>
         </div>
       )}

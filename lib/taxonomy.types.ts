@@ -64,6 +64,8 @@ export type CategoryPageContent = {
    * tile's image_url/fallback art.
    */
   tile_images?: string[];
+  /** Competition logo overlaid on the league tile (transparent PNG). */
+  logo_url?: string;
   stadiums?: CategoryStadium[];
   /** "מידע מעניין" (leagues/genres) / "טוב לדעת" (destinations) cards. */
   facts?: CategoryFactCard[];

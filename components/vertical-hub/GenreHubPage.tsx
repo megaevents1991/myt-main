@@ -124,28 +124,7 @@ export async function GenreHubPage({ category }: { category: EventCategory }) {
             </section>
           )}
 
-          {/* ---- Genre facts ---- */}
-          {(content?.facts?.length ?? 0) > 0 && (
-            <section aria-labelledby="genre-facts-heading">
-              <SectionHeading id="genre-facts-heading">
-                מידע מעניין על {category.name}
-              </SectionHeading>
-              <div className="grid gap-4 sm:grid-cols-2" role="list">
-                {content?.facts?.map((f) => (
-                  <div
-                    key={f.title}
-                    role="listitem"
-                    className="rounded-2xl border border-border bg-card p-6 shadow-card"
-                  >
-                    <h3 className="mb-2 font-display text-lg font-bold text-foreground">
-                      {f.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{f.text}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          {/* "מידע מעניין על X" removed - creative 2026-08-21: "להעיף את זה". */}
         </div>
       </div>
 

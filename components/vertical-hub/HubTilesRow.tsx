@@ -5,11 +5,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { RotatingTileImage } from "@/components/vertical-hub/RotatingTileImage";
+
 export type HubTileItem = {
   id: number;
   name: string;
   href: string;
   imageUrl: string | null;
+  /** Rotating stadium photos (page_content.tile_images) - crossfade like the
+   *  destination tiles; falls back to the static imageUrl. */
+  images?: string[];
+  /** Competition logo chip pinned over the photos (page_content.logo_url). */
+  logoUrl?: string | null;
 };
 
 /**
@@ -66,23 +73,49 @@ export function HubTilesRow({
         aria-label={ariaLabel}
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {items.map((item) => (
+        {items.map((item, idx) => (
           <Link
             key={item.id}
             href={item.href}
             role="listitem"
             className="group relative block h-32 w-[44%] shrink-0 snap-start overflow-hidden rounded-2xl border border-border shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:w-[240px]"
           >
-            {item.imageUrl ? (
+            {(item.images?.length ?? 0) > 0 || item.imageUrl ? (
               <>
-                <Image
-                  src={item.imageUrl}
-                  alt={item.name}
-                  fill
-                  sizes="(max-width: 640px) 45vw, 240px"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                {(item.images?.length ?? 0) > 1 ? (
+                  // Rotating stadium shots, staggered per tile like the
+                  // destination grid (creative 2026-08-21: "תמונות מתחלפות").
+                  <RotatingTileImage
+                    images={item.images as string[]}
+                    alt={item.name}
+                    offsetMs={(idx % 5) * 700}
+                    intervalMs={4500}
+                    sizes="(max-width: 640px) 45vw, 240px"
+                  />
+                ) : (
+                  <Image
+                    src={item.images?.[0] ?? (item.imageUrl as string)}
+                    alt={item.name}
+                    fill
+                    sizes="(max-width: 640px) 45vw, 240px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
+                {item.logoUrl && (
+                  // Competition logo chip - constant over the rotating photos
+                  // ("שגם כוללת את הלוגו של הליגה").
+                  <span className="absolute left-3 top-3 flex size-12 items-center justify-center rounded-xl bg-white/95 p-1.5 shadow-card">
+                    <Image
+                      src={item.logoUrl}
+                      alt=""
+                      aria-hidden
+                      width={40}
+                      height={40}
+                      className="h-full w-full object-contain"
+                    />
+                  </span>
+                )}
                 <h3 className="absolute inset-x-4 bottom-3 text-lg font-extrabold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
                   {item.name}
                 </h3>

@@ -4,7 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Menu, Search, X } from "lucide-react";
+import {
+  ChevronDown,
+  CircleHelp,
+  Info,
+  MapPin,
+  Menu,
+  Music2,
+  Search,
+  Trophy,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -35,14 +46,52 @@ const NAV_HREF_OVERRIDES: Record<string, string> = {
   "/c/music/genres": "/c/music#hub-tiles-heading",
 };
 
-const applyNavOverrides = (link: NavLink): NavLink => ({
-  ...link,
-  href: NAV_HREF_OVERRIDES[link.href] ?? link.href,
-  label: NAV_LABEL_OVERRIDES[link.href] ?? link.label,
-  ...(link.children?.length
-    ? { children: link.children.map(applyNavOverrides) }
-    : {}),
-});
+// Child order tweaks, keyed by the PARENT's original href → the children
+// hrefs that must lead (everything else keeps tree order after them).
+// Creative 2026-08-21: "רק להחליף בין זאנראים לאמנים" - artists before genres.
+const NAV_CHILD_PRIORITY: Record<string, string[]> = {
+  "/c/music": ["/c/music/artists", "/c/music/genres"],
+};
+
+const applyNavOverrides = (link: NavLink): NavLink => {
+  const priority = NAV_CHILD_PRIORITY[link.href];
+  const children = link.children?.length
+    ? [...link.children]
+        .sort((a, b) => {
+          if (!priority) return 0;
+          const ia = priority.indexOf(a.href);
+          const ib = priority.indexOf(b.href);
+          return (ia === -1 ? priority.length : ia) - (ib === -1 ? priority.length : ib);
+        })
+        .map(applyNavOverrides)
+    : undefined;
+  return {
+    ...link,
+    href: NAV_HREF_OVERRIDES[link.href] ?? link.href,
+    label: NAV_LABEL_OVERRIDES[link.href] ?? link.label,
+    ...(children ? { children } : {}),
+  };
+};
+
+// Root-item icons (menu redesign 2026-08-21) - keyed by original href; a new
+// backoffice root simply renders without an icon until one is mapped here.
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "/c/football": Trophy,
+  "/c/music": Music2,
+  "/c/destinations": MapPin,
+  "/faq": CircleHelp,
+  "/about": Info,
+};
+
+// Leaf groups render differently by what they are: compact pill chips for
+// short names (cities, genres), a two-column grid for the long people lists
+// (teams, artists) - decided by href shape, not hardcoded labels.
+const leafKind = (items: NavLink[]): "pills" | "grid" | "list" => {
+  const href = items[0]?.href ?? "";
+  if (/\/destinations\/|\/genres\//.test(href)) return "pills";
+  if (/\/teams\/|\/artists\//.test(href)) return "grid";
+  return "list";
+};
 
 // Shared round icon-button styling for the header action cluster.
 const iconBtn =
@@ -358,38 +407,88 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
                   >
                     {link.label}
                   </Link>
-                  <div className="invisible absolute right-0 top-full z-40 max-h-[70vh] min-w-56 overflow-y-auto rounded-xl border border-main-foreground/10 bg-main p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-                    {link.children.map((child) =>
-                      child.children?.length ? (
-                        <div key={child.href} className="py-0.5">
+                  {/* Dropdown panel - grouped sections with mint headers;
+                      long people lists break into two columns, short city/
+                      genre names render as pill chips (menu redesign 21.8). */}
+                  <div className="invisible absolute right-0 top-full z-40 max-h-[70vh] w-max min-w-60 max-w-[560px] translate-y-1 overflow-y-auto rounded-2xl border border-main-foreground/10 bg-main p-3 opacity-0 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.6)] transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                    {link.children.some((c) => !c.children?.length) &&
+                      (leafKind(link.children.filter((c) => !c.children?.length)) ===
+                      "pills" ? (
+                        <div className="flex max-w-96 flex-wrap gap-1.5 p-1">
+                          {link.children
+                            .filter((c) => !c.children?.length)
+                            .map((child) => (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                className="rounded-full border border-main-foreground/15 px-3 py-1.5 text-[13px] font-semibold text-main-foreground/85 transition-colors hover:border-secondary hover:bg-secondary/10 hover:text-secondary"
+                              >
+                                {child.label}
+                              </Link>
+                            ))}
+                        </div>
+                      ) : (
+                        link.children
+                          .filter((c) => !c.children?.length)
+                          .map((child) => (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className="block rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
+                            >
+                              {child.label}
+                            </Link>
+                          ))
+                      ))}
+                    {link.children
+                      .filter((c) => c.children?.length)
+                      .map((child, i) => (
+                        <div
+                          key={child.href}
+                          className={cn(
+                            "py-1.5",
+                            i > 0 && "mt-1 border-t border-main-foreground/[0.07]"
+                          )}
+                        >
                           <Link
                             href={child.href}
-                            className="block rounded-lg px-3 py-1.5 text-sm font-bold text-main-foreground hover:bg-main-foreground/10"
+                            className="mb-1 block px-2 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-secondary hover:underline"
                           >
                             {child.label}
                           </Link>
-                          <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
-                            {child.children.map((grandchild) => (
-                              <Link
-                                key={grandchild.href}
-                                href={grandchild.href}
-                                className="rounded-lg px-3 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
-                              >
-                                {grandchild.label}
-                              </Link>
-                            ))}
-                          </div>
+                          {leafKind(child.children ?? []) === "pills" ? (
+                            <div className="flex max-w-96 flex-wrap gap-1.5 p-1">
+                              {child.children?.map((grandchild) => (
+                                <Link
+                                  key={grandchild.href}
+                                  href={grandchild.href}
+                                  className="rounded-full border border-main-foreground/15 px-3 py-1.5 text-[13px] font-semibold text-main-foreground/85 transition-colors hover:border-secondary hover:bg-secondary/10 hover:text-secondary"
+                                >
+                                  {grandchild.label}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <div
+                              className={cn(
+                                (child.children?.length ?? 0) > 6
+                                  ? "grid grid-cols-2 gap-x-2"
+                                  : "flex flex-col"
+                              )}
+                            >
+                              {child.children?.map((grandchild) => (
+                                <Link
+                                  key={grandchild.href}
+                                  href={grandchild.href}
+                                  className="truncate rounded-lg px-3 py-1.5 text-sm text-main-foreground/80 hover:bg-main-foreground/10 hover:text-main-foreground"
+                                >
+                                  {grandchild.label}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className="block rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
-                        >
-                          {child.label}
-                        </Link>
-                      )
-                    )}
+                      ))}
                   </div>
                 </div>
               ) : (
@@ -461,135 +560,203 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
           aria-label="ניווט"
           className="container mx-auto flex flex-col gap-0 px-4 py-3"
         >
-          {/* Collapsible tree: the label still navigates; the chevron (44px
-              target) expands the branch. Everything starts collapsed so the
-              menu opens short. Height animates via the grid-rows trick -
-              transform-free, no layout jitter. */}
-          {navLinks.map((link) => (
-            <div key={link.href}>
-              {/* Chevron hugs the label (RTL: label right, arrow just to its
-                  left) instead of drifting to the far edge of the full-width
-                  menu row. */}
-              <div className="flex items-center justify-start">
-                <Link
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-main-foreground/10"
-                >
-                  {link.label}
-                </Link>
-                {link.children?.length ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleBranch(link.href)}
-                    aria-expanded={expanded.has(link.href)}
-                    aria-label={`הצג תת-קטגוריות של ${link.label}`}
-                    className="flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-main-foreground/10"
-                  >
-                    <ChevronDown
-                      className={cn(
-                        "size-4 transition-transform duration-200",
-                        expanded.has(link.href) && "rotate-180"
+          {/* Menu redesign (creative 2026-08-21: "לעצב את התפריט יפה יותר"):
+              icon-chip root rows on hairline dividers; expanded branches show
+              cities/genres as pill chips and the long team/artist rosters as
+              a collapsible two-column grid. Same accordion mechanics as
+              before - the label navigates, the chevron expands, heights
+              animate via the grid-rows trick. */}
+          <div className="flex flex-col divide-y divide-main-foreground/[0.07]">
+            {navLinks.map((link) => {
+              const RootIcon = NAV_ICONS[link.href];
+              const leafChildren = (link.children ?? []).filter(
+                (c) => !c.children?.length,
+              );
+              const groupChildren = (link.children ?? []).filter(
+                (c) => c.children?.length,
+              );
+              return (
+                <div key={link.href} className="py-1">
+                  <div className="flex items-center">
+                    <Link
+                      href={link.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex min-h-12 flex-1 items-center gap-3 rounded-xl px-2 text-[15px] font-bold hover:bg-main-foreground/10"
+                    >
+                      {RootIcon && (
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary/15 text-secondary">
+                          <RootIcon className="size-[18px]" aria-hidden />
+                        </span>
                       )}
-                      aria-hidden
-                    />
-                  </button>
-                ) : null}
-              </div>
-              {link.children?.length ? (
-                <div
-                  className={cn(
-                    "grid transition-[grid-template-rows] duration-200 ease-out",
-                    expanded.has(link.href) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                  )}
-                >
-                  <div className="overflow-hidden">
-                    <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
-                      {link.children.map((child) =>
-                        child.children?.length ? (
-                          <div key={child.href}>
-                            <div className="flex items-center justify-start">
-                              <Link
-                                href={child.href}
-                                onClick={() => setMenuOpen(false)}
-                                className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-bold hover:bg-main-foreground/10"
-                              >
-                                {child.label}
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => toggleBranch(child.href)}
-                                aria-expanded={expanded.has(child.href)}
-                                aria-label={`הצג תת-קטגוריות של ${child.label}`}
-                                className="flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-main-foreground/10"
-                              >
-                                <ChevronDown
-                                  className={cn(
-                                    "size-4 transition-transform duration-200",
-                                    expanded.has(child.href) && "rotate-180"
-                                  )}
-                                  aria-hidden
-                                />
-                              </button>
-                            </div>
-                            <div
-                              className={cn(
-                                "grid transition-[grid-template-rows] duration-200 ease-out",
-                                expanded.has(child.href)
-                                  ? "grid-rows-[1fr]"
-                                  : "grid-rows-[0fr]"
-                              )}
-                            >
-                              <div className="overflow-hidden">
-                                <div className="mr-3 flex flex-col border-r border-main-foreground/10 pr-2">
-                                  {child.children.map((grandchild) => (
+                      {link.label}
+                    </Link>
+                    {link.children?.length ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleBranch(link.href)}
+                        aria-expanded={expanded.has(link.href)}
+                        aria-label={`הצג תת-קטגוריות של ${link.label}`}
+                        className="flex size-12 shrink-0 items-center justify-center rounded-xl hover:bg-main-foreground/10"
+                      >
+                        <ChevronDown
+                          className={cn(
+                            "size-4 transition-transform duration-200",
+                            expanded.has(link.href) && "rotate-180"
+                          )}
+                          aria-hidden
+                        />
+                      </button>
+                    ) : null}
+                  </div>
+                  {link.children?.length ? (
+                    <div
+                      className={cn(
+                        "grid transition-[grid-template-rows] duration-200 ease-out",
+                        expanded.has(link.href) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="flex flex-col gap-1 pb-3 pr-3">
+                          {/* Direct leaves (cities) - a pill cloud, one tap away. */}
+                          {leafChildren.length > 0 &&
+                            (leafKind(leafChildren) === "pills" ? (
+                              <div className="flex flex-wrap gap-2 px-2 pt-1">
+                                {leafChildren.map((child) => (
+                                  <Link
+                                    key={child.href}
+                                    href={child.href}
+                                    onClick={() => setMenuOpen(false)}
+                                    className="rounded-full border border-main-foreground/15 px-3.5 py-2 text-[13px] font-semibold text-main-foreground/85 transition-colors hover:border-secondary hover:bg-secondary/10 hover:text-secondary"
+                                  >
+                                    {child.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              leafChildren.map((child) => (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  onClick={() => setMenuOpen(false)}
+                                  className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
+                                >
+                                  {child.label}
+                                </Link>
+                              ))
+                            ))}
+                          {/* Groups: leagues/genres inline under a mint header;
+                              long rosters stay collapsible, opening into a
+                              two-column grid. */}
+                          {groupChildren.map((child) => {
+                            const kind = leafKind(child.children ?? []);
+                            const collapsible = kind === "grid";
+                            const leaves =
+                              kind === "pills" ? (
+                                <div className="flex flex-wrap gap-2 px-2 pb-1">
+                                  {child.children?.map((g) => (
                                     <Link
-                                      key={grandchild.href}
-                                      href={grandchild.href}
+                                      key={g.href}
+                                      href={g.href}
                                       onClick={() => setMenuOpen(false)}
-                                      className="block min-h-11 content-center rounded-lg px-3 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
+                                      className="rounded-full border border-main-foreground/15 px-3.5 py-2 text-[13px] font-semibold text-main-foreground/85 transition-colors hover:border-secondary hover:bg-secondary/10 hover:text-secondary"
                                     >
-                                      {grandchild.label}
+                                      {g.label}
                                     </Link>
                                   ))}
                                 </div>
+                              ) : (
+                                <div
+                                  className={cn(
+                                    kind === "grid"
+                                      ? "grid grid-cols-2 gap-x-2 px-1"
+                                      : "flex flex-col px-1"
+                                  )}
+                                >
+                                  {child.children?.map((g) => (
+                                    <Link
+                                      key={g.href}
+                                      href={g.href}
+                                      onClick={() => setMenuOpen(false)}
+                                      className="block min-h-11 content-center truncate rounded-lg px-2 py-1 text-sm text-main-foreground/80 hover:bg-main-foreground/10"
+                                    >
+                                      {g.label}
+                                    </Link>
+                                  ))}
+                                </div>
+                              );
+                            return (
+                              <div key={child.href} className="pt-1">
+                                <div className="flex items-center">
+                                  <Link
+                                    href={child.href}
+                                    onClick={() => setMenuOpen(false)}
+                                    className="flex min-h-10 flex-1 items-center rounded-lg px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-secondary hover:bg-main-foreground/10"
+                                  >
+                                    {child.label}
+                                  </Link>
+                                  {collapsible && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleBranch(child.href)}
+                                      aria-expanded={expanded.has(child.href)}
+                                      aria-label={`הצג תת-קטגוריות של ${child.label}`}
+                                      className="flex size-10 shrink-0 items-center justify-center rounded-lg hover:bg-main-foreground/10"
+                                    >
+                                      <ChevronDown
+                                        className={cn(
+                                          "size-4 transition-transform duration-200",
+                                          expanded.has(child.href) && "rotate-180"
+                                        )}
+                                        aria-hidden
+                                      />
+                                    </button>
+                                  )}
+                                </div>
+                                {collapsible ? (
+                                  <div
+                                    className={cn(
+                                      "grid transition-[grid-template-rows] duration-200 ease-out",
+                                      expanded.has(child.href)
+                                        ? "grid-rows-[1fr]"
+                                        : "grid-rows-[0fr]"
+                                    )}
+                                  >
+                                    <div className="overflow-hidden">{leaves}</div>
+                                  </div>
+                                ) : (
+                                  leaves
+                                )}
                               </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            onClick={() => setMenuOpen(false)}
-                            className="block min-h-11 content-center rounded-lg px-3 py-1.5 text-sm font-semibold text-main-foreground/80 hover:bg-main-foreground/10"
-                          >
-                            {child.label}
-                          </Link>
-                        )
-                      )}
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          ))}
-          {/* Contact - plain inline links (ContactUs positions itself absolutely,
-              which overlapped the header bar on mobile) */}
-          <div className="mt-1 flex items-center gap-4 border-t border-main-foreground/10 px-3 pt-3 text-sm font-semibold">
-            <a href="tel:+97237684800" className="hover:underline">
-              03-768-4800 דברו איתנו
+              );
+            })}
+          </div>
+          {/* Contact - proper tap-target pills instead of bare inline links. */}
+          <div className="mt-1 flex flex-wrap items-center gap-2 border-t border-main-foreground/10 px-1 py-3">
+            <a
+              href="tel:+97237684800"
+              className="flex min-h-11 items-center rounded-full border border-main-foreground/15 px-4 text-sm font-bold transition-colors hover:border-secondary hover:text-secondary"
+            >
+              03-768-4800
             </a>
             <a
               href="https://wa.me/972542002722"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden hover:underline md:inline"
+              className="flex min-h-11 items-center gap-2 rounded-full border border-main-foreground/15 px-4 text-sm font-bold transition-colors hover:border-secondary hover:text-secondary"
             >
+              <WhatsAppIcon className="size-4" />
               WhatsApp
             </a>
             <a
               href="mailto:reservations@mega-events.co.il"
-              className="hidden hover:underline md:inline"
+              className="hidden min-h-11 items-center rounded-full border border-main-foreground/15 px-4 text-sm font-bold transition-colors hover:border-secondary hover:text-secondary md:flex"
             >
               מייל
             </a>
