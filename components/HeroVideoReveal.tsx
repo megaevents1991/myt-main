@@ -123,8 +123,24 @@ export const HeroVideoReveal = ({
       });
     });
 
+    // iOS blocks muted autoplay under Low Power Mode - but any user gesture
+    // lifts the block. Retry play on touches/clicks until playback actually
+    // starts (the PLAYING handler then reveals as usual).
+    const kick = () => {
+      try {
+        player?.mute();
+        player?.playVideo();
+      } catch {
+        // player not ready yet - a later gesture will retry
+      }
+    };
+    window.addEventListener("pointerdown", kick, { passive: true });
+    window.addEventListener("touchstart", kick, { passive: true });
+
     return () => {
       cancelled = true;
+      window.removeEventListener("pointerdown", kick);
+      window.removeEventListener("touchstart", kick);
       if (revealTimer) clearTimeout(revealTimer);
       try {
         player?.destroy();
@@ -139,9 +155,15 @@ export const HeroVideoReveal = ({
       {/* 16:9 player scaled to cover the square circle; the extra height
           crop also pushes YouTube's top title band outside the mask. */}
       {/* The API REPLACES the mount div with the player iframe, so the size
-          rules live on this wrapper and target any descendant iframe. */}
+          rules live on this wrapper and target any descendant iframe.
+          HIDDEN until playback is confirmed - the art above it has
+          transparent regions (the blob cut-out), so an idle player's big
+          play button would show through otherwise. */}
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[115%] w-[204.4%] -translate-x-1/2 -translate-y-1/2 [&_iframe]:h-full [&_iframe]:w-full"
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-1/2 h-[115%] w-[204.4%] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-1000 motion-reduce:transition-none [&_iframe]:h-full [&_iframe]:w-full",
+          revealed ? "opacity-100" : "opacity-0",
+        )}
         aria-hidden
       >
         <div ref={mountRef} title={title} className="h-full w-full" />
