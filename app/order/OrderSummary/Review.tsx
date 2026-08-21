@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import { cn } from "@/lib/utils";
 import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
 import type { BreakfastUpgrade } from "../order-review.utils";
-import type { BagPricingOptions } from "../hooks/useBagPricing";
+import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
 
 export const Review = ({
   agentCommission,
@@ -31,6 +31,9 @@ export const Review = ({
   onAddBreakfast,
   onRemoveBreakfast,
   bagOptions,
+  fareUpgrade,
+  onUpgradeFare,
+  onRemoveFareUpgrade,
   onSetCheckedBagQty,
   onToggleCabinBag,
   showUpsells,
@@ -62,6 +65,10 @@ export const Review = ({
   onAddBreakfast?: () => void;
   onRemoveBreakfast?: () => void;
   bagOptions?: BagPricingOptions;
+  /** El Al: branded-fare upgrade offered instead of an ancillary bag. */
+  fareUpgrade?: FareUpgradeOption;
+  onUpgradeFare?: () => void;
+  onRemoveFareUpgrade?: () => void;
   /** Sets the TOTAL checked-bag count (0 removes; clamped 1..2×travelers). */
   onSetCheckedBagQty?: (totalQty: number) => void;
   onToggleCabinBag?: () => void;
@@ -130,6 +137,9 @@ export const Review = ({
             flightPriceAddition={flightPriceAddition}
             selectedFlight={selectedFlight}
             bagOptions={bagOptions}
+            fareUpgrade={fareUpgrade}
+            onUpgradeFare={onUpgradeFare}
+            onRemoveFareUpgrade={onRemoveFareUpgrade}
             showUpsells={showUpsells}
             onSetCheckedBagQty={onSetCheckedBagQty}
             onToggleCabinBag={onToggleCabinBag}
@@ -155,6 +165,9 @@ export const Review = ({
       onAddBreakfast,
       onRemoveBreakfast,
       bagOptions,
+      fareUpgrade,
+      onUpgradeFare,
+      onRemoveFareUpgrade,
       showUpsells,
       onSetCheckedBagQty,
       onToggleCabinBag,

@@ -261,10 +261,57 @@ export default function OrderReview({
   // selected offer - one call per flight id, skipped entirely when upsells
   // are off (resumed order / locked package) or the flight has no real
   // Amadeus offer (offline, skipped).
-  const { bagOptions } = useBagPricing(
+  const { bagOptions, fareUpgrade } = useBagPricing(
     selectedFlight,
     showUpsells && !flightSkipped
   );
+  /** El Al path: swap the whole offer to the branded fare (Classic) - the
+   *  delta rides through flight.price, so the total updates exactly like
+   *  picking a pricier flight would. prev_* anchors power "הסרה". */
+  const handleUpgradeFare = useCallback(() => {
+    if (!selectedFlight || !fareUpgrade) return;
+    setFlight((prev) =>
+      prev
+        ? {
+            ...prev,
+            offer: fareUpgrade.offer,
+            price: prev.price + fareUpgrade.deltaTotalUsd,
+            outbound: { ...prev.outbound, checkBagsIncluded: true },
+            inbound: { ...prev.inbound, checkBagsIncluded: true },
+            fare_upgrade: {
+              brand: fareUpgrade.brand,
+              delta_total_usd: fareUpgrade.deltaTotalUsd,
+              prev_price: prev.price,
+              prev_offer: prev.offer,
+              prev_check_bags_included: {
+                outbound: prev.outbound.checkBagsIncluded,
+                inbound: prev.inbound.checkBagsIncluded,
+              },
+            },
+          }
+        : prev
+    );
+  }, [selectedFlight, fareUpgrade, setFlight]);
+  const handleRemoveFareUpgrade = useCallback(() => {
+    setFlight((prev) => {
+      const up = prev?.fare_upgrade;
+      if (!prev || !up?.prev_offer) return prev;
+      return {
+        ...prev,
+        offer: up.prev_offer,
+        price: up.prev_price ?? prev.price - up.delta_total_usd,
+        outbound: {
+          ...prev.outbound,
+          checkBagsIncluded: up.prev_check_bags_included?.outbound ?? false,
+        },
+        inbound: {
+          ...prev.inbound,
+          checkBagsIncluded: up.prev_check_bags_included?.inbound ?? false,
+        },
+        fare_upgrade: undefined,
+      };
+    });
+  }, [setFlight]);
   /** Set the TOTAL checked-bag count for the booking: 0 removes, otherwise
    *  clamped to 1..2×travelers (a couple can take one shared bag - the old
    *  per-pax model forced multiples of the traveler count). Price = per-bag
@@ -1150,7 +1197,25 @@ export default function OrderReview({
       },
       // A skipped-flight order never carries flight data, even if a late
       // flight search re-populated `flight` after the skip.
-      flight_order_info: flightSkipped ? {} : selectedFlight || {},
+      // fare_upgrade.prev_offer is an in-session restore anchor only (a full
+      // FlightOffer that would bloat the reservation JSON); ops needs just
+      // the brand + delta.
+      flight_order_info: flightSkipped
+        ? {}
+        : selectedFlight
+          ? {
+              ...selectedFlight,
+              ...(selectedFlight.fare_upgrade
+                ? {
+                    fare_upgrade: {
+                      brand: selectedFlight.fare_upgrade.brand,
+                      delta_total_usd:
+                        selectedFlight.fare_upgrade.delta_total_usd,
+                    },
+                  }
+                : {}),
+            }
+          : {},
       // prev_rate is an in-session restore anchor only - a full Rate object
       // that would bloat the reservation JSON; ops just needs the delta.
       hotel_order_info: skipHotel
@@ -1653,6 +1718,9 @@ export default function OrderReview({
                   onAddBreakfast={handleAddBreakfast}
                   onRemoveBreakfast={handleRemoveBreakfast}
                   bagOptions={bagOptions}
+                  fareUpgrade={fareUpgrade}
+                  onUpgradeFare={handleUpgradeFare}
+                  onRemoveFareUpgrade={handleRemoveFareUpgrade}
                   onSetCheckedBagQty={handleSetCheckedBagQty}
                   onToggleCabinBag={handleToggleCabinBag}
                   showUpsells={showUpsells}

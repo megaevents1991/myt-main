@@ -225,6 +225,15 @@ export const amadeus = {
             clientRef: opts?.clientRef,
           }),
       },
+      // POST /v1/shopping/flight-offers/upselling - Branded Fares Upsell
+      // (the "שדרוג כרטיס" alternatives for a priced offer).
+      upselling: {
+        post: (body: unknown, opts?: { clientRef?: string }) =>
+          request("POST", "/v1/shopping/flight-offers/upselling", {
+            body,
+            clientRef: opts?.clientRef,
+          }),
+      },
     },
   },
 };
