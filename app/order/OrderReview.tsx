@@ -265,13 +265,15 @@ export default function OrderReview({
     selectedFlight,
     showUpsells && !flightSkipped
   );
-  /** Set the checked-bag quantity per traveler: 0 removes, 1/2 (re)price.
-   *  Two bags use the carrier's own qty-2 ancillary when Amadeus filed one;
-   *  otherwise 2 × the single-bag price. */
+  /** Set the TOTAL checked-bag count for the booking: 0 removes, otherwise
+   *  clamped to 1..2×travelers (a couple can take one shared bag - the old
+   *  per-pax model forced multiples of the traveler count). Price = per-bag
+   *  unit × count; a solo traveler's 2nd bag uses the carrier's own qty-2
+   *  ancillary when Amadeus filed one. */
   const handleSetCheckedBagQty = useCallback(
-    (qtyPerPax: 0 | 1 | 2) => {
+    (totalQty: number) => {
       if (!selectedFlight) return;
-      if (qtyPerPax === 0) {
+      if (totalQty <= 0) {
         // Remove: keep a still-chosen cabin add-on, drop the checked one.
         setFlight((prev) => {
           if (!prev) return prev;
@@ -279,7 +281,7 @@ export default function OrderReview({
             return {
               ...prev,
               added_bags: {
-                checked_qty_per_pax: 0,
+                checked_qty: 0,
                 unit_price_usd: 0,
                 total_usd: 0,
                 cabin: prev.added_bags.cabin,
@@ -292,25 +294,28 @@ export default function OrderReview({
       }
       if (!bagOptions?.checked) return;
       const pax = selectedFlight.numOfTravelers || 1;
+      const qty = Math.min(Math.max(1, Math.round(totalQty)), pax * 2);
       const { unitPriceUsd, twoBagsTotalPerPaxUsd } = bagOptions.checked;
-      const perPaxTotal =
-        qtyPerPax === 2
-          ? twoBagsTotalPerPaxUsd ?? unitPriceUsd * 2
-          : unitPriceUsd;
-      setFlight((prev) =>
-        prev
-          ? {
-              ...prev,
-              added_bags: {
-                ...prev.added_bags,
-                checked_qty_per_pax: qtyPerPax,
-                // Effective per-bag price, so ops' qty × unit still adds up.
-                unit_price_usd: Math.ceil(perPaxTotal / qtyPerPax),
-                total_usd: perPaxTotal * pax,
-              },
-            }
-          : prev
-      );
+      const total =
+        pax === 1 && qty === 2 && twoBagsTotalPerPaxUsd
+          ? twoBagsTotalPerPaxUsd
+          : unitPriceUsd * qty;
+      setFlight((prev) => {
+        if (!prev) return prev;
+        // Drop the legacy per-pax field so the new shape is unambiguous.
+        const { checked_qty_per_pax: _legacy, ...rest } = prev.added_bags ?? {};
+        void _legacy;
+        return {
+          ...prev,
+          added_bags: {
+            ...rest,
+            checked_qty: qty,
+            // Effective per-bag price, so ops' qty × unit still adds up.
+            unit_price_usd: Math.ceil(total / qty),
+            total_usd: total,
+          },
+        };
+      });
     },
     [selectedFlight, bagOptions, setFlight]
   );
@@ -325,7 +330,8 @@ export default function OrderReview({
         const { cabin: _cabin, ...rest } = prev.added_bags;
         return {
           ...prev,
-          added_bags: rest.checked_qty_per_pax > 0 ? rest : null,
+          added_bags:
+            (rest.checked_qty ?? rest.checked_qty_per_pax ?? 0) > 0 ? rest : null,
         };
       });
       return;
@@ -338,7 +344,7 @@ export default function OrderReview({
         ? {
             ...prev,
             added_bags: {
-              checked_qty_per_pax: 0,
+              checked_qty: 0,
               unit_price_usd: 0,
               total_usd: 0,
               ...prev.added_bags,

@@ -106,6 +106,16 @@ export const getAddedBagsTotalUsd = (addedBags?: AddedBagsInfo | null): number =
   return (addedBags.total_usd || 0) + (addedBags.cabin?.total_usd || 0);
 };
 
+/** Total checked bags an added_bags entry represents - the new shape stores
+ *  the booking total directly (checked_qty); legacy per-pax entries (pre the
+ *  20.8 quantity fix) multiply out by the traveler count. */
+export const addedCheckedBagsCount = (
+  addedBags: AddedBagsInfo | null | undefined,
+  numOfTravelers: number,
+): number =>
+  addedBags?.checked_qty ??
+  (addedBags?.checked_qty_per_pax ?? 0) * Math.max(1, numOfTravelers);
+
 /**
  * Included-meals label for a hotel rate - reuses the exact "כולל ארוחת בוקר"
  * copy HotelCardHeader already shows during hotel selection. `meal_data.value`

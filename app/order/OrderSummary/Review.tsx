@@ -62,7 +62,8 @@ export const Review = ({
   onAddBreakfast?: () => void;
   onRemoveBreakfast?: () => void;
   bagOptions?: BagPricingOptions;
-  onSetCheckedBagQty?: (qtyPerPax: 0 | 1 | 2) => void;
+  /** Sets the TOTAL checked-bag count (0 removes; clamped 1..2×travelers). */
+  onSetCheckedBagQty?: (totalQty: number) => void;
   onToggleCabinBag?: () => void;
   /** Interactive upsells only in the live, editable order flow - off on the
    *  hold-recovery/pay-link page (price already locked) and on an
