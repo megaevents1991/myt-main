@@ -31,6 +31,17 @@ const fuseOptions = {
   ignoreLocation: true,
 };
 
+/** A destination / league / genre page the search can send people to
+ *  (served by /api/search-events). */
+export type SearchHub = { name: string; href: string; kind: string };
+
+/** Wording for the hub footer link, by the hub's parent slug. */
+const HUB_LEAD: Record<string, string> = {
+  destinations: "לכל האירועים ב",
+  leagues: "לכל המשחקים ב",
+  genres: "לכל ההופעות ב",
+};
+
 // Minimal Web Speech API surface (not in TS DOM libs).
 type SpeechRecognitionResultEvent = {
   results?: { [i: number]: { [i: number]: { transcript?: string } } };
@@ -76,11 +87,14 @@ const getSpeechRecognition = ():
 export const HeroSearch = ({
   events,
   artists = [],
+  hubs = [],
   autoFocus = false,
   overlay = false,
 }: {
   events: Event[];
   artists?: Artist[];
+  /** Destination / league / genre pages, for the "כל האירועים ב…" footer link. */
+  hubs?: SearchHub[];
   /** Focus the input on mount - used when rendered inside the search modal. */
   autoFocus?: boolean;
   /** Float the results panel OVER the content below (homepage hero) instead of
@@ -135,6 +149,23 @@ export const HeroSearch = ({
   };
   const topArtist = artistFor(top);
   const selectedArtist = artistFor(selected);
+
+  /** The destination / league / genre the QUERY itself names ("לונדון",
+   *  "פרמייר ליג", "פופ") - offered as a landing page under the results, the
+   *  same way an artist match is (Dor 21.8). Substring match on the typed
+   *  words, longest name first so "ליגת האלופות" beats "ליגה". */
+  const topHub = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2 || hubs.length === 0) return null;
+    return (
+      [...hubs]
+        .sort((a, b) => b.name.length - a.name.length)
+        .find((h) => {
+          const name = h.name.toLowerCase();
+          return q.includes(name) || name.includes(q);
+        }) ?? null
+    );
+  }, [query, hubs]);
 
   useEffect(() => {
     setSpeechSupported(Boolean(getSpeechRecognition()));
@@ -319,7 +350,7 @@ export const HeroSearch = ({
       </div>
 
       {/* Stage 1 - plain results list. Pick a row to assemble its package. */}
-      {open && !selected && matches.length > 0 && (
+      {open && !selected && (matches.length > 0 || topHub) && (
         <div
           className={cn(
             "mt-3 overflow-hidden rounded-2xl border border-main-foreground/15 backdrop-blur-md",
@@ -328,10 +359,12 @@ export const HeroSearch = ({
               : "bg-main-foreground/[0.07]"
           )}
         >
-          <p className="flex items-center justify-end gap-2 border-b border-main-foreground/10 px-4 py-2.5 text-xs font-medium text-main-foreground/60">
-            אירועים תואמים · מחיר ממוצע לנוסע
-            <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
-          </p>
+          {matches.length > 0 && (
+            <p className="flex items-center justify-end gap-2 border-b border-main-foreground/10 px-4 py-2.5 text-xs font-medium text-main-foreground/60">
+              אירועים תואמים · מחיר ממוצע לנוסע
+              <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
+            </p>
+          )}
           <ul className="myt-scroll max-h-[20rem] overflow-y-auto overscroll-contain">
             {matches.map((m) => {
               const mPrice = computePackagePrice(m);
@@ -382,6 +415,24 @@ export const HeroSearch = ({
               <ChevronLeft className="size-4 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate text-right">
                 לכל ההופעות של {topArtist.fields.name}
+              </span>
+            </Link>
+          )}
+          {topHub && (
+            <Link
+              href={topHub.href}
+              onClick={() =>
+                trackEvent("heroSearchHubAllEvents", {
+                  hub: topHub.name,
+                  kind: topHub.kind,
+                  query,
+                })
+              }
+              className="flex items-center justify-between gap-2 border-t border-main-foreground/10 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-main-foreground/10"
+            >
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-right">
+                {(HUB_LEAD[topHub.kind] ?? "לכל האירועים ב") + topHub.name}
               </span>
             </Link>
           )}

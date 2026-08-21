@@ -1,4 +1,7 @@
 import type Fuse from "fuse.js";
+import dayjs from "dayjs";
+import "dayjs/locale/he";
+
 import type { Event } from "@/lib/app.types";
 
 const SPORTS_TYPES = new Set<Event["type"]>([
@@ -22,15 +25,32 @@ export const isSportsEvent = (e: Event): boolean =>
 const SPORTS_WORDS = "כדורגל ספורט משחק משחקים football";
 const MUSIC_WORDS = "הופעה הופעות קונצרט מוזיקה מוסיקה אומן concert music";
 
-/** Event + a searchable category-words field, so queries like "כדורגל" or
- *  "הופעות" match events by kind - not only by name/city. Add "categoryText"
- *  to the Fuse keys wherever this is used. */
+/** The event's date in words, so a query like "דצמבר" (or "12/2026") returns
+ *  that month's events - people search by when, not only by what. */
+const dateWords = (date?: string): string => {
+  if (!date) return "";
+  const d = dayjs(date);
+  if (!d.isValid()) return "";
+  return [
+    d.locale("he").format("MMMM"), // דצמבר
+    d.locale("en").format("MMMM"), // December
+    d.format("YYYY"),
+    d.format("MM/YYYY"),
+  ].join(" ");
+};
+
+/** Event + a searchable category-words field, so queries like "כדורגל",
+ *  "הופעות" or "דצמבר" match events by kind and by date - not only by
+ *  name/city. Add "categoryText" to the Fuse keys wherever this is used. */
 export type SearchableEvent = Event & { categoryText: string };
 export const withCategoryText = (events: Event[]): SearchableEvent[] =>
   events.map((e) => ({
     ...e,
-    categoryText:
-      `${isSportsEvent(e) ? SPORTS_WORDS : MUSIC_WORDS} ${e.tags ?? ""}`.trim(),
+    categoryText: `${isSportsEvent(e) ? SPORTS_WORDS : MUSIC_WORDS} ${
+      e.tags ?? ""
+    } ${dateWords(e.date)}`
+      .replace(/\s+/g, " ")
+      .trim(),
   }));
 
 /**

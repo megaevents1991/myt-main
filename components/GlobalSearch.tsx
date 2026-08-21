@@ -6,7 +6,7 @@ import { Modal } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
 import type { Event, Artist } from "@/lib/app.types";
-import { HeroSearch } from "@/components/HeroSearch";
+import { HeroSearch, type SearchHub } from "@/components/HeroSearch";
 
 /**
  * Global search overlay - the header search button opens the *same* search
@@ -20,6 +20,7 @@ export const GlobalSearch = () => {
   const [opened, setOpened] = useState(false);
   const [events, setEvents] = useState<Event[] | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [hubs, setHubs] = useState<SearchHub[]>([]);
   const loading = useRef(false);
 
   const load = () => {
@@ -30,6 +31,7 @@ export const GlobalSearch = () => {
       .then((d) => {
         setEvents(d.events ?? []);
         setArtists(d.artists ?? []);
+        setHubs(d.hubs ?? []);
       })
       .catch(() => setEvents([]))
       .finally(() => (loading.current = false));
@@ -82,7 +84,7 @@ export const GlobalSearch = () => {
       }}
     >
       <div className="bg-main text-main-foreground">
-        <HeroSearch events={events ?? []} artists={artists} autoFocus />
+        <HeroSearch events={events ?? []} artists={artists} hubs={hubs} autoFocus />
       </div>
     </Modal>
   );

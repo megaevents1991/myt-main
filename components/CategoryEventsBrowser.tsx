@@ -42,11 +42,15 @@ const CONTROL =
   "h-11 w-full rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
 /**
- * Facet groups shown as chip rows. City and vertical are deliberately
- * skipped - the city dropdown already covers city, and a vertical tag never
- * narrows anything inside a category built from that same vertical.
+ * Facet groups shown as chip rows. City is skipped - the city dropdown
+ * already covers it. `vertical` (כדורגל / מוסיקה) IS included: inside a
+ * vertical hub every event carries the same one so it is auto-dropped as
+ * non-narrowing, but on a DESTINATION page it is the cut people want
+ * (Dor 21.8: "בעמודי יעדים... לדעת לסנן בין כדורגל והופעות") - and there it
+ * renders as its own segmented row above the bar, not as an advanced chip.
  */
 const TAG_GROUPS: { type: TagType; label: string }[] = [
+  { type: "vertical", label: "סוג אירוע" },
   { type: "league", label: "ליגות" },
   { type: "team", label: "קבוצות" },
   { type: "genre", label: "ז'אנרים" },
@@ -55,6 +59,8 @@ const TAG_GROUPS: { type: TagType; label: string }[] = [
 ];
 /** Chip rows: quick toggles. Dropdown groups: long lists (teams, artists, genres). */
 const CHIP_TYPES = new Set<TagType>(["league", "other"]);
+/** Rendered as a segmented row in the MAIN bar, never behind "חיפוש מתקדם". */
+const PRIMARY_TYPES = new Set<TagType>(["vertical"]);
 const DROPDOWN_TYPES = new Set<TagType>(["team", "genre", "artist"]);
 const GROUP_CAP = 8;
 const DROPDOWN_CAP = 40;
@@ -302,6 +308,10 @@ export function CategoryEventsBrowser({
   const [city, setCity] = useState(ALL);
   // Multi-select: a trip can span "ספטמבר או אוקטובר" - OR within the group.
   const [months, setMonths] = useState<string[]>([]);
+  // Exact window inside (or instead of) the month picks - "מתאריך / עד תאריך"
+  // in the advanced panel (Dor 21.8). ISO yyyy-mm-dd, "" = open-ended.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [maxPrice, setMaxPrice] = useState(ALL);
   const [sort, setSort] = useState<SortKey>("date");
   const [hideSoldOut, setHideSoldOut] = useState(false);
@@ -420,6 +430,14 @@ export function CategoryEventsBrowser({
       }
       if (city !== ALL && cityOf(e) !== city) return false;
       if (months.length && !months.includes(monthKeyOf(e))) return false;
+      // Exact window narrows further (AND with the month picks), so "ספטמבר"
+      // + 10-20.9 shows just that stretch.
+      if (dateFrom || dateTo) {
+        const d = e.date ? dayjs(e.date).format("YYYY-MM-DD") : "";
+        if (!d) return false;
+        if (dateFrom && d < dateFrom) return false;
+        if (dateTo && d > dateTo) return false;
+      }
       if (max != null) {
         const p = computePackagePrice(e);
         if (p == null || p > max) return false;
@@ -447,30 +465,40 @@ export function CategoryEventsBrowser({
       return sort === "price_asc" ? pa - pb : pb - pa;
     });
     return arr;
-  }, [events, query, city, months, maxPrice, sort, hideSoldOut, tags, tagsByEvent, typeByName]);
+  }, [events, query, city, months, dateFrom, dateTo, maxPrice, sort, hideSoldOut, tags, tagsByEvent, typeByName]);
 
   // A narrower filter should show its results from the top, not mid-list.
   useEffect(
     () => setVisible(PAGE_SIZE),
-    [query, city, months, maxPrice, sort, hideSoldOut, tags]
+    [query, city, months, dateFrom, dateTo, maxPrice, sort, hideSoldOut, tags]
   );
 
   const dirty =
     query.trim() !== "" ||
     city !== ALL ||
     months.length > 0 ||
+    dateFrom !== "" ||
+    dateTo !== "" ||
     maxPrice !== ALL ||
     hideSoldOut ||
     tags.length > 0;
 
   // Advanced-only filters that are active while the advanced block is closed -
-  // the toggle shows a dot so a hidden filter never narrows silently.
-  const advancedDirty = maxPrice !== ALL || hideSoldOut || tags.length > 0;
+  // the toggle shows a dot so a hidden filter never narrows silently. The
+  // vertical row lives in the main bar, so its picks don't count here.
+  const advancedDirty =
+    maxPrice !== ALL ||
+    hideSoldOut ||
+    dateFrom !== "" ||
+    dateTo !== "" ||
+    tags.some((t) => !PRIMARY_TYPES.has(typeByName.get(t) ?? "other"));
 
   const clear = () => {
     setQuery("");
     setCity(ALL);
     setMonths([]);
+    setDateFrom("");
+    setDateTo("");
     setMaxPrice(ALL);
     setHideSoldOut(false);
     setTags([]);
@@ -478,6 +506,25 @@ export function CategoryEventsBrowser({
 
   const toggleTag = (tag: string) =>
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+
+  /** Date-picker bounds: the selected months when there are any, else the
+   *  whole catalogue on screen - so the range picker can only land on dates
+   *  that could actually return something. */
+  const monthBounds = useMemo(() => {
+    const keys = months.length
+      ? [...months].sort()
+      : [...new Set(events.map(monthKeyOf).filter(Boolean))].sort();
+    if (!keys.length) return null;
+    return {
+      min: dayjs(`${keys[0]}-01`).format("YYYY-MM-DD"),
+      max: dayjs(`${keys[keys.length - 1]}-01`).endOf("month").format("YYYY-MM-DD"),
+    };
+  }, [months, events]);
+
+  /** The vertical facet, when it actually narrows this page (a city with both
+   *  football and concerts). Absent inside a vertical hub - there every event
+   *  carries the same one, so tagGroups already dropped it. */
+  const verticalGroup = tagGroups.find((g) => g.type === "vertical") ?? null;
 
   /** Single-select per dropdown group; ALL clears that group's pick. */
   const selectedOfType = (type: TagType) =>
@@ -516,6 +563,58 @@ export function CategoryEventsBrowser({
           openOnMobile ? "block" : "hidden sm:block"
         )}
       >
+        {/* ---- סוג אירוע: the vertical segmented row. Only rendered where a
+             vertical actually narrows - i.e. a destination page carrying both
+             football and concerts (Dor 21.8). ---- */}
+        {verticalGroup && (
+          <div
+            className="mb-3 flex flex-wrap gap-2"
+            role="group"
+            aria-label="סינון לפי סוג אירוע"
+          >
+            <button
+              type="button"
+              onClick={() => selectOfType("vertical", ALL)}
+              aria-pressed={selectedOfType("vertical") === ALL}
+              className={cn(
+                "flex h-11 items-center rounded-full border px-4 text-sm font-bold transition-colors",
+                selectedOfType("vertical") === ALL
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-foreground/[0.03]"
+              )}
+            >
+              הכל
+            </button>
+            {verticalGroup.options.map(([tag, count]) => {
+              const on = tags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => selectOfType("vertical", on ? ALL : tag)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition-colors",
+                    on
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:bg-foreground/[0.03]"
+                  )}
+                >
+                  {tag}
+                  <span
+                    className={cn(
+                      "text-xs font-medium",
+                      on ? "opacity-80" : "text-muted-foreground"
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <label
@@ -564,8 +663,61 @@ export function CategoryEventsBrowser({
             id="advanced-filters"
             className="mt-4 space-y-4 border-t border-border pt-4"
           >
+            {/* ---- טווח תאריכים מדויק. Narrows further inside whatever the
+                 month picker selected, so "ספטמבר" + 10→20.9 works
+                 (Dor 21.8). Bounds follow the month picks so the pickers
+                 can't wander outside them. ---- */}
+            <div>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                טווח תאריכים
+                {months.length > 0 && (
+                  <span className="font-medium"> · בתוך החודשים שנבחרו</span>
+                )}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-xs font-semibold text-muted-foreground">
+                    מתאריך
+                  </span>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    min={monthBounds?.min}
+                    max={dateTo || monthBounds?.max}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className={cn(CONTROL, "flex-1")}
+                  />
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-xs font-semibold text-muted-foreground">
+                    עד תאריך
+                  </span>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || monthBounds?.min}
+                    max={monthBounds?.max}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className={cn(CONTROL, "flex-1")}
+                  />
+                </label>
+              </div>
+              {(dateFrom || dateTo) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                  className="mt-2 text-xs font-bold text-primary hover:underline"
+                >
+                  נקה טווח תאריכים
+                </button>
+              )}
+            </div>
+
             {tagGroups
-              .filter((g) => CHIP_TYPES.has(g.type))
+              .filter((g) => CHIP_TYPES.has(g.type) && !PRIMARY_TYPES.has(g.type))
               .map((g) => (
                 <div key={g.type}>
                   <p className="mb-2 text-xs font-semibold text-muted-foreground">{g.label}</p>
