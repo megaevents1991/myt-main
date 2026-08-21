@@ -36,7 +36,7 @@ import { Timer } from "@/components/ui/Timer";
 import { type Fields, findBreakfastUpgrade, validate } from "./order-review.utils";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter, useSearchParams } from "next/navigation";
-import AgentMode from "@/components/AgentMode";
+import AgentMode, { AgentSettlementActions } from "@/components/AgentMode";
 import { SavePackageLink } from "@/components/SavePackageLink";
 import type { PartnerSession } from "@/lib/partner-auth/session";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -439,7 +439,11 @@ export default function OrderReview({
   // Sticky footer state and refs
   const [showStickyFooter, setShowStickyFooter] = useState(false);
   const [showStickyOptions, setShowStickyOptions] = useState(false);
-  const originalButtonRef = useRef<HTMLButtonElement>(null);
+  // Typed as a generic div (not HTMLButtonElement) because it now wraps the
+  // whole mobile CTA area, not one specific button - agent mode renders 3
+  // buttons there instead of 1, and this ref only ever needs
+  // getBoundingClientRect for the sticky-footer visibility check below.
+  const originalButtonRef = useRef<HTMLDivElement>(null);
   const passengerDetailsRef = useRef<HTMLDivElement>(null);
   const stickyFooterRef = useRef<HTMLDivElement>(null);
 
@@ -456,16 +460,12 @@ export default function OrderReview({
   const [settlementMethod, setSettlementMethod] =
     useState<SettlementMethod>("payment_link");
   const [settlementError, setSettlementError] = useState<string | null>(null);
-  // Agent picked voucher settlement: every CTA takes the no-card path, so the
-  // "talk to a representative" secondary button relabels to what it actually
-  // does now - submit the order against the voucher.
-  const voucherSettlementActive =
-    isAgentMode && isAgentVisitor && settlementMethod === "voucher";
-  // Agent picked "לינק תשלום ללקוח": every CTA creates a 24Save-style hold
-  // instead of charging any card - see the handleSubmit override below and
-  // resolveAgentSettlement's payment_link branch (confirm-order/utils.ts).
-  const paymentLinkSettlementActive =
-    isAgentMode && isAgentVisitor && settlementMethod === "payment_link";
+  // Agent mode drives settlement via 3 direct action buttons
+  // (AgentSettlementActions) instead of the old radio-picker + single
+  // label-following CTA (2026-08-21) - whenever this is true, all 3 CTA
+  // spots render those 3 buttons instead of the normal single CTA, full
+  // stop, regardless of which settlement method was last used.
+  const isAgentSettlementMode = isAgentMode && isAgentVisitor;
 
   const trackAnalyticsEvent = (event: import("@/lib/app.types").Event) => {
     try {
@@ -1083,15 +1083,24 @@ export default function OrderReview({
   const handleSubmit = async (
     e: React.FormEvent,
     payNow = false,
-    onlySave = false
+    onlySave = false,
+    methodOverride?: SettlementMethod
   ) => {
     e.preventDefault();
+    // The 3 agent-settlement buttons (AgentSettlementActions) call
+    // setSettlementMethod AND handleSubmit in the same click - methodOverride
+    // carries the just-clicked method so this read isn't racing that setState
+    // (React batches it; without the override this closure would still see
+    // the PREVIOUS render's settlementMethod). Every other caller - the plain
+    // non-agent CTA, and the SETTLEMENT_NOT_ALLOWED retry path - has no
+    // override and just reads the current state, same as before.
+    const effectiveSettlementMethod = methodOverride ?? settlementMethod;
     // Voucher settlement never touches the card gateway, regardless of which
     // CTA the agent clicked - it behaves like a phone order (Pending status,
     // immediate confirmation email) until staff confirms the voucher arrived
     // and flips the reservation to Paid by hand.
     const isVoucherSettlement =
-      isAgentMode && isAgentVisitor && settlementMethod === "voucher";
+      isAgentMode && isAgentVisitor && effectiveSettlementMethod === "voucher";
     if (isVoucherSettlement) {
       payNow = false;
       onlySave = false;
@@ -1101,10 +1110,10 @@ export default function OrderReview({
     // through the recovery link, never on this screen. Forced regardless of
     // the clicked button's own payNow/onlySave args, same as voucher above
     // (which is exactly why the secondary CTAs - "talk to a rep" would
-    // otherwise silently create a hold too - hide while this is active; see
-    // the 3 CTA render blocks below).
+    // otherwise silently create a hold too - hide while agent settlement
+    // mode is active; see the 3 CTA render blocks below).
     const isPaymentLinkSettlement =
-      isAgentMode && isAgentVisitor && settlementMethod === "payment_link";
+      isAgentMode && isAgentVisitor && effectiveSettlementMethod === "payment_link";
     if (isPaymentLinkSettlement) {
       payNow = false;
       onlySave = true;
@@ -1244,7 +1253,7 @@ export default function OrderReview({
       // active agent) against the DB and never trusts this beyond "which of the
       // eligible options did they click".
       settlement_method:
-        isAgentMode && isAgentVisitor ? settlementMethod : undefined,
+        isAgentMode && isAgentVisitor ? effectiveSettlementMethod : undefined,
       // Only send the coupon when it actually won (server re-validates and
       // recomputes the discount from the pre-discount total).
       coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
@@ -1339,12 +1348,14 @@ export default function OrderReview({
         // real /agent session - a stale login, a raw link opened without
         // signing in, or picking someone else's code all land here. Fall
         // back to payment_link, NOT customer_card - customer_card was
-        // removed from this picker entirely (2026-08-20, legal: an agent
-        // must never type the CUSTOMER's card), so silently reinstating it
-        // here would let a stale session slip onto the exact flow the
-        // removal exists to prevent. payment_link is gated by the same
-        // requireAgent() check server-side, so a retry here fails the same
-        // way (safely) until the agent actually reconnects.
+        // removed from the agent settlement UI entirely (2026-08-20, legal:
+        // an agent must never type the CUSTOMER's card), so silently
+        // reinstating it here would let a stale session slip onto the exact
+        // flow the removal exists to prevent. payment_link is gated by the
+        // same requireAgent() check server-side, so a retry here fails the
+        // same way (safely) until the agent actually reconnects. Do NOT fall
+        // back to agent_card either - a stale session must not silently land
+        // on ANY card flow.
         setSettlementMethod("payment_link");
         setSettlementError(
           "לא ניתן להשתמש באפשרות זו - יש להתחבר מחדש לאזור הסוכן ולנסות שוב.",
@@ -1356,6 +1367,23 @@ export default function OrderReview({
 
       setIsSubmitting(false);
     }
+  };
+
+  // Click handler for the 3 AgentSettlementActions buttons - sets
+  // settlementMethod (kept in sync for consistency/payload) AND submits in
+  // the same click via handleSubmit's methodOverride, so there's no reliance
+  // on the setState above having landed before handleSubmit reads it.
+  // agent_card charges immediately (payNow=true), matching the plain CTA's
+  // default behavior; voucher/payment_link ignore the payNow/onlySave args
+  // here since handleSubmit forces both from methodOverride regardless (see
+  // isVoucherSettlement / isPaymentLinkSettlement above).
+  const handleAgentSettle = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    method: SettlementMethod
+  ) => {
+    setSettlementError(null);
+    setSettlementMethod(method);
+    handleSubmit(e, method === "agent_card", false, method);
   };
 
   const isFormValidForAction = (requireAllPassengers: boolean) =>
@@ -1539,17 +1567,7 @@ export default function OrderReview({
               <AgentMode
                 isAgentMode={isAgentMode}
                 onToggleAgentMode={() => setIsAgentMode(!isAgentMode)}
-                settlementMethod={settlementMethod}
-                onSettlementMethodChange={(method) => {
-                  setSettlementError(null);
-                  setSettlementMethod(method);
-                }}
-                agentCommissionUsd={agentCommissionUsd}
-                voucherAllowed={voucherPaymentAllowed}
-                voucherBalanceUsd={voucherBalanceUsd}
-                finalPurchasePriceUsd={finalPurchasePrice}
                 settlementError={settlementError}
-                holdAllowed={isHoldAllowed}
               />
             </div>
           )}
@@ -2188,57 +2206,60 @@ export default function OrderReview({
                 />
               </div>
 
-              {/* CTA Button */}
-              <Button
-                onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] hidden md:block"
-                disabled={isSubmitting}
-                aria-label={
-                  voucherSettlementActive
-                    ? "שליחת ההזמנה עם שובר"
-                    : paymentLinkSettlementActive
-                      ? "יצירת קישור תשלום ללקוח"
-                      : "המשך לתשלום מאובטח בכרטיס אשראי"
-                }
-              >
-                {voucherSettlementActive
-                  ? "שלח הזמנה עם שובר"
-                  : paymentLinkSettlementActive
-                    ? "צור קישור לתשלום"
-                    : "המשך לתשלום מאובטח"}
-              </Button>
-
-              {/* Voucher/payment-link settlement each have exactly one path -
-                  the secondary CTAs (rep / 24h hold) would silently do the
-                  same submit (see the handleSubmit overrides), so they hide
-                  instead of lying. */}
-              {!voucherSettlementActive && !paymentLinkSettlementActive && (
-              <div className="hidden md:flex gap-2 mt-0">
-                <Button
-                  onClick={handleSubmit}
-                  variant={"link"}
-                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
-                  disabled={isSubmitting}
-                  aria-label="צור קשר עם נציג"
-                >
-                  ?רוצים לפצל תשלום
-                  <br />
-                  דברו עם נציג
-                </Button>
-                {isHoldAllowed && (
-                  <Button
-                    onClick={(e) => handleSubmit(e, false, true)}
-                    variant={"link"}
-                    className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
+              {/* CTA Button(s) - agent mode: 3 direct settlement buttons
+                  (AgentSettlementActions) replace the single label-following
+                  CTA + secondary row entirely (2026-08-21). Non-agent: the
+                  original single-CTA flow, unchanged. */}
+              {isAgentSettlementMode ? (
+                <div className="hidden md:block">
+                  <AgentSettlementActions
+                    onSettle={handleAgentSettle}
+                    agentCommissionUsd={agentCommissionUsd}
+                    voucherAllowed={voucherPaymentAllowed}
+                    voucherBalanceUsd={voucherBalanceUsd}
+                    finalPurchasePriceUsd={finalPurchasePrice}
+                    holdAllowed={isHoldAllowed}
                     disabled={isSubmitting}
-                    aria-label="הבטיחו את המחיר ל-24 שעות"
+                  />
+                </div>
+              ) : (
+                <>
+                  <Button
+                    onClick={(e) => handleSubmit(e, true)}
+                    className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] hidden md:block"
+                    disabled={isSubmitting}
+                    aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
                   >
-                    ?צריכים עוד זמן
-                    <br />
-                    הבטיחו מחיר ל-24 שעות
+                    המשך לתשלום מאובטח
                   </Button>
-                )}
-              </div>
+
+                  <div className="hidden md:flex gap-2 mt-0">
+                    <Button
+                      onClick={handleSubmit}
+                      variant={"link"}
+                      className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
+                      disabled={isSubmitting}
+                      aria-label="צור קשר עם נציג"
+                    >
+                      ?רוצים לפצל תשלום
+                      <br />
+                      דברו עם נציג
+                    </Button>
+                    {isHoldAllowed && (
+                      <Button
+                        onClick={(e) => handleSubmit(e, false, true)}
+                        variant={"link"}
+                        className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md hover:bg-gray-50 transition-colors dark:hover:bg-white/5"
+                        disabled={isSubmitting}
+                        aria-label="הבטיחו את המחיר ל-24 שעות"
+                      >
+                        ?צריכים עוד זמן
+                        <br />
+                        הבטיחו מחיר ל-24 שעות
+                      </Button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
             <div className="space-y-6 order-2 md:order-1">
@@ -2655,69 +2676,73 @@ export default function OrderReview({
                 {termsCheckboxTouched && !termsAccepted && <TermsError />}{" "}
               </div>
               {/* Payment security logos (mobile moved earlier) - removed here */}
-              {/* CTA Button */}
-              <Button
-                ref={originalButtonRef}
-                onClick={(e) => handleSubmit(e, true)}
-                className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] block md:hidden"
-                disabled={isSubmitting}
-                aria-label={
-                  voucherSettlementActive
-                    ? "שליחת ההזמנה עם שובר"
-                    : paymentLinkSettlementActive
-                      ? "יצירת קישור תשלום ללקוח"
-                      : "המשך לתשלום מאובטח בכרטיס אשראי"
-                }
-              >
-                <ButtonSummary
-                  finalPurchasePrice={finalPurchasePrice}
-                  finalPurchasePriceILS={finalPurchasePriceILS}
-                  recommendedPriceAllPax={recommendedPriceAllPax}
-                  numberOfPersons={numberOfPersons}
-                  agentCommission={agentCommission}
-                  isAgent={isAgentVisitor}
-                  isNumberOfPersonsEqual={isNumberOfPersonsEqual}
-                  isSticky={false}
-                    affDiscount={effectiveDiscountTotalUsd}
-                  isCouponDiscount={couponWins}
-                  label={
-                    voucherSettlementActive
-                      ? "שלח הזמנה עם שובר"
-                      : paymentLinkSettlementActive
-                        ? "צור קישור לתשלום"
-                        : undefined
-                  }
-                />
-              </Button>
+              {/* CTA Button(s) - ref wraps the whole area (not one button)
+                  since agent mode renders 3; the sticky-footer visibility
+                  check below only needs getBoundingClientRect on it. */}
+              <div ref={originalButtonRef}>
+                {isAgentSettlementMode ? (
+                  <div className="block md:hidden">
+                    <AgentSettlementActions
+                      onSettle={handleAgentSettle}
+                      agentCommissionUsd={agentCommissionUsd}
+                      voucherAllowed={voucherPaymentAllowed}
+                      voucherBalanceUsd={voucherBalanceUsd}
+                      finalPurchasePriceUsd={finalPurchasePrice}
+                      holdAllowed={isHoldAllowed}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <Button
+                      onClick={(e) => handleSubmit(e, true)}
+                      className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] block md:hidden"
+                      disabled={isSubmitting}
+                      aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
+                    >
+                      <ButtonSummary
+                        finalPurchasePrice={finalPurchasePrice}
+                        finalPurchasePriceILS={finalPurchasePriceILS}
+                        recommendedPriceAllPax={recommendedPriceAllPax}
+                        numberOfPersons={numberOfPersons}
+                        agentCommission={agentCommission}
+                        isAgent={isAgentVisitor}
+                        isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                        isSticky={false}
+                        affDiscount={effectiveDiscountTotalUsd}
+                        isCouponDiscount={couponWins}
+                      />
+                    </Button>
 
-              {!voucherSettlementActive && !paymentLinkSettlementActive && (
-              <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
-                <Button
-                  onClick={handleSubmit}
-                  variant={"link"}
-                  className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
-                  disabled={isSubmitting}
-                  aria-label="צור קשר עם נציג"
-                >
-                  ?רוצים לפצל תשלום
-                  <br />
-                  דברו עם נציג
-                </Button>
-                {isHoldAllowed && (
-                  <Button
-                    onClick={(e) => handleSubmit(e, false, true)}
-                    variant={"link"}
-                    className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
-                    disabled={isSubmitting}
-                    aria-label="הבטיחו את המחיר ל-24 שעות"
-                  >
-                    ?צריכים עוד זמן
-                    <br />
-                    הבטיחו מחיר ל-24 שעות
-                  </Button>
+                    <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
+                      <Button
+                        onClick={handleSubmit}
+                        variant={"link"}
+                        className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
+                        disabled={isSubmitting}
+                        aria-label="צור קשר עם נציג"
+                      >
+                        ?רוצים לפצל תשלום
+                        <br />
+                        דברו עם נציג
+                      </Button>
+                      {isHoldAllowed && (
+                        <Button
+                          onClick={(e) => handleSubmit(e, false, true)}
+                          variant={"link"}
+                          className="flex-[3] min-w-0 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
+                          disabled={isSubmitting}
+                          aria-label="הבטיחו את המחיר ל-24 שעות"
+                        >
+                          ?צריכים עוד זמן
+                          <br />
+                          הבטיחו מחיר ל-24 שעות
+                        </Button>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
-              )}
             </div>
           </div>
         </main>
@@ -2729,81 +2754,85 @@ export default function OrderReview({
           ref={stickyFooterRef}
           className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-50 md:hidden"
         >
-          {/* Additional Options Dropdown */}
-          {showStickyOptions && !voucherSettlementActive && !paymentLinkSettlementActive && (
-            <div className="mb-4 flex gap-2">
-              <Button
-                onClick={handleSubmit}
-                variant={"link"}
-                className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
-                disabled={isSubmitting}
-                aria-label="צור קשר עם נציג"
-              >
-                ?רוצים לפצל תשלום
-                <br />
-                דברו עם נציג
-              </Button>
-              {isHoldAllowed && (
-                <Button
-                  onClick={(e) => handleSubmit(e, false, true)}
-                  variant={"link"}
-                  className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
-                  disabled={isSubmitting}
-                  aria-label="הבטיחו את המחיר ל-24 שעות"
-                >
-                  ?צריכים עוד זמן
-                  <br />
-                  הבטיחו מחיר ל-24 שעות
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Main Buttons Row */}
-          <div className="flex gap-2">
-            {!voucherSettlementActive && !paymentLinkSettlementActive && (
-              <Button
-                onClick={() => setShowStickyOptions(!showStickyOptions)}
-                variant="outline"
-                className="w-[20%] h-[52px] text-[12px] leading-tight border-[#0A1A14] text-[#0A1A14] dark:border-foreground/60 dark:text-foreground dark:hover:bg-foreground/10 hover:bg-[#0A1A14]/10 whitespace-normal break-words px-1"
-                aria-label="אפשרויות נוספות"
-              >
-                {showStickyOptions ? "סגור" : "אפשרויות נוספות"}
-              </Button>
-            )}
-            <Button
-              onClick={(e) => handleSubmit(e, true)}
-              className="flex-1 bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] w-full justify-between"
+          {isAgentSettlementMode ? (
+            // Agent mode: 3 compact settlement buttons replace both the
+            // "אפשרויות נוספות" expand toggle and the primary CTA - there's
+            // no more undetermined "which method" state needing a secondary
+            // options row, the 3 buttons already cover every agent path.
+            <AgentSettlementActions
+              compact
+              onSettle={handleAgentSettle}
+              agentCommissionUsd={agentCommissionUsd}
+              voucherAllowed={voucherPaymentAllowed}
+              voucherBalanceUsd={voucherBalanceUsd}
+              finalPurchasePriceUsd={finalPurchasePrice}
+              holdAllowed={isHoldAllowed}
               disabled={isSubmitting}
-              aria-label={
-                voucherSettlementActive
-                  ? "שליחת ההזמנה עם שובר"
-                  : paymentLinkSettlementActive
-                    ? "יצירת קישור תשלום ללקוח"
-                    : "המשך לתשלום מאובטח בכרטיס אשראי"
-              }
-            >
-              <ButtonSummary
-                finalPurchasePrice={finalPurchasePrice}
-                finalPurchasePriceILS={finalPurchasePriceILS}
-                recommendedPriceAllPax={recommendedPriceAllPax}
-                numberOfPersons={numberOfPersons}
-                agentCommission={agentCommission}
-                isAgent={isAgentVisitor}
-                isNumberOfPersonsEqual={isNumberOfPersonsEqual}
-                isSticky
-                affDiscount={effectiveDiscountTotalUsd}
-                isCouponDiscount={couponWins}
-                label={
-                  voucherSettlementActive
-                    ? "שלח הזמנה עם שובר"
-                    : paymentLinkSettlementActive
-                      ? "צור קישור לתשלום"
-                      : undefined
-                }
-              />
-            </Button>
-          </div>
+            />
+          ) : (
+            <>
+              {/* Additional Options Dropdown */}
+              {showStickyOptions && (
+                <div className="mb-4 flex gap-2">
+                  <Button
+                    onClick={handleSubmit}
+                    variant={"link"}
+                    className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
+                    disabled={isSubmitting}
+                    aria-label="צור קשר עם נציג"
+                  >
+                    ?רוצים לפצל תשלום
+                    <br />
+                    דברו עם נציג
+                  </Button>
+                  {isHoldAllowed && (
+                    <Button
+                      onClick={(e) => handleSubmit(e, false, true)}
+                      variant={"link"}
+                      className="flex-1 px-2 text-[14px] h-[52px] leading-tight whitespace-normal break-words text-center border border-primary text-success rounded-md transition-colors"
+                      disabled={isSubmitting}
+                      aria-label="הבטיחו את המחיר ל-24 שעות"
+                    >
+                      ?צריכים עוד זמן
+                      <br />
+                      הבטיחו מחיר ל-24 שעות
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Main Buttons Row */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowStickyOptions(!showStickyOptions)}
+                  variant="outline"
+                  className="w-[20%] h-[52px] text-[12px] leading-tight border-[#0A1A14] text-[#0A1A14] dark:border-foreground/60 dark:text-foreground dark:hover:bg-foreground/10 hover:bg-[#0A1A14]/10 whitespace-normal break-words px-1"
+                  aria-label="אפשרויות נוספות"
+                >
+                  {showStickyOptions ? "סגור" : "אפשרויות נוספות"}
+                </Button>
+                <Button
+                  onClick={(e) => handleSubmit(e, true)}
+                  className="flex-1 bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] w-full justify-between"
+                  disabled={isSubmitting}
+                  aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
+                >
+                  <ButtonSummary
+                    finalPurchasePrice={finalPurchasePrice}
+                    finalPurchasePriceILS={finalPurchasePriceILS}
+                    recommendedPriceAllPax={recommendedPriceAllPax}
+                    numberOfPersons={numberOfPersons}
+                    agentCommission={agentCommission}
+                    isAgent={isAgentVisitor}
+                    isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                    isSticky
+                    affDiscount={effectiveDiscountTotalUsd}
+                    isCouponDiscount={couponWins}
+                  />
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
