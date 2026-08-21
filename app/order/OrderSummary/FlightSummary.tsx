@@ -3,7 +3,7 @@ import { FlightMeta } from "@/components/ui/FlightCard";
 import { Flight } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
 import dayjs from "dayjs";
-import type { BagPricingOptions } from "../hooks/useBagPricing";
+import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
 import { addedCheckedBagsCount } from "../order-review.utils";
 
 /** Included/not-included line for one baggage kind, on one or both legs. */
@@ -102,6 +102,9 @@ export const FlightSummary = ({
   agentCommission,
   isAgent,
   bagOptions,
+  fareUpgrade,
+  onUpgradeFare,
+  onRemoveFareUpgrade,
   showUpsells,
   onSetCheckedBagQty,
   onToggleCabinBag,
@@ -116,6 +119,10 @@ export const FlightSummary = ({
    *  loading / unavailable (offline flight, virtual offer, nothing returned)
    *  - see app/order/hooks/useBagPricing.ts. */
   bagOptions?: BagPricingOptions;
+  /** El Al: branded-fare upgrade ("שדרוג כרטיס") instead of an ancillary bag. */
+  fareUpgrade?: FareUpgradeOption;
+  onUpgradeFare?: () => void;
+  onRemoveFareUpgrade?: () => void;
   /** Interactive upsells only in the live order flow - off on the
    *  hold-recovery/pay-link page and on an agent-locked prepared package. */
   showUpsells?: boolean;
@@ -133,6 +140,7 @@ export const FlightSummary = ({
   const checkedBagsCount = addedCheckedBagsCount(addedBags, numOfTravelers);
   const checkedAdded = checkedBagsCount > 0;
   const cabinAdded = !!addedBags?.cabin;
+  const fareUpgraded = !!selectedFlight.fare_upgrade;
 
   return (
     <div className="">
@@ -261,6 +269,53 @@ export const FlightSummary = ({
           absent otherwise - Amadeus didn't price it, the flight is offline
           (no ancillary price source, v1), or it's already included. */}
       <div className="mt-2 space-y-1.5 px-2" dir="rtl">
+        {/* El Al path: branded-fare upgrade ("שדרוג כרטיס") instead of an
+            ancillary bag - the route returns fareUpgrade and no bagOptions
+            for FARE_UPGRADE_CARRIERS. */}
+        {fareUpgraded && (
+          <div
+            className="flex items-center justify-between gap-2 rounded-lg border border-forest/40 bg-forest/5 px-2.5 py-1.5 text-[12px] dark:border-glow/40 dark:bg-glow/10"
+            dir="rtl"
+          >
+            <span className="font-semibold text-forest dark:text-glow">
+              שדרוג כרטיס ל-{selectedFlight.fare_upgrade!.brand} (כולל מזוודה){" "}
+              <span className="tabular-nums" dir="ltr">
+                +$
+                {Math.ceil(
+                  selectedFlight.fare_upgrade!.delta_total_usd,
+                ).toLocaleString("en-US")}
+              </span>
+            </span>
+            {showUpsells &&
+              selectedFlight.fare_upgrade!.prev_offer &&
+              onRemoveFareUpgrade && (
+                <button
+                  type="button"
+                  onClick={onRemoveFareUpgrade}
+                  className="shrink-0 text-[11px] text-muted-foreground underline"
+                >
+                  הסרה
+                </button>
+              )}
+          </div>
+        )}
+        {!fareUpgraded && !checkedIncluded && showUpsells && fareUpgrade && onUpgradeFare && (
+          <button
+            type="button"
+            onClick={onUpgradeFare}
+            dir="rtl"
+            className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
+            aria-label={`שדרוג כרטיס ל-${fareUpgrade.brand} כולל מזוודה, תוספת ${fareUpgrade.deltaPerPaxUsd} דולר לנוסע`}
+          >
+            <span>
+              שדרוג כרטיס ל-{fareUpgrade.brand} · כולל מזוודה
+            </span>
+            <span className="tabular-nums" dir="ltr">
+              +${fareUpgrade.deltaPerPaxUsd.toLocaleString("en-US")}{" "}
+              <span dir="rtl">לנוסע</span>
+            </span>
+          </button>
+        )}
         {/* A paid add-on already charged stays visible even if checkedIncluded
             later flips true (e.g. an עריכה flight swap) - only the "offer to
             add" side is gated on it being not-already-free. */}

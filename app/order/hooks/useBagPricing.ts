@@ -18,6 +18,15 @@ export type BagPricingOptions = {
   cabin?: BagPricingOption;
 } | null;
 
+/** Branded-fare upgrade offered instead of an ancillary bag (El Al →
+ *  "שדרוג כרטיס" ל-Classic). Mirrors the route's FareUpgradeOffer. */
+export type FareUpgradeOption = {
+  brand: string;
+  deltaTotalUsd: number;
+  deltaPerPaxUsd: number;
+  offer: FlightOffer;
+} | null;
+
 /**
  * Chargeable baggage ancillary pricing for the selected flight (Amadeus
  * Flight Offers Pricing, include=bags - app/api/flights/bag-pricing), used
@@ -35,8 +44,13 @@ export type BagPricingOptions = {
 export function useBagPricing(
   flight: Flight | undefined,
   enabled: boolean,
-): { bagOptions: BagPricingOptions; loading: boolean } {
+): {
+  bagOptions: BagPricingOptions;
+  fareUpgrade: FareUpgradeOption;
+  loading: boolean;
+} {
   const [bagOptions, setBagOptions] = useState<BagPricingOptions>(null);
+  const [fareUpgrade, setFareUpgrade] = useState<FareUpgradeOption>(null);
   const [loading, setLoading] = useState(false);
   const fetchedForRef = useRef<string | null>(null);
 
@@ -51,6 +65,7 @@ export function useBagPricing(
 
     setLoading(true);
     setBagOptions(null);
+    setFareUpgrade(null);
 
     // Staleness is judged against the REF's current value (not a
     // closure-captured cancelled flag): React 19 StrictMode's dev-only
@@ -69,13 +84,19 @@ export function useBagPricing(
         virtual: flight.virtualOfferType || false,
       }),
     })
-      .then((res) => (res.ok ? res.json() : { bagOptions: null }))
-      .then((data: { bagOptions: BagPricingOptions }) => {
-        if (fetchedForRef.current === flightId) setBagOptions(data?.bagOptions ?? null);
+      .then((res) => (res.ok ? res.json() : { bagOptions: null, fareUpgrade: null }))
+      .then((data: { bagOptions: BagPricingOptions; fareUpgrade?: FareUpgradeOption }) => {
+        if (fetchedForRef.current === flightId) {
+          setBagOptions(data?.bagOptions ?? null);
+          setFareUpgrade(data?.fareUpgrade ?? null);
+        }
       })
       .catch((error) => {
         console.error("useBagPricing: fetch failed:", error);
-        if (fetchedForRef.current === flightId) setBagOptions(null);
+        if (fetchedForRef.current === flightId) {
+          setBagOptions(null);
+          setFareUpgrade(null);
+        }
       })
       .finally(() => {
         if (fetchedForRef.current === flightId) setLoading(false);
@@ -86,5 +107,5 @@ export function useBagPricing(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, flight?.id]);
 
-  return { bagOptions, loading };
+  return { bagOptions, fareUpgrade, loading };
 }
