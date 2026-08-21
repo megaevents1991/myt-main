@@ -757,6 +757,19 @@ export default function OrderReview({
     return !blockedSubstrings.some((s) => name.includes(s));
   }, [event?.name_english]);
 
+  // The agent's "לינק תשלום ללקוח" rides the same 24Save hold mechanism, but it
+  // is an AGENT TOOL, not the customer-facing 24h-hold promo - the
+  // NEXT_PUBLIC_DISABLE_24H_HOLD kill switch (which hides the promo in prod)
+  // must NOT take the payment-link button down with it. Only the per-event
+  // blocklist applies here.
+  const isPaymentLinkAllowed = useMemo(() => {
+    const name = (event?.name_english || "").toLowerCase();
+    const blockedSubstrings = [
+      "123abc",
+    ]; // keep in sync with isHoldAllowed's blocklist
+    return !blockedSubstrings.some((s) => name.includes(s));
+  }, [event?.name_english]);
+
   // Restrict inactivity-based special offer (extra discount) for specific events
   // Keep a separate list so product can tune hold vs. offer independently
   const isSpecialOfferAllowed = useMemo(() => {
@@ -1118,8 +1131,12 @@ export default function OrderReview({
       payNow = false;
       onlySave = true;
     }
-    // Safety: if hold is not allowed for this event, force onlySave off
-    if (onlySave && !isHoldAllowed) {
+    // Safety: if hold is not allowed for this event, force onlySave off.
+    // The agent payment-link hold answers to its OWN gate (blocklist only) -
+    // the customer-promo kill switch must not silently convert an agent's
+    // payment-link submission into a phone order.
+    const holdGate = isPaymentLinkSettlement ? isPaymentLinkAllowed : isHoldAllowed;
+    if (onlySave && !holdGate) {
       console.log("⚠️ Hold not allowed for this event, converting to phone order");
       onlySave = false;
     }
@@ -2218,7 +2235,7 @@ export default function OrderReview({
                     voucherAllowed={voucherPaymentAllowed}
                     voucherBalanceUsd={voucherBalanceUsd}
                     finalPurchasePriceUsd={finalPurchasePrice}
-                    holdAllowed={isHoldAllowed}
+                    holdAllowed={isPaymentLinkAllowed}
                     disabled={isSubmitting}
                   />
                 </div>
@@ -2688,7 +2705,7 @@ export default function OrderReview({
                       voucherAllowed={voucherPaymentAllowed}
                       voucherBalanceUsd={voucherBalanceUsd}
                       finalPurchasePriceUsd={finalPurchasePrice}
-                      holdAllowed={isHoldAllowed}
+                      holdAllowed={isPaymentLinkAllowed}
                       disabled={isSubmitting}
                     />
                   </div>
@@ -2766,7 +2783,7 @@ export default function OrderReview({
               voucherAllowed={voucherPaymentAllowed}
               voucherBalanceUsd={voucherBalanceUsd}
               finalPurchasePriceUsd={finalPurchasePrice}
-              holdAllowed={isHoldAllowed}
+              holdAllowed={isPaymentLinkAllowed}
               disabled={isSubmitting}
             />
           ) : (
