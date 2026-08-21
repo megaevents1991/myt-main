@@ -22,6 +22,8 @@ type YTPlayer = {
   destroy: () => void;
   mute: () => void;
   playVideo: () => void;
+  /** Seconds of media actually played - the reveal gate. */
+  getCurrentTime?: () => number;
   /** Kills the auto-enabled captions muted playback turns on. */
   unloadModule?: (module: string) => void;
 };
@@ -81,7 +83,7 @@ export const HeroVideoReveal = ({
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let player: YTPlayer | null = null;
-    let revealTimer: ReturnType<typeof setTimeout> | undefined;
+    let revealTimer: ReturnType<typeof setInterval> | undefined;
     let cancelled = false;
 
     loadYouTubeApi().then((YT) => {
@@ -111,12 +113,20 @@ export const HeroVideoReveal = ({
             // Muted playback re-enables auto-captions - keep them off.
             e.target.unloadModule?.("captions");
             e.target.unloadModule?.("cc");
-            // Reveal only once playback is real, and give YouTube's own
-            // title/overlay chrome ~3s to fade behind the art first.
+            // Reveal only after the clip has actually PLAYED ~4.5s of media
+            // (not wall-clock): iOS repaints the full player chrome at the
+            // start of every playback - including gesture-kicked ones - and
+            // hides it ~3s of untouched playback later. Gating on
+            // getCurrentTime guarantees the chrome is gone before the art
+            // fades, whenever playback started.
             if (e.data === YT.PlayerState.PLAYING && !revealTimer) {
-              revealTimer = setTimeout(() => {
-                if (!cancelled) setRevealed(true);
-              }, 3000);
+              revealTimer = setInterval(() => {
+                if (cancelled) return;
+                if ((e.target.getCurrentTime?.() ?? 0) >= 4.5) {
+                  clearInterval(revealTimer);
+                  setRevealed(true);
+                }
+              }, 250);
             }
           },
         },
@@ -141,7 +151,7 @@ export const HeroVideoReveal = ({
       cancelled = true;
       window.removeEventListener("pointerdown", kick);
       window.removeEventListener("touchstart", kick);
-      if (revealTimer) clearTimeout(revealTimer);
+      if (revealTimer) clearInterval(revealTimer);
       try {
         player?.destroy();
       } catch {
