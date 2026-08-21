@@ -30,11 +30,6 @@ export const DetailHero = ({
   artImageScale,
   artImageOffsetX,
   artImageOffsetY,
-  // No defaults: the hero CTA renders only when a caller passes BOTH cta
-  // props (CmsCatalog's "לכל הקבוצות"). Team/artist pages dropped theirs
-  // (creative review 2026-08-20: "להעיף את פרטים והזמנה").
-  ctaHref,
-  ctaLabel,
   eyebrow,
   chips,
 }: {
@@ -64,8 +59,6 @@ export const DetailHero = ({
   artImageScale?: number | null;
   artImageOffsetX?: number | null;
   artImageOffsetY?: number | null;
-  ctaHref?: string;
-  ctaLabel?: string;
   /** Small label above the name - competition / league / genre. */
   eyebrow?: string;
   /** Honour/genre chips under the bio (e.g. "20 אליפויות אנגליה"). */
@@ -208,16 +201,9 @@ export const DetailHero = ({
             ))}
           </div>
         )}
-        {ctaHref && ctaLabel && (
-          <div className="order-5">
-            <Link
-              href={ctaHref}
-              className="inline-block rounded-full bg-secondary px-7 py-3 font-bold text-main shadow-[0_10px_30px_-10px_hsl(var(--brand-mint)/0.8)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-main"
-            >
-              {ctaLabel}
-            </Link>
-          </div>
-        )}
+        {/* No hero CTA anywhere - the creative review (20.8) removed
+            "לפרטים והזמנה" and "לכל הקבוצות" alike; the content below the
+            fold is the call to action. */}
       </div>
     </div>
   </section>
