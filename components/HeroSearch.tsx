@@ -150,22 +150,39 @@ export const HeroSearch = ({
   const topArtist = artistFor(top);
   const selectedArtist = artistFor(selected);
 
+  // Hubs are optional as a prop (the search modal has them loaded already).
+  // Every OTHER mount - the homepage hero above all - fetches them itself on
+  // the first real query, so the "כל האירועים ב…" link works everywhere and
+  // not only inside the modal. Same ISR-cached endpoint, one call per mount.
+  const [fetchedHubs, setFetchedHubs] = useState<SearchHub[]>([]);
+  const hubsRequested = useRef(false);
+  useEffect(() => {
+    if (hubs.length > 0 || hubsRequested.current) return;
+    if (query.trim().length < 2) return;
+    hubsRequested.current = true;
+    fetch("/api/search-events")
+      .then((r) => r.json())
+      .then((d) => setFetchedHubs(d.hubs ?? []))
+      .catch(() => setFetchedHubs([]));
+  }, [query, hubs.length]);
+  const allHubs = hubs.length > 0 ? hubs : fetchedHubs;
+
   /** The destination / league / genre the QUERY itself names ("לונדון",
    *  "פרמייר ליג", "פופ") - offered as a landing page under the results, the
    *  same way an artist match is (Dor 21.8). Substring match on the typed
    *  words, longest name first so "ליגת האלופות" beats "ליגה". */
   const topHub = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q.length < 2 || hubs.length === 0) return null;
+    if (q.length < 2 || allHubs.length === 0) return null;
     return (
-      [...hubs]
+      [...allHubs]
         .sort((a, b) => b.name.length - a.name.length)
         .find((h) => {
           const name = h.name.toLowerCase();
           return q.includes(name) || name.includes(q);
         }) ?? null
     );
-  }, [query, hubs]);
+  }, [query, allHubs]);
 
   useEffect(() => {
     setSpeechSupported(Boolean(getSpeechRecognition()));
