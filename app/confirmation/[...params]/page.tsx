@@ -284,12 +284,14 @@ export default function ConfirmationPage() {
     return (
       <div className="bg-secondary/5 border border-secondary/20 rounded-lg p-4 mb-4">
         <div className="flex items-center gap-2 mb-3" dir="rtl">
-          <Link2 className="h-5 w-5 text-secondary" />
-          <h3 className="font-semibold text-secondary">
+          {/* The card sits on a pale mint ground - mint text on it was
+              unreadable. Forest in light, glow in dark (the app-wide pair). */}
+          <Link2 className="h-5 w-5 text-forest dark:text-glow" />
+          <h3 className="font-semibold text-forest dark:text-glow">
             {isPaymentLink ? "קישור לתשלום עבור הלקוח" : "קישור להשלמת ההזמנה"}
           </h3>
         </div>
-        <p className="text-sm text-secondary/80 mb-3" dir="rtl">
+        <p className="text-sm text-forest/80 dark:text-glow/80 mb-3" dir="rtl">
           {isPaymentLink
             ? "שלחו ללקוח את הקישור הבא לתשלום מאובטח - ההזמנה שמורה ותקפה ל-24 השעות הקרובות."
             : "שמרו את הקישור כדי לגשת להזמנה שלכם ב-24 שעות הקרובות ולשלם במועד מאוחר יותר אם תרצו"}
@@ -304,17 +306,15 @@ export default function ConfirmationPage() {
         >
           <div className="flex items-center justify-between p-4">
             <div className="flex-1 min-w-0 ml-3">
-              <p className="text-sm font-medium text-secondary mb-1" dir="rtl">
+              <p className="text-sm font-medium text-forest dark:text-glow mb-1" dir="rtl">
                 לחץ כדי להעתיק קישור
               </p>
-              <p className="text-xs text-secondary/90 break-all font-mono leading-relaxed">
+              <p className="text-xs text-forest/90 dark:text-glow/90 break-all font-mono leading-relaxed">
                 {recoveryUrl}
               </p>
             </div>
             <div className="flex items-center flex-shrink-0">
-              <Copy className={`h-5 w-5 transition-colors ${
-                copySuccess ? "text-secondary" : "text-secondary"
-              }`} />
+              <Copy className="h-5 w-5 text-forest transition-colors dark:text-glow" />
             </div>
           </div>
           {copySuccess && (
