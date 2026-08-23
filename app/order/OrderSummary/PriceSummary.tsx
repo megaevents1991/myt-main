@@ -12,6 +12,7 @@ export const PriceSummary = ({
   affDiscount,
   isCouponDiscount = false,
   isNumberOfPersonsEqual,
+  addOnsTotalUsd = 0,
 }: {
   finalPurchasePrice: number;
   finalPurchasePriceILS: number;
@@ -28,6 +29,8 @@ export const PriceSummary = ({
   // true when the winning discount came from a coupon (changes the label)
   isCouponDiscount?: boolean;
   isNumberOfPersonsEqual: boolean;
+  /** Booking-level add-ons (bags) kept out of the per-person figure. */
+  addOnsTotalUsd?: number;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;
   const {
@@ -42,6 +45,7 @@ export const PriceSummary = ({
     isNumberOfPersonsEqual,
     numberOfPersons,
     finalPurchasePriceILS,
+    perPersonAddOnsUsd: addOnsTotalUsd,
   });
 
   return (

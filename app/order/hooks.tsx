@@ -28,6 +28,7 @@ export function useOrderVars() {
     numberOfEventTickets,
     currentMinTicketPrice,
     skipHotel,
+    skippedHotelPricePerGuest,
     flightSkipped,
   } = useContext(OrderContext);
 
@@ -50,9 +51,20 @@ export function useOrderVars() {
         Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_LOW) || 100;
       const hotelSkipMarkupHigh =
         Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_HIGH) || 150;
-      return event.base_flight_price < HOTEL_SKIP_FLIGHT_THRESHOLD
-        ? hotelSkipMarkupLow
-        : hotelSkipMarkupHigh;
+      const fee =
+        event.base_flight_price < HOTEL_SKIP_FLIGHT_THRESHOLD
+          ? hotelSkipMarkupLow
+          : hotelSkipMarkupHigh;
+      // Skip-fee rule (Dor 23.8): the fee exists to recover hotel-base
+      // margin. A "cheap hotel" - real per-guest cost at or under the fee -
+      // has no margin to recover: no fee, so removing it actually lowers the
+      // total (the removed Populus at $97.5/guest used to cost +$5 to drop).
+      // When the removed hotel is known, the fee is also capped at its cost.
+      if (skippedHotelPricePerGuest != null) {
+        if (skippedHotelPricePerGuest <= fee) return 0;
+        return Math.min(fee, skippedHotelPricePerGuest);
+      }
+      return fee;
     }
     if (!selectedHotel || !event) {
       return 0;
@@ -64,7 +76,7 @@ export function useOrderVars() {
     )
       ? +selectedHotel.price / totalGuests - event.base_hotel_price
       : 0;
-  }, [skipHotel, selectedHotel, event, totalGuests]);
+  }, [skipHotel, skippedHotelPricePerGuest, selectedHotel, event, totalGuests]);
 
   const airlineName = useMemo(
     () => shortenAirlineName(selectedFlight?.metadata?.name),
@@ -206,11 +218,20 @@ export function useOrderVars() {
     // their skip fee when skipped. Costs (bases + upgrade deltas) unchanged.
     if (hasComponentMarkups(event)) {
       const m = getComponentMarkups(event);
+      // Same skip-fee rule as the legacy branch (Dor 23.8): a removed hotel
+      // that cost no more than the skip fee per guest waives the fee; a known
+      // removed-hotel cost also caps it.
+      const skipHotelFee =
+        skippedHotelPricePerGuest != null
+          ? skippedHotelPricePerGuest <= m.skipHotel
+            ? 0
+            : Math.min(m.skipHotel, skippedHotelPricePerGuest)
+          : m.skipHotel;
       const perTicketMarkup =
         m.ticket +
         getEventAdditionalMarkup(event) +
         (flightSkipped ? m.skipFlight : m.flight) +
-        (skipHotel ? m.skipHotel : m.hotel);
+        (skipHotel ? skipHotelFee : m.hotel);
       return Math.ceil(
         ((eventTicket.price || 0) + perTicketMarkup) * numberOfEventTickets +
           flightComponent +
@@ -250,6 +271,7 @@ export function useOrderVars() {
     selectedFlight,
     flightSkipped,
     skipHotel,
+    skippedHotelPricePerGuest,
     hotelPriceAddition,
     totalGuests,
     markup,

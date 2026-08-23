@@ -14,6 +14,7 @@ export const ButtonSummary = ({
   affDiscount = 0,
   isCouponDiscount = false,
   label,
+  addOnsTotalUsd = 0,
 }: {
   finalPurchasePrice: number;
   finalPurchasePriceILS: number;
@@ -29,6 +30,8 @@ export const ButtonSummary = ({
   isCouponDiscount?: boolean;
   /** Overrides the CTA text - e.g. voucher settlement never reaches the card gateway. */
   label?: string;
+  /** Booking-level add-ons (bags) kept out of the per-person figure. */
+  addOnsTotalUsd?: number;
 }) => {
   const {
     finalPurchasePrice: finalPurchasePriceFormatted,
@@ -43,6 +46,7 @@ export const ButtonSummary = ({
     isNumberOfPersonsEqual,
     numberOfPersons,
     finalPurchasePriceILS,
+    perPersonAddOnsUsd: addOnsTotalUsd,
   });
   return (
     <div

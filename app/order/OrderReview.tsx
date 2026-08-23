@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { OrderContext } from "../app.context";
 import { cn } from "@/lib/utils";
-import type { OrderData, SettlementMethod } from "@/lib/app.types";
+import type { OrderData, OrderTicket, SettlementMethod } from "@/lib/app.types";
 import { orderStage } from "../hooks/Affiliate";
 import dayjs from "dayjs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,7 +33,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
-import { type Fields, findBreakfastUpgrade, validate } from "./order-review.utils";
+import {
+  type Fields,
+  findBreakfastUpgrade,
+  getAddedBagsTotalUsd,
+  validate,
+} from "./order-review.utils";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter, useSearchParams } from "next/navigation";
 import AgentMode, { AgentSettlementActions } from "@/components/AgentMode";
@@ -77,6 +82,7 @@ export default function OrderReview({
     setFlight,
     setHotel,
     eventTicket,
+    setEventTicket,
     event,
     personLink,
     setPaymentMethod,
@@ -85,7 +91,11 @@ export default function OrderReview({
     passengers: passengersContext,
     setPassengers: setPassengersContext,
     skipHotel,
+    setSkipHotel,
+    setSkippedHotelPricePerGuest,
     flightSkipped,
+    setFlightSkipped,
+    setReturnToSummary,
   } = useContext(OrderContext);
   // Agent-locked prepared package - the summary's edit affordances go inert.
   const { packageLocked, setPackageLocked } = useContext(OrderContext);
@@ -234,9 +244,10 @@ export default function OrderReview({
     setHotel({
       ...selectedHotel,
       rate: breakfastUpgrade.rate,
-      price:
-        breakfastUpgrade.rate.payment_options?.payment_types?.[0]
-          ?.show_amount ?? selectedHotel.price,
+      // Charge moves by EXACTLY the delta the button showed (clamped ≥ 0 in
+      // findBreakfastUpgrade) - never the sibling rate's raw amount, which
+      // can sit BELOW the current rate and used to LOWER the total (23.8).
+      price: String(+selectedHotel.price + breakfastUpgrade.deltaUsd),
       // Keeps the previous pick so "הסרה" can restore it - mirrors the bag
       // toggles. prev_rate is in-session only (stripped before persisting).
       breakfast_upgrade: {
@@ -599,6 +610,13 @@ export default function OrderReview({
       console.warn("form_start analytics tracking failed:", error);
     }
   }, [event, finalPurchasePrice, numberOfEventTickets]);
+
+  // Booking-level add-ons (bags) - excluded from every "(לאדם)" figure so a
+  // single $47 bag doesn't show as +$24 per person (Dor 23.8). Same
+  // flightSkipped gate as calculateBaseTotal's addedBagsUsd.
+  const bagAddOnsUsd = flightSkipped
+    ? 0
+    : getAddedBagsTotalUsd(selectedFlight?.added_bags);
 
   const affiliateDiscountTotalUsd = useMemo(
     () => getAffiliateDiscountTotalUsd(affDiscount),
@@ -1431,8 +1449,19 @@ export default function OrderReview({
     setOpenModal(false);
     if (isTimeout) {
       // The held package expired with the timer - restarting is a fresh,
-      // fully-editable flow, so an agent lock does not survive it.
+      // fully-editable flow, so an agent lock does not survive it. Neither
+      // does ANY selection: the held composition/prices were released, so
+      // ticket, flight (incl. added bags / fare upgrade), hotel (incl.
+      // breakfast) and both skip flags all reset - restart used to keep them
+      // all in the tabs (prod bug 23.8). Passenger details are kept.
       setPackageLocked(false);
+      setEventTicket({} as OrderTicket);
+      setFlight(undefined);
+      setHotel(undefined);
+      setSkipHotel(false);
+      setSkippedHotelPricePerGuest(null);
+      setFlightSkipped(false);
+      setReturnToSummary(false);
       setStep(1);
     }
   };
@@ -1732,6 +1761,7 @@ export default function OrderReview({
                     affDiscount={effectiveDiscountTotalUsd}
                     isCouponDiscount={couponWins}
                     isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                    addOnsTotalUsd={bagAddOnsUsd}
                   />
                 )}
                 <Review
@@ -2728,6 +2758,7 @@ export default function OrderReview({
                         isSticky={false}
                         affDiscount={effectiveDiscountTotalUsd}
                         isCouponDiscount={couponWins}
+                        addOnsTotalUsd={bagAddOnsUsd}
                       />
                     </Button>
 
@@ -2845,6 +2876,7 @@ export default function OrderReview({
                     isSticky
                     affDiscount={effectiveDiscountTotalUsd}
                     isCouponDiscount={couponWins}
+                    addOnsTotalUsd={bagAddOnsUsd}
                   />
                 </Button>
               </div>

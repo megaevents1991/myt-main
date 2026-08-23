@@ -104,9 +104,14 @@ export const HotelSummary = ({
               aria-label={`הוסף ארוחת בוקר, תוספת ${Math.ceil(breakfastUpgrade.deltaUsd)} דולר לכל השהות`}
             >
               הוסף ארוחת בוקר{" "}
-              <span className="tabular-nums" dir="ltr">
-                +${Math.ceil(breakfastUpgrade.deltaUsd).toLocaleString("en-US")}
-              </span>
+              {Math.ceil(breakfastUpgrade.deltaUsd) > 0 ? (
+                <span className="tabular-nums" dir="ltr">
+                  +$
+                  {Math.ceil(breakfastUpgrade.deltaUsd).toLocaleString("en-US")}
+                </span>
+              ) : (
+                <span>חינם</span>
+              )}
             </button>
           )}
       </div>
@@ -120,9 +125,16 @@ export const HotelSummary = ({
         >
           <span className="font-semibold text-forest dark:text-glow">
             ארוחת בוקר נוספה{" "}
-            <span className="tabular-nums" dir="ltr">
-              +${Math.ceil(selectedHotel.breakfast_upgrade.delta_usd).toLocaleString("en-US")}
-            </span>
+            {Math.ceil(selectedHotel.breakfast_upgrade.delta_usd) > 0 ? (
+              <span className="tabular-nums" dir="ltr">
+                +$
+                {Math.ceil(
+                  selectedHotel.breakfast_upgrade.delta_usd,
+                ).toLocaleString("en-US")}
+              </span>
+            ) : (
+              <span>חינם</span>
+            )}
           </span>
           {showUpsells && selectedHotel.breakfast_upgrade.prev_rate && onRemoveBreakfast && (
             <button

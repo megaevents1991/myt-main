@@ -48,6 +48,7 @@ export const getPrices = ({
   isNumberOfPersonsEqual,
   numberOfPersons,
   finalPurchasePriceILS,
+  perPersonAddOnsUsd = 0,
 }: {
   finalPurchasePrice: number;
   recommendedPriceAllPax: number;
@@ -58,6 +59,10 @@ export const getPrices = ({
   isNumberOfPersonsEqual: boolean;
   numberOfPersons: number;
   finalPurchasePriceILS: number;
+  /** Booking-level add-ons (added bags) excluded from the "(לאדם)" figure -
+   *  one $47 bag used to show as +$24 per person because it split across the
+   *  travelers (Dor 23.8: "זו רק התצוגה לאדם"). The TOTAL still includes it. */
+  perPersonAddOnsUsd?: number;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;
   // The strikethrough "recommended price" framing is retail-customer-only -
@@ -69,7 +74,9 @@ export const getPrices = ({
       ? recommendedPriceAllPax
       : null;
 
-  const pricePerPerson = Math.ceil(finalPurchasePrice / numberOfPersons);
+  const pricePerPerson = Math.ceil(
+    Math.max(0, finalPurchasePrice - perPersonAddOnsUsd) / numberOfPersons,
+  );
 
   return {
     originalNoDiscount: originalNoDiscount

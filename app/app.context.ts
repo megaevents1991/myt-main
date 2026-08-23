@@ -53,6 +53,14 @@ type AppContext = {
   >;
   skipHotel: boolean;
   setSkipHotel: (skip: boolean) => void;
+  /** Real per-guest cost of the hotel the customer REMOVED via "לא צריך מלון",
+   *  captured at skip time (the hotel object itself is cleared). Drives the
+   *  hotel-skip fee rule: a "cheap hotel" (cost <= the skip fee per guest)
+   *  charges no skip fee at all, and the fee is otherwise capped at this cost
+   *  - removing a hotel must never raise the package price (Dor 23.8).
+   *  null = no hotel was picked when skipping (fee applies as before). */
+  skippedHotelPricePerGuest: number | null;
+  setSkippedHotelPricePerGuest: (price: number | null) => void;
   skipFlight: boolean;
   setSkipFlight: (skip: boolean) => void;
   flightSkipped: boolean;

@@ -45,6 +45,7 @@ export const HotelSelection = () => {
     event = {} as Event,
     setSelectedHotelFilters,
     setSkipHotel,
+    setSkippedHotelPricePerGuest,
     flightSkipped,
     numberOfEventTickets,
     personLink,
@@ -211,6 +212,9 @@ export const HotelSelection = () => {
     setSelectedHotelFilters({});
     // Reset skipHotel flag when entering hotel selection to allow user to change their mind
     setSkipHotel(false);
+    // The un-skip also forgets the removed hotel's captured cost - a fresh
+    // skip re-captures it from whatever is selected then.
+    setSkippedHotelPricePerGuest(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {

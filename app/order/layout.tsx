@@ -42,6 +42,9 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
     { [key: string]: string }[] | undefined
   >(undefined);
   const [skipHotel, setSkipHotel] = useState(false);
+  const [skippedHotelPricePerGuest, setSkippedHotelPricePerGuest] = useState<
+    number | null
+  >(null);
   const [skipFlight, setSkipFlight] = useState(false);
   const [flightSkipped, setFlightSkipped] = useState(false);
   const [returnToSummary, setReturnToSummary] = useState(false);
@@ -118,6 +121,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPassengers,
           skipHotel,
           setSkipHotel,
+          skippedHotelPricePerGuest,
+          setSkippedHotelPricePerGuest,
           skipFlight,
           setSkipFlight,
           flightSkipped,

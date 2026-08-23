@@ -203,5 +203,14 @@ export const findBreakfastUpgrade = (
   const cheapestPrice = rateShowAmount(cheapest);
   if (!Number.isFinite(cheapestPrice)) return null;
 
-  return { rate: cheapest, deltaUsd: cheapestPrice - currentPrice };
+  // The breakfast sibling can be CHEAPER than the selected rate (56 of 257
+  // upgradeable rates in the live Prague serp, e.g. Populus Double Suite
+  // $473 → $414 w/ breakfast). A raw delta then LOWERED the package total on
+  // "add breakfast" (prod bug 23.8). Clamp at 0: the swap is offered as a
+  // free upgrade, and the charged price (prev price + deltaUsd, see
+  // handleAddBreakfast) never drops.
+  return {
+    rate: cheapest,
+    deltaUsd: Math.max(0, cheapestPrice - currentPrice),
+  };
 };

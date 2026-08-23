@@ -15,6 +15,7 @@ import { useFetchAffiliate, useOrderVars } from "./hooks";
 import { useHandleExistingOrder } from "../hooks/useHandleExistingOrder";
 import { useHandlePreparedPackage } from "../hooks/useHandlePreparedPackage";
 import { shortenAirlineName } from "./order-review.utils";
+import { getTotalPersons } from "@/lib/price.utils";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
@@ -55,6 +56,7 @@ export const OrderForm = ({
     paymentMethod,
     skipHotel,
     setSkipHotel,
+    setSkippedHotelPricePerGuest,
     setHotel,
     skipFlight,
     setSkipFlight,
@@ -240,6 +242,13 @@ export const OrderForm = ({
       } else if (prev === 3) {
         // Handle both hotel selection AND skip
         if (skipHotelChosen) {
+          // Capture the removed hotel's real per-guest cost BEFORE clearing
+          // it - the skip-fee rule in hooks.tsx reads it (a cheap hotel, at
+          // or under the fee per guest, waives the skip fee entirely).
+          const removedGuests = hotel ? getTotalPersons(hotel.guests) : 0;
+          setSkippedHotelPricePerGuest(
+            hotel && removedGuests > 0 ? +hotel.price / removedGuests : null,
+          );
           setSkipHotel(true);
           setHotel(undefined);
         }
@@ -417,24 +426,40 @@ export const OrderForm = ({
   }
 
   // Running total = base package + the same upgrade deltas shown per slot
-  // (no new price math - just sums figures already derived above).
+  // (no new price math - just sums figures already derived above). A skipped
+  // component drops its base (plus the skip-flight fee where set), so the
+  // preview never carries a component the customer already removed.
+  const skipFlightFeePreview = Math.max(0, Number(event.skip_flight_markup ?? 0));
   const displayTotal =
     basePriceNum +
     (ticketRelativePrice > 0 ? ticketRelativePrice : 0) +
     // Flight/hotel deltas may be negative (pick cheaper than base) → reduce the
     // live total, mirroring the real charge in calculateBaseTotal (hooks.tsx).
-    (flight?.id && !flightSkipped ? flightDelta : 0) +
-    (hotel?.id && !skipHotel ? hotelPriceAddition : 0);
+    (flightSkipped
+      ? skipFlightFeePreview - event.base_flight_price
+      : flight?.id
+        ? flightDelta
+        : 0) +
+    (skipHotel
+      ? -event.base_hotel_price
+      : hotel?.id
+        ? hotelPriceAddition
+        : 0);
 
-  // Once the package is COMPLETE (finalPurchasePriceCalc > 0 - flight picked or
-  // skipped), show EXACTLY the summary's per-traveler price (the real
-  // calculateBaseTotal chain: skip fees, composed markups, ticket-only
-  // override, affiliate discount). The additive preview above only serves the
-  // in-progress steps - keeping it after completion made the edit-mode bar
-  // drift a few dollars from the summary.
+  // Only once the package is COMPLETE (every component picked or skipped)
+  // show EXACTLY the summary's per-traveler price (the real calculateBaseTotal
+  // chain: skip fees, composed markups, ticket-only override, affiliate
+  // discount). Switching on finalPurchasePriceCalc > 0 alone (flight picked)
+  // dropped the whole hotel base from the bar on the flights step - the total
+  // fell by the hotel's worth and "came back" at the hotel step (bug 23.8:
+  // 1,293 → 1,078 → 1,176 on the Pitbull flow).
+  const flowComplete =
+    !!eventTicket.id &&
+    (flightSkipped || !!flight?.id) &&
+    (isUS || skipHotel || !!hotel?.id);
   const realTotalAllPax = finalPurchasePriceCalc(affDiscount);
   const barTotal =
-    realTotalAllPax > 0
+    flowComplete && realTotalAllPax > 0 && numberOfPersons > 0
       ? Math.ceil(realTotalAllPax / numberOfPersons)
       : displayTotal;
 
