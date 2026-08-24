@@ -11,6 +11,7 @@ import {
   normalizeName,
   teamFixtureRole,
 } from "@/lib/eventNameMatch";
+import { galleryArtFor } from "@/lib/events/galleryArt";
 
 /**
  * Event image → person image fallback
@@ -136,19 +137,11 @@ export async function enrichEventsWithFallbackImages(
         candidates.find((p) => teamFixtureRole(name, p.name) === "home") ??
         candidates[0];
       if (!match) continue;
-      // Gallery first: a deterministic per-event pick (same `id % length`
-      // rule the backoffice creative generator uses) so ten photo-less
-      // events of one artist show ten different images instead of the same
-      // art everywhere. Stable per event across renders - no churn.
-      //
-      // Gallery images come out of the backoffice cut-out upload pipeline -
-      // transparent PNGs. As a raw card photo they render as floating
-      // torsos on a dark panel (2026-08-11 prod bug), so they enter the
-      // BLOB art system instead: art_image_url with color/shape left unset
-      // → getEventArt derives them from the event id → every event gets
-      // the brand blob card in its own random color/shape.
-      if (match.gallery.length) {
-        event.art_image_url = match.gallery[event.id % match.gallery.length];
+      // Artist gallery cut-out first (see galleryArtFor) - null for teams,
+      // which fall through to the crest art below.
+      const galleryArt = galleryArtFor(match, event.id);
+      if (galleryArt) {
+        event.art_image_url = galleryArt;
         continue;
       }
       if (match.art) {

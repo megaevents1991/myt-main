@@ -44,6 +44,11 @@ type PeopleConfig = {
 /** One row of the name→image fallback index (see listImageIndex). */
 export type PersonImageEntry = {
   name: string;
+  /** Which people table the row came from. Artist galleries are cut-out PNGs
+   *  (the gallery editor's upload pipeline); TEAM galleries are plain venue /
+   *  matchday photos, so only artists may feed the blob card-art - see
+   *  `galleryArtFor` in lib/events/galleryArt.ts. */
+  kind: "artist" | "team";
   /** Hero photo, full https URL (artist-page main image). */
   url: string | null;
   /** Blob card-art set - preferred fallback; null when the person has none. */
@@ -172,6 +177,9 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         )
         .map((r) => ({
           name: r.name_english as string,
+          kind: (table === "football_teams" ? "team" : "artist") as
+            | "artist"
+            | "team",
           url: r.image_url ?? null,
           art: r.art_image_url
             ? {
