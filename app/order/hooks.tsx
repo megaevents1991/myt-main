@@ -2,6 +2,7 @@
 
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { OrderContext } from "../app.context";
+import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getTotalPersons } from "@/lib/price.utils";
 import {
   getAddedBagsTotalUsd,
@@ -31,6 +32,33 @@ export function useOrderVars() {
     skippedHotelPricePerGuest,
     flightSkipped,
   } = useContext(OrderContext);
+  const { hotelsData } = useContext(HotelFetchContext);
+
+  // Cheapest available hotel in the CURRENT search, per guest - the market
+  // reference for the hotel-skip fee when no specific hotel was removed
+  // (package links, quotes, skipping before a pick). Null until the search
+  // (preloaded on order start) resolves - the fee then applies as before.
+  const cheapestMarketHotelPerGuest = useMemo(() => {
+    const hotels = hotelsData?.data?.data?.hotels;
+    const guests = getTotalPersons(hotelsData?.data?.debug?.request?.guests);
+    if (!hotels?.length || !guests) return null;
+    let min = Infinity;
+    for (const h of hotels) {
+      const amount = Number(
+        h?.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount,
+      );
+      if (Number.isFinite(amount) && amount > 0) {
+        min = Math.min(min, amount / guests);
+      }
+    }
+    return Number.isFinite(min) ? min : null;
+  }, [hotelsData]);
+
+  // The skip-fee reference (Dor 23-24.8): the hotel actually removed when we
+  // know it, otherwise the cheapest hotel on the market. A reference at or
+  // under the fee waives it; otherwise it caps the fee.
+  const hotelSkipRefPerGuest =
+    skippedHotelPricePerGuest ?? cheapestMarketHotelPerGuest;
 
   /* Calculate total guests */
   const totalGuests = useMemo(() => {
@@ -59,10 +87,11 @@ export function useOrderVars() {
       // margin. A "cheap hotel" - real per-guest cost at or under the fee -
       // has no margin to recover: no fee, so removing it actually lowers the
       // total (the removed Populus at $97.5/guest used to cost +$5 to drop).
-      // When the removed hotel is known, the fee is also capped at its cost.
-      if (skippedHotelPricePerGuest != null) {
-        if (skippedHotelPricePerGuest <= fee) return 0;
-        return Math.min(fee, skippedHotelPricePerGuest);
+      // The reference is the removed hotel when known, else the market's
+      // cheapest (Dor 24.8) - and it caps the fee either way.
+      if (hotelSkipRefPerGuest != null) {
+        if (hotelSkipRefPerGuest <= fee) return 0;
+        return Math.min(fee, hotelSkipRefPerGuest);
       }
       return fee;
     }
@@ -76,7 +105,7 @@ export function useOrderVars() {
     )
       ? +selectedHotel.price / totalGuests - event.base_hotel_price
       : 0;
-  }, [skipHotel, skippedHotelPricePerGuest, selectedHotel, event, totalGuests]);
+  }, [skipHotel, hotelSkipRefPerGuest, selectedHotel, event, totalGuests]);
 
   const airlineName = useMemo(
     () => shortenAirlineName(selectedFlight?.metadata?.name),
@@ -218,14 +247,14 @@ export function useOrderVars() {
     // their skip fee when skipped. Costs (bases + upgrade deltas) unchanged.
     if (hasComponentMarkups(event)) {
       const m = getComponentMarkups(event);
-      // Same skip-fee rule as the legacy branch (Dor 23.8): a removed hotel
-      // that cost no more than the skip fee per guest waives the fee; a known
-      // removed-hotel cost also caps it.
+      // Same skip-fee rule as the legacy branch (Dor 23.8): a reference
+      // hotel (the removed one, else the market's cheapest) at or under the
+      // fee waives it; otherwise it caps it.
       const skipHotelFee =
-        skippedHotelPricePerGuest != null
-          ? skippedHotelPricePerGuest <= m.skipHotel
+        hotelSkipRefPerGuest != null
+          ? hotelSkipRefPerGuest <= m.skipHotel
             ? 0
-            : Math.min(m.skipHotel, skippedHotelPricePerGuest)
+            : Math.min(m.skipHotel, hotelSkipRefPerGuest)
           : m.skipHotel;
       const perTicketMarkup =
         m.ticket +
@@ -271,7 +300,7 @@ export function useOrderVars() {
     selectedFlight,
     flightSkipped,
     skipHotel,
-    skippedHotelPricePerGuest,
+    hotelSkipRefPerGuest,
     hotelPriceAddition,
     totalGuests,
     markup,
