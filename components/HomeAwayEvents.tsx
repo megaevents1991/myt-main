@@ -15,35 +15,40 @@ const Cubes = () => (
   </>
 );
 
+type FixtureKind = "home" | "away" | "champions";
+
 /**
  * Team-page fixtures with a home/away choice (creative 2026-08-20: "שיהיה
- * כאן בחירה בין בית לחוץ ואם זה בחור פה על בית אז למטה זה חוץ והפוך"):
- * a toggle sits on the first block; the picked kind renders on top and the
- * other kind right below it. With only one kind there is no choice - the
- * single list renders under its plain heading.
+ * כאן בחירה בין בית לחוץ ואם זה בחור פה על בית אז למטה זה חוץ והפוך"),
+ * extended with a ליגת האלופות pill (2026-08-28) for teams that have CL
+ * fixtures: the toggle sits on the first block; the picked kind renders on
+ * top and the other kinds right below it. With only one kind there is no
+ * choice - the single list renders under its plain heading.
  */
 export function HomeAwayEvents({
   homeEvents,
   awayEvents,
+  championsEvents = [],
   title,
 }: {
   homeEvents: Event[];
   awayEvents: Event[];
+  championsEvents?: Event[];
   title: string;
 }) {
-  const [primary, setPrimary] = useState<"home" | "away">(
-    homeEvents.length > 0 ? "home" : "away",
-  );
-  const both = homeEvents.length > 0 && awayEvents.length > 0;
-
   const blocks = (
     [
       { key: "home", label: "משחקי בית", events: homeEvents },
       { key: "away", label: "משחקי חוץ", events: awayEvents },
-    ] as const
-  )
-    .map((b) => ({ ...b }))
-    .filter((b) => b.events.length > 0);
+      { key: "champions", label: "ליגת האלופות", events: championsEvents },
+    ] as { key: FixtureKind; label: string; events: Event[] }[]
+  ).filter((b) => b.events.length > 0);
+
+  const [primary, setPrimary] = useState<FixtureKind>(
+    blocks[0]?.key ?? "home",
+  );
+  const hasChoice = blocks.length > 1;
+
   const ordered = [...blocks].sort((a, b) =>
     a.key === primary ? -1 : b.key === primary ? 1 : 0,
   );
@@ -52,14 +57,14 @@ export function HomeAwayEvents({
     <div className="flex flex-col gap-10">
       {ordered.map((block, i) => (
         <div key={block.key}>
-          <div className="mb-4 flex flex-row items-center justify-start lg:mb-6">
+          <div className="mb-4 flex flex-row flex-wrap items-center justify-start gap-y-2 lg:mb-6">
             <Cubes />
-            {both && i === 0 ? (
-              // The choice lives on the top block: two pills, picked = filled.
+            {hasChoice && i === 0 ? (
+              // The choice lives on the top block: pills, picked = filled.
               <div
-                className="mx-2 flex items-center gap-2"
+                className="mx-2 flex flex-wrap items-center gap-2"
                 role="tablist"
-                aria-label="בית או חוץ"
+                aria-label="סוג משחקים"
               >
                 {blocks.map((b) => (
                   <button
@@ -69,7 +74,7 @@ export function HomeAwayEvents({
                     aria-selected={b.key === primary}
                     onClick={() => setPrimary(b.key)}
                     className={cn(
-                      "rounded-full px-5 py-2 font-display text-lg font-extrabold tracking-tight transition-colors sm:text-2xl",
+                      "rounded-full px-4 py-2 font-display text-lg font-extrabold tracking-tight transition-colors sm:px-5 sm:text-2xl",
                       b.key === primary
                         ? "bg-main text-main-foreground"
                         : "text-muted-foreground hover:text-foreground",

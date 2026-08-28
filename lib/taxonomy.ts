@@ -108,6 +108,18 @@ export async function getEventsInCategory(
 }
 
 /**
+ * Event-id membership of ONE category by slug - the light "does this event
+ * belong to X" check (e.g. the team page's ליגת האלופות tab). Only the link
+ * rows are fetched, never the event rows.
+ */
+export async function getCategoryEventIdSet(slug: string): Promise<Set<number>> {
+  const category = await getCategoryBySlug(slug);
+  if (!category) return new Set();
+  const map = await getEventIdsByCategories([category.id]);
+  return map.get(category.id) ?? new Set();
+}
+
+/**
  * event_id sets per category, for slicing a pool of events by a group of
  * sibling categories (e.g. "which league does each deal belong to" - the
  * החבילות המשתלמות league-diversity cap). One query, no tree walk.

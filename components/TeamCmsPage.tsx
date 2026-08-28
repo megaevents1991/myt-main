@@ -7,6 +7,7 @@ import { ReactNode } from "react";
 
 import type { FootballTeam } from "@/lib/app.types";
 import { getEventsByName } from "@/lib/eventsData";
+import { getCategoryEventIdSet } from "@/lib/taxonomy";
 import { teamFixtureRole } from "@/lib/eventNameMatch";
 import { documentToPlainText, firstSentence } from "@/lib/richText";
 import ClientTracker from "@/components/ClientTracker";
@@ -55,21 +56,30 @@ export async function TeamCmsPage({
 }) {
   const { name, nameDBenglish, bio, heroBanner, heroVideoUrl, banners, gallery, videos } = team.fields;
 
-  const { events } = await getEventsByName(String(nameDBenglish));
+  const [{ events }, championsIds] = await Promise.all([
+    getEventsByName(String(nameDBenglish)),
+    // ליגת האלופות membership comes from the taxonomy (backoffice-tagged) -
+    // never from name text. Failure degrades to "no CL tab", nothing breaks.
+    getCategoryEventIdSet("champions-league").catch(() => new Set<number>()),
+  ]);
 
   // Split fixtures by the team's role - "X vs Y" naming, first side hosts.
-  // Unclassified = competition-hub pages ("Champions League", where sides
-  // never equal the page's name) and non-fixture events → shown as one plain
-  // list exactly like before the split.
+  // A fixture the team plays in that belongs to the ליגת האלופות category
+  // moves to its own tab instead of home/away. Unclassified = competition-hub
+  // pages ("Champions League", where sides never equal the page's name) and
+  // non-fixture events → shown as one plain list exactly like before the split.
+  const roleOf = (e: (typeof events)[number]) =>
+    teamFixtureRole(e.name_english ?? "", String(nameDBenglish));
+  const championsEvents = events.filter(
+    (e) => roleOf(e) !== null && championsIds.has(e.id)
+  );
   const homeEvents = events.filter(
-    (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === "home"
+    (e) => roleOf(e) === "home" && !championsIds.has(e.id)
   );
   const awayEvents = events.filter(
-    (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === "away"
+    (e) => roleOf(e) === "away" && !championsIds.has(e.id)
   );
-  const unclassifiedEvents = events.filter(
-    (e) => teamFixtureRole(e.name_english ?? "", String(nameDBenglish)) === null
-  );
+  const unclassifiedEvents = events.filter((e) => roleOf(e) === null);
   const imageUrl = heroBanner?.fields?.file?.url
     ? "https:" + heroBanner.fields.file.url
     : undefined;
@@ -128,16 +138,19 @@ export async function TeamCmsPage({
         </p>
         {events.length === 0 ? (
           <EmptyState title="אין אירועים קרובים" />
-        ) : homeEvents.length === 0 && awayEvents.length === 0 ? (
+        ) : homeEvents.length === 0 &&
+          awayEvents.length === 0 &&
+          championsEvents.length === 0 ? (
           // Hub pages (e.g. ליגת האלופות) - no home/away notion, one list.
           <ArtistEventsFilter events={events} title={String(name)} showName />
         ) : (
           <div className="flex flex-col gap-10">
-            {/* Home/away with a toggle - the picked kind on top, the other
-                below (creative 2026-08-20). */}
+            {/* Home/away/ליגת האלופות with a toggle - the picked kind on top,
+                the others below (creative 2026-08-20). */}
             <HomeAwayEvents
               homeEvents={homeEvents}
               awayEvents={awayEvents}
+              championsEvents={championsEvents}
               title={String(name)}
             />
             {unclassifiedEvents.length > 0 && (
