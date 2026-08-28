@@ -1,67 +1,47 @@
-import { ToggleLeft, ToggleRight, Wallet, TicketCheck, Link2 } from "lucide-react";
+import { BadgeCheck, Wallet, TicketCheck, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SettlementMethod } from "@/lib/app.types";
 
 interface AgentModeProps {
-  isAgentMode: boolean;
-  onToggleAgentMode: () => void;
+  /** The signed-in agent's display name (partner session). */
+  agentName?: string | null;
   settlementError?: string | null;
 }
 
-function AgentMode({
-  isAgentMode,
-  onToggleAgentMode,
-  settlementError,
-}: AgentModeProps) {
+/**
+ * Always-on agent banner. The on/off TOGGLE was removed 2026-08-27 (V2 spec:
+ * "מציג לו אוטמטי בלי טוגל") - a cookie-verified agent session IS agent mode.
+ * The settlement RADIO PICKER was already removed 2026-08-21; the three
+ * settlement paths live as direct action buttons in the CTA area
+ * (AgentSettlementActions below, rendered from OrderReview.tsx's 3 CTA
+ * spots). This panel is the connected indicator + a pointer + the settlement
+ * error (the one spot common to all 3 CTA layouts).
+ */
+function AgentMode({ agentName, settlementError }: AgentModeProps) {
   return (
     <div
       className="bg-white rounded-lg shadow p-4 mb-4 dark:border dark:border-border dark:bg-card"
       dir="rtl"
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center">
-          <h3 className="font-bold mr-2">מסך סוכן נסיעות</h3>
-          <button
-            onClick={onToggleAgentMode}
-            className="flex items-center text-sm mx-2"
-            aria-label={
-              isAgentMode ? "Disable agent mode" : "Enable agent mode"
-            }
-          >
-            {isAgentMode ? (
-              <>
-                <ToggleRight size={24} />
-              </>
-            ) : (
-              <>
-                <ToggleLeft className="text-gray-400" size={24} />
-              </>
-            )}
-          </button>
-        </div>
+      <div className="flex items-center gap-2">
+        <BadgeCheck size={18} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+        <h3 className="font-bold">מסך סוכן נסיעות</h3>
+        {agentName && (
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            מחובר: {agentName}
+          </span>
+        )}
       </div>
-
-      {/* "הדפסה ללקוח" והגדרות ההדפסה (לוגו LiveEvents הישן) הוסרו -
-          אלון ודור, 2026-08-06. The settlement-method RADIO PICKER that used
-          to live here was removed 2026-08-21 (Dor: "להוריד את הטוגל") - the
-          three settlement paths now live as direct action buttons in the CTA
-          area instead (AgentSettlementActions below, rendered from
-          OrderReview.tsx's 3 CTA spots), each setting the method AND
-          submitting in the same click. This panel is now just the toggle +
-          a pointer + the settlement error (still surfaced here, unchanged
-          location, since that's the one spot common to all 3 CTA layouts). */}
-      {isAgentMode && (
-        <div className="mt-4 space-y-3">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            הזמנה עבור הלקוח - בחרו את אמצעי התשלום בכפתורי הפעולה בהמשך העמוד.
+      <div className="mt-2 space-y-2">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          הזמנה עבור הלקוח - בחרו את אמצעי התשלום בכפתורי הפעולה בהמשך העמוד.
+        </p>
+        {settlementError && (
+          <p className="text-sm font-medium text-red-600 dark:text-red-400" role="alert">
+            {settlementError}
           </p>
-          {settlementError && (
-            <p className="text-sm font-medium text-red-600 dark:text-red-400" role="alert">
-              {settlementError}
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
 
 import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { AgentConnectedBadge } from "@/components/AgentConnectedBadge";
 import { cn } from "@/lib/utils";
 
 type NavLink = { href: string; label: string; children?: NavLink[] };
@@ -383,6 +384,10 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
             <Search className="size-[18px]" aria-hidden />
           </button>
         </div>
+
+        {/* Signed-in agent indicator (V2 spec 2026-08-27) - renders null for
+            everyone else. Colors overridden for the always-forest header bar. */}
+        <AgentConnectedBadge className="bg-secondary/15 text-secondary" />
 
         {/* Desktop inline nav - replaces the hamburger on ≥md. Centred like the
             page title; hidden on detail pages where the sticky title takes the

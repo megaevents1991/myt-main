@@ -170,18 +170,19 @@ export default function OrderReview({
     voucherPaymentAllowed,
     voucherBalanceUsd,
     setAffDiscount,
-  } = useFetchAffiliate();
+  } = useFetchAffiliate(
+    // Session-first attribution: a signed-in agent gets his own code even on
+    // a bare /order URL with no utm_source (V2 spec 2026-08-27).
+    partnerSession?.role === "agent" ? partnerSession.partner_code : null
+  );
   // The agent tools open ONLY in a browser where the agent HIMSELF is signed
-  // in (cookie-verified partner session matching the link's code) - the URL
-  // code alone is public knowledge and used to open the panel for anyone
-  // holding the link (אלון ודור, 2026-08-06). Commission may legitimately be
-  // 0 - the agent then just pays/charges full price.
-  const isAgentVisitor =
-    affType === "agent" &&
-    !!partnerSession &&
-    partnerSession.role === "agent" &&
-    partnerSession.partner_code.trim().toLowerCase() ===
-      (affId ?? "").trim().toLowerCase();
+  // in (cookie-verified partner session). The session ALONE is the gate
+  // (V2 spec 2026-08-27: "סוכן מחובר וגולש באתר הרגיל" must see his options
+  // on any order page, no tagged link required) - useFetchAffiliate above is
+  // fed the session's partner_code, so attribution and commission follow the
+  // session even on a bare URL. Commission may legitimately be 0 - the agent
+  // then just pays/charges full price.
+  const isAgentVisitor = !!partnerSession && partnerSession.role === "agent";
   const passengerCount = flightSkipped
     ? numberOfEventTickets
     : selectedFlight?.numOfTravelers || 1;
@@ -458,9 +459,8 @@ export default function OrderReview({
   const passengerDetailsRef = useRef<HTMLDivElement>(null);
   const stickyFooterRef = useRef<HTMLDivElement>(null);
 
-  const [isAgentMode, setIsAgentMode] = useState(false);
   // How this booking gets settled when an agent is entering it on the
-  // customer's behalf. Only ever read server-side when isAgentMode is on -
+  // customer's behalf. Only ever read server-side when agent mode is on -
   // see the settlement_method branch in confirm-order/utils.ts. Defaults to
   // payment_link (never customer_card - "אשראי הלקוח" was removed from the
   // agent settlement UI 2026-08-20, legal: an agent must never type the
@@ -476,7 +476,9 @@ export default function OrderReview({
   // label-following CTA (2026-08-21) - whenever this is true, all 3 CTA
   // spots render those 3 buttons instead of the normal single CTA, full
   // stop, regardless of which settlement method was last used.
-  const isAgentSettlementMode = isAgentMode && isAgentVisitor;
+  // The on/off TOGGLE was removed 2026-08-27 (V2 spec: "בלי הטוגל") - a
+  // signed-in agent is ALWAYS in settlement mode on this screen.
+  const isAgentSettlementMode = isAgentVisitor;
 
   const trackAnalyticsEvent = (event: import("@/lib/app.types").Event) => {
     try {
@@ -1131,7 +1133,7 @@ export default function OrderReview({
     // immediate confirmation email) until staff confirms the voucher arrived
     // and flips the reservation to Paid by hand.
     const isVoucherSettlement =
-      isAgentMode && isAgentVisitor && effectiveSettlementMethod === "voucher";
+      isAgentVisitor && effectiveSettlementMethod === "voucher";
     if (isVoucherSettlement) {
       payNow = false;
       onlySave = false;
@@ -1144,7 +1146,7 @@ export default function OrderReview({
     // otherwise silently create a hold too - hide while agent settlement
     // mode is active; see the 3 CTA render blocks below).
     const isPaymentLinkSettlement =
-      isAgentMode && isAgentVisitor && effectiveSettlementMethod === "payment_link";
+      isAgentVisitor && effectiveSettlementMethod === "payment_link";
     if (isPaymentLinkSettlement) {
       payNow = false;
       onlySave = true;
@@ -1287,8 +1289,7 @@ export default function OrderReview({
       // the server independently re-verifies eligibility (voucher_payment_allowed,
       // active agent) against the DB and never trusts this beyond "which of the
       // eligible options did they click".
-      settlement_method:
-        isAgentMode && isAgentVisitor ? effectiveSettlementMethod : undefined,
+      settlement_method: isAgentVisitor ? effectiveSettlementMethod : undefined,
       // Only send the coupon when it actually won (server re-validates and
       // recomputes the discount from the pre-discount total).
       coupon_code: couponWins && appliedCoupon ? appliedCoupon.code : null,
@@ -1596,7 +1597,10 @@ export default function OrderReview({
             showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24")
           )}
         >
-          {partnerSession && event && (
+          {/* "שמור לינק ושלח" removed for AGENTS (V2 spec 2026-08-27: "בלי
+              שמור לינק ושלח שיש למעלה") - agents build links in the portal
+              wizard. Affiliates keep it: it's their only link tool on main. */}
+          {partnerSession && partnerSession.role !== "agent" && event && (
             <SavePackageLink
               eventId={event.id}
               ticket={eventTicket}
@@ -1611,8 +1615,7 @@ export default function OrderReview({
           {isAgentVisitor && (
             <div>
               <AgentMode
-                isAgentMode={isAgentMode}
-                onToggleAgentMode={() => setIsAgentMode(!isAgentMode)}
+                agentName={partnerSession?.display_name || null}
                 settlementError={settlementError}
               />
             </div>

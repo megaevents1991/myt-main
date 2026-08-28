@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Stepper as MantineStepper } from "@mantine/core";
 import { MYT } from "@/components/ui/myt";
 import { PartnerReferralBadge } from "@/components/PartnerReferralBadge";
+import { AgentConnectedBadge } from "@/components/AgentConnectedBadge";
 
 const defaultSteps = ["כרטיסים", "טיסה", "מלון", "סיום"];
 
@@ -38,7 +39,10 @@ export const Stepper = ({
       {/* Partner pill - ONE badge, on the header row symmetric with the MYT
           wordmark (inline-end). Was rendered inside the page body (twice on
           the summary) - אלון ודור, 2026-08-06. */}
-      <div className="order-first shrink-0 sm:order-last sm:ms-auto [&>div]:mx-0 [&>div]:mb-0">
+      <div className="order-first flex shrink-0 items-center gap-2 sm:order-last sm:ms-auto [&>div]:mx-0 [&>div]:mb-0">
+        {/* Agent connected indicator - the global header (which carries the
+            same chip) is hidden inside the order flow, so it rides here too. */}
+        <AgentConnectedBadge />
         <PartnerReferralBadge />
       </div>
       {!hideSteps && (

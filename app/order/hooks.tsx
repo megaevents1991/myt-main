@@ -429,7 +429,14 @@ export function useOrderVars() {
   };
 }
 
-export function useFetchAffiliate() {
+/**
+ * @param sessionPartnerCode A cookie-verified partner session's tracking code
+ * (order flow passes the AGENT's own code). When present it takes PRECEDENCE
+ * over localStorage/URL - a signed-in agent acts as himself even on a bare
+ * URL or on someone else's tagged link (V2 spec 2026-08-27), which also keeps
+ * the server-side settlement check (session code === attribution code) green.
+ */
+export function useFetchAffiliate(sessionPartnerCode?: string | null) {
   const [affDiscount, setAffDiscount] = useState(0);
   const [agentCommission, setAgentCommission] = useState(0);
   // Percent vs fixed-per-ticket - commission math must not assume percent
@@ -468,7 +475,8 @@ export function useFetchAffiliate() {
     const urlAffiliateId =
       new URLSearchParams(window.location.search).get("utm_source") ||
       new URLSearchParams(window.location.search).get("aff");
-    const affiliateId = parsedAffiliateData.affiliateId || urlAffiliateId;
+    const affiliateId =
+      sessionPartnerCode || parsedAffiliateData.affiliateId || urlAffiliateId;
     if (affiliateId) {
       fetch(`/api/affiliate/checkCode?affiliateId=${affiliateId}`)
         .then((res) => res.json())
@@ -499,7 +507,9 @@ export function useFetchAffiliate() {
         })
         .catch(console.error);
     }
-  }, []);
+    // sessionPartnerCode is a server-passed prop - stable per page load, but
+    // included so a late-arriving value still triggers the fetch.
+  }, [sessionPartnerCode]);
 
   return {
     affDiscount,
