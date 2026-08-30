@@ -9,6 +9,7 @@ import {
   validateOrderData,
   validatePurchasePriceFloor,
   resolveAgentSettlement,
+  resolveHandledBy,
 } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
 import {
@@ -517,6 +518,11 @@ export async function POST(req: Request) {
           partnerTrackingCode,
           orderId: id,
           isAgentVoucherOrder: settlement.method === "voucher",
+          // Item 5: the customer's confirmation names who handled the booking
+          // - their agent, or us. Resolved from the ATTRIBUTED partner code,
+          // not `partnerTrackingCode` (which is the customer's own new
+          // referral code on non-agent bookings).
+          handledBy: await resolveHandledBy(resolvedAffPartnerTrackingCode),
         });
 
         await supabase

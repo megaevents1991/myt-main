@@ -625,6 +625,56 @@ export const resolveAgentSettlement = async (
   }
 };
 
+/** What the customer is told about who is handling a direct booking. */
+export const MEGA_EVENTS_HANDLER = "מגה איבנטס";
+
+/**
+ * "בוצע ע"י" for the confirmation email (backoffice doc 2026-08-30, item 5):
+ * the travel agent's name when the booking is attributed to a partner, and
+ * "מגה איבנטס" when it is ours. Display only - never a permission.
+ *
+ * Prefers the portal profile's display_name (what the agent is called in the
+ * portal and on their quotes) and falls back to the partners row, so both
+ * sides of the platform name the same person the same way. Never throws: a
+ * missing name just leaves the line off the email.
+ */
+export async function resolveHandledBy(
+  partnerTrackingCode: string | null | undefined,
+): Promise<string> {
+  const code = (partnerTrackingCode ?? "").trim();
+  if (!code || code === "dummy_code") return MEGA_EVENTS_HANDLER;
+  try {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("display_name")
+      .eq("partner_tracking_code", code)
+      .in("role", ["agent", "office_manager"])
+      // A code can carry several portal users (office agents) - prefer the
+      // manager row, same ordering trick as /api/affiliate/checkCode.
+      .order("role", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const displayName = (profile as { display_name?: string | null } | null)
+      ?.display_name;
+    if (displayName) return displayName;
+
+    const { data: partner } = await supabase
+      .from("partners")
+      .select("name_hebrew, type")
+      .eq("partner_tracking_code", code)
+      .maybeSingle();
+    const row = partner as {
+      name_hebrew?: string | null;
+      type?: string | null;
+    } | null;
+    // Influencers do not "handle" a booking - only an agent does.
+    if (row?.type === "agent" && row.name_hebrew) return row.name_hebrew;
+  } catch (error) {
+    console.error("resolveHandledBy:", error);
+  }
+  return MEGA_EVENTS_HANDLER;
+}
+
 export const userEmail = (
   replacements: Record<string, string | number | boolean | undefined>,
 ) => {
@@ -834,6 +884,15 @@ export const userEmail = (
                                                   <strong style="color: #0A1A14;">מספר הזמנה:</strong> <span style="unicode-bidi: embed;">${replacements.bookingReference}</span>
                                               </td>
                                           </tr>
+                                          ${
+                                            replacements.handledBy
+                                              ? `<tr>
+                                              <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
+                                                  <strong style="color: #0A1A14;">בוצע ע"י:</strong> ${replacements.handledBy}
+                                              </td>
+                                          </tr>`
+                                              : ""
+                                          }
                                           <tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
                                                   <strong style="color: #0A1A14;">אירוע:</strong> ${replacements.eventName}

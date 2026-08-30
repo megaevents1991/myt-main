@@ -83,6 +83,13 @@ export type PartnerProfile = {
   partner_tracking_code: string;
   logo_url: string | null;
   is_active: boolean;
+  /**
+   * The partner's CURRENT backoffice portal login id, or null when they are
+   * signed out of the portal. Written by the backoffice on login/logout; the
+   * session cookie carries a copy, and the two must match for agent mode to
+   * stay alive here (doc 2026-08-30, items 1-3).
+   */
+  portal_session_id: string | null;
 };
 
 /**
@@ -109,7 +116,7 @@ export async function getPartnerProfile(
   const { data, error } = await (supabase as any)
     .from("user_profiles")
     .select(
-      "id,email,display_name,role,partner_tracking_code,logo_url,is_active",
+      "id,email,display_name,role,partner_tracking_code,logo_url,is_active,portal_session_id",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -128,6 +135,43 @@ export async function getPartnerProfile(
   return data as PartnerProfile;
 }
 
+/**
+ * A fresh portal login id. Mirrors the backoffice helper of the same name
+ * (its lib/auth/portal-session-id.ts) - both apps write the SAME column, so a
+ * partner has one live login at a time whichever side they signed in on.
+ */
+export function newPortalSessionId(): string {
+  return crypto.randomUUID();
+}
+
+/** Claim the current login for this session id. Soft-fails: see the backoffice twin. */
+export async function setPortalSessionId(
+  userId: string,
+  sid: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("user_profiles")
+    .update({ portal_session_id: sid })
+    .eq("id", userId);
+  if (error) console.error("setPortalSessionId:", JSON.stringify(error));
+}
+
+/** Release it on logout - only when this session still owns it. */
+export async function clearPortalSessionId(
+  userId: string,
+  sid?: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any)
+    .from("user_profiles")
+    .update({ portal_session_id: null })
+    .eq("id", userId);
+  if (sid) query = query.eq("portal_session_id", sid);
+  const { error } = await query;
+  if (error) console.error("clearPortalSessionId:", JSON.stringify(error));
+}
+
 /** The verified session from the request cookie, or null. */
 export async function getPartnerSession(): Promise<PartnerSession | null> {
   const store = await cookies();
@@ -135,12 +179,15 @@ export async function getPartnerSession(): Promise<PartnerSession | null> {
 }
 
 /**
- * Throws for anyone who is not a signed-in, still-active partner.
+ * Throws for anyone who is not a signed-in, still-active partner whose
+ * BACKOFFICE portal login is still the current one.
  *
- * The cookie lasts a week, so it is NOT the last word: the profile is re-read
- * on every call. Trusting the cookie alone would leave a partner who was
- * deactivated, demoted, or moved to a different tracking code with full access
- * for up to seven days after the change.
+ * The cookie is NOT the last word: the profile is re-read on every call, so a
+ * partner who was deactivated, demoted or re-coded loses access immediately -
+ * and, since 2026-08-30, so does one who signed out of the portal or signed in
+ * again somewhere else (`portal_session_id` vs the session's `sid`). Without
+ * that check the customer site happily kept showing the previous agent for the
+ * rest of the cookie's life.
  */
 export async function requirePartner(): Promise<PartnerSession> {
   const session = await getPartnerSession();
@@ -152,6 +199,12 @@ export async function requirePartner(): Promise<PartnerSession> {
     !profile.is_active ||
     profile.partner_tracking_code !== session.partner_code
   ) {
+    throw new Error("Unauthorized");
+  }
+  // Fail closed on both sides of the comparison: a cookie minted before the
+  // login id existed (no sid) and a partner who is signed out of the portal
+  // (null column) are equally "not connected".
+  if (!session.sid || profile.portal_session_id !== session.sid) {
     throw new Error("Unauthorized");
   }
   // session.role is always minted as the EFFECTIVE role (see partner-handoff

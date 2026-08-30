@@ -5,10 +5,7 @@ import {
   toEffectiveRole,
   verifyPartnerSession,
 } from "@/lib/partner-auth";
-import {
-  createPartnerSession,
-  PARTNER_SESSION_MAX_AGE,
-} from "@/lib/partner-auth/session";
+import { createPartnerSession } from "@/lib/partner-auth/session";
 
 /**
  * Lands a backoffice-portal agent here WITH their identity: the portal mints a
@@ -82,6 +79,18 @@ export async function GET(request: Request) {
     return NextResponse.redirect(redirectTo);
   }
 
+  // The portal login id is the whole point of the 2026-08-30 fix: agent mode
+  // here lives exactly as long as THAT login does. A token without one, or one
+  // whose login has since ended (logout / a newer login elsewhere), lands as a
+  // plain package link instead of minting a session requirePartner would
+  // refuse on the very next request anyway.
+  if (!session.sid || profile.portal_session_id !== session.sid) {
+    console.error(
+      "partner-handoff: stale portal login id - agent mode not granted",
+    );
+    return NextResponse.redirect(redirectTo);
+  }
+
   let cookieValue: string;
   try {
     cookieValue = await createPartnerSession({
@@ -90,6 +99,7 @@ export async function GET(request: Request) {
       role: effectiveRole,
       partner_code: profile.partner_tracking_code,
       display_name: profile.display_name,
+      sid: session.sid,
     });
   } catch (e) {
     console.error("partner-handoff: cannot sign session -", e);
@@ -97,11 +107,13 @@ export async function GET(request: Request) {
   }
 
   const response = NextResponse.redirect(redirectTo);
+  // No maxAge on purpose: a BROWSER-SESSION cookie, so agent mode also ends
+  // when the browser closes. The signed payload still expires on its own
+  // (PARTNER_SESSION_MAX_AGE, 4h) - the id check above is what ends it early.
   response.cookies.set(PARTNER_SESSION_COOKIE, cookieValue, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: PARTNER_SESSION_MAX_AGE,
     path: "/",
   });
   return response;

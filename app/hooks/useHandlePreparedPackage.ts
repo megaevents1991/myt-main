@@ -26,6 +26,7 @@ export const useHandlePreparedPackage = () => {
     setSkipHotel,
     setFlightSkipped,
     setPackageLocked,
+    setPackageAdjustPerPerson,
   } = useContext(OrderContext);
 
   const searchParams = useSearchParams();
@@ -58,7 +59,15 @@ export const useHandlePreparedPackage = () => {
         hotel_order_info: OrderHotel | null;
         hotel_needs_repick: boolean;
         allow_edit?: boolean;
+        /** Agent's own price for this package, per traveler (USD). */
+        price_adjust_per_person?: number;
       } = await response.json();
+
+      // The agent's price rides the LINK now (backoffice doc 2026-08-30, item
+      // 4) - the summary adds it to the total. Site pricing stays the base, so
+      // a customer who re-picks a flight or hotel still gets a live price with
+      // the same agent margin on top.
+      setPackageAdjustPerPerson(Number(data.price_adjust_per_person ?? 0) || 0);
 
       // Agent chose to lock the composition - the summary's edit buttons,
       // the stepper and the slot pills go inert. A needs_repick piece still

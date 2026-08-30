@@ -41,8 +41,12 @@ export const Stepper = ({
           the summary) - אלון ודור, 2026-08-06. */}
       <div className="order-first flex shrink-0 items-center gap-2 sm:order-last sm:ms-auto [&>div]:mx-0 [&>div]:mb-0">
         {/* Agent connected indicator - the global header (which carries the
-            same chip) is hidden inside the order flow, so it rides here too. */}
-        <AgentConnectedBadge />
+            same chip) is hidden inside the order flow, so it rides here too.
+            `showExit` gives the agent a way out of agent mode on the screen
+            where it actually changes prices (doc 2026-08-30, item 3). The
+            referral badge below hides itself while an agent is connected, so
+            only ONE identity ever shows here (item 9). */}
+        <AgentConnectedBadge showExit />
         <PartnerReferralBadge />
       </div>
       {!hideSteps && (

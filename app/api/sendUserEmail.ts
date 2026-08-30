@@ -14,6 +14,7 @@ export const sendUserEmail = async ({
   partnerTrackingCode = null,
   orderId,
   isAgentVoucherOrder = false,
+  handledBy = null,
 }: {
   orderData: OrderData;
   payNow?: boolean;
@@ -21,6 +22,12 @@ export const sendUserEmail = async ({
   isPaymentSuccess?: boolean;
   partnerTrackingCode?: string | null;
   orderId?: number;
+  /**
+   * Who is handling this booking, for the customer: the travel agent's name,
+   * or "מגה איבנטס" for a direct booking (backoffice doc 2026-08-30, item 5 -
+   * "שיהיה רשום ללקוח יבוצע ע"י שם הסוכן"). Null → the line is omitted.
+   */
+  handledBy?: string | null;
   /** Agent-entered booking settled by voucher - order confirmed, but never
    * word it as "payment collected by phone", the customer isn't the one
    * paying us here and shouldn't be told how the agent is settling it. */
@@ -116,6 +123,7 @@ export const sendUserEmail = async ({
         : "ללא מלון",
     price: orderData.final_purchase_price_ils,
     promoCode: partnerTrackingCode || undefined,
+    handledBy: handledBy || undefined,
     orderId: orderId,
     eventId: orderData.event_id,
     showRecoveryLink: onlySave, // Only show recovery link for 24h hold

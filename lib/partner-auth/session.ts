@@ -18,7 +18,17 @@
  */
 
 export const PARTNER_SESSION_COOKIE = "partner_session";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 1 week
+/**
+ * 4 hours (was a week until 2026-08-30).
+ *
+ * A week-long agent session on the CUSTOMER site is what produced "אני מחובר
+ * על איציק בבק אופיס אבל באתר מראה שאני אלון": nothing here could see the
+ * backoffice logout, so the old identity simply outlived it. The cookie is now
+ * a working-session length, is written WITHOUT maxAge (dies when the browser
+ * closes - see the handoff route), and carries the portal login id that
+ * `requirePartner` re-checks against the profile on every request.
+ */
+const MAX_AGE_SECONDS = 60 * 60 * 4;
 export const PARTNER_SESSION_MAX_AGE = MAX_AGE_SECONDS;
 
 /** Mirrors `user_profiles.role` in the shared database. */
@@ -33,6 +43,14 @@ export type PartnerSession = {
   /** partners.partner_tracking_code - never null for a partner session. */
   partner_code: string;
   display_name: string | null;
+  /**
+   * The backoffice portal login id this session was handed off from
+   * (`user_profiles.portal_session_id`). `requirePartner` re-reads that column
+   * and refuses the session once they differ, which is how a portal logout -
+   * or a login as a DIFFERENT agent - ends agent mode here. A session without
+   * one is a pre-2026-08-30 cookie and is no longer honored.
+   */
+  sid?: string;
   /** ms epoch */
   exp: number;
 };
@@ -91,6 +109,8 @@ export async function createPartnerSession(user: {
   role: PartnerRole;
   partner_code: string;
   display_name?: string | null;
+  /** Portal login id from the handoff token - see PartnerSession.sid. */
+  sid?: string | null;
 }): Promise<string> {
   const payload: PartnerSession = {
     sub: user.sub,
@@ -98,6 +118,7 @@ export async function createPartnerSession(user: {
     role: user.role,
     partner_code: user.partner_code,
     display_name: user.display_name ?? null,
+    ...(user.sid ? { sid: user.sid } : {}),
     exp: Date.now() + MAX_AGE_SECONDS * 1000,
   };
   const body = toBase64Url(new TextEncoder().encode(JSON.stringify(payload)));

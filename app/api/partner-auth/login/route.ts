@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import {
   verifyPassword,
   getPartnerProfile,
+  newPortalSessionId,
+  setPortalSessionId,
   PARTNER_SESSION_COOKIE,
   toEffectiveRole,
 } from "@/lib/partner-auth";
@@ -94,6 +96,12 @@ export async function POST(request: Request) {
   // Signing throws when NEXT_SECRET_SESSION_SECRET is unset. Unwrapped it
   // becomes a 500 that the form reports as "login failed", sending everyone
   // to check their password over a missing env var.
+  // One live partner login at a time, across BOTH apps: this claims the same
+  // `user_profiles.portal_session_id` the backoffice portal writes, and
+  // requirePartner refuses any session whose id is no longer the current one.
+  const sid = newPortalSessionId();
+  await setPortalSessionId(profile.id, sid);
+
   let cookieValue: string;
   try {
     cookieValue = await createPartnerSession({
@@ -102,6 +110,7 @@ export async function POST(request: Request) {
       role: effectiveRole,
       partner_code: profile.partner_tracking_code,
       display_name: profile.display_name,
+      sid,
     });
   } catch (e) {
     console.error("partner login: cannot sign session -", e);

@@ -49,6 +49,9 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [flightSkipped, setFlightSkipped] = useState(false);
   const [returnToSummary, setReturnToSummary] = useState(false);
   const [packageLocked, setPackageLocked] = useState(false);
+  // Agent's price for a prepared package (doc 2026-08-30, item 4) - 0 unless
+  // the visitor arrived on a ?pkg= link whose agent changed the price.
+  const [packageAdjustPerPerson, setPackageAdjustPerPerson] = useState(0);
 
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
@@ -131,6 +134,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setReturnToSummary,
           packageLocked,
           setPackageLocked,
+          packageAdjustPerPerson,
+          setPackageAdjustPerPerson,
         }}
       >
         <HotelFetchProvider>

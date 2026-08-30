@@ -1,6 +1,7 @@
 import { convert } from "xmlbuilder2";
 import { supabase } from "@/lib/supabase";
 import { sendUserEmail } from "@/app/api/sendUserEmail";
+import { resolveHandledBy } from "@/app/api/confirm-order/utils";
 import { OrderData } from "@/lib/app.types";
 import { buildTxQueryXML } from "./[id]/[txId]/[promoCode]/buildTxQueryXML";
 import { notifyAgentOfPaymentLinkPaid } from "@/lib/agent-notify";
@@ -109,6 +110,13 @@ export async function validateAndRecordPayment({
         payNow: true,
         partnerTrackingCode: promoCode,
         orderId: parseInt(orderId),
+        // Same "בוצע ע"י" line as the confirm-order email (backoffice doc
+        // 2026-08-30, item 5) - resolved from the reservation's attributed
+        // partner, so a paid order names the agent who made it.
+        handledBy: await resolveHandledBy(
+          (orderData as { aff_partner_tracking_code?: string | null })
+            .aff_partner_tracking_code,
+        ),
       });
 
       // Agent notification for "לינק תשלום ללקוח" holds - only on an actual

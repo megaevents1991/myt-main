@@ -77,6 +77,13 @@ type AppContext = {
    *  Distinct from the event-level locked_flight_id ("locked package"). */
   packageLocked: boolean;
   setPackageLocked: (on: boolean) => void;
+  /** The agent's own price for a prepared package, per traveler in USD
+   *  (+ uplift above site price, - discount funded from their commission).
+   *  Read from prepared_packages by /api/package/[id]; the summary adds it to
+   *  the total so the LINK quotes the agent's price, not the site's
+   *  (backoffice doc 2026-08-30, item 4). 0 for every non-package visit. */
+  packageAdjustPerPerson: number;
+  setPackageAdjustPerPerson: (usdPerTraveler: number) => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

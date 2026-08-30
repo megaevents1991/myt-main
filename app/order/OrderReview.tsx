@@ -98,7 +98,9 @@ export default function OrderReview({
     setReturnToSummary,
   } = useContext(OrderContext);
   // Agent-locked prepared package - the summary's edit affordances go inert.
-  const { packageLocked, setPackageLocked } = useContext(OrderContext);
+  // packageAdjustPerPerson is the agent's own price on that package (item 4).
+  const { packageLocked, setPackageLocked, packageAdjustPerPerson } =
+    useContext(OrderContext);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isMobile } = useIsMobile();
@@ -531,13 +533,30 @@ export default function OrderReview({
   // quoteOffer / quotePriceDropped / quotePriceActive are now declared above
   // (near isResumedOrder/showUpsells) - showUpsells needs quotePriceActive
   // before this point in the component.
+  // Prepared-package price set by the agent, per traveler (backoffice doc
+  // 2026-08-30, item 4: "שמשנים עמלה זה צריך להשפיע על הלינק"). Applied to the
+  // computed site total, so a customer who re-picks a flight or hotel still
+  // pays the live price WITH the agent's margin - and never applied on top of
+  // a signed quote total, which already contains it.
+  const packageAdjustTotalUsd = useMemo(() => {
+    const perPerson = Number(packageAdjustPerPerson) || 0;
+    if (!perPerson) return 0;
+    return perPerson * Math.max(1, passengerCount);
+  }, [packageAdjustPerPerson, passengerCount]);
+
   const finalPurchasePrice = useMemo(
     () =>
       quotePriceActive && quoteOffer
         ? Math.ceil(quoteOffer.total_usd)
         : couponWins
-          ? Math.max(0, Math.ceil(baseTotalUsd - couponDiscountUsd))
-          : finalPurchasePriceCalc(affDiscount),
+          ? Math.max(
+              0,
+              Math.ceil(baseTotalUsd - couponDiscountUsd + packageAdjustTotalUsd)
+            )
+          : Math.max(
+              0,
+              Math.ceil(finalPurchasePriceCalc(affDiscount) + packageAdjustTotalUsd)
+            ),
     [
       quotePriceActive,
       quoteOffer,
@@ -546,6 +565,7 @@ export default function OrderReview({
       couponDiscountUsd,
       finalPurchasePriceCalc,
       affDiscount,
+      packageAdjustTotalUsd,
     ]
   );
 

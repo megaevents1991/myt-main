@@ -39,6 +39,13 @@ type PreparedPackageRow = {
   num_travelers: number;
   allow_edit?: boolean | null;
   partner_tracking_code?: string | null;
+  /**
+   * The agent's price change per traveler in USD (+ uplift / - discount off
+   * their own commission), stamped by the backoffice wizard. numeric arrives
+   * as a string from PostgREST. Backoffice doc 2026-08-30, item 4: the LINK
+   * has to carry the agent's price, not just the signed quote.
+   */
+  price_adjust_per_person?: number | string | null;
 };
 
 function isInFuture(dateStr: string | undefined | null): boolean {
@@ -61,12 +68,19 @@ export async function GET(
 
   let { data, error } = await supabase
     .from("prepared_packages")
-    .select(`${PACKAGE_COLUMNS}, allow_edit`)
+    .select(`${PACKAGE_COLUMNS}, allow_edit, price_adjust_per_person`)
     .eq("share_token", id)
     .maybeSingle();
 
-  // allow_edit may not be migrated yet - fall back to the older column list
-  // (absent column = editable, today's behavior).
+  // Either newer column may not be migrated yet - shed them one at a time
+  // (absent = no price change / editable, today's behavior).
+  if (error && error.code === "42703") {
+    ({ data, error } = await supabase
+      .from("prepared_packages")
+      .select(`${PACKAGE_COLUMNS}, allow_edit`)
+      .eq("share_token", id)
+      .maybeSingle());
+  }
   if (error && error.code === "42703") {
     ({ data, error } = await supabase
       .from("prepared_packages")
@@ -210,9 +224,15 @@ export async function GET(
     isOwner = false;
   }
 
+  // The agent's own price for this package, per traveler. Only a live piece
+  // can be re-priced by the customer's own choices, so it is applied to the
+  // TOTAL client-side (OrderReview) rather than folded into the ticket line.
+  const priceAdjustPerPerson = Number(row.price_adjust_per_person ?? 0) || 0;
+
   return NextResponse.json({
     event_id: row.event_id,
     event_order_info: eventOrderInfo,
+    price_adjust_per_person: priceAdjustPerPerson,
     flight_order_info: flight,
     flight_needs_repick: flightNeedsRepick,
     hotel_order_info: hotel,
