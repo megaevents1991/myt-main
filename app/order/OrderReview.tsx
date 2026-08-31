@@ -116,7 +116,14 @@ export default function OrderReview({
     id: number;
     title: string | null;
     customer_name: string | null;
-    line_items: { label: string; qty: number; unit_price: number }[];
+    line_items: {
+      label: string;
+      qty: number;
+      unit_price: number;
+      /** Per-line "יבוצע ע"י" - stamped by the backoffice: the agent's name
+       *  on rows they added, "מגה איבנטס" on the package row (item 5). */
+      performed_by?: string | null;
+    }[];
     total_usd: number;
     valid_until: string | null;
     expired: boolean;
@@ -1675,9 +1682,18 @@ export default function OrderReview({
                   <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     {quoteOffer.line_items.map((item, i) => (
                       <li key={i} className="flex justify-between gap-3">
-                        <span className="min-w-0 truncate">
-                          {item.label}
-                          {item.qty > 1 && ` × ${item.qty}`}
+                        <span className="min-w-0">
+                          <span className="block truncate">
+                            {item.label}
+                            {item.qty > 1 && ` × ${item.qty}`}
+                          </span>
+                          {/* Who fulfils this line (item 5) - the agent's own
+                              rows carry their name, the package carries ours. */}
+                          {item.performed_by && (
+                            <span className="block text-xs text-gray-500 dark:text-gray-400">
+                              יבוצע ע&quot;י {item.performed_by}
+                            </span>
+                          )}
                         </span>
                         <span className="shrink-0 tabular-nums" dir="ltr">
                           ${(item.qty * item.unit_price).toLocaleString("en-US")}
