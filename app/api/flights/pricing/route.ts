@@ -15,6 +15,27 @@ type BaggageItem = {
   travelerIds: string[];
 };
 
+// El Al static penalty text - virtual (manually-modeled) offers and offline
+// El Al inventory, where there is no Amadeus fare to read rules from.
+const ELAL_PENALTIES = `PE.PENALTIES
+  CANCELLATIONS
+  ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
+  UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $180 PER PASSENGER.
+  LESS THAN 48 HOURS PRIOR TO DEPARTURE, TICKETS ARE NON-REFUNDABLE.
+  FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION`;
+
+// Generic fallback - offline non-El-Al inventory, and any Amadeus-priced offer
+// whose fare rules came back without a PENALTIES note (or whose pricing call
+// failed). The Penalties dialog on the summary must never render empty.
+const GENERIC_PENALTIES = `PE.PENALTIES
+  CANCELLATIONS
+  45 DAYS OR MORE BEFORE DEPARTURE CHARGE USD 100.00 FOR CANCELLATIONS PER TICKET.
+  44-30 DAYS BEFORE DEPARTURE CHARGE USD 250.00 FOR CANCELLATIONS PER TICKET.
+  LESS THAN 30 DAYS BEFORE DEPARTURE NON-REFUNDABLE.
+  CHANGES
+  BEFORE DEPARTURE CHARGE USD 120.00 FOR REISSUE/REVALIDATION. NOTE - WHEN THE FIRST FLIGHT COUPON IS BEING CHANGED NEW FARE WILL BE RECALCULATED USING FARES AND IATA RATE OF EXCHANGE IN EFFECT ON THE DATE OF REISSUE.
+  AFTER DEPARTURE CHARGE USD 120.00 FOR REISSUE/REVALIDATION. CHARGE USD 200.00 FOR NO-SHOW. NOTE - BEFORE EXPIRY OF FLIGHT COUPON. UPGRADE TO ANY HIGHER FARE PERMITTED IN WHICH CASE CHANGE OF RESERVATION FEE OF USD 120.00 WILL ALSO APPLY. ------------------------------------------------ THE AP THE SECURITY AND INSURANCE SURCHARGE WHICH IS COLLECTED IN THE TFC AREA OF THE TICKET IS NOT REFUNDABLE. UNLESS THE TICKETS FARE IS FULLY REFUNDABLE `;
+
 export async function POST(request: Request) {
   const {
     flightOffer,
@@ -41,13 +62,7 @@ export async function POST(request: Request) {
     );
   }
   if (virtual) {
-    const penalties = `PE.PENALTIES 
-      CANCELLATIONS
-      ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
-      UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $180 PER PASSENGER.
-      LESS THAN 48 HOURS PRIOR TO DEPARTURE, TICKETS ARE NON-REFUNDABLE.
-      FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION`;
-    return NextResponse.json({ bags: 65, penalties });
+    return NextResponse.json({ bags: 65, penalties: ELAL_PENALTIES });
   }
 
   // Offline flights (backoffice inventory) reach here with an EMPTY offer
@@ -57,25 +72,10 @@ export async function POST(request: Request) {
   // exactly the crash that 500'ed every offline flight and blanked the
   // Penalties dialog on the summary).
   if (!flightOffer || Object.keys(flightOffer).length === 0) {
-    if (airline === "LY") {
-      const penalties = `PE.PENALTIES
-        CANCELLATIONS
-        ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
-        UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $180 PER PASSENGER.
-        LESS THAN 48 HOURS PRIOR TO DEPARTURE, TICKETS ARE NON-REFUNDABLE.
-        FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION`;
-      return NextResponse.json({ bags: 65, penalties });
-    } else {
-      const penalties = `PE.PENALTIES 
-        CANCELLATIONS 
-        45 DAYS OR MORE BEFORE DEPARTURE CHARGE USD 100.00 FOR CANCELLATIONS PER TICKET.
-        44-30 DAYS BEFORE DEPARTURE CHARGE USD 250.00 FOR CANCELLATIONS PER TICKET.
-        LESS THAN 30 DAYS BEFORE DEPARTURE NON-REFUNDABLE. 
-        CHANGES 
-        BEFORE DEPARTURE CHARGE USD 120.00 FOR REISSUE/REVALIDATION. NOTE - WHEN THE FIRST FLIGHT COUPON IS BEING CHANGED NEW FARE WILL BE RECALCULATED USING FARES AND IATA RATE OF EXCHANGE IN EFFECT ON THE DATE OF REISSUE. 
-        AFTER DEPARTURE CHARGE USD 120.00 FOR REISSUE/REVALIDATION. CHARGE USD 200.00 FOR NO-SHOW. NOTE - BEFORE EXPIRY OF FLIGHT COUPON. UPGRADE TO ANY HIGHER FARE PERMITTED IN WHICH CASE CHANGE OF RESERVATION FEE OF USD 120.00 WILL ALSO APPLY. ------------------------------------------------ THE AP THE SECURITY AND INSURANCE SURCHARGE WHICH IS COLLECTED IN THE TFC AREA OF THE TICKET IS NOT REFUNDABLE. UNLESS THE TICKETS FARE IS FULLY REFUNDABLE `;
-      return NextResponse.json({ bags: 65, penalties });
-    }
+    return NextResponse.json({
+      bags: 65,
+      penalties: airline === "LY" ? ELAL_PENALTIES : GENERIC_PENALTIES,
+    });
   }
   try {
     // Amadeus per-request client reference (ama-Client-Ref) - required by the
@@ -97,21 +97,27 @@ export async function POST(request: Request) {
 
     // processing the response and returning it to the client.
     const data = JSON.parse(response.body);
-    const penalties = data.included?.["detailed-fare-rules"]?.[
-      "1"
-    ]?.fareNotes?.descriptions?.find(
-      (desc: Record<string, unknown>) => desc.descriptionType === "PENALTIES",
-    )?.text;
+    // Fare rules are keyed per segment ("1","2",...) - take the first rule
+    // that carries a PENALTIES note, not blindly segment "1" (which can be
+    // the one segment filed without it).
+    const fareRules = Object.values(
+      data.included?.["detailed-fare-rules"] ?? {},
+    ) as Array<{
+      fareNotes?: { descriptions?: Array<{ descriptionType?: string; text?: string }> };
+    }>;
+    const penalties = fareRules
+      .flatMap((rule) => rule.fareNotes?.descriptions ?? [])
+      .find((desc) => desc.descriptionType === "PENALTIES")?.text;
 
-    if (!data.included?.["detailed-fare-rules"]?.["1"]) {
-      console.warn("No detailed fare rules found in the response.", {
+    if (!penalties) {
+      console.warn("No PENALTIES fare note in the pricing response.", {
         itineraries: flightOffer.itineraries,
-        data: data.included?.["detailed-fare-rules"],
+        ruleCount: fareRules.length,
       });
     }
 
     const bagCostString = (
-      Object.values(data?.included["bags"] ?? {}) as BaggageItem[]
+      Object.values(data?.included?.["bags"] ?? {}) as BaggageItem[]
     ).find((item) => item.quantity === 1 && item.name === "CHECKED_BAG")?.price
       ?.amount;
     let bags = parseInt(bagCostString || "0");
@@ -119,15 +125,13 @@ export async function POST(request: Request) {
       bags = bags + 5;
     } // TODO: convert euro to USD
 
-    return NextResponse.json({ bags, penalties });
+    // Never hand the summary an empty Penalties dialog - fall back to the
+    // generic text when the carrier filed no PENALTIES note.
+    return NextResponse.json({ bags, penalties: penalties || GENERIC_PENALTIES });
   } catch (error) {
     console.error("Error fetching flights:", error);
-    return NextResponse.json(
-      {
-        error:
-          "Failed to fetch flight data. Please check the server logs for more information.",
-      },
-      { status: 500 },
-    );
+    // Fail SOFT: the Penalties dialog is a legal-terms display, not a price -
+    // a pricing hiccup must not blank it (the old 500 left the dialog empty).
+    return NextResponse.json({ bags: 65, penalties: GENERIC_PENALTIES });
   }
 }

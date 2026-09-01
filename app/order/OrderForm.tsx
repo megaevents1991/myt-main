@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
@@ -127,6 +127,44 @@ export const OrderForm = ({
       setStep(4);
     }
   }, [isUS, step, setHotel, setSkipHotel, setStep]);
+
+  // Airline penalties + checked-bag price for the summary. An effect on step 4
+  // (not a step-transition side effect) so EVERY path into the summary gets it:
+  // the normal 3→4 advance, the US-event 2→4 jump, edit-from-summary returns,
+  // restored orders and prepared-package links - the old prev===3 fetch missed
+  // all but the first, leaving the Penalties dialog empty. Keyed by flight.id
+  // (useBagPricing's ref pattern) so StrictMode replays and the setFlight below
+  // don't double-charge the Amadeus pricing call.
+  const penaltiesFetchedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (step !== 4 || !flight || flightSkipped) return;
+    if (flight.penalties) return; // already fetched (or restored with it)
+    if (penaltiesFetchedForRef.current === flight.id) return;
+    penaltiesFetchedForRef.current = flight.id;
+    fetch(`/api/flights/pricing`, {
+      method: "POST",
+      body: JSON.stringify({
+        flightOffer: flight.offer,
+        virtual: flight.virtualOfferType || false,
+        eventId: event?.id,
+        // Lets the route pick the right static penalty text for offline
+        // flights, whose `offer` is an empty object.
+        airline: flight.airline,
+      }),
+    }).then((res) => {
+      if (res.ok) {
+        res.json().then((data) => {
+          // If the flight was cleared meanwhile (skip / back-nav), stay
+          // cleared - never resurrect a truthy id-less flight object.
+          setFlight((prev) =>
+            prev
+              ? { ...prev, penalties: data?.penalties, bags: data?.bags }
+              : prev,
+          );
+        });
+      }
+    });
+  }, [step, flight, flightSkipped, event?.id, setFlight]);
 
   useEffect(() => {
     // Initialize skipFlight from event setting when event loads.
@@ -255,32 +293,10 @@ export const OrderForm = ({
 
         // Use skipHotel flag to determine if hotel data should be included
         const isHotelSkipped = skipHotelChosen || !hotel;
-        
-        if (!flightSkipped) {
-          fetch(`/api/flights/pricing`, {
-            method: "POST",
-            body: JSON.stringify({
-              flightOffer: flight?.offer,
-              virtual: flight?.virtualOfferType || false,
-              eventId: event?.id,
-              // Lets the route pick the right static penalty text for
-              // offline flights, whose `offer` is an empty object.
-              airline: flight?.airline,
-            }),
-          }).then((res) => {
-            if (res.ok) {
-              res.json().then((data) => {
-                // If the flight was cleared meanwhile (skip / back-nav), stay
-                // cleared - never resurrect a truthy id-less flight object.
-                setFlight((prev) =>
-                  prev
-                    ? { ...prev, penalties: data?.penalties, bags: data?.bags }
-                    : prev,
-                );
-              });
-            }
-          });
-        }
+        // NOTE: the /api/flights/pricing (penalties+bags) fetch used to live
+        // here - moved to the step-4 effect below so paths that never pass
+        // through this transition (US events' 2→4 jump, edit-from-summary,
+        // restored orders, prepared-package links) get penalties too.
         orderStage("HOTEL_SELECTED", {
           data: { hotel: isHotelSkipped ? null : hotel?.id || null },
         });
