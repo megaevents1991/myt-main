@@ -15,13 +15,20 @@ type BaggageItem = {
   travelerIds: string[];
 };
 
-// El Al static penalty text - virtual (manually-modeled) offers and offline
-// El Al inventory, where there is no Amadeus fare to read rules from.
-const ELAL_PENALTIES = `PE.PENALTIES
+// El Al online (Amadeus/virtual) cancellation texts - El Al files NO
+// detailed-fare-rules via Amadeus (verified 1.9.26 on a priced LY LITE offer),
+// so these ARE the rules shown, per Dor 1.9.26. Which one applies depends on
+// whether the FARE includes a checked bag (LITE = no bag, CLASSIC = bag).
+const ELAL_ONLINE_NO_BAG_PENALTIES = `PE.PENALTIES
   CANCELLATIONS
-  ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
-  UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $180 PER PASSENGER.
-  LESS THAN 48 HOURS PRIOR TO DEPARTURE, TICKETS ARE NON-REFUNDABLE.
+  FULL CANCELLATION FEES APPLY FROM THE MOMENT OF BOOKING, SUBJECT TO THE ISRAELI CONSUMER PROTECTION LAW.
+  FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION`;
+
+const ELAL_ONLINE_WITH_BAG_PENALTIES = `PE.PENALTIES
+  CANCELLATIONS
+  UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $120 PER PASSENGER.
+  LESS THAN 48 HOURS PRIOR TO DEPARTURE, FULL CANCELLATION FEES APPLY.
+  SUBJECT TO THE ISRAELI CONSUMER PROTECTION LAW.
   FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION`;
 
 // Generic fallback - offline non-El-Al inventory, and any Amadeus-priced offer
@@ -41,15 +48,10 @@ export async function POST(request: Request) {
     flightOffer,
     virtual,
     eventId,
-    airline,
   }: {
     flightOffer: FlightOffer;
     virtual: boolean;
     eventId?: number | string;
-    // Airline code of the SELECTED flight (Flight.airline). Offline flights
-    // carry an empty `offer` ({}), so this is the only way to tell an El Al
-    // offline flight apart from any other in the fallback branch below.
-    airline?: string;
   } = await request.json();
 
   if (!amadeus) {
@@ -62,21 +64,48 @@ export async function POST(request: Request) {
     );
   }
   if (virtual) {
-    return NextResponse.json({ bags: 65, penalties: ELAL_PENALTIES });
+    // Virtual = manually-modeled El Al package offers - sold with a checked
+    // bag, so the with-bag terms apply.
+    return NextResponse.json({
+      bags: 65,
+      penalties: ELAL_ONLINE_WITH_BAG_PENALTIES,
+    });
   }
 
   // Offline flights (backoffice inventory) reach here with an EMPTY offer
-  // ({}) - there is no Amadeus offer to price, so return static penalty text.
-  // El Al is detected via the `airline` field the client sends alongside the
-  // offer (never via flightOffer.* - dereferencing the empty offer here is
-  // exactly the crash that 500'ed every offline flight and blanked the
-  // Penalties dialog on the summary).
+  // ({}) - there is no Amadeus fare to read rules from, and OUR terms apply
+  // to that inventory (Dor 1.9: the generic 45/30-day text IS the offline
+  // policy, El Al offline included). Never dereference flightOffer.* here -
+  // that was the crash that 500'ed every offline flight and blanked the
+  // Penalties dialog on the summary.
   if (!flightOffer || Object.keys(flightOffer).length === 0) {
+    return NextResponse.json({ bags: 65, penalties: GENERIC_PENALTIES });
+  }
+
+  // El Al online: Amadeus carries no fare rules for LY, so OUR texts are the
+  // rules - picked by whether the fare itself includes a checked bag on every
+  // segment (same test as bag-pricing's branded-fare check: LITE fails it,
+  // CLASSIC passes). Missing data defaults to the STRICTER no-bag text.
+  const validating = flightOffer.validatingAirlineCodes?.[0];
+  const fareSegs = flightOffer.travelerPricings?.[0]?.fareDetailsBySegment ?? [];
+  const fareIncludesBag =
+    fareSegs.length > 0 &&
+    fareSegs.every(
+      (s) =>
+        (s.includedCheckedBags?.quantity ?? 0) >= 1 ||
+        (s.includedCheckedBags?.weight ?? 0) > 0,
+    );
+  if (validating === "LY") {
     return NextResponse.json({
       bags: 65,
-      penalties: airline === "LY" ? ELAL_PENALTIES : GENERIC_PENALTIES,
+      penalties: fareIncludesBag
+        ? ELAL_ONLINE_WITH_BAG_PENALTIES
+        : ELAL_ONLINE_NO_BAG_PENALTIES,
     });
   }
+
+  // Non-LY fallback for a live offer whose rules are unavailable.
+  const fallbackPenalties = GENERIC_PENALTIES;
   try {
     // Amadeus per-request client reference (ama-Client-Ref) - required by the
     // production-certification checklist. Falls back to a time-only ref if the
@@ -126,12 +155,15 @@ export async function POST(request: Request) {
     } // TODO: convert euro to USD
 
     // Never hand the summary an empty Penalties dialog - fall back to the
-    // generic text when the carrier filed no PENALTIES note.
-    return NextResponse.json({ bags, penalties: penalties || GENERIC_PENALTIES });
+    // carrier-appropriate static text when no PENALTIES note was filed.
+    return NextResponse.json({
+      bags,
+      penalties: penalties || fallbackPenalties,
+    });
   } catch (error) {
     console.error("Error fetching flights:", error);
     // Fail SOFT: the Penalties dialog is a legal-terms display, not a price -
     // a pricing hiccup must not blank it (the old 500 left the dialog empty).
-    return NextResponse.json({ bags: 65, penalties: GENERIC_PENALTIES });
+    return NextResponse.json({ bags: 65, penalties: fallbackPenalties });
   }
 }

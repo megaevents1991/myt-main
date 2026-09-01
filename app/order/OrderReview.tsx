@@ -299,6 +299,10 @@ export default function OrderReview({
             price: prev.price + fareUpgrade.deltaTotalUsd,
             outbound: { ...prev.outbound, checkBagsIncluded: true },
             inbound: { ...prev.inbound, checkBagsIncluded: true },
+            // The fare changed - stale penalties must be refetched for the
+            // NEW offer (El Al with-bag terms differ from LITE's). The step-4
+            // effect in OrderForm picks this up.
+            penalties: undefined,
             fare_upgrade: {
               brand: fareUpgrade.brand,
               delta_total_usd: fareUpgrade.deltaTotalUsd,
@@ -329,6 +333,8 @@ export default function OrderReview({
           ...prev.inbound,
           checkBagsIncluded: up.prev_check_bags_included?.inbound ?? false,
         },
+        // Back on the original fare - refetch its penalties (see upgrade).
+        penalties: undefined,
         fare_upgrade: undefined,
       };
     });

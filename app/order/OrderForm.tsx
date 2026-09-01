@@ -139,17 +139,18 @@ export const OrderForm = ({
   useEffect(() => {
     if (step !== 4 || !flight || flightSkipped) return;
     if (flight.penalties) return; // already fetched (or restored with it)
-    if (penaltiesFetchedForRef.current === flight.id) return;
-    penaltiesFetchedForRef.current = flight.id;
+    // Key includes the branded-fare state: a LITE→CLASSIC upgrade (or its
+    // removal) swaps the offer under the same flight.id and clears penalties,
+    // and the new fare's terms must be refetched.
+    const fetchKey = `${flight.id}:${flight.fare_upgrade?.brand ?? ""}`;
+    if (penaltiesFetchedForRef.current === fetchKey) return;
+    penaltiesFetchedForRef.current = fetchKey;
     fetch(`/api/flights/pricing`, {
       method: "POST",
       body: JSON.stringify({
         flightOffer: flight.offer,
         virtual: flight.virtualOfferType || false,
         eventId: event?.id,
-        // Lets the route pick the right static penalty text for offline
-        // flights, whose `offer` is an empty object.
-        airline: flight.airline,
       }),
     }).then((res) => {
       if (res.ok) {
