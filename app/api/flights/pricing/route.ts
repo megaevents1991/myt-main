@@ -20,8 +20,16 @@ export async function POST(request: Request) {
     flightOffer,
     virtual,
     eventId,
-  }: { flightOffer: FlightOffer; virtual: boolean; eventId?: number | string } =
-    await request.json();
+    airline,
+  }: {
+    flightOffer: FlightOffer;
+    virtual: boolean;
+    eventId?: number | string;
+    // Airline code of the SELECTED flight (Flight.airline). Offline flights
+    // carry an empty `offer` ({}), so this is the only way to tell an El Al
+    // offline flight apart from any other in the fallback branch below.
+    airline?: string;
+  } = await request.json();
 
   if (!amadeus) {
     return NextResponse.json(
@@ -42,16 +50,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ bags: 65, penalties });
   }
 
-  // Validate the flightOffer object for offline Flights
+  // Offline flights (backoffice inventory) reach here with an EMPTY offer
+  // ({}) - there is no Amadeus offer to price, so return static penalty text.
+  // El Al is detected via the `airline` field the client sends alongside the
+  // offer (never via flightOffer.* - dereferencing the empty offer here is
+  // exactly the crash that 500'ed every offline flight and blanked the
+  // Penalties dialog on the summary).
   if (!flightOffer || Object.keys(flightOffer).length === 0) {
-    if (flightOffer.validatingAirlineCodes[0] === "LY") {
-      const penalties = `PE.PENALTIES 
-        CANCELLATIONS
-        ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
-        FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION.`;
-      return NextResponse.json({ bags: 65, penalties });
-    } else if (flightOffer.validatingAirlineCodes[0] === "LY") {
-      const penalties = `PE.PENALTIES 
+    if (airline === "LY") {
+      const penalties = `PE.PENALTIES
         CANCELLATIONS
         ACCORDING TO ISRAELI CONSUMER PROTECTION LAW.
         UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $180 PER PASSENGER.

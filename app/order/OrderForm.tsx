@@ -263,6 +263,9 @@ export const OrderForm = ({
               flightOffer: flight?.offer,
               virtual: flight?.virtualOfferType || false,
               eventId: event?.id,
+              // Lets the route pick the right static penalty text for
+              // offline flights, whose `offer` is an empty object.
+              airline: flight?.airline,
             }),
           }).then((res) => {
             if (res.ok) {
