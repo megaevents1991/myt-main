@@ -210,9 +210,23 @@ export const OrderForm = ({
   // Runs OUTSIDE the setStep updater: updaters must be pure (StrictMode/
   // concurrent React may replay them - analytics and the pricing fetch used to
   // double-fire). `step` is fresh here - nextStep only runs from click handlers.
-  const nextStep = (skipHotelChosen = false) => {
+  // The next step that still needs the customer: a flight already skipped and
+  // a hotel already skipped (or a US event) are settled, so stepping forward
+  // from the ticket lands on the summary, not on "בחר והמשך לטיסה" (doc bug,
+  // agent area: pick a ticket → should go straight to the order summary).
+  const nextUnresolvedStep = (from: number, hotelSettled = false) => {
+    let next = from + 1;
+    if (next === 2 && flightSkipped) next = 3;
+    if (next === 3 && (isUS || skipHotel || hotelSettled)) next = 4;
+    return Math.min(next, 4);
+  };
+
+  // `target` (optional) walks forward onto a step that is already settled -
+  // the flight pill "+ להוספה" while the flight is skipped - instead of the
+  // next unresolved one. Never further than the next unresolved step.
+  const nextStep = (skipHotelChosen = false, target?: number) => {
     const prev = step;
-    let next = prev + 1;
+    let next = target ?? nextUnresolvedStep(prev, skipHotelChosen);
     {
       if (prev === 1) {
         orderStage("TICKET_SELECTED", {
@@ -403,7 +417,12 @@ export const OrderForm = ({
     // stays, so a repick landing can still continue.
     if (packageLocked && target < step) return undefined;
     if (target < step) return () => setStep(target); // back to a done step
-    if (target === step + 1 && !buttonDisabled) return () => nextStep(); // continue
+    if (target <= step || buttonDisabled) return undefined;
+    const unresolved = nextUnresolvedStep(step);
+    if (target === unresolved) return () => nextStep(); // continue
+    // A settled step ahead (skipped flight/hotel pill "+ להוספה") - walk onto
+    // it explicitly. Never past the next unresolved step.
+    if (target < unresolved) return () => nextStep(false, target);
     return undefined;
   };
 
@@ -483,7 +502,10 @@ export const OrderForm = ({
       ? Math.ceil(realTotalAllPax / numberOfPersons)
       : displayTotal;
 
-  const isFinalStep = isUS ? step === 2 : step === 3;
+  // Where the primary button actually lands (skipped flight/hotel folded in) -
+  // the label and the "building the package" animation both follow it.
+  const primaryTarget = nextUnresolvedStep(step);
+  const isFinalStep = primaryTarget === 4;
   // Editing from the summary (and the flow is still complete) → the primary
   // action returns to the summary, so say that instead of "המשך למלון".
   const editReturnActive =
@@ -493,12 +515,10 @@ export const OrderForm = ({
     (isUS || skipHotel || !!hotel?.id || step === 3);
   const primaryLabel = editReturnActive
     ? "שמור וחזור לסיכום"
-    : step === 1
+    : primaryTarget === 2
       ? "בחר והמשך לטיסה"
-      : step === 2
-        ? isUS
-          ? "בחר והמשך לסיכום"
-          : "בחר והמשך למלון"
+      : primaryTarget === 3
+        ? "בחר והמשך למלון"
         : "בחר והמשך לסיכום";
   const skipAction =
     step === 3
