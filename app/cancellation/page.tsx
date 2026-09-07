@@ -1,153 +1,120 @@
-export const dynamic = "force-static"; // This is optional, but good for fully static pages
-export const revalidate = 3600; // Optional: revalidate every hour
+import Link from "next/link";
+import type { Metadata } from "next";
+import {
+  TERMS_CLOSING,
+  TERMS_PREVIOUS_PATH,
+  TERMS_SECTIONS,
+  TERMS_UPDATED_LABEL,
+  type TermsBlock,
+} from "./terms-content";
+
+export const dynamic = "force-static";
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "תנאים ומידע כללי - מגה איבנטס",
+  description:
+    "תנאי ההתקשרות, דמי ביטול ושינוי, אחריות ומידע כללי להזמנות באתר מגה איבנטס.",
+  alternates: { canonical: "https://www.mega-events.co.il/cancellation" },
+};
+
+// Turn bare URLs / emails inside a clause into links.
+const LINK_RE = /(https?:\/\/[^\s]+|[\w.+-]+@[\w-]+\.[\w.-]+)/g;
+const SITE_ORIGIN = "https://www.mega-events.co.il";
+
+function renderText(text: string) {
+  return text.split(LINK_RE).map((part, i) => {
+    if (i % 2 === 0) return part;
+    const isEmail = !part.startsWith("http");
+    const href = isEmail ? `mailto:${part}` : part;
+    const internal = part.startsWith(SITE_ORIGIN);
+    const className = "text-blue-600 hover:underline break-all";
+    if (internal) {
+      return (
+        <Link key={i} href={part.slice(SITE_ORIGIN.length)} className={className}>
+          {part}
+        </Link>
+      );
+    }
+    return (
+      <a
+        key={i}
+        href={href}
+        className={className}
+        dir="ltr"
+        {...(isEmail ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+      >
+        {part}
+      </a>
+    );
+  });
+}
+
+function Block({ block }: { block: TermsBlock }) {
+  if (typeof block === "string") return <p>{renderText(block)}</p>;
+  if ("sub" in block) {
+    return <h3 className="mt-4 font-semibold">{block.sub}</h3>;
+  }
+  return (
+    <ul className="list-disc pr-6">
+      {block.list.map((item) => (
+        <li key={item}>{renderText(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+function UpdateNotice() {
+  return (
+    <aside
+      role="note"
+      className="mb-6 rounded-lg border border-amber-400 bg-amber-50 p-4 text-sm leading-relaxed text-neutral-900 dark:border-amber-500 dark:bg-amber-950/40 dark:text-amber-50"
+    >
+      <p>
+        <strong>התנאים עודכנו לאחרונה בתאריך {TERMS_UPDATED_LABEL}.</strong>
+      </p>
+      <p className="mt-1">
+        הזמנות שבוצעו עד למועד זה כפופות לנוסח התנאים שהיה בתוקף במועד ביצוע
+        ההזמנה.{" "}
+        <Link href={TERMS_PREVIOUS_PATH} className="font-semibold text-blue-700 underline dark:text-sky-300">
+          לצפייה בנוסח הקודם של התנאים לחצו כאן
+        </Link>
+        .
+      </p>
+    </aside>
+  );
+}
 
 export default function CancelPage() {
   return (
     <main className="container mx-auto p-6" dir="rtl">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">תנאים ומידע כללי</h1>
+        <h1 className="mb-6 text-center text-3xl font-bold">תנאים ומידע כללי</h1>
       </header>
-      <section className="prose max-w-none" aria-labelledby="intro-section">
-        <h2 id="intro-section" className="sr-only">מבוא ותנאים כלליים</h2>
-        <p>
-        מוצרי התיירות המוצעים באתר אינטרנט זה, מוצעים לציבור על ידי &quot;מגה
-        איבנטס&quot; מרחוב ראול ולנברג תל אביב בתנאים המפורטים להלן, ועצם הרשמת
-        הנוסע מהווה את הסכמתו המפורשת לתנאים אלה. הנוסע מצהיר כי ידוע לו שאתר זה
-        והתנאים והמידע הכללי מהווים את חוזה ההתקשרות בינו לבין מגה איבנטס וגם/או
-        כל מי שיבוא מכוחם (להלן: המארגנים), והוא יהיה מנוע מלטעון כי אין התנאים
-        והמידע הכללי המפורטים באתר זה מחייבים אותו בכל הקשור למוצרי התיירות
-        שירכוש כמפורט באתר זה. אין המארגנים אחראיים לכל מידע שלא יימסר על ידם
-        בכתב ואינם קשורים בכל מידע וגם/או בהבטחות שניתנו בע&quot;פ על ידם וגם/או
-        על ידי שולחיהם וגם/או מטעמם, ושלא נתקבל לו אישור בכתב על ידם. בכל מקרה
-        של חילוקי דעות יחייבו הוראות אלו. לא תשמע כל טענה של נוסע, כי לא קרא את
-        התנאים והמידע הכללי המופיעים באתר זה, וגם/או כי לא הופנתה תשומת ליבו
-        לתנאים ולמידע הכללי קודם הרשמתו לטיולים וגם/או לטיול בו השתתף.
-      </p>
-      </section>
-      
-      <section aria-labelledby="dear-passenger">
-        <h2 id="dear-passenger" className="mt-4">נוסע יקר,</h2>
-        <p>
-          התנאים והנהלים המובאים להלן, מהווים חלק בלתי נפרד מהזמנתך. ביצוע הזמנתך
-          לכל אחד ממוצרי התיירות של מגה איבנטס מהווה אישור מלא לכל התנאים והנהלים
-          המופיעים מטה ולכן באחריותך לקרוא בעיון רב את תנאי ההתקשרות.
-        </p>
+
+      <UpdateNotice />
+
+      {TERMS_SECTIONS.map((section) => (
+        <section
+          key={section.id}
+          id={section.id}
+          className="prose max-w-none mb-6"
+          aria-labelledby={`${section.id}-title`}
+        >
+          <h2 id={`${section.id}-title`} className="mt-6 text-xl font-bold">
+            {section.title}
+          </h2>
+          {section.blocks.map((block, i) => (
+            <Block key={i} block={block} />
+          ))}
+        </section>
+      ))}
+
+      <section className="prose max-w-none mt-8 border-t pt-6">
+        <p className="font-semibold">{TERMS_CLOSING}</p>
       </section>
 
-      <section aria-labelledby="terms-liability">
-        <h3 id="terms-liability" className="mt-4">תנאים והגבלת אחריות:</h3>
-        <p>
-          <strong>כללי -</strong> &quot;מגה איבנטס&quot; (להלן: הספקית) משמשת
-          כמתווכת או מקשרת בלבד בין הנוסעים לבין ספקי השירותים בארץ ובחו&quot;ל
-          (כגוון: בתי מלון, חברות תעופה, אטרקציות וכד&apos;), בהתאם לפרטים
-          המפורטים במסגרת כל הזמנה, כאשר האחריות על ביצוע השירותים בפועל לרבות
-          טיבם ואיכותם מוטלת במלואה על ספקי שירות אלו, למעט במקרים בהם ניתן להטיל
-          אשם על הספקית.
-        </p>
-      <p>
-        הספקית מתחייבת לבצע כל הזמנה במקצוענות ובמיומנות, ולמסור את כל המידע
-        הרלוונטי לעסקה. הספקית אינה אחראית בכל צורה שהיא לתקלות כלשהן הנובעות
-        עקב ביצוע לקוי ו/או חלקי של השירותים המבוצעים ע&quot;י ספקי השירות ו/או
-        כאלו הנובעות עקב נסיבות שאינן בשליטתה (כגוון: שביתות, רעידות אדמה, אסון
-        טבע, ימי חג, מגיפות, פשיטות רגל, תקלות טכניות ביטולי טיסות וכדומה.)
-      </p>
-      <p>
-        יודגש כי בטרם אישורה הסופי של כל הזמנה ע&quot;י ספקי השירות בארץ או
-        בחו&quot;ל, תיחשב כל הזמנה על תנאי עד למועד אישורה הסופי ולפיכך לא תחייב
-        את הספקית, אלא תהיה בגדר בקשה לביצוע הזמנה בלבד. מוסכם בזאת שכל תביעה
-        ו/או טענה ו/או תלונה של נוסע כנגד השירותים המוזמנים תובא בפני הספקית
-        בזמן אמת ומייד עם היוודע לנוסע על התקלה או במועד הקרוב לכך, ככל הניתן.
-      </p>
-      </section>
-
-      <section aria-labelledby="cancellation-fees">
-        <h3 id="cancellation-fees" className="mt-4">תנאי דמי ביטול:</h3>
-        <p>
-          <strong>חיובים וביטולים -</strong> מחובתו של כל לקוח להתעדכן ולהבין את
-          משמעות דמי הרישום והטיפול ו/או דמי הביטול בכל מוצר ו/או שירות בהתאם
-          לתנאי הספק ו/או בהתאם לתנאים המפורטים מטה.
-        </p>
-        <p>
-          שימו לב! במידה ותאלץ לבטל את הזמנתך חלים דמי שינוי ו/או דמי ביטול כפי
-          שפורטו לעיל מרגע ביצוע ואישור ההזמנה והכל בכפוף להוראות חוק הגנת הצרכן,
-          התשמ&quot;א - 1981:
-        </p>
-        <ul role="list">
-          <li role="listitem">
-          <strong>
-            א. עסקת מכר מרחוק, כהגדרתה בחוק הגנת הצרכן (תיקון מס&apos; 26 לחוק):
-          </strong>{" "}
-          רשאי הצרכן לבטל את העסקה בתוך 14 ימים מרגע ביצוע העסקה ובלבד שהביטול
-          יעשה לפחות 7 ימים עבודה קודם למועד בו אמור השירות להינתן ובכתב.
-        </li>
-        <li role="listitem">
-          <strong>ב. עסקת מכר מרחוק לפי תיקון 47 לחוק הגנת הצרכן:</strong> רשאי
-          צרכן בן 65 ומעלה ו/או אדם עם מוגבלות ו/או עולה חדש, לבטל את העסקה
-          ארבעה חודשים מיום ביצועה.
-        </li>
-        <li role="listitem">
-          ג. רשאי צרכן לבטל חוזה, עד 14 ימים ממועד כריתתו עקב פגם או אי התאמה
-          בין השירות שסופק לשירות שפרטיו נמסרו לצרכן או עקב אי אספקת השירות
-          במועד או כל הפרה אחרת של החוזה וזאת ללא דמי ביטול.
-        </li>
-        </ul>
-
-        <p>
-          יובהר למען הסר ספק כי האמור בסעיף זה הינו לצורכי יידוע בלבד, וכי הנוסח
-          המחייב והמלא של הוראות הביטול בעסקאות מכר מרחוק הוא זה המפורט בסעיף
-          14(ג) לחוק הגנת הצרכן.
-        </p>
-        <p>
-          יובהר למען הסר ספק כי כל ביטול מחייב את הנוסע בדמי טיפול ורישום שלא
-          יוחזרו בכל מקרה של ביטול. בנוסף ביטול הנעשה בדמי ביטול מלאים (100% מערך
-          העסקה) לא יקנה זכות כלשהיא לנוסע, לרבות לא החזר כספי כלשהוא, למעט החזר
-          בגין מיסי נמל והיטלי ביטחון ששולמו בהזמנת כרטיסי טיסה. לבקשת הנוסע
-          הספקית תפנה אל חברת התעופה הרלוונטית לשם קבלת החזר בגין האמור בלבד ועבור
-          הנוסע.
-        </p>
-      </section>
-
-      <section aria-labelledby="security-situation">
-        <h3 id="security-situation" className="mt-4">מצב בטחוני מיוחד</h3>
-        <p>
-          עקב המצב הבטחוני (אולם לא רק) המתמשך ייתכנו שינויים בשעות הטיסות (הלוך
-          או חזור) שיחייבו שינוי במסלול. אנו נעדכן את הנוסעים עם קבלת המידע על
-          השינוי.
-        </p>
-        <h4 className="mt-4 font-semibold">במידה ותפרוץ מלחמה / טיסה תתבטל בגלל מצב בטחוני:</h4>
-        <ul>
-          <li>
-            <strong>טיסה</strong> - אם הטיסה מתבטלת, יש החזר על הטיסה מחברת התעופה.
-          </li>
-          <li>
-            <strong>מלון</strong> - עד 10 ימים לפני ניתן לבטל ללא עלות (אלא אם צויין אחרת). אם הטיסה מתבטלת פחות מ-10 ימים לפני המועד, אנו נבקש מהמלון לוותר על דמי הביטול החלים בעקבות המצב.
-          </li>
-          <li>
-            <strong>כרטיסי הופעה</strong> - לא ניתנים לביטול בשום מצב. במידה וצריך, ננסה למכור את כרטיסי ההופעה עבורכם. באפשרותכם גם לנסות למכור אותם באופן עצמאי לפי בחירתכם. ננסה גם שהספק ימכור עבורכם, אך זה כרוך בדרך כלל בקנס מצד הספק.
-          </li>
-        </ul>
-
-      <h3 className="mt-4">דרכי הודעת ביטול עסקה:</h3>
-      <ul>
-        <li>באמצעות טופס זה: לחצו כאן</li>
-        {/*TODO: Add link to cancel form*/}
-        <li>ווטסאפ &quot;מגה איבנטס&quot; - 054-200-2272</li>
-        <li>בדואר אלקטרוני לכתובת: support@mega-events.co.il</li>
-      </ul>
-      <p>
-        כל הפניות שיתקבלו באמצעים המפורטים מעלה יטופלו בימים א&apos;-ה&apos; בין
-        השעות 09:00-16:00 (להלן: שעות הפעילות). פניות שיתקבלו לאחר שעות הפעילות
-        וימי הפעילות יטופלו ביום הפעילות העוקב.
-      </p>
-
-      <h3 className="mt-4">קבלת מסמכי נסיעה:</h3>
-      <p>
-        על הנוסע לבדוק את כל מסמכי הנסיעה, מיד עם קבלתם ולוודא כי כל המסמכים
-        הרלוונטיים אכן בידיו (כגון: כרטיסי טיסה, שוברים לבתי מלון, להעברות,
-        לאטרקציות וכדומה), לוודא כי כל הפרטים שרשומים שם נכונים, תואמים את
-        ההזמנה ואת פרטי הנוסעים במדויק.
-      </p>
-      </section>
+      <UpdateNotice />
     </main>
   );
 }
