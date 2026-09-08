@@ -2,7 +2,7 @@ import { getBlogPostBySlug, getBlogPostSlugs } from "@/lib/blog";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { BLOCKS, MARKS, Document } from "@contentful/rich-text-types";
+import { BLOCKS, INLINES, MARKS, Document } from "@contentful/rich-text-types";
 import {
   documentToReactComponents,
   Options,
@@ -92,17 +92,60 @@ export default async function BlogPostPage({
     );
 
     const Text = ({ children }: { children: ReactNode }) => (
-      <p className="align-center">{children}</p>
+      <p className="my-4 leading-relaxed">{children}</p>
     );
+
+    // Explicit block styling: Tailwind preflight resets headings/lists/links
+    // to plain text and the `prose` classes are inert (no typography plugin),
+    // so without these every heading and link rendered as body copy.
+    const heading = (className: string, Tag: "h2" | "h3" | "h4") =>
+      function Heading(_node: unknown, children: ReactNode): ReactNode {
+        return <Tag className={className}>{children}</Tag>;
+      };
+    const isExternal = (uri: string) =>
+      /^https?:\/\//i.test(uri) && !/mega-events\.co\.il/i.test(uri);
 
     const options: Options = {
       renderMark: {
         [MARKS.BOLD]: (text: ReactNode): ReactNode => <Bold>{text}</Bold>,
+        [MARKS.ITALIC]: (text: ReactNode): ReactNode => <em>{text}</em>,
       },
       renderNode: {
         [BLOCKS.PARAGRAPH]: (_node: unknown, children: ReactNode): ReactNode => (
           <Text>{children}</Text>
         ),
+        // The post title is the page <h1>; body heading-1 renders as an h2.
+        [BLOCKS.HEADING_1]: heading("mt-10 mb-4 text-2xl sm:text-3xl font-bold leading-tight", "h2"),
+        [BLOCKS.HEADING_2]: heading("mt-10 mb-4 text-2xl sm:text-3xl font-bold leading-tight", "h2"),
+        [BLOCKS.HEADING_3]: heading("mt-8 mb-3 text-xl sm:text-2xl font-bold leading-snug", "h3"),
+        [BLOCKS.HEADING_4]: heading("mt-6 mb-2 text-lg font-bold", "h4"),
+        [BLOCKS.UL_LIST]: (_node: unknown, children: ReactNode): ReactNode => (
+          <ul className="my-4 list-disc ps-6 space-y-1">{children}</ul>
+        ),
+        [BLOCKS.OL_LIST]: (_node: unknown, children: ReactNode): ReactNode => (
+          <ol className="my-4 list-decimal ps-6 space-y-1">{children}</ol>
+        ),
+        [BLOCKS.LIST_ITEM]: (_node: unknown, children: ReactNode): ReactNode => (
+          <li className="[&>p]:my-0">{children}</li>
+        ),
+        [BLOCKS.QUOTE]: (_node: unknown, children: ReactNode): ReactNode => (
+          <blockquote className="my-6 border-s-4 border-secondary ps-4 italic text-muted-foreground">
+            {children}
+          </blockquote>
+        ),
+        [INLINES.HYPERLINK]: (node, children: ReactNode): ReactNode => {
+          const uri = String((node.data as { uri?: string })?.uri ?? "");
+          const external = isExternal(uri);
+          return (
+            <a
+              href={uri}
+              className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-sky-300 dark:hover:text-sky-200"
+              {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            >
+              {children}
+            </a>
+          );
+        },
       },
     };
 

@@ -120,11 +120,45 @@ export function clubNamesMatchAnyScript(a: string, b: string): boolean {
   return !!x && x === y;
 }
 
-/** Split "X vs Y" (after any "Competition:" prefix) into sides, else null. */
+const VS_SPLIT = /\s+vs\.?\s+/i;
+const DASH_SPLIT = /\s+[-–—]\s+/;
+// TixStock names fixtures "Home vs Away - Competition [season]" ("As Roma Vs
+// Real Madrid Cf - Champions League 2026-2027"). Everything after the first
+// " - " in the AWAY side is the competition, never part of the club name.
+const COMPETITION_TAIL = /\s+[-–—]\s+.*$/;
+
+/** Split "X vs Y" (after any "Competition:" prefix) into sides, else null.
+ *  A trailing " - Competition" on the last side is dropped (TixStock format). */
 function fixtureSides(eventName: string): string[] | null {
   const noPrefix = eventName.replace(/^[^:]+:\s*/, "");
-  const parts = noPrefix.split(/\s+vs\.?\s+/i);
-  return parts.length >= 2 ? parts : null;
+  const parts = noPrefix.split(VS_SPLIT);
+  if (parts.length < 2) return null;
+  parts[parts.length - 1] = parts[parts.length - 1].replace(COMPETITION_TAIL, "");
+  return parts;
+}
+
+/**
+ * The two clubs of a fixture name, in either naming convention the DB holds:
+ * - TixStock / English: "Home vs Away - Competition [season]" (competition tail dropped)
+ * - Backoffice / Hebrew: "Competition: Home - Away" (en/em dashes too)
+ * A leading "Competition:" prefix is always dropped. null for anything that
+ * isn't exactly two sides (artists, "A - B - C"). The ONE fixture splitter for
+ * crest lookups - the match "logo VS logo" art and the feed creative both
+ * depend on it agreeing with itself.
+ */
+export function fixturePair(source?: string | null): [string, string] | null {
+  const noPrefix = (source ?? "").replace(/^[^:]+:\s*/, "").trim();
+  if (!noPrefix) return null;
+  const parts = (
+    VS_SPLIT.test(noPrefix)
+      ? noPrefix.split(VS_SPLIT).map((p, i, all) =>
+          i === all.length - 1 ? p.replace(COMPETITION_TAIL, "") : p,
+        )
+      : noPrefix.split(DASH_SPLIT)
+  )
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.length === 2 ? [parts[0], parts[1]] : null;
 }
 
 /**

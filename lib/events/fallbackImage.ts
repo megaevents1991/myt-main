@@ -8,6 +8,7 @@ import {
 } from "@/lib/football";
 import {
   eventBelongsToTeam,
+  fixturePair,
   normalizeName,
   teamFixtureRole,
 } from "@/lib/eventNameMatch";
@@ -50,20 +51,6 @@ const hasOwnPhoto = (e: Event) =>
   Boolean(e.art_image_url) || Boolean(e.card_image_url);
 
 /* ----------------------- match "logo VS logo" art ----------------------- */
-
-// Same fixture split the backoffice creative generator uses (lib/creative/
-// auto.ts): "ברצלונה - ריאל מדריד", "Barcelona vs Real Madrid", en/em dashes.
-// A leading "Competition:" prefix is dropped like eventNameMatch.fixtureSides.
-const FIXTURE_SPLIT = /\s+[-–—]\s+|\s+vs\.?\s+/i;
-
-const fixturePair = (source?: string | null): [string, string] | null => {
-  const parts = (source ?? "")
-    .replace(/^[^:]+:\s*/, "")
-    .split(FIXTURE_SPLIT)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  return parts.length === 2 ? [parts[0], parts[1]] : null;
-};
 
 // football_logos library, cached once per ISR window like the person index.
 const getLogoLibrary = nextCache(
@@ -124,10 +111,15 @@ export async function enrichEventsWithFallbackImages(
       if (!name) continue;
       // Same case-insensitive substring rule getEventsByName uses in reverse,
       // so an event shown on a person's page resolves to that same person.
-      // eventBelongsToTeam refines it for football fixtures so an "Inter Milan"
-      // game doesn't borrow AC Milan's ("Milan") imagery.
+      // Fixtures ALSO match by club tokens (teamFixtureRole): the teams table
+      // says "Manchester United FC" while TixStock names the side "Manchester
+      // United", and the substring rule alone left every United home game
+      // with no card art. eventBelongsToTeam then refines it so an "Inter
+      // Milan" game doesn't borrow AC Milan's ("Milan") imagery.
       const candidates = index.filter(
-        (p) => name.includes(p.name) && eventBelongsToTeam(name, p.name),
+        (p) =>
+          (name.includes(p.name) || teamFixtureRole(name, p.name) !== null) &&
+          eventBelongsToTeam(name, p.name),
       );
       // A fixture matches BOTH clubs ("AS Roma vs Inter Milan") and the
       // longest-first order would hand the art to whichever club has the longer

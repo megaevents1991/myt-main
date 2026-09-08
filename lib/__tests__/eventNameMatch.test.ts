@@ -4,6 +4,8 @@ import {
   normalizeName,
   eventRelatesToTeam,
   eventBelongsToTeam,
+  teamFixtureRole,
+  fixturePair,
 } from "../eventNameMatch";
 
 let failures = 0;
@@ -46,6 +48,53 @@ expect("team plays away", eventRelatesToTeam("Napoli vs AC Milan", "Milan"), tru
 expect("other club's fixture excluded", eventRelatesToTeam("Inter Milan vs Napoli", "Milan"), false);
 expect("artist event passes through", eventRelatesToTeam("Andre Rieu Budapest", "Andre Rieu"), true);
 expect("away derby not team's art", eventBelongsToTeam("inter milan vs ac milan", "milan"), false);
+
+// --- TixStock "A vs B - Competition" names --------------------------------
+// The TixStock feed names fixtures "Home vs Away - Competition [season]".
+// The competition tail must not be read as a third side / part of the away club.
+expect(
+  "fixturePair: english competition suffix dropped",
+  JSON.stringify(fixturePair("As Roma Vs Real Madrid Cf - Champions League ")),
+  JSON.stringify(["As Roma", "Real Madrid Cf"]),
+);
+expect(
+  "fixturePair: season year in suffix dropped",
+  JSON.stringify(fixturePair("Borussia Dortmund vs AEK Athens - Champions League 2026-2027")),
+  JSON.stringify(["Borussia Dortmund", "AEK Athens"]),
+);
+expect(
+  "fixturePair: hebrew prefix + dash",
+  JSON.stringify(fixturePair("ליגת האלופות: א.ס רומא - ריאל מדריד")),
+  JSON.stringify(["א.ס רומא", "ריאל מדריד"]),
+);
+expect(
+  "fixturePair: plain vs",
+  JSON.stringify(fixturePair("Manchester United FC vs Manchester City FC")),
+  JSON.stringify(["Manchester United FC", "Manchester City FC"]),
+);
+expect(
+  "fixturePair: en-dash separator",
+  JSON.stringify(fixturePair("Real Betis – Borussia Dortmund")),
+  JSON.stringify(["Real Betis", "Borussia Dortmund"]),
+);
+expect("fixturePair: artist name is not a fixture", fixturePair("Andre Rieu Budapest"), null);
+expect("fixturePair: three dash parts is not a fixture", fixturePair("A - B - C"), null);
+expect("fixturePair: null-safe", fixturePair(null), null);
+expect(
+  "role: away side with competition suffix",
+  teamFixtureRole("manchester united vs as roma - champions league", "as roma"),
+  "away",
+);
+expect(
+  "role: qualifier drift home side",
+  teamFixtureRole("manchester united vs as roma - champions league", "manchester united fc"),
+  "home",
+);
+expect(
+  "belongs: away club with competition suffix",
+  eventBelongsToTeam("aek athens vs real madrid - champions league", "real madrid"),
+  true,
+);
 
 if (failures) {
   console.error(`\n${failures} failing`);
