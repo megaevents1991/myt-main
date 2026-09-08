@@ -92,8 +92,6 @@ export default function CancelPage() {
         <h1 className="mb-6 text-center text-3xl font-bold">תנאים ומידע כללי</h1>
       </header>
 
-      <UpdateNotice />
-
       {TERMS_SECTIONS.map((section) => (
         <section
           key={section.id}

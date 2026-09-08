@@ -243,7 +243,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                         { href: "/terms", label: "תנאי שימוש" },
                         { href: "/privacy", label: "מדיניות פרטיות" },
                         { href: "/accessibility", label: "הצהרת נגישות" },
-                        { href: "/cancellation", label: "ביטול הזמנה" },
+                        { href: "/cancellation", label: "תנאים ומידע כללי" },
+                        { href: "/cancel-order", label: "ביטול הזמנה" },
                       ].map((link) => (
                         <Link
                           key={link.href}

@@ -54,6 +54,12 @@ export async function GET() {
         changeFrequency: "monthly",
         priority: 0.3,
       },
+      {
+        url: `${baseUrl}/cancel-order`,
+        lastModified: STATIC_LASTMOD,
+        changeFrequency: "monthly",
+        priority: 0.3,
+      },
     ];
     const eventPages = events.events.map((event) => ({
       url: `${baseUrl}/order/${event.id}`,

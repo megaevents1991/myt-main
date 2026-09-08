@@ -177,7 +177,11 @@ export default function TermsOfUse() {
         <p>2. בדואר אלקטרוני בכתובת - support@mega-events.co.il</p>
         <p>
           3. כאשר ההתקשרות בעסקה נעשתה באינטרנט או במרכז המידע של מגה איבנטס
-          ניתן לבטל בקישור הייעודי הבא - ביטול הזמנה. {/* TODO */}
+          ניתן לבטל בקישור הייעודי הבא -{' '}
+          <Link href="/cancel-order" className="text-blue-600 hover:text-blue-800 underline">
+            ביטול הזמנה
+          </Link>
+          .
         </p>
         <p>
           בהודעת ביטול יפרט הצרכן את שמו, מספר הזהות שלו, מספר ההזמנה, תאריך

@@ -2194,7 +2194,7 @@ export default function OrderReview({
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline"
                             >
-                              כללי ביטול הזמנה
+                              תנאים ומידע כללי
                             </a>
                           </p>
                           <h3 className="font-bold mt-4 mb-2">
@@ -2703,7 +2703,7 @@ export default function OrderReview({
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline"
                             >
-                              כללי ביטול הזמנה
+                              תנאים ומידע כללי
                             </a>
                           </p>
                           <h3 className="font-bold mt-4">כרטיסים לאירוע</h3>
