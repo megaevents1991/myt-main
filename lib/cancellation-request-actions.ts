@@ -2,6 +2,7 @@
 
 import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
+import { customerEmailHtml, opsEmailHtml } from "@/lib/cancellation-request-email";
 
 /**
  * Customer cancellation request from /cancel-order (the "ביטול הזמנה" page the
@@ -77,41 +78,6 @@ function validate(values: Record<CancellationField, string>) {
   return errors;
 }
 
-const escapeHtml = (s: string) =>
-  s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
-  );
-
-function opsEmailHtml(v: Record<CancellationField, string>, requestId: number | null) {
-  const row = (label: string, value: string) =>
-    `<tr><td style="padding:6px 10px;font-weight:bold;white-space:nowrap">${label}</td><td style="padding:6px 10px">${escapeHtml(value) || "-"}</td></tr>`;
-  return `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px">
-    <h2 style="margin:0 0 12px">בקשת ביטול הזמנה חדשה מהאתר${requestId ? ` (#${requestId})` : ""}</h2>
-    <table style="border-collapse:collapse;border:1px solid #ddd">
-      ${row("שם פרטי", v.firstName)}
-      ${row("שם משפחה", v.lastName)}
-      ${row("ת.ז.", v.idNumber)}
-      ${row("טלפון", v.phone)}
-      ${row("מספר הזמנה", v.orderNumber)}
-      ${row("דוא\"ל", v.email)}
-      ${row("בקשה / הערה", v.note)}
-    </table>
-    <p style="color:#666;margin-top:12px">התקבל: ${new Date().toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" })}</p>
-  </div>`;
-}
-
-function customerEmailHtml(v: Record<CancellationField, string>, requestId: number | null) {
-  return `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6">
-    <h2 style="margin:0 0 12px">קיבלנו את בקשת הביטול שלך</h2>
-    <p>שלום ${escapeHtml(v.firstName)},</p>
-    <p>בקשתך לביטול הזמנה מספר <strong>${escapeHtml(v.orderNumber)}</strong> התקבלה${requestId ? ` (מספר פנייה ${requestId})` : ""}.</p>
-    <p>נציג מגה איבנטס יבדוק את הבקשה מול תנאי ההזמנה וישלח אליך אישור ביטול ופירוט דמי הביטול, ככל שחלים, בהתאם לתנאי ההזמנה ולחוק הגנת הצרכן.</p>
-    <p>פניות מטופלות בימי עסקים א'–ה' בין השעות 09:00–16:00. פנייה שהתקבלה מחוץ לשעות אלה תטופל ביום העסקים העוקב.</p>
-    <p>לשאלות: וואטסאפ 054-200-2272 או במענה למייל זה.</p>
-    <p>מגה איבנטס</p>
-  </div>`;
-}
-
 export async function submitCancellationRequest(
   _prev: CancellationFormState,
   formData: FormData,
@@ -159,7 +125,8 @@ export async function submitCancellationRequest(
   }
 
   // 2. Emails - ops first (the one that matters), then the customer ack.
-  const opsTo = process.env.CANCELLATION_REQUEST_EMAIL || process.env.SALES_REP_EMAIL;
+  // Same inbox that receives new orders (see confirm-order/route.ts).
+  const opsTo = process.env.SALES_REP_EMAIL;
   let opsOk = false;
   if (EMAIL_SERVER_USER && EMAIL_SERVER_PASSWORD && opsTo) {
     const transporter = nodemailer.createTransport({
@@ -190,7 +157,7 @@ export async function submitCancellationRequest(
       console.error("cancellation customer ack email failed:", e);
     }
   } else {
-    console.error("cancellation request: email not configured (EMAIL_SERVER_* / CANCELLATION_REQUEST_EMAIL / SALES_REP_EMAIL)");
+    console.error("cancellation request: email not configured (EMAIL_SERVER_* / SALES_REP_EMAIL)");
   }
 
   if (!dbOk && !opsOk) {
