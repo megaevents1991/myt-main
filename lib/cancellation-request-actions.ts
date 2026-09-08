@@ -125,8 +125,9 @@ export async function submitCancellationRequest(
   }
 
   // 2. Emails - ops first (the one that matters), then the customer ack.
-  // Same inbox that receives new orders (see confirm-order/route.ts).
-  const opsTo = process.env.SALES_REP_EMAIL;
+  // Same inbox that receives new orders (confirm-order/route.ts) unless a
+  // dedicated cancellations inbox is configured.
+  const opsTo = process.env.CANCELLATION_REQUEST_EMAIL || process.env.SALES_REP_EMAIL;
   let opsOk = false;
   if (EMAIL_SERVER_USER && EMAIL_SERVER_PASSWORD && opsTo) {
     const transporter = nodemailer.createTransport({
@@ -157,7 +158,7 @@ export async function submitCancellationRequest(
       console.error("cancellation customer ack email failed:", e);
     }
   } else {
-    console.error("cancellation request: email not configured (EMAIL_SERVER_* / SALES_REP_EMAIL)");
+    console.error("cancellation request: email not configured (EMAIL_SERVER_* / CANCELLATION_REQUEST_EMAIL / SALES_REP_EMAIL)");
   }
 
   if (!dbOk && !opsOk) {
