@@ -4,6 +4,7 @@ import { exchangeRateService } from "@/lib/exchangeRateService";
 import { supabase } from "@/lib/supabase";
 import type { EventTicket } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
+import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
@@ -37,23 +38,6 @@ function slugify(name: string): string {
 
 function normalizeCategory(category: string | undefined | null): string {
   return (category || "").trim().toLowerCase();
-}
-
-function listingCanSatisfyQuantity(
-  listing: TixStockListing,
-  requestedQuantity: number,
-): boolean {
-  const quantityAvailable =
-    listing.number_of_tickets_for_sale?.quantity_available ?? 0;
-  const splitQuantity = listing.number_of_tickets_for_sale?.split_quantity ?? 0;
-
-  if (requestedQuantity === 1) {
-    return quantityAvailable === 1 || quantityAvailable === splitQuantity;
-  }
-
-  return (
-    quantityAvailable >= requestedQuantity || splitQuantity >= requestedQuantity
-  );
 }
 
 function getCheapestCategoryPrices(

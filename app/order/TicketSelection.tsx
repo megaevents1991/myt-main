@@ -12,6 +12,7 @@ import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import { useMediaQuery } from "@mantine/hooks";
 import type { Event, EventTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
+import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import {
   eventTicketToListing,
@@ -277,10 +278,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       const qualifying = liveListings.filter((l) => {
         const listingCat = l.seat_details?.category?.trim().toLowerCase();
         if (listingCat !== norm) return false;
-        const qtyAvail = l.number_of_tickets_for_sale?.quantity_available ?? 0;
-        const splitQty = l.number_of_tickets_for_sale?.split_quantity ?? 0;
-        if (qty === 1) return qtyAvail === 1 || qtyAvail === splitQty;
-        return qtyAvail >= qty || splitQty >= qty;
+        return listingCanSatisfyQuantity(l, qty);
       });
       if (qualifying.length === 0) return null;
       const cheapest = qualifying.reduce((min, l) => {
@@ -338,29 +336,34 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     : availableTickets;
 
   /**
-   * Largest quantity (below the requested one) that at least one category can
-   * still supply - powers the one-tap "reduce quantity" suggestion when the
-   * requested amount can't be fulfilled. null when nothing smaller works.
+   * Nearest quantity that at least one category can still supply - powers the
+   * one-tap "change quantity" rescue when the requested amount can't be
+   * fulfilled. Searches downward first (fewer tickets is the cheaper ask),
+   * then upward to MAX_TICKETS - so a lone "1 ticket" request on an event whose
+   * sellers only split into 2+ still gets a button instead of a dead-end.
+   * null when nothing else works.
    */
-  const maxFeasibleQty: number | null = useMemo(() => {
-    if (!isTxEvent || liveListings.length === 0) return null;
-    for (let q = numberOfEventTickets - 1; q >= 1; q--) {
-      if (
+  const nearestFeasibleQty: { qty: number; direction: "down" | "up" } | null =
+    useMemo(() => {
+      if (!isTxEvent || liveListings.length === 0) return null;
+      const feasible = (q: number) =>
         availableTickets.some(
           (t) => getLivePriceForCategory(t.category, q) !== null,
-        )
-      ) {
-        return q;
+        );
+      for (let q = numberOfEventTickets - 1; q >= 1; q--) {
+        if (feasible(q)) return { qty: q, direction: "down" };
       }
-    }
-    return null;
-  }, [
-    isTxEvent,
-    liveListings,
-    numberOfEventTickets,
-    availableTickets,
-    getLivePriceForCategory,
-  ]);
+      for (let q = numberOfEventTickets + 1; q <= MAX_TICKETS; q++) {
+        if (feasible(q)) return { qty: q, direction: "up" };
+      }
+      return null;
+    }, [
+      isTxEvent,
+      liveListings,
+      numberOfEventTickets,
+      availableTickets,
+      getLivePriceForCategory,
+    ]);
 
   /** True when selling on buffered DB price because live TX pricing is down. */
   const usingBufferedFallback =
@@ -752,17 +755,19 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                       <Text size="xl" fw={700} c="red" aria-live="polite">
                         אין {numberOfEventTickets} כרטיסים ביחד כרגע
                       </Text>
-                      {maxFeasibleQty ? (
+                      {nearestFeasibleQty ? (
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(maxFeasibleQty)}
+                          onClick={() => handleQuantityChange(nearestFeasibleQty.qty)}
                           className="rounded-xl bg-main px-5 py-2.5 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90"
                         >
-                          יש עד {maxFeasibleQty} כרטיסים ביחד - עדכנו את הכמות
+                          {nearestFeasibleQty.direction === "down"
+                            ? `יש עד ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`
+                            : `המוכרים מוכרים מינימום ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`}
                         </button>
                       ) : (
                         <Text size="md" c="dimmed">
-                          נסו להפחית את כמות הכרטיסים.
+                          נסו לשנות את כמות הכרטיסים.
                         </Text>
                       )}
                       <GroupTicketsInquiry
