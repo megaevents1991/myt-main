@@ -22,7 +22,8 @@ import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { normalizeName } from "@/lib/eventNameMatch";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
-import { ElfsightWidget } from "@/components/ui/elfReviews";
+import { GoogleReviews } from "@/components/GoogleReviews";
+import type { GoogleReviewsData } from "@/lib/googleReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { HeroCarousel, type HeroCarouselItem } from "@/components/HeroCarousel";
@@ -52,6 +53,8 @@ interface Props {
   // Homepage "אמנים מובילים" / "כדורגל" slides - ALL entries, available first
   // then the unavailable ones appended at the end.
   homeArtists?: Artist[];
+  // "לקוחות משתפים" - mirrored Google reviews, fetched server-side in app/page.tsx.
+  googleReviews?: GoogleReviewsData | null;
   homeFootball?: FootballTeam[];
 }
 
@@ -757,7 +760,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball, googleReviews }: Props) {
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -1369,10 +1372,12 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                       subtitle: (
                         <span>
                           <a
-                            href="https://www.google.com/search?q=%D7%9E%D7%92%D7%94+%D7%AA%D7%99%D7%99%D7%A8%D7%95%D7%AA"
+                            // Mega Events Google Business profile (CID
+                            // 3588250245740006173); #lrd=…,1 opens its reviews.
+                            href="https://www.google.com/search?hl=he-IL&gl=il&q=Mega+Events&ludocid=3588250245740006173#lrd=0x0:0x31cc06964e8a8b1d,1,,,,"
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="חפש ביקורות של מגה תיירות בגוגל - נפתח בחלון חדש"
+                            aria-label="ביקורות של Mega Events בגוגל - נפתח בחלון חדש"
                           >
                             מבית מגה תיירות
                           </a>
@@ -1500,16 +1505,9 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               ))}
             </div>
           </section>
-          {/* Elfsight Google reviews. Renders near-black text in the light DOM
-              (no iframe/shadow); in dark mode we recolor it via the
-              `.dark .es-embed-root` rules in globals.css so it blends into the
-              dark page instead of sitting on a forced white island. */}
-          <div>
-            <ElfsightWidget
-              widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7"
-              lazy="first-activity"
-            />
-          </div>
+          {/* לקוחות משתפים - our own Google-reviews carousel (data mirrored by
+              the backoffice); theme-aware, so no dark-mode overrides needed. */}
+          <GoogleReviews data={googleReviews} />
 
           {/* Sports Section - all teams, available (זמין באתר) first, rest at end */}
           {homeFootball && homeFootball.length > 0 && (

@@ -1,4 +1,5 @@
 import { ClientSideHomepage } from "@/components/ClientSideHomepage";
+import { getGoogleReviews } from "@/lib/googleReviews";
 import { FAQ } from "@/components/ui/FAQ";
 import MegaEventsSection from "@/components/ui/aboutUsMega";
 import { TrustSection } from "@/components/TrustSection";
@@ -125,7 +126,7 @@ export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
 
-  const [events, footballTeams, carouselArtists, artists, categories, allFootballTeams, isAvailable] = await Promise.all([
+  const [events, footballTeams, carouselArtists, artists, categories, allFootballTeams, isAvailable, googleReviews] = await Promise.all([
     getEventsForPage(),
     getFootballTeams(),
     getCarouselArtists(),
@@ -133,6 +134,7 @@ export default async function Home() {
     getCategories(),
     getAllFootballTeams(),
     getAvailabilityChecker(),
+    getGoogleReviews(),
   ]);
 
   const heroItems = buildHeroItems(
@@ -168,6 +170,7 @@ export default async function Home() {
         heroItems={heroItems}
         homeArtists={homeArtists}
         homeFootball={homeFootball}
+        googleReviews={googleReviews}
       />
       {/* קטגוריות (categories) visual hidden for now - needs rework before re-enabling. */}
       {/* <CategorySection categories={categories} /> */}
