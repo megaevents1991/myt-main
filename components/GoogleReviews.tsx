@@ -144,6 +144,9 @@ export function GoogleReviews({ data }: { data: GoogleReviewsData | null | undef
         href={data.mapsUrl ?? undefined}
         target="_blank"
         rel="noopener noreferrer"
+        // LTR row like the widget: G · 5.0 · stars · (71) - the RTL page would
+        // otherwise mirror it.
+        dir="ltr"
         className="flex items-center gap-2"
         aria-label={`דירוג ${rating.toFixed(1)} בגוגל, ${data.count ?? data.reviews.length} ביקורות - נפתח בחלון חדש`}
       >
@@ -168,6 +171,8 @@ export function GoogleReviews({ data }: { data: GoogleReviewsData | null | undef
           slideGap={20}
           align="start"
           containScroll="trimSnaps"
+          // Page-wise like the widget: one dot per visible group, not per card.
+          slidesToScroll="auto"
           withIndicators
           withControls={data.reviews.length > 1}
           // RTL page: embla flips the visual order, so the icons swap too.
