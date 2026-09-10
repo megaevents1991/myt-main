@@ -96,6 +96,18 @@ export type Event = {
   // Direct video FILE url (mp4/mov/…) for the Meta activities feed's
   // video[0].url. Player/YouTube links are rejected by Meta and filtered out.
   campaign_video_url?: string | null;
+  // Price light (רמזור) - written by the backoffice nightly/crawl crons
+  // (lib/services/price-light-store.ts). Main reads light_package + the three
+  // price_drop_* columns only (phase 3). Values: alone|green|orange|red|unchecked|na;
+  // null = unchecked. Synced to backoffice types/app.types.ts.
+  light_package?: string | null;
+  light_ticket?: string | null;
+  light_detail?: Record<string, unknown> | null;
+  light_checked_at?: string | null;
+  light_silenced_until?: string | null;
+  price_drop_usd?: number | null;
+  price_drop_from?: number | null;
+  price_drop_until?: string | null; // YYYY-MM-DD
 };
 
 export type Flight = {
