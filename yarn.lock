@@ -4410,13 +4410,6 @@ natural-compare@^1.4.0:
   resolved "https://registry.npmjs.org/natural-compare/-/natural-compare-1.4.0.tgz"
   integrity sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==
 
-next-elfsight-widget@^1.1.1:
-  version "1.1.1"
-  resolved "https://registry.npmjs.org/next-elfsight-widget/-/next-elfsight-widget-1.1.1.tgz"
-  integrity sha512-n/vrSq6mfvX5oCaExLrvlXC9eFb7Je5glcy53teBqAp0ouBYydxyTQRB/X50jERgTvuRiQ6clDCFN3KTnKsnZw==
-  dependencies:
-    react-elfsight-widget "^1.1.1"
-
 next@^15.5.10:
   version "15.5.14"
   resolved "https://registry.npmjs.org/next/-/next-15.5.14.tgz"
@@ -4861,11 +4854,6 @@ react-dom@^19.2.3:
   integrity sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==
   dependencies:
     scheduler "^0.27.0"
-
-react-elfsight-widget@^1.1.1:
-  version "1.1.2"
-  resolved "https://registry.npmjs.org/react-elfsight-widget/-/react-elfsight-widget-1.1.2.tgz"
-  integrity sha512-FT/H1f3jtrTD1jqpubl+wyqE/FfJM6TpbfpUFpDoYoofoVzPAbjGiqKs1t8IQh2D3zeoP72IgfP5/idyKyabzw==
 
 react-icons@^5.5.0:
   version "5.5.0"

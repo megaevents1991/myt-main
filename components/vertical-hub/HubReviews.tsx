@@ -1,12 +1,12 @@
-"use client";
-
-import { ElfsightWidget } from "@/components/ui/elfReviews";
+import { GoogleReviews } from "@/components/GoogleReviews";
+import { getGoogleReviews } from "@/lib/googleReviews";
 
 /**
- * "לקוחות משתפים" - the same Elfsight Google-reviews widget as the homepage.
- * Client wrapper because `next/dynamic` with `ssr: false` (inside elfReviews)
- * may not be imported directly from a Server Component.
+ * "לקוחות משתפים" on the vertical hubs - the same Google-reviews carousel as
+ * the homepage. Server component: fetches the mirrored reviews itself (the
+ * hub pages are ISR, so this runs per revalidation).
  */
-export const HubReviews = () => (
-  <ElfsightWidget widgetId="58ddc878-9ffa-4f89-b892-04ed7ec54eb7" lazy="first-activity" />
-);
+export async function HubReviews() {
+  const data = await getGoogleReviews();
+  return <GoogleReviews data={data} />;
+}
