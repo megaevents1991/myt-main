@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Carousel } from "@mantine/carousel";
-import { Modal } from "@mantine/core";
+import { DirectionProvider, Modal } from "@mantine/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/he";
+// Type-only: lib/googleReviews.ts owns the server Supabase client - a value
+// import would drag it into the client bundle (and crash on the missing env).
 import type { GoogleReview, GoogleReviewsData } from "@/lib/googleReviews";
 
 dayjs.extend(relativeTime);
@@ -23,6 +25,14 @@ dayjs.extend(relativeTime);
 
 const STAR = "#FCBF02";
 const ACCENT = "#006DFF";
+
+/**
+ * The Mega Events profile's reviews on Google (CID 3588250245740006173;
+ * `#lrd=…,1` opens the reviews panel). Header link target - the mirrored
+ * `maps_url` is only the bare listing and is null on some sync sources.
+ */
+const GOOGLE_REVIEWS_URL =
+  "https://www.google.com/search?hl=he-IL&gl=il&q=Mega+Events&ludocid=3588250245740006173#lrd=0x0:0x31cc06964e8a8b1d,1,,,,";
 
 function Stars({ rating, size = 18 }: { rating: number; size?: number }) {
   return (
@@ -141,7 +151,7 @@ export function GoogleReviews({ data }: { data: GoogleReviewsData | null | undef
     <div className="mx-auto flex max-w-[1280px] flex-col items-center gap-4 px-4">
       <h2 className="text-center text-2xl font-bold text-foreground">לקוחות משתפים</h2>
       <a
-        href={data.mapsUrl ?? undefined}
+        href={GOOGLE_REVIEWS_URL}
         target="_blank"
         rel="noopener noreferrer"
         // LTR row like the widget: G · 5.0 · stars · (71) - the RTL page would
@@ -165,34 +175,40 @@ export function GoogleReviews({ data }: { data: GoogleReviewsData | null | undef
   return (
     <section aria-label="לקוחות משתפים" className="mx-auto w-full max-w-[1280px] py-10">
       {header}
-      <div className="relative mt-8 px-4">
-        <Carousel
-          slideSize={{ base: "100%", sm: "50%", md: "33.333333%", lg: "25%" }}
-          slideGap={20}
-          align="start"
-          containScroll="trimSnaps"
-          // Page-wise like the widget: one dot per visible group, not per card.
-          slidesToScroll="auto"
-          withIndicators
-          withControls={data.reviews.length > 1}
-          // RTL page: embla flips the visual order, so the icons swap too.
-          nextControlIcon={<ChevronLeft size={22} />}
-          previousControlIcon={<ChevronRight size={22} />}
-          classNames={{
-            control:
-              "!h-11 !w-11 !rounded-full !border-0 !bg-foreground/50 !text-background !opacity-100 hover:!bg-foreground data-[inactive]:!invisible",
-            indicators: "!static !mt-6 !justify-center",
-            indicator:
-              "!h-2 !w-2 !rounded-full !bg-foreground/30 data-[active]:!bg-foreground",
-          }}
-          styles={{ viewport: { paddingBlock: 2 } }}
-        >
-          {data.reviews.map((review) => (
-            <Carousel.Slide key={review.key}>
-              <ReviewCard review={review} onOpen={() => setOpen(review)} />
-            </Carousel.Slide>
-          ))}
-        </Carousel>
+      <div className="relative mt-8 px-4" dir="rtl">
+        {/* Mantine's Carousel takes its direction from DirectionProvider, not
+            from the DOM. The app has no provider (defaults to ltr), so without
+            this embla translated the LTR way under the RTL layout - "next"
+            slid into empty space. */}
+        <DirectionProvider initialDirection="rtl" detectDirection={false}>
+          <Carousel
+            slideSize={{ base: "100%", sm: "50%", md: "33.333333%", lg: "25%" }}
+            slideGap={20}
+            align="start"
+            containScroll="trimSnaps"
+            // Page-wise like the widget: one dot per visible group, not per card.
+            slidesToScroll="auto"
+            withIndicators
+            withControls={data.reviews.length > 1}
+            // In RTL "next" moves the strip toward the left edge.
+            nextControlIcon={<ChevronLeft size={22} />}
+            previousControlIcon={<ChevronRight size={22} />}
+            classNames={{
+              control:
+                "!h-11 !w-11 !rounded-full !border-0 !bg-foreground/50 !text-background !opacity-100 hover:!bg-foreground data-[inactive]:!invisible",
+              indicators: "!static !mt-6 !justify-center",
+              indicator:
+                "!h-2 !w-2 !rounded-full !bg-foreground/30 data-[active]:!bg-foreground",
+            }}
+            styles={{ viewport: { paddingBlock: 2 } }}
+          >
+            {data.reviews.map((review) => (
+              <Carousel.Slide key={review.key}>
+                <ReviewCard review={review} onOpen={() => setOpen(review)} />
+              </Carousel.Slide>
+            ))}
+          </Carousel>
+        </DirectionProvider>
       </div>
 
       <Modal
