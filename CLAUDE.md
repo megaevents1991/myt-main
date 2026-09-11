@@ -14,6 +14,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > rows keep their old Contentful entry id as `slug`; that's just a string.
 > `CONTENTFUL_*` env vars are unused - safe to delete locally and on Vercel.
 
+> **Coupons - per-person (2026-09-11).** `coupons.per_person` (backoffice
+> migration) makes a FIXED coupon multiply by the ticket count, like the
+> follower discount on a tracking link; percent coupons ignore it and every
+> pre-existing coupon stays per order. Read in `lib/coupons.ts`, returned by
+> `/api/coupons/validate` as `perPerson`, applied by `getCouponDiscountUsd`
+> (client + `confirm-order`) and the price-floor guard. The backoffice builds
+> one such coupon per influencer (`influencer_partner_code`, code like
+> `AVIRAN30`) whose `partner_tracking_code` attributes the order.
+
 > **⚠️ `/agent` AREA DEPRECATED - partner self-service moved BACK to the
 > backoffice (2026-08-02).** Decision reversed: myt-main is for customers;
 > carrying the partner area here bloats and slows it. Agents/affiliates use

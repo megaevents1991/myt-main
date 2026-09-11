@@ -215,7 +215,9 @@ export const validatePurchasePriceFloor = async (
         coupon.discount_type === "percent"
           ? floorUsd *
             (1 - Math.min(100, Number(coupon.discount_value) || 0) / 100)
-          : floorUsd - (Number(coupon.discount_value) || 0);
+          : floorUsd -
+            (Number(coupon.discount_value) || 0) *
+              (coupon.per_person === true ? qty : 1);
     }
     const d = Number(partner?.user_discount) || 0;
     // Same normalization as finalPurchasePriceCalc (app/order/hooks.tsx):

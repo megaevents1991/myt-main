@@ -532,9 +532,14 @@ export default function OrderReview({
     [finalPurchasePriceCalc]
   );
 
+  // Per-person coupons (influencer codes) multiply by the travellers, like
+  // the follower discount on a tracking link does.
   const couponDiscountUsd = useMemo(
-    () => (appliedCoupon ? getCouponDiscountUsd(appliedCoupon, baseTotalUsd) : 0),
-    [appliedCoupon, baseTotalUsd]
+    () =>
+      appliedCoupon
+        ? getCouponDiscountUsd(appliedCoupon, baseTotalUsd, numberOfPersons)
+        : 0,
+    [appliedCoupon, baseTotalUsd, numberOfPersons]
   );
 
   // No stacking: coupon applies only when it beats the affiliate discount.
@@ -692,6 +697,7 @@ export default function OrderReview({
           code: data.code || code,
           discountType: data.discountType,
           discountValue: data.discountValue,
+          perPerson: data.perPerson === true,
         });
         setCouponStatus("applied");
       } else {

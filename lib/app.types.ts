@@ -320,6 +320,13 @@ export type Coupon = {
    * coupon credit this partner only when they have no affiliate of their own.
    */
   partner_tracking_code: string | null;
+  /**
+   * Fixed discount applies per ticket/person (influencer coupons), not once
+   * per order. Percent coupons ignore it. Missing on pre-migration rows.
+   */
+  per_person?: boolean | null;
+  /** Set on the one auto-built coupon of an affiliate partner (its tracking code). */
+  influencer_partner_code?: string | null;
   is_active: boolean;
   created_at: string;
 };

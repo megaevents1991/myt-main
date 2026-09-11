@@ -135,12 +135,19 @@ export async function POST(req: Request) {
       );
       return NextResponse.json({ error: "COUPON_INVALID" }, { status: 409 });
     }
+    // Per-person coupons scale with the ticket count, the same trusted
+    // quantity the price-floor guard uses.
+    const couponQtyRaw = Number(validatedData.event_order_info?.number_of_ticket);
+    const couponQty =
+      Number.isFinite(couponQtyRaw) && couponQtyRaw >= 1 ? Math.floor(couponQtyRaw) : 1;
     couponDiscountUsd = getCouponDiscountUsd(
       {
         discountType: coupon.discount_type,
         discountValue: coupon.discount_value,
+        perPerson: coupon.per_person === true,
       },
       validatedData.coupon_base_total_usd ?? 0,
+      couponQty,
     );
   }
 

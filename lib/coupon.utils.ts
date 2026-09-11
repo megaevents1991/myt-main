@@ -5,6 +5,8 @@ export type AppliedCoupon = {
   code: string;
   discountType: Coupon["discount_type"];
   discountValue: number;
+  /** Fixed discount × persons (influencer coupons). Absent/false = once per order. */
+  perPerson?: boolean;
 };
 
 /**
@@ -35,18 +37,22 @@ export const isCouponUsable = (
 
 /**
  * USD the coupon takes off the package total. Percent is applied to the
- * pre-discount total; both kinds are capped at the total (never negative
- * price). Rounded down - errs in the house's favor by at most $1.
+ * pre-discount total; a fixed amount is once per order, or once per person
+ * when the coupon is per-person (influencer coupons - same as the follower
+ * discount on a tracking link). Both kinds are capped at the total (never a
+ * negative price). Rounded down - errs in the house's favor by at most $1.
  */
 export const getCouponDiscountUsd = (
-  coupon: Pick<AppliedCoupon, "discountType" | "discountValue">,
+  coupon: Pick<AppliedCoupon, "discountType" | "discountValue" | "perPerson">,
   baseTotalUsd: number,
+  persons = 1,
 ): number => {
   if (baseTotalUsd <= 0) return 0;
+  const count = coupon.perPerson ? Math.max(1, Math.floor(persons) || 1) : 1;
   const raw =
     coupon.discountType === "percent"
       ? (baseTotalUsd * coupon.discountValue) / 100
-      : coupon.discountValue;
+      : coupon.discountValue * count;
   return Math.max(0, Math.min(Math.floor(raw), baseTotalUsd));
 };
 

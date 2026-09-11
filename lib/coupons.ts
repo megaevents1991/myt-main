@@ -20,13 +20,13 @@ export const findValidCoupon = async (
   // so escape it here - otherwise it's an ILIKE single-char wildcard and
   // "SUMMER_1" would also match "SUMMER21" (coupon guessing/bypass).
   const escaped = normalized.replace(/([\\%_])/g, "\\$1");
-  // times_paid / partner_tracking_code may not exist until the v2 migration
-  // runs; on 42703 (undefined column) retry without them so coupons keep
-  // working either way (same pattern as affiliate checkCode).
+  // times_paid / partner_tracking_code / per_person may not exist until their
+  // migrations run; on 42703 (undefined column) retry without them so coupons
+  // keep working either way (same pattern as affiliate checkCode).
   let { data, error } = await supabase
     .from("coupons")
     .select(
-      "id, code, discount_type, discount_value, event_id, valid_until, max_uses, times_used, times_paid, partner_tracking_code, is_active, created_at",
+      "id, code, discount_type, discount_value, event_id, valid_until, max_uses, times_used, times_paid, partner_tracking_code, per_person, is_active, created_at",
     )
     .ilike("code", escaped)
     .maybeSingle();

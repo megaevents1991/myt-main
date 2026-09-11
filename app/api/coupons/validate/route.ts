@@ -3,7 +3,7 @@ import { findValidCoupon } from "@/lib/coupons";
 
 /**
  * Validate a customer-entered coupon code for an event.
- * Success → { code, discountType, discountValue }.
+ * Success → { code, discountType, discountValue, perPerson }.
  * Any failure (unknown/inactive/expired/exhausted/wrong event) → {} with 200,
  * so callers can't enumerate codes or probe why one was rejected.
  */
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       code: coupon.code,
       discountType: coupon.discount_type,
       discountValue: coupon.discount_value,
+      perPerson: coupon.per_person === true,
     });
   } catch (e) {
     console.error("Coupon validation failed:", e);
