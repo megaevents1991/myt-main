@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { EventTicket } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
+import { UNLABELED_SECTION_MARK } from "@/lib/tixstock-map";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
@@ -259,10 +260,14 @@ function isExcludedSection(
 
   const isCategoryOnlyListing =
     listingCatSlug !== "" && listingSectionSlug === listingCatSlug;
+  // Numbered unlabeled wedges (`lower-tier_~3`, see numberUnlabeledSections
+  // in lib/tixstock-map.ts) carry no tickets - like the legacy empty id, they
+  // must not count as a concrete section that hides category-only listings.
   const hasConcreteExcludedSectionInCategory = parsedExcludedSections.some(
     ({ catSlug, sectionId }) =>
       catSlug === listingCatSlug &&
       sectionId !== "" &&
+      !sectionId.startsWith(UNLABELED_SECTION_MARK) &&
       sectionId !== listingCatSlug,
   );
 

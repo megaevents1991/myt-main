@@ -17,6 +17,7 @@ import {
   isCategoryOnlyTicket,
   isTicketMatchingSection,
   paintSection,
+  isSectionExcluded,
   prePaintSvg,
   sanitizeAndPrepareSvg,
   ticketCategoryMatchesEl,
@@ -219,7 +220,7 @@ export function TixstockDynamicMap({
         const secId = el.getAttribute("data-section") || "";
 
         // Excluded sections are always rendered as disabled
-        if (excludedSections?.includes(secId)) {
+        if (isSectionExcluded(secId, excludedSections)) {
           paintSection(el, "disabled");
           return;
         }
@@ -257,7 +258,7 @@ export function TixstockDynamicMap({
       if (activeHoverTicket) {
         sectionEls.forEach((el) => {
           const sec = el.getAttribute("data-section") || "";
-          if (excludedSections?.includes(sec)) return; // never highlight disabled
+          if (isSectionExcluded(sec, excludedSections)) return; // never highlight disabled
           const cat = getCategoryIdFromSectionEl(el);
 
           const match =
@@ -276,7 +277,7 @@ export function TixstockDynamicMap({
         if (selTicket) {
           sectionEls.forEach((el) => {
             const sec = el.getAttribute("data-section") || "";
-            if (excludedSections?.includes(sec)) return; // never highlight disabled
+            if (isSectionExcluded(sec, excludedSections)) return; // never highlight disabled
             const cat = getCategoryIdFromSectionEl(el);
 
             const match =
@@ -360,7 +361,7 @@ export function TixstockDynamicMap({
 
       const sectionId = sectionEl.getAttribute("data-section") || "";
       // Ignore clicks on excluded/disabled sections
-      if (excludedSections?.includes(sectionId)) return;
+      if (isSectionExcluded(sectionId, excludedSections)) return;
       const categoryId = getCategoryIdFromSectionEl(sectionEl);
 
       const bestMatch = findBestTicketForSection(sectionId, categoryId);
@@ -390,7 +391,7 @@ export function TixstockDynamicMap({
 
       const secId = sectionEl.getAttribute("data-section") || "";
       // Don't hover-highlight excluded sections
-      if (excludedSections?.includes(secId)) {
+      if (isSectionExcluded(secId, excludedSections)) {
         setHoveredMapTicket(null);
         return;
       }
