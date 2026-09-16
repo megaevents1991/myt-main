@@ -32,6 +32,22 @@ import { Aurora } from "@/components/ui/Aurora";
 import { EventArt } from "@/components/ui/EventArt";
 import { isTightCrest } from "@/lib/eventArt";
 import { PackageIcons } from "@/components/ui/PackageIcons";
+// Type-only: lib/homepageLayout owns the server-side reader; only its shapes
+// may cross into this client bundle.
+import type { HomepageClientLayout, HomepageSectionKey } from "@/lib/homepageLayout";
+
+// Section order used until the backoffice Homepage board has saved one (and
+// the hero, which is always first and is rendered outside this list).
+const DEFAULT_SECTION_ORDER: HomepageSectionKey[] = [
+  "most_wanted",
+  "newest",
+  "football",
+  "artists",
+  "reviews",
+  "more_events",
+];
+// Netflix-style rows ("המבוקשים ביותר" / "החדשים ביותר") show at most this many.
+const ROW_MAX = 12;
 
 const fuseOptions = {
   keys: ["name", "location.name", "name_english", "categoryText"], // Fields to search in
@@ -56,6 +72,9 @@ interface Props {
   // "לקוחות משתפים" - mirrored Google reviews, fetched server-side in app/page.tsx.
   googleReviews?: GoogleReviewsData | null;
   homeFootball?: FootballTeam[];
+  // Section order/visibility + the events pinned to the front of the two event
+  // rows, from the backoffice Homepage board (lib/homepageLayout.ts).
+  layout?: HomepageClientLayout;
 }
 
 const SearchCombobox = React.forwardRef<HTMLInputElement, {
@@ -656,16 +675,45 @@ function CompactArtistCard({ artist, loading }: { artist: Artist; loading?: "eag
   );
 }
 
+// Section title row - the secondary cubes to the right of the heading (RTL:
+// first child = right), same markup every homepage section used to inline.
+const SectionHeading = ({ id, title }: { id: string; title: string }) => (
+  <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
+    <div className="bg-secondary mx-1" style={{ height: 40, width: 23 }} aria-hidden="true" />
+    <div className="bg-secondary mx-1 hidden sm:block" style={{ height: 40, width: 23 }} aria-hidden="true" />
+    <div className="bg-secondary mx-1 hidden sm:block" style={{ height: 40, width: 46 }} aria-hidden="true" />
+    <div>
+      <h2
+        id={id}
+        className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2"
+      >
+        {title}
+      </h2>
+    </div>
+  </div>
+);
+
 const UniversalCarousel = ({
   events,
   teams,
   artists,
   variant = "default",
+  allEvents,
+  cardArtists,
+  cardTeams,
+  ariaLabel,
 }: {
   events?: Event[];
   teams?: FootballTeam[];
   artists?: Artist[];
-  variant?: "default" | "compact";
+  // "row" = Netflix-style event row: the full EventCard, one card ~76% of the
+  // phone width so the next one peeks in from the left, 280px on desktop.
+  variant?: "default" | "compact" | "row";
+  // Row variant only - what EventCard needs for its "see all dates" strip.
+  allEvents?: Event[];
+  cardArtists?: Artist[];
+  cardTeams?: FootballTeam[];
+  ariaLabel?: string;
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -693,7 +741,9 @@ const UniversalCarousel = ({
   const itemWidth =
     variant === "compact"
       ? "w-[44%] shrink-0 sm:w-auto"
-      : "w-[85%] shrink-0 sm:w-[300px]";
+      : variant === "row"
+        ? "w-[76%] shrink-0 sm:w-[280px]"
+        : "w-[85%] shrink-0 sm:w-[300px]";
   const arrowBtn =
     "absolute top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-main text-main-foreground shadow-card transition-all hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex";
 
@@ -722,6 +772,8 @@ const UniversalCarousel = ({
       <div
         ref={scrollRef}
         className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-6"
+        role={ariaLabel ? "list" : undefined}
+        aria-label={ariaLabel}
       >
         {items.map((item, idx) => {
           let key: string;
@@ -740,7 +792,11 @@ const UniversalCarousel = ({
           const loading = "lazy" as const;
 
           return (
-            <div key={key} className={cn("snap-start", itemWidth)}>
+            <div
+              key={key}
+              className={cn("snap-start", itemWidth)}
+              role={ariaLabel ? "listitem" : undefined}
+            >
               {variant === "compact" ? (
                 teams ? (
                   <CompactTeamCard team={item as FootballTeam} loading={loading} />
@@ -749,6 +805,17 @@ const UniversalCarousel = ({
                 ) : (
                   <CompactEventCard event={item as Event} loading={loading} />
                 )
+              ) : variant === "row" ? (
+                <EventCard
+                  event={item as Event}
+                  allEvents={allEvents}
+                  artists={cardArtists}
+                  footballTeams={cardTeams}
+                  size="row"
+                  loading={loading}
+                  // Rendered width: ~76vw on phones, a fixed 280px slot above.
+                  sizes="(max-width: 640px) 76vw, 280px"
+                />
               ) : (
                 <EventCard event={item as Event} />
               )}
@@ -760,7 +827,7 @@ const UniversalCarousel = ({
   );
 };
 
-export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball, googleReviews }: Props) {
+export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTeams, artists, carouselArtists, heroItems, homeArtists, homeFootball, googleReviews, layout }: Props) {
   const matches = useMediaQuery("(min-width: 1024px)");
   const [searchValue, setSearchValue] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -1032,50 +1099,79 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     return [...nonGroupedEvents, ...collapsedArtistEvents, ...collapsedTeamEvents];
   };
 
-  // Get prioritized events for "המבוקשים ביותר" section (including VIP if prioritized)
-  const prioritized_events = (() => {
-    // Filter out sold-out events from the start
-    const availableEvents = initialEvents.filter(event => !isEventSoldOut(event));
-    
-    const prioritizedEvents = availableEvents.filter(
-      (event) => event.is_prioritized === true
+  // Events the backoffice Homepage board pinned to the front of a row, in the
+  // board's order - sold-out / no-longer-live ones simply drop out.
+  const eventById = new Map(initialEvents.map((e) => [e.id, e]));
+  const pickPinned = (ids: number[] | undefined): Event[] => {
+    const out: Event[] = [];
+    for (const id of ids ?? []) {
+      const e = eventById.get(id);
+      if (e && !isEventSoldOut(e) && !out.includes(e)) out.push(e);
+    }
+    return out;
+  };
+  const byTagThenDate = (a: Event, b: Event) => {
+    // Sort events with tags first, then by date
+    if (a.tags && !b.tags) return -1;
+    if (!a.tags && b.tags) return 1;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  };
+
+  // "המבוקשים ביותר" row: pinned first, then the automatic rule - Prioritized
+  // events, then non-VIP non-sports fill (one card per artist/team page).
+  const mostWantedEvents = (() => {
+    const pinned = pickPinned(layout?.pinnedEventIds.most_wanted);
+    const pinnedIds = new Set(pinned.map((e) => e.id));
+    const availableEvents = initialEvents.filter(
+      (event) => !isEventSoldOut(event) && !pinnedIds.has(event.id)
     );
+    const prioritizedEvents = availableEvents
+      .filter((event) => event.is_prioritized === true)
+      .sort(byTagThenDate);
+    const room = ROW_MAX - pinned.length;
+    if (room <= 0) return pinned.slice(0, ROW_MAX);
+    if (prioritizedEvents.length >= room) {
+      return [...pinned, ...prioritizedEvents.slice(0, room)];
+    }
     const nonPrioritizedEvents = availableEvents.filter(
       (event) =>
         event.is_prioritized === false &&
         event.tags !== "VIPevent" &&
         event.type !== "sports_event"
     );
-
-    // Ensure we always have exactly 8 events for "המבוקשים ביותר"
-    if (prioritizedEvents.length >= 8) {
-      return prioritizedEvents.slice(0, 8).sort((a, b) => {
-        // Sort events with tags first, then by date
-        if (a.tags && !b.tags) return -1;
-        if (!a.tags && b.tags) return 1;
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      });
-    } else {
-      // Filter out duplicate events for artists with pages before using them to fill slots
-      const filteredNonPrioritizedEvents = filterEventsFromArtistsWithPages(nonPrioritizedEvents);
-      
-      // Fill remaining slots with filtered non-prioritized non-VIP non-sports events
-      const combined = [
-        ...prioritizedEvents,
-        ...filteredNonPrioritizedEvents.slice(0, 8 - prioritizedEvents.length),
-      ];
-      return combined.slice(0, 8).sort((a, b) => {
-        // Sort events with tags first, then by date
-        if (a.tags && !b.tags) return -1;
-        if (!a.tags && b.tags) return 1;
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      });
-    }
+    // Filter out duplicate events for artists with pages before using them to fill slots
+    const fill = filterEventsFromArtistsWithPages(nonPrioritizedEvents)
+      .sort(byTagThenDate)
+      .slice(0, room - prioritizedEvents.length);
+    return [...pinned, ...prioritizedEvents, ...fill];
   })();
 
-  // Get music events (only music types, excluding VIPevent and already used prioritized events)
+  // "החדשים ביותר" row: pinned first, then the most recently created events
+  // (created_at desc), skipping anything the row above already shows.
+  const newestEvents = (() => {
+    const pinned = pickPinned(layout?.pinnedEventIds.newest);
+    const used = new Set([...mostWantedEvents, ...pinned].map((e) => e.id));
+    const createdAt = (e: Event) => (e.created_at ? Date.parse(e.created_at) || 0 : 0);
+    const auto = filterEventsFromArtistsWithPages(
+      initialEvents.filter(
+        (event) =>
+          !isEventSoldOut(event) && !used.has(event.id) && event.tags !== "VIPevent"
+      )
+    ).sort((a, b) => createdAt(b) - createdAt(a) || b.id - a.id);
+    return [...pinned, ...auto].slice(0, ROW_MAX);
+  })();
+
+  // Order + visibility of everything under the hero, from the backoffice
+  // Homepage board (hero is rendered above, always first).
+  const visibleSections: HomepageSectionKey[] = (
+    layout?.sections?.length
+      ? layout.sections.filter((s) => s.visible).map((s) => s.key)
+      : DEFAULT_SECTION_ORDER
+  ).filter((key) => key !== "hero");
+
+  // Get music events (only music types, excluding VIPevent and events already shown in the rows above)
   const musicEvents = (() => {
-    const usedEventIds = new Set(prioritized_events.map((event) => event.id));
+    const usedEventIds = new Set([...mostWantedEvents, ...newestEvents].map((event) => event.id));
     const remainingEvents = initialEvents.filter(
       (event) =>
         !isEventSoldOut(event) && // Exclude sold-out events
@@ -1456,235 +1552,173 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
             </div>
             </section>
           </div>
-          {/* Accessibility: Enhanced section headings with proper hierarchy */}
-          <div className="flex flex-row mb-4 lg:mb-6 justify-start items-stretch">
-            <div
-              className="bg-secondary mx-1"
-              style={{ height: 40, width: 23 }}
-            />
-            <div
-              className="bg-secondary mx-1 hidden sm:block"
-              style={{ height: 40, width: 23 }}
-            />
-            <div
-              className="bg-secondary mx-1 hidden sm:block"
-              style={{ height: 40, width: 46 }}
-            />
-            <div>
-              <h2 className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                המבוקשים ביותר
-              </h2>
-            </div>
-          </div>
-          {/* Accessibility: Enhanced prioritized events section with semantic structure */}
-          <section aria-labelledby="prioritized-events-heading">
-            <div id="prioritized-events-heading" className="sr-only">
-              <h2>המבוקשים ביותר</h2>
-            </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8" 
-                 role="list" 
-                 aria-label="רשימת האירועים המבוקשים ביותר">
-              {prioritized_events.map((event, i) => (
-                <div key={event.id} role="listitem">
-                  <EventCard
-                    event={event}
-                    allEvents={initialEvents}
-                    artists={artists}
-                    footballTeams={allFootballTeams}
-                    // First cards are the mobile LCP (1-col grid) → preload them.
-                    // The rest load eagerly (at page load, normal priority) so the
-                    // whole section is ready before it's scrolled into view instead
-                    // of half-loading on scroll.
-                    priority={i < 2}
-                    loading="eager"
-                    // Actual rendered width per breakpoint (1 / 2 / 4 cols) so the
-                    // optimizer doesn't ship a ~90vw image into a 23vw slot.
-                    sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-          {/* לקוחות משתפים - our own Google-reviews carousel (data mirrored by
-              the backoffice); theme-aware, so no dark-mode overrides needed. */}
-          <GoogleReviews data={googleReviews} />
-
-          {/* Sports Section - all teams, available (זמין באתר) first, rest at end */}
-          {homeFootball && homeFootball.length > 0 && (
-            <section aria-labelledby="football-section-heading">
-              <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
-                <div
-                  className="bg-secondary mx-1"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 46 }}
-                  aria-hidden="true"
-                />
-                <div>
-                  <h2 id="football-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    כדורגל
-                  </h2>
-                </div>
-              </div>
-              {/* One responsive carousel (was two identical mobile+desktop copies
-                  - the component is already responsive, so the duplicate just
-                  doubled the DOM/hydration cost and helped starve paint on scroll). */}
-              <div className="mb-8">
-                <UniversalCarousel teams={homeFootball} variant="compact" />
-              </div>
-            </section>
-          )}
-
-          {/* Artists Section - all artists, available (זמין באתר) first, rest at end */}
-          {homeArtists && homeArtists.length > 0 && (
-            <section aria-labelledby="artists-section-heading">
-              <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
-                <div
-                  className="bg-secondary mx-1"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 46 }}
-                  aria-hidden="true"
-                />
-                <div>
-                  <h2 id="artists-section-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                    אמנים מובילים
-                  </h2>
-                </div>
-              </div>
-              {/* One responsive carousel (was two identical mobile+desktop copies). */}
-              <div className="mb-8">
-                <UniversalCarousel artists={homeArtists} variant="compact" />
-              </div>
-            </section>
-          )}
-
-          {/* Music Section (renamed from "האירועים שלנו") */}
-          {musicEvents.length > 0 && (
-            <section aria-labelledby="music-events-heading">
-              {/* Cube to the right of the heading (RTL: first child = right) */}
-              <div className="flex flex-row justify-start mt-2 mb-4 lg:mb-6 items-stretch">
-                <div
-                  className="bg-secondary mx-1"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 23 }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="bg-secondary mx-1 hidden sm:block"
-                  style={{ height: 40, width: 46 }}
-                  aria-hidden="true"
-                />
-                <div>
-                  <h2 id="music-events-heading" className="font-display text-2xl font-extrabold text-foreground tracking-tight sm:text-4xl text-center mx-2">
-                   אירועים נוספים
-                  </h2>
-                </div>
-              </div>
-              {/* Stacked list - one column on mobile, grid on desktop. Minimal
-                  no-image cards (same as the search page). No carousel. */}
-              <div className="grid gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
-                   role="list"
-                   aria-label="רשימת הופעות נוספות">
-                {musicEvents.slice(0, visibleMusicCount).map((event) => (
-                  <div key={event.id} role="listitem">
-                    <EventCard
-                      event={event}
-                      allEvents={initialEvents}
-                      artists={artists}
-                      footballTeams={allFootballTeams}
-                      // Eager (page load, not on-scroll) so this grid is ready
-                      // before it's reached; grid-accurate sizes cut mobile bytes.
-                      loading="eager"
-                      sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
-                    />
-                  </div>
-                ))}
-                {/* Search-prompt card - smaller, same design, appended at the end */}
-                <div
-                  className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
-                  onClick={handleSearchPromptClick}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="פתח חיפוש אירועים"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleSearchPromptClick();
-                    }
-                  }}
-                >
-                  {/* Animated brand card - same breathe glow + sheen sweep +
-                      wordmark⇄mark morph as the hero carousel's logo card. */}
-                  <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-40 flex items-center justify-center">
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(160_84%_39%/0.45),transparent_70%)] blur-2xl motion-safe:animate-[logo-breathe_6s_ease-in-out_infinite]"
-                    />
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-y-0 -left-1/2 -right-1/2 motion-reduce:hidden"
-                    >
-                      <span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-md motion-safe:animate-[logo-sheen_4.5s_ease-in-out_infinite]" />
-                    </span>
-                    <div className="relative grid place-items-center">
-                      <MYT className="col-start-1 row-start-1 w-28 text-main-foreground sm:w-32 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite]" />
-                      <MYTMark className="col-start-1 row-start-1 w-14 text-main-foreground opacity-0 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite] motion-safe:[animation-delay:-3.5s]" />
+          {/* Everything under the hero, in the order the backoffice Homepage
+              board saved (hidden sections skipped). Each block is its own
+              <section> so the order can change without touching the markup. */}
+          {visibleSections.map((key) => {
+            switch (key) {
+              case "most_wanted":
+                return mostWantedEvents.length > 0 ? (
+                  <section key={key} aria-labelledby="most-wanted-heading">
+                    <SectionHeading id="most-wanted-heading" title="המבוקשים ביותר" />
+                    {/* Netflix-style row: one line, swipe sideways, the next card
+                        peeks in from the left so it reads as scrollable. */}
+                    <div className="mb-8">
+                      <UniversalCarousel
+                        events={mostWantedEvents}
+                        variant="row"
+                        allEvents={initialEvents}
+                        cardArtists={artists}
+                        cardTeams={allFootballTeams}
+                        ariaLabel="רשימת האירועים המבוקשים ביותר"
+                      />
                     </div>
-                  </div>
-                  <div
-                    className="p-4 text-center text-main dark:text-foreground text-sm font-bold flex items-center justify-center min-h-[56px]"
-                    dir="rtl"
-                  >
-                    לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
-                  </div>
-                </div>
-              </div>
-              {/* Floating contact button - mobile only (was nested in the old carousel) */}
-              <div
-                className="fixed left-3 z-50 sm:hidden"
-                style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
-              >
-                <ContactUs inHeader={false} />
-              </div>
-              {visibleMusicCount < musicEvents.length && (
-                <div className="flex justify-center mb-8">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setVisibleMusicCount(
-                        (c) => c + (typeof window !== "undefined" && window.innerWidth >= 640 ? 20 : 5)
-                      )
-                    }
-                    className="px-8 py-3 rounded-lg border-2 border-main text-main dark:border-foreground/60 dark:text-foreground font-bold hover:bg-main hover:text-main-foreground dark:hover:bg-foreground dark:hover:text-background transition-colors"
-                    dir="rtl"
-                  >
-                    הצג עוד אירועים
-                  </button>
-                </div>
-              )}
-            </section>
-          )}
+                  </section>
+                ) : null;
+
+              case "newest":
+                return newestEvents.length > 0 ? (
+                  <section key={key} aria-labelledby="newest-heading">
+                    <SectionHeading id="newest-heading" title="החדשים ביותר" />
+                    <div className="mb-8">
+                      <UniversalCarousel
+                        events={newestEvents}
+                        variant="row"
+                        allEvents={initialEvents}
+                        cardArtists={artists}
+                        cardTeams={allFootballTeams}
+                        ariaLabel="רשימת האירועים החדשים ביותר"
+                      />
+                    </div>
+                  </section>
+                ) : null;
+
+              case "reviews":
+                // לקוחות משתפים - our own Google-reviews carousel (data mirrored
+                // by the backoffice); theme-aware, so no dark-mode overrides needed.
+                return <GoogleReviews key={key} data={googleReviews} />;
+
+              case "football":
+                // Sports Section - all teams, available (זמין באתר) first, rest at end
+                return homeFootball && homeFootball.length > 0 ? (
+                  <section key={key} aria-labelledby="football-section-heading">
+                    <SectionHeading id="football-section-heading" title="כדורגל" />
+                    {/* One responsive carousel (was two identical mobile+desktop copies
+                        - the component is already responsive, so the duplicate just
+                        doubled the DOM/hydration cost and helped starve paint on scroll). */}
+                    <div className="mb-8">
+                      <UniversalCarousel teams={homeFootball} variant="compact" />
+                    </div>
+                  </section>
+                ) : null;
+
+              case "artists":
+                // Artists Section - all artists, available (זמין באתר) first, rest at end
+                return homeArtists && homeArtists.length > 0 ? (
+                  <section key={key} aria-labelledby="artists-section-heading">
+                    <SectionHeading id="artists-section-heading" title="אמנים מובילים" />
+                    <div className="mb-8">
+                      <UniversalCarousel artists={homeArtists} variant="compact" />
+                    </div>
+                  </section>
+                ) : null;
+
+              case "more_events":
+                // Music Section (renamed from "האירועים שלנו")
+                return musicEvents.length > 0 ? (
+                  <section key={key} aria-labelledby="music-events-heading">
+                    <SectionHeading id="music-events-heading" title="אירועים נוספים" />
+                    {/* Stacked list - one column on mobile, grid on desktop. Minimal
+                        no-image cards (same as the search page). No carousel. */}
+                    <div className="grid gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
+                         role="list"
+                         aria-label="רשימת הופעות נוספות">
+                      {musicEvents.slice(0, visibleMusicCount).map((event) => (
+                        <div key={event.id} role="listitem">
+                          <EventCard
+                            event={event}
+                            allEvents={initialEvents}
+                            artists={artists}
+                            footballTeams={allFootballTeams}
+                            // Eager (page load, not on-scroll) so this grid is ready
+                            // before it's reached; grid-accurate sizes cut mobile bytes.
+                            loading="eager"
+                            sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 23vw"
+                          />
+                        </div>
+                      ))}
+                      {/* Search-prompt card - smaller, same design, appended at the end */}
+                      <div
+                        className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
+                        onClick={handleSearchPromptClick}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="פתח חיפוש אירועים"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleSearchPromptClick();
+                          }
+                        }}
+                      >
+                        {/* Animated brand card - same breathe glow + sheen sweep +
+                            wordmark⇄mark morph as the hero carousel's logo card. */}
+                        <div className="relative group overflow-hidden rounded-t-lg w-full bg-main h-40 flex items-center justify-center">
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute left-1/2 top-1/2 size-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(160_84%_39%/0.45),transparent_70%)] blur-2xl motion-safe:animate-[logo-breathe_6s_ease-in-out_infinite]"
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-y-0 -left-1/2 -right-1/2 motion-reduce:hidden"
+                          >
+                            <span className="block h-full w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-md motion-safe:animate-[logo-sheen_4.5s_ease-in-out_infinite]" />
+                          </span>
+                          <div className="relative grid place-items-center">
+                            <MYT className="col-start-1 row-start-1 w-28 text-main-foreground sm:w-32 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite]" />
+                            <MYTMark className="col-start-1 row-start-1 w-14 text-main-foreground opacity-0 motion-safe:animate-[logo-swap_7s_ease-in-out_infinite] motion-safe:[animation-delay:-3.5s]" />
+                          </div>
+                        </div>
+                        <div
+                          className="p-4 text-center text-main dark:text-foreground text-sm font-bold flex items-center justify-center min-h-[56px]"
+                          dir="rtl"
+                        >
+                          לא מצאתם מה שחיפשתם? לחצו כאן לחיפוש בכל האירועים
+                        </div>
+                      </div>
+                    </div>
+                    {visibleMusicCount < musicEvents.length && (
+                      <div className="flex justify-center mb-8">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleMusicCount(
+                              (c) => c + (typeof window !== "undefined" && window.innerWidth >= 640 ? 20 : 5)
+                            )
+                          }
+                          className="px-8 py-3 rounded-lg border-2 border-main text-main dark:border-foreground/60 dark:text-foreground font-bold hover:bg-main hover:text-main-foreground dark:hover:bg-foreground dark:hover:text-background transition-colors"
+                          dir="rtl"
+                        >
+                          הצג עוד אירועים
+                        </button>
+                      </div>
+                    )}
+                  </section>
+                ) : null;
+
+              default:
+                return null;
+            }
+          })}
+          {/* Floating contact button - mobile only (was nested in the old
+              carousel; lives outside the section list so hiding a section
+              never hides it). */}
+          <div
+            className="fixed left-3 z-50 sm:hidden"
+            style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+          >
+            <ContactUs inHeader={false} />
+          </div>
         </div>
       </section>
     </>
@@ -1750,7 +1784,7 @@ const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam |
   return best;
 };
 
-function EventCard({ event, allEvents, artists, footballTeams, priority, loading, sizes }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; loading?: "eager" | "lazy"; sizes?: string }) {
+function EventCard({ event, allEvents, artists, footballTeams, priority, loading, sizes, size }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; loading?: "eager" | "lazy"; sizes?: string; size?: "default" | "row" }) {
   const [isMounted, setIsMounted] = useState(false);
   const { isMobile } = useIsMobile();
   const computedSold = isEventSoldOut(event);
@@ -1922,14 +1956,19 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
               priority={priority}
               loading={loading}
               sizes={sizes}
-              className="h-52 w-full sm:h-56"
+              // Row cards are a touch shorter so, on a phone, the row plus the
+              // next section's heading fit in one screen.
+              className={size === "row" ? "h-40 w-full sm:h-44" : "h-52 w-full sm:h-56"}
             />
           </div>
 
           {/* Body */}
           <div className="flex flex-1 flex-col p-4 text-right" dir="rtl">
             <h3
-              className="line-clamp-2 text-xl font-bold leading-tight"
+              className={cn(
+                "line-clamp-2 font-bold leading-tight",
+                size === "row" ? "text-lg" : "text-xl"
+              )}
               title={event.name}
             >
               {event.name}
