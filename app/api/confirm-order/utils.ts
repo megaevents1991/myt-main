@@ -627,6 +627,55 @@ export const resolveAgentSettlement = async (
   }
 };
 
+/**
+ * Coupons and partner links don't mix (Dor, 2026-09-16): a visitor who
+ * arrived through an influencer's or agent's tracking link already gets that
+ * partner's terms and credit, so no coupon code may ride on the order - one
+ * partner's code on another partner's link used to hand the credit to the
+ * link's owner. Returns the first code (in the order given) that is a live
+ * agent/affiliate partner, with the same "counts as a partner" rule as
+ * /api/affiliate/checkCode (active; an affiliate needs a discount or a
+ * commission to matter), or null. The client hides the coupon field on the
+ * same signal; this is the server's copy of that rule.
+ *
+ * Fails open (null) on a lookup error - a coupon order must not die over it.
+ */
+export async function partnerLinkCode(
+  codes: (string | null | undefined)[],
+): Promise<string | null> {
+  const candidates = [
+    ...new Set(
+      codes
+        .map((code) => (code ?? "").trim())
+        .filter((code) => code && code !== "dummy_code"),
+    ),
+  ];
+  if (candidates.length === 0) return null;
+  const { data, error } = await supabase
+    .from("partners")
+    .select("partner_tracking_code, type, is_active, user_discount, commission")
+    .in("partner_tracking_code", candidates)
+    .in("type", ["agent", "affiliate"]);
+  if (error) {
+    console.error("partnerLinkCode lookup failed:", JSON.stringify(error));
+    return null;
+  }
+  const rows = (data ?? []) as {
+    partner_tracking_code: string;
+    type: string | null;
+    is_active?: boolean | null;
+    user_discount?: number | null;
+    commission?: number | null;
+  }[];
+  for (const code of candidates) {
+    const row = rows.find((r) => r.partner_tracking_code === code);
+    if (!row || row.is_active === false) continue;
+    if (row.type === "agent" || row.user_discount || row.commission)
+      return code;
+  }
+  return null;
+}
+
 /** What the customer is told about who is handling a direct booking. */
 export const MEGA_EVENTS_HANDLER = "מגה איבנטס";
 

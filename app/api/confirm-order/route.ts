@@ -10,6 +10,7 @@ import {
   validatePurchasePriceFloor,
   resolveAgentSettlement,
   resolveHandledBy,
+  partnerLinkCode,
 } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
 import {
@@ -121,6 +122,21 @@ export async function POST(req: Request) {
   let coupon: Coupon | null = null;
   let couponDiscountUsd = 0;
   if (validatedData.coupon_code) {
+    // A partner-link visit takes no coupon (see partnerLinkCode). The client
+    // hides the field on the same signal, so this only fires on a race (code
+    // applied before the partner lookup landed) or a crafted request - the
+    // client drops the coupon on COUPON_INVALID and re-prices.
+    const linkPartner = await partnerLinkCode([
+      influencerPrimaryCode(utmCookie),
+      validatedData.aff_partner_tracking_code,
+    ]);
+    if (linkPartner) {
+      console.error(
+        "Coupon rejected at confirm-order - partner link visit:",
+        JSON.stringify({ code: validatedData.coupon_code, linkPartner }),
+      );
+      return NextResponse.json({ error: "COUPON_INVALID" }, { status: 409 });
+    }
     coupon = await findValidCoupon(
       validatedData.coupon_code,
       validatedData.event_id,
@@ -174,12 +190,15 @@ export async function POST(req: Request) {
   // live in alone. Influencer-protected attribution wins: the myt_utm
   // cookie's primary is immune to later campaign clicks (utm_source=google
   // used to overwrite the influencer's code in localStorage and steal the
-  // credit). Falls back to the legacy client-sent value, then coupon
-  // attribution - today's chain.
+  // credit). Then the coupon's partner: a coupon only survives the check
+  // above when the visit came through no partner link, so the client-sent
+  // value is at most a plain source ("google") or a customer referral code -
+  // it used to beat the coupon and take an influencer's order away from them.
+  // The legacy client-sent value is the last fallback.
   const resolvedAffPartnerTrackingCode =
     influencerPrimaryCode(utmCookie) ||
-    validatedData.aff_partner_tracking_code ||
     coupon?.partner_tracking_code ||
+    validatedData.aff_partner_tracking_code ||
     "";
 
   // Agent booking-on-behalf: decides whether this order is charged in full,
