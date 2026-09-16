@@ -54,3 +54,6 @@ snapshoot
 # UX review screenshots (local tooling)
 .ux-review/
 bash.exe.stackdump
+
+# Git Bash crash dumps
+*.stackdump
