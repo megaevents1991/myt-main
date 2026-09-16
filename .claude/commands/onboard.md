@@ -12,7 +12,7 @@ Walk through, reading the real files as you go:
 5. **External vendors** - ticket routing by `event.type` (Supabase / XS2Event / Tixstock).
 6. **Pricing** - `lib/price.utils.tsx` + `lib/exchangeRateService.ts` (USD→ILS, +175, cents).
 7. **API routes** - pattern in `app/api/<feature>/{route.ts,utils.ts}`.
-8. **Workflow** - feature branch only, `/review-my-code` before push, `/sync-types` if types
+8. **Workflow** - work on `main` by default (branch/worktree only when asked), `/review-my-code` before push, `/sync-types` if types
    change, never an AI co-author line.
 
 End with: "Run `/mega-feature` before building, `/review` before a PR."

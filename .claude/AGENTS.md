@@ -26,7 +26,7 @@ hotels → pay. Reads the Supabase data the backoffice writes.
 ## Before you push
 
 1. `/review-my-code` (or `/review` for a PR-style pass) 2. `/sync-types` if types changed
-2. `tsc --noEmit` (build ignores TS errors) 4. Feature branch, never commit to `main`.
+2. `tsc --noEmit` (build ignores TS errors) 4. Work on `main` directly by default - open a branch/worktree only when asked.
 
 ## Useful commands
 
