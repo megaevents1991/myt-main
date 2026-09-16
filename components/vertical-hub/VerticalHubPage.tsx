@@ -6,8 +6,9 @@ import {
   getTagsForEvents,
 } from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
-import { getAllFootballTeams, getFeaturedFootballTeams } from "@/lib/football";
-import { getAllArtists, getFeaturedArtists } from "@/lib/artists";
+import { getAllFootballTeams } from "@/lib/football";
+import { getAllArtists } from "@/lib/artists";
+import { getHomepageLayout, pinRank, pinnedFirst } from "@/lib/homepageLayout";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 
@@ -55,11 +56,12 @@ const FEATURED_TAG_NAMES = new Set([
 ]);
 const normalizeTag = (s: string) => s.toLowerCase().replace(/[\s_-]+/g, "");
 
-/** Homepage-identical ordering: featured (backoffice `featured_order`) first. */
-const featuredFirst = <T extends { sys: { id: string } }>(featured: T[], all: T[]): T[] => {
-  const seen = new Set(featured.map((x) => x.sys.id));
-  return [...featured, ...all.filter((x) => !seen.has(x.sys.id))];
-};
+/** Homepage-identical ordering: the people pinned to the homepage hero ring
+ *  (backoffice /homepage board, `homepage_items` section `hero`) first. */
+const featuredFirst = <T extends { sys: { id: string } }>(
+  all: T[],
+  heroRank: Map<string, number>,
+): T[] => pinnedFirst(all, heroRank, (x) => x.sys.id);
 
 /** Resolve a backoffice-curated id list against the available pool, keeping
  * the curated order. Ids that are sold out / gone just drop. */
@@ -105,7 +107,6 @@ export function pickFeatured<T extends { id: number }>(
 const HUB_KINDS = {
   football: {
     peopleKind: "teams" as const,
-    fetchFeatured: getFeaturedFootballTeams,
     fetchAll: getAllFootballTeams,
     eyebrow: (name: string) => `${name} באירופה`,
     titleAccent: "לכל המשחקים הגדולים",
@@ -121,7 +122,6 @@ const HUB_KINDS = {
   },
   music: {
     peopleKind: "artists" as const,
-    fetchFeatured: getFeaturedArtists,
     fetchAll: getAllArtists,
     eyebrow: () => "ההופעות הגדולות בעולם",
     titleAccent: "לכל ההופעות הגדולות",
@@ -153,13 +153,14 @@ export async function VerticalHubPage({
   fallbackContent?: CategoryPageContent;
 }) {
   const cfg = HUB_KINDS[kind];
-  const [{ events }, featuredPeople, allPeople, isAvailable] = await Promise.all([
+  const [{ events }, layout, allPeople, isAvailable] = await Promise.all([
     // Whole vertical: the root node + every league/genre/person beneath it.
     getEventsInCategory(category.slug, { includeDescendants: true }),
-    cfg.fetchFeatured().catch(() => [] as FootballTeam[]),
+    getHomepageLayout(),
     cfg.fetchAll().catch(() => [] as FootballTeam[]),
     getAvailabilityChecker(),
   ]);
+  const heroRank = pinRank(layout.pins.hero, cfg.peopleKind === "teams" ? "team" : "artist");
   const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
   const content: CategoryPageContent = {
@@ -167,8 +168,8 @@ export async function VerticalHubPage({
     ...(category.page_content ?? {}),
   };
 
-  // Cover strip: bookable people only, featured order first.
-  const coverPeople = featuredFirst(featuredPeople, allPeople).filter((t) =>
+  // Cover strip: bookable people only, homepage hero order first.
+  const coverPeople = featuredFirst(allPeople, heroRank).filter((t) =>
     isAvailable(String(t.fields.nameDBenglish ?? "")),
   );
   const coverPeopleHrefs = await buildPersonHrefIndex(cfg.peopleKind, coverPeople);

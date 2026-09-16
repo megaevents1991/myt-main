@@ -9,9 +9,16 @@ import { StructuredData } from "@/components/StructuredData";
 import { Artist, FootballTeam } from "@/lib/app.types";
 import { CategorySection, type HomeCategory } from "@/components/CategorySection";
 import { getCategories as getCategoryRows } from "@/lib/categories";
-import { getAllArtists as listAllArtists, getFeaturedArtists } from "@/lib/artists";
-import { getAllFootballTeams, getFeaturedFootballTeams } from "@/lib/football";
+import { getAllArtists as listAllArtists } from "@/lib/artists";
+import { getAllFootballTeams } from "@/lib/football";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
+import {
+  getHomepageLayout,
+  pinRank,
+  pinnedFirst,
+  toClientLayout,
+  type HomepagePin,
+} from "@/lib/homepageLayout";
 import type { HeroCarouselItem } from "@/components/HeroCarousel";
 
 // Force static generation with ISR
@@ -28,19 +35,6 @@ async function getEventsForPage() {
     throw new Error("Homepage: events unavailable - keeping last good static page");
   }
   return events;
-}
-
-// Featured football teams (carousel order via `featured_order`), falling back
-// to all teams when none are marked featured. Source: Supabase.
-async function getFootballTeams(): Promise<FootballTeam[]> {
-  const featured = await getFeaturedFootballTeams();
-  return featured.length ? featured : getAllFootballTeams();
-}
-
-// Featured artists (hero carousel order), falling back to all. Source: Supabase.
-async function getCarouselArtists(): Promise<Artist[]> {
-  const featured = await getFeaturedArtists();
-  return featured.length ? featured : listAllArtists();
 }
 
 async function getCategories(): Promise<HomeCategory[]> {
@@ -64,33 +58,43 @@ async function getCategories(): Promise<HomeCategory[]> {
   }));
 }
 
-// Hero carousel ring: EVERY artist + football team we currently have an
-// available event for ("זמין באתר" - same availability rule as the catalog
-// pages), featured entries first, artists and teams interleaved so the ring
-// mixes music and football.
+// Hero carousel ring: the artists/teams PINNED on the backoffice Homepage
+// board first, in the board's order (only those we currently have an
+// available event for - "זמין באתר", same rule as the catalog pages), then
+// every other available artist + team interleaved so the ring mixes music
+// and football.
 function buildHeroItems(
-  featuredArtists: Artist[],
+  heroPins: HomepagePin[],
   allArtists: Artist[],
-  featuredTeams: FootballTeam[],
   allTeams: FootballTeam[],
   isAvailable: (nameEnglish?: string) => boolean
 ): HeroCarouselItem[] {
-  const featuredFirst = <T extends Artist | FootballTeam>(
-    featured: T[],
-    all: T[]
-  ) => {
-    const seen = new Set(featured.map((x) => x.sys.id));
-    return [...featured, ...all.filter((x) => !seen.has(x.sys.id))];
-  };
-
-  const artists = featuredFirst(featuredArtists, allArtists).filter((a) =>
-    isAvailable(String(a.fields.nameDBenglish ?? ""))
-  );
-  const teams = featuredFirst(featuredTeams, allTeams).filter((t) =>
-    isAvailable(String(t.fields.nameDBenglish ?? ""))
-  );
+  const available = <T extends Artist | FootballTeam>(x: T) =>
+    isAvailable(String(x.fields.nameDBenglish ?? ""));
+  const artistBySlug = new Map(allArtists.map((a) => [a.sys.id, a]));
+  const teamBySlug = new Map(allTeams.map((t) => [t.sys.id, t]));
 
   const items: HeroCarouselItem[] = [];
+  const used = new Set<string>();
+  for (const pin of heroPins) {
+    const key = `${pin.kind}:${pin.ref_id}`;
+    if (used.has(key)) continue;
+    if (pin.kind === "artist") {
+      const entry = artistBySlug.get(pin.ref_id);
+      if (!entry || !available(entry)) continue;
+      items.push({ kind: "artist", entry });
+    } else if (pin.kind === "team") {
+      const entry = teamBySlug.get(pin.ref_id);
+      if (!entry || !available(entry)) continue;
+      items.push({ kind: "team", entry });
+    } else {
+      continue;
+    }
+    used.add(key);
+  }
+
+  const artists = allArtists.filter((a) => available(a) && !used.has(`artist:${a.sys.id}`));
+  const teams = allTeams.filter((t) => available(t) && !used.has(`team:${t.sys.id}`));
   for (let i = 0; i < Math.max(artists.length, teams.length); i++) {
     if (artists[i]) items.push({ kind: "artist", entry: artists[i] });
     if (teams[i]) items.push({ kind: "team", entry: teams[i] });
@@ -100,12 +104,13 @@ function buildHeroItems(
 
 // Homepage artist/football slides: EVERY entry, ordered with the ones we have
 // an available event for ("זמין באתר") FIRST and the rest appended at the end.
-// Within each group: backoffice manual order (Templates → Homepage Order,
-// `display_order`), unordered entries after it alphabetically (stable sort
-// keeps the DB name order). (The hero carousel, by contrast, shows only the
-// available ones and is ordered by `featured_order`.)
+// Within each group: the order pinned on the backoffice Homepage board
+// (`homepage_items`), unpinned entries after it alphabetically (stable sort
+// keeps the DB name order). (The hero ring, by contrast, shows only the
+// available ones - see buildHeroItems.)
 function availableFirst<T extends Artist | FootballTeam>(
   list: T[],
+  rank: Map<string, number>,
   isAvailable: (nameEnglish?: string) => boolean
 ): T[] {
   const avail: T[] = [];
@@ -114,40 +119,34 @@ function availableFirst<T extends Artist | FootballTeam>(
     if (isAvailable(String(item.fields.nameDBenglish ?? ""))) avail.push(item);
     else rest.push(item);
   }
-  const byDisplayOrder = (a: T, b: T) =>
-    (a.fields.displayOrder ?? Number.MAX_SAFE_INTEGER) -
-    (b.fields.displayOrder ?? Number.MAX_SAFE_INTEGER);
-  avail.sort(byDisplayOrder);
-  rest.sort(byDisplayOrder);
-  return [...avail, ...rest];
+  const bySlug = (x: T) => x.sys.id;
+  return [...pinnedFirst(avail, rank, bySlug), ...pinnedFirst(rest, rank, bySlug)];
 }
 
 export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
 
-  const [events, footballTeams, carouselArtists, artists, categories, allFootballTeams, isAvailable, googleReviews] = await Promise.all([
-    getEventsForPage(),
-    getFootballTeams(),
-    getCarouselArtists(),
-    listAllArtists(),
-    getCategories(),
-    getAllFootballTeams(),
-    getAvailabilityChecker(),
-    getGoogleReviews(),
-  ]);
+  const [events, artists, categories, allFootballTeams, isAvailable, googleReviews, layout] =
+    await Promise.all([
+      getEventsForPage(),
+      listAllArtists(),
+      getCategories(),
+      getAllFootballTeams(),
+      getAvailabilityChecker(),
+      getGoogleReviews(),
+      getHomepageLayout(),
+    ]);
 
-  const heroItems = buildHeroItems(
-    carouselArtists,
-    artists,
-    footballTeams,
-    allFootballTeams,
-    isAvailable
-  );
+  const heroItems = buildHeroItems(layout.pins.hero, artists, allFootballTeams, isAvailable);
 
   // Homepage "אמנים מובילים" / "כדורגל" slides - all entries, available first.
-  const homeArtists = availableFirst(artists, isAvailable);
-  const homeFootball = availableFirst(allFootballTeams, isAvailable);
+  const homeArtists = availableFirst(artists, pinRank(layout.pins.artists, "artist"), isAvailable);
+  const homeFootball = availableFirst(
+    allFootballTeams,
+    pinRank(layout.pins.football, "team"),
+    isAvailable
+  );
 
   return (
     <main>
@@ -163,14 +162,15 @@ export default async function Home() {
       <StructuredData events={events.events} />
       <ClientSideHomepage
         initialEvents={events.events}
-        footballTeams={footballTeams}
+        footballTeams={allFootballTeams}
         allFootballTeams={allFootballTeams}
         artists={artists}
-        carouselArtists={carouselArtists}
+        carouselArtists={artists}
         heroItems={heroItems}
         homeArtists={homeArtists}
         homeFootball={homeFootball}
         googleReviews={googleReviews}
+        layout={toClientLayout(layout)}
       />
       {/* קטגוריות (categories) visual hidden for now - needs rework before re-enabling. */}
       {/* <CategorySection categories={categories} /> */}
