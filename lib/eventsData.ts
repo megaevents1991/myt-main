@@ -3,7 +3,7 @@ import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
-import { eventRelatesToTeam, normalizeName } from "@/lib/eventNameMatch";
+import { eventMatchesName, normalizeName } from "@/lib/eventNameMatch";
 
 // Inner cached reader THROWS on a failed/empty query so unstable_cache never
 // stores the failure - a transient Supabase hiccup during revalidation used to
@@ -138,16 +138,11 @@ export async function getEventsByName(
 
   if (error) return Promise.resolve({ events: [] as Event[] });
 
-  // The substring gate is deliberately fuzzy, so a club whose name is a
-  // substring of another's over-matches (team "Milan" pulls in ALL "Inter
-  // Milan" fixtures). eventRelatesToTeam keeps only fixtures the team actually
-  // plays in - home and away both (the page splits them visually); non-fixture
-  // events (artists) pass through untouched.
+  // eventMatchesName: fuzzy substring refined to fixtures the team actually
+  // plays in (team "Milan" must not pull in "Inter Milan" games), plus
+  // fixtures whose club name drifted on qualifiers ("Atlético de Madrid").
   const matched = (events ?? []).filter(
-    (e) =>
-      !e.is_test &&
-      normalizeName(e.name_english).includes(needle) &&
-      eventRelatesToTeam(e.name_english ?? "", searchName),
+    (e) => !e.is_test && eventMatchesName(e.name_english, searchName),
   );
   return {
     events: await markLockedPackagesSoldOut(

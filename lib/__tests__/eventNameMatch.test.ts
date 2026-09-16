@@ -6,6 +6,7 @@ import {
   eventBelongsToTeam,
   teamFixtureRole,
   fixturePair,
+  eventMatchesName,
 } from "../eventNameMatch";
 
 let failures = 0;
@@ -95,6 +96,17 @@ expect(
   eventBelongsToTeam("aek athens vs real madrid - champions league", "real madrid"),
   true,
 );
+
+// --- eventMatchesName: qualifier drift between team and event names ----------
+// 2026-09-16: "Atletico Madrid" page showed none of its "Atlético de Madrid" games.
+expect("drift: 'de' inside club name", eventMatchesName("Real Madrid CF vs Atlético de Madrid", "Atletico Madrid"), true);
+expect("drift: competition suffix + 'De'", eventMatchesName("Atlético De Madrid Vs Bayern Munich - Champions League", "Atletico Madrid"), true);
+expect("drift: team has FC, event doesn't", eventMatchesName("Como 1907 vs Paris Saint-Germain - Champions League ", "Paris Saint-Germain FC"), true);
+expect("drift: other club still excluded", eventMatchesName("Real Madrid CF vs Athletic Club", "Atletico Madrid"), false);
+expect("drift: Milan still off Inter fixtures", eventMatchesName("Inter Milan vs Napoli", "Milan"), false);
+expect("artist substring still matches", eventMatchesName("Andre Rieu Budapest", "André Rieu "), true);
+expect("artist non-match", eventMatchesName("Coldplay London", "Andre Rieu"), false);
+expect("null event name", eventMatchesName(null, "Milan"), false);
 
 if (failures) {
   console.error(`\n${failures} failing`);
