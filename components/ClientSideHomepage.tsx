@@ -19,7 +19,7 @@ import { MYTMark } from "./ui/mytMark";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
 import Fuse from "fuse.js";
 import { multiTermSearch, withCategoryText } from "@/lib/search";
-import { normalizeName } from "@/lib/eventNameMatch";
+import { eventMatchesName, normalizeName, teamFixtureRole } from "@/lib/eventNameMatch";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { GoogleReviews } from "@/components/GoogleReviews";
@@ -794,7 +794,9 @@ const UniversalCarousel = ({
           return (
             <div
               key={key}
-              className={cn("snap-start", itemWidth)}
+              // Row slides are flex containers so every EventCard stretches to
+              // the tallest card in the row (equal heights, aligned buttons).
+              className={cn("snap-start", itemWidth, variant === "row" && "flex")}
               role={ariaLabel ? "listitem" : undefined}
             >
               {variant === "compact" ? (
@@ -1810,10 +1812,22 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
     );
   }, [event, artists]);
 
-  // If it's not an artist, match a FOOTBALL TEAM page by HOME team (home games only).
+  // If it's not an artist, match a FOOTBALL TEAM page: the home side first,
+  // else the away side (the team page lists home AND away games, so "Como vs
+  // Manchester United" still gets a "all of Manchester United's games" strip
+  // when Como has no page). Longest away name wins, like the home rule.
   const matchingTeam = useMemo(() => {
     if (matchingArtist) return null;
-    return findEventHomeTeam(event, footballTeams);
+    const home = findEventHomeTeam(event, footballTeams);
+    if (home || !footballTeams?.length) return home;
+    const fixtureName = event.name_english || event.name;
+    let best: FootballTeam | null = null;
+    for (const team of footballTeams) {
+      const teamName = team.fields.nameDBenglish;
+      if (!teamName || teamFixtureRole(fixtureName, teamName) !== "away") continue;
+      if (!best || teamName.length > (best.fields.nameDBenglish?.length ?? 0)) best = team;
+    }
+    return best;
   }, [event, footballTeams, matchingArtist]);
 
   // Unified "see all events" target - artist page or football team page.
@@ -1841,12 +1855,15 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
       }).length > 1;
     }
 
-    // Teams: count this team's HOME games only.
-    const teamId = matchingTeam?.sys.id;
+    // Teams: the same rule the team page uses to list its fixtures
+    // (eventMatchesName - home and away games, qualifier drift tolerated), so
+    // the strip appears exactly when that page has more than one date.
+    const teamName = matchingTeam?.fields.nameDBenglish;
+    if (!teamName) return false;
     return allEvents.filter(
-      e => !isEventSoldOut(e) && findEventHomeTeam(e, footballTeams)?.sys.id === teamId
+      e => !isEventSoldOut(e) && eventMatchesName(e.name_english || e.name, teamName)
     ).length > 1;
-  }, [event, allEvents, collideTarget, matchingArtist, matchingTeam, footballTeams]);
+  }, [event, allEvents, collideTarget, matchingArtist, matchingTeam]);
 
   const handleStripClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -1877,10 +1894,13 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
   }, []);
 
   return (
-    <div className="flex flex-col">
+    // h-full + the Link as a flex column: inside a stretching row/grid slot the
+    // article grows to the slot's height, so a two-line title and a one-line
+    // title still end with their price blocks and buttons on one baseline.
+    <div className="flex h-full w-full flex-col">
       <Link
         href={computedSold ? "#no-op" : `/order/${event.id}`}
-        className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
+        className={`flex flex-1 flex-col ${computedSold ? "cursor-default" : "cursor-pointer"}`}
         key={event.id}
         aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
         aria-disabled={computedSold}
@@ -2035,6 +2055,13 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
         <span className="block truncate text-sm font-bold">
           לכל האירועים של {collideTarget?.label ?? event.name} לחצו כאן
         </span>
+      </div>
+    )}
+    {/* Row cards without a strip reserve its height, so every button in the
+        row sits on one baseline whether or not the card has a strip. */}
+    {size === "row" && !hasMultipleDates && (
+      <div aria-hidden className="invisible w-full border border-transparent py-3.5 px-3">
+        <span className="block text-sm font-bold">&nbsp;</span>
       </div>
     )}
     </div>
