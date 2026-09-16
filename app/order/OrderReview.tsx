@@ -51,6 +51,7 @@ import {
   getCouponDiscountUsd,
   normalizeCouponCode,
 } from "@/lib/coupon.utils";
+import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { Review } from "./OrderSummary/Review";
 import { PriceSummary } from "./OrderSummary/PriceSummary";
 import { ButtonSummary } from "./OrderSummary/ButtonSummary";
@@ -721,6 +722,28 @@ export default function OrderReview({
     setCouponInput("");
     setCouponStatus("idle");
   }, []);
+
+  // Coupons and partner links don't mix (Dor, 2026-09-16): a visit through an
+  // influencer's or agent's link - this page's tracked partner, or the
+  // influencer credited in the myt_utm cookie - hides the coupon field and
+  // drops a coupon applied before the partner lookup landed. confirm-order
+  // enforces the same rule (partnerLinkCode).
+  const [cookiePartnerCode, setCookiePartnerCode] = useState<string | null>(
+    null
+  );
+  useEffect(() => {
+    setCookiePartnerCode(
+      influencerPrimaryCode(readUtmCookieFromHeader(document.cookie))
+    );
+  }, []);
+  const arrivedViaPartner =
+    isAgentVisitor ||
+    affType === "agent" ||
+    affType === "affiliate" ||
+    !!cookiePartnerCode;
+  useEffect(() => {
+    if (arrivedViaPartner && appliedCoupon) removeCoupon();
+  }, [arrivedViaPartner, appliedCoupon, removeCoupon]);
   // Both start at 0 = "not loaded yet" - submit is blocked until the async
   // rate fetch fills them, so a plausible-looking hardcoded init (the old 3.5)
   // must never leak into an order.
@@ -1856,8 +1879,9 @@ export default function OrderReview({
                         }
                   }
                 />
-                {/* Coupon - hidden in agent mode (commission and coupon don't mix). */}
-                {!isAgentVisitor && (
+                {/* Coupon - hidden on any partner-link visit, agent mode
+                    included (partner terms and coupons don't mix). */}
+                {!arrivedViaPartner && (
                   <div dir="rtl" className="px-6 py-4 border-t border-border">
                     {appliedCoupon && couponStatus === "applied" ? (
                       <div className="flex items-center justify-between gap-2">

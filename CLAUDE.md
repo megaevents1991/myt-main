@@ -22,6 +22,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > (client + `confirm-order`) and the price-floor guard. The backoffice builds
 > one such coupon per influencer (`influencer_partner_code`, code like
 > `AVIRAN30`) whose `partner_tracking_code` attributes the order.
+> **Coupons and partner links don't mix (2026-09-16):** a visit through an
+> agent/affiliate link (`useFetchAffiliate` type, or the `myt_utm`
+> influencer primary) hides the coupon field in `OrderReview`, and
+> `confirm-order` rejects a coupon on such a visit (`partnerLinkCode`,
+> `COUPON_INVALID`). Attribution order: influencer cookie → coupon's
+> partner → client-sent code.
 
 > **⚠️ `/agent` AREA DEPRECATED - partner self-service moved BACK to the
 > backoffice (2026-08-02).** Decision reversed: myt-main is for customers;
