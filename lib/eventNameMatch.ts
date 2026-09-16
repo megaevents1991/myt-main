@@ -243,3 +243,27 @@ export function eventRelatesToTeam(
   if (!sides) return true; // artists/concerts - substring match stands
   return sides.some((side) => sideIsTeam(side, teamName));
 }
+
+/**
+ * THE rule for "does this event belong on the artist/team page named
+ * `searchName`" - shared by getEventsByName and the catalog's on-tour check.
+ *
+ * Normally a normalized substring match refined by eventRelatesToTeam. But a
+ * club's template name and its event names drift on qualifiers the substring
+ * can't see past: team "Atletico Madrid" vs event "Atlético de Madrid", team
+ * "Paris Saint-Germain FC" vs event "... vs Paris Saint-Germain". Those
+ * fixtures still count when one side IS the team once qualifiers are stripped
+ * (2026-09-16: Atletico's page showed zero of its 5 games).
+ */
+export function eventMatchesName(
+  eventName: string | null | undefined,
+  searchName: string,
+): boolean {
+  const needle = normalizeName(searchName);
+  if (!needle || !eventName) return false;
+  if (normalizeName(eventName).includes(needle)) {
+    return eventRelatesToTeam(eventName, searchName);
+  }
+  const sides = fixtureSides(eventName);
+  return !!sides && sides.some((side) => sideIsTeam(side, searchName));
+}
