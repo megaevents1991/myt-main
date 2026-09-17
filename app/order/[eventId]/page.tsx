@@ -14,30 +14,14 @@ import ClientTracker from "@/components/ClientTracker";
 export const revalidate = 3600; // 1 hour
 export const dynamicParams = true; // Allow rendering pages for new eventIds on-demand
 
+// On-demand ISR: nothing is prebuilt, each order page is rendered on its first
+// request and then served from the CDN for `revalidate`. Prebuilding all ~430
+// pages only started to actually happen once this page stopped reading cookies
+// (before that every one of them bailed out to dynamic at build time) - and
+// then it starved the whole static-generation pass: 60s timeouts on /c/, /faq
+// and the order pages themselves. The empty list is what keeps the route ISR.
 export async function generateStaticParams() {
-  try {
-    const { events } = await getCachedEvents();
-    
-    // Filter out events that have NO available tickets
-    const eventsWithAvailableTickets = events.filter((event) => {
-      const hasTickets = hasAvailableTickets(event);
-      
-      if (!hasTickets) {
-        console.log(`[SSG] Skipping event ${event.id} (${event.name}) - no available tickets`);
-      }
-      
-      return hasTickets;
-    });
-    
-    console.log(`[SSG] Generating static pages for ${eventsWithAvailableTickets.length}/${events.length} events with available tickets`);
-    
-    return eventsWithAvailableTickets.map((event) => ({
-      eventId: event.id.toString(),
-    }));
-  } catch (error) {
-    console.error("Failed to generate static params for order pages:", error);
-    return [];
-  }
+  return [];
 }
 
 export async function generateMetadata({
