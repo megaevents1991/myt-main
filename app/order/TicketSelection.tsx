@@ -1,6 +1,7 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
+import { normalizeTxCategory } from "@/lib/tixstock-category";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { OrderContext } from "../app.context";
@@ -274,10 +275,10 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       return (): number | null => null;
     }
     return (category: string, qty: number): number | null => {
-      const norm = category.trim().toLowerCase();
+      const norm = normalizeTxCategory(category);
       const qualifying = liveListings.filter((l) => {
-        const listingCat = l.seat_details?.category?.trim().toLowerCase();
-        if (listingCat !== norm) return false;
+        const listingCat = normalizeTxCategory(l.seat_details?.category);
+        if (!norm || listingCat !== norm) return false;
         return listingCanSatisfyQuantity(l, qty);
       });
       if (qualifying.length === 0) return null;

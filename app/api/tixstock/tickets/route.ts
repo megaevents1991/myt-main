@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeTxCategory } from "@/lib/tixstock-category";
 import { revalidateTag } from "next/cache";
 import { exchangeRateService } from "@/lib/exchangeRateService";
 import { supabase } from "@/lib/supabase";
@@ -37,9 +38,8 @@ function slugify(name: string): string {
   return (name || "").trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-function normalizeCategory(category: string | undefined | null): string {
-  return (category || "").trim().toLowerCase();
-}
+// Accent/punctuation-insensitive - TixStock renames venue categories over time.
+const normalizeCategory = normalizeTxCategory;
 
 function getCheapestCategoryPrices(
   listings: TixStockListing[],
