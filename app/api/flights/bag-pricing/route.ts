@@ -160,6 +160,8 @@ const cheapestOfQty = (
     }, null);
 
 export async function POST(request: Request) {
+  // toUsd() reads the EUR rate synchronously - make sure it is live first.
+  await exchangeRateService.ensureFresh();
   let flightOffer: FlightOffer | undefined;
   let virtual = false;
   let eventId: number | string | undefined;

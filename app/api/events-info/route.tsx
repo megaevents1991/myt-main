@@ -59,6 +59,9 @@ export async function POST(request: Request) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: NextRequest) {
   try {
+    // A cold instance boots on the hardcoded fallback - wait for the live rate
+    // (bounded) or this answers 3.00 where a warm instance answers 3.09.
+    await exchangeRateService.ensureFresh();
     const rateInfo = exchangeRateService.getRateInfo();
 
     if (!rateInfo) {

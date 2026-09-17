@@ -72,9 +72,16 @@ class ExchangeRateService {
     gbpUsd: makeHardcoded("gbpUsd"),
   };
   private intervalId: NodeJS.Timeout | null = null;
+  /** The update in flight, shared so concurrent callers await ONE fetch. */
+  private inflight: Promise<void> | null = null;
+  private lastAttemptAt = 0;
 
   private readonly UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour
   private readonly CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 hours
+  /** How long a request may wait for a live rate before settling for what we have. */
+  private readonly ENSURE_MAX_WAIT_MS = 4_000;
+  /** With every source down, don't make each request pay the wait again. */
+  private readonly RETRY_COOLDOWN_MS = 60_000;
 
   constructor() {
     setImmediate(() => this.updateAllRates());
@@ -204,14 +211,58 @@ class ExchangeRateService {
     }
   }
 
-  private async updateAllRates(): Promise<void> {
-    logger.info("Updating all exchange rates");
-    await Promise.allSettled(
-      (Object.keys(CURRENCY_CONFIG) as RateKey[]).map((key) =>
-        this.updateRate(key),
+  private updateAllRates(): Promise<void> {
+    if (this.inflight) return this.inflight;
+    this.lastAttemptAt = Date.now();
+    this.inflight = (async () => {
+      logger.info("Updating all exchange rates");
+      await Promise.allSettled(
+        (Object.keys(CURRENCY_CONFIG) as RateKey[]).map((key) =>
+          this.updateRate(key),
+        ),
+      );
+      logger.info("Exchange rates update complete");
+    })().finally(() => {
+      this.inflight = null;
+    });
+    return this.inflight;
+  }
+
+  /**
+   * Await a LIVE rate before reading one. Every route that prices with this
+   * service calls it first.
+   *
+   * The service boots on the hardcoded fallback and fetches in the background,
+   * so a cold serverless instance used to answer `travelRate: 3` (2.95 x 1.015)
+   * while warm ones answered 3.09 - reproduced on prod 2026-09-17, 1 request in
+   * 40. It was invisible for as long as the market sat near the fallback. The
+   * order page takes its rate from /api/events-info, so that one customer was
+   * quoted AND charged ~3% low. `setInterval` does not tick while an instance
+   * is frozen either, so an hour-old rate is refreshed here on demand too.
+   *
+   * Bounded: waits at most ENSURE_MAX_WAIT_MS, and after a failed attempt does
+   * not wait again for RETRY_COOLDOWN_MS - with every source down the routes
+   * answer from the fallback at full speed, exactly as before.
+   */
+  public async ensureFresh(): Promise<void> {
+    const now = Date.now();
+    const stale = (Object.keys(CURRENCY_CONFIG) as RateKey[]).some((key) => {
+      const current = this.currentRates[key];
+      return (
+        current.source === "hardcoded" ||
+        now - current.lastUpdated.getTime() > this.UPDATE_INTERVAL
+      );
+    });
+    if (!stale) return;
+    if (!this.inflight && now - this.lastAttemptAt < this.RETRY_COOLDOWN_MS) {
+      return;
+    }
+    await Promise.race([
+      this.updateAllRates(),
+      new Promise<void>((resolve) =>
+        setTimeout(resolve, this.ENSURE_MAX_WAIT_MS),
       ),
-    );
-    logger.info("Exchange rates update complete");
+    ]);
   }
 
   private startPeriodicUpdates(): void {

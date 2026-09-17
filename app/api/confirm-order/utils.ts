@@ -189,6 +189,9 @@ export const validatePurchasePriceFloor = async (
     const event = events?.[0];
     if (!event) return null; // event outside availability window / not found - skip
 
+    // The floor must be priced at the same live rate the customer was quoted -
+    // a cold instance's fallback rate would set it ~3% low.
+    await exchangeRateService.ensureFresh();
     const rate = exchangeRateService.getTravelRate();
     if (!Number.isFinite(rate) || rate <= 0) return null;
 

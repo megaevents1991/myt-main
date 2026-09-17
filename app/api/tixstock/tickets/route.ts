@@ -302,6 +302,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // toUsd() reads GBP/EUR rates synchronously - make sure they are live first.
+    await exchangeRateService.ensureFresh();
     const fetchPage = async (page: number) => {
       const params = new URLSearchParams({
         event_id: eventId,
