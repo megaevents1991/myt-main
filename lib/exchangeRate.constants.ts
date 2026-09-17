@@ -5,8 +5,12 @@
  * anywhere else.
  */
 
-/** Hardcoded USD→ILS fallback when every rate source is down. */
-export const USD_ILS_FALLBACK_RATE = 2.95;
+/**
+ * Hardcoded USD→ILS fallback when every rate source is down. Only ever the
+ * fallback - the live rate comes from exchangeRateService. Kept a round 3
+ * (Dor, 2026-09-17): 2.95 sat ~3% under the market, so an outage undercharged.
+ */
+export const USD_ILS_FALLBACK_RATE = 3;
 
 /** Travel-expenses margin applied on top of the raw USD/ILS rate. */
 export const TRAVEL_RATE_MULTIPLIER = 1.015;
