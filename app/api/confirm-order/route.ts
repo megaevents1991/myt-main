@@ -398,6 +398,12 @@ export async function POST(req: Request) {
       .from("partners")
       .insert({
         partner_tracking_code: partnerTrackingCode,
+        // Say what this row IS. Left unset it took the column DEFAULT
+        // 'affiliate', so every customer's referral code landed in the
+        // backoffice as an influencer (197 rows between the 2026-07-29
+        // backfill and 2026-09-17). The order flow honours this type as a
+        // discount link - see useFetchAffiliate / partnerLinkCode.
+        type: "customer_refund",
         name_hebrew: "החזר ללקוח ניתן להתעלם",
         email: "support@mega-events.co.il",
         password: passcode,

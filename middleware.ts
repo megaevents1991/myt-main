@@ -39,7 +39,10 @@ async function classifyInfluencer(
   try {
     const res = await fetch(
       `${url}/rest/v1/partners?partner_tracking_code=eq.${encodeURIComponent(source)}` +
-        `&type=in.(agent,affiliate)&select=partner_tracking_code&limit=1`,
+        // customer_refund = a customer's referral code - protected from a later
+        // campaign click exactly like an influencer's, or the friend who sent
+        // the link loses the credit to utm_source=google.
+        `&type=in.(agent,affiliate,customer_refund)&select=partner_tracking_code&limit=1`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         signal: AbortSignal.timeout(400),

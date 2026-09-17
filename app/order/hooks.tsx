@@ -498,7 +498,16 @@ export function useFetchAffiliate(sessionPartnerCode?: string | null) {
                 isAgent: true,
                 agentId: affiliateId,
               });
-            } else if (data.type === "affiliate") {
+            } else if (
+              data.type === "affiliate" ||
+              // A customer's own referral code ("חבר מביא חבר", emailed to them
+              // as promoCode) is a discount link too. These rows only ever
+              // worked by accident - typed 'affiliate' by the column default -
+              // so when the backoffice retyped 1,289 of them to
+              // 'customer_refund' (2026-07-29) the friend discount silently
+              // stopped: referral orders went 13 in June -> 0 in July.
+              data.type === "customer_refund"
+            ) {
               setAffDiscount(data.discount);
               setAffType("affiliate");
             }

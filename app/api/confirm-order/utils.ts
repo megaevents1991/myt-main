@@ -658,7 +658,10 @@ export async function partnerLinkCode(
     .from("partners")
     .select("partner_tracking_code, type, is_active, user_discount, commission")
     .in("partner_tracking_code", candidates)
-    .in("type", ["agent", "affiliate"]);
+    // customer_refund = a customer's own referral code: a discount link like an
+    // influencer's, so the same no-coupon rule applies (the client hides the
+    // field on it too - useFetchAffiliate).
+    .in("type", ["agent", "affiliate", "customer_refund"]);
   if (error) {
     console.error("partnerLinkCode lookup failed:", JSON.stringify(error));
     return null;
