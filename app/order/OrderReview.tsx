@@ -1302,6 +1302,11 @@ export default function OrderReview({
         total_tickets_price: eventTicket.price * numberOfEventTickets,
         vendor: eventTicket.vendor,
         id: eventTicket.id,
+        // Who ops buy this ticket from - a multi-supplier event can't tell.
+        supplier: eventTicket.supplier,
+        supplier_event_id: eventTicket.eid,
+        supplier_category: eventTicket.supplierCategory,
+        zone_label: eventTicket.zoneLabel,
       },
       // A skipped-flight order never carries flight data, even if a late
       // flight search re-populated `flight` after the skip.

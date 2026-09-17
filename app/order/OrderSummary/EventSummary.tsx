@@ -10,6 +10,7 @@ export const EventSummary = ({
   numberOfEventTickets: number;
   eventTicket: {
     category: string;
+    zoneLabel?: string;
     description?: string;
   };
   agentCommission: number;
@@ -38,7 +39,7 @@ export const EventSummary = ({
           <div>
             <div className="flex gap-[2px]">
             <div className="ml-1">
-              {eventTicket.category}
+              {eventTicket.zoneLabel || eventTicket.category}
             </div>
             {!agentViewer && (
               <div>

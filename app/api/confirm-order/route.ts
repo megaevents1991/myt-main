@@ -8,6 +8,7 @@ import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
 import {
   validateOrderData,
   validatePurchasePriceFloor,
+  validateLiveTicketsOffer,
   resolveAgentSettlement,
   resolveHandledBy,
   partnerLinkCode,
@@ -177,6 +178,23 @@ export async function POST(req: Request) {
     console.error(
       "Rejected order - purchase-price floor:",
       JSON.stringify({ event_id: validatedData.event_id, reason: priceError }),
+    );
+    return NextResponse.json(
+      { error: "PRICE_VALIDATION_FAILED" },
+      { status: 400 },
+    );
+  }
+
+  // Multi-supplier events: the chosen LiveTickets category must still be on
+  // sale, at this quantity, at (about) the price the customer was shown.
+  const supplierError = await validateLiveTicketsOffer(validatedData);
+  if (supplierError) {
+    console.error(
+      "Rejected order - supplier offer changed:",
+      JSON.stringify({
+        event_id: validatedData.event_id,
+        reason: supplierError,
+      }),
     );
     return NextResponse.json(
       { error: "PRICE_VALIDATION_FAILED" },
@@ -458,6 +476,10 @@ export async function POST(req: Request) {
           Quantity: ${validatedData.event_order_info.number_of_ticket}
           Ticket ID: ${validatedData.event_order_info.id || "N/A"}
           Vendor: ${validatedData.event_order_info.vendor || "N/A"}
+          BUY FROM (supplier): ${(validatedData.event_order_info.supplier || "N/A").toUpperCase()}
+          Supplier Event ID: ${validatedData.event_order_info.supplier_event_id || "N/A"}
+          Supplier Category: ${validatedData.event_order_info.supplier_category || "N/A"}
+          Our Zone: ${validatedData.event_order_info.zone_label || "N/A"}
 
           ******** Flight Info **********
           ${

@@ -17,6 +17,7 @@ import {
 } from "@/lib/events/price";
 import { supabase } from "@/lib/supabase";
 import { requireAgent } from "@/lib/partner-auth";
+import { getLiveTicketsOffers } from "@/lib/livetickets";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -56,6 +57,10 @@ export const validateOrderData = async (
           event_additional_markup: yup.number().nullable(),
           event_type: yup.string(),
           id: yup.string(),
+          supplier: yup.string(),
+          supplier_event_id: yup.string(),
+          supplier_category: yup.string(),
+          zone_label: yup.string(),
           category: yup.string().required().min(1),
           price_per_ticket: yup.number().required(),
           total_tickets_price: yup.number().required(),
@@ -241,6 +246,59 @@ export const validatePurchasePriceFloor = async (
     // Never let this guard break checkout - on any internal failure, skip it.
     console.error(
       "Price-floor validation error (skipping guard):",
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+};
+
+/**
+ * How far below the live LiveTickets price a ticket may be sold. Covers the
+ * exchange rate moving between the customer's quote and the order.
+ */
+const LIVE_PRICE_TOLERANCE = 0.03;
+
+/**
+ * Multi-supplier events: re-check a LiveTickets ticket against LiveTickets at
+ * the moment of the order. Nobody holds stock for us, so this is the last
+ * chance to catch a category that sold out, stopped being instant-confirm, or
+ * got more expensive while the customer was filling the form.
+ *
+ * Only runs for tickets that say `supplier: "livetickets"` - every other order
+ * is untouched. Fails OPEN when LiveTickets can't be reached (the page sold on
+ * the buffered DB price then) and for agent bookings (custom pricing).
+ *
+ * @returns a reason string when the order must be rejected, otherwise null.
+ */
+export const validateLiveTicketsOffer = async (
+  data: OrderData,
+): Promise<string | null> => {
+  try {
+    const info = data.event_order_info;
+    if (info?.supplier !== "livetickets" || !info.supplier_event_id) return null;
+    if (data.is_agent_booking) return null;
+
+    const offers = await getLiveTicketsOffers(info.supplier_event_id);
+    if (offers === null) return null;
+
+    const offer = offers.find((o) => o.id === info.id);
+    if (!offer) return `LiveTickets category ${info.id} is no longer on sale`;
+
+    const qty = Number(info.number_of_ticket);
+    if (Number.isFinite(qty) && qty > offer.maxPerOrder) {
+      return `LiveTickets category ${info.id} sells at most ${offer.maxPerOrder} per order, asked ${qty}`;
+    }
+
+    const charged = Number(info.price_per_ticket);
+    const floor = offer.priceUsd * (1 - LIVE_PRICE_TOLERANCE);
+    if (Number.isFinite(charged) && charged < floor) {
+      return `Ticket priced $${charged}, live LiveTickets price is $${offer.priceUsd}`;
+    }
+    return null;
+  } catch (error) {
+    // Never let this guard break checkout - on any internal failure, skip it.
+    console.error(
+      "LiveTickets offer validation error (skipping guard):",
       error instanceof Error ? error.message : String(error),
     );
     return null;

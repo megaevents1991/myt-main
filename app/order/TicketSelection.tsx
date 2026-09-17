@@ -1,7 +1,6 @@
 "use client";
 
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
-import { normalizeTxCategory } from "@/lib/tixstock-category";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { OrderContext } from "../app.context";
@@ -11,9 +10,17 @@ import { ChevronDownCircle, ChevronUpCircle, Loader2 } from "lucide-react";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import { useMediaQuery } from "@mantine/hooks";
-import type { Event, EventTicket } from "@/lib/app.types";
+import type { Event, EventTicket, EventType, OrderTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
-import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
+import { supplierEventId, ticketSupplier } from "@/lib/suppliers";
+import type { LiveTicketsOffer } from "@/lib/livetickets";
+import {
+  bestPriceTicketIds,
+  priceTicketsForQuantity,
+  type PricedTicket,
+  type SupplierLiveData,
+  type SupplierStatus,
+} from "@/lib/supplier-offers";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import {
   eventTicketToListing,
@@ -28,6 +35,37 @@ const TX_FALLBACK_BUFFER_PCT = Number(
 );
 const TX_FALLBACK_MULTIPLIER =
   1 + (Number.isFinite(TX_FALLBACK_BUFFER_PCT) ? TX_FALLBACK_BUFFER_PCT : 15) / 100;
+
+/**
+ * The ticket as the order carries it. Besides what the customer sees it keeps
+ * WHO we buy it from (supplier, that supplier's event id and category name) -
+ * on a multi-supplier event ops can no longer infer that from the event.
+ */
+const toOrderTicket = (
+  ticket: EventTicket,
+  eventType: EventType | undefined,
+  quantity: number,
+): OrderTicket => ({
+  id: ticket.id,
+  vendor: ticket.vendor || "",
+  category: ticket.category,
+  price: ticket.price,
+  description: ticket.description || "",
+  quantity,
+  eid: ticket.eid,
+  supplier: ticketSupplier(ticket, eventType),
+  supplierCategory: ticket.supplierCategory ?? ticket.category,
+  zoneLabel: ticket.zoneLabel,
+});
+
+/** Customer-facing seating promise of a priced ticket (multi-supplier events). */
+const seatingNote = (ticket: PricedTicket): string | undefined => {
+  if (ticket.seating === "together") return "ישיבה יחד מובטחת";
+  if (ticket.seating === "groups" && ticket.seatingGroupMax) {
+    return "ישיבה יחד בקבוצות של עד " + ticket.seatingGroupMax;
+  }
+  return undefined;
+};
 
 /**
  * Group-order rescue for the "can't supply N tickets together" dead-end:
@@ -199,11 +237,55 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const [liveListings, setLiveListings] = useState<TixStockListing[]>([]);
   const [isLoadingLiveTickets, setIsLoadingLiveTickets] = useState(false);
 
-  // Resolve the TixStock event id from the first ticket carrying an `eid`.
+  // Each supplier's own event id, read from THAT supplier's tickets - a mixed
+  // event holds a TixStock eid and a LiveTickets eid side by side.
   const tixEventId = useMemo(
-    () => availableTickets.find((t) => t.eid)?.eid ?? null,
-    [availableTickets],
+    () => supplierEventId(availableTickets, "tixstock", event?.type),
+    [availableTickets, event?.type],
   );
+  const liveTicketsEventId = useMemo(
+    () => supplierEventId(availableTickets, "livetickets", event?.type),
+    [availableTickets, event?.type],
+  );
+
+  /* ── LiveTickets live pricing (tickets with supplier "livetickets") ── */
+  const [liveTicketsOffers, setLiveTicketsOffers] = useState<LiveTicketsOffer[]>([]);
+  const [liveTicketsStatus, setLiveTicketsStatus] =
+    useState<SupplierStatus>("none");
+
+  // One call per event, not per quantity: the answer carries every category's
+  // price and max-per-order, and the route caches it server-side.
+  useEffect(() => {
+    if (!liveTicketsEventId) {
+      setLiveTicketsOffers([]);
+      setLiveTicketsStatus("none");
+      return;
+    }
+    let cancelled = false;
+    setLiveTicketsStatus("loading");
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `/api/livetickets/tickets?eid=${encodeURIComponent(liveTicketsEventId)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json: { offers?: LiveTicketsOffer[] } = await res.json();
+        if (cancelled) return;
+        setLiveTicketsOffers(json.offers ?? []);
+        setLiveTicketsStatus("live");
+      } catch (err) {
+        console.error("[LiveTickets] Failed to fetch live offers:", err);
+        if (cancelled) return;
+        setLiveTicketsOffers([]);
+        setLiveTicketsStatus("down");
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [liveTicketsEventId]);
 
   // Fetch live listings once we know the TixStock event id.
   useEffect(() => {
@@ -266,91 +348,90 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   }, [isTxEvent, tixEventId, event?.tx_excluded_sections, numberOfEventTickets, setEvent]);
 
   /**
-  * Find the cheapest live listing in `category` that can satisfy `qty`.
-  * For a single ticket, allow only true singles or fully splittable listings.
-   * Returns the rounded-up USD price, or null when no listing qualifies.
+   * The map hides TixStock tickets it has no section for. Another supplier's
+   * ticket is never hidden by it: it reaches the site only once the backoffice
+   * mapped it to one of our zones, and a missing drawing must not unsell it.
    */
-  const getLivePriceForCategory = useMemo(() => {
-    if (!isTxEvent || liveListings.length === 0) {
-      return (): number | null => null;
-    }
-    return (category: string, qty: number): number | null => {
-      const norm = normalizeTxCategory(category);
-      const qualifying = liveListings.filter((l) => {
-        const listingCat = normalizeTxCategory(l.seat_details?.category);
-        if (!norm || listingCat !== norm) return false;
-        return listingCanSatisfyQuantity(l, qty);
-      });
-      if (qualifying.length === 0) return null;
-      const cheapest = qualifying.reduce((min, l) => {
-        const a = parseFloat(l.proceed_price?.amount ?? "Infinity");
-        const b = parseFloat(min.proceed_price?.amount ?? "Infinity");
-        return a < b ? l : min;
-      }, qualifying[0]);
-      const amount = parseFloat(cheapest.proceed_price?.amount ?? "NaN");
-      return Number.isFinite(amount) ? Math.ceil(amount) : null;
-    };
-  }, [isTxEvent, liveListings]);
+  const isShownWithMap = useCallback(
+    (ticket: EventTicket, matched: Set<string>) =>
+      ticketSupplier(ticket, event?.type) !== "tixstock" ||
+      matched.has(ticket.id),
+    [event?.type],
+  );
+
+  /** Does any ticket here get its price from a live supplier call? */
+  const hasLiveSupplier = isTxEvent || liveTicketsEventId !== null;
+
+  const supplierLive: SupplierLiveData = useMemo(
+    () => ({
+      tixstock: {
+        status: !isTxEvent
+          ? "none"
+          : isLoadingLiveTickets
+            ? "loading"
+            : liveListings.length > 0
+              ? "live"
+              : "down",
+        listings: liveListings,
+      },
+      livetickets: { status: liveTicketsStatus, offers: liveTicketsOffers },
+    }),
+    [
+      isTxEvent,
+      isLoadingLiveTickets,
+      liveListings,
+      liveTicketsStatus,
+      liveTicketsOffers,
+    ],
+  );
 
   /**
-   * `availableTickets` with prices overridden by the live API for the
-   * current quantity.  Categories that cannot satisfy the requested
-   * quantity are filtered out entirely.
+   * What the customer can buy at the current quantity: every ticket priced by
+   * ITS OWN supplier's live answer (lib/supplier-offers.ts). A supplier that is
+   * down sells on the buffered DB price - the auto-select effect commits this
+   * memo's price straight into the order context, so an unbuffered DB price
+   * must never appear here. Tickets that can't fulfil the quantity drop out.
+   * Events with no live supplier are returned untouched.
    */
-  const ticketsWithLivePrices: EventTicket[] = useMemo(() => {
-    // Non-tx events never use live pricing - leave them untouched.
-    if (!isTxEvent) return availableTickets;
-
-    // tx_event with no live listings: live pricing is unavailable (API error,
-    // timeout, zero listings - or the fetch still in flight). Fall back to the
-    // static DB price WITH the safety buffer so neither an outage nor a fast
-    // "continue" during the fetch can sell below the true live price - the
-    // auto-select effect commits this memo's price straight into the order
-    // context, so the unbuffered DB price must never appear here.
-    if (liveListings.length === 0) {
-      return availableTickets.map((ticket) => ({
-        ...ticket,
-        price: Math.ceil(ticket.price * TX_FALLBACK_MULTIPLIER),
-      }));
-    }
-
-    return availableTickets.reduce<EventTicket[]>((acc, ticket) => {
-      const livePrice = getLivePriceForCategory(
-        ticket.category,
-        numberOfEventTickets,
-      );
-      if (livePrice === null) return acc; // hide categories that can't fulfil qty
-      acc.push({ ...ticket, price: livePrice });
-      return acc;
-    }, []);
-  }, [
-    isTxEvent,
-    liveListings,
-    availableTickets,
-    numberOfEventTickets,
-    getLivePriceForCategory,
-  ]);
-
-  /** Effective ticket list: live-priced for tx_event, raw otherwise. */
-  const effectiveTickets: EventTicket[] = isTxEvent
-    ? ticketsWithLivePrices
-    : availableTickets;
+  const effectiveTickets: PricedTicket[] = useMemo(
+    () =>
+      hasLiveSupplier
+        ? priceTicketsForQuantity(
+            availableTickets,
+            event?.type,
+            numberOfEventTickets,
+            supplierLive,
+            TX_FALLBACK_MULTIPLIER,
+          )
+        : availableTickets,
+    [
+      hasLiveSupplier,
+      availableTickets,
+      event?.type,
+      numberOfEventTickets,
+      supplierLive,
+    ],
+  );
 
   /**
-   * Nearest quantity that at least one category can still supply - powers the
-   * one-tap "change quantity" rescue when the requested amount can't be
-   * fulfilled. Searches downward first (fewer tickets is the cheaper ask),
-   * then upward to MAX_TICKETS - so a lone "1 ticket" request on an event whose
-   * sellers only split into 2+ still gets a button instead of a dead-end.
-   * null when nothing else works.
+   * Nearest quantity that at least one ticket - of ANY supplier - can still
+   * supply. Powers the one-tap "change quantity" rescue when the requested
+   * amount can't be fulfilled. Searches downward first (fewer tickets is the
+   * cheaper ask), then upward to MAX_TICKETS - so a lone "1 ticket" request on
+   * an event whose sellers only split into 2+ still gets a button instead of a
+   * dead-end. null when nothing else works.
    */
   const nearestFeasibleQty: { qty: number; direction: "down" | "up" } | null =
     useMemo(() => {
-      if (!isTxEvent || liveListings.length === 0) return null;
+      if (!hasLiveSupplier || effectiveTickets.length > 0) return null;
       const feasible = (q: number) =>
-        availableTickets.some(
-          (t) => getLivePriceForCategory(t.category, q) !== null,
-        );
+        priceTicketsForQuantity(
+          availableTickets,
+          event?.type,
+          q,
+          supplierLive,
+          TX_FALLBACK_MULTIPLIER,
+        ).length > 0;
       for (let q = numberOfEventTickets - 1; q >= 1; q--) {
         if (feasible(q)) return { qty: q, direction: "down" };
       }
@@ -359,11 +440,12 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       }
       return null;
     }, [
-      isTxEvent,
-      liveListings,
+      hasLiveSupplier,
+      effectiveTickets.length,
       numberOfEventTickets,
       availableTickets,
-      getLivePriceForCategory,
+      event?.type,
+      supplierLive,
     ]);
 
   /** True when selling on buffered DB price because live TX pricing is down. */
@@ -406,7 +488,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     // and the map showed no dark-green section until a manual click.
     const mappedPool =
       isTxEvent && matchedTicketIds
-        ? effectiveTickets.filter((t) => matchedTicketIds.has(t.id))
+        ? effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds))
         : effectiveTickets;
     const pool = mappedPool.length > 0 ? mappedPool : effectiveTickets;
 
@@ -419,14 +501,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
     setCurrentMinTicketPrice(cheapt.price);
     setSelectedTicket(cheapt.id);
-    setEventTicket({
-      id: cheapt.id,
-      vendor: cheapt.vendor || "",
-      category: cheapt.category,
-      price: cheapt.price,
-      description: cheapt.description || "",
-      quantity: numberOfEventTickets,
-    });
+    setEventTicket(toOrderTicket(cheapt, event?.type, numberOfEventTickets));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTickets, matchedTicketIds, isTxEvent, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
 
@@ -462,16 +537,13 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       return;
     }
 
-    setEventTicket({
-      ...ticket,
-      // Always use the live-resolved price from the effective list, not the
-      // (possibly stale) price the caller passed in.
-      price: ticketInList.price,
-      description: ticket.description || "",
-      quantity: numberOfEventTickets,
-    });
+    // Always built from the effective list - the live-resolved price and the
+    // ticket's supplier - never from the (possibly stale) values passed in.
+    setEventTicket(
+      toOrderTicket(ticketInList, event?.type, numberOfEventTickets),
+    );
     setSelectedTicket(ticket.id);
-  }, [effectiveTickets, numberOfEventTickets, setEventTicket]);
+  }, [effectiveTickets, event?.type, numberOfEventTickets, setEventTicket]);
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
@@ -538,16 +610,30 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   );
 
   /** Map the filtered TixStock listings back to EventTickets */
-  const displayedTickets: EventTicket[] = useMemo(() => {
+  const displayedTickets: PricedTicket[] = useMemo(() => {
     if (!isTxEvent) return effectiveTickets;
 
     // Remove tickets that don't match any section/category on the map
     if (matchedTicketIds) {
-      return effectiveTickets.filter((t) => matchedTicketIds.has(t.id));
+      return effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds));
     }
 
     return effectiveTickets;
-  }, [isTxEvent, effectiveTickets, matchedTicketIds]);
+  }, [isTxEvent, effectiveTickets, matchedTicketIds, isShownWithMap]);
+
+  /** Several suppliers on one page - seating promises differ per ticket. */
+  const isMultiSupplier = useMemo(
+    () =>
+      new Set(availableTickets.map((t) => ticketSupplier(t, event?.type)))
+        .size > 1,
+    [availableTickets, event?.type],
+  );
+
+  /** Cheapest offer in every zone that more than one supplier sells. */
+  const bestPriceIds = useMemo(
+    () => bestPriceTicketIds(displayedTickets, event?.type),
+    [displayedTickets, event?.type],
+  );
 
   /* ── Debug panel ──────────────────────────────────────────────── */
   const debugPanel = isDebugMode && isTxEvent && (
@@ -638,7 +724,8 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       <main className="flex flex-col" dir="rtl" role="main">
         <div className="mt-4 text-lg">
           בחרו כמות כרטיסים וקטגוריה מועדפת,
-          {isTxEvent ? <span className="font-bold"> ישיבה בזוגות/שלשות מובטחת.</span> : <span className="font-bold"> ישיבה בזוגות מובטחת.</span>}
+          {/* Several suppliers = several seating promises - each card says its own. */}
+          {isMultiSupplier ? null : isTxEvent ? <span className="font-bold"> ישיבה בזוגות/שלשות מובטחת.</span> : <span className="font-bold"> ישיבה בזוגות מובטחת.</span>}
         </div>
         <div className="flex gap-4 flex-col lg:flex-row-reverse mt-4">
           {isTxEvent ? (
@@ -740,7 +827,8 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                 <div id="ticket-selection-heading" className="sr-only">
                   קטגוריות כרטיסים זמינות
                 </div>
-                {isTxEvent && isLoadingLiveTickets ? (
+                {(isTxEvent && isLoadingLiveTickets) ||
+                liveTicketsStatus === "loading" ? (
                   <div className="flex items-center justify-center p-8 gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                     <Text size="sm" c="dimmed">
@@ -748,7 +836,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                     </Text>
                   </div>
                 ) : effectiveTickets.length === 0 ? (
-                  isTxEvent && availableTickets.length > 0 ? (
+                  hasLiveSupplier && availableTickets.length > 0 ? (
                     // Quantity dead-end: the event HAS tickets, just not N together.
                     // Rescue instead of a wall - one-tap reduce to the max that
                     // works, or leave details / WhatsApp for a group offer.
@@ -787,8 +875,8 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                   )
                 ) : (
                   [...displayedTickets]
-                    .sort((a: EventTicket, b: EventTicket) => a.price - b.price)
-                    .filter((ticket: EventTicket) => {
+                    .sort((a: PricedTicket, b: PricedTicket) => a.price - b.price)
+                    .filter((ticket: PricedTicket) => {
                       // Double-check: ensure ticket is still available before rendering
                       if (ticket.available === false) {
                         console.warn(`Attempted to render unavailable ticket: ${ticket.category} (ID: ${ticket.id})`);
@@ -796,7 +884,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                       }
                       return true;
                     })
-                    .map((ticket: EventTicket, index: number) => (
+                    .map((ticket: PricedTicket, index: number) => (
                       <EventTicketCard
                         index={index}
                         onClick={() =>
@@ -811,8 +899,12 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                         numberOfTickets={numberOfEventTickets}
                         onChangeNumberOfTickets={handleQuantityChange}
                         key={ticket.id}
-                        category={ticket.category}
+                        category={ticket.zoneLabel || ticket.category}
                         categoryDescription={ticket.description}
+                        bestPrice={bestPriceIds.has(ticket.id)}
+                        seatingNote={
+                          isMultiSupplier ? seatingNote(ticket) : undefined
+                        }
                         colorOnTheMap={ticket.colorOnTheMap || ""}
                         useMapColor={!isTxEvent}
                         isSelected={selectedTicket === ticket.id}

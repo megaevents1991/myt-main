@@ -23,6 +23,11 @@ export type TicketCardProps = {
    *  `colorOnTheMap` so the card matches the colored area on the event map.
    *  TX events keep the brand green strip (they have their own live map). */
   useMapColor?: boolean;
+  /** Multi-supplier events: this is the cheapest offer in a zone that more
+   *  than one supplier sells. */
+  bestPrice?: boolean;
+  /** Multi-supplier events: this ticket's own seating promise. */
+  seatingNote?: string;
 };
 
 export const EventTicketCard = ({
@@ -41,6 +46,8 @@ export const EventTicketCard = ({
   onMouseLeave,
   disabled = false,
   useMapColor = false,
+  bestPrice = false,
+  seatingNote,
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
   const isVip = vip?.enabled === true;
@@ -92,8 +99,13 @@ export const EventTicketCard = ({
               disabled={disabled}
             />
             <div>
-              <div className="text-xl font-bold flex items-center gap-2">
+              <div className="text-xl font-bold flex flex-wrap items-center gap-2">
                 {category}
+                {bestPrice && (
+                  <span className="rounded-full bg-forest px-2 py-0.5 text-xs font-bold text-white dark:bg-glow dark:text-black">
+                    המחיר הטוב ביותר באזור
+                  </span>
+                )}
               </div>
               {categoryDescription?.length > 0 && (
                 <div
@@ -105,6 +117,9 @@ export const EventTicketCard = ({
                 >
                   {categoryDescription}
                 </div>
+              )}
+              {seatingNote && (
+                <div className="text-sm text-muted-foreground">{seatingNote}</div>
               )}
               {hasVipDetails && (
                 <div className="text-sm font-semibold">

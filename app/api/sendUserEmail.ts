@@ -105,7 +105,10 @@ export const sendUserEmail = async ({
       ? new Date(orderData.event_order_info.date).toLocaleDateString("he-IL")
       : "",
     eventLocation: orderData.event_order_info?.location_name || "",
-    ticketType: orderData.event_order_info?.category,
+    // The zone name the customer chose; the supplier's category is for ops.
+    ticketType:
+      orderData.event_order_info?.zone_label ||
+      orderData.event_order_info?.category,
     quantity: orderData.event_order_info?.number_of_ticket,
     airline: orderData.flight_order_info?.metadata?.name,
     departFlight: outbound?.flightNumber,

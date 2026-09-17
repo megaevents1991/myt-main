@@ -75,6 +75,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 >   header + rotate (cross-project: backoffice calls these).
 > - **No rate limiting** on `/api/confirm-order` (inventory-exhaustion / inbox flood).
 
+> **Multi-supplier events (2026-09-18, pilot).** One event page can sell
+> tickets from several suppliers. The supplier lives ON THE TICKET
+> (`EventTicket.supplier`, values in `lib/suppliers.ts`; absent = implied by
+> `event.type` exactly as before), `eid` is the event id AT that supplier.
+> `lib/supplier-offers.ts` prices every ticket by ITS OWN supplier only:
+> TixStock by normalized category among TixStock tickets, LiveTickets by
+> category id via `GET /api/livetickets/tickets?eid=` (`lib/livetickets.ts`,
+> read-only, ~90s server cache, instant-confirm categories only). A supplier
+> that is down sells on the buffered DB price; the other stays live. One price
+> formula for all live suppliers: `lib/supplier-pricing.ts`.
+> **Zones + our own map:** suppliers slice a stadium differently, so tickets
+> carry our `zoneId`/`zoneLabel` (set in the backoffice event editor,
+> "Suppliers & zones"). The map is OUR copy of the SVG (Supabase
+> `public_resources/venue-maps/<id>/map.svg`) with `data-zones` on every
+> section; `lib/tixstock-map.ts` matches a zoned ticket by zone, never by a
+> supplier's category name. Maps without `data-zones` keep the legacy name
+> matching. The customer sees the zone label; the order keeps `supplier`,
+> `supplier_event_id`, `supplier_category` for ops. `confirm-order` re-checks a
+> LiveTickets ticket live (`validateLiveTicketsOffer`). Attaching a supplier is
+> always manual in the backoffice - nothing auto-matches. Tests:
+> `npx tsx lib/__tests__/supplier-offers.test.ts`. Pilot: hidden `is_test`
+> event 1130 (clone of 707).
+
 ## Always-on rules (auto-loaded)
 
 Tech standards:
@@ -145,6 +168,7 @@ Required in `.env.local`:
   cannot do `signInWithPassword`. Server-side only - never expose it as `NEXT_PUBLIC_`.
 - `CANCELLATION_REQUEST_EMAIL` - Ops inbox for `/cancel-order` cancellation requests
   (`lib/cancellation-request-actions.ts`). Optional - falls back to `SALES_REP_EMAIL`.
+- `NEXT_SECRET_LIVE_API_URL` / `NEXT_SECRET_LIVE_API_KEY` - LiveTickets (doctorticket) API, same values as the backoffice. Needed for live pricing of `supplier: "livetickets"` tickets; unset = those tickets sell on the buffered DB price.
 - `NEXT_PUBLIC_MARKUP` - Price markup (currently 175)
 - `NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT` - Safety buffer % added to the static DB price for `tx_event` tickets **only when live TixStock pricing is unavailable** (default 15). Prevents selling below the live price during a TX outage. Applied in `app/order/TicketSelection.tsx`.
 - `NEXT_PUBLIC_API_URL` - Base URL for internal API calls

@@ -27,6 +27,13 @@ export type TixStockMatchableListing = {
   };
   /** Optional numeric price used by the click-handler tie-breaker. */
   proceed_price?: number | null;
+  /**
+   * Our own stadium zone (EventTicket.zoneId). On a map WE own, every section
+   * carries `data-zones` and a zoned ticket is matched by zone id - not by the
+   * supplier's category name, so any supplier's ticket lights up the map and a
+   * supplier renaming its categories can't break it.
+   */
+  zone_id?: string | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -190,6 +197,65 @@ export const getCategoryIdFromSectionEl = (
 ): string | null => {
   const categoryEl = sectionEl.closest("[data-category]");
   return categoryEl?.getAttribute("data-category") || null;
+};
+
+/* ------------------------------------------------------------------ */
+/*  Zone matching (maps we own)                                        */
+/* ------------------------------------------------------------------ */
+
+/** Attribute our own SVG copies carry on every `[data-section]`. */
+export const ZONES_ATTR = "data-zones";
+
+/** Zone ids a section belongs to (a section may sit in overlapping zones). */
+export const getZoneIdsFromSectionEl = (sectionEl: Element): string[] =>
+  (sectionEl.getAttribute(ZONES_ATTR) || "").split(/\s+/).filter(Boolean);
+
+/**
+ * True when this ticket must be matched by zone on this section: the ticket
+ * is zoned AND the map is one of ours. Anything else keeps the legacy
+ * category/section name matching.
+ */
+const usesZoneMatching = (
+  ticket: TixStockMatchableListing,
+  sectionEl: Element,
+): boolean => !!ticket.zone_id && sectionEl.hasAttribute(ZONES_ATTR);
+
+/**
+ * Does the ticket sell seats in this map section? The single matcher behind
+ * painting, click-to-select and the "has a place on the map" check.
+ */
+export const ticketMatchesSectionEl = (
+  ticket: TixStockMatchableListing,
+  sectionEl: Element,
+): boolean => {
+  if (usesZoneMatching(ticket, sectionEl)) {
+    return getZoneIdsFromSectionEl(sectionEl).includes(ticket.zone_id ?? "");
+  }
+  const secId = sectionEl.getAttribute("data-section") || "";
+  const catId = getCategoryIdFromSectionEl(sectionEl);
+  if (isCategoryOnlyTicket(ticket)) {
+    return categoryOnlyMatchesEl(ticket, secId, catId);
+  }
+  return isTicketMatchingSection(ticket, secId, catId);
+};
+
+/**
+ * Should this section light up while the ticket is hovered / selected? Same
+ * as the match above, plus (legacy maps) the ticket's whole category.
+ */
+export const ticketHighlightsSectionEl = (
+  ticket: TixStockMatchableListing,
+  sectionEl: Element,
+): boolean => {
+  if (usesZoneMatching(ticket, sectionEl)) {
+    return ticketMatchesSectionEl(ticket, sectionEl);
+  }
+  const secId = sectionEl.getAttribute("data-section") || "";
+  const catId = getCategoryIdFromSectionEl(sectionEl);
+  return (
+    ticketCategoryMatchesEl(ticket, secId, catId) ||
+    ticketMatchesSectionEl(ticket, sectionEl)
+  );
 };
 
 /* ------------------------------------------------------------------ */
@@ -378,19 +444,15 @@ export const prePaintSvg = (
 
     for (const el of sectionEls) {
       const secId = el.getAttribute("data-section") || "";
-      const catId = getCategoryIdFromSectionEl(el);
 
       if (isSectionExcluded(secId, excludedSections)) {
         paintSection(el, "disabled");
         continue;
       }
 
-      const matchingTickets = tickets.filter((t) => {
-        if (isCategoryOnlyTicket(t)) {
-          return categoryOnlyMatchesEl(t, secId, catId);
-        }
-        return isTicketMatchingSection(t, secId, catId);
-      });
+      const matchingTickets = tickets.filter((t) =>
+        ticketMatchesSectionEl(t, el),
+      );
 
       const hasEnabledTicket = matchingTickets.some(
         (t) => !disabledTicketIds?.has(t.id),
@@ -612,9 +674,11 @@ export const eventTicketToListing = (ticket: {
   category: string;
   description: string;
   price: number;
+  zoneId?: string;
 }): TixStockMatchableListing => ({
   id: ticket.id,
   proceed_price: ticket.price,
+  zone_id: ticket.zoneId ?? null,
   seat_details: {
     category: ticket.category,
     section: ticket.category, // category-only: no per-section data in EventTicket
@@ -636,13 +700,5 @@ export const doesTicketMatchAnyMapSection = (
 ): boolean => {
   const sectionEls = Array.from(container.querySelectorAll("[data-section]"));
 
-  return sectionEls.some((el) => {
-    const secId = el.getAttribute("data-section") || "";
-    const catId = getCategoryIdFromSectionEl(el);
-
-    if (isCategoryOnlyTicket(ticket)) {
-      return categoryOnlyMatchesEl(ticket, secId, catId);
-    }
-    return isTicketMatchingSection(ticket, secId, catId);
-  });
+  return sectionEls.some((el) => ticketMatchesSectionEl(ticket, el));
 };

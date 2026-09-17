@@ -122,9 +122,13 @@ export async function GET(
   const availableTickets = (event.tickets_and_rates || []).filter(
     (t) => t?.available !== false,
   );
-  const liveTicket = availableTickets.find(
-    (t) => t.category === row.event_order_info.category,
-  );
+  // Ticket id first: on a multi-supplier event two suppliers can share a
+  // category name. The name stays as the fallback for older packages.
+  const liveTicket =
+    availableTickets.find((t) => t.id && t.id === row.event_order_info.id) ??
+    availableTickets.find(
+      (t) => t.category === row.event_order_info.category,
+    );
   if (!liveTicket) {
     return NextResponse.json(
       { error: "סוג הכרטיס בחבילה הזו כבר אינו זמין" },

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const ALLOWED_HOSTNAMES = new Set([
   "tixstock.s3.eu-west-2.amazonaws.com",
   "cdn.xs2event.com",
+  // Venue maps we own: SVG copies in our Supabase `map_images` bucket, stamped
+  // with our zones by the backoffice - no dependency on a supplier's file.
+  "fandqafngybfdyslofmr.supabase.co",
 ]);
 
 export async function GET(req: NextRequest) {

@@ -171,7 +171,9 @@ export default function ConfirmationPage() {
           eventName: orderData.event_order_info.name,
           eventDate: orderData.event_order_info.date?.toString() ?? "",
           eventLocation: orderData.event_order_info.location_name,
-          ticketType: orderData.event_order_info.category,
+          ticketType:
+            orderData.event_order_info.zone_label ||
+            orderData.event_order_info.category,
           quantity:
             orderData.event_order_info.number_of_ticket?.toString() ?? "",
           airline: hasFlight ? flightInfo.metadata?.name ?? "" : "",

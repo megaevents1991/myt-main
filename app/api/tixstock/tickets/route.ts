@@ -7,6 +7,8 @@ import type { EventTicket } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 import { UNLABELED_SECTION_MARK } from "@/lib/tixstock-map";
+import { supplierCostToUsd } from "@/lib/supplier-pricing";
+import { ticketSupplier } from "@/lib/suppliers";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
@@ -16,21 +18,16 @@ const REVALIDATE_API_ORIGIN = "https://mondial2026.mega-events.co.il";
 function toUsd(amount: string, currency: string): string {
   const value = parseFloat(amount);
   if (isNaN(value)) return amount;
-  const cur = currency.toUpperCase();
-  if (cur === "USD") return ((value + 40) * 1.035).toFixed(2);
-  if (cur === "GBP") {
-    const rate = exchangeRateService.getGbpUsdRate().rate;
-    return ((value + 35) * rate * 1.035).toFixed(2);
+  // Same formula every live supplier is priced with (lib/supplier-pricing.ts).
+  const usd = supplierCostToUsd(value, currency);
+  if (usd === null) {
+    // Unknown currency - return as-is and log
+    console.warn(
+      `[TixStock Tickets] Unknown currency "${currency}", not converting`,
+    );
+    return amount;
   }
-  if (cur === "EUR") {
-    const rate = exchangeRateService.getEurUsdRate().rate;
-    return ((value + 40) * rate * 1.035).toFixed(2);
-  }
-  // Unknown currency - return as-is and log
-  console.warn(
-    `[TixStock Tickets] Unknown currency "${currency}", not converting`,
-  );
-  return amount;
+  return usd.toFixed(2);
 }
 
 /** Slugify a name the same way the SVG map IDs are built */
@@ -146,6 +143,9 @@ async function updateDbTicketPricesFromLiveListings(
   }> = [];
 
   const nextTicketsAndRates = ticketsAndRates.map((ticket) => {
+    // A mixed event also holds other suppliers' tickets - their category names
+    // can collide with TixStock's ("Category 1"), so never price them here.
+    if (ticketSupplier(ticket, "tx_event") !== "tixstock") return ticket;
     const livePrice = categoryPrices.get(normalizeCategory(ticket.category));
     const priceDiff =
       livePrice !== undefined && Number.isFinite(ticket.price)

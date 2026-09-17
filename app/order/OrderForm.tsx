@@ -179,7 +179,9 @@ export const OrderForm = ({
 
   const airline = shortenAirlineName(flight?.metadata?.name);
 
-  const ticketCategory = eventTicket.category;
+  // Customer-facing name: our zone when the ticket has one (multi-supplier
+  // events), the category otherwise.
+  const ticketCategory = eventTicket.zoneLabel || eventTicket.category;
 
   const availableTickets = (event.tickets_and_rates || []).filter(
     (ticket) => ticket.available !== false

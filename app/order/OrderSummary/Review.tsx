@@ -47,6 +47,7 @@ export const Review = ({
   selectedHotel: OrderHotel;
   eventTicket: {
     category: string;
+    zoneLabel?: string;
     description?: string;
   };
   selectedFlight?: Flight;
@@ -83,7 +84,7 @@ export const Review = ({
         id: "event-summary",
         editStep: 1 as const,
         primary: `כרטיסים (${numberOfEventTickets})`,
-        secondary: `קטגוריה: ${eventTicket.category}`,
+        secondary: `קטגוריה: ${eventTicket.zoneLabel || eventTicket.category}`,
         icon: <FaTicketAlt />,
         component: (
           <EventSummary
