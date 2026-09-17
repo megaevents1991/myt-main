@@ -26,6 +26,12 @@ Allow: /
 User-agent: BraveBot
 Allow: /
 
+# Meta's AI-training crawler - was ~11% of all traffic (2026-09-17 DB outage).
+# Also denied in the Vercel Firewall. NOT the ads/catalog crawlers
+# (facebookexternalhit, meta-externalads) - those must stay allowed.
+User-agent: meta-externalagent
+Disallow: /
+
 # Sitemap location
 Sitemap: https://www.mega-events.co.il/sitemap.xml
 

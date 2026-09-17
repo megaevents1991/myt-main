@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useContext, useEffect } from "react";
+import { Suspense, useContext, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Event } from "@/lib/app.types";
 import { DatesProvider } from "@mantine/dates";
 import "dayjs/locale/he";
 import { OrderContext, PersonLink } from "../app.context";
-import type { PartnerSession } from "@/lib/partner-auth/session";
+import type { OrderPartnerSession } from "@/lib/partner-auth/session";
 // Code-split heavy components
 const OrderForm = dynamic(() => import("./OrderForm").then(m => m.OrderForm), {
   // Keep SSR to preserve SSG/ISR HTML for SEO-critical content
@@ -25,16 +25,47 @@ interface OrderPageClientProps {
   initialEvent?: Event;
   eventId?: string;
   personLink?: PersonLink;
-  partnerSession?: PartnerSession | null;
 }
 
 export default function OrderPageClient({
   initialEvent,
   eventId,
   personLink,
-  partnerSession,
 }: OrderPageClientProps) {
   const { event, setEvent, setPersonLink } = useContext(OrderContext);
+  const [partnerSession, setPartnerSession] =
+    useState<OrderPartnerSession | null>(null);
+
+  // The partner session is asked for AFTER hydration (same bridge the header
+  // badge uses) instead of read from the cookie in the server page - a cookie
+  // read there forces every order page dynamic and kills ISR. Null for every
+  // anonymous visitor; partner actions re-verify the cookie server-side.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/partner-session")
+      .then((res) => res.json())
+      .then(
+        (data: {
+          connected?: boolean;
+          role?: OrderPartnerSession["role"];
+          name?: string | null;
+          code?: string;
+        }) => {
+          if (cancelled || !data.connected || !data.role || !data.code) return;
+          setPartnerSession({
+            role: data.role,
+            partner_code: data.code,
+            display_name: data.name ?? null,
+          });
+        },
+      )
+      .catch(() => {
+        // Not connected / network hiccup - the visitor stays a plain customer.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Push the server-resolved artist/team link into context so the header +
   // summary photos can link to the person page.

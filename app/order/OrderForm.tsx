@@ -20,7 +20,7 @@ import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup } from "@/lib/events/price";
-import type { PartnerSession } from "@/lib/partner-auth/session";
+import type { OrderPartnerSession } from "@/lib/partner-auth/session";
 
 const shortenTicketCategory = (category: string): string => {
   // Return text up to the first comma if comma exists
@@ -39,7 +39,7 @@ export const OrderForm = ({
   partnerSession,
 }: {
   event: Event;
-  partnerSession?: PartnerSession | null;
+  partnerSession?: OrderPartnerSession | null;
 }) => {
   const {
     step,

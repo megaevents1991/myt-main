@@ -26,6 +26,27 @@ const cachedNonEmptyEvents = nextCache(
   },
 );
 
+// Backoffice-only columns this app never reads. `light_detail` alone was a third
+// of the catalog and pushed it past unstable_cache's 2MB item limit - the write
+// failed silently, so EVERY render re-pulled 2.1MB from Supabase (~1 query/sec)
+// and choked the DB on 2026-09-17. Dropped before caching; keep the cached
+// catalog well under 2MB.
+const BACKOFFICE_ONLY_COLUMNS = [
+  "light_detail",
+  "light_checked_at",
+  "campaign_input_hash",
+  "campaign_generated_at",
+] as const;
+const CACHE_ITEM_WARN_BYTES = 1_700_000;
+
+function stripBackofficeOnlyColumns(events: Event[]): Event[] {
+  return events.map((event) => {
+    const slim: Event & Record<string, unknown> = { ...event };
+    for (const column of BACKOFFICE_ONLY_COLUMNS) delete slim[column];
+    return slim;
+  });
+}
+
 /** Same contract as before (never throws, empty on failure) - but an empty
  *  result is served for THIS request only, never written to the shared cache. */
 export async function getCachedEvents(): Promise<{ events: Event[] }> {
@@ -97,10 +118,19 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
     // Test events (backoffice QA) stay orderable by direct id but never list.
-    const visible =
+    const visible = stripBackofficeOnlyColumns(
       id !== undefined
         ? events || []
-        : (events || []).filter((e) => !e.is_test);
+        : (events || []).filter((e) => !e.is_test),
+    );
+    if (id === undefined) {
+      const bytes = JSON.stringify(visible).length;
+      if (bytes > CACHE_ITEM_WARN_BYTES) {
+        console.warn(
+          `[EventsData] catalog is ${bytes} bytes - nearing the 2MB cache item limit, over it the cache stops storing`,
+        );
+      }
+    }
     return {
       events: await markLockedPackagesSoldOut(
         await enrichEventsWithFallbackImages(visible),

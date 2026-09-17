@@ -43,7 +43,7 @@ import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter, useSearchParams } from "next/navigation";
 import AgentMode, { AgentSettlementActions } from "@/components/AgentMode";
 import { SavePackageLink } from "@/components/SavePackageLink";
-import type { PartnerSession } from "@/lib/partner-auth/session";
+import type { OrderPartnerSession } from "@/lib/partner-auth/session";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { formatPhoneNumber, getPenText, TIMEOUT } from "./utils";
 import {
@@ -75,7 +75,7 @@ export default function OrderReview({
   /** Real, cookie-verified /agent session - gates "save as a package link",
    * unlike agentCommission (below), which is only the unauthenticated
    * localStorage/utm_source signal the print-price feature reads. */
-  partnerSession?: PartnerSession | null;
+  partnerSession?: OrderPartnerSession | null;
 } = {}) {
   const {
     flight: selectedFlight,

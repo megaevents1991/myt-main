@@ -9,7 +9,6 @@ import EventNotFoundNotice from "@/components/EventNotFoundNotice";
 import { hasAvailableTickets } from "@/lib/utils";
 import { normalizeName } from "@/lib/eventNameMatch";
 import Link from "next/link";
-import { getPartnerSession } from "@/lib/partner-auth";
 import ClientTracker from "@/components/ClientTracker";
 
 export const revalidate = 3600; // 1 hour
@@ -107,26 +106,20 @@ export async function generateMetadata({
   }
 }
 
+// Keep this page free of request-time APIs (cookies, headers, searchParams):
+// any of them turns ISR off and every view - crawlers included - becomes a
+// server render that hits Supabase. The partner session is resolved client-side
+// in OrderPageClient for exactly that reason (2026-09-17 DB outage).
 export default async function OrderPageWithId({
   params,
-  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { eventId } = await params;
-  await searchParams;
 
   if (!eventId) {
     return <EventNotFoundNotice />;
   }
-
-  // Resolved server-side so the "save this as a package" action can be
-  // gated by a real, cookie-verified session instead of the unauthenticated
-  // localStorage/utm_source signal the print-price feature already uses.
-  // Null for every anonymous visitor - the common case, no session lookup
-  // cost beyond the one cookie read.
-  const partnerSession = await getPartnerSession();
 
   // Fetch the event data server-side
   let event: Event | undefined;
@@ -226,7 +219,6 @@ export default async function OrderPageWithId({
         initialEvent={event}
         eventId={eventId}
         personLink={personLink}
-        partnerSession={partnerSession}
       />
     </OrderErrorBoundary>
   );

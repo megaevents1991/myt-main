@@ -35,6 +35,14 @@ export const PARTNER_SESSION_MAX_AGE = MAX_AGE_SECONDS;
 export type PartnerRole = "agent" | "affiliate";
 const PARTNER_ROLES: PartnerRole[] = ["agent", "affiliate"];
 
+/** What the order flow needs from a session - the display fields
+ *  `GET /api/partner-session` returns. A UI gate only: every partner action
+ *  re-verifies the cookie server-side (`requirePartner`). */
+export type OrderPartnerSession = Pick<
+  PartnerSession,
+  "role" | "partner_code" | "display_name"
+>;
+
 export type PartnerSession = {
   /** auth.users uuid */
   sub: string;
