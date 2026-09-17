@@ -20,6 +20,7 @@ import {
   isoDurationToHours,
 } from "@/lib/flights/offlineStops";
 import { resolveLockedFlight } from "@/lib/flights/lockedFlight";
+import { ELAL_CHECKED_BAG_VARIANT_USD } from "@/lib/flightVariants";
 import {
   trackServerSideEvent,
   extractIpFromRequest,
@@ -637,7 +638,9 @@ export async function POST(request: Request) {
         const variantFlight: Flight = {
           ...currentFlight,
           id: String(baseId + acc.length),
-          price: currentFlight.price + 150 * currentFlight.numOfTravelers,
+          price:
+            currentFlight.price +
+            ELAL_CHECKED_BAG_VARIANT_USD * currentFlight.numOfTravelers,
           outbound: {
             ...currentFlight.outbound,
             checkBagsIncluded: true,

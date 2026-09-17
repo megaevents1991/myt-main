@@ -7,6 +7,7 @@ import { isMobile } from "react-device-detect";
 import { ReactNode, useState, memo } from "react";
 import { useClickOutside } from "@mantine/hooks";
 import { formatPrice } from "@/lib/price.utils";
+import { ELAL_CHECKED_BAG_VARIANT_USD } from "@/lib/flightVariants";
 import { airports } from "@nwpr/airport-codes";
 import { cn } from "@/lib/utils";
 //import { InfoIcon } from "../icons/InfoIcon";
@@ -183,6 +184,7 @@ export const FlightTicketCard = memo(
     minPrice,
     isBest,
     isCheapest,
+    virtualOfferType,
   }: FlightTicketCardProps) => {
     const isSelected = selectedFlightId === flightId;
     const priceToShow = formatPrice(price - minPrice);
@@ -198,6 +200,14 @@ export const FlightTicketCard = memo(
               <FlightCard {...outbound} metadata={metadata} />
               <div className="border w-full my-2"></div>
               <FlightCard {...inbound} metadata={metadata} />
+              {/* The El Al bag variant is the SAME flight as the card next to
+                  it, $150 a traveler dearer - say it in words, the luggage
+                  icon alone was missed (lib/flightVariants.ts). */}
+              {virtualOfferType && (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-forest/30 bg-secondary/40 px-2.5 py-0.5 text-xs font-semibold text-forest dark:border-glow/40 dark:bg-transparent dark:text-glow">
+                  כולל מזוודה נרשמת · +${ELAL_CHECKED_BAG_VARIANT_USD} לנוסע
+                </p>
+              )}
             </div>
             <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
             {/* Desktop pricing element */}
