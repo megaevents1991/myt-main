@@ -1984,9 +1984,15 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
 
           {/* Body */}
           <div className="flex flex-1 flex-col p-4 text-right" dir="rtl">
+            {/* min-h-[2lh]: ALWAYS reserve two title lines. A row stretches to
+                its tallest card, so one two-line title ("ליגת האלופות: …")
+                made that whole row 28px taller than the row next to it
+                (450 vs 422 on prod, 2026-09-17). With the slot fixed, every
+                card is the same height in every row and grid - the "לכל
+                האירועים" strip below stays the only extra. */}
             <h3
               className={cn(
-                "line-clamp-2 font-bold leading-tight",
+                "line-clamp-2 min-h-[2lh] font-bold leading-tight",
                 size === "row" ? "text-lg" : "text-xl"
               )}
               title={event.name}
