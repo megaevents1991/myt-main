@@ -771,7 +771,11 @@ const UniversalCarousel = ({
       )}
       <div
         ref={scrollRef}
-        className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-6"
+        // Last utility: a row where NO card has a "לכל האירועים" strip drops
+        // the height every strip-less card reserves for one (data-strip-spacer
+        // in EventCard) - otherwise the row carries 50px of dead space under
+        // it ("הרווח גדול מדי"). Browsers without :has() keep the slot.
+        className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-6 [&:not(:has([data-strip-click]))_[data-strip-spacer]]:hidden"
         role={ariaLabel ? "list" : undefined}
         aria-label={ariaLabel}
       >
@@ -2064,9 +2068,14 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
       </div>
     )}
     {/* Row cards without a strip reserve its height, so every button in the
-        row sits on one baseline whether or not the card has a strip. */}
+        row sits on one baseline whether or not the card has a strip. The row
+        container hides these when none of its cards has a strip. */}
     {size === "row" && !hasMultipleDates && (
-      <div aria-hidden className="invisible w-full border border-transparent py-3.5 px-3">
+      <div
+        aria-hidden
+        data-strip-spacer
+        className="invisible w-full border border-transparent py-3.5 px-3"
+      >
         <span className="block text-sm font-bold">&nbsp;</span>
       </div>
     )}
