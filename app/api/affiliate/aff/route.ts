@@ -15,6 +15,29 @@ const VALID_STAGES = new Set([
 ]);
 const MAX_DATA_BYTES = 4096;
 
+// utm_source doubles as the partner code, so plain marketing sources
+// ("facebook", "google", "ig"...) land here too - ~1,600 inserts a day that
+// could only ever fail the partners FK (measured 2026-09-17). A code that
+// failed the FK is remembered per instance and skipped without touching the DB;
+// the TTL is short so a partner created in the backoffice starts tracking
+// within minutes.
+const NON_PARTNER_TTL_MS = 10 * 60_000;
+const NON_PARTNER_MAX = 500;
+const nonPartnerUntil = new Map<string, number>();
+
+function isKnownNonPartner(code: string): boolean {
+  const until = nonPartnerUntil.get(code);
+  if (until === undefined) return false;
+  if (until > Date.now()) return true;
+  nonPartnerUntil.delete(code);
+  return false;
+}
+
+function rememberNonPartner(code: string): void {
+  if (nonPartnerUntil.size >= NON_PARTNER_MAX) nonPartnerUntil.clear();
+  nonPartnerUntil.set(code, Date.now() + NON_PARTNER_TTL_MS);
+}
+
 export async function POST(request: Request) {
   const { affId, userId, stage, data } = await request.json();
 
@@ -33,6 +56,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   }
 
+  if (isKnownNonPartner(affId)) {
+    return NextResponse.json({ success: false });
+  }
+
   try {
     const { error } = await supabase
       .from('affiliates_tracking')
@@ -49,6 +76,7 @@ export async function POST(request: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error?.code === "23503") {
+      rememberNonPartner(affId);
       return NextResponse.json({ success: false });
     }
     return NextResponse.json(

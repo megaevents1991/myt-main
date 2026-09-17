@@ -2,7 +2,7 @@ import { getFootballTeamBySlug } from "@/lib/football";
 import { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
-import { personCategoryHref } from "@/lib/cmsTwin";
+import { cachedLegacyTwinHref, personCategoryHref } from "@/lib/cmsTwin";
 
 // LEGACY-ROUTE: force-dynamic so the per-person 308 below is a real status
 // code - prerendering would bake it into a 200 meta-refresh page.
@@ -14,6 +14,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+
+  // About to 308 to the /c/ twin - no metadata to build, no DB read to spend.
+  if (await cachedLegacyTwinHref("teams", slug).catch(() => null)) return {};
 
   try {
     const team = await getFootballTeamBySlug(slug);
@@ -51,6 +54,10 @@ export default async function FootballPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  // Cached fast path: the common case is a straight 308, with no DB work.
+  const cachedTwin = await cachedLegacyTwinHref("teams", slug).catch(() => null);
+  if (cachedTwin) permanentRedirect(cachedTwin);
 
   try {
     const team = await getFootballTeamBySlug(slug);
