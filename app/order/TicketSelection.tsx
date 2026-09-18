@@ -61,6 +61,7 @@ const toOrderTicket = (
 /** Customer-facing seating promise of a priced ticket (multi-supplier events). */
 const seatingNote = (ticket: PricedTicket): string | undefined => {
   if (ticket.seating === "together") return "ישיבה יחד מובטחת";
+  if (ticket.seating === "pairs") return "ישיבה בזוגות/שלשות מובטחת";
   if (ticket.seating === "groups" && ticket.seatingGroupMax) {
     return "ישיבה יחד בקבוצות של עד " + ticket.seatingGroupMax;
   }
@@ -629,10 +630,22 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     [availableTickets, event?.type],
   );
 
-  /** Cheapest offer in every zone that more than one supplier sells. */
+  /**
+   * Cheapest offer in every zone that more than one supplier sells - but only
+   * while every supplier on the page is priced live. A supplier that is down
+   * sells on a buffered DB estimate, and an estimate must not crown a winner.
+   */
+  const isLiveOrAbsent = (status: SupplierStatus) =>
+    status === "none" || status === "live";
+  const allSuppliersLive =
+    isLiveOrAbsent(supplierLive.tixstock.status) &&
+    isLiveOrAbsent(supplierLive.livetickets.status);
   const bestPriceIds = useMemo(
-    () => bestPriceTicketIds(displayedTickets, event?.type),
-    [displayedTickets, event?.type],
+    () =>
+      allSuppliersLive
+        ? bestPriceTicketIds(displayedTickets, event?.type)
+        : new Set<string>(),
+    [allSuppliersLive, displayedTickets, event?.type],
   );
 
   /* ── Debug panel ──────────────────────────────────────────────── */

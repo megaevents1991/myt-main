@@ -32,6 +32,7 @@ interface UpstreamCategory {
   title?: string;
   cost?: number;
   maxTicketAmount?: number;
+  seatingMethodId?: number;
   seatingGroupMAXSize?: number | null;
   apiImmediatePurchase?: boolean;
 }
@@ -64,6 +65,35 @@ export type LiveTicketsOffer = {
 export const isLiveTicketsConfigured = (): boolean =>
   Boolean(LIVE_API_URL && LIVE_API_KEY);
 
+/** `seatingMethodId` 2 = single seats: no promise the party sits together. */
+const SINGLES_SEATING_METHOD = 2;
+
+type SellableUpstreamCategory = UpstreamCategory & {
+  cost: number;
+  maxTicketAmount: number;
+};
+
+/**
+ * The categories we are willing to sell - the SAME rules the backoffice
+ * applies when attaching one (lib/services/livetickets-offers.ts there):
+ * confirmed instantly by LiveTickets (hard rule), not single seats, at least
+ * 2 per order, and a cost. Anything else is treated as not on sale.
+ */
+const isSellable = (c: UpstreamCategory): c is SellableUpstreamCategory =>
+  c.apiImmediatePurchase === true &&
+  c.seatingMethodId !== SINGLES_SEATING_METHOD &&
+  typeof c.cost === "number" &&
+  Number.isFinite(c.cost) &&
+  (c.maxTicketAmount ?? 0) >= 2;
+
+const toRawCategory = (c: SellableUpstreamCategory): RawCategory => ({
+  id: String(c.id),
+  title: c.title ?? "",
+  cost: c.cost,
+  maxPerOrder: c.maxTicketAmount,
+  seatingGroupMax: c.seatingGroupMAXSize ?? null,
+});
+
 async function fetchStock(eid: string): Promise<RawStock> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
@@ -87,17 +117,9 @@ async function fetchStock(eid: string): Promise<RawStock> {
     const currency = CURRENCY_BY_CODE[event.currency ?? 0];
     if (!currency) throw new Error(`Unknown currency code ${event.currency}`);
 
-    const categories = (event.ticketCategory ?? [])
-      // Hard rule: only categories LiveTickets confirms instantly are sold.
-      .filter((c) => c.apiImmediatePurchase === true)
-      .filter((c) => Number.isFinite(c.cost) && (c.maxTicketAmount ?? 0) >= 1)
-      .map((c) => ({
-        id: String(c.id),
-        title: c.title ?? "",
-        cost: c.cost as number,
-        maxPerOrder: c.maxTicketAmount as number,
-        seatingGroupMax: c.seatingGroupMAXSize ?? null,
-      }));
+    const categories = (event.ticketCategory ?? []).flatMap((c) =>
+      isSellable(c) ? [toRawCategory(c)] : [],
+    );
 
     return { currency, categories };
   } finally {

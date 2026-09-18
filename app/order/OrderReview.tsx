@@ -171,6 +171,11 @@ export default function OrderReview({
   const { hotelsData } = useContext(HotelFetchContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
+  // "supplier": the server re-checked the ticket against its supplier and it
+  // is gone or repriced - retrying the same order cannot succeed.
+  const [submitFailReason, setSubmitFailReason] = useState<
+    "generic" | "supplier"
+  >("generic");
   const {
     affId,
     affDiscount,
@@ -1143,6 +1148,12 @@ export default function OrderReview({
         if (body?.error === "SETTLEMENT_NOT_ALLOWED") {
           throw new Error("SETTLEMENT_NOT_ALLOWED");
         }
+        // Price floor / live supplier re-check failed (multi-supplier events:
+        // the LiveTickets category sold out or got dearer meanwhile). The
+        // ticket must be picked again - a plain retry would fail identically.
+        if (body?.error === "PRICE_VALIDATION_FAILED") {
+          throw new Error("PRICE_VALIDATION_FAILED");
+        }
       }
       // Coupon died between "apply" and "pay" (expired/exhausted) - surface
       // it so the customer sees the corrected price instead of a silent fail.
@@ -1463,7 +1474,11 @@ export default function OrderReview({
         setSettlementError(
           "לא ניתן להשתמש באפשרות זו - יש להתחבר מחדש לאזור הסוכן ולנסות שוב.",
         );
+      } else if (error instanceof Error && error.message === "PRICE_VALIDATION_FAILED") {
+        setSubmitFailReason("supplier");
+        setSubmitFailed(true);
       } else {
+        setSubmitFailReason("generic");
         setSubmitFailed(true);
       }
       console.error("Order submission failed:", error);
@@ -1614,8 +1629,20 @@ export default function OrderReview({
       />
       {/* Order submission failed - nothing was charged; offer retry + WhatsApp */}
       <Modal
-        title="אופס, ההזמנה לא נשלחה"
+        title={
+          submitFailReason === "supplier"
+            ? "הכרטיס שבחרתם כבר לא זמין במחיר הזה"
+            : "אופס, ההזמנה לא נשלחה"
+        }
         description={
+          submitFailReason === "supplier" ? (
+            <>
+              בזמן שמילאתם את הפרטים המחיר או הזמינות של הכרטיס אצל הספק
+              השתנו. לא חויבתם ושום דבר לא אבד.
+              <br />
+              חזרו לבחירת הכרטיסים ובחרו שוב - המחירים שם מעודכנים.
+            </>
+          ) : (
           <>
             משהו השתבש אצלנו בדרך - לא חויבתם ושום דבר לא אבד.
             <br />
@@ -1632,8 +1659,22 @@ export default function OrderReview({
             </a>{" "}
             ונסגור את ההזמנה יחד.
           </>
+          )
         }
         action={
+          submitFailReason === "supplier" ? (
+            <Button
+              variant="secondary"
+              className="font-bold w-full"
+              onClick={() => {
+                setSubmitFailed(false);
+                setStep(1);
+              }}
+              aria-label="חזרה לבחירת הכרטיסים"
+            >
+              חזרה לבחירת הכרטיסים
+            </Button>
+          ) : (
           <Button
             variant="secondary"
             className="font-bold w-full"
@@ -1642,6 +1683,7 @@ export default function OrderReview({
           >
             נסו שוב
           </Button>
+          )
         }
         opened={submitFailed}
         iconType="Info"

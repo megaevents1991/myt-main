@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Venue maps we own: SVG copies in our Supabase storage
+// (`public_resources/venue-maps/<id>/map.svg`), stamped with our zones by the
+// backoffice - no dependency on a supplier's file. Public objects only.
+const OUR_STORAGE_HOST = "fandqafngybfdyslofmr.supabase.co";
+const OUR_STORAGE_PUBLIC_PATH = "/storage/v1/object/public/";
+
 const ALLOWED_HOSTNAMES = new Set([
   "tixstock.s3.eu-west-2.amazonaws.com",
   "cdn.xs2event.com",
-  // Venue maps we own: SVG copies in our Supabase `map_images` bucket, stamped
-  // with our zones by the backoffice - no dependency on a supplier's file.
-  "fandqafngybfdyslofmr.supabase.co",
+  OUR_STORAGE_HOST,
 ]);
 
 export async function GET(req: NextRequest) {
@@ -29,6 +33,13 @@ export async function GET(req: NextRequest) {
   }
 
   if (!ALLOWED_HOSTNAMES.has(parsed.hostname)) {
+    return NextResponse.json({ error: "URL not allowed" }, { status: 403 });
+  }
+  // Our own host: public storage objects only, never the REST/auth API.
+  if (
+    parsed.hostname === OUR_STORAGE_HOST &&
+    !parsed.pathname.startsWith(OUR_STORAGE_PUBLIC_PATH)
+  ) {
     return NextResponse.json({ error: "URL not allowed" }, { status: 403 });
   }
 

@@ -21,8 +21,14 @@ import {
  * Pure - no React, no fetch. The order page feeds it the live answers.
  */
 
-/** How a party of the requested size is seated. */
-export type Seating = "together" | "groups" | "none";
+/**
+ * How a party of the requested size is seated:
+ *  - "together": the whole party sits together (LiveTickets, within one group)
+ *  - "pairs":    seated in pairs/triples - TixStock's promise, never "all together"
+ *  - "groups":   split into seating groups of `seatingGroupMax`
+ *  - "none":     no seating promise
+ */
+export type Seating = "together" | "pairs" | "groups" | "none";
 
 export type PricedTicket = EventTicket & {
   seating?: Seating;
@@ -82,7 +88,8 @@ function priceTixstockTicket(
 
   const price = tixstockPriceForCategory(live.listings, ticket.category, qty);
   if (price === null) return null; // category can't fulfil this quantity
-  return { ...ticket, price, seating: "together" };
+  // TixStock guarantees pairs/triples, not the whole party together.
+  return { ...ticket, price, seating: "pairs" };
 }
 
 function priceLiveTicketsTicket(
