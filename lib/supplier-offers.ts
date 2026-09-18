@@ -1,7 +1,7 @@
 import type { EventTicket, EventType } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
-import { ticketSupplier } from "@/lib/suppliers";
+import { ticketSupplier, type TicketSupplier } from "@/lib/suppliers";
 import { normalizeTxCategory } from "@/lib/tixstock-category";
 import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 import {
@@ -140,6 +140,41 @@ export function priceTicketsForQuantity(
     if (result) priced.push(result);
     return priced;
   }, []);
+}
+
+/**
+ * One supplier per zone (Dor, 2026-09-18: "אם יש קטגוריה זהה לשני הספקים, נציג
+ * את הספק הזול יותר"). The same zone sold by two suppliers is the same seat
+ * bought twice over, so the customer sees only the supplier whose cheapest
+ * offer there is lower - at the prices of THIS quantity, which is why it runs
+ * on the priced list: a supplier that cannot seat the party is already gone
+ * and the other one simply stays. A tie keeps the first in the list.
+ * Tickets with no zone, and zones a single supplier sells, pass untouched -
+ * "exactly the same category" is a shared `zoneId`, nothing looser.
+ * The caller applies it only while every supplier is priced live: a buffered
+ * estimate must not hide a real offer.
+ */
+export function cheapestSupplierPerZone<T extends EventTicket>(
+  tickets: T[],
+  eventType: EventType | undefined,
+): T[] {
+  const winnerByZone = new Map<string, { supplier: TicketSupplier; price: number }>();
+  for (const ticket of tickets) {
+    if (!ticket.zoneId) continue;
+    const best = winnerByZone.get(ticket.zoneId);
+    if (!best || ticket.price < best.price) {
+      winnerByZone.set(ticket.zoneId, {
+        supplier: ticketSupplier(ticket, eventType),
+        price: ticket.price,
+      });
+    }
+  }
+  return tickets.filter(
+    (ticket) =>
+      !ticket.zoneId ||
+      winnerByZone.get(ticket.zoneId)?.supplier ===
+        ticketSupplier(ticket, eventType),
+  );
 }
 
 /**

@@ -16,6 +16,7 @@ import { supplierEventId, ticketSupplier } from "@/lib/suppliers";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import {
   bestPriceTicketIds,
+  cheapestSupplierPerZone,
   priceTicketsForQuantity,
   type PricedTicket,
   type SupplierLiveData,
@@ -610,17 +611,36 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     [],
   );
 
+  /**
+   * Every supplier on the page is priced live (or absent). A supplier that is
+   * down sells on a buffered DB estimate, and an estimate must neither crown a
+   * winner nor hide a real offer.
+   */
+  const isLiveOrAbsent = (status: SupplierStatus) =>
+    status === "none" || status === "live";
+  const allSuppliersLive =
+    isLiveOrAbsent(supplierLive.tixstock.status) &&
+    isLiveOrAbsent(supplierLive.livetickets.status);
+
   /** Map the filtered TixStock listings back to EventTickets */
   const displayedTickets: PricedTicket[] = useMemo(() => {
-    if (!isTxEvent) return effectiveTickets;
-
     // Remove tickets that don't match any section/category on the map
-    if (matchedTicketIds) {
-      return effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds));
-    }
-
-    return effectiveTickets;
-  }, [isTxEvent, effectiveTickets, matchedTicketIds, isShownWithMap]);
+    const onMap =
+      isTxEvent && matchedTicketIds
+        ? effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds))
+        : effectiveTickets;
+    // The same zone from two suppliers: only the cheaper supplier is shown.
+    return allSuppliersLive
+      ? cheapestSupplierPerZone(onMap, event?.type)
+      : onMap;
+  }, [
+    isTxEvent,
+    effectiveTickets,
+    matchedTicketIds,
+    isShownWithMap,
+    allSuppliersLive,
+    event?.type,
+  ]);
 
   /** Several suppliers on one page - seating promises differ per ticket. */
   const isMultiSupplier = useMemo(
@@ -631,15 +651,10 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   );
 
   /**
-   * Cheapest offer in every zone that more than one supplier sells - but only
-   * while every supplier on the page is priced live. A supplier that is down
-   * sells on a buffered DB estimate, and an estimate must not crown a winner.
+   * Cheapest offer in every zone that more than one supplier sells. Since the
+   * list shows one supplier per zone while everyone is live (above), this only
+   * ever badges something if that rule is relaxed again - kept for that day.
    */
-  const isLiveOrAbsent = (status: SupplierStatus) =>
-    status === "none" || status === "live";
-  const allSuppliersLive =
-    isLiveOrAbsent(supplierLive.tixstock.status) &&
-    isLiveOrAbsent(supplierLive.livetickets.status);
   const bestPriceIds = useMemo(
     () =>
       allSuppliersLive

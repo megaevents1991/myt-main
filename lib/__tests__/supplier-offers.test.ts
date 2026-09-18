@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   bestPriceTicketIds,
+  cheapestSupplierPerZone,
   priceTicketsForQuantity,
   type SupplierLiveData,
 } from "../supplier-offers";
@@ -123,6 +124,23 @@ assert.deepEqual([...bestPriceTicketIds(pricedBoth, "tx_event")], ["tx1"]);
 assert.equal(bestPriceTicketIds([tx, ticket({ id: "tx2", zoneId: "long-3" })], "tx_event").size, 0);
 assert.equal(bestPriceTicketIds([tx, { ...lt, zoneId: "short-1" }], "tx_event").size, 0);
 assert.equal(bestPriceTicketIds([{ ...tx, zoneId: undefined }, lt], "tx_event").size, 0);
+
+// one supplier per zone: the same zone from two suppliers shows only the cheaper supplier
+const sameZone = [ticket({ id: "a", zoneId: "z", price: 300 }), { ...lt, id: "b", zoneId: "z", price: 250 }];
+assert.deepEqual(cheapestSupplierPerZone(sameZone, "tx_event").map((t) => t.id), ["b"]);
+// ...and BOTH of the winning supplier's tickets there stay
+assert.deepEqual(
+  cheapestSupplierPerZone([...sameZone, { ...lt, id: "c", zoneId: "z", price: 400 }], "tx_event").map((t) => t.id),
+  ["b", "c"],
+);
+// different zones, a zone one supplier sells, and tickets with no zone pass untouched
+const apart = [ticket({ id: "a", zoneId: "z1", price: 300 }), { ...lt, id: "b", zoneId: "z2", price: 250 }, ticket({ id: "n", zoneId: undefined })];
+assert.deepEqual(cheapestSupplierPerZone(apart, "tx_event").map((t) => t.id), ["a", "b", "n"]);
+// a tie keeps the first in the list
+assert.deepEqual(
+  cheapestSupplierPerZone([ticket({ id: "a", zoneId: "z", price: 250 }), { ...lt, id: "b", zoneId: "z", price: 250 }], "tx_event").map((t) => t.id),
+  ["a"],
+);
 
 // LiveTickets quantity rules
 const rules = { maxPerOrder: 6, seatingGroupMax: 4 };
