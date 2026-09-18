@@ -80,6 +80,8 @@ export async function generateMetadata({
       alternates: {
         canonical: `https://www.mega-events.co.il/order/${eventId}`,
       },
+      // QA/pilot events are reachable by direct link only - keep them out of search engines too.
+      ...(event.is_test ? { robots: { index: false, follow: false } } : {}),
     };
   } catch (error) {
     console.error("Error generating metadata for order page:", error);
