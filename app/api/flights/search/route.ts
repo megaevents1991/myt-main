@@ -283,7 +283,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { events }: { events: Event[] } = await getEvents();
+  // By id, never the whole catalog (QA 2026-09-18): the id-less read drops `is_test` events,
+  // so a QA event opened by direct link - which the order page itself loads by id - answered
+  // 404 here and its flight step showed the error panel. One row is also all this route needs.
+  const { events }: { events: Event[] } = await getEvents(eventId);
 
   const event = events.find((e) => e.id === eventId);
 
