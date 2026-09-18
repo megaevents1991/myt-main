@@ -13,6 +13,7 @@ import {
   teamFixtureRole,
 } from "@/lib/eventNameMatch";
 import { galleryArtFor } from "@/lib/events/galleryArt";
+import { standardizeEventCrest } from "@/lib/events/crestArt";
 
 /**
  * Event image → person image fallback
@@ -102,6 +103,9 @@ export async function enrichEventsWithFallbackImages(
     // (a matched "logo VS logo" beats a generic stock photo, feed parity),
     // so it must not sit behind the photo-less early-return below.
     await enrichEventsWithMatchArt(events);
+    // An event carrying its OWN crest art skips the photo-less fallback below,
+    // so the crest standard is enforced here, before the early return.
+    for (const event of events) standardizeEventCrest(event);
     if (!events.some((e) => !hasOwnPhoto(e))) return events;
     const index = await getPersonImageIndex();
     if (!index.length) return events;
