@@ -9,6 +9,8 @@
  * normalize text rendering so the authored label transforms stay intact.
 /* ------------------------------------------------------------------ */
 
+import { normalizeTxCategory } from "./tixstock-category";
+
 /** Re-export the canonical full listing type for callers that need it. */
 export type { TixStockListing } from "./tixstock.types";
 
@@ -73,6 +75,30 @@ export const slugify = (name: string): string =>
 export const normalizeSection = (section: string): string =>
   (section || "").trim().toLowerCase();
 
+/**
+ * Is this ticket category the one a map id (`data-category`, or a whole
+ * `data-section` id) names? THE category comparison of this file.
+ *
+ * Exact slug first - what every map matched on before, so nothing that worked
+ * changes. Then the rename-proof form (normalizeTxCategory: no accents, no
+ * parenthesised codes, no punctuation): our tickets keep the name they were
+ * created with, while the supplier's SVG carries the name as it is TODAY.
+ * TixStock restyled the Bernabéu ids to "categoría-2-fondo" while our tickets
+ * said "CATEGORÍA 2 (CAT2) - FONDO" and every Real Madrid home map went fully
+ * grey (2026-09-18) - the price side had been fixed the day before, the map
+ * was the call site that was missed. A name that normalizes to nothing matches
+ * nothing. Maps we own are matched by zone and never reach this.
+ */
+export const categoryMatchesMapId = (
+  ticketCategory: string | null | undefined,
+  mapId: string | null | undefined,
+): boolean => {
+  if (!ticketCategory || !mapId) return false;
+  if (slugify(ticketCategory) === mapId.toLowerCase()) return true;
+  const normalized = normalizeTxCategory(ticketCategory);
+  return !!normalized && normalized === normalizeTxCategory(mapId);
+};
+
 /* ------------------------------------------------------------------ */
 /*  Ticket classification helpers                                      */
 /* ------------------------------------------------------------------ */
@@ -125,8 +151,7 @@ export const isTicketMatchingSection = (
   // section belongs to the right category group.
   const ticketCat = ticket.seat_details.category?.trim().toLowerCase();
   if (ticketCat && ticketCat !== norm && mapCategoryId) {
-    const catSlug = slugify(ticketCat);
-    if (catSlug !== mapCategoryId.toLowerCase()) return false;
+    if (!categoryMatchesMapId(ticketCat, mapCategoryId)) return false;
   }
 
   return true;
@@ -141,10 +166,7 @@ export const isTicketMatchingCategory = (
   mapCategoryId: string,
 ): boolean => {
   if (!isCategoryOnlyTicket(ticket)) return false;
-  const ticketCategory = slugify(ticket.seat_details.category || "");
-  return (
-    !!ticketCategory && ticketCategory === (mapCategoryId || "").toLowerCase()
-  );
+  return categoryMatchesMapId(ticket.seat_details.category, mapCategoryId);
 };
 
 /**
@@ -161,12 +183,11 @@ export const categoryOnlyMatchesEl = (
   mapCategoryId: string | null,
 ): boolean => {
   if (!isCategoryOnlyTicket(ticket)) return false;
-  const ticketCatSlug = slugify(ticket.seat_details.category || "");
-  if (!ticketCatSlug) return false;
-  if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug)
-    return true;
-  const sectionSlug = mapSectionId.toLowerCase();
-  return sectionSlug === ticketCatSlug;
+  const category = ticket.seat_details.category;
+  return (
+    categoryMatchesMapId(category, mapCategoryId) ||
+    categoryMatchesMapId(category, mapSectionId)
+  );
 };
 
 /**
@@ -178,14 +199,11 @@ export const ticketCategoryMatchesEl = (
   mapSectionId: string,
   mapCategoryId: string | null,
 ): boolean => {
-  const ticketCatSlug = slugify(ticket.seat_details.category || "");
-  if (!ticketCatSlug) return false;
-  if (mapCategoryId && mapCategoryId.toLowerCase() === ticketCatSlug) {
-    return true;
-  }
-
-  const sectionSlug = mapSectionId.toLowerCase();
-  return sectionSlug === ticketCatSlug;
+  const category = ticket.seat_details.category;
+  return (
+    categoryMatchesMapId(category, mapCategoryId) ||
+    categoryMatchesMapId(category, mapSectionId)
+  );
 };
 
 /**
