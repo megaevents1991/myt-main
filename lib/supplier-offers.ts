@@ -7,6 +7,7 @@ import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 import {
   categoryCanSatisfyQuantity,
   seatingForQuantity,
+  seatingSplit,
 } from "@/lib/livetickets-quantity";
 
 /**
@@ -34,6 +35,8 @@ export type PricedTicket = EventTicket & {
   seating?: Seating;
   /** Size of one seating group, when `seating` is "groups". */
   seatingGroupMax?: number;
+  /** LiveTickets: the groups the party is promised, e.g. [2, 3] for five (`seatingSplit`). */
+  seatingSplit?: number[];
 };
 
 /**
@@ -107,10 +110,12 @@ function priceLiveTicketsTicket(
   if (!categoryCanSatisfyQuantity(offer, qty)) return null;
 
   const seating = seatingForQuantity(offer, qty);
+  const split = seatingSplit(offer, qty) ?? undefined;
   return {
     ...ticket,
     price: offer.priceUsd,
     seating,
+    seatingSplit: split,
     seatingGroupMax:
       seating === "groups" ? (offer.seatingGroupMax ?? undefined) : undefined,
   };

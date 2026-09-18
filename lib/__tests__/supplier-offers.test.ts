@@ -9,6 +9,7 @@ import { ticketSupplier } from "../suppliers";
 import {
   categoryCanSatisfyQuantity,
   seatingForQuantity,
+  seatingSplit,
 } from "../livetickets-quantity";
 import type { EventTicket } from "../app.types";
 import type { TixStockListing } from "../tixstock.types";
@@ -147,8 +148,20 @@ const rules = { maxPerOrder: 6, seatingGroupMax: 4 };
 assert.equal(categoryCanSatisfyQuantity(rules, 6), true);
 assert.equal(categoryCanSatisfyQuantity(rules, 7), false);
 assert.equal(categoryCanSatisfyQuantity(rules, 0), false);
-assert.equal(seatingForQuantity(rules, 4), "together");
+// the promise is pairs, plus ONE triple for an odd party - never "4 together", never a lone seat
+assert.equal(seatingForQuantity(rules, 2), "together");
+assert.equal(seatingForQuantity(rules, 3), "together");
+assert.equal(seatingForQuantity(rules, 4), "groups");
 assert.equal(seatingForQuantity(rules, 5), "groups");
+assert.deepEqual(seatingSplit(rules, 2), [2]);
+assert.deepEqual(seatingSplit(rules, 3), [3]);
+assert.deepEqual(seatingSplit(rules, 4), [2, 2]);
+assert.deepEqual(seatingSplit(rules, 5), [2, 3]);
+assert.deepEqual(seatingSplit(rules, 6), [2, 2, 2]);
+assert.equal(seatingSplit(rules, 1), null);
+// a category that seats pairs only cannot promise a triple
+assert.equal(seatingSplit({ maxPerOrder: 6, seatingGroupMax: 2 }, 3), null);
+assert.deepEqual(seatingSplit({ maxPerOrder: 6, seatingGroupMax: 2 }, 4), [2, 2]);
 assert.equal(seatingForQuantity({ maxPerOrder: 1, seatingGroupMax: null }, 1), "none");
 
 console.log("supplier-offers: all assertions passed");

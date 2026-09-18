@@ -63,6 +63,17 @@ const toOrderTicket = (
 const seatingNote = (ticket: PricedTicket): string | undefined => {
   if (ticket.seating === "together") return "ישיבה יחד מובטחת";
   if (ticket.seating === "pairs") return "ישיבה בזוגות/שלשות מובטחת";
+  // Say HOW the party sits, not just the group cap (QA 2026-09-18: five people
+  // under "groups of up to 4" were left to guess 4+1). The promise is pairs,
+  // plus one triple when the party is odd - never a lone seat.
+  if (ticket.seating === "groups" && ticket.seatingSplit?.length) {
+    const pairs = ticket.seatingSplit.filter((n) => n === 2).length;
+    const triple = ticket.seatingSplit.includes(3);
+    const pairsText = pairs === 1 ? "זוג" : pairs + " זוגות";
+    return triple
+      ? "ישיבה מובטחת: " + pairsText + " + שלשה"
+      : "ישיבה בזוגות מובטחת (" + pairsText + ")";
+  }
   if (ticket.seating === "groups" && ticket.seatingGroupMax) {
     return "ישיבה יחד בקבוצות של עד " + ticket.seatingGroupMax;
   }
