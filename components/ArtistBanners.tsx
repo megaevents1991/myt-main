@@ -1,18 +1,26 @@
 import Link from "next/link";
 import Image from "next/image";
 
-type Banner = { image_url?: string; link_url?: string; title?: string };
+type Banner = { image_url?: string | null; link_url?: string | null; title?: string | null };
 
 /**
  * #20 - promo banners on an artist / team page. Backoffice-managed (Supabase
- * `banners` jsonb). Renders nothing when empty.
+ * `banners` jsonb). Renders nothing when empty. Also the homepage's banner
+ * block (backoffice Homepage board) - it passes `className` because it already
+ * sits inside the page container.
  */
-export const ArtistBanners = ({ banners }: { banners?: Banner[] }) => {
+export const ArtistBanners = ({
+  banners,
+  className = "container mx-auto px-4 py-6",
+}: {
+  banners?: Banner[];
+  className?: string;
+}) => {
   const items = (banners ?? []).filter((b) => b.image_url);
   if (items.length === 0) return null;
 
   return (
-    <section className="container mx-auto px-4 py-6" dir="rtl" aria-label="באנרים">
+    <section className={className} dir="rtl" aria-label="באנרים">
       <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible">
         {items.map((b, i) => {
           const inner = (

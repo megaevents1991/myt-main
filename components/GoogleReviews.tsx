@@ -142,14 +142,22 @@ function ReviewCard({ review, onOpen }: { review: GoogleReview; onOpen: () => vo
   );
 }
 
-export function GoogleReviews({ data }: { data: GoogleReviewsData | null | undefined }) {
+export function GoogleReviews({
+  data,
+  title,
+}: {
+  data: GoogleReviewsData | null | undefined;
+  /** Staff title from the backoffice Homepage board; empty = the default. */
+  title?: string | null;
+}) {
   const [open, setOpen] = useState<GoogleReview | null>(null);
   if (!data || data.reviews.length === 0) return null;
 
   const rating = data.rating ?? 5;
+  const heading = title || "לקוחות משתפים";
   const header = (
     <div className="mx-auto flex max-w-[1280px] flex-col items-center gap-4 px-4">
-      <h2 className="text-center text-2xl font-bold text-foreground">לקוחות משתפים</h2>
+      <h2 className="text-center text-2xl font-bold text-foreground">{heading}</h2>
       <a
         href={GOOGLE_REVIEWS_URL}
         target="_blank"
@@ -173,7 +181,7 @@ export function GoogleReviews({ data }: { data: GoogleReviewsData | null | undef
   );
 
   return (
-    <section aria-label="לקוחות משתפים" className="mx-auto w-full max-w-[1280px] py-10">
+    <section aria-label={heading} className="mx-auto w-full max-w-[1280px] py-10">
       {header}
       <div className="relative mt-8 px-4" dir="rtl">
         {/* Mantine's Carousel takes its direction from DirectionProvider, not

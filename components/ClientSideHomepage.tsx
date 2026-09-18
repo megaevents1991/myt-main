@@ -23,6 +23,7 @@ import { eventMatchesName, normalizeName, teamFixtureRole } from "@/lib/eventNam
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { GoogleReviews } from "@/components/GoogleReviews";
+import { ArtistBanners } from "@/components/ArtistBanners";
 import type { GoogleReviewsData } from "@/lib/googleReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
@@ -34,7 +35,11 @@ import { isTightCrest } from "@/lib/eventArt";
 import { PackageIcons } from "@/components/ui/PackageIcons";
 // Type-only: lib/homepageLayout owns the server-side reader; only its shapes
 // may cross into this client bundle.
-import type { HomepageClientLayout, HomepageSectionKey } from "@/lib/homepageLayout";
+import type {
+  HomepageClientLayout,
+  HomepageSection,
+  HomepageSectionKey,
+} from "@/lib/homepageLayout";
 
 // Section order used until the backoffice Homepage board has saved one (and
 // the hero, which is always first and is rendered outside this list).
@@ -1169,11 +1174,31 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
 
   // Order + visibility of everything under the hero, from the backoffice
   // Homepage board (hero is rendered above, always first).
-  const visibleSections: HomepageSectionKey[] = (
+  const visibleSections: HomepageSection[] = (
     layout?.sections?.length
-      ? layout.sections.filter((s) => s.visible).map((s) => s.key)
-      : DEFAULT_SECTION_ORDER
-  ).filter((key) => key !== "hero");
+      ? layout.sections.filter((s) => s.visible)
+      : DEFAULT_SECTION_ORDER.map(
+          (key): HomepageSection => ({ key, type: "builtin", title: null, visible: true })
+        )
+  ).filter((s) => s.key !== "hero");
+
+  // An event slider staff added on the board: its pinned events in board
+  // order, then the events of the category it names - soonest first, one card
+  // per artist/team page like the rows above, one row at most.
+  const blockSliderEvents = (key: string): Event[] => {
+    const ids = layout?.blockEvents?.[key];
+    if (!ids) return [];
+    const pinned = pickPinned(ids.pinned);
+    const room = ROW_MAX - pinned.length;
+    if (room <= 0) return pinned.slice(0, ROW_MAX);
+    const pinnedIds = new Set(pinned.map((e) => e.id));
+    const auto = filterEventsFromArtistsWithPages(
+      pickPinned(ids.auto).filter((e) => !pinnedIds.has(e.id) && e.tags !== "VIPevent")
+    )
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, room);
+    return [...pinned, ...auto];
+  };
 
   // Get music events (only music types, excluding VIPevent and events already shown in the rows above)
   const musicEvents = (() => {
@@ -1561,12 +1586,48 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
           {/* Everything under the hero, in the order the backoffice Homepage
               board saved (hidden sections skipped). Each block is its own
               <section> so the order can change without touching the markup. */}
-          {visibleSections.map((key) => {
+          {visibleSections.map((section) => {
+            if (section.type === "event_slider") {
+              const sliderEvents = blockSliderEvents(section.key);
+              const headingId = `${section.key}-heading`;
+              return sliderEvents.length > 0 ? (
+                <section
+                  key={section.key}
+                  aria-labelledby={section.title ? headingId : undefined}
+                  aria-label={section.title ? undefined : "אירועים"}
+                >
+                  {section.title && <SectionHeading id={headingId} title={section.title} />}
+                  <div className="mb-8">
+                    <UniversalCarousel
+                      events={sliderEvents}
+                      variant="row"
+                      allEvents={initialEvents}
+                      cardArtists={artists}
+                      cardTeams={allFootballTeams}
+                      ariaLabel={section.title ?? "רשימת אירועים"}
+                    />
+                  </div>
+                </section>
+              ) : null;
+            }
+            if (section.type === "banner") {
+              const headingId = `${section.key}-heading`;
+              return (
+                <div key={section.key} className="mb-8">
+                  {section.title && <SectionHeading id={headingId} title={section.title} />}
+                  <ArtistBanners banners={section.banners} className="w-full" />
+                </div>
+              );
+            }
+            // A block type this build does not know never reaches here
+            // (lib/homepageLayout drops it) - anything else is a coded section.
+            if (section.type !== "builtin") return null;
+            const key = section.key;
             switch (key) {
               case "most_wanted":
                 return mostWantedEvents.length > 0 ? (
                   <section key={key} aria-labelledby="most-wanted-heading">
-                    <SectionHeading id="most-wanted-heading" title="המבוקשים ביותר" />
+                    <SectionHeading id="most-wanted-heading" title={section.title ?? "המבוקשים ביותר"} />
                     {/* Netflix-style row: one line, swipe sideways, the next card
                         peeks in from the left so it reads as scrollable. */}
                     <div className="mb-8">
@@ -1585,7 +1646,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               case "newest":
                 return newestEvents.length > 0 ? (
                   <section key={key} aria-labelledby="newest-heading">
-                    <SectionHeading id="newest-heading" title="החדשים ביותר" />
+                    <SectionHeading id="newest-heading" title={section.title ?? "החדשים ביותר"} />
                     <div className="mb-8">
                       <UniversalCarousel
                         events={newestEvents}
@@ -1602,13 +1663,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
               case "reviews":
                 // לקוחות משתפים - our own Google-reviews carousel (data mirrored
                 // by the backoffice); theme-aware, so no dark-mode overrides needed.
-                return <GoogleReviews key={key} data={googleReviews} />;
+                return <GoogleReviews key={key} data={googleReviews} title={section.title} />;
 
               case "football":
                 // Sports Section - all teams, available (זמין באתר) first, rest at end
                 return homeFootball && homeFootball.length > 0 ? (
                   <section key={key} aria-labelledby="football-section-heading">
-                    <SectionHeading id="football-section-heading" title="כדורגל" />
+                    <SectionHeading id="football-section-heading" title={section.title ?? "כדורגל"} />
                     {/* One responsive carousel (was two identical mobile+desktop copies
                         - the component is already responsive, so the duplicate just
                         doubled the DOM/hydration cost and helped starve paint on scroll). */}
@@ -1622,7 +1683,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                 // Artists Section - all artists, available (זמין באתר) first, rest at end
                 return homeArtists && homeArtists.length > 0 ? (
                   <section key={key} aria-labelledby="artists-section-heading">
-                    <SectionHeading id="artists-section-heading" title="אמנים מובילים" />
+                    <SectionHeading id="artists-section-heading" title={section.title ?? "אמנים מובילים"} />
                     <div className="mb-8">
                       <UniversalCarousel artists={homeArtists} variant="compact" />
                     </div>
@@ -1633,7 +1694,7 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                 // Music Section (renamed from "האירועים שלנו")
                 return musicEvents.length > 0 ? (
                   <section key={key} aria-labelledby="music-events-heading">
-                    <SectionHeading id="music-events-heading" title="אירועים נוספים" />
+                    <SectionHeading id="music-events-heading" title={section.title ?? "אירועים נוספים"} />
                     {/* Stacked list - one column on mobile, grid on desktop. Minimal
                         no-image cards (same as the search page). No carousel. */}
                     <div className="grid gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"

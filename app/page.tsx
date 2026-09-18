@@ -14,6 +14,7 @@ import { getAllFootballTeams } from "@/lib/football";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
 import {
   getHomepageLayout,
+  resolveBlockEvents,
   pinRank,
   pinnedFirst,
   toClientLayout,
@@ -140,6 +141,10 @@ export default async function Home() {
 
   const heroItems = buildHeroItems(layout.pins.hero, artists, allFootballTeams, isAvailable);
 
+  // Event sliders staff added on the backoffice Homepage board: their pinned
+  // events + the events of the category each one names.
+  const blockEvents = await resolveBlockEvents(layout, events.events);
+
   // Homepage "אמנים מובילים" / "כדורגל" slides - all entries, available first.
   const homeArtists = availableFirst(artists, pinRank(layout.pins.artists, "artist"), isAvailable);
   const homeFootball = availableFirst(
@@ -170,7 +175,7 @@ export default async function Home() {
         homeArtists={homeArtists}
         homeFootball={homeFootball}
         googleReviews={googleReviews}
-        layout={toClientLayout(layout)}
+        layout={toClientLayout(layout, blockEvents)}
       />
       {/* קטגוריות (categories) visual hidden for now - needs rework before re-enabling. */}
       {/* <CategorySection categories={categories} /> */}

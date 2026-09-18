@@ -291,6 +291,20 @@ Both projects share the **same Supabase database**. The backoffice syncs externa
 | `partners`     | Reads (affiliate auth) | Creates, manages               |
 | `hotels`       | Writes (search cache)  | Reads                          |
 | `flights`      | Reads                  | Manages (offline inventory)    |
+| `homepage_sections` / `homepage_items` | Reads (`lib/homepageLayout.ts`) | Writes (the `/homepage` board) |
+
+**Homepage layout, titles and free blocks (2026-09-18).** The backoffice board
+decides the homepage's section order, visibility, the items pinned to the front of
+each carousel, every section's heading (`title`; null = the heading coded here) and
+the blocks staff add themselves (`type`: `event_slider` - pins, then the events of
+`config.category_id`, soonest first, 12 max, same `EventCard size="row"`; `banner` -
+`config.banners`, rendered by `ArtistBanners`). Block types + config shapes mirror
+backoffice `types/homepage.types.ts`. `getHomepageLayout` never breaks the page: a
+row it does not understand (unknown key / block type / config) is skipped, missing
+columns fall back to the old select (order kept, no titles or blocks), any other
+failure = the default layout. `app/page.tsx` resolves the sliders' events
+server-side (`resolveBlockEvents`); `ClientSideHomepage` switches on `section.type`.
+A new block type needs code HERE first, then the backoffice editor.
 
 ### Shared Types - Keep In Sync!
 
