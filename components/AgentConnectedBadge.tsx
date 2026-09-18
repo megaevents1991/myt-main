@@ -28,6 +28,7 @@ export function AgentConnectedBadge({
 }) {
   const [agentName, setAgentName] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function AgentConnectedBadge({
         if (cancelled || !data?.connected || data.role !== "agent") return;
         setConnected(true);
         setAgentName(typeof data.name === "string" && data.name ? data.name : null);
+        setPortalUrl(typeof data.portalUrl === "string" && data.portalUrl ? data.portalUrl : null);
       })
       .catch(() => {});
     return () => {
@@ -58,6 +60,7 @@ export function AgentConnectedBadge({
   };
 
   if (!connected) return null;
+  const label = agentName ? `סוכן · ${agentName}` : "מחובר כסוכן";
 
   return (
     <span
@@ -69,9 +72,20 @@ export function AgentConnectedBadge({
       title={agentName ? `מחובר כסוכן: ${agentName}` : "מחובר כסוכן"}
     >
       <BadgeCheck size={13} aria-hidden className="shrink-0" />
-      <span className="max-w-28 truncate">
-        {agentName ? `סוכן · ${agentName}` : "מחובר כסוכן"}
-      </span>
+      {portalUrl ? (
+        // Back to the partner portal - the agent's one home (reservations, links, quotes).
+        <a
+          href={portalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="לפורטל הסוכנים"
+          className="max-w-28 truncate underline-offset-2 hover:underline"
+        >
+          {label}
+        </a>
+      ) : (
+        <span className="max-w-28 truncate">{label}</span>
+      )}
       {showExit && (
         <button
           type="button"

@@ -12,6 +12,22 @@ import {
 // אזכור שהוא מחובר"). Returns only display fields, never the signed cookie.
 export const dynamic = "force-dynamic";
 
+/**
+ * Where the badge links back to - the partner portal in the backoffice, the ONE
+ * place a partner signs in (there is deliberately no partner login here). Server
+ * env, handed only to a connected agent, so the backoffice address never ships
+ * in the public bundle. Unset or not https -> no link, the badge stays a label.
+ */
+function partnerPortalUrl(): string | null {
+  const value = process.env.NEXT_SECRET_PARTNER_PORTAL_URL?.trim();
+  if (!value) return null;
+  try {
+    return new URL(value).protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   const noStore = { headers: { "Cache-Control": "no-store" } };
   try {
@@ -28,6 +44,7 @@ export async function GET() {
         role: session.role,
         name: session.display_name ?? null,
         code: session.partner_code,
+        portalUrl: partnerPortalUrl(),
       },
       noStore,
     );

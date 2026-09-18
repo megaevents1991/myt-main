@@ -166,6 +166,12 @@ Required in `.env.local`:
 - `NEXT_SECRET_SUPABASE_ANON_KEY` - **Required for the `/agent` partner area.** Partner
   sign-in verifies the password through Supabase Auth with the anon key; the service key
   cannot do `signInWithPassword`. Server-side only - never expose it as `NEXT_PUBLIC_`.
+- `NEXT_SECRET_PARTNER_PORTAL_URL` - Optional. Full https URL of the partner portal in the
+  backoffice (`…/portal`). When set, the header's "סוכן · שם" badge links back to it
+  (`/api/partner-session` hands it only to a connected agent, so the backoffice address
+  never ships in the public bundle). There is deliberately NO partner login on this site
+  (Dor, 2026-09-18): partners sign in to the portal only and arrive here through its
+  "לאתר" button / `/api/partner-handoff`.
 - `CANCELLATION_REQUEST_EMAIL` - Ops inbox for `/cancel-order` cancellation requests
   (`lib/cancellation-request-actions.ts`). Optional - falls back to `SALES_REP_EMAIL`.
 - `NEXT_SECRET_LIVE_API_URL` / `NEXT_SECRET_LIVE_API_KEY` - LiveTickets (doctorticket) API, same values as the backoffice. Needed for live pricing of `supplier: "livetickets"` tickets; unset = those tickets sell on the buffered DB price.
