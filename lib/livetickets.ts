@@ -34,6 +34,8 @@ interface UpstreamCategory {
   maxTicketAmount?: number;
   seatingMethodId?: number;
   seatingGroupMAXSize?: number | null;
+  /** Percent LiveTickets adds to `cost` for a group above a pair. null = none. */
+  seatingGroupFee?: number | null;
   apiImmediatePurchase?: boolean;
 }
 
@@ -48,6 +50,8 @@ type RawCategory = {
   cost: number;
   maxPerOrder: number;
   seatingGroupMax: number | null;
+  /** Their `seatingGroupFee`, a percent of `cost`. 0 = none. */
+  groupFeePct: number;
 };
 
 type RawStock = { currency: string; categories: RawCategory[] };
@@ -60,6 +64,11 @@ export type LiveTicketsOffer = {
   priceUsd: number;
   maxPerOrder: number;
   seatingGroupMax: number | null;
+  /**
+   * LiveTickets' group fee on ONE ticket seated in a triple, in USD, unrounded
+   * (0 = none). Folded into the price by `liveTicketsPriceForQuantity`.
+   */
+  tripleFeeUsd: number;
 };
 
 export const isLiveTicketsConfigured = (): boolean =>
@@ -92,6 +101,10 @@ const toRawCategory = (c: SellableUpstreamCategory): RawCategory => ({
   cost: c.cost,
   maxPerOrder: c.maxTicketAmount,
   seatingGroupMax: c.seatingGroupMAXSize ?? null,
+  groupFeePct:
+    typeof c.seatingGroupFee === "number" && c.seatingGroupFee > 0
+      ? c.seatingGroupFee
+      : 0,
 });
 
 async function fetchStock(eid: string): Promise<RawStock> {
@@ -155,12 +168,19 @@ export async function getLiveTicketsOffers(
     return stock.categories.reduce<LiveTicketsOffer[]>((offers, category) => {
       const usd = supplierCostToUsd(category.cost, stock.currency);
       if (usd === null) return offers;
+      // The fee is a percent of THEIR cost, so it rides on the cost alone: our
+      // markup is charged once, the rate and card fee apply to the fee too.
+      const usdWithFee = supplierCostToUsd(
+        category.cost * (1 + category.groupFeePct / 100),
+        stock.currency,
+      );
       offers.push({
         id: category.id,
         title: category.title,
         priceUsd: Math.ceil(usd),
         maxPerOrder: category.maxPerOrder,
         seatingGroupMax: category.seatingGroupMax,
+        tripleFeeUsd: usdWithFee === null ? 0 : Math.max(0, usdWithFee - usd),
       });
       return offers;
     }, []);

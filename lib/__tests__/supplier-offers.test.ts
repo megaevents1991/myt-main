@@ -8,6 +8,7 @@ import {
 import { ticketSupplier } from "../suppliers";
 import {
   categoryCanSatisfyQuantity,
+  liveTicketsPriceForQuantity,
   seatingForQuantity,
   seatingSplit,
 } from "../livetickets-quantity";
@@ -47,7 +48,7 @@ const live = (over: Partial<SupplierLiveData> = {}): SupplierLiveData => ({
   livetickets: {
     status: "live",
     offers: [
-      { id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4 },
+      { id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 80 },
     ],
   },
   ...over,
@@ -163,5 +164,20 @@ assert.equal(seatingSplit(rules, 1), null);
 assert.equal(seatingSplit({ maxPerOrder: 6, seatingGroupMax: 2 }, 3), null);
 assert.deepEqual(seatingSplit({ maxPerOrder: 6, seatingGroupMax: 2 }, 4), [2, 2]);
 assert.equal(seatingForQuantity({ maxPerOrder: 1, seatingGroupMax: null }, 1), "none");
+
+// LiveTickets' group fee is folded into the price: only the triple pays it,
+// spread over the whole party - pairs stay on the listed price
+const feeOffer = { ...rules, priceUsd: 431, tripleFeeUsd: 80 };
+assert.equal(liveTicketsPriceForQuantity(feeOffer, 2), 431);
+assert.equal(liveTicketsPriceForQuantity(feeOffer, 3), 511); // 3 of 3 carry the fee
+assert.equal(liveTicketsPriceForQuantity(feeOffer, 4), 431);
+assert.equal(liveTicketsPriceForQuantity(feeOffer, 5), 479); // 3 of 5: 80 * 3 / 5 = 48
+assert.equal(liveTicketsPriceForQuantity(feeOffer, 6), 431);
+// no fee on the category, or no triple it can promise -> the listed price
+assert.equal(liveTicketsPriceForQuantity({ ...feeOffer, tripleFeeUsd: 0 }, 3), 431);
+assert.equal(liveTicketsPriceForQuantity({ ...feeOffer, seatingGroupMax: 2 }, 3), 431);
+assert.equal(liveTicketsPriceForQuantity({ ...feeOffer, seatingGroupMax: null }, 5), 431);
+// ...and the order page sells a party of three at that price
+assert.equal(priceTicketsForQuantity([lt], "tx_event", 3, live(), 1.15)[0].price, 511);
 
 console.log("supplier-offers: all assertions passed");

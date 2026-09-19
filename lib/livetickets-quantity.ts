@@ -42,6 +42,24 @@ export function seatingSplit(
 }
 
 /**
+ * Price per ticket for `qty` tickets (Dor, 2026-09-19: a fee LiveTickets
+ * charges us is simply folded into the ticket price). Pairs sell at the listed
+ * price; the ONE triple an odd party is promised costs us their
+ * `seatingGroupFee` on its three tickets, so that fee is spread over the whole
+ * party - every ticket of the order carries the same price. No triple in the
+ * split (even party, or no seating promise) = the listed price.
+ * `tripleFeeUsd` is the fee on ONE ticket of a triple, in USD, unrounded.
+ */
+export function liveTicketsPriceForQuantity(
+  offer: LiveTicketsQuantityRules & { priceUsd: number; tripleFeeUsd: number },
+  qty: number,
+): number {
+  const split = seatingSplit(offer, qty);
+  if (!split?.includes(3) || !(offer.tripleFeeUsd > 0)) return offer.priceUsd;
+  return offer.priceUsd + Math.ceil((offer.tripleFeeUsd * 3) / qty);
+}
+
+/**
  * How the party is seated for `qty` tickets:
  *  - "together": one group - a pair or a triple sits together.
  *  - "groups":   several groups (see `seatingSplit`).

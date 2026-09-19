@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { requireAgent } from "@/lib/partner-auth";
 import { getLiveTicketsOffers } from "@/lib/livetickets";
+import { liveTicketsPriceForQuantity } from "@/lib/livetickets-quantity";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -289,10 +290,12 @@ export const validateLiveTicketsOffer = async (
       return `LiveTickets category ${info.id} sells at most ${offer.maxPerOrder} per order, asked ${qty}`;
     }
 
+    // The live price of THIS quantity: an odd party carries the triple's fee.
+    const livePrice = liveTicketsPriceForQuantity(offer, qty);
     const charged = Number(info.price_per_ticket);
-    const floor = offer.priceUsd * (1 - LIVE_PRICE_TOLERANCE);
+    const floor = livePrice * (1 - LIVE_PRICE_TOLERANCE);
     if (Number.isFinite(charged) && charged < floor) {
-      return `Ticket priced $${charged}, live LiveTickets price is $${offer.priceUsd}`;
+      return `Ticket priced $${charged}, live LiveTickets price for ${qty} is $${livePrice}`;
     }
     return null;
   } catch (error) {

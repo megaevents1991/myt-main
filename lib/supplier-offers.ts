@@ -6,6 +6,7 @@ import { normalizeTxCategory } from "@/lib/tixstock-category";
 import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 import {
   categoryCanSatisfyQuantity,
+  liveTicketsPriceForQuantity,
   seatingForQuantity,
   seatingSplit,
 } from "@/lib/livetickets-quantity";
@@ -113,7 +114,7 @@ function priceLiveTicketsTicket(
   const split = seatingSplit(offer, qty) ?? undefined;
   return {
     ...ticket,
-    price: offer.priceUsd,
+    price: liveTicketsPriceForQuantity(offer, qty),
     seating,
     seatingSplit: split,
     seatingGroupMax:
