@@ -305,6 +305,13 @@ columns fall back to the old select (order kept, no titles or blocks), any other
 failure = the default layout. `app/page.tsx` resolves the sliders' events
 server-side (`resolveBlockEvents`); `ClientSideHomepage` switches on `section.type`.
 A new block type needs code HERE first, then the backoffice editor.
+**2026-09-19:** three more types - `text` (`config.body` → plain paragraphs, never
+HTML), `destinations` (`config.category_ids` first, then the active children of
+`config.parent_id`; `resolveBlockTiles` builds the tiles server-side, drawn by the
+football hub's `HubTilesRow`, 24 max) and `gallery` (`config.images`, one scrolling
+row, `alt` doubles as the caption). `newest` is the one builtin with a config:
+`hidden_event_ids` = events staff removed from the AUTOMATIC fill of "החדשים
+ביותר" (`layout.hiddenEventIds.newest`) - a PINNED event is never filtered.
 
 ### Shared Types - Keep In Sync!
 

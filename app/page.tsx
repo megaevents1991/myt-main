@@ -15,6 +15,7 @@ import { getAvailabilityChecker } from "@/lib/tourStatus";
 import {
   getHomepageLayout,
   resolveBlockEvents,
+  resolveBlockTiles,
   pinRank,
   pinnedFirst,
   toClientLayout,
@@ -143,7 +144,11 @@ export default async function Home() {
 
   // Event sliders staff added on the backoffice Homepage board: their pinned
   // events + the events of the category each one names.
-  const blockEvents = await resolveBlockEvents(layout, events.events);
+  // ...and the category tiles behind every destinations slider.
+  const [blockEvents, blockTiles] = await Promise.all([
+    resolveBlockEvents(layout, events.events),
+    resolveBlockTiles(layout),
+  ]);
 
   // Homepage "אמנים מובילים" / "כדורגל" slides - all entries, available first.
   const homeArtists = availableFirst(artists, pinRank(layout.pins.artists, "artist"), isAvailable);
@@ -175,7 +180,7 @@ export default async function Home() {
         homeArtists={homeArtists}
         homeFootball={homeFootball}
         googleReviews={googleReviews}
-        layout={toClientLayout(layout, blockEvents)}
+        layout={toClientLayout(layout, blockEvents, blockTiles)}
       />
       {/* קטגוריות (categories) visual hidden for now - needs rework before re-enabling. */}
       {/* <CategorySection categories={categories} /> */}

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
-import { getEventIdsByCategories } from "@/lib/taxonomy";
+import { getAllCategories, getEventIdsByCategories } from "@/lib/taxonomy";
+import { slugPathOf } from "@/lib/taxonomy-tree";
 
 /**
  * Homepage layout - which sections the homepage shows, in what order, under
@@ -29,13 +30,22 @@ export const HOMEPAGE_SECTION_KEYS = [
 export type HomepageSectionKey = (typeof HOMEPAGE_SECTION_KEYS)[number];
 export type HomepageItemKind = "event" | "artist" | "team";
 
-/** Blocks staff add from the board (2026-09-18). Text / destinations / gallery come later. */
-export const HOMEPAGE_BLOCK_TYPES = ["event_slider", "banner"] as const;
+/** Blocks staff add from the board (2026-09-18); text / destinations / gallery since 2026-09-19. */
+export const HOMEPAGE_BLOCK_TYPES = ["event_slider", "banner", "text", "destinations", "gallery"] as const;
 export type HomepageBlockType = (typeof HOMEPAGE_BLOCK_TYPES)[number];
 
 const HOMEPAGE_PAGE = "home";
 
 export type HomepageBanner = { image_url: string; link_url: string | null; title: string | null };
+export type HomepageGalleryImage = { image_url: string; alt: string | null };
+/** One tile of a destinations slider - the shape HubTilesRow draws. */
+export type HomepageTile = {
+  id: number;
+  name: string;
+  href: string;
+  imageUrl: string | null;
+  images?: string[];
+};
 
 type SectionBase = {
   /** A builtin key, or `blk_xxxxxxxx` for a block. */
@@ -48,7 +58,12 @@ export type HomepageSection =
   | (SectionBase & { type: "builtin"; key: HomepageSectionKey })
   /** Pinned events first, then the category's events (null = pinned only). */
   | (SectionBase & { type: "event_slider"; categoryId: number | null })
-  | (SectionBase & { type: "banner"; banners: HomepageBanner[] });
+  | (SectionBase & { type: "banner"; banners: HomepageBanner[] })
+  /** Plain paragraphs (never HTML) under the block's title. */
+  | (SectionBase & { type: "text"; paragraphs: string[] })
+  /** Category tiles: the chosen ones first, then the parent's active children. */
+  | (SectionBase & { type: "destinations"; categoryIds: number[]; parentId: number | null })
+  | (SectionBase & { type: "gallery"; images: HomepageGalleryImage[] });
 
 export type HomepagePin = { kind: HomepageItemKind; ref_id: string };
 
@@ -57,16 +72,23 @@ export type HomepageLayout = {
   sections: HomepageSection[];
   /** Pinned items per section key in position order. Builtin keys are always present. */
   pins: Record<string, HomepagePin[]>;
+  /** Events staff removed from the AUTOMATIC part of "החדשים ביותר" (a pin still shows). */
+  hiddenNewest: number[];
 };
 
 /** Per event_slider block: pinned event ids (board order) + the category's ids (soonest first). */
 export type HomepageBlockEvents = Record<string, { pinned: number[]; auto: number[] }>;
 
+/** Per destinations block: its tiles in display order. */
+export type HomepageBlockTiles = Record<string, HomepageTile[]>;
+
 /** The subset the client component needs. */
 export type HomepageClientLayout = {
   sections: HomepageSection[];
   pinnedEventIds: { most_wanted: number[]; newest: number[] };
+  hiddenEventIds: { newest: number[] };
   blockEvents: HomepageBlockEvents;
+  blockTiles: HomepageBlockTiles;
 };
 
 const isKey = (k: string): k is HomepageSectionKey =>
@@ -92,6 +114,7 @@ const builtin = (key: HomepageSectionKey, visible = true, title: string | null =
 export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
   sections: HOMEPAGE_SECTION_KEYS.map((key) => builtin(key)),
   pins: emptyPins(),
+  hiddenNewest: [],
 };
 
 type SectionRow = {
@@ -109,6 +132,16 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 
 const cleanTitle = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
+
+/** A jsonb list → its positive integer ids, deduped, order kept; junk dropped. */
+const positiveIds = (v: unknown): number[] => {
+  const out: number[] = [];
+  for (const x of Array.isArray(v) ? v : []) {
+    const n = Number(x);
+    if (Number.isInteger(n) && n > 0 && !out.includes(n)) out.push(n);
+  }
+  return out;
+};
 
 /** A stored row → a section, or null when this build cannot render it. */
 function toSection(row: SectionRow): HomepageSection | null {
@@ -138,6 +171,32 @@ function toSection(row: SectionRow): HomepageSection | null {
       });
     }
     return banners.length ? { ...base, key: row.key, type: "banner", banners } : null;
+  }
+  if (type === "text") {
+    const paragraphs =
+      typeof config.body === "string"
+        ? config.body
+            .split(/\n{2,}/)
+            .map((p) => p.trim())
+            .filter(Boolean)
+        : [];
+    return paragraphs.length ? { ...base, key: row.key, type: "text", paragraphs } : null;
+  }
+  if (type === "destinations") {
+    const categoryIds = positiveIds(config.category_ids);
+    const parent = Number(config.parent_id);
+    const parentId = Number.isInteger(parent) && parent > 0 ? parent : null;
+    return categoryIds.length || parentId
+      ? { ...base, key: row.key, type: "destinations", categoryIds, parentId }
+      : null;
+  }
+  if (type === "gallery") {
+    const images: HomepageGalleryImage[] = [];
+    for (const g of Array.isArray(config.images) ? config.images : []) {
+      if (!isRecord(g) || typeof g.image_url !== "string" || !g.image_url) continue;
+      images.push({ image_url: g.image_url, alt: cleanTitle(g.alt) });
+    }
+    return images.length ? { ...base, key: row.key, type: "gallery", images } : null;
   }
   return null;
 }
@@ -174,12 +233,17 @@ export async function getHomepageLayout(): Promise<HomepageLayout> {
 
     const sections: HomepageSection[] = [];
     const seen = new Set<string>();
+    let hiddenNewest: number[] = [];
     for (const row of [...rows].sort((a, b) => a.position - b.position)) {
       if ((row.page ?? HOMEPAGE_PAGE) !== HOMEPAGE_PAGE || seen.has(row.key)) continue;
       const section = toSection(row);
       if (!section) continue;
       seen.add(section.key);
       sections.push(section);
+      // The one builtin with a config: what staff removed from the newest row.
+      if (section.type === "builtin" && section.key === "newest" && isRecord(row.config)) {
+        hiddenNewest = positiveIds(row.config.hidden_event_ids);
+      }
     }
     // Keys the table lacks (a section added in code before staff saved the
     // board) are appended in the default order, visible.
@@ -194,12 +258,13 @@ export async function getHomepageLayout(): Promise<HomepageLayout> {
       if (!isKey(it.section) && !seen.has(it.section)) continue;
       (pins[it.section] ??= []).push({ kind: it.kind, ref_id: String(it.ref_id) });
     }
-    return { sections, pins };
+    return { sections, pins, hiddenNewest };
   } catch (error) {
     console.error("[homepageLayout] falling back to defaults:", error);
     return {
       sections: DEFAULT_HOMEPAGE_LAYOUT.sections.map((s) => ({ ...s })),
       pins: emptyPins(),
+      hiddenNewest: [],
     };
   }
 }
@@ -283,9 +348,46 @@ export async function resolveBlockEvents(
   return out;
 }
 
+/** Tiles per destinations slider - a ceiling for one scroll row, not a target. */
+const BLOCK_TILES_MAX = 24;
+
+/**
+ * The tiles behind every visible destinations slider: the categories staff
+ * chose in board order, then the active children of the parent it names (in
+ * their own display order). One `categories` read for all of them; a category
+ * that was switched off since simply drops out. If the read fails
+ * (getAllCategories logs and returns empty) the blocks render nothing.
+ */
+export async function resolveBlockTiles(layout: HomepageLayout): Promise<HomepageBlockTiles> {
+  const blocks = layout.sections.flatMap((s) =>
+    s.type === "destinations" && s.visible ? [s] : [],
+  );
+  if (!blocks.length) return {};
+
+  const all = await getAllCategories();
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const out: HomepageBlockTiles = {};
+  for (const s of blocks) {
+    const chosen = s.categoryIds.flatMap((id) => byId.get(id) ?? []);
+    const chosenIds = new Set(chosen.map((c) => c.id));
+    const children = s.parentId
+      ? all.filter((c) => c.parent_id === s.parentId && !chosenIds.has(c.id))
+      : [];
+    out[s.key] = [...chosen, ...children].slice(0, BLOCK_TILES_MAX).map((c) => ({
+      id: c.id,
+      name: c.name,
+      href: `/c/${slugPathOf(c, all).join("/")}`,
+      imageUrl: c.image_url,
+      images: c.page_content?.tile_images ?? undefined,
+    }));
+  }
+  return out;
+}
+
 export function toClientLayout(
   layout: HomepageLayout,
   blockEvents: HomepageBlockEvents = {},
+  blockTiles: HomepageBlockTiles = {},
 ): HomepageClientLayout {
   return {
     sections: layout.sections,
@@ -293,6 +395,8 @@ export function toClientLayout(
       most_wanted: pinnedEventIds(layout.pins.most_wanted),
       newest: pinnedEventIds(layout.pins.newest),
     },
+    hiddenEventIds: { newest: layout.hiddenNewest },
     blockEvents,
+    blockTiles,
   };
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+// Aliased: this file also calls the DOM `new Image()` to preload hero art.
+import NextImage from "next/image";
 import Link from "next/link";
 import { useAffiliate, orderStage } from "../app/hooks/Affiliate";
 import dayjs from "dayjs";
@@ -24,6 +26,7 @@ import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { GoogleReviews } from "@/components/GoogleReviews";
 import { ArtistBanners } from "@/components/ArtistBanners";
+import { HubTilesRow } from "@/components/vertical-hub/HubTilesRow";
 import type { GoogleReviewsData } from "@/lib/googleReviews";
 import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
@@ -1158,10 +1161,14 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   })();
 
   // "החדשים ביותר" row: pinned first, then the most recently created events
-  // (created_at desc), skipping anything the row above already shows.
+  // (created_at desc), skipping anything the row above already shows and the
+  // events staff removed from this row on the board (a pin still wins).
   const newestEvents = (() => {
     const pinned = pickPinned(layout?.pinnedEventIds.newest);
-    const used = new Set([...mostWantedEvents, ...pinned].map((e) => e.id));
+    const used = new Set([
+      ...[...mostWantedEvents, ...pinned].map((e) => e.id),
+      ...(layout?.hiddenEventIds?.newest ?? []),
+    ]);
     const createdAt = (e: Event) => (e.created_at ? Date.parse(e.created_at) || 0 : 0);
     const auto = filterEventsFromArtistsWithPages(
       initialEvents.filter(
@@ -1617,6 +1624,84 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   {section.title && <SectionHeading id={headingId} title={section.title} />}
                   <ArtistBanners banners={section.banners} className="w-full" />
                 </div>
+              );
+            }
+            if (section.type === "text") {
+              const headingId = `${section.key}-heading`;
+              return (
+                <section
+                  key={section.key}
+                  className="mb-8"
+                  dir="rtl"
+                  aria-labelledby={section.title ? headingId : undefined}
+                  aria-label={section.title ? undefined : "טקסט"}
+                >
+                  {section.title && <SectionHeading id={headingId} title={section.title} />}
+                  <div className="max-w-3xl space-y-3 px-1 text-right text-base leading-relaxed text-foreground/90 sm:text-lg">
+                    {section.paragraphs.map((p, i) => (
+                      <p key={i} className="whitespace-pre-line">
+                        {p}
+                      </p>
+                    ))}
+                  </div>
+                </section>
+              );
+            }
+            if (section.type === "destinations") {
+              const tiles = layout?.blockTiles?.[section.key] ?? [];
+              const headingId = `${section.key}-heading`;
+              return tiles.length > 0 ? (
+                <section
+                  key={section.key}
+                  className="mb-8"
+                  aria-labelledby={section.title ? headingId : undefined}
+                  aria-label={section.title ? undefined : "יעדים"}
+                >
+                  {section.title && <SectionHeading id={headingId} title={section.title} />}
+                  <HubTilesRow items={tiles} ariaLabel={section.title ?? "יעדים"} />
+                </section>
+              ) : null;
+            }
+            if (section.type === "gallery") {
+              const headingId = `${section.key}-heading`;
+              return (
+                <section
+                  key={section.key}
+                  className="mb-8"
+                  dir="rtl"
+                  aria-labelledby={section.title ? headingId : undefined}
+                  aria-label={section.title ? undefined : "גלריית תמונות"}
+                >
+                  {section.title && <SectionHeading id={headingId} title={section.title} />}
+                  <div
+                    role="list"
+                    className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  >
+                    {section.images.map((img, i) => (
+                      <figure
+                        key={i}
+                        role="listitem"
+                        className="relative h-56 w-[70%] shrink-0 snap-start overflow-hidden rounded-2xl border border-border shadow-card sm:h-64 sm:w-[360px]"
+                      >
+                        <NextImage
+                          src={img.image_url}
+                          alt={img.alt ?? ""}
+                          fill
+                          sizes="(max-width: 640px) 70vw, 360px"
+                          className="object-cover"
+                        />
+                        {img.alt && (
+                          <>
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+                            <figcaption className="absolute inset-x-4 bottom-3 text-right text-sm font-bold text-white [text-shadow:0_2px_8px_rgba(0,0,0,0.8)]">
+                              {img.alt}
+                            </figcaption>
+                          </>
+                        )}
+                      </figure>
+                    ))}
+                  </div>
+                </section>
               );
             }
             // A block type this build does not know never reaches here
