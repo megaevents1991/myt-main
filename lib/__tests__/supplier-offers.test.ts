@@ -67,6 +67,17 @@ assert.deepEqual(
   [["tx1", 403], ["171442", 431]],
 );
 
+// a TixStock listing the seller splits promises pairs/triples; one sold whole
+// ("All Together") seats the party together
+assert.equal(priced[0].seating, "pairs");
+const whole = {
+  ...listing("CATEGORY 1", "402.2", 2),
+  ticket: { split_type: "All Together" },
+} as unknown as TixStockListing;
+const soldWhole = live({ tixstock: { status: "live", listings: [whole] } });
+assert.equal(priceTicketsForQuantity([tx], "tx_event", 2, soldWhole, 1.15)[0].seating, "together");
+assert.equal(priceTicketsForQuantity([tx], "tx_event", 3, soldWhole, 1.15).length, 0);
+
 // TixStock can't seat 6 together here, LiveTickets can (in groups of 4)
 priced = priceTicketsForQuantity(tickets, "tx_event", 6, live(), 1.15);
 assert.deepEqual(priced.map((t) => t.id), ["171442"]);

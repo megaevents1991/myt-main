@@ -3,7 +3,10 @@ import type { TixStockListing } from "@/lib/tixstock.types";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import { ticketSupplier, type TicketSupplier } from "@/lib/suppliers";
 import { normalizeTxCategory } from "@/lib/tixstock-category";
-import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
+import {
+  listingCanSatisfyQuantity,
+  listingSeatsTogether,
+} from "@/lib/tixstock-quantity";
 import {
   categoryCanSatisfyQuantity,
   liveTicketsPriceForQuantity,
@@ -25,8 +28,9 @@ import {
 
 /**
  * How a party of the requested size is seated:
- *  - "together": the whole party sits together (LiveTickets, within one group)
- *  - "pairs":    seated in pairs/triples - TixStock's promise, never "all together"
+ *  - "together": the whole party sits together (LiveTickets within one group,
+ *                or a TixStock listing that is sold whole)
+ *  - "pairs":    seated in pairs/triples - a TixStock listing the seller splits
  *  - "groups":   split into seating groups of `seatingGroupMax`
  *  - "none":     no seating promise
  */
@@ -59,24 +63,38 @@ const buffered = (ticket: EventTicket, multiplier: number): PricedTicket => ({
   price: Math.ceil(ticket.price * multiplier),
 });
 
+/**
+ * The cheapest live TixStock listing of a category that can sell `qty`, or
+ * null. `together` = that listing is sold whole, so the party sits together.
+ */
+export function cheapestTixstockListing(
+  listings: TixStockListing[],
+  category: string,
+  qty: number,
+): { price: number; together: boolean } | null {
+  const wanted = normalizeTxCategory(category);
+  if (!wanted) return null;
+
+  let best: { amount: number; together: boolean } | null = null;
+  for (const listing of listings) {
+    if (normalizeTxCategory(listing.seat_details?.category) !== wanted) continue;
+    if (!listingCanSatisfyQuantity(listing, qty)) continue;
+    const amount = parseFloat(listing.proceed_price?.amount ?? "NaN");
+    if (!Number.isFinite(amount)) continue;
+    if (best === null || amount < best.amount) {
+      best = { amount, together: listingSeatsTogether(listing) };
+    }
+  }
+  return best && { price: Math.ceil(best.amount), together: best.together };
+}
+
 /** Cheapest live TixStock price for a category at `qty`, or null. */
 export function tixstockPriceForCategory(
   listings: TixStockListing[],
   category: string,
   qty: number,
 ): number | null {
-  const wanted = normalizeTxCategory(category);
-  if (!wanted) return null;
-
-  let best: number | null = null;
-  for (const listing of listings) {
-    if (normalizeTxCategory(listing.seat_details?.category) !== wanted) continue;
-    if (!listingCanSatisfyQuantity(listing, qty)) continue;
-    const amount = parseFloat(listing.proceed_price?.amount ?? "NaN");
-    if (!Number.isFinite(amount)) continue;
-    if (best === null || amount < best) best = amount;
-  }
-  return best === null ? null : Math.ceil(best);
+  return cheapestTixstockListing(listings, category, qty)?.price ?? null;
 }
 
 function priceTixstockTicket(
@@ -90,10 +108,15 @@ function priceTixstockTicket(
   // outage nor a fast "continue" can undercut the true live price.
   if (live.listings.length === 0) return buffered(ticket, fallbackMultiplier);
 
-  const price = tixstockPriceForCategory(live.listings, ticket.category, qty);
-  if (price === null) return null; // category can't fulfil this quantity
-  // TixStock guarantees pairs/triples, not the whole party together.
-  return { ...ticket, price, seating: "pairs" };
+  const best = cheapestTixstockListing(live.listings, ticket.category, qty);
+  if (!best) return null; // category can't fulfil this quantity
+  // A listing sold whole seats the party together (2026-09-19); one the seller
+  // lets us split promises pairs/triples, never the whole party.
+  return {
+    ...ticket,
+    price: best.price,
+    seating: best.together && qty > 1 ? "together" : "pairs",
+  };
 }
 
 function priceLiveTicketsTicket(

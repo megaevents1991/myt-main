@@ -15,6 +15,17 @@ import type { TixStockListing } from "@/lib/tixstock.types";
  * hid every category for qty=1 on events like 1095 (Sienna Spiro) even though
  * TixStock itself happily sells one.
  */
+const splitTypeOf = (listing: TixStockListing): string =>
+  (listing.ticket?.split_type ?? "").trim().toLowerCase();
+
+/**
+ * An all-or-nothing listing ("All Together" / "Sell Together") is one block of
+ * seats bought whole, so the party sits together - a stronger promise than the
+ * pairs/triples we make for a listing the seller lets us split.
+ */
+export const listingSeatsTogether = (listing: TixStockListing): boolean =>
+  splitTypeOf(listing).includes("together");
+
 export function listingCanSatisfyQuantity(
   listing: TixStockListing,
   qty: number,
@@ -24,7 +35,7 @@ export function listingCanSatisfyQuantity(
   const available = listing.number_of_tickets_for_sale?.quantity_available ?? 0;
   if (available < qty) return false;
 
-  const splitType = (listing.ticket?.split_type ?? "").trim().toLowerCase();
+  const splitType = splitTypeOf(listing);
   const splitQty = listing.number_of_tickets_for_sale?.split_quantity ?? 0;
 
   // All-or-nothing listings.
