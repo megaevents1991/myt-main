@@ -260,7 +260,11 @@ export async function POST(req: Request) {
     event_order_info: validatedData.event_order_info,
     flight_order_info: validatedData.flight_order_info,
     hotel_order_info: validatedData.hotel_order_info,
-    hotel_segments: validatedData.hotel_segments ?? null,
+    // Only when the customer split the stay - a checkout must not depend on the
+    // column existing (backoffice migration 20260924090000 adds it).
+    ...(Array.isArray(validatedData.hotel_segments) && validatedData.hotel_segments.length > 1
+      ? { hotel_segments: validatedData.hotel_segments }
+      : {}),
     user_shown_price: validatedData.user_shown_price,
     event_id: validatedData.event_id,
     payment_info: payNow ? {} : null,
