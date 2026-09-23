@@ -445,10 +445,17 @@ export type EventTicket = {
   // also what lights up the map: our SVG copy carries `data-zones` per section.
   zoneId?: string;
   zoneLabel?: string;
+  // Attached on purpose although the supplier does not confirm it instantly
+  // (LiveTickets `apiImmediatePurchase` false). INTERNAL ONLY - the customer
+  // sees an ordinary ticket; the backoffice warns on the event and the order.
+  nonInstant?: boolean;
 };
 
 export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   quantity: number;
+  // The customer picked between "all together" and "pairs + a triple" for the
+  // same zone (two suppliers, lib/supplier-offers.ts `zoneOffers`).
+  seatingChoice?: "together" | "split";
 };
 
 /**
@@ -501,6 +508,11 @@ export type OrderData = {
     supplier_event_id?: string;
     supplier_category?: string;
     zone_label?: string;
+    // Sold although LiveTickets does not confirm it instantly - set by
+    // confirm-order from the EVENT, never trusted from the client.
+    non_instant?: boolean;
+    // together / split, when the order page offered that choice.
+    seating_choice?: "together" | "split";
   };
   flight_order_info: Flight | Record<string, never>; // empty object {} indicates flight was skipped
   hotel_order_info: OrderHotel | Record<string, never>; // empty object {} indicates hotel was skipped

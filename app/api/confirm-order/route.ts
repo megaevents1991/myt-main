@@ -479,7 +479,18 @@ export async function POST(req: Request) {
           BUY FROM (supplier): ${(validatedData.event_order_info.supplier || "N/A").toUpperCase()}
           Supplier Event ID: ${validatedData.event_order_info.supplier_event_id || "N/A"}
           Supplier Category: ${validatedData.event_order_info.supplier_category || "N/A"}
-          Our Zone: ${validatedData.event_order_info.zone_label || "N/A"}
+          Our Zone: ${validatedData.event_order_info.zone_label || "N/A"}${
+            validatedData.event_order_info.non_instant
+              ? "\n          !!! NOT INSTANT-CONFIRM - confirm with the supplier BEFORE confirming the order !!!"
+              : ""
+          }${
+            validatedData.event_order_info.seating_choice
+              ? "\n          Seating chosen: " +
+                (validatedData.event_order_info.seating_choice === "split"
+                  ? "pairs + a triple (split)"
+                  : "all together")
+              : ""
+          }
 
           ******** Flight Info **********
           ${

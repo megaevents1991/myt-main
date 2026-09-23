@@ -62,6 +62,8 @@ export const validateOrderData = async (
           supplier_event_id: yup.string(),
           supplier_category: yup.string(),
           zone_label: yup.string(),
+          non_instant: yup.boolean(),
+          seating_choice: yup.string().oneOf(["together", "split"]),
           category: yup.string().required().min(1),
           price_per_ticket: yup.number().required(),
           total_tickets_price: yup.number().required(),
@@ -277,6 +279,15 @@ export const validateLiveTicketsOffer = async (
   try {
     const info = data.event_order_info;
     if (info?.supplier !== "livetickets" || !info.supplier_event_id) return null;
+
+    // Non-instant is read off OUR event, never taken from the client: the
+    // reservation carries it so ops confirm with LiveTickets by hand.
+    const { events } = await getEvents(Number(data.event_id));
+    const attached = (events?.[0]?.tickets_and_rates ?? []).find(
+      (t) => t.id === info.id && t.supplier === "livetickets",
+    );
+    info.non_instant = attached?.nonInstant ? true : undefined;
+
     if (data.is_agent_booking) return null;
 
     const offers = await getLiveTicketsOffers(info.supplier_event_id);
@@ -284,6 +295,9 @@ export const validateLiveTicketsOffer = async (
 
     const offer = offers.find((o) => o.id === info.id);
     if (!offer) return `LiveTickets category ${info.id} is no longer on sale`;
+    if (!offer.instant && !info.non_instant) {
+      return `LiveTickets category ${info.id} is not instant-confirm and was not attached as such`;
+    }
 
     const qty = Number(info.number_of_ticket);
     if (Number.isFinite(qty) && qty > offer.maxPerOrder) {

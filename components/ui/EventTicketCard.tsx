@@ -28,6 +28,18 @@ export type TicketCardProps = {
   bestPrice?: boolean;
   /** Multi-supplier events: this ticket's own seating promise. */
   seatingNote?: string;
+  /**
+   * Two suppliers seat the party differently in this zone (lib/supplier-offers.ts
+   * `zoneOffers`): the customer picks all together (dearer) or split.
+   */
+  seatingToggle?: {
+    value: "together" | "split";
+    /** How the split seats the party, e.g. "זוג + שלשה". */
+    splitLabel: string;
+    /** Per ticket, together minus split. */
+    togetherExtraUsd: number;
+    onChange: (value: "together" | "split") => void;
+  };
 };
 
 export const EventTicketCard = ({
@@ -48,6 +60,7 @@ export const EventTicketCard = ({
   useMapColor = false,
   bestPrice = false,
   seatingNote,
+  seatingToggle,
 }: TicketCardProps) => {
   const priceToDisplay = price - basePrice;
   const isVip = vip?.enabled === true;
@@ -120,6 +133,36 @@ export const EventTicketCard = ({
               )}
               {seatingNote && (
                 <div className="text-sm text-muted-foreground">{seatingNote}</div>
+              )}
+              {seatingToggle && (
+                // Its own clicks pick an option; they must not also fire the
+                // card's click, which selects whatever option is showing.
+                <div
+                  role="radiogroup"
+                  aria-label="אופן הישיבה"
+                  className="mt-1 inline-flex flex-wrap rounded-full border border-border p-0.5 text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {(["together", "split"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      role="radio"
+                      aria-checked={seatingToggle.value === option}
+                      className={cn(
+                        "rounded-full px-3 py-1 font-bold transition-colors",
+                        seatingToggle.value === option
+                          ? "bg-forest text-white dark:bg-glow dark:text-black"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      onClick={() => seatingToggle.onChange(option)}
+                    >
+                      {option === "together"
+                        ? `כולם יחד (+$${seatingToggle.togetherExtraUsd} לכרטיס)`
+                        : seatingToggle.splitLabel}
+                    </button>
+                  ))}
+                </div>
               )}
               {hasVipDetails && (
                 <div className="text-sm font-semibold">

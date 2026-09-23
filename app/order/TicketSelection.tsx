@@ -16,11 +16,12 @@ import { supplierEventId, ticketSupplier } from "@/lib/suppliers";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import {
   bestPriceTicketIds,
-  cheapestSupplierPerZone,
   priceTicketsForQuantity,
+  zoneOffers,
   type PricedTicket,
   type SupplierLiveData,
   type SupplierStatus,
+  type ZoneOffer,
 } from "@/lib/supplier-offers";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import {
@@ -46,6 +47,7 @@ const toOrderTicket = (
   ticket: EventTicket,
   eventType: EventType | undefined,
   quantity: number,
+  seatingChoice?: OrderTicket["seatingChoice"],
 ): OrderTicket => ({
   id: ticket.id,
   vendor: ticket.vendor || "",
@@ -57,7 +59,21 @@ const toOrderTicket = (
   supplier: ticketSupplier(ticket, eventType),
   supplierCategory: ticket.supplierCategory ?? ticket.category,
   zoneLabel: ticket.zoneLabel,
+  // Internal: ops confirm this one with the supplier by hand.
+  nonInstant: ticket.nonInstant || undefined,
+  seatingChoice,
 });
+
+/** Short label of a split seating, for the together / split toggle. */
+const splitLabel = (ticket: PricedTicket): string => {
+  const split = ticket.seatingSplit ?? [];
+  const pairs = split.filter((n) => n === 2).length;
+  if (split.includes(3)) {
+    return pairs === 0 ? "שלשה" : (pairs === 1 ? "זוג" : pairs + " זוגות") + " + שלשה";
+  }
+  if (pairs > 0) return pairs === 1 ? "זוג" : pairs + " זוגות";
+  return "בזוגות/שלשות";
+};
 
 /** Customer-facing seating promise of a priced ticket (multi-supplier events). */
 const seatingNote = (ticket: PricedTicket): string | undefined => {
@@ -477,48 +493,6 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   }, [usingBufferedFallback, event?.id]);
 
   useEffect(() => {
-    if (!effectiveTickets || effectiveTickets.length === 0) {
-      // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
-      console.log('No available tickets found - clearing all ticket state');
-      setCheapestTicket(null);
-      setSelectedTicket(undefined);
-      setCurrentMinTicketPrice(0);
-      // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
-      setEventTicket({
-        id: "",
-        vendor: "",
-        category: "",
-        price: 0,
-        description: "",
-        quantity: 0,
-      });
-      return;
-    }
-
-    // Auto-select from the tickets the customer actually SEES: on tx events the
-    // list is filtered to map-matched tickets, and picking the global cheapest
-    // used to select a hidden (unmapped) ticket - so no card looked selected
-    // and the map showed no dark-green section until a manual click.
-    const mappedPool =
-      isTxEvent && matchedTicketIds
-        ? effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds))
-        : effectiveTickets;
-    const pool = mappedPool.length > 0 ? mappedPool : effectiveTickets;
-
-    const cheapt = pool.reduce<EventTicket>((min, ticket) =>
-      ticket.price < min.price ? ticket : min,
-      pool[0]
-    );
-
-    setCheapestTicket(cheapt);
-
-    setCurrentMinTicketPrice(cheapt.price);
-    setSelectedTicket(cheapt.id);
-    setEventTicket(toOrderTicket(cheapt, event?.type, numberOfEventTickets));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTickets, matchedTicketIds, isTxEvent, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
-
-  useEffect(() => {
     if (matches) return; // Don't scroll on desktop (1024px+)
     const timer = setTimeout(() => {
       window.scrollTo({
@@ -529,34 +503,6 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
     return () => clearTimeout(timer); // Cleanup timeout if component unmounts
   }, [matches]); // Add matches as dependency
-
-  const handleTicketSelect = useCallback((ticket: {
-    id: string;
-    category: string;
-    price: number;
-    vendor?: string;
-    description?: string;
-  }) => {
-    // Defensive: ensure the selected ticket is still in the effective list
-    // (i.e. available AND, for tx_events, satisfies the current quantity).
-    const ticketInList = effectiveTickets.find((t) => t.id === ticket.id);
-    if (!ticketInList) {
-      console.warn(`Attempted to select unavailable ticket: ${ticket.category} (ID: ${ticket.id})`);
-      return;
-    }
-
-    if (ticketInList.available === false) {
-      console.warn(`Ticket is marked as unavailable: ${ticket.category} (ID: ${ticket.id})`);
-      return;
-    }
-
-    // Always built from the effective list - the live-resolved price and the
-    // ticket's supplier - never from the (possibly stale) values passed in.
-    setEventTicket(
-      toOrderTicket(ticketInList, event?.type, numberOfEventTickets),
-    );
-    setSelectedTicket(ticket.id);
-  }, [effectiveTickets, event?.type, numberOfEventTickets, setEventTicket]);
 
   const handleQuantityChange = (value: number | string) => {
     if (+value > MAX_TICKETS) {
@@ -590,24 +536,6 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     [effectiveTickets],
   );
 
-  /** Stable callback for TixstockDynamicMap - clicking a section selects
-   *  the best matching ticket, just like clicking it in the list. */
-  const handleMapTicketSelect = useCallback(
-    (ticketId: string) => {
-      const ticket = effectiveTickets.find((t) => t.id === ticketId);
-      if (ticket) {
-        handleTicketSelect({
-          id: ticket.id,
-          price: ticket.price,
-          category: ticket.category,
-          vendor: ticket.vendor,
-          description: ticket.description,
-        });
-      }
-    },
-    [effectiveTickets, handleTicketSelect],
-  );
-
   /** Stable callback - receives the set of ticket IDs that match the map.
    *  Only triggers a state update if the actual IDs changed. */
   const handleMatchedTicketIds = useCallback(
@@ -634,15 +562,17 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     isLiveOrAbsent(supplierLive.livetickets.status);
 
   /** Map the filtered TixStock listings back to EventTickets */
-  const displayedTickets: PricedTicket[] = useMemo(() => {
+  const displayedTickets: ZoneOffer[] = useMemo(() => {
     // Remove tickets that don't match any section/category on the map
     const onMap =
       isTxEvent && matchedTicketIds
         ? effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds))
         : effectiveTickets;
-    // The same zone from two suppliers: only the cheaper supplier is shown.
+    // The same zone from two suppliers: only the cheaper supplier is shown -
+    // unless one seats the party together and the other splits it; then one
+    // card carries both, with a toggle (zoneOffers).
     return allSuppliersLive
-      ? cheapestSupplierPerZone(onMap, event?.type)
+      ? zoneOffers(onMap, event?.type, numberOfEventTickets)
       : onMap;
   }, [
     isTxEvent,
@@ -651,7 +581,22 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     isShownWithMap,
     allSuppliersLive,
     event?.type,
+    numberOfEventTickets,
   ]);
+
+  /** "together" / "split" when this ticket is one side of a card's toggle. */
+  const seatingChoiceOf = useCallback(
+    (ticketId: string): OrderTicket["seatingChoice"] => {
+      for (const shown of displayedTickets) {
+        const options = shown.seatingOptions;
+        if (!options) continue;
+        if (options.together.id === ticketId) return "together";
+        if (options.split.id === ticketId) return "split";
+      }
+      return undefined;
+    },
+    [displayedTickets],
+  );
 
   /** Several suppliers on one page - seating promises differ per ticket. */
   const isMultiSupplier = useMemo(
@@ -673,6 +618,103 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
         : new Set<string>(),
     [allSuppliersLive, displayedTickets, event?.type],
   );
+
+  const handleTicketSelect = useCallback((ticket: {
+    id: string;
+    category: string;
+    price: number;
+    vendor?: string;
+    description?: string;
+  }) => {
+    // Defensive: ensure the selected ticket is still in the effective list
+    // (i.e. available AND, for tx_events, satisfies the current quantity).
+    const ticketInList = effectiveTickets.find((t) => t.id === ticket.id);
+    if (!ticketInList) {
+      console.warn(`Attempted to select unavailable ticket: ${ticket.category} (ID: ${ticket.id})`);
+      return;
+    }
+
+    if (ticketInList.available === false) {
+      console.warn(`Ticket is marked as unavailable: ${ticket.category} (ID: ${ticket.id})`);
+      return;
+    }
+
+    // Always built from the effective list - the live-resolved price and the
+    // ticket's supplier - never from the (possibly stale) values passed in.
+    setEventTicket(
+      toOrderTicket(
+        ticketInList,
+        event?.type,
+        numberOfEventTickets,
+        seatingChoiceOf(ticketInList.id),
+      ),
+    );
+    setSelectedTicket(ticket.id);
+  }, [effectiveTickets, event?.type, numberOfEventTickets, setEventTicket, seatingChoiceOf]);
+
+  /** Stable callback for TixstockDynamicMap - clicking a section selects
+   *  the best matching ticket, just like clicking it in the list. */
+  const handleMapTicketSelect = useCallback(
+    (ticketId: string) => {
+      const ticket = effectiveTickets.find((t) => t.id === ticketId);
+      if (ticket) {
+        handleTicketSelect({
+          id: ticket.id,
+          price: ticket.price,
+          category: ticket.category,
+          vendor: ticket.vendor,
+          description: ticket.description,
+        });
+      }
+    },
+    [effectiveTickets, handleTicketSelect],
+  );
+
+  useEffect(() => {
+    if (!effectiveTickets || effectiveTickets.length === 0) {
+      // No tickets available; clear selection, cheapest ticket, AND the event ticket in context
+      console.log('No available tickets found - clearing all ticket state');
+      setCheapestTicket(null);
+      setSelectedTicket(undefined);
+      setCurrentMinTicketPrice(0);
+      // CRITICAL FIX: Clear the eventTicket in context to prevent stale data
+      setEventTicket({
+        id: "",
+        vendor: "",
+        category: "",
+        price: 0,
+        description: "",
+        quantity: 0,
+      });
+      return;
+    }
+
+    // Auto-select from the cards the customer actually SEES: map-matched
+    // (picking a hidden, unmapped ticket left no card selected) and one per
+    // zone - a together/split card counts as the option it opens on, so the
+    // default of that card is what gets pre-selected (zoneOffers).
+    const pool =
+      displayedTickets.length > 0 ? displayedTickets : effectiveTickets;
+
+    const cheapt = pool.reduce<EventTicket>((min, ticket) =>
+      ticket.price < min.price ? ticket : min,
+      pool[0]
+    );
+
+    setCheapestTicket(cheapt);
+
+    setCurrentMinTicketPrice(cheapt.price);
+    setSelectedTicket(cheapt.id);
+    setEventTicket(
+      toOrderTicket(
+        cheapt,
+        event?.type,
+        numberOfEventTickets,
+        seatingChoiceOf(cheapt.id),
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTickets, displayedTickets, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
 
   /* ── Debug panel ──────────────────────────────────────────────── */
   const debugPanel = isDebugMode && isTxEvent && (
@@ -923,48 +965,75 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                       }
                       return true;
                     })
-                    .map((ticket: PricedTicket, index: number) => (
-                      <EventTicketCard
-                        index={index}
-                        onClick={() =>
-                            handleTicketSelect({
-                              id: ticket.id,
-                              price: ticket.price,
-                              category: ticket.category,
-                              vendor: ticket.vendor,
-                              description: ticket.description,
-                            })
-                        }
-                        numberOfTickets={numberOfEventTickets}
-                        onChangeNumberOfTickets={handleQuantityChange}
-                        key={ticket.id}
-                        category={ticket.zoneLabel || ticket.category}
-                        categoryDescription={ticket.description}
-                        bestPrice={bestPriceIds.has(ticket.id)}
-                        seatingNote={
-                          isMultiSupplier ? seatingNote(ticket) : undefined
-                        }
-                        colorOnTheMap={ticket.colorOnTheMap || ""}
-                        useMapColor={!isTxEvent}
-                        isSelected={selectedTicket === ticket.id}
-                        price={ticket.price}
-                        basePrice={cheapestTicket?.price ?? 0}
-                        vip={ticket.vip}
-                        onMouseEnter={
-                          isTxEvent
-                            ? () =>
-                                setHoveredTicket(
-                                  eventTicketToListing(ticket)
-                                )
-                            : undefined
-                        }
-                        onMouseLeave={
-                          isTxEvent
-                            ? () => setHoveredTicket(null)
-                            : undefined
-                        }
-                      />
-                    ))
+                    .map((shown: ZoneOffer, index: number) => {
+                      // A together/split card shows the option the customer
+                      // picked, or the one it opens on.
+                      const options = shown.seatingOptions;
+                      const ticket: PricedTicket =
+                        options && selectedTicket === options.together.id
+                          ? options.together
+                          : options && selectedTicket === options.split.id
+                            ? options.split
+                            : shown;
+                      const selectTicket = (t: PricedTicket) =>
+                        handleTicketSelect({
+                          id: t.id,
+                          price: t.price,
+                          category: t.category,
+                          vendor: t.vendor,
+                          description: t.description,
+                        });
+                      return (
+                        <EventTicketCard
+                          index={index}
+                          onClick={() => selectTicket(ticket)}
+                          numberOfTickets={numberOfEventTickets}
+                          onChangeNumberOfTickets={handleQuantityChange}
+                          key={options ? `zone-${shown.zoneId}` : shown.id}
+                          category={ticket.zoneLabel || ticket.category}
+                          categoryDescription={ticket.description}
+                          bestPrice={bestPriceIds.has(ticket.id)}
+                          seatingNote={
+                            isMultiSupplier ? seatingNote(ticket) : undefined
+                          }
+                          seatingToggle={
+                            options
+                              ? {
+                                  value:
+                                    ticket.id === options.together.id
+                                      ? "together"
+                                      : "split",
+                                  splitLabel: splitLabel(options.split),
+                                  togetherExtraUsd:
+                                    options.together.price - options.split.price,
+                                  onChange: (value) => selectTicket(options[value]),
+                                }
+                              : undefined
+                          }
+                          colorOnTheMap={ticket.colorOnTheMap || ""}
+                          useMapColor={!isTxEvent}
+                          isSelected={
+                            selectedTicket === ticket.id
+                          }
+                          price={ticket.price}
+                          basePrice={cheapestTicket?.price ?? 0}
+                          vip={ticket.vip}
+                          onMouseEnter={
+                            isTxEvent
+                              ? () =>
+                                  setHoveredTicket(
+                                    eventTicketToListing(ticket)
+                                  )
+                              : undefined
+                          }
+                          onMouseLeave={
+                            isTxEvent
+                              ? () => setHoveredTicket(null)
+                              : undefined
+                          }
+                        />
+                      );
+                    })
                 )}
               </div>
             </ScrollArea>

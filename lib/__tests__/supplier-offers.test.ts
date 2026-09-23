@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import {
   bestPriceTicketIds,
   cheapestSupplierPerZone,
+  preferTogether,
   priceTicketsForQuantity,
+  zoneOffers,
+  type PricedTicket,
   type SupplierLiveData,
 } from "../supplier-offers";
 import { ticketSupplier } from "../suppliers";
@@ -48,7 +51,7 @@ const live = (over: Partial<SupplierLiveData> = {}): SupplierLiveData => ({
   livetickets: {
     status: "live",
     offers: [
-      { id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 80 },
+      { id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 80, instant: true },
     ],
   },
   ...over,
@@ -190,5 +193,50 @@ assert.equal(liveTicketsPriceForQuantity({ ...feeOffer, seatingGroupMax: 2 }, 3)
 assert.equal(liveTicketsPriceForQuantity({ ...feeOffer, seatingGroupMax: null }, 5), 431);
 // ...and the order page sells a party of three at that price
 assert.equal(priceTicketsForQuantity([lt], "tx_event", 3, live(), 1.15)[0].price, 511);
+
+// non-instant LiveTickets: sold only for a ticket attached AS non-instant
+const notInstant = live({
+  livetickets: {
+    status: "live",
+    offers: [{ id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 0, instant: false }],
+  },
+});
+assert.equal(priceTicketsForQuantity([lt], "tx_event", 2, notInstant, 1.15).length, 0);
+assert.equal(priceTicketsForQuantity([{ ...lt, nonInstant: true }], "tx_event", 2, notInstant, 1.15)[0].price, 431);
+// one per order reaches a party of one only
+const single = live({
+  livetickets: {
+    status: "live",
+    offers: [{ id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 1, seatingGroupMax: null, tripleFeeUsd: 0, instant: true }],
+  },
+});
+assert.equal(priceTicketsForQuantity([lt], "tx_event", 1, single, 1.15).length, 1);
+assert.equal(priceTicketsForQuantity([lt], "tx_event", 2, single, 1.15).length, 0);
+
+// together / split choice in one zone (Alon 23.09)
+const txTogether: PricedTicket = { ...ticket({ id: "tx", zoneId: "z", price: 500 }), seating: "together" };
+const ltSplit: PricedTicket = { ...lt, id: "lt", zoneId: "z", price: 400, seating: "groups", seatingSplit: [2, 3] };
+let offers = zoneOffers([txTogether, ltSplit], "tx_event", 5);
+assert.equal(offers.length, 1);
+// together costs 25% more -> the card opens on the cheaper split, both options carried
+assert.equal(offers[0].id, "lt");
+assert.deepEqual([offers[0].seatingOptions?.together.id, offers[0].seatingOptions?.split.id], ["tx", "lt"]);
+// together within 15% -> the card opens on together
+offers = zoneOffers([{ ...txTogether, price: 450 }, ltSplit], "tx_event", 5);
+assert.equal(offers[0].id, "tx");
+assert.equal(offers[0].seatingOptions?.split.id, "lt");
+assert.equal(preferTogether(459, 400), true);
+assert.equal(preferTogether(460, 400), false);
+// a pair has nothing to choose
+assert.equal(zoneOffers([txTogether, ltSplit], "tx_event", 2)[0].seatingOptions, undefined);
+// together is cheaper anyway -> no choice, the one supplier shown
+offers = zoneOffers([{ ...txTogether, price: 350 }, ltSplit], "tx_event", 5);
+assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["tx", false]]);
+// both split -> cheapest supplier only, no choice
+offers = zoneOffers([{ ...txTogether, seating: "pairs" }, ltSplit], "tx_event", 5);
+assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["lt", false]]);
+// different zones never mix
+offers = zoneOffers([{ ...txTogether, zoneId: "y" }, ltSplit], "tx_event", 5);
+assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["tx", false], ["lt", false]]);
 
 console.log("supplier-offers: all assertions passed");

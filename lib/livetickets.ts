@@ -52,6 +52,8 @@ type RawCategory = {
   seatingGroupMax: number | null;
   /** Their `seatingGroupFee`, a percent of `cost`. 0 = none. */
   groupFeePct: number;
+  /** LiveTickets confirms it instantly (`apiImmediatePurchase`). */
+  instant: boolean;
 };
 
 type RawStock = { currency: string; categories: RawCategory[] };
@@ -69,6 +71,12 @@ export type LiveTicketsOffer = {
    * (0 = none). Folded into the price by `liveTicketsPriceForQuantity`.
    */
   tripleFeeUsd: number;
+  /**
+   * LiveTickets confirms it instantly. A non-instant offer is sold ONLY for a
+   * ticket the backoffice attached on purpose as `nonInstant` (Alon 23.09) -
+   * `priceLiveTicketsTicket` and the checkout recheck enforce that.
+   */
+  instant: boolean;
 };
 
 export const isLiveTicketsConfigured = (): boolean =>
@@ -83,17 +91,18 @@ type SellableUpstreamCategory = UpstreamCategory & {
 };
 
 /**
- * The categories we are willing to sell - the SAME rules the backoffice
- * applies when attaching one (lib/services/livetickets-offers.ts there):
- * confirmed instantly by LiveTickets (hard rule), not single seats, at least
- * 2 per order, and a cost. Anything else is treated as not on sale.
+ * The categories we may sell - the SAME hard rules the backoffice applies when
+ * attaching one (lib/services/livetickets-offers.ts there): not single seats,
+ * at least one per order, and a cost. A one-per-order category only ever
+ * reaches a party of one (`categoryCanSatisfyQuantity`). Instant confirm is
+ * NOT a filter here - it rides on the offer (`instant`), because a ticket the
+ * backoffice attached as non-instant must still be priced.
  */
 const isSellable = (c: UpstreamCategory): c is SellableUpstreamCategory =>
-  c.apiImmediatePurchase === true &&
   c.seatingMethodId !== SINGLES_SEATING_METHOD &&
   typeof c.cost === "number" &&
   Number.isFinite(c.cost) &&
-  (c.maxTicketAmount ?? 0) >= 2;
+  (c.maxTicketAmount ?? 0) >= 1;
 
 const toRawCategory = (c: SellableUpstreamCategory): RawCategory => ({
   id: String(c.id),
@@ -105,6 +114,7 @@ const toRawCategory = (c: SellableUpstreamCategory): RawCategory => ({
     typeof c.seatingGroupFee === "number" && c.seatingGroupFee > 0
       ? c.seatingGroupFee
       : 0,
+  instant: c.apiImmediatePurchase === true,
 });
 
 async function fetchStock(eid: string): Promise<RawStock> {
@@ -181,6 +191,9 @@ export async function getLiveTicketsOffers(
         maxPerOrder: category.maxPerOrder,
         seatingGroupMax: category.seatingGroupMax,
         tripleFeeUsd: usdWithFee === null ? 0 : Math.max(0, usdWithFee - usd),
+        // A stock cached by the previous deploy has no `instant` - it only ever
+        // held instant categories.
+        instant: category.instant !== false,
       });
       return offers;
     }, []);

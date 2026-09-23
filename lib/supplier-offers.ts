@@ -129,8 +129,10 @@ function priceLiveTicketsTicket(
   if (live.status !== "live") return buffered(ticket, fallbackMultiplier);
 
   const offer = live.offers.find((o) => o.id === ticket.id);
-  // Not in the live answer = sold out or no longer instant-confirm.
+  // Not in the live answer = sold out / no longer sellable.
   if (!offer) return null;
+  // Not instant-confirm: sold only when the backoffice attached it as such.
+  if (!offer.instant && !ticket.nonInstant) return null;
   if (!categoryCanSatisfyQuantity(offer, qty)) return null;
 
   const seating = seatingForQuantity(offer, qty);
@@ -204,6 +206,71 @@ export function cheapestSupplierPerZone<T extends EventTicket>(
       winnerByZone.get(ticket.zoneId)?.supplier ===
         ticketSupplier(ticket, eventType),
   );
+}
+
+/**
+ * Below this premium (percent over the split price) "all together" is the
+ * option the card opens on; above it the cheaper split is (Dor, 23.09).
+ */
+export const TOGETHER_DEFAULT_MAX_PREMIUM_PCT = 15;
+
+export const preferTogether = (togetherPrice: number, splitPrice: number) =>
+  splitPrice > 0 &&
+  ((togetherPrice - splitPrice) / splitPrice) * 100 <
+    TOGETHER_DEFAULT_MAX_PREMIUM_PCT;
+
+/** The two ways one zone can seat the party, when two suppliers differ on it. */
+export type SeatingOptions<T extends PricedTicket = PricedTicket> = {
+  together: T;
+  split: T;
+};
+
+export type ZoneOffer<T extends PricedTicket = PricedTicket> = T & {
+  seatingOptions?: SeatingOptions<T>;
+};
+
+const isSplit = (ticket: PricedTicket) =>
+  ticket.seating === "groups" || ticket.seating === "pairs";
+
+/**
+ * What the ticket list shows: one supplier per zone (`cheapestSupplierPerZone`),
+ * except when the party is bigger than a pair and the zone's cheapest offer
+ * SPLITS it (LiveTickets' pairs + a triple) while another supplier seats it
+ * all TOGETHER for more (a TixStock listing sold whole) - then the customer
+ * chooses (Alon 23.09): one card, a together / split toggle, both prices.
+ * The card opens on "together" when it costs under
+ * `TOGETHER_DEFAULT_MAX_PREMIUM_PCT` more, else on the cheaper split. The
+ * option shown is the ticket in the list; `seatingOptions` carries both.
+ */
+export function zoneOffers<T extends PricedTicket>(
+  tickets: T[],
+  eventType: EventType | undefined,
+  qty: number,
+): ZoneOffer<T>[] {
+  const kept = cheapestSupplierPerZone(tickets, eventType);
+  if (qty <= 2) return kept;
+
+  return kept.map((ticket) => {
+    if (!ticket.zoneId || !isSplit(ticket)) return ticket;
+    const zone = tickets.filter((t) => t.zoneId === ticket.zoneId);
+    const cheapest = zone.reduce((min, t) => (t.price < min.price ? t : min));
+    // Only the zone's cheapest offer gets the choice - once.
+    if (cheapest.id !== ticket.id) return ticket;
+    const supplier = ticketSupplier(ticket, eventType);
+    const together = zone
+      .filter(
+        (t) =>
+          t.seating === "together" &&
+          t.price > ticket.price &&
+          ticketSupplier(t, eventType) !== supplier,
+      )
+      .reduce<T | null>((min, t) => (!min || t.price < min.price ? t : min), null);
+    if (!together) return ticket;
+
+    const seatingOptions = { together, split: ticket };
+    const shown = preferTogether(together.price, ticket.price) ? together : ticket;
+    return { ...shown, seatingOptions };
+  });
 }
 
 /**

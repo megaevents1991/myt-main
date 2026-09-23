@@ -1318,6 +1318,10 @@ export default function OrderReview({
         supplier_event_id: eventTicket.eid,
         supplier_category: eventTicket.supplierCategory,
         zone_label: eventTicket.zoneLabel,
+        // Internal flags for ops - confirm-order re-derives non_instant from
+        // the event itself, this copy only saves it a lookup.
+        non_instant: eventTicket.nonInstant || undefined,
+        seating_choice: eventTicket.seatingChoice,
       },
       // A skipped-flight order never carries flight data, even if a late
       // flight search re-populated `flight` after the skip.
