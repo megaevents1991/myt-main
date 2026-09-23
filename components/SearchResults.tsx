@@ -6,7 +6,7 @@ import Fuse from "fuse.js";
 import { ArrowUp, Search, SlidersHorizontal, X } from "lucide-react";
 
 import type { Event } from "@/lib/app.types";
-import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
 import { isSportsEvent, multiTermSearch, withCategoryText } from "@/lib/search";
 import { EventCard } from "@/components/EventCard";
 import { cn } from "@/lib/utils";
@@ -134,7 +134,7 @@ export const SearchResults = ({
       if (!includeSold && isEventSoldOut(e)) return false;
       if (category !== "all" && categoryOf(e) !== category) return false;
       if (effectiveCity && e.location?.name !== effectiveCity) return false;
-      if (ticketOnly && !e.skip_flight) return false;
+      if (ticketOnly && !(e.skip_flight || isTicketOnlyEvent(e))) return false;
       if (from && e.date && e.date < from) return false;
       return true;
     });
