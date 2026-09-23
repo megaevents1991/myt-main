@@ -8,6 +8,7 @@ import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
 import {
   validateOrderData,
   validatePurchasePriceFloor,
+  validateTicketOnlyOrder,
   validateLiveTicketsOffer,
   resolveAgentSettlement,
   resolveHandledBy,
@@ -173,6 +174,20 @@ export async function POST(req: Request) {
   // coupon re-check so the floor can be relaxed by the DB-trusted coupon row.
   // Fails open, so it never blocks a legitimate order (see
   // validatePurchasePriceFloor).
+  // A ticket-only event never carries a flight or a hotel (part A of the
+  // lodging spec) - reject a payload that tries.
+  const ticketOnlyError = await validateTicketOnlyOrder(validatedData);
+  if (ticketOnlyError) {
+    console.error(
+      "Rejected order - ticket-only event:",
+      JSON.stringify({ event_id: validatedData.event_id, reason: ticketOnlyError }),
+    );
+    return NextResponse.json(
+      { error: "TICKET_ONLY_EVENT_WITH_TRAVEL" },
+      { status: 400 },
+    );
+  }
+
   const priceError = await validatePurchasePriceFloor(validatedData, coupon);
   if (priceError) {
     console.error(

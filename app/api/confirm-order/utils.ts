@@ -14,6 +14,7 @@ import {
   getMarkup,
   getTicketOnlyMarkup,
   hasComponentMarkups,
+  isTicketOnlyEvent,
 } from "@/lib/events/price";
 import { supabase } from "@/lib/supabase";
 import { requireAgent } from "@/lib/partner-auth";
@@ -273,6 +274,30 @@ const LIVE_PRICE_TOLERANCE = 0.03;
  *
  * @returns a reason string when the order must be rejected, otherwise null.
  */
+/**
+ * A ticket-only EVENT (backoffice `package_mode`) is sold as a ticket alone: an
+ * order for it must carry no flight and no hotel. The client never offers them,
+ * so a non-empty block here is a tampered or stale payload. Returns a reason
+ * string (→ 400) or null. Fails open when the event cannot be loaded.
+ */
+export const validateTicketOnlyOrder = async (
+  data: OrderData,
+): Promise<string | null> => {
+  try {
+    const { events } = await getEvents(Number(data.event_id));
+    const event = events?.[0];
+    if (!event || !isTicketOnlyEvent(event)) return null;
+    const has = (o: unknown) =>
+      !!o && typeof o === "object" && Object.keys(o as object).length > 0;
+    if (has(data.flight_order_info)) return "ticket-only event with a flight";
+    if (has(data.hotel_order_info)) return "ticket-only event with a hotel";
+    return null;
+  } catch (e) {
+    console.error("validateTicketOnlyOrder failed open:", e);
+    return null;
+  }
+};
+
 export const validateLiveTicketsOffer = async (
   data: OrderData,
 ): Promise<string | null> => {
