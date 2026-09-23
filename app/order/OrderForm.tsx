@@ -20,6 +20,7 @@ import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup, isTicketOnlyEvent } from "@/lib/events/price";
+import { defaultCity, lodgingLocation } from "@/lib/events/lodging";
 import type { OrderPartnerSession } from "@/lib/partner-auth/session";
 
 const shortenTicketCategory = (category: string): string => {
@@ -65,6 +66,9 @@ export const OrderForm = ({
     returnToSummary,
     setReturnToSummary,
     packageLocked,
+    lodgingCity,
+    setHotelSegments,
+    setSplitNights,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -115,7 +119,9 @@ export const OrderForm = ({
       {
         dateRange: getDefaultDateRange(event, undefined),
         guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
-        location: event.location,
+        // The event's default lodging city - the context's lodgingCity is
+        // still "flight" this early (it follows the event in the layout).
+        location: lodgingLocation(event, defaultCity(event)),
         eventId: event.id,
       },
       { immediate: true }
@@ -326,6 +332,9 @@ export const OrderForm = ({
           );
           setSkipHotel(true);
           setHotel(undefined);
+          // No hotel at all - a chosen split stay goes with it.
+          setHotelSegments(null);
+          setSplitNights(null);
         }
 
         // Use skipHotel flag to determine if hotel data should be included
@@ -404,7 +413,7 @@ export const OrderForm = ({
         {
           dateRange: getDefaultDateRange(event, undefined),
           guests: getRoomParams(planeTickets.adults || numberOfEventTickets),
-          location: event.location,
+          location: lodgingLocation(event, lodgingCity),
           eventId: event.id,
         },
         { immediate: true }

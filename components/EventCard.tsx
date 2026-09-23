@@ -5,6 +5,7 @@ import "dayjs/locale/he";
 import { Event } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
 import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
+import { hasEventCity } from "@/lib/events/lodging";
 import { Button } from "@/components/ui/button";
 import { PackageIcons } from "@/components/ui/PackageIcons";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
@@ -95,7 +96,9 @@ export const EventCard = ({
               showName ? "text-sm text-muted-foreground" : "text-lg"
             )}
           >
-            {event.location?.name}
+            {hasEventCity(event)
+              ? `${event.event_location?.name} · טיסה ל${event.location.name}`
+              : event.location?.name}
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
