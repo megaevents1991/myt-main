@@ -6,7 +6,10 @@ import { supabase } from "@/lib/supabase";
 import type { EventTicket } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
-import { UNLABELED_SECTION_MARK } from "@/lib/tixstock-map";
+import {
+  categoryMatchesMapId,
+  UNLABELED_SECTION_MARK,
+} from "@/lib/tixstock-map";
 import { supplierCostToUsd } from "@/lib/supplier-pricing";
 import { ticketSupplier } from "@/lib/suppliers";
 
@@ -237,7 +240,14 @@ function isExcludedSection(
   excludedSections: string[],
 ): boolean {
   if (excludedSections.length === 0) return false;
-  const listingCatSlug = slugify(listing.seat_details?.category ?? "");
+  const listingCategory: string = listing.seat_details?.category ?? "";
+  const listingCatSlug = slugify(listingCategory);
+  // The excluded id carries the category as the DRAWING names it, the listing
+  // as TixStock names it today - they drift apart (the older Bernabéu file says
+  // "categoría-1", listings say "CATEGORÍA 1 (CAT1)"), and an exact slug match
+  // then let every excluded section sell (QA 23.09). Same rule as the map.
+  const sameCategory = (catSlug: string) =>
+    catSlug === listingCatSlug || categoryMatchesMapId(listingCategory, catSlug);
   const listingSection = (listing.seat_details?.section ?? "")
     .trim()
     .toLowerCase();
@@ -265,14 +275,14 @@ function isExcludedSection(
   // must not count as a concrete section that hides category-only listings.
   const hasConcreteExcludedSectionInCategory = parsedExcludedSections.some(
     ({ catSlug, sectionId }) =>
-      catSlug === listingCatSlug &&
+      sameCategory(catSlug) &&
       sectionId !== "" &&
       !sectionId.startsWith(UNLABELED_SECTION_MARK) &&
       sectionId !== listingCatSlug,
   );
 
   return parsedExcludedSections.some(({ catSlug, sectionId }) => {
-    if (listingCatSlug !== catSlug) return false;
+    if (!sameCategory(catSlug)) return false;
 
     if (isCategoryOnlyListing) {
       return hasConcreteExcludedSectionInCategory;
