@@ -59,12 +59,25 @@ export function getTicketOnlyMarkup(event: Event): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-/** The ticket-only override applies only when BOTH components are skipped. */
+/**
+ * Event-level ticket-only mode (backoffice switch `package_mode`). Such an event is
+ * sold as a ticket alone: no flight/hotel steps at all. Missing/unknown = package.
+ */
+export function isTicketOnlyEvent(event: Pick<Event, "package_mode">): boolean {
+  return event.package_mode === "ticket_only";
+}
+
+/**
+ * The ticket-only override applies when the EVENT is ticket-only (the backoffice
+ * requires the markup then; `?? 0` downstream keeps a stray row safe), or when the
+ * customer skipped BOTH components on a regular event that has a markup set.
+ */
 export function isTicketOnlyOverride(
   event: Event,
   flightSkipped: boolean,
   hotelSkipped: boolean,
 ): boolean {
+  if (isTicketOnlyEvent(event)) return true;
   return flightSkipped && hotelSkipped && getTicketOnlyMarkup(event) != null;
 }
 
@@ -135,6 +148,12 @@ export function computePackagePrice(
   const minTicketPrice = Math.min(
     ...availableTickets.map((ticket) => ticket.price),
   );
+
+  // Ticket-only event: the card price IS the ticket price + its markup - no
+  // bases, no package markup (same number the summary charges).
+  if (isTicketOnlyEvent(event)) {
+    return Math.ceil(minTicketPrice + (getTicketOnlyMarkup(event) ?? 0));
+  }
 
   const effectiveMarkup = getTotalMarkup(event, markup);
 

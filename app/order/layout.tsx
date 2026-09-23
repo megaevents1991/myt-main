@@ -14,6 +14,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
 import { Stepper } from "@/components/ui/Stepper";
+import { isTicketOnlyEvent } from "@/lib/events/price";
 import { HotelFetchProvider } from "../hooks/HotelFetch.provider";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { OrderExpiryProvider, useOrderExpiry } from "../hooks/useOrderExpiry";
@@ -56,11 +57,17 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";
+  // Ticket-only event: the stepper is "כרטיסים → סיום" (indexes 0/1 ↔ steps 1/4).
+  const ticketOnly = !!event && isTicketOnlyEvent(event);
 
   const handleStepperClick = (index: number) => {
     // Edit-from-summary is a focused task - no wandering the flow mid-edit.
     // An agent-locked package is not the customer's to rearrange either.
     if (returnToSummary || packageLocked) return;
+    if (ticketOnly) {
+      if (index === 0 && step > 1) setStep(1);
+      return;
+    }
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
@@ -85,9 +92,15 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   return (
     <div className="w-full">
       <Stepper
-        currentStep={step}
+        currentStep={ticketOnly ? (step === 4 ? 2 : 1) : step}
         onStepperClick={handleStepperClick}
-        steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
+        steps={
+          ticketOnly
+            ? ["כרטיסים", "סיום"]
+            : isUS
+              ? ["כרטיסים", "טיסה", "סיום"]
+              : undefined
+        }
         // Hidden on the summary AND during edit-from-summary - an edit is a
         // focused single-step task, not a walk through the flow.
         hideSteps={step === 4 || returnToSummary}
