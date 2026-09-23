@@ -260,6 +260,7 @@ export async function POST(req: Request) {
     event_order_info: validatedData.event_order_info,
     flight_order_info: validatedData.flight_order_info,
     hotel_order_info: validatedData.hotel_order_info,
+    hotel_segments: validatedData.hotel_segments ?? null,
     user_shown_price: validatedData.user_shown_price,
     event_id: validatedData.event_id,
     payment_info: payNow ? {} : null,
@@ -523,7 +524,16 @@ export async function POST(req: Request) {
             !validatedData.hotel_order_info ||
             Object.keys(validatedData.hotel_order_info).length === 0
               ? "Hotel: SKIPPED BY CUSTOMER"
-              : `Hotel: ${validatedData.hotel_order_info.name}
+              : Array.isArray(validatedData.hotel_segments) &&
+                  validatedData.hotel_segments.length > 1
+                ? // Split stay - one line per segment, in night order.
+                  validatedData.hotel_segments
+                    .map(
+                      (h) =>
+                        `Hotel: ${h.name} (${h.cityName ?? h.city ?? ""} ${h.checkin}→${h.checkout})`,
+                    )
+                    .join("\n          ")
+                : `Hotel: ${validatedData.hotel_order_info.name}
           Room Type: ${validatedData.hotel_order_info.rate?.room_name ?? "N/A"}`
           }
 

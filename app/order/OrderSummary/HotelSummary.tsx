@@ -15,8 +15,12 @@ export const HotelSummary = ({
   showUpsells,
   onAddBreakfast,
   onRemoveBreakfast,
+  hotelSegments,
 }: {
   selectedHotel: OrderHotel;
+  /** Split stay (2+ hotels): one row per segment replaces the single
+   *  name/room/dates block; the price line stays one summed line. */
+  hotelSegments?: OrderHotel[] | null;
   agentCommission: number;
   /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
@@ -34,6 +38,56 @@ export const HotelSummary = ({
   onRemoveBreakfast?: () => void;
 }) => {
   const agentViewer = isAgent ?? agentCommission > 0;
+  const segments = hotelSegments && hotelSegments.length > 1 ? hotelSegments : null;
+  const priceLine = !agentViewer && (
+    <div>
+      {hotelPriceAddition
+        ? formatPrice(hotelPriceAddition, {
+            factor: totalGuests,
+            applyColor: false,
+            bold: false,
+          })
+        : "כלול במחיר"}
+    </div>
+  );
+  if (segments) {
+    return (
+      <div className="">
+        <h3 className="font-bold text-lg hidden md:block">
+          לינה{" "}
+          <span>
+            {"("}
+            {selectedHotel.guests.reduce(
+              (ppl, room) => ppl + room.children.length + room.adults,
+              0
+            )}
+            {" אורחים)"}
+          </span>
+        </h3>
+        <div className="flex w-full justify-between gap-3" dir="rtl">
+          <div className="flex flex-col gap-2">
+            {segments.map((h, i) => (
+              <div key={`${h.id}-${h.checkin}-${i}`} className="text-[14px]">
+                <p className="font-bold">
+                  {h.cityName ?? h.name}
+                  <span className="mr-1.5 font-normal tabular-nums" dir="ltr">
+                    {`${dayjs(h.checkin).format("DD/MM/YYYY")}–${dayjs(h.checkout).format("DD/MM/YYYY")}`}
+                  </span>
+                </p>
+                <p dir="ltr" className="text-right">
+                  {h.name}
+                  {h.rate?.room_data_trans?.main_name
+                    ? ` · ${h.rate.room_data_trans.main_name}`
+                    : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+          {priceLine}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="">
       <h3 className="font-bold text-lg hidden md:block">

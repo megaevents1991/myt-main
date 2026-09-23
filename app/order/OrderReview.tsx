@@ -97,6 +97,7 @@ export default function OrderReview({
     flightSkipped,
     setFlightSkipped,
     setReturnToSummary,
+    hotelSegments,
   } = useContext(OrderContext);
   // Agent-locked prepared package - the summary's edit affordances go inert.
   // packageAdjustPerPerson is the agent's own price on that package (item 4).
@@ -251,9 +252,14 @@ export default function OrderReview({
   // hotelsData search for different dates (package-prefilled / resumed
   // order / a later date change) - see order-review.utils.ts for the exact
   // guards.
+  // Off on a split stay: the swap would move `hotel` away from
+  // hotelSegments[0] (the invariant every segment reader relies on).
   const breakfastUpgrade = useMemo(
-    () => findBreakfastUpgrade(selectedHotel, hotelsData),
-    [selectedHotel, hotelsData]
+    () =>
+      hotelSegments && hotelSegments.length > 1
+        ? null
+        : findBreakfastUpgrade(selectedHotel, hotelsData),
+    [selectedHotel, hotelsData, hotelSegments]
   );
   const handleAddBreakfast = useCallback(() => {
     if (!selectedHotel || !breakfastUpgrade) return;
@@ -1361,6 +1367,12 @@ export default function OrderReview({
                 : {}),
             }
           : {},
+      // Split stay: every segment in night order (hotel_order_info above is
+      // the first one). null = the usual single hotel.
+      hotel_segments:
+        !skipHotel && hotelSegments && hotelSegments.length > 1
+          ? hotelSegments
+          : null,
       user_shown_price: finalPurchasePrice,
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
       final_purchase_price_ils: finalPurchasePriceILS,
@@ -1893,6 +1905,7 @@ export default function OrderReview({
                   event={event}
                   selectedFlight={selectedFlight!}
                   selectedHotel={selectedHotel!}
+                  hotelSegments={hotelSegments}
                   eventTicket={eventTicket}
                   numberOfEventTickets={numberOfEventTickets}
                   flightPriceAddition={flightPriceAddition}

@@ -72,6 +72,8 @@ export const validateOrderData = async (
         .required(),
       flight_order_info: yup.object().required(),
       hotel_order_info: yup.object().nullable().required(), // Can be null if hotel is skipped
+      // Split stay: 2+ hotels in night order; hotel_order_info is the first.
+      hotel_segments: yup.array().nullable().notRequired(),
       user_shown_price: yup.number().required(),
       event_id: yup.number().required(),
       exchange_rate_usd_ils_100: yup.number().required(),

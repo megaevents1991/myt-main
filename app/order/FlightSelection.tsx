@@ -40,6 +40,7 @@ import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { parseDuration } from "@/lib/parseDuration";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+import { lodgingLocation } from "@/lib/events/lodging";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -104,6 +105,7 @@ export const FlightSelection = () => {
     setFlightSkipped,
     personLink,
     returnToSummary,
+    lodgingCity,
   } = useContext(OrderContext);
 
   // A customer who skipped the flight can come back and add one ("+ להוספה").
@@ -215,7 +217,8 @@ export const FlightSelection = () => {
         {
           dateRange: getDefaultDateRange(event, orderFlight),
           guests: getRoomParams(planeTickets.adults),
-          location: event.location,
+          // Search the chosen lodging city, not always the flight city.
+          location: lodgingLocation(event, lodgingCity),
           eventId: event.id,
         },
         { immediate: true }
