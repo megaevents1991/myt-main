@@ -13,6 +13,7 @@ import {
   getTotalMarkup,
   isEventSoldOut,
 } from "@/lib/events/price";
+import { isTicketOnlyEvent } from "@/lib/events/price";
 
 export const FEED_SITE_ORIGIN = "https://www.mega-events.co.il";
 export const MONDIAL_ORIGIN = "https://mondial2026.mega-events.co.il";
@@ -219,9 +220,11 @@ export function buildFeedItem(
   const fromCms = plainText(event.description || "");
   const generated = `${name} ב${city || "חו״ל"}, ${d.getUTCDate()} ${
     HEB_MONTHS[d.getUTCMonth()]
-  } ${d.getUTCFullYear()}. כרטיס רשמי לאירוע${
-    event.skip_flight ? " ומלון" : ", טיסה ומלון"
-  } - חבילה שאתם מרכיבים בעצמכם.`;
+  } ${d.getUTCFullYear()}. ${
+    isTicketOnlyEvent(event)
+      ? "כרטיס רשמי לאירוע - כרטיס בלבד."
+      : `כרטיס רשמי לאירוע${event.skip_flight ? " ומלון" : ", טיסה ומלון"} - חבילה שאתם מרכיבים בעצמכם.`
+  }`;
   // Meta rejects description === title; the generated sentence always differs.
   const description = fromCms && fromCms !== title ? fromCms : generated;
 

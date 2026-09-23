@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 import type { Event, Artist } from "@/lib/app.types";
-import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
 import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { normalizeName } from "@/lib/eventNameMatch";
 import { cn } from "@/lib/utils";
@@ -281,8 +281,8 @@ export const HeroSearch = ({
   const parts: { label: string; Icon: typeof Plane; disabled: boolean }[] =
     selected
       ? [
-          { label: "טיסה", Icon: Plane, disabled: !!selected.skip_flight },
-          { label: "מלון", Icon: Building2, disabled: !!selected.skip_flight },
+          { label: "טיסה", Icon: Plane, disabled: !!selected.skip_flight || isTicketOnlyEvent(selected) },
+          { label: "מלון", Icon: Building2, disabled: !!selected.skip_flight || isTicketOnlyEvent(selected) },
           { label: "כרטיס", Icon: Ticket, disabled: false },
         ]
       : [];
@@ -516,9 +516,9 @@ export const HeroSearch = ({
               )
             )}
           </div>
-          {!assembling && selected.skip_flight && (
+          {!assembling && (selected.skip_flight || isTicketOnlyEvent(selected)) && (
             <p className="mt-2 text-center text-xs font-medium text-primary/80">
-              אפשרות לכרטיס בלבד
+              {isTicketOnlyEvent(selected) ? "כרטיס בלבד" : "אפשרות לכרטיס בלבד"}
             </p>
           )}
 

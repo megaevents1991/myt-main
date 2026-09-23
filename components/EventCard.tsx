@@ -4,7 +4,7 @@ import "dayjs/locale/he";
 
 import { Event } from "@/lib/app.types";
 import { cn } from "@/lib/utils";
-import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
 import { Button } from "@/components/ui/button";
 import { PackageIcons } from "@/components/ui/PackageIcons";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
@@ -28,6 +28,7 @@ export const EventCard = ({
   showName?: boolean;
 }) => {
   const sold = isEventSoldOut(event);
+  const ticketOnly = isTicketOnlyEvent(event);
   const price = computePackagePrice(event);
   const dateLabel = event.date
     ? dayjs(event.date).format("DD/MM/YY")
@@ -62,7 +63,7 @@ export const EventCard = ({
             {price !== null ? (
               <div className="flex flex-col items-start">
                 <span className="text-[11px] leading-none text-muted-foreground">
-                  מחיר ממוצע
+                  {ticketOnly ? "מחיר" : "מחיר ממוצע"}
                 </span>
                 <span
                   className={`text-2xl font-extrabold tabular-nums ${
@@ -71,7 +72,9 @@ export const EventCard = ({
                 >
                   ${price.toLocaleString("en-US")}
                 </span>
-                <span className="text-[11px] text-muted-foreground">לנוסע</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {ticketOnly ? "לכרטיס" : "לנוסע"}
+                </span>
               </div>
             ) : (
               <span className="text-2xl font-extrabold text-muted-foreground">
@@ -97,11 +100,16 @@ export const EventCard = ({
 
           <div className="flex flex-wrap items-center gap-2">
             <EventStatusBadge event={event} />
+            {ticketOnly && (
+              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[11px] font-bold text-foreground">
+                כרטיס בלבד
+              </span>
+            )}
           </div>
 
           {/* Icons on the right, button on the left (swapped per mock) */}
           <div className="mt-auto flex items-end justify-between gap-3 pt-1">
-            <PackageIcons cycle />
+            <PackageIcons cycle ticketOnly={ticketOnly} />
             <Button
               variant="pill"
               size="sm"
