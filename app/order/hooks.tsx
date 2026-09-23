@@ -31,8 +31,17 @@ export function useOrderVars() {
     skipHotel,
     skippedHotelPricePerGuest,
     flightSkipped,
+    hotelSegments,
   } = useContext(OrderContext);
   const { hotelsData } = useContext(HotelFetchContext);
+
+  // Split stay: the hotel cost is the SUM of the segments (same guests on
+  // every segment, the windows add up to the single-hotel stay). Null when
+  // there is one hotel - selectedHotel.price is then the whole stay.
+  const segmentedHotelPrice = useMemo(() => {
+    if (!hotelSegments || hotelSegments.length < 2) return null;
+    return hotelSegments.reduce((sum, h) => sum + (+h.price || 0), 0);
+  }, [hotelSegments]);
 
   // Cheapest available hotel in the CURRENT search, per guest - the market
   // reference for the hotel-skip fee when no specific hotel was removed
@@ -98,14 +107,22 @@ export function useOrderVars() {
     if (!selectedHotel || !event) {
       return 0;
     }
+    const hotelPrice = segmentedHotelPrice ?? +selectedHotel.price;
     return priceOutsidePackBoundaries(
-      +selectedHotel.price,
+      hotelPrice,
       event.base_hotel_price,
       totalGuests
     )
-      ? +selectedHotel.price / totalGuests - event.base_hotel_price
+      ? hotelPrice / totalGuests - event.base_hotel_price
       : 0;
-  }, [skipHotel, hotelSkipRefPerGuest, selectedHotel, event, totalGuests]);
+  }, [
+    skipHotel,
+    hotelSkipRefPerGuest,
+    selectedHotel,
+    segmentedHotelPrice,
+    event,
+    totalGuests,
+  ]);
 
   const airlineName = useMemo(
     () => shortenAirlineName(selectedFlight?.metadata?.name),

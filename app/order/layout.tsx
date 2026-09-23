@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { defaultCity, LodgingCity, NightAssign } from "@/lib/events/lodging";
 import { OrderContext, PersonLink } from "../app.context";
 import {
   Event,
@@ -53,6 +54,16 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   // Agent's price for a prepared package (doc 2026-08-30, item 4) - 0 unless
   // the visitor arrived on a ?pkg= link whose agent changed the price.
   const [packageAdjustPerPerson, setPackageAdjustPerPerson] = useState(0);
+  // Lodging city + split stay (lib/events/lodging.ts). The city follows the
+  // event's default once per event id - a re-set of the same event (live
+  // ticket refresh) must not wipe the customer's choice.
+  const [lodgingCity, setLodgingCity] = useState<LodgingCity>("flight");
+  const [hotelSegments, setHotelSegments] = useState<OrderHotel[] | null>(null);
+  const [splitNights, setSplitNights] = useState<NightAssign[] | null>(null);
+  useEffect(() => {
+    if (event) setLodgingCity(defaultCity(event));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id]);
 
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
@@ -149,6 +160,12 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPackageLocked,
           packageAdjustPerPerson,
           setPackageAdjustPerPerson,
+          lodgingCity,
+          setLodgingCity,
+          hotelSegments,
+          setHotelSegments,
+          splitNights,
+          setSplitNights,
         }}
       >
         <HotelFetchProvider>
