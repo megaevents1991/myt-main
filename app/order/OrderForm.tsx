@@ -19,7 +19,7 @@ import { getTotalPersons } from "@/lib/price.utils";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
-import { getTotalMarkup } from "@/lib/events/price";
+import { getTotalMarkup, isTicketOnlyEvent } from "@/lib/events/price";
 import type { OrderPartnerSession } from "@/lib/partner-auth/session";
 
 const shortenTicketCategory = (category: string): string => {
@@ -90,6 +90,10 @@ export const OrderForm = ({
   }, [step]);
 
   const isUS = event?.location?.country_code === "US";
+  // Ticket-only event (backoffice `package_mode`): no flight step, no hotel step.
+  // Both are forced-skipped and the flow walks 1 → 4; pricing goes through
+  // isTicketOnlyOverride (ticket + ticket_only_markup, nothing else).
+  const ticketOnly = !!event && isTicketOnlyEvent(event);
 
   // "Edit from summary" mode (flag lives in OrderContext so the layout's
   // Stepper can hide too): entering a step via the summary's עריכה button arms
@@ -104,7 +108,7 @@ export const OrderForm = ({
   // Preload hotels as soon as the order flow starts so they're ready
   // by the time the customer reaches step 3 (especially after skip flight).
   useEffect(() => {
-    if (isUS) return;
+    if (isUS || ticketOnly) return;
     if (!event?.id) return;
     if (hotelsData?.data?.data?.hotels) return;
     getHotels(
@@ -121,12 +125,27 @@ export const OrderForm = ({
 
   useEffect(() => {
     // US events are sold without hotel; if we ever land on step 3, skip to review.
-    if (isUS && step === 3) {
+    if ((isUS || ticketOnly) && step === 3) {
       setSkipHotel(true);
       setHotel(undefined);
       setStep(4);
     }
-  }, [isUS, step, setHotel, setSkipHotel, setStep]);
+    // Ticket-only: no flight step either.
+    if (ticketOnly && step === 2) {
+      setSkipFlight(true);
+      setFlight(undefined);
+      setStep(4);
+    }
+  }, [isUS, ticketOnly, step, setHotel, setSkipHotel, setFlight, setSkipFlight, setStep]);
+
+  useEffect(() => {
+    // Ticket-only event: both parts are settled before the customer sees anything.
+    if (!ticketOnly) return;
+    setSkipFlight(true);
+    setSkipHotel(true);
+    setFlight(undefined);
+    setHotel(undefined);
+  }, [ticketOnly, setSkipFlight, setSkipHotel, setFlight, setHotel]);
 
   // Airline penalties + checked-bag price for the summary. An effect on step 4
   // (not a step-transition side effect) so EVERY path into the summary gets it:
@@ -217,6 +236,7 @@ export const OrderForm = ({
   // from the ticket lands on the summary, not on "בחר והמשך לטיסה" (doc bug,
   // agent area: pick a ticket → should go straight to the order summary).
   const nextUnresolvedStep = (from: number, hotelSettled = false) => {
+    if (ticketOnly) return 4;
     let next = from + 1;
     if (next === 2 && flightSkipped) next = 3;
     if (next === 3 && (isUS || skipHotel || hotelSettled)) next = 4;
@@ -451,7 +471,9 @@ export const OrderForm = ({
       onClick: slotNav(2),
     },
   ];
-  if (!isUS) {
+  // Ticket-only: no flight pill (the flight slot is index 1) and no hotel pill.
+  if (ticketOnly) continueSlots.splice(1, 1);
+  if (!isUS && !ticketOnly) {
     continueSlots.push({
       icon: "hotel",
       label: "מלון",
@@ -522,8 +544,9 @@ export const OrderForm = ({
       : primaryTarget === 3
         ? "בחר והמשך למלון"
         : "בחר והמשך לסיכום";
-  const skipAction =
-    step === 3
+  const skipAction = ticketOnly
+    ? undefined
+    : step === 3
       ? { label: "לא צריך מלון", onSkip: handleSkipHotel }
       : step === 2 && skipFlight
         ? { label: "לא צריך טיסה", onSkip: handleSkipFlight }

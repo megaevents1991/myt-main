@@ -9,6 +9,12 @@ export type EventType =
   | "music_live_event_dynamic"
   | "tx_event";
 
+// How the site sells an event. 'package' = flight + hotel + ticket (today's flow);
+// 'ticket_only' = the ticket alone - no flight/hotel steps, price = ticket + ticket_only_markup.
+// Text column, no CHECK. Mirrors backoffice types/app.types.ts.
+export const PACKAGE_MODES = ["package", "ticket_only"] as const;
+export type PackageMode = (typeof PACKAGE_MODES)[number];
+
 export type Event = {
   id: number;
   name: string;
@@ -90,6 +96,11 @@ export type Event = {
   // markups. Absolute, wins over everything. Only the both-skipped scenario;
   // every other path untouched. Empty/null = no override.
   ticket_only_markup?: number | null;
+  // 'package' (default) or 'ticket_only' - the backoffice switch. A ticket-only
+  // event has NO flight/hotel steps: both are forced-skipped, the stepper is
+  // 2 steps, price = ticket + ticket_only_markup (isTicketOnlyOverride is true
+  // regardless of what the customer did). Missing on older rows = 'package'.
+  package_mode?: PackageMode;
   // Auto-generated campaign creative (backoffice nightly cron). Feed uses
   // campaign_image_url as image_link (NO fallback - an event without a
   // creative is skipped, "branded or not at all"), banner as
