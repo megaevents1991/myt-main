@@ -146,12 +146,15 @@ export const OrderForm = ({
 
   useEffect(() => {
     // Ticket-only event: both parts are settled before the customer sees anything.
+    // `skipFlight` only PERMITS skipping; the summary and the total read
+    // `flightSkipped` (the customer's actual choice), so set both.
     if (!ticketOnly) return;
     setSkipFlight(true);
+    setFlightSkipped(true);
     setSkipHotel(true);
     setFlight(undefined);
     setHotel(undefined);
-  }, [ticketOnly, setSkipFlight, setSkipHotel, setFlight, setHotel]);
+  }, [ticketOnly, setSkipFlight, setFlightSkipped, setSkipHotel, setFlight, setHotel]);
 
   // Airline penalties + checked-bag price for the summary. An effect on step 4
   // (not a step-transition side effect) so EVERY path into the summary gets it:

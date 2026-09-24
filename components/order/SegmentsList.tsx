@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Modal, Skeleton } from "@mantine/core";
+import { Loader, Modal, Skeleton } from "@mantine/core";
 import dayjs from "dayjs";
 import type { Event, OrderHotel } from "@/lib/app.types";
 import { cityName, StaySegment } from "@/lib/events/lodging";
