@@ -1301,7 +1301,7 @@ export const HotelSelection = () => {
       </div>
       {splitActive ? (
         // Split stay: one block per segment replaces the list + filters.
-        <div className="w-full px-4 lg:px-6" dir="rtl">
+        <div className="w-full px-4 pb-24 lg:px-6 lg:pb-28" dir="rtl">
           <SegmentsList
             event={event}
             segments={splitSegments}
@@ -1354,8 +1354,22 @@ export const HotelSelection = () => {
               // (dates/guests/distance) runs - gating on "no hotels" used to drop
               // us into the plain skeleton branch and lose the animation.
               <FlightLoadingTransition
-                title={flightSkipped ? "מחפשים לכם את המלונות הטובים ביותר" : "!?כבר הספקתם לבחור טיסות"}
-                subtitle={flightSkipped ? "ממש עוד רגע יופיעו המלונות" : "ממש עוד רגע יופיעו גם המלונות"}
+                title={
+                  // A re-search (dates / guests / lodging city) already has hotels
+                  // on screen - "did you pick flights yet?!" reads wrong there (Alon 24.09).
+                  hotelsData.data?.data?.hotels?.length
+                    ? "אנחנו מכינים עבורכם את החבילה"
+                    : flightSkipped
+                      ? "מחפשים לכם את המלונות הטובים ביותר"
+                      : "!?כבר הספקתם לבחור טיסות"
+                }
+                subtitle={
+                  hotelsData.data?.data?.hotels?.length
+                    ? `ממש עוד רגע יופיעו המלונות ב${cityName(event, lodgingCity)}`
+                    : flightSkipped
+                      ? "ממש עוד רגע יופיעו המלונות"
+                      : "ממש עוד רגע יופיעו גם המלונות"
+                }
                 showHotelOnly
                 className="py-12"
               />

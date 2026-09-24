@@ -11,6 +11,7 @@ import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
 import type { BreakfastUpgrade } from "../order-review.utils";
 import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
 import { hasEventCity } from "@/lib/events/lodging";
+import { isTicketOnlyEvent } from "@/lib/events/price";
 
 /** "<event city> · טיסה ל<flight city>" on a two-city event, else the city. */
 const placeLine = (event: Event) =>
@@ -195,8 +196,9 @@ export const Review = ({
 
   // Skipped steps stay bookable - offer a compact "add it" row instead of
   // hiding them entirely (US events are sold without a hotel, so no hotel row).
+  // A ticket-only event sells no travel at all, so nothing is offered (Alon, 24.09).
   const isUS = event?.location?.country_code === "US";
-  const addRows = onEdit
+  const addRows = onEdit && !(event && isTicketOnlyEvent(event))
     ? [
         ...(flightSkipped
           ? [{ step: 2 as const, icon: <FaPlane />, text: "עדיין אפשר להזמין טיסה" }]
