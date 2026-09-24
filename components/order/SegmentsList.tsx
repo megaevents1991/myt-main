@@ -75,7 +75,15 @@ export const SegmentsList = ({
                 {` · ${seg.nights} לילות`}
               </div>
               {loading || !hotel ? (
-                <Skeleton visible className="h-16" />
+                // The segment searches run one after another (RateHawk 10/min) and a cold
+                // city takes 10-20 s - say so; a bare skeleton is invisible on the dark theme.
+                <div className="flex flex-col gap-2">
+                  <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <Loader size="xs" color="var(--mantine-color-myColor-4)" />
+                    {`מחפשים מלון ב${cityName(event, seg.city)}…`}
+                  </p>
+                  <Skeleton visible className="h-10" />
+                </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
