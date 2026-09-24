@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import { amadeus } from "../amadeusClient";
+import { exchangeRateService } from "@/lib/exchangeRateService";
+import { offerSegmentIds, roundTripBagUsd, type BagLine } from "@/lib/flights/bagGroups";
 
 export const maxDuration = 30;
 
-type BaggageItem = {
-  quantity: number;
-  name: string;
-  price: {
-    amount: string;
-    currencyCode: string;
-  };
-  bookableByItinerary: boolean;
-  segmentIds: string[];
-  travelerIds: string[];
+/** Ancillary price -> USD (the fare's currency is USD or, now and then,
+ *  EUR - same conversion as /api/flights/bag-pricing). Anything else = null. */
+const toUsd = (amount: string, currencyCode: string): number | null => {
+  const value = parseFloat(amount);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (currencyCode === "USD") return value;
+  if (currencyCode === "EUR") {
+    const { rate } = exchangeRateService.getEurUsdRate();
+    return Number.isFinite(rate) && rate > 0 ? value * rate : null;
+  }
+  return null;
 };
 
 // El Al online (Amadeus/virtual) cancellation texts - El Al files NO
@@ -145,14 +148,18 @@ export async function POST(request: Request) {
       });
     }
 
-    const bagCostString = (
-      Object.values(data?.included?.["bags"] ?? {}) as BaggageItem[]
-    ).find((item) => item.quantity === 1 && item.name === "CHECKED_BAG")?.price
-      ?.amount;
-    let bags = parseInt(bagCostString || "0");
-    if (bags) {
-      bags = bags + 5;
-    } // TODO: convert euro to USD
+    // Informational only (stored on flight.bags, never charged - the paid
+    // add-on is /api/flights/bag-pricing). Same round-trip rule as there: one
+    // line per segment group, summed; 0 when the lines don't cover the trip.
+    await exchangeRateService.ensureFresh();
+    const bagUsd = roundTripBagUsd(
+      Object.values(data?.included?.["bags"] ?? {}) as BagLine[],
+      offerSegmentIds(flightOffer),
+      1,
+      (name) => name === "CHECKED_BAG",
+      toUsd,
+    );
+    const bags = bagUsd != null ? Math.ceil(bagUsd) + 5 : 0;
 
     // Never hand the summary an empty Penalties dialog - fall back to the
     // carrier-appropriate static text when no PENALTIES note was filed.

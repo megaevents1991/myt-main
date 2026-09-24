@@ -141,6 +141,10 @@ export const FlightSummary = ({
   const checkedAdded = checkedBagsCount > 0;
   const cabinAdded = !!addedBags?.cabin;
   const fareUpgraded = !!selectedFlight.fare_upgrade;
+  // Bag prices are for the whole trip (bag-pricing sums every segment group),
+  // so a round-trip offer says so - "$150 למזוודה" read as one direction.
+  const hasReturn = (selectedFlight.offer?.itineraries?.length ?? 0) > 1;
+  const perBagLabel = hasReturn ? "למזוודה הלוך-חזור" : "למזוודה";
 
   return (
     <div className="">
@@ -325,14 +329,14 @@ export const FlightSummary = ({
             onClick={() => onSetCheckedBagQty?.(1)}
             dir="rtl"
             className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
-            aria-label={`הוסף מזוודה, ${Math.ceil(bagOptions.checked.unitPriceUsd)} דולר למזוודה`}
+            aria-label={`הוסף מזוודה, ${Math.ceil(bagOptions.checked.unitPriceUsd)} דולר ${perBagLabel}`}
           >
             <span>הוסף מזוודה</span>
             {/* Per-bag price (Dor 20.8: "מחיר פר מזוודה") - the confirmed
                 line below shows the all-travelers total once added. */}
             <span className="tabular-nums" dir="ltr">
               +${Math.ceil(bagOptions.checked.unitPriceUsd).toLocaleString("en-US")}{" "}
-              <span dir="rtl">למזוודה</span>
+              <span dir="rtl">{perBagLabel}</span>
             </span>
           </button>
         )}

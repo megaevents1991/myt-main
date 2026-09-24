@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { amadeus } from "../amadeusClient";
 import { exchangeRateService } from "@/lib/exchangeRateService";
+import { offerSegmentIds, roundTripBagUsd } from "@/lib/flights/bagGroups";
 
 export const maxDuration = 20;
 
@@ -31,6 +32,7 @@ type PricingResponseBody = {
 // declares its own structurally-identical copy for the fetch() response shape
 // instead of importing from here.
 type BagPricingOption = {
+  /** Per pax, per bag, for the WHOLE trip (every segment, both directions). */
   unitPriceUsd: number;
   totalUsd: number;
   /** Price (per pax) for TWO checked bags, when the carrier files a
@@ -143,21 +145,13 @@ const toUsd = (amount: string, currencyCode: string): number | null => {
 
 // Amadeus lists incremental quantities as separate ancillary items - the
 // qty-1 line prices a single bag, the qty-2 line (when the carrier files
-// one) prices the pair.
-const cheapestOfQty = (
-  items: BaggageItem[],
-  quantity: number,
-  matchesName: (name: string) => boolean,
-): BaggageItem | null =>
-  items
-    .filter((item) => item.quantity === quantity && matchesName(item.name || ""))
-    .reduce<BaggageItem | null>((best, item) => {
-      const price = parseFloat(item.price?.amount ?? "");
-      if (!Number.isFinite(price)) return best;
-      if (!best) return item;
-      const bestPrice = parseFloat(best.price?.amount ?? "");
-      return price < bestPrice ? item : best;
-    }, null);
+// one) prices the pair - and each line covers only ITS segments (usually one
+// itinerary). roundTripBagUsd sums one line per segment group so the price is
+// for the whole trip, and returns null when the lines don't cover every
+// segment (a one-way bag is never sold).
+const CHECKED = (name: string) => name === "CHECKED_BAG";
+const CABIN = (name: string) =>
+  name !== "CHECKED_BAG" && name.toUpperCase().includes("CABIN");
 
 export async function POST(request: Request) {
   // toUsd() reads the EUR rate synchronously - make sure it is live first.
@@ -229,42 +223,25 @@ export async function POST(request: Request) {
 
     const bagOptions: BagPricingOptions = {};
 
-    const checkedItem = cheapestOfQty(
-      bagItems,
-      1,
-      (name) => name === "CHECKED_BAG",
-    );
-    if (checkedItem) {
-      const unitPriceUsd = toUsd(
-        checkedItem.price.amount,
-        checkedItem.price.currencyCode,
-      );
-      if (unitPriceUsd != null) {
-        const unit = Math.ceil(unitPriceUsd);
-        bagOptions.checked = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };
-        // Second-bag pricing: prefer the carrier's own qty-2 ancillary (its
-        // amount covers BOTH bags); UI falls back to 2×unit when absent.
-        const twoBagItem = cheapestOfQty(bagItems, 2, (name) => name === "CHECKED_BAG");
-        if (twoBagItem) {
-          const twoUsd = toUsd(twoBagItem.price.amount, twoBagItem.price.currencyCode);
-          if (twoUsd != null && twoUsd >= unitPriceUsd) {
-            bagOptions.checked.twoBagsTotalPerPaxUsd = Math.ceil(twoUsd);
-          }
-        }
+    const segmentIds = offerSegmentIds(flightOffer);
+
+    const checkedUsd = roundTripBagUsd(bagItems, segmentIds, 1, CHECKED, toUsd);
+    if (checkedUsd != null) {
+      const unit = Math.ceil(checkedUsd);
+      bagOptions.checked = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };
+      // Second-bag pricing: prefer the carrier's own qty-2 ancillary (its
+      // amount covers BOTH bags, per group of segments); UI falls back to
+      // 2×unit when absent.
+      const twoUsd = roundTripBagUsd(bagItems, segmentIds, 2, CHECKED, toUsd);
+      if (twoUsd != null && twoUsd >= checkedUsd) {
+        bagOptions.checked.twoBagsTotalPerPaxUsd = Math.ceil(twoUsd);
       }
     }
 
-    const cabinItem = cheapestOfQty(
-      bagItems,
-      1,
-      (name) => name !== "CHECKED_BAG" && name.toUpperCase().includes("CABIN"),
-    );
-    if (cabinItem) {
-      const unitPriceUsd = toUsd(cabinItem.price.amount, cabinItem.price.currencyCode);
-      if (unitPriceUsd != null) {
-        const unit = Math.ceil(unitPriceUsd);
-        bagOptions.cabin = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };
-      }
+    const cabinUsd = roundTripBagUsd(bagItems, segmentIds, 1, CABIN, toUsd);
+    if (cabinUsd != null) {
+      const unit = Math.ceil(cabinUsd);
+      bagOptions.cabin = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };
     }
 
     return NextResponse.json({
