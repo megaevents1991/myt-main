@@ -28,19 +28,19 @@ import {
 
 /**
  * How a party of the requested size is seated:
- *  - "together": the whole party sits together (LiveTickets within one group,
- *                or a TixStock listing that is sold whole)
- *  - "pairs":    seated in pairs/triples - a TixStock listing the seller splits
- *  - "groups":   split into seating groups of `seatingGroupMax`
+ *  - "together": the whole party sits together (one pair or one triple, or a
+ *                TixStock listing that is sold whole)
+ *  - "groups":   split into pairs + one triple (`seatingSplit`) - LiveTickets,
+ *                or a TixStock listing the seller splits
  *  - "none":     no seating promise
  */
-export type Seating = "together" | "pairs" | "groups" | "none";
+export type Seating = "together" | "groups" | "none";
 
 export type PricedTicket = EventTicket & {
   seating?: Seating;
   /** Size of one seating group, when `seating` is "groups". */
   seatingGroupMax?: number;
-  /** LiveTickets: the groups the party is promised, e.g. [2, 3] for five (`seatingSplit`). */
+  /** The groups the party is promised, e.g. [2, 3] for five (`seatingSplit`). */
   seatingSplit?: number[];
 };
 
@@ -97,6 +97,9 @@ export function tixstockPriceForCategory(
   return cheapestTixstockListing(listings, category, qty)?.price ?? null;
 }
 
+/** A split TixStock listing seats pairs, and a triple when the party is odd. */
+const TIXSTOCK_SPLIT_RULES = { maxPerOrder: Infinity, seatingGroupMax: 3 };
+
 function priceTixstockTicket(
   ticket: EventTicket,
   live: SupplierLiveData["tixstock"],
@@ -110,12 +113,20 @@ function priceTixstockTicket(
 
   const best = cheapestTixstockListing(live.listings, ticket.category, qty);
   if (!best) return null; // category can't fulfil this quantity
-  // A listing sold whole seats the party together (2026-09-19); one the seller
-  // lets us split promises pairs/triples, never the whole party.
+  // A listing sold whole seats the party together (2026-09-19).
+  if (best.together) {
+    return { ...ticket, price: best.price, seating: qty > 1 ? "together" : "none" };
+  }
+  // One the seller lets us split promises pairs, plus one triple for an odd
+  // party - the same split LiveTickets promises, worked out for THIS quantity
+  // (Alon 24.09): three is one triple = together, four is two pairs. A flat
+  // "pairs/triples" read wrong for three and disagreed with LiveTickets at four.
+  const split = seatingSplit(TIXSTOCK_SPLIT_RULES, qty) ?? undefined;
   return {
     ...ticket,
     price: best.price,
-    seating: best.together && qty > 1 ? "together" : "pairs",
+    seating: !split ? "none" : split.length === 1 ? "together" : "groups",
+    seatingSplit: split,
   };
 }
 
@@ -229,8 +240,7 @@ export type ZoneOffer<T extends PricedTicket = PricedTicket> = T & {
   seatingOptions?: SeatingOptions<T>;
 };
 
-const isSplit = (ticket: PricedTicket) =>
-  ticket.seating === "groups" || ticket.seating === "pairs";
+const isSplit = (ticket: PricedTicket) => ticket.seating === "groups";
 
 /**
  * What the ticket list shows: one supplier per zone (`cheapestSupplierPerZone`),

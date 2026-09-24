@@ -77,8 +77,7 @@ const splitLabel = (ticket: PricedTicket): string => {
 
 /** Customer-facing seating promise of a priced ticket (multi-supplier events). */
 const seatingNote = (ticket: PricedTicket): string | undefined => {
-  if (ticket.seating === "together") return "ישיבה יחד מובטחת";
-  if (ticket.seating === "pairs") return "ישיבה בזוגות/שלשות מובטחת";
+  if (ticket.seating === "together") return "ישיבה ביחד מובטחת";
   // Say HOW the party sits, not just the group cap (QA 2026-09-18: five people
   // under "groups of up to 4" were left to guess 4+1). The promise is pairs,
   // plus one triple when the party is odd - never a lone seat.

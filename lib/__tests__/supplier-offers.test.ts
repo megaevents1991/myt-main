@@ -70,9 +70,21 @@ assert.deepEqual(
   [["tx1", 403], ["171442", 431]],
 );
 
-// a TixStock listing the seller splits promises pairs/triples; one sold whole
+// a TixStock listing the seller splits promises what LiveTickets does, for the
+// party at hand: a pair or a triple sits together, four are two pairs, five a
+// pair + a triple, one person gets no promise (Alon 24.09); one sold whole
 // ("All Together") seats the party together
-assert.equal(priced[0].seating, "pairs");
+assert.equal(priced[0].seating, "together");
+const txAt = (qty: number) =>
+  priceTicketsForQuantity([tx], "tx_event", qty, live(), 1.15)[0];
+assert.deepEqual([txAt(3).seating, txAt(3).seatingSplit], ["together", [3]]);
+assert.deepEqual([txAt(4).seating, txAt(4).seatingSplit], ["groups", [2, 2]]);
+assert.equal(txAt(1).seating, "none");
+const bigListing = live({
+  tixstock: { status: "live", listings: [listing("CATEGORY 1", "402.2", 8)] },
+});
+const txFive = priceTicketsForQuantity([tx], "tx_event", 5, bigListing, 1.15)[0];
+assert.deepEqual([txFive.seating, txFive.seatingSplit], ["groups", [2, 3]]);
 const whole = {
   ...listing("CATEGORY 1", "402.2", 2),
   ticket: { split_type: "All Together" },
@@ -227,13 +239,19 @@ assert.equal(offers[0].id, "tx");
 assert.equal(offers[0].seatingOptions?.split.id, "lt");
 assert.equal(preferTogether(459, 400), true);
 assert.equal(preferTogether(460, 400), false);
+// three from a split TixStock listing are one triple = together, so a dearer
+// LiveTickets triple in the same zone is no "together" upgrade - one card, no
+// toggle (Alon 24.09: "3 tickets - why pairs/triples and not simply together")
+const atThree = priceTicketsForQuantity(tickets, "tx_event", 3, live(), 1.15);
+offers = zoneOffers(atThree, "tx_event", 3);
+assert.deepEqual(offers.map((t) => [t.id, t.seating, !!t.seatingOptions]), [["tx1", "together", false]]);
 // a pair has nothing to choose
 assert.equal(zoneOffers([txTogether, ltSplit], "tx_event", 2)[0].seatingOptions, undefined);
 // together is cheaper anyway -> no choice, the one supplier shown
 offers = zoneOffers([{ ...txTogether, price: 350 }, ltSplit], "tx_event", 5);
 assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["tx", false]]);
 // both split -> cheapest supplier only, no choice
-offers = zoneOffers([{ ...txTogether, seating: "pairs" }, ltSplit], "tx_event", 5);
+offers = zoneOffers([{ ...txTogether, seating: "groups" }, ltSplit], "tx_event", 5);
 assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["lt", false]]);
 // different zones never mix
 offers = zoneOffers([{ ...txTogether, zoneId: "y" }, ltSplit], "tx_event", 5);
