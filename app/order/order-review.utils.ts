@@ -2,6 +2,7 @@ import validator from "validator";
 import type { AddedBagsInfo, OrderHotel } from "@/lib/app.types";
 import type { Rate } from "@/lib/hotel.type";
 import type { HotelsData } from "@/app/hooks/HotelFetch.provider";
+import { sameRateTerms } from "@/lib/hotelRateTerms";
 
 export type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -142,6 +143,11 @@ const isSameRoom = (a: Rate | undefined, b: Rate): boolean =>
   a.room_data_trans?.main_name === b.room_data_trans?.main_name &&
   a.room_data_trans?.bedding_type === b.room_data_trans?.bedding_type;
 
+/** Same sum as lib/price.utils getTotalPersons - kept local so this module
+ *  stays free of that file's JSX (and testable under plain vitest). */
+const totalGuests = (rooms: { adults: number; children: number[] }[] | undefined): number =>
+  (rooms ?? []).reduce((n, room) => n + room.adults + (room.children?.length ?? 0), 0);
+
 const rateShowAmount = (rate: Rate): number =>
   Number(rate.payment_options?.payment_types?.[0]?.show_amount);
 
@@ -163,7 +169,12 @@ export type BreakfastUpgrade = {
  *    picked from (package-prefilled / resumed-order state, or simply a
  *    later in-flow date change) - trusting it then would show a delta
  *    computed against the wrong stay,
- *  - no same-room rate with breakfast exists in that (trusted) search.
+ *  - hotelsData holds a search for a different number of guests,
+ *  - no same-room rate with breakfast AND the same terms (refundability,
+ *    payment type, rg_ext - lib/hotelRateTerms.ts) exists in that search,
+ *  - the cheapest such rate is CHEAPER than the selected one (owner 24.09:
+ *    a cheaper "breakfast" sibling means the two rates differ in something
+ *    we can't see - don't offer the swap at all rather than as "+$0").
  */
 export const findBreakfastUpgrade = (
   selectedHotel: OrderHotel | undefined,
@@ -176,7 +187,8 @@ export const findBreakfastUpgrade = (
   if (
     !request ||
     request.checkin !== selectedHotel.checkin ||
-    request.checkout !== selectedHotel.checkout
+    request.checkout !== selectedHotel.checkout ||
+    totalGuests(request.guests) !== totalGuests(selectedHotel.guests)
   ) {
     return null;
   }
@@ -193,7 +205,8 @@ export const findBreakfastUpgrade = (
     (r) =>
       r.match_hash !== selectedHotel.rate?.match_hash &&
       r.meal_data?.has_breakfast &&
-      isSameRoom(selectedHotel.rate, r)
+      isSameRoom(selectedHotel.rate, r) &&
+      sameRateTerms(selectedHotel.rate, r)
   );
   if (!candidates.length) return null;
 
@@ -205,12 +218,10 @@ export const findBreakfastUpgrade = (
 
   // The breakfast sibling can be CHEAPER than the selected rate (56 of 257
   // upgradeable rates in the live Prague serp, e.g. Populus Double Suite
-  // $473 → $414 w/ breakfast). A raw delta then LOWERED the package total on
-  // "add breakfast" (prod bug 23.8). Clamp at 0: the swap is offered as a
-  // free upgrade, and the charged price (prev price + deltaUsd, see
-  // handleAddBreakfast) never drops.
-  return {
-    rate: cheapest,
-    deltaUsd: Math.max(0, cheapestPrice - currentPrice),
-  };
+  // $473 → $414 w/ breakfast). A raw delta LOWERED the package total (prod
+  // bug 23.8); the clamp that fixed it showed "+$0" while swapping the
+  // customer onto a rate with worse terms (24.09). Now: no offer.
+  const deltaUsd = cheapestPrice - currentPrice;
+  if (deltaUsd < 0) return null;
+  return { rate: cheapest, deltaUsd };
 };

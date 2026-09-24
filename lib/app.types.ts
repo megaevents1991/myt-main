@@ -214,12 +214,17 @@ export type FlightSegment = {
  * room's breakfast-included sibling). `prev_rate` exists only IN-SESSION so
  * "הסרה" can restore the original pick - it is stripped before the hotel
  * object is persisted to reservations.hotel_order_info (only the delta and
- * the previous price ride along, so ops can see what the upsell added).
+ * the previous price, match_hash and refundability ride along, so ops can see
+ * what the upsell added and which rate it replaced).
  */
 export type BreakfastUpgradeInfo = {
   delta_usd: number;
   prev_price: string;
   prev_rate?: Rate;
+  /** The swapped-out rate's match_hash + refundability - persisted (unlike
+   *  prev_rate) so ops can see exactly which rate the upsell replaced. */
+  prev_match_hash?: string;
+  prev_refundable?: boolean;
 };
 
 export type OrderHotel = {

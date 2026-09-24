@@ -58,6 +58,7 @@ import { ButtonSummary } from "./OrderSummary/ButtonSummary";
 import { MobileHeader } from "./OrderSummary/MobileHeader";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { useBagPricing } from "./hooks/useBagPricing";
+import { rateIsRefundable } from "@/lib/hotelRateTerms";
 
 const TermsError = () => (
   <p className="text-sm text-red-500 text-center mt-1">
@@ -270,6 +271,8 @@ export default function OrderReview({
         delta_usd: breakfastUpgrade.deltaUsd,
         prev_price: selectedHotel.price,
         prev_rate: selectedHotel.rate,
+        prev_match_hash: selectedHotel.rate?.match_hash,
+        prev_refundable: rateIsRefundable(selectedHotel.rate),
       },
     });
   }, [selectedHotel, breakfastUpgrade, setHotel]);
@@ -1356,6 +1359,10 @@ export default function OrderReview({
                     breakfast_upgrade: {
                       delta_usd: selectedHotel.breakfast_upgrade.delta_usd,
                       prev_price: selectedHotel.breakfast_upgrade.prev_price,
+                      prev_match_hash:
+                        selectedHotel.breakfast_upgrade.prev_match_hash,
+                      prev_refundable:
+                        selectedHotel.breakfast_upgrade.prev_refundable,
                     },
                   }
                 : {}),
