@@ -41,13 +41,20 @@ import {
   LodgingCity,
   lodgingLocation,
   nightsBetween,
+  offeredCities,
   refitNights,
   segmentsFromNights,
+  splitOffered,
   StaySegment,
 } from "@/lib/events/lodging";
 import { fetchHotels as searchHotels } from "./fetchHotels";
 import { LodgingToggle } from "@/components/order/LodgingToggle";
 import { SplitStayDialog } from "@/components/order/SplitStayDialog";
+import {
+  LodgingPlanDialog,
+  type LodgingPlan,
+  type RoomParams,
+} from "@/components/order/LodgingPlanDialog";
 import {
   SegmentHotelModal,
   SegmentsList,
@@ -72,6 +79,9 @@ export const HotelSelection = () => {
     setHotelSegments,
     splitNights,
     setSplitNights,
+    hotel,
+    lodgingPlanned,
+    setLodgingPlanned,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
@@ -166,6 +176,18 @@ export const HotelSelection = () => {
   );
   // 2+ segments = the segment blocks replace the hotel list.
   const splitActive = splitSegments.length > 1;
+  // ── "איפה ישנים?" plan popup (Dor 25.09) ──────────────────────────────────
+  // A two-city event asks once on entry - dates, guests, city or split - and
+  // only then searches, ONCE. A hotel already in the order when this step
+  // mounts (edit-from-summary, a prepared package, a restored order) counts as
+  // planned, so the popup never re-opens over a made choice.
+  const planOffered = offeredCities(event).length > 1 || splitOffered(event);
+  const restoredRef = useRef(!!(hotel?.id || hotelSegments?.length));
+  useEffect(() => {
+    if (restoredRef.current && !lodgingPlanned) setLodgingPlanned(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const planOpen = planOffered && !lodgingPlanned && !restoredRef.current;
   const [splitOpen, setSplitOpen] = useState(false);
   const [segmentsLoading, setSegmentsLoading] = useState(false);
   const [segmentsError, setSegmentsError] = useState<string | null>(null);
@@ -202,6 +224,8 @@ export const HotelSelection = () => {
     if (event?.location?.country_code === "US") return;
     // Split mode has no main list - its searches run per segment below.
     if (splitActive) return;
+    // The plan popup decides dates / guests / city first - then one search.
+    if (planOpen) return;
     const wantedGuests = getTotalPersons(roomParams);
     if (!wantedGuests) return;
     const hasHotels = !!hotelsData?.data?.data?.hotels;
@@ -224,7 +248,7 @@ export const HotelSelection = () => {
       { immediate: true }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cachedGuestCount, cityKey, cachedCityMatches, splitActive]);
+  }, [cachedGuestCount, cityKey, cachedCityMatches, splitActive, planOpen]);
 
   useEffect(() => {
     if (!event?.id) return;
@@ -521,7 +545,14 @@ export const HotelSelection = () => {
   // ── Lodging city choice ───────────────────────────────────────────────────
   // One tap: leave any split, clear the pick, search around the city's point;
   // the search effect above then auto-selects the first hotel as always.
-  const handlePickCity = (city: LodgingCity) => {
+  const handlePickCity = (
+    city: LodgingCity,
+    // From the plan popup: the dates / rooms it just set - React state is
+    // still the old value inside this same tick.
+    plan?: { dateRange: [Date, Date]; rooms: RoomParams }
+  ) => {
+    const range = plan?.dateRange ?? dateRange;
+    const rooms = plan?.rooms ?? roomParams;
     segmentRunRef.current += 1; // cancels a segment run in flight
     setSplitNights(null);
     setHotelSegments(null);
@@ -530,12 +561,12 @@ export const HotelSelection = () => {
     setLodgingCity(city);
     setHotel(undefined);
     setSelectedHotelId("");
-    guestCorrectedRef.current = `${roomParamsKey}|${city}`;
+    guestCorrectedRef.current = `${JSON.stringify(rooms)}|${city}`;
     getHotels(
       {
-        dateRange,
+        dateRange: range,
         location: lodgingLocation(event, city),
-        guests: roomParams,
+        guests: rooms,
         radius: distanceRange[1] || 2000,
         eventId: event.id,
       },
@@ -693,6 +724,27 @@ export const HotelSelection = () => {
       return;
     }
     setSplitNights(nights);
+  };
+
+  // The plan popup's answer: dates + rooms land in the step's state, then a
+  // single city searches at once (with those values) or a split lets the
+  // segments effect run its sequential searches over the new dates.
+  const handlePlanConfirm = (plan: LodgingPlan) => {
+    setLodgingPlanned(true);
+    setDateRange(plan.dateRange);
+    setPrevDateRange(plan.dateRange);
+    setRoomParams(plan.rooms);
+    const segs = segmentsFromNights(plan.nights);
+    if (segs.length < 2) {
+      handlePickCity(segs[0]?.city ?? lodgingCity, plan);
+      return;
+    }
+    segmentRunRef.current += 1;
+    segmentSearchesRef.current.clear();
+    setHotelSegments(null);
+    setHotel(undefined);
+    setSelectedHotelId("");
+    setSplitNights(plan.nights);
   };
 
   // "החלפת מלון": the segment's own (cached) search in a modal.
@@ -1150,7 +1202,7 @@ export const HotelSelection = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
-                  showTooltip={true}
+                  showTooltip={!planOpen}
                   tooltipText="רוצים תאריכים אחרים? בחרו כאן"
                 />
                 <button
@@ -1398,6 +1450,15 @@ export const HotelSelection = () => {
         </ScrollArea.Autosize>
       </div>
       )}
+      <LodgingPlanDialog
+        opened={planOpen}
+        event={event}
+        flightDates={getDefaultDateRange(event, flight)}
+        hasFlight={!!flight?.id}
+        initialDateRange={dateRange}
+        initialRooms={roomParams}
+        onConfirm={handlePlanConfirm}
+      />
       <SplitStayDialog
         opened={splitOpen}
         onClose={() => setSplitOpen(false)}
