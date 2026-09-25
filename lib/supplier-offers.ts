@@ -42,7 +42,19 @@ export type PricedTicket = EventTicket & {
   seatingGroupMax?: number;
   /** The groups the party is promised, e.g. [2, 3] for five (`seatingSplit`). */
   seatingSplit?: number[];
+  /**
+   * Set on the "all together" twin of a TixStock ticket (`priceTixstockTicket`):
+   * the id of the real ticket. The twin has an id of its own so the page can
+   * select it; the order carries this one (`orderTicketId`).
+   */
+  twinOf?: string;
 };
+
+/** The id an order records for a priced ticket - a together twin's real ticket. */
+export const orderTicketId = (ticket: PricedTicket): string =>
+  ticket.twinOf ?? ticket.id;
+
+const TOGETHER_TWIN_SUFFIX = "~together";
 
 /**
  * Live state of one supplier:
@@ -65,27 +77,46 @@ const buffered = (ticket: EventTicket, multiplier: number): PricedTicket => ({
 
 /**
  * The cheapest live TixStock listing of a category that can sell `qty`, or
- * null. `together` = that listing is sold whole, so the party sits together.
+ * null. `together` = its seats sit together (`listingSeatsTogether`); a tie
+ * goes to the together one. When the cheapest splits the party,
+ * `togetherPrice` is the cheapest listing whose seats DO sit together.
  */
 export function cheapestTixstockListing(
   listings: TixStockListing[],
   category: string,
   qty: number,
-): { price: number; together: boolean } | null {
+): { price: number; together: boolean; togetherPrice?: number } | null {
   const wanted = normalizeTxCategory(category);
   if (!wanted) return null;
 
   let best: { amount: number; together: boolean } | null = null;
+  let bestTogether: number | null = null;
   for (const listing of listings) {
     if (normalizeTxCategory(listing.seat_details?.category) !== wanted) continue;
     if (!listingCanSatisfyQuantity(listing, qty)) continue;
     const amount = parseFloat(listing.proceed_price?.amount ?? "NaN");
     if (!Number.isFinite(amount)) continue;
-    if (best === null || amount < best.amount) {
-      best = { amount, together: listingSeatsTogether(listing) };
+    const together = listingSeatsTogether(listing);
+    if (together && (bestTogether === null || amount < bestTogether)) {
+      bestTogether = amount;
+    }
+    if (
+      best === null ||
+      amount < best.amount ||
+      (amount === best.amount && together && !best.together)
+    ) {
+      best = { amount, together };
     }
   }
-  return best && { price: Math.ceil(best.amount), together: best.together };
+  if (!best) return null;
+  return {
+    price: Math.ceil(best.amount),
+    together: best.together,
+    togetherPrice:
+      !best.together && bestTogether !== null
+        ? Math.ceil(bestTogether)
+        : undefined,
+  };
 }
 
 /** Cheapest live TixStock price for a category at `qty`, or null. */
@@ -100,34 +131,53 @@ export function tixstockPriceForCategory(
 /** A split TixStock listing seats pairs, and a triple when the party is odd. */
 const TIXSTOCK_SPLIT_RULES = { maxPerOrder: Infinity, seatingGroupMax: 3 };
 
+/**
+ * One TixStock ticket at `qty`: the offer, and - when that offer splits the
+ * party while a dearer listing of the category seats it together - a second,
+ * "all together" twin (Alon 25.09). The twin is only ever the together side
+ * of a zone card's toggle (`zoneOffers`), so it is made for zoned tickets
+ * only. Empty = the category cannot sell `qty`.
+ */
 function priceTixstockTicket(
   ticket: EventTicket,
   live: SupplierLiveData["tixstock"],
   qty: number,
   fallbackMultiplier: number,
-): PricedTicket | null {
+): PricedTicket[] {
   // No listings = live pricing unavailable (error, timeout, zero listings, or
   // the fetch still in flight): sell on the buffered DB price so neither an
   // outage nor a fast "continue" can undercut the true live price.
-  if (live.listings.length === 0) return buffered(ticket, fallbackMultiplier);
+  if (live.listings.length === 0) return [buffered(ticket, fallbackMultiplier)];
 
   const best = cheapestTixstockListing(live.listings, ticket.category, qty);
-  if (!best) return null; // category can't fulfil this quantity
-  // A listing sold whole seats the party together (2026-09-19).
+  if (!best) return []; // category can't fulfil this quantity
+  // Seats that sit together seat the party together (2026-09-19, 25.09).
   if (best.together) {
-    return { ...ticket, price: best.price, seating: qty > 1 ? "together" : "none" };
+    return [{ ...ticket, price: best.price, seating: qty > 1 ? "together" : "none" }];
   }
-  // One the seller lets us split promises pairs, plus one triple for an odd
-  // party - the same split LiveTickets promises, worked out for THIS quantity
-  // (Alon 24.09): three is one triple = together, four is two pairs. A flat
-  // "pairs/triples" read wrong for three and disagreed with LiveTickets at four.
+  // Any other listing the seller lets us split promises pairs, plus one triple
+  // for an odd party - the same split LiveTickets promises, worked out for THIS
+  // quantity (Alon 24.09): three is one triple = together, four is two pairs.
   const split = seatingSplit(TIXSTOCK_SPLIT_RULES, qty) ?? undefined;
-  return {
+  const offer: PricedTicket = {
     ...ticket,
     price: best.price,
     seating: !split ? "none" : split.length === 1 ? "together" : "groups",
     seatingSplit: split,
   };
+  if (offer.seating !== "groups" || best.togetherPrice === undefined || !ticket.zoneId) {
+    return [offer];
+  }
+  return [
+    offer,
+    {
+      ...ticket,
+      id: ticket.id + TOGETHER_TWIN_SUFFIX,
+      twinOf: ticket.id,
+      price: best.togetherPrice,
+      seating: "together",
+    },
+  ];
 }
 
 function priceLiveTicketsTicket(
@@ -168,17 +218,16 @@ export function priceTicketsForQuantity(
 ): PricedTicket[] {
   return tickets.reduce<PricedTicket[]>((priced, ticket) => {
     const supplier = ticketSupplier(ticket, eventType);
+    if (supplier === "tixstock") {
+      priced.push(
+        ...priceTixstockTicket(ticket, live.tixstock, qty, fallbackMultiplier),
+      );
+      return priced;
+    }
     const result =
-      supplier === "tixstock"
-        ? priceTixstockTicket(ticket, live.tixstock, qty, fallbackMultiplier)
-        : supplier === "livetickets"
-          ? priceLiveTicketsTicket(
-              ticket,
-              live.livetickets,
-              qty,
-              fallbackMultiplier,
-            )
-          : ticket; // static tickets are never live-priced
+      supplier === "livetickets"
+        ? priceLiveTicketsTicket(ticket, live.livetickets, qty, fallbackMultiplier)
+        : ticket; // static tickets are never live-priced
     if (result) priced.push(result);
     return priced;
   }, []);
@@ -230,7 +279,7 @@ export const preferTogether = (togetherPrice: number, splitPrice: number) =>
   ((togetherPrice - splitPrice) / splitPrice) * 100 <
     TOGETHER_DEFAULT_MAX_PREMIUM_PCT;
 
-/** The two ways one zone can seat the party, when two suppliers differ on it. */
+/** The two ways one zone can seat the party: split cheaper, together dearer. */
 export type SeatingOptions<T extends PricedTicket = PricedTicket> = {
   together: T;
   split: T;
@@ -245,12 +294,17 @@ const isSplit = (ticket: PricedTicket) => ticket.seating === "groups";
 /**
  * What the ticket list shows: one supplier per zone (`cheapestSupplierPerZone`),
  * except when the party is bigger than a pair and the zone's cheapest offer
- * SPLITS it (LiveTickets' pairs + a triple) while another supplier seats it
- * all TOGETHER for more (a TixStock listing sold whole) - then the customer
- * chooses (Alon 23.09): one card, a together / split toggle, both prices.
+ * SPLITS it (pairs + a triple) while a dearer offer in the same zone seats it
+ * all TOGETHER - then the customer chooses (Alon 23.09): one card, a together /
+ * split toggle, both prices. The together side may come from the other
+ * supplier or from the same one - a TixStock listing whose seats sit together,
+ * priced as the ticket's twin (Alon 25.09: "2 pairs, with a toggle to sitting
+ * together, if together costs more - LiveTickets' or TixStock's").
  * The card opens on "together" when it costs under
  * `TOGETHER_DEFAULT_MAX_PREMIUM_PCT` more, else on the cheaper split. The
- * option shown is the ticket in the list; `seatingOptions` carries both.
+ * option shown is the ticket in the list; `seatingOptions` carries both. A
+ * ticket that became a side of a toggle is no card of its own, and a twin is
+ * never anything but that side.
  */
 export function zoneOffers<T extends PricedTicket>(
   tickets: T[],
@@ -258,22 +312,16 @@ export function zoneOffers<T extends PricedTicket>(
   qty: number,
 ): ZoneOffer<T>[] {
   const kept = cheapestSupplierPerZone(tickets, eventType);
-  if (qty <= 2) return kept;
+  if (qty <= 2) return kept.filter((t) => !t.twinOf);
 
-  return kept.map((ticket) => {
+  const cards: ZoneOffer<T>[] = kept.map((ticket) => {
     if (!ticket.zoneId || !isSplit(ticket)) return ticket;
     const zone = tickets.filter((t) => t.zoneId === ticket.zoneId);
     const cheapest = zone.reduce((min, t) => (t.price < min.price ? t : min));
     // Only the zone's cheapest offer gets the choice - once.
     if (cheapest.id !== ticket.id) return ticket;
-    const supplier = ticketSupplier(ticket, eventType);
     const together = zone
-      .filter(
-        (t) =>
-          t.seating === "together" &&
-          t.price > ticket.price &&
-          ticketSupplier(t, eventType) !== supplier,
-      )
+      .filter((t) => t.seating === "together" && t.price > ticket.price)
       .reduce<T | null>((min, t) => (!min || t.price < min.price ? t : min), null);
     if (!together) return ticket;
 
@@ -281,7 +329,25 @@ export function zoneOffers<T extends PricedTicket>(
     const shown = preferTogether(together.price, ticket.price) ? together : ticket;
     return { ...shown, seatingOptions };
   });
+
+  const inToggle = new Set(
+    cards.flatMap((card) =>
+      card.seatingOptions
+        ? [card.seatingOptions.together.id, card.seatingOptions.split.id]
+        : [],
+    ),
+  );
+  return cards.filter(
+    (card) => card.seatingOptions || (!inToggle.has(card.id) && !card.twinOf),
+  );
 }
+
+/**
+ * The list when `zoneOffers` does not run (a supplier is down): no toggles,
+ * so no twins either - each is only ever the together side of one.
+ */
+export const withoutTwins = <T extends PricedTicket>(tickets: T[]): T[] =>
+  tickets.filter((t) => !t.twinOf);
 
 /**
  * Ids of the tickets that win their zone: the cheapest offer in a zone that

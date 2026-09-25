@@ -19,12 +19,21 @@ const splitTypeOf = (listing: TixStockListing): string =>
   (listing.ticket?.split_type ?? "").trim().toLowerCase();
 
 /**
- * An all-or-nothing listing ("All Together" / "Sell Together") is one block of
- * seats bought whole, so the party sits together - a stronger promise than the
- * pairs/triples we make for a listing the seller lets us split.
+ * Whether the seats of a listing sit together - a stronger promise than the
+ * pairs/triples we make for any other listing the seller lets us split:
+ *  - an all-or-nothing listing ("All Together" / "Sell Together") is one block
+ *    of seats bought whole;
+ *  - sellers who do not publish the row write "TOGETHER" in it (often
+ *    "*TOGETHER*") - their own promise that the seats are side by side. On
+ *    event 1130 (25.09) 28 of 32 listings carried it and the other 4 were
+ *    "All Together"; reading only the split type showed every party of four
+ *    as two pairs (Alon 25.09).
  */
+const ROW_SAYS_TOGETHER = /\btogether\b/i;
+
 export const listingSeatsTogether = (listing: TixStockListing): boolean =>
-  splitTypeOf(listing).includes("together");
+  splitTypeOf(listing).includes("together") ||
+  ROW_SAYS_TOGETHER.test(listing.seat_details?.row ?? "");
 
 export function listingCanSatisfyQuantity(
   listing: TixStockListing,

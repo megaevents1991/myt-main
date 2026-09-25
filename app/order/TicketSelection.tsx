@@ -16,7 +16,9 @@ import { supplierEventId, ticketSupplier } from "@/lib/suppliers";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import {
   bestPriceTicketIds,
+  orderTicketId,
   priceTicketsForQuantity,
+  withoutTwins,
   zoneOffers,
   type PricedTicket,
   type SupplierLiveData,
@@ -44,12 +46,14 @@ const TX_FALLBACK_MULTIPLIER =
  * on a multi-supplier event ops can no longer infer that from the event.
  */
 const toOrderTicket = (
-  ticket: EventTicket,
+  ticket: PricedTicket,
   eventType: EventType | undefined,
   quantity: number,
   seatingChoice?: OrderTicket["seatingChoice"],
 ): OrderTicket => ({
-  id: ticket.id,
+  // A together twin is the same ticket bought from a together listing - the
+  // order names the real ticket; `seatingChoice` says "together".
+  id: orderTicketId(ticket),
   vendor: ticket.vendor || "",
   category: ticket.category,
   price: ticket.price,
@@ -572,7 +576,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     // card carries both, with a toggle (zoneOffers).
     return allSuppliersLive
       ? zoneOffers(onMap, event?.type, numberOfEventTickets)
-      : onMap;
+      : withoutTwins(onMap);
   }, [
     isTxEvent,
     effectiveTickets,
@@ -693,9 +697,11 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     // zone - a together/split card counts as the option it opens on, so the
     // default of that card is what gets pre-selected (zoneOffers).
     const pool =
-      displayedTickets.length > 0 ? displayedTickets : effectiveTickets;
+      displayedTickets.length > 0
+        ? displayedTickets
+        : withoutTwins(effectiveTickets);
 
-    const cheapt = pool.reduce<EventTicket>((min, ticket) =>
+    const cheapt = pool.reduce<PricedTicket>((min, ticket) =>
       ticket.price < min.price ? ticket : min,
       pool[0]
     );

@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import {
   bestPriceTicketIds,
   cheapestSupplierPerZone,
+  orderTicketId,
   preferTogether,
   priceTicketsForQuantity,
+  withoutTwins,
   zoneOffers,
   type PricedTicket,
   type SupplierLiveData,
@@ -256,5 +258,54 @@ assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["lt", false]])
 // different zones never mix
 offers = zoneOffers([{ ...txTogether, zoneId: "y" }, ltSplit], "tx_event", 5);
 assert.deepEqual(offers.map((t) => [t.id, !!t.seatingOptions]), [["tx", false], ["lt", false]]);
+
+// Sellers write "TOGETHER" in the row when the seats sit side by side (Alon
+// 25.09: on 1130 every category had four together, all shown as two pairs)
+const marked = (amount: string, available: number, row = "*TOGETHER*") =>
+  ({
+    ...listing("CATEGORY 1", amount, available),
+    seat_details: { category: "CATEGORY 1", row },
+  }) as unknown as TixStockListing;
+const txLive = (listings: TixStockListing[]) =>
+  live({ tixstock: { status: "live", listings } });
+assert.deepEqual(
+  priceTicketsForQuantity([tx], "tx_event", 4, txLive([marked("300", 4)]), 1.15).map((t) => [t.id, t.seating]),
+  [["tx1", "together"]],
+);
+// the cheapest listing splits, a dearer one sits together -> the ticket plus
+// its "together" twin, which the order records as the real ticket
+const mixed = txLive([listing("CATEGORY 1", "300", 4), marked("350", 4)]);
+const twinPair = priceTicketsForQuantity([tx], "tx_event", 4, mixed, 1.15);
+assert.deepEqual(
+  twinPair.map((t) => [t.id, t.price, t.seating, t.twinOf]),
+  [["tx1", 300, "groups", undefined], ["tx1~together", 350, "together", "tx1"]],
+);
+assert.equal(orderTicketId(twinPair[1]), "tx1");
+assert.equal(orderTicketId(twinPair[0]), "tx1");
+// ...one card, two pairs with a toggle to the twin - never a card of its own
+offers = zoneOffers(twinPair, "tx_event", 4);
+assert.deepEqual(
+  offers.map((t) => [t.id, t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
+  [["tx1", "tx1~together", "tx1"]],
+);
+assert.deepEqual(withoutTwins(twinPair).map((t) => t.id), ["tx1"]);
+// a tie goes to the listing that sits together - no twin
+assert.deepEqual(
+  priceTicketsForQuantity([tx], "tx_event", 4, txLive([listing("CATEGORY 1", "300", 4), marked("300", 4)]), 1.15).map((t) => [t.id, t.seating]),
+  [["tx1", "together"]],
+);
+// no zone, no toggle to put a twin in
+assert.equal(priceTicketsForQuantity([{ ...tx, zoneId: undefined }], "tx_event", 4, mixed, 1.15).length, 1);
+// LiveTickets' two pairs are cheapest; TixStock's together twin is the toggle's
+// other side ("2 pairs of LiveTickets or TixStock, toggle to together")
+offers = zoneOffers(
+  priceTicketsForQuantity(tickets, "tx_event", 4, txLive([listing("CATEGORY 1", "440", 4), marked("520", 4)]), 1.15),
+  "tx_event",
+  4,
+);
+assert.deepEqual(
+  offers.map((t) => [t.id, t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
+  [["171442", "tx1~together", "171442"]],
+);
 
 console.log("supplier-offers: all assertions passed");

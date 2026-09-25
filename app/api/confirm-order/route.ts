@@ -488,7 +488,7 @@ export async function POST(req: Request) {
               ? "\n          Seating chosen: " +
                 (validatedData.event_order_info.seating_choice === "split"
                   ? "pairs + a triple (split)"
-                  : "all together")
+                  : "all together - buy seats that sit together, not the cheapest split listing")
               : ""
           }
 

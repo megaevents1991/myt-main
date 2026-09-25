@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { listingCanSatisfyQuantity } from "../tixstock-quantity";
+import { listingCanSatisfyQuantity, listingSeatsTogether } from "../tixstock-quantity";
 import type { TixStockListing } from "../tixstock.types";
 
 const mk = (available: number, split_type: string, split_quantity = 0) =>
@@ -26,4 +26,15 @@ assert.equal(listingCanSatisfyQuantity(mk(8, "Multiples", 2), 1), false);
 assert.equal(listingCanSatisfyQuantity(mk(8, "Multiples", 2), 4), true);
 // bad qty
 assert.equal(listingCanSatisfyQuantity(mk(8, "No Preferences"), 0), false);
+
+// seats that sit together: a listing sold whole, or "TOGETHER" in the row
+const withRow = (split_type: string, row: string) =>
+  ({ ...mk(4, split_type), seat_details: { category: "Categoría 3", row } }) as unknown as TixStockListing;
+assert.equal(listingSeatsTogether(mk(2, "All Together")), true);
+assert.equal(listingSeatsTogether(withRow("No Preferences", "*TOGETHER*")), true);
+assert.equal(listingSeatsTogether(withRow("No Preferences", "TOGETHER")), true);
+assert.equal(listingSeatsTogether(withRow("No Preferences", "Together")), true);
+assert.equal(listingSeatsTogether(withRow("No Preferences", "12")), false);
+assert.equal(listingSeatsTogether(withRow("No Preferences", "")), false);
+assert.equal(listingSeatsTogether(mk(4, "No Preferences")), false);
 console.log("tixstock-quantity: all assertions passed");
