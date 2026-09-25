@@ -211,6 +211,17 @@ const GroupTicketsInquiry = ({
 };
 
 
+/**
+ * A supplier that hangs must not hold the step on a spinner: past this the
+ * call aborts, that supplier reads "down" and its tickets sell on the buffered
+ * DB price (Dor 24.09: "שאם אין כרטיסים לא נישאר על טעינה ארוכה").
+ */
+const SUPPLIER_TIMEOUT_MS = 20_000;
+const supplierTimeout = () =>
+  typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+    ? AbortSignal.timeout(SUPPLIER_TIMEOUT_MS)
+    : undefined;
+
 export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary } = useContext(OrderContext);
   // Context `event` is only populated client-side (useEffect in OrderPageClient),
@@ -299,7 +310,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       try {
         const res = await fetch(
           `/api/livetickets/tickets?eid=${encodeURIComponent(liveTicketsEventId)}`,
-          { cache: "no-store" },
+          { cache: "no-store", signal: supplierTimeout() },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: { offers?: LiveTicketsOffer[] } = await res.json();
@@ -343,6 +354,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
         }
         const res = await fetch(`/api/tixstock/tickets?${params.toString()}`, {
             cache: "no-store",
+            signal: supplierTimeout(),
             headers: {
               "Cache-Control": "no-cache, no-store, must-revalidate",
               Pragma: "no-cache",
@@ -913,12 +925,19 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                 <div id="ticket-selection-heading" className="sr-only">
                   קטגוריות כרטיסים זמינות
                 </div>
-                {(isTxEvent && isLoadingLiveTickets) ||
+                {!event ||
+                (isTxEvent && isLoadingLiveTickets) ||
                 liveTicketsStatus === "loading" ? (
+                  // `event` reaches the context only after hydration (OrderPageClient's
+                  // effect). On the server, and until the JS lands on a cold start, the
+                  // step saw no tickets and no supplier and fell through to "sold out"
+                  // for 20-40 s (Alon 24.09). An event that truly has no tickets never
+                  // mounts this step at all (OrderPageClient / the server page), so the
+                  // spinner here only ever waits for hydration or a live supplier.
                   <div className="flex items-center justify-center p-8 gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                     <Text size="sm" c="dimmed">
-                      טוען מחירים עדכניים...
+                      {event ? "טוען מחירים עדכניים..." : "טוענים את הכרטיסים..."}
                     </Text>
                   </div>
                 ) : effectiveTickets.length === 0 ? (

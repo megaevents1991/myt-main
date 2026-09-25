@@ -2,7 +2,8 @@ import Link from "next/link";
 import dayjs from "dayjs";
 
 import type { Event } from "@/lib/app.types";
-import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
+import { hasEventCity } from "@/lib/events/lodging";
 import { EventArt } from "@/components/ui/EventArt";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { PackageIcons } from "@/components/ui/PackageIcons";
@@ -62,7 +63,9 @@ export const HubEventCard = ({ event }: { event: Event }) => {
               <span className="mx-1.5" aria-hidden="true">
                 •
               </span>
-              {event.location?.name}
+              {hasEventCity(event)
+                ? `${event.event_location?.name} · טיסה ל${event.location.name}`
+                : event.location?.name}
             </p>
 
             <div className="mt-2 min-h-[28px]">
@@ -82,10 +85,10 @@ export const HubEventCard = ({ event }: { event: Event }) => {
                   <div className="text-lg font-extrabold text-destructive">אזלו הכרטיסים</div>
                 )}
                 <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
-                  לנוסע · כולל טיסה, מלון וכרטיס
+                  {isTicketOnlyEvent(event) ? "לכרטיס · כרטיס בלבד" : "לנוסע · כולל טיסה, מלון וכרטיס"}
                 </p>
               </div>
-              <PackageIcons cycle />
+              <PackageIcons cycle ticketOnly={isTicketOnlyEvent(event)} />
             </div>
 
             <div className="mt-4 w-full rounded-md bg-main py-3 text-center text-xs font-semibold text-main-foreground transition-colors group-hover:bg-secondary group-hover:text-black group-active:bg-secondary group-active:text-black">

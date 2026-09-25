@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { defaultCity, LodgingCity, NightAssign } from "@/lib/events/lodging";
 import { OrderContext, PersonLink } from "../app.context";
 import {
   Event,
@@ -14,6 +15,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/carousel/styles.css";
 import { Stepper } from "@/components/ui/Stepper";
+import { isTicketOnlyEvent } from "@/lib/events/price";
 import { HotelFetchProvider } from "../hooks/HotelFetch.provider";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { OrderExpiryProvider, useOrderExpiry } from "../hooks/useOrderExpiry";
@@ -52,15 +54,33 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   // Agent's price for a prepared package (doc 2026-08-30, item 4) - 0 unless
   // the visitor arrived on a ?pkg= link whose agent changed the price.
   const [packageAdjustPerPerson, setPackageAdjustPerPerson] = useState(0);
+  // Lodging city + split stay (lib/events/lodging.ts). The city follows the
+  // event's default once per event id - a re-set of the same event (live
+  // ticket refresh) must not wipe the customer's choice.
+  const [lodgingCity, setLodgingCity] = useState<LodgingCity>("flight");
+  const [hotelSegments, setHotelSegments] = useState<OrderHotel[] | null>(null);
+  const [splitNights, setSplitNights] = useState<NightAssign[] | null>(null);
+  const [lodgingPlanned, setLodgingPlanned] = useState(false);
+  useEffect(() => {
+    if (event) setLodgingCity(defaultCity(event));
+    setLodgingPlanned(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id]);
 
   const { isOrderExpired, expiryDetails, clearExpiry } = useOrderExpiry();
 
   const isUS = event?.location?.country_code === "US";
+  // Ticket-only event: the stepper is "כרטיסים → סיום" (indexes 0/1 ↔ steps 1/4).
+  const ticketOnly = !!event && isTicketOnlyEvent(event);
 
   const handleStepperClick = (index: number) => {
     // Edit-from-summary is a focused task - no wandering the flow mid-edit.
     // An agent-locked package is not the customer's to rearrange either.
     if (returnToSummary || packageLocked) return;
+    if (ticketOnly) {
+      if (index === 0 && step > 1) setStep(1);
+      return;
+    }
     if (index + 1 < step) {
       // For US events we don't have a hotel step (step 3). Prevent navigating back to it.
       const targetStep = index + 1;
@@ -85,9 +105,15 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   return (
     <div className="w-full">
       <Stepper
-        currentStep={step}
+        currentStep={ticketOnly ? (step === 4 ? 2 : 1) : step}
         onStepperClick={handleStepperClick}
-        steps={isUS ? ["כרטיסים", "טיסה", "סיום"] : undefined}
+        steps={
+          ticketOnly
+            ? ["כרטיסים", "סיום"]
+            : isUS
+              ? ["כרטיסים", "טיסה", "סיום"]
+              : undefined
+        }
         // Hidden on the summary AND during edit-from-summary - an edit is a
         // focused single-step task, not a walk through the flow.
         hideSteps={step === 4 || returnToSummary}
@@ -136,6 +162,14 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPackageLocked,
           packageAdjustPerPerson,
           setPackageAdjustPerPerson,
+          lodgingCity,
+          setLodgingCity,
+          hotelSegments,
+          setHotelSegments,
+          splitNights,
+          setSplitNights,
+          lodgingPlanned,
+          setLodgingPlanned,
         }}
       >
         <HotelFetchProvider>

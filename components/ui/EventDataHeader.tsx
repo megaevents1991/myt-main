@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { isMobile } from "react-device-detect";
 import { ChevronLeft } from "lucide-react";
 import { EventArt } from "@/components/ui/EventArt";
+import { hasEventCity } from "@/lib/events/lodging";
 
 export const EventDataHeader = ({
   event,
@@ -68,7 +69,10 @@ export const EventDataHeader = ({
         <h1 className="flex flex-col font-normal text-base m-0">
           <span className="text-3xl mb-1 font-bold">{event?.name}</span>
           <span className="whitespace-nowrap text-xl">
-            {dayjs(event?.date).format("DD/MM/YY")} | {event?.location.name}
+            {dayjs(event?.date).format("DD/MM/YY")} |{" "}
+            {event && hasEventCity(event)
+              ? `${event.event_location?.name} · טיסה ל${event.location.name}`
+              : event?.location.name}
           </span>
         </h1>
         {artistHref && (

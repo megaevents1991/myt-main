@@ -7,6 +7,7 @@ import {
   HotelSearchCriteria,
 } from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
+import type { LodgingCity, NightAssign } from "@/lib/events/lodging";
 
 /** Link to the artist/football-team page this event belongs to (resolved
  *  server-side by name match) - href + ready-made Hebrew label. */
@@ -84,6 +85,26 @@ type AppContext = {
    *  (backoffice doc 2026-08-30, item 4). 0 for every non-package visit. */
   packageAdjustPerPerson: number;
   setPackageAdjustPerPerson: (usdPerTraveler: number) => void;
+  /** Lodging city of the hotel step (lib/events/lodging.ts): "flight" =
+   *  event.location, "event" = event.event_location. Set to defaultCity(event)
+   *  when the event lands; "flight" before. */
+  lodgingCity: LodgingCity;
+  setLodgingCity: Dispatch<SetStateAction<LodgingCity>>;
+  /** Split stay: one hotel per stay segment in night order. INVARIANT: when
+   *  non-null, `hotel` === hotelSegments[0], so every single-hotel gate
+   *  (buttonDisabled, flowComplete, Review) keeps working unchanged.
+   *  null = a single hotel (the common case). */
+  hotelSegments: OrderHotel[] | null;
+  setHotelSegments: Dispatch<SetStateAction<OrderHotel[] | null>>;
+  /** The customer's night → city assignment behind hotelSegments (kept so the
+   *  split popup re-opens on it and a flight-date change can refit it). */
+  splitNights: NightAssign[] | null;
+  setSplitNights: Dispatch<SetStateAction<NightAssign[] | null>>;
+  /** Two-city events: has the customer answered "איפה ישנים?" (the plan popup
+   *  on entering the hotel step)? False per event until confirmed - or until a
+   *  hotel is already there (edit-from-summary, prepared package). */
+  lodgingPlanned: boolean;
+  setLodgingPlanned: Dispatch<SetStateAction<boolean>>;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

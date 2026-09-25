@@ -15,7 +15,7 @@
  * reorder columns without re-verifying an upload in Commerce Manager.
  */
 import type { Event } from "@/lib/app.types";
-import { isEventSoldOut } from "@/lib/events/price";
+import { isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
 import {
   buildCustomLabels,
   FEED_BRAND,
@@ -222,9 +222,11 @@ export function buildActivityItem(
   const fromCms = plainText(event.description || "");
   const generated = `${name} ב${city || "חו״ל"}, ${d.getUTCDate()}.${
     d.getUTCMonth() + 1
-  }.${d.getUTCFullYear()}. כרטיס רשמי לאירוע${
-    event.skip_flight ? " ומלון" : ", טיסה ומלון"
-  } - חבילה שאתם מרכיבים בעצמכם.`;
+  }.${d.getUTCFullYear()}. ${
+    isTicketOnlyEvent(event)
+      ? "כרטיס רשמי לאירוע - כרטיס בלבד."
+      : `כרטיס רשמי לאירוע${event.skip_flight ? " ומלון" : ", טיסה ומלון"} - חבילה שאתם מרכיבים בעצמכם.`
+  }`;
   const description = fromCms && fromCms !== title ? fromCms : generated;
 
   // Category names carry stray whitespace in the DB ("Football ").

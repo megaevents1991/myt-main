@@ -10,6 +10,14 @@ import { cn } from "@/lib/utils";
 import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
 import type { BreakfastUpgrade } from "../order-review.utils";
 import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
+import { hasEventCity } from "@/lib/events/lodging";
+import { isTicketOnlyEvent } from "@/lib/events/price";
+
+/** "<event city> · טיסה ל<flight city>" on a two-city event, else the city. */
+const placeLine = (event: Event) =>
+  hasEventCity(event) && event.event_location
+    ? `${event.event_location.name} · טיסה ל${event.location.name}`
+    : event.location.name;
 
 export const Review = ({
   agentCommission,
@@ -37,8 +45,11 @@ export const Review = ({
   onSetCheckedBagQty,
   onToggleCabinBag,
   showUpsells,
+  hotelSegments,
 }: {
   agentCommission: number;
+  /** Split stay: 2+ hotels in night order (selectedHotel is the first). */
+  hotelSegments?: OrderHotel[] | null;
   /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
   hotelPriceAddition: number;
@@ -78,6 +89,7 @@ export const Review = ({
    *  agent-locked prepared package. Included-info always shows regardless. */
   showUpsells?: boolean;
 }) => {
+  const segments = hotelSegments && hotelSegments.length > 1 ? hotelSegments : null;
   const items = useMemo(
     () => [
       {
@@ -105,11 +117,14 @@ export const Review = ({
           (ppl, room) => ppl + room.children.length + room.adults,
           0
         )} אורחים)`,
-        secondary: `${selectedHotel.name}`,
+        secondary: segments
+          ? segments.map((h) => h.cityName ?? h.name).join(" ← ")
+          : `${selectedHotel.name}`,
         icon: <FaHotel />,
         component: (
           <HotelSummary
             key={"hotel-summary"}
+            hotelSegments={segments}
             selectedHotel={selectedHotel}
             agentCommission={agentCommission}
             isAgent={isAgent}
@@ -172,6 +187,7 @@ export const Review = ({
       showUpsells,
       onSetCheckedBagQty,
       onToggleCabinBag,
+      segments,
     ]
   );
 
@@ -180,8 +196,9 @@ export const Review = ({
 
   // Skipped steps stay bookable - offer a compact "add it" row instead of
   // hiding them entirely (US events are sold without a hotel, so no hotel row).
+  // A ticket-only event sells no travel at all, so nothing is offered (Alon, 24.09).
   const isUS = event?.location?.country_code === "US";
-  const addRows = onEdit
+  const addRows = onEdit && !(event && isTicketOnlyEvent(event))
     ? [
         ...(flightSkipped
           ? [{ step: 2 as const, icon: <FaPlane />, text: "עדיין אפשר להזמין טיסה" }]
@@ -226,7 +243,7 @@ export const Review = ({
               <h2 className="text-2xl font-bold leading-tight text-center">{event.name}</h2>
             </div>
             <div className="shrink-0 text-center">
-              <p className="text-md font-bold">{event.location.name}</p>
+              <p className="text-md font-bold">{placeLine(event)}</p>
               <p className="text-sm">{dayjs(event.date).format("DD/MM/YYYY")}</p>
             </div>
           </div>
@@ -261,7 +278,7 @@ export const Review = ({
                               "text-[14px] text-[#5A6475] dark:text-muted-foreground", // grey secondary line
                               isOpen ? "" : ""
                             )}
-                            dir={item.id === "hotel-summary" ? "ltr" : "rtl"}
+                            dir={item.id === "hotel-summary" && !segments ? "ltr" : "rtl"}
                           >
                             {item.secondary}
                           </div>
@@ -297,7 +314,7 @@ export const Review = ({
               <h2 className="text-2xl font-bold">{event.name}</h2>
             </div>
             <p className="text-lg">
-              {event.location.name +
+              {placeLine(event) +
                 " | " +
                 dayjs(event.date).format("DD/MM/YYYY")}
             </p>

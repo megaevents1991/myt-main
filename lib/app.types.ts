@@ -9,6 +9,12 @@ export type EventType =
   | "music_live_event_dynamic"
   | "tx_event";
 
+// How the site sells an event. 'package' = flight + hotel + ticket (today's flow);
+// 'ticket_only' = the ticket alone - no flight/hotel steps, price = ticket + ticket_only_markup.
+// Text column, no CHECK. Mirrors backoffice types/app.types.ts.
+export const PACKAGE_MODES = ["package", "ticket_only"] as const;
+export type PackageMode = (typeof PACKAGE_MODES)[number];
+
 export type Event = {
   id: number;
   name: string;
@@ -90,6 +96,23 @@ export type Event = {
   // markups. Absolute, wins over everything. Only the both-skipped scenario;
   // every other path untouched. Empty/null = no override.
   ticket_only_markup?: number | null;
+  // 'package' (default) or 'ticket_only' - the backoffice switch. A ticket-only
+  // event has NO flight/hotel steps: both are forced-skipped, the stepper is
+  // 2 steps, price = ticket + ticket_only_markup (isTicketOnlyOverride is true
+  // regardless of what the customer did). Missing on older rows = 'package'.
+  package_mode?: PackageMode;
+  // Lodging cities (lib/events/lodging.ts, mirrored from backoffice lib/lodging.ts). The
+  // flight city is `location`; `event_location` is the match/show city when it differs.
+  event_location?: {
+    name: string;
+    latitude: number;
+    longitude: number;
+    country_code?: string | null;
+  } | null;
+  lodging_mode?: "flight_city" | "event_city_only" | "choice" | "choice_split";
+  lodging_default?: "flight" | "event";
+  lodging_note?: string | null;
+  split_default_nights?: number | null;
   // Auto-generated campaign creative (backoffice nightly cron). Feed uses
   // campaign_image_url as image_link (NO fallback - an event without a
   // creative is skipped, "branded or not at all"), banner as
@@ -234,6 +257,9 @@ export type OrderHotel = {
   id: string;
   price: string;
   guests: Guest[];
+  // Split stay (lib/events/lodging.ts): which city this hotel serves + display name.
+  city?: "flight" | "event";
+  cityName?: string;
   checkin: string;
   checkout: string;
   /** Set while a breakfast upsell is applied; undefined otherwise. */
@@ -521,6 +547,9 @@ export type OrderData = {
   };
   flight_order_info: Flight | Record<string, never>; // empty object {} indicates flight was skipped
   hotel_order_info: OrderHotel | Record<string, never>; // empty object {} indicates hotel was skipped
+  // Split stay: every hotel segment in night order; hotel_order_info = the first one.
+  // null/absent = single hotel.
+  hotel_segments?: OrderHotel[] | null;
   user_shown_price: number;
   event_id: number;
   aff_partner_tracking_code: string;
