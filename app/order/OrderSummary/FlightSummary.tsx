@@ -324,14 +324,16 @@ export const FlightSummary = ({
             later flips true (e.g. an עריכה flight swap) - only the "offer to
             add" side is gated on it being not-already-free. */}
         {!checkedAdded && !checkedIncluded && showUpsells && bagOptions?.checked && (
+          // One click = one bag for every traveler (Alon, 28.09 - the 1-or-2
+          // stepper that opened after it confused); "הסרה" is the only control.
           <button
             type="button"
-            onClick={() => onSetCheckedBagQty?.(1)}
+            onClick={() => onSetCheckedBagQty?.(numOfTravelers)}
             dir="rtl"
             className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
-            aria-label={`הוסף מזוודה, ${Math.ceil(bagOptions.checked.unitPriceUsd)} דולר ${perBagLabel}`}
+            aria-label={`הוסף מזוודה לכל נוסע, ${Math.ceil(bagOptions.checked.unitPriceUsd)} דולר ${perBagLabel}`}
           >
-            <span>הוסף מזוודה</span>
+            <span>הוסף מזוודה לכל נוסע</span>
             {/* Per-bag price (Dor 20.8: "מחיר פר מזוודה") - the confirmed
                 line below shows the all-travelers total once added. */}
             <span className="tabular-nums" dir="ltr">
@@ -352,39 +354,6 @@ export const FlightSummary = ({
               </span>
             </span>
             <span className="flex items-center gap-2">
-              {/* TOTAL bag count stepper, 1..2×travelers (Dor 20.8: a couple
-                  can take one shared bag - not forced into per-pax
-                  multiples). Editable only in the live flow with pricing on
-                  hand; a resumed order shows the locked line. */}
-              {showUpsells && bagOptions?.checked && (
-                <span
-                  className="flex items-center gap-1"
-                  role="group"
-                  aria-label="כמות מזוודות"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSetCheckedBagQty?.(checkedBagsCount - 1)}
-                    disabled={checkedBagsCount <= 1}
-                    aria-label="פחות מזוודה"
-                    className="size-6 rounded-md border border-border text-[13px] font-bold text-muted-foreground hover:border-forest hover:text-forest disabled:cursor-not-allowed disabled:opacity-40 dark:hover:border-glow dark:hover:text-glow"
-                  >
-                    −
-                  </button>
-                  <span className="min-w-4 text-center text-[12px] font-bold tabular-nums text-foreground">
-                    {checkedBagsCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onSetCheckedBagQty?.(checkedBagsCount + 1)}
-                    disabled={checkedBagsCount >= numOfTravelers * 2}
-                    aria-label="עוד מזוודה"
-                    className="size-6 rounded-md border border-border text-[13px] font-bold text-muted-foreground hover:border-forest hover:text-forest disabled:cursor-not-allowed disabled:opacity-40 dark:hover:border-glow dark:hover:text-glow"
-                  >
-                    +
-                  </button>
-                </span>
-              )}
               {showUpsells && (
                 <button
                   type="button"
