@@ -3,6 +3,7 @@
 import { unstable_cache } from "next/cache";
 import { exchangeRateService } from "@/lib/exchangeRateService";
 import { supplierCostToUsd } from "@/lib/supplier-pricing";
+import { seatingGroupMaxOf } from "@/lib/livetickets-quantity";
 
 /**
  * Live LiveTickets (doctorticket) stock for one of THEIR events.
@@ -109,7 +110,7 @@ const toRawCategory = (c: SellableUpstreamCategory): RawCategory => ({
   title: c.title ?? "",
   cost: c.cost,
   maxPerOrder: c.maxTicketAmount,
-  seatingGroupMax: c.seatingGroupMAXSize ?? null,
+  seatingGroupMax: seatingGroupMaxOf(c),
   groupFeePct:
     typeof c.seatingGroupFee === "number" && c.seatingGroupFee > 0
       ? c.seatingGroupFee

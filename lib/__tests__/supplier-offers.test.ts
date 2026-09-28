@@ -16,6 +16,7 @@ import {
   categoryCanSatisfyQuantity,
   liveTicketsPriceForQuantity,
   seatingForQuantity,
+  seatingGroupMaxOf,
   seatingSplit,
 } from "../livetickets-quantity";
 import type { EventTicket } from "../app.types";
@@ -308,6 +309,15 @@ assert.deepEqual(
   offers.map((t) => [t.id, t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
   [["171442", "tx1~together", "171442"]],
 );
+
+// LiveTickets "doubles" (seatingMethodId 3, no group size - event 717): pairs, never a triple
+const doubles = { maxPerOrder: 6, seatingGroupMax: seatingGroupMaxOf({ seatingMethodId: 3, seatingGroupMAXSize: null }) };
+assert.equal(doubles.seatingGroupMax, 2);
+assert.equal(seatingForQuantity(doubles, 2), "together");
+assert.deepEqual(seatingSplit(doubles, 4), [2, 2]);
+assert.equal(seatingForQuantity(doubles, 3), "none"); // odd party: no promise (Dor 28.09)
+assert.equal(seatingGroupMaxOf({ seatingMethodId: 4, seatingGroupMAXSize: 4 }), 4); // their size wins
+assert.equal(seatingGroupMaxOf({ seatingMethodId: 1, seatingGroupMAXSize: null }), null); // standing / GA
 
 // our own stock: sold beside the suppliers while enough seats are left
 const own = ticket({ id: "own1", supplier: "static", stock: 10, zoneId: "long-3", price: 350 });

@@ -12,6 +12,24 @@ export type LiveTicketsQuantityRules = {
   seatingGroupMax: number | null;
 };
 
+/** `seatingMethodId` 3 = "doubles": seated in pairs, with no group size given. */
+const DOUBLES_SEATING_METHOD = 3;
+
+/**
+ * `seatingGroupMax` of a LiveTickets category. A "doubles" category sends no
+ * `seatingGroupMAXSize` but seats in pairs - read as 2, so a pair is promised
+ * together and four as two pairs; an odd party gets no promise (no triple in a
+ * pairs category, Dor 28.09). Without it Real Madrid-Barcelona (717) promised
+ * nothing at all (Alon 28.09). Same rule in backoffice
+ * lib/services/livetickets-offers.ts.
+ */
+export const seatingGroupMaxOf = (category: {
+  seatingMethodId?: number;
+  seatingGroupMAXSize?: number | null;
+}): number | null =>
+  category.seatingGroupMAXSize ??
+  (category.seatingMethodId === DOUBLES_SEATING_METHOD ? 2 : null);
+
 export function categoryCanSatisfyQuantity(
   rules: LiveTicketsQuantityRules,
   qty: number,
