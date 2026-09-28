@@ -143,6 +143,22 @@ const isSameRoom = (a: Rate | undefined, b: Rate): boolean =>
   a.room_data_trans?.main_name === b.room_data_trans?.main_name &&
   a.room_data_trans?.bedding_type === b.room_data_trans?.bedding_type;
 
+/**
+ * The same hotel again on other dates (a split stay that comes back to a city,
+ * Dor 28.09): of that hotel's rates, the one closest to the rate picked before -
+ * same room first, then same breakfast, then same refundability; the cheapest
+ * wins a tie (rates arrive cheapest-first). Null when the hotel has no rates.
+ */
+export const closestRate = (rates: Rate[], ref: Rate | undefined): Rate | null => {
+  if (!rates.length) return null;
+  if (!ref) return rates[0];
+  const score = (r: Rate) =>
+    (isSameRoom(ref, r) ? 4 : 0) +
+    (!!r.meal_data?.has_breakfast === !!ref.meal_data?.has_breakfast ? 2 : 0) +
+    (rateIsRefundable(r) === rateIsRefundable(ref) ? 1 : 0);
+  return rates.reduce((best, r) => (score(r) > score(best) ? r : best), rates[0]);
+};
+
 /** Same sum as lib/price.utils getTotalPersons - kept local so this module
  *  stays free of that file's JSX (and testable under plain vitest). */
 const totalGuests = (rooms: { adults: number; children: number[] }[] | undefined): number =>

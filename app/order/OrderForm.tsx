@@ -571,7 +571,7 @@ export const OrderForm = ({
             with the MegaEvents wordmark). */}
         {step === 1 && <TicketSelection initialEvent={event} />}
         {step === 2 && <FlightSelection />}
-        {step === 3 && <HotelSelection onSkipHotel={handleSkipHotel} />}
+        {step === 3 && <HotelSelection />}
         {step === 4 && (
           <OrderReview
             // Summary עריכה: arm return-to-summary so confirming the edited

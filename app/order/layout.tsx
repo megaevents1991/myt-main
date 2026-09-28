@@ -60,10 +60,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [lodgingCity, setLodgingCity] = useState<LodgingCity>("flight");
   const [hotelSegments, setHotelSegments] = useState<OrderHotel[] | null>(null);
   const [splitNights, setSplitNights] = useState<NightAssign[] | null>(null);
-  const [lodgingPlanned, setLodgingPlanned] = useState(false);
   useEffect(() => {
     if (event) setLodgingCity(defaultCity(event));
-    setLodgingPlanned(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.id]);
 
@@ -168,8 +166,6 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setHotelSegments,
           splitNights,
           setSplitNights,
-          lodgingPlanned,
-          setLodgingPlanned,
         }}
       >
         <HotelFetchProvider>

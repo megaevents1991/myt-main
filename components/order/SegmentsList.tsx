@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Checkbox, Loader, Modal, ScrollArea, Skeleton, TextInput } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { DollarSign, MapPin, Search, Star } from "lucide-react";
+import { DollarSign, MapPin, Repeat, Search, Star } from "lucide-react";
 import dayjs from "dayjs";
 import type { Event, OrderHotel, SortOptions } from "@/lib/app.types";
 import { hotelSort } from "@/lib/hotelFilter";
@@ -31,6 +31,7 @@ export const SegmentsList = ({
   event,
   segments,
   hotels,
+  anchorMisses,
   loading,
   error,
   minPrice,
@@ -43,6 +44,9 @@ export const SegmentsList = ({
   segments: StaySegment[];
   /** One hotel per segment, in the same order; null while picking. */
   hotels: OrderHotel[] | null;
+  /** Per segment: the hotel it would have come back to, when that one had no
+   *  room for these nights (a different hotel was picked instead). */
+  anchorMisses?: (string | null)[];
   loading: boolean;
   error?: string | null;
   /** event.base_hotel_price - per person for the WHOLE stay. */
@@ -73,6 +77,12 @@ export const SegmentsList = ({
         const perGuest = hotel ? +hotel.price / (persons || 1) : 0;
         const delta = perGuest - segBase;
         const stars = Math.max(0, Math.round(hotel?.hotelInformation?.stars ?? 0));
+        // Back in a city after the other one, in the same hotel (the default).
+        const returning =
+          !!hotel &&
+          segments.some(
+            (s, k) => k < i && s.city === seg.city && hotels?.[k]?.id === hotel.id
+          );
         return (
           <Fragment key={seg.checkin}>
             {i > 0 && !event.lodging_note && (
@@ -81,13 +91,27 @@ export const SegmentsList = ({
               </p>
             )}
             <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
-              <div className="mb-2 text-[15px] font-bold">
-                {`${cityName(event, seg.city)} · `}
-                <span dir="ltr" className="tabular-nums">
-                  {`${fmt(seg.checkin)}–${fmt(seg.checkout)}`}
+              <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-[15px] font-bold">
+                  {`${cityName(event, seg.city)} · `}
+                  <span dir="ltr" className="tabular-nums">
+                    {`${fmt(seg.checkin)}–${fmt(seg.checkout)}`}
+                  </span>
+                  {` · ${seg.nights === 1 ? "לילה אחד" : `${seg.nights} לילות`}`}
                 </span>
-                {` · ${seg.nights === 1 ? "לילה אחד" : `${seg.nights} לילות`}`}
+                {returning && !loading && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-forest/10 px-2 py-[2px] text-[11px] font-bold text-forest dark:bg-glow/10 dark:text-glow">
+                    <Repeat className="h-3 w-3" strokeWidth={2.2} aria-hidden="true" />
+                    חוזרים לאותו מלון
+                  </span>
+                )}
               </div>
+              {!loading && hotel && anchorMisses?.[i] && anchorMisses[i] !== hotel.name && (
+                <p className="-mt-1 mb-2 text-[12px] text-muted-foreground">
+                  <bdi dir="ltr">{anchorMisses[i]}</bdi>
+                  {" לא פנוי בלילות האלה, אז בחרנו לכם מלון אחר."}
+                </p>
+              )}
               {loading || !hotel ? (
                 // The segment searches run one after another (RateHawk 10/min) and a cold
                 // city takes 10-20 s - say so; a bare skeleton is invisible on the dark theme.

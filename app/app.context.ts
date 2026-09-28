@@ -97,14 +97,9 @@ type AppContext = {
   hotelSegments: OrderHotel[] | null;
   setHotelSegments: Dispatch<SetStateAction<OrderHotel[] | null>>;
   /** The customer's night → city assignment behind hotelSegments (kept so the
-   *  split popup re-opens on it and a flight-date change can refit it). */
+   *  split editor re-opens on it and a flight-date change can refit it). */
   splitNights: NightAssign[] | null;
   setSplitNights: Dispatch<SetStateAction<NightAssign[] | null>>;
-  /** Two-city events: has the customer answered "איפה ישנים?" (the plan popup
-   *  on entering the hotel step)? False per event until confirmed - or until a
-   *  hotel is already there (edit-from-summary, prepared package). */
-  lodgingPlanned: boolean;
-  setLodgingPlanned: Dispatch<SetStateAction<boolean>>;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);
