@@ -9,6 +9,7 @@ import {
   validateOrderData,
   validatePurchasePriceFloor,
   validateLiveTicketsOffer,
+  validateOwnStock,
   resolveAgentSettlement,
   resolveHandledBy,
   partnerLinkCode,
@@ -195,6 +196,20 @@ export async function POST(req: Request) {
         event_id: validatedData.event_id,
         reason: supplierError,
       }),
+    );
+    return NextResponse.json(
+      { error: "PRICE_VALIDATION_FAILED" },
+      { status: 400 },
+    );
+  }
+
+  // Our own seats: enough must still be left for this party. Same answer on
+  // the page as a supplier that sold out ("the ticket is no longer available").
+  const stockError = await validateOwnStock(validatedData);
+  if (stockError) {
+    console.error(
+      "Rejected order - own stock exhausted:",
+      JSON.stringify({ event_id: validatedData.event_id, reason: stockError }),
     );
     return NextResponse.json(
       { error: "PRICE_VALIDATION_FAILED" },
@@ -476,7 +491,11 @@ export async function POST(req: Request) {
           Quantity: ${validatedData.event_order_info.number_of_ticket}
           Ticket ID: ${validatedData.event_order_info.id || "N/A"}
           Vendor: ${validatedData.event_order_info.vendor || "N/A"}
-          BUY FROM (supplier): ${(validatedData.event_order_info.supplier || "N/A").toUpperCase()}
+          BUY FROM (supplier): ${
+            validatedData.event_order_info.own_stock
+              ? "OUR STOCK - no purchase, allocate from the seats we hold"
+              : (validatedData.event_order_info.supplier || "N/A").toUpperCase()
+          }
           Supplier Event ID: ${validatedData.event_order_info.supplier_event_id || "N/A"}
           Supplier Category: ${validatedData.event_order_info.supplier_category || "N/A"}
           Our Zone: ${validatedData.event_order_info.zone_label || "N/A"}${

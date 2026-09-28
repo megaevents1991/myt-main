@@ -3,6 +3,7 @@ import { Event } from "@/lib/app.types";
 import { unstable_cache as nextCache } from "next/cache";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
+import { markOwnStockSoldOut } from "@/lib/events/ownStock";
 import { eventMatchesName, normalizeName } from "@/lib/eventNameMatch";
 
 // Inner cached reader THROWS on a failed/empty query so unstable_cache never
@@ -132,8 +133,10 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
       }
     }
     return {
-      events: await markLockedPackagesSoldOut(
-        await enrichEventsWithFallbackImages(visible),
+      events: await markOwnStockSoldOut(
+        await markLockedPackagesSoldOut(
+          await enrichEventsWithFallbackImages(visible),
+        ),
       ),
     };
   } catch (error) {

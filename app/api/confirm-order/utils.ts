@@ -19,6 +19,8 @@ import { supabase } from "@/lib/supabase";
 import { requireAgent } from "@/lib/partner-auth";
 import { getLiveTicketsOffers } from "@/lib/livetickets";
 import { liveTicketsPriceForQuantity } from "@/lib/livetickets-quantity";
+import { hasOwnStock, stockLeft } from "@/lib/own-stock";
+import { loadSeatsHeld } from "@/lib/events/ownStock";
 
 export const validateOrderData = async (
   data: OrderData,
@@ -63,6 +65,7 @@ export const validateOrderData = async (
           supplier_category: yup.string(),
           zone_label: yup.string(),
           non_instant: yup.boolean(),
+          own_stock: yup.boolean(),
           seating_choice: yup.string().oneOf(["together", "split"]),
           category: yup.string().required().min(1),
           price_per_ticket: yup.number().required(),
@@ -316,6 +319,51 @@ export const validateLiveTicketsOffer = async (
     // Never let this guard break checkout - on any internal failure, skip it.
     console.error(
       "LiveTickets offer validation error (skipping guard):",
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+};
+
+/**
+ * Our own seats (a static ticket with `stock`): re-count before booking - the
+ * page's count can be minutes old and another customer may have taken the
+ * last seats since. Agent bookings are counted too: a seat is a seat.
+ *
+ * Fails OPEN on a failed read, like the other guards (never let a guard break
+ * checkout); the two-orders-in-the-same-second race is not closed here - ops
+ * see the ticket as OUR STOCK on the order mail and allocate by hand.
+ *
+ * @returns a reason string when the order must be rejected, otherwise null.
+ */
+export const validateOwnStock = async (
+  data: OrderData,
+): Promise<string | null> => {
+  try {
+    const info = data.event_order_info;
+    const eventId = Number(data.event_id);
+    if (!info?.id || !Number.isFinite(eventId)) return null;
+
+    const { events } = await getEvents(eventId);
+    const ticket = (events?.[0]?.tickets_and_rates ?? []).find(
+      (t) => t.id === info.id,
+    );
+    // Read off OUR event, never taken from the client: ops allocate these
+    // seats instead of buying them (order mail, reservation page).
+    info.own_stock = ticket && hasOwnStock(ticket) ? true : undefined;
+    if (!ticket || !info.own_stock) return null;
+
+    const held = await loadSeatsHeld([eventId]);
+    if (!held) return null;
+    const left = stockLeft(ticket, held.get(eventId) ?? new Map()) ?? 0;
+    const qty = Number(info.number_of_ticket);
+    if (Number.isFinite(qty) && qty > left) {
+      return `Own ticket ${info.id}: ${left} seat(s) left, asked ${qty}`;
+    }
+    return null;
+  } catch (error) {
+    console.error(
+      "Own stock validation error (skipping guard):",
       error instanceof Error ? error.message : String(error),
     );
     return null;

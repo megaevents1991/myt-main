@@ -2,6 +2,7 @@ import type { EventTicket, EventType } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import { ticketSupplier, type TicketSupplier } from "@/lib/suppliers";
+import { hasOwnStock } from "@/lib/own-stock";
 import { normalizeTxCategory } from "@/lib/tixstock-category";
 import {
   listingCanSatisfyQuantity,
@@ -68,6 +69,12 @@ export type SupplierStatus = "none" | "loading" | "live" | "down";
 export type SupplierLiveData = {
   tixstock: { status: SupplierStatus; listings: TixStockListing[] };
   livetickets: { status: SupplierStatus; offers: LiveTicketsOffer[] };
+  /**
+   * Seats left per own ticket id (`/api/own-stock`, counted fresh). Absent or
+   * null = not counted yet: the catalog already took sold-out ones off sale,
+   * and confirm-order counts again before booking.
+   */
+  ownStock?: Record<string, number> | null;
 };
 
 const buffered = (ticket: EventTicket, multiplier: number): PricedTicket => ({
@@ -227,10 +234,21 @@ export function priceTicketsForQuantity(
     const result =
       supplier === "livetickets"
         ? priceLiveTicketsTicket(ticket, live.livetickets, qty, fallbackMultiplier)
-        : ticket; // static tickets are never live-priced
+        : ownTicketForQuantity(ticket, live.ownStock, qty); // never live-priced
     if (result) priced.push(result);
     return priced;
   }, []);
+}
+
+/** A static ticket at `qty`: our own stock sells only while enough seats are left. */
+function ownTicketForQuantity(
+  ticket: EventTicket,
+  ownStock: SupplierLiveData["ownStock"],
+  qty: number,
+): EventTicket | null {
+  if (!hasOwnStock(ticket)) return ticket;
+  const left = ownStock?.[ticket.id];
+  return left === undefined || left >= qty ? ticket : null;
 }
 
 /**

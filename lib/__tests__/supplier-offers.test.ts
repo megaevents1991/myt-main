@@ -11,6 +11,7 @@ import {
   type SupplierLiveData,
 } from "../supplier-offers";
 import { ticketSupplier } from "../suppliers";
+import { seatsHeldByTicket, stockLeft } from "../own-stock";
 import {
   categoryCanSatisfyQuantity,
   liveTicketsPriceForQuantity,
@@ -307,5 +308,37 @@ assert.deepEqual(
   offers.map((t) => [t.id, t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
   [["171442", "tx1~together", "171442"]],
 );
+
+// our own stock: sold beside the suppliers while enough seats are left
+const own = ticket({ id: "own1", supplier: "static", stock: 10, zoneId: "long-3", price: 350 });
+const withOwn = [...tickets, own];
+const idsAt = (qty: number, ownStock?: Record<string, number> | null) =>
+  priceTicketsForQuantity(withOwn, "tx_event", qty, { ...live(), ownStock }, 1.15).map((t) => t.id);
+assert.ok(idsAt(2).includes("own1")); // not counted yet - the catalog already dropped sold-out ones
+assert.ok(idsAt(3, { own1: 3 }).includes("own1"));
+assert.ok(!idsAt(4, { own1: 3 }).includes("own1")); // fewer seats left than the party
+assert.ok(!idsAt(1, { own1: 0 }).includes("own1"));
+// a static ticket with no stock (a manual event's) is never limited
+assert.ok(
+  priceTicketsForQuantity([ticket({ id: "m", supplier: "static" })], "tx_event", 9, { ...live(), ownStock: {} }, 1.15)
+    .some((t) => t.id === "m"),
+);
+// in a shared zone our seats compete like any supplier: the cheaper one is shown
+assert.deepEqual(
+  cheapestSupplierPerZone([ticket({ id: "tx", zoneId: "z", price: 400 }), { ...own, zoneId: "z" }], "tx_event").map((t) => t.id),
+  ["own1"],
+);
+
+// seats held: live reservations only (24Save is a price hold, Cancelled / Lost are gone)
+const held = seatsHeldByTicket([
+  { status: "Paid", event_order_info: { id: "own1", number_of_ticket: 4 } },
+  { status: "24Save", event_order_info: { id: "own1", number_of_ticket: 4 } },
+  { status: "Cancelled", event_order_info: { id: "own1", number_of_ticket: 4 } },
+  { status: "Pending", event_order_info: { events: [{ id: "own1", number_of_ticket: 2 }] } },
+]);
+assert.equal(held.get("own1"), 6);
+assert.equal(stockLeft(own, held), 4);
+assert.equal(stockLeft({ ...own, stock: 5 }, held), 0);
+assert.equal(stockLeft(tx, held), null);
 
 console.log("supplier-offers: all assertions passed");

@@ -13,6 +13,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import type { Event, EventTicket, EventType, OrderTicket } from "@/lib/app.types";
 import { getAvailableTickets } from "@/lib/utils";
 import { supplierEventId, ticketSupplier } from "@/lib/suppliers";
+import { hasOwnStock } from "@/lib/own-stock";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import {
   bestPriceTicketIds,
@@ -319,6 +320,36 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     };
   }, [liveTicketsEventId]);
 
+  /* ── Our own stock (static tickets with `stock`) ── */
+  // Seats left, counted fresh - the event in hand is the catalog's view, up to
+  // an hour old. Until it answers (or if it fails) the tickets show as the
+  // catalog has them; confirm-order counts again before it books.
+  const [ownStockLeft, setOwnStockLeft] = useState<Record<string, number> | null>(null);
+  const holdsOwnStock = useMemo(
+    () => availableTickets.some(hasOwnStock),
+    [availableTickets],
+  );
+  useEffect(() => {
+    if (!holdsOwnStock || !event?.id) {
+      setOwnStockLeft(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/own-stock?event_id=${event.id}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json: { left?: Record<string, number> } = await res.json();
+        if (!cancelled) setOwnStockLeft(json.left ?? null);
+      })
+      .catch((err) => {
+        console.error("[OwnStock] Failed to count seats left:", err);
+        if (!cancelled) setOwnStockLeft(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [holdsOwnStock, event?.id]);
+
   // Fetch live listings once we know the TixStock event id.
   useEffect(() => {
     if (!isTxEvent || !tixEventId) {
@@ -391,8 +422,9 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     [event?.type],
   );
 
-  /** Does any ticket here get its price from a live supplier call? */
-  const hasLiveSupplier = isTxEvent || liveTicketsEventId !== null;
+  /** Does any ticket here get its price - or, for our own stock, its seats - from a live call? */
+  const hasLiveSupplier =
+    isTxEvent || liveTicketsEventId !== null || holdsOwnStock;
 
   const supplierLive: SupplierLiveData = useMemo(
     () => ({
@@ -407,6 +439,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
         listings: liveListings,
       },
       livetickets: { status: liveTicketsStatus, offers: liveTicketsOffers },
+      ownStock: ownStockLeft,
     }),
     [
       isTxEvent,
@@ -414,6 +447,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       liveListings,
       liveTicketsStatus,
       liveTicketsOffers,
+      ownStockLeft,
     ],
   );
 
