@@ -20,7 +20,6 @@ import {
   isoDurationToHours,
 } from "@/lib/flights/offlineStops";
 import { resolveLockedFlight } from "@/lib/flights/lockedFlight";
-import { ELAL_CHECKED_BAG_VARIANT_USD } from "@/lib/flightVariants";
 import {
   trackServerSideEvent,
   extractIpFromRequest,
@@ -633,29 +632,10 @@ export async function POST(request: Request) {
         itineraries[1].segments[0],
       );
 
-      if (
-        currentFlight.metadata.iata === "LY" &&
-        currentFlight.outbound.checkBagsIncluded === false &&
-        currentFlight.inbound.checkBagsIncluded === false
-      ) {
-        const variantFlight: Flight = {
-          ...currentFlight,
-          id: String(baseId + acc.length),
-          price:
-            currentFlight.price +
-            ELAL_CHECKED_BAG_VARIANT_USD * currentFlight.numOfTravelers,
-          outbound: {
-            ...currentFlight.outbound,
-            checkBagsIncluded: true,
-          },
-          inbound: {
-            ...currentFlight.inbound,
-            checkBagsIncluded: true,
-          },
-          virtualOfferType: true,
-        };
-        acc.push(variantFlight);
-      }
+      // No El Al "with bag" twin card any more (Alon, 28.09): it charged a flat
+      // +$150 a traveler while the summary's "שדרוג כרטיס" quoted El Al's real
+      // price for the same bag (~$45) - two prices for one thing. A bag on El Al
+      // is added in the summary only, at the price Amadeus gives.
 
       return acc;
     }, [] as Flight[]);
