@@ -7,8 +7,12 @@ import { getTotalPersons } from "@/lib/price.utils";
 import {
   getAddedBagsTotalUsd,
   priceOutsidePackBoundaries,
+  segmentBreakfastOffer,
   shortenAirlineName,
+  withBreakfast,
+  withoutBreakfast,
 } from "./order-review.utils";
+import type { OrderHotel } from "@/lib/app.types";
 import { superTrack } from "@/lib/mixpanel";
 import { FALLBACK_TRAVEL_RATE } from "@/lib/exchangeRate.constants";
 import {
@@ -19,6 +23,43 @@ import {
   hasComponentMarkups,
   isTicketOnlyOverride,
 } from "@/lib/events/price";
+
+/**
+ * Split stay: breakfast per hotel (Alon 25.09) - add it on one segment or on
+ * every segment that offers it, remove it from one. Same rate swap as the
+ * single-hotel upsell; keeps the invariant hotel === hotelSegments[0].
+ */
+export function useSegmentBreakfast() {
+  const { hotelSegments, setHotelSegments, setHotel } = useContext(OrderContext);
+  const commit = useCallback(
+    (next: OrderHotel[]) => {
+      setHotelSegments(next);
+      setHotel(next[0]);
+    },
+    [setHotelSegments, setHotel]
+  );
+  const addBreakfast = useCallback(
+    (index: number, everywhere: boolean) => {
+      if (!hotelSegments || hotelSegments.length < 2) return;
+      commit(
+        hotelSegments.map((h, i) => {
+          if (i !== index && !everywhere) return h;
+          const offer = segmentBreakfastOffer(h);
+          return offer ? withBreakfast(h, offer) : h;
+        })
+      );
+    },
+    [hotelSegments, commit]
+  );
+  const removeBreakfast = useCallback(
+    (index: number) => {
+      if (!hotelSegments || hotelSegments.length < 2) return;
+      commit(hotelSegments.map((h, i) => (i === index ? withoutBreakfast(h) : h)));
+    },
+    [hotelSegments, commit]
+  );
+  return { addBreakfast, removeBreakfast };
+}
 
 export function useOrderVars() {
   const {

@@ -14,6 +14,7 @@ export const DateRange = ({
   disabled,
   showTooltip = false,
   tooltipText = "רוצים לטוס בתאריכים אחרים? בחרו כאן",
+  attached = true,
 }: {
   dateRange: [Date | null, Date | null];
   setDateRange: (value: [Date | null, Date | null]) => void;
@@ -22,6 +23,8 @@ export const DateRange = ({
   disabled: boolean;
   showTooltip?: boolean;
   tooltipText?: string;
+  /** Square left corners - the search button sits against them. False = a standalone field. */
+  attached?: boolean;
 }) => {
   const matches = useMediaQuery("(min-width: 1024px)");
   const [tooltipOpened, setTooltipOpened] = useState(false);
@@ -90,8 +93,8 @@ export const DateRange = ({
           whiteSpace: "nowrap",
           borderBottomRightRadius: "var(--radius)",
           borderTopRightRadius: "var(--radius)",
-          borderBottomLeftRadius: "0",
-          borderTopLeftRadius: "0",
+          borderBottomLeftRadius: attached ? "0" : "var(--radius)",
+          borderTopLeftRadius: attached ? "0" : "var(--radius)",
         },
       }}
     />

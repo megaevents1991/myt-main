@@ -2,7 +2,7 @@ import validator from "validator";
 import type { AddedBagsInfo, OrderHotel } from "@/lib/app.types";
 import type { Rate } from "@/lib/hotel.type";
 import type { HotelsData } from "@/app/hooks/HotelFetch.provider";
-import { sameRateTerms } from "@/lib/hotelRateTerms";
+import { rateIsRefundable, sameRateTerms } from "@/lib/hotelRateTerms";
 
 export type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -224,4 +224,65 @@ export const findBreakfastUpgrade = (
   const deltaUsd = cheapestPrice - currentPrice;
   if (deltaUsd < 0) return null;
   return { rate: cheapest, deltaUsd };
+};
+
+/** The breakfast rate swap: the charge moves by EXACTLY the shown delta
+ *  (never the sibling rate's raw amount - 23.8), the old pick kept so
+ *  "הסרה" can restore it. */
+export const withBreakfast = (
+  hotel: OrderHotel,
+  upgrade: BreakfastUpgrade
+): OrderHotel => ({
+  ...hotel,
+  rate: upgrade.rate,
+  price: String(+hotel.price + upgrade.deltaUsd),
+  breakfast_upgrade: {
+    delta_usd: upgrade.deltaUsd,
+    prev_price: hotel.price,
+    prev_rate: hotel.rate,
+    // For ops: which rate the customer left and whether it was refundable (24.09).
+    prev_match_hash: hotel.rate?.match_hash,
+    prev_refundable: rateIsRefundable(hotel.rate),
+  },
+});
+
+export const withoutBreakfast = (hotel: OrderHotel): OrderHotel => {
+  const upgrade = hotel.breakfast_upgrade;
+  if (!upgrade?.prev_rate) return hotel;
+  return {
+    ...hotel,
+    rate: upgrade.prev_rate,
+    price: upgrade.prev_price,
+    breakfast_upgrade: undefined,
+  };
+};
+
+/** A split-stay segment's breakfast upsell - captured from the segment's own
+ *  search when it was picked (HotelSelection), since the provider only keeps
+ *  the main list's search. Null once added or when the rate has breakfast. */
+export const segmentBreakfastOffer = (
+  hotel: OrderHotel | undefined
+): BreakfastUpgrade | null =>
+  hotel?.breakfast_offer &&
+  !hotel.breakfast_upgrade &&
+  !hotel.rate?.meal_data?.has_breakfast
+    ? { rate: hotel.breakfast_offer.rate, deltaUsd: hotel.breakfast_offer.delta_usd }
+    : null;
+
+/** The hotel as it is saved on the reservation: no in-session restore anchors
+ *  (breakfast_offer / breakfast_upgrade.prev_rate are full Rate objects). */
+export const persistableHotel = (hotel: OrderHotel): OrderHotel => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { breakfast_offer, ...rest } = hotel;
+  return rest.breakfast_upgrade
+    ? {
+        ...rest,
+        breakfast_upgrade: {
+          delta_usd: rest.breakfast_upgrade.delta_usd,
+          prev_price: rest.breakfast_upgrade.prev_price,
+          prev_match_hash: rest.breakfast_upgrade.prev_match_hash,
+          prev_refundable: rest.breakfast_upgrade.prev_refundable,
+        },
+      }
+    : rest;
 };
