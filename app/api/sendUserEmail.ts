@@ -1,7 +1,19 @@
 import nodemailer from "nodemailer";
 import dayjs from "dayjs";
 import { userEmail } from "./confirm-order/utils";
-import { OrderData } from "@/lib/app.types";
+import { OrderData, OrderHotel } from "@/lib/app.types";
+import { shortPlace } from "@/lib/events/lodging";
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** "ליברפול 31.10–02.11 · Tune Hotel Liverpool · ללא ארוחת בוקר" */
+const splitHotelLine = (h: OrderHotel) =>
+  [
+    `${escapeHtml(shortPlace(h.cityName ?? ""))} <span style="unicode-bidi: embed;" dir="ltr">${dayjs(h.checkin).format("DD.MM")}–${dayjs(h.checkout).format("DD.MM")}</span>`,
+    escapeHtml(h.name ?? ""),
+    h.rate?.meal_data?.has_breakfast ? "כולל ארוחת בוקר" : "ללא ארוחת בוקר",
+  ].join(" · ");
 
 const EMAIL_SERVER_USER = process.env.EMAIL_SERVER_USER || "";
 const EMAIL_SERVER_PASSWORD = process.env.EMAIL_SERVER_PASSWORD || "";
@@ -95,6 +107,10 @@ export const sendUserEmail = async ({
   // flow, and a crash here used to leave paid orders stuck un-Paid.
   const outbound = orderData.flight_order_info?.outbound;
   const inbound = orderData.flight_order_info?.inbound;
+  const splitHotels =
+    Array.isArray(orderData.hotel_segments) && orderData.hotel_segments.length > 1
+      ? orderData.hotel_segments
+      : null;
 
   const replacements = {
     bookingReference: orderData.booking_reference,
@@ -122,8 +138,12 @@ export const sendUserEmail = async ({
     hotel:
       orderData.hotel_order_info &&
       Object.keys(orderData.hotel_order_info).length > 0
-        ? orderData.hotel_order_info.name
+        ? splitHotels
+          ? // Split stay (Alon 25.09): every hotel on its own line.
+            "<br>" + splitHotels.map(splitHotelLine).join("<br>")
+          : orderData.hotel_order_info.name
         : "ללא מלון",
+    hotelLabel: splitHotels ? "מלונות" : "מלון",
     price: orderData.final_purchase_price_ils,
     promoCode: partnerTrackingCode || undefined,
     handledBy: handledBy || undefined,

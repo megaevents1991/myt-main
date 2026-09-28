@@ -37,6 +37,7 @@ import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import dayjs from "dayjs";
 import {
+  allNights,
   cityName,
   LodgingCity,
   lodgingLocation,
@@ -49,7 +50,8 @@ import {
 } from "@/lib/events/lodging";
 import { fetchHotels as searchHotels } from "./fetchHotels";
 import { LodgingToggle } from "@/components/order/LodgingToggle";
-import { SplitStayDialog } from "@/components/order/SplitStayDialog";
+import { findBreakfastUpgrade } from "./order-review.utils";
+import { useSegmentBreakfast } from "./hooks";
 import {
   LodgingPlanDialog,
   type LodgingPlan,
@@ -60,7 +62,13 @@ import {
   SegmentsList,
 } from "@/components/order/SegmentsList";
 
-export const HotelSelection = () => {
+export const HotelSelection = ({
+  onSkipHotel,
+}: {
+  /** "לא צריך מלון" - offered inside the "איפה ישנים?" popup too. */
+  onSkipHotel?: () => void;
+} = {}) => {
+  const { addBreakfast, removeBreakfast } = useSegmentBreakfast();
   const {
     setHotel,
     planeTickets,
@@ -188,7 +196,8 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const planOpen = planOffered && !lodgingPlanned && !restoredRef.current;
-  const [splitOpen, setSplitOpen] = useState(false);
+  // "שנה חלוקה" above the list reopens the same popup over the current stay.
+  const [planReopen, setPlanReopen] = useState(false);
   const [segmentsLoading, setSegmentsLoading] = useState(false);
   const [segmentsError, setSegmentsError] = useState<string | null>(null);
   // Bumped by the search button in split mode - forces the segment searches
@@ -597,6 +606,18 @@ export const HotelSelection = () => {
     return res;
   };
 
+  // A segment's breakfast upsell, read from ITS OWN search now - later (the
+  // segment blocks, the summary) only the main list's search is at hand.
+  const withBreakfastOffer = (h: OrderHotel, search: HotelsData): OrderHotel => {
+    const upgrade = findBreakfastUpgrade(h, search);
+    return {
+      ...h,
+      breakfast_offer: upgrade
+        ? { rate: upgrade.rate, delta_usd: upgrade.deltaUsd }
+        : null,
+    };
+  };
+
   // The segment's OrderHotel - what prepareHotelData builds for the main
   // list's auto-pick, plus the city it serves.
   const buildSegmentHotel = (
@@ -605,7 +626,7 @@ export const HotelSelection = () => {
     hotel: Hotel
   ): OrderHotel => {
     const info = search.hotelsInfo[hotel.id];
-    return {
+    const picked: OrderHotel = {
       address: info?.metadata?.address,
       guests: search.data.debug.request.guests,
       id: hotel.id,
@@ -624,6 +645,7 @@ export const HotelSelection = () => {
       city: seg.city,
       cityName: cityName(event, seg.city),
     };
+    return withBreakfastOffer(picked, search);
   };
 
   // Auto-pick per segment: the first hotel under the list's default filters
@@ -714,22 +736,30 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [splitActive, splitNights, checkinStr, checkoutStr, roomParamsKey, splitRunKey]);
 
-  const handleSplitConfirm = (nights: typeof splitNights) => {
-    setSplitOpen(false);
-    if (!nights?.length) return;
-    const segs = segmentsFromNights(nights);
-    // One city after all - behave exactly like tapping that city.
-    if (segs.length < 2) {
-      if (segs[0].city !== lodgingCity || splitActive) handlePickCity(segs[0].city);
-      return;
-    }
-    setSplitNights(nights);
-  };
+  // The stay as laid out now - what "שנה חלוקה" reopens the popup with.
+  const currentNights =
+    splitActive && splitNights
+      ? splitNights
+      : checkinStr && checkoutStr
+        ? allNights(refitNights([], checkinStr, checkoutStr), lodgingCity)
+        : null;
 
   // The plan popup's answer: dates + rooms land in the step's state, then a
   // single city searches at once (with those values) or a split lets the
   // segments effect run its sequential searches over the new dates.
   const handlePlanConfirm = (plan: LodgingPlan) => {
+    const reopened = planReopen;
+    setPlanReopen(false);
+    // Reopened and confirmed as it was - nothing to search again.
+    if (
+      reopened &&
+      dayjs(plan.dateRange[0]).format("YYYY-MM-DD") === checkinStr &&
+      dayjs(plan.dateRange[1]).format("YYYY-MM-DD") === checkoutStr &&
+      JSON.stringify(plan.rooms) === roomParamsKey &&
+      JSON.stringify(plan.nights) === JSON.stringify(currentNights)
+    ) {
+      return;
+    }
     setLodgingPlanned(true);
     setDateRange(plan.dateRange);
     setPrevDateRange(plan.dateRange);
@@ -772,14 +802,17 @@ export const HotelSelection = () => {
     const seg = splitSegments[swapIndex];
     const next = hotelSegments.map((h, i) =>
       i === swapIndex
-        ? {
-            ...picked,
-            guests: swapSearch.data.debug.request.guests,
-            checkin: swapSearch.data.debug.request.checkin,
-            checkout: swapSearch.data.debug.request.checkout,
-            city: seg.city,
-            cityName: cityName(event, seg.city),
-          }
+        ? withBreakfastOffer(
+            {
+              ...picked,
+              guests: swapSearch.data.debug.request.guests,
+              checkin: swapSearch.data.debug.request.checkin,
+              checkout: swapSearch.data.debug.request.checkout,
+              city: seg.city,
+              cityName: cityName(event, seg.city),
+            },
+            swapSearch
+          )
         : h
     );
     setHotelSegments(next);
@@ -1228,8 +1261,7 @@ export const HotelSelection = () => {
             city={lodgingCity}
             segments={splitActive ? splitSegments : null}
             disabled={isFetching || segmentsLoading}
-            onPickCity={handlePickCity}
-            onOpenSplit={() => setSplitOpen(true)}
+            onChangePlan={() => setPlanReopen(true)}
           />
         </div>
         {!splitActive && (
@@ -1363,6 +1395,8 @@ export const HotelSelection = () => {
             minPrice={event.base_hotel_price}
             persons={totalPersons}
             onSwap={openSwap}
+            onAddBreakfast={addBreakfast}
+            onRemoveBreakfast={removeBreakfast}
           />
         </div>
       ) : (
@@ -1451,22 +1485,16 @@ export const HotelSelection = () => {
       </div>
       )}
       <LodgingPlanDialog
-        opened={planOpen}
+        opened={planOpen || planReopen}
         event={event}
         flightDates={getDefaultDateRange(event, flight)}
         hasFlight={!!flight?.id}
         initialDateRange={dateRange}
         initialRooms={roomParams}
+        initialNights={planReopen ? currentNights : null}
         onConfirm={handlePlanConfirm}
-      />
-      <SplitStayDialog
-        opened={splitOpen}
-        onClose={() => setSplitOpen(false)}
-        event={event}
-        checkin={checkinStr}
-        checkout={checkoutStr}
-        initial={splitActive ? splitNights : null}
-        onConfirm={handleSplitConfirm}
+        onCancel={planReopen ? () => setPlanReopen(false) : undefined}
+        onSkipHotel={onSkipHotel}
       />
       <SegmentHotelModal
         opened={swapIndex != null}

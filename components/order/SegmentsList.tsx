@@ -15,6 +15,10 @@ import { Stars } from "@/components/ui/stars";
 import { HotelCard } from "@/components/ui/hotelCard";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { HotelsData } from "@/app/hooks/HotelFetch.provider";
+import {
+  otherBreakfastCities,
+  SegmentBreakfast,
+} from "@/components/order/SegmentBreakfast";
 
 const fmt = (iso: string) => dayjs(iso).format("DD.MM");
 
@@ -32,6 +36,8 @@ export const SegmentsList = ({
   minPrice,
   persons,
   onSwap,
+  onAddBreakfast,
+  onRemoveBreakfast,
 }: {
   event: Event;
   segments: StaySegment[];
@@ -43,8 +49,11 @@ export const SegmentsList = ({
   minPrice: number;
   persons: number;
   onSwap: (index: number) => void;
+  onAddBreakfast: (index: number, everywhere: boolean) => void;
+  onRemoveBreakfast: (index: number) => void;
 }) => {
   const totalNights = segments.reduce((n, s) => n + s.nights, 0) || 1;
+  const cityOf = (h: OrderHotel) => (h.city ? cityName(event, h.city) : h.cityName ?? h.name);
 
   return (
     <div className="flex flex-col gap-3" dir="rtl">
@@ -77,7 +86,7 @@ export const SegmentsList = ({
                 <span dir="ltr" className="tabular-nums">
                   {`${fmt(seg.checkin)}–${fmt(seg.checkout)}`}
                 </span>
-                {` · ${seg.nights} לילות`}
+                {` · ${seg.nights === 1 ? "לילה אחד" : `${seg.nights} לילות`}`}
               </div>
               {loading || !hotel ? (
                 // The segment searches run one after another (RateHawk 10/min) and a cold
@@ -123,6 +132,21 @@ export const SegmentsList = ({
                     >
                       החלפת מלון
                     </button>
+                  </div>
+                  <div className="w-full">
+                    <SegmentBreakfast
+                      hotel={hotel}
+                      cityLabel={cityName(event, seg.city)}
+                      otherCities={
+                        hotels
+                          ? otherBreakfastCities(hotels, i, cityOf)
+                          : []
+                      }
+                      interactive
+                      perGuest={persons}
+                      onAdd={(everywhere) => onAddBreakfast(i, everywhere)}
+                      onRemove={() => onRemoveBreakfast(i)}
+                    />
                   </div>
                 </div>
               )}

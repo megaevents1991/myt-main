@@ -264,6 +264,10 @@ export type OrderHotel = {
   checkout: string;
   /** Set while a breakfast upsell is applied; undefined otherwise. */
   breakfast_upgrade?: BreakfastUpgradeInfo | null;
+  /** Split-stay segment only, IN-SESSION: the same room's breakfast rate from
+   *  the segment's own search (captured at pick time - the provider holds
+   *  just the main list's search). Stripped before persisting. */
+  breakfast_offer?: { rate: Rate; delta_usd: number } | null;
   isOffline?: boolean;
   // When isOffline is true: the offline_hotels.id values consumed by this
   // booking (one entry per room unit, so a triple+double combo yields two

@@ -1143,7 +1143,7 @@ export const userEmail = (
                                             replacements.hotel !== "ללא מלון"
                                               ? `<tr>
                                               <td style="padding: 8px 0; color: #666666; text-align: right; direction: rtl;" dir="rtl">
-                                                  <strong style="color: #0A1A14;">מלון:</strong> ${replacements.hotel}
+                                                  <strong style="color: #0A1A14;">${replacements.hotelLabel || "מלון"}:</strong> ${replacements.hotel}
                                               </td>
                                           </tr>`
                                               : ""

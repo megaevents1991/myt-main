@@ -553,7 +553,7 @@ export async function POST(req: Request) {
                   validatedData.hotel_segments
                     .map(
                       (h) =>
-                        `Hotel: ${h.name} (${h.cityName ?? h.city ?? ""} ${h.checkin}→${h.checkout})`,
+                        `Hotel: ${h.name} (${h.cityName ?? h.city ?? ""} ${h.checkin}→${h.checkout}) - ${h.rate?.meal_data?.has_breakfast ? "WITH breakfast" : "no breakfast"}${h.breakfast_upgrade ? ` (breakfast added +$${h.breakfast_upgrade.delta_usd})` : ""}`,
                     )
                     .join("\n          ")
                 : `Hotel: ${validatedData.hotel_order_info.name}

@@ -187,7 +187,11 @@ export default function ConfirmationPage() {
                 flightInfo.inbound.departureTime
               ).format("DD/MM/YYYY HH:mm")}`
             : "",
-          hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0) ? "ללא מלון" : orderData.hotel_order_info.name,
+          hotel: (!orderData.hotel_order_info || Object.keys(orderData.hotel_order_info).length === 0)
+            ? "ללא מלון"
+            : Array.isArray(orderData.hotel_segments) && orderData.hotel_segments.length > 1
+              ? orderData.hotel_segments.map((h) => h.name).join(" · ") // split stay
+              : orderData.hotel_order_info.name,
           bookingReference: orderData.booking_reference,
           isPaid,
           partnerTrackingCode: promoCode === "dummy_code" ? null : promoCode,

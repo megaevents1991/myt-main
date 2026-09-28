@@ -10,13 +10,13 @@ import { cn } from "@/lib/utils";
 import { FaPlane, FaTicketAlt, FaHotel } from "react-icons/fa";
 import type { BreakfastUpgrade } from "../order-review.utils";
 import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
-import { hasEventCity } from "@/lib/events/lodging";
+import { cityName, hasEventCity } from "@/lib/events/lodging";
 import { isTicketOnlyEvent } from "@/lib/events/price";
 
 /** "<event city> · טיסה ל<flight city>" on a two-city event, else the city. */
 const placeLine = (event: Event) =>
   hasEventCity(event) && event.event_location
-    ? `${event.event_location.name} · טיסה ל${event.location.name}`
+    ? `${cityName(event, "event")} · טיסה ל${cityName(event, "flight")}`
     : event.location.name;
 
 export const Review = ({
@@ -46,10 +46,15 @@ export const Review = ({
   onToggleCabinBag,
   showUpsells,
   hotelSegments,
+  onAddSegmentBreakfast,
+  onRemoveSegmentBreakfast,
 }: {
   agentCommission: number;
   /** Split stay: 2+ hotels in night order (selectedHotel is the first). */
   hotelSegments?: OrderHotel[] | null;
+  /** Split stay: breakfast per hotel (one, or every hotel that offers it). */
+  onAddSegmentBreakfast?: (index: number, everywhere: boolean) => void;
+  onRemoveSegmentBreakfast?: (index: number) => void;
   /** Any signed agent code - commission may be 0. Falls back to commission>0. */
   isAgent?: boolean;
   hotelPriceAddition: number;
@@ -118,7 +123,9 @@ export const Review = ({
           0
         )} אורחים)`,
         secondary: segments
-          ? segments.map((h) => h.cityName ?? h.name).join(" ← ")
+          ? segments
+              .map((h) => (h.city ? cityName(event, h.city) : h.cityName ?? h.name))
+              .join(" ← ")
           : `${selectedHotel.name}`,
         icon: <FaHotel />,
         component: (
@@ -134,6 +141,9 @@ export const Review = ({
             showUpsells={showUpsells}
             onAddBreakfast={onAddBreakfast}
             onRemoveBreakfast={onRemoveBreakfast}
+            event={event}
+            onAddSegmentBreakfast={onAddSegmentBreakfast}
+            onRemoveSegmentBreakfast={onRemoveSegmentBreakfast}
           />
         ),
       }] : []),
@@ -188,6 +198,9 @@ export const Review = ({
       onSetCheckedBagQty,
       onToggleCabinBag,
       segments,
+      event,
+      onAddSegmentBreakfast,
+      onRemoveSegmentBreakfast,
     ]
   );
 
