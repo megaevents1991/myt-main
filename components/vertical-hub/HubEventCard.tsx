@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 
 import type { Event } from "@/lib/app.types";
 import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
-import { hasEventCity } from "@/lib/events/lodging";
+import { cityName, hasEventCity } from "@/lib/events/lodging";
 import { EventArt } from "@/components/ui/EventArt";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { PackageIcons } from "@/components/ui/PackageIcons";
@@ -64,7 +64,7 @@ export const HubEventCard = ({ event }: { event: Event }) => {
                 •
               </span>
               {hasEventCity(event)
-                ? `${event.event_location?.name} · טיסה ל${event.location.name}`
+                ? `${cityName(event, "event")} · טיסה ל${cityName(event, "flight")}`
                 : event.location?.name}
             </p>
 
