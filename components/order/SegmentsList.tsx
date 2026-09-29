@@ -1,7 +1,9 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { Checkbox, Loader, Modal, ScrollArea, Skeleton, TextInput } from "@mantine/core";
+import { Carousel } from "@mantine/carousel";
 import { useMediaQuery } from "@mantine/hooks";
 import { DollarSign, MapPin, Repeat, Search, Star } from "lucide-react";
 import dayjs from "dayjs";
@@ -13,6 +15,7 @@ import { cityName, StaySegment } from "@/lib/events/lodging";
 import { formatPrice } from "@/lib/price.utils";
 import { Stars } from "@/components/ui/stars";
 import { HotelCard } from "@/components/ui/hotelCard";
+import { HotelCardHeader } from "@/components/ui/HotelCardHeader";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { HotelsData } from "@/app/hooks/HotelFetch.provider";
 import {
@@ -21,6 +24,39 @@ import {
 } from "@/components/order/SegmentBreakfast";
 
 const fmt = (iso: string) => dayjs(iso).format("DD.MM");
+
+/** A segment hotel's photos - HotelCard's carousel, a little shorter. */
+const SegmentPhotos = ({ images, alt }: { images: string[]; alt: string }) => {
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const size = isMobile ? "x220" : "x500";
+  return (
+    <Carousel
+      slidesToScroll={1}
+      align="start"
+      slideSize="100%"
+      initialSlide={0}
+      withIndicators={images.length > 1}
+      withControls={images.length > 1}
+      loop={images.length > 1}
+      dir="ltr"
+      styles={{ indicators: { maxWidth: "90%", justifySelf: "center" } }}
+    >
+      {images.map((src, i) => (
+        <Carousel.Slide key={`${i}-${src}`} className="h-[170px] lg:h-[160px]">
+          <Image
+            fill
+            loading="lazy"
+            style={{ objectFit: "cover" }}
+            className="rounded-lg border"
+            src={src.replace("{size}", size)}
+            alt={alt}
+            sizes="(max-width: 1024px) 100vw, 240px"
+          />
+        </Carousel.Slide>
+      ))}
+    </Carousel>
+  );
+};
 
 /**
  * Split stay: one block per stay segment instead of the hotel list - the
@@ -77,6 +113,9 @@ export const SegmentsList = ({
         const perGuest = hotel ? +hotel.price / (persons || 1) : 0;
         const delta = perGuest - segBase;
         const stars = Math.max(0, Math.round(hotel?.hotelInformation?.stars ?? 0));
+        const card = hotel?.segment_card;
+        const roomName =
+          hotel?.rate?.room_data_trans?.main_name || hotel?.hotelInformation?.roomName || "";
         // Back in a city after the other one, in the same hotel (the default).
         const returning =
           !!hotel &&
@@ -90,7 +129,8 @@ export const SegmentsList = ({
                 {`רכבת ${cityName(event, segments[i - 1].city)} ← ${cityName(event, seg.city)}, לא כלול`}
               </p>
             )}
-            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+            <div className="rounded-lg border-2 border-border bg-card px-4 py-3 text-card-foreground shadow-lg">
+
               <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-[15px] font-bold">
                   {`${cityName(event, seg.city)} · `}
@@ -123,39 +163,69 @@ export const SegmentsList = ({
                   <Skeleton visible className="h-10" />
                 </div>
               ) : (
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-bold" dir="ltr">
-                        {hotel.name}
-                      </span>
-                      {stars > 0 && <Stars rating={stars} />}
-                    </div>
-                    <div className="text-[13px] text-muted-foreground" dir="ltr">
-                      {hotel.rate?.room_data_trans?.main_name ||
-                        hotel.hotelInformation?.roomName}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-[13px]">
-                      {Math.abs(delta) > 4 ? (
-                        <>
-                          <span className="text-lg">{formatPrice(delta)}</span>{" "}
-                          <span className="whitespace-nowrap">
-                            {delta < 0 ? "חסכון לכל אורח" : "תוספת לכל אורח"}
-                          </span>
-                        </>
+                // Laid out like the list's HotelCard (Dor 29.09): name, stars, distance
+                // + map and room on top, the photos under them (beside them on a
+                // desktop), then - where the card has amenity icons - the price and
+                // "החלפת מלון".
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:gap-4">
+                    {!!card?.images.length && (
+                      <div className="order-2 w-full lg:order-1 lg:w-[240px] lg:shrink-0">
+                        <SegmentPhotos images={card.images} alt={hotel.name} />
+                      </div>
+                    )}
+                    <div className="order-1 min-w-0 flex-1 lg:order-2">
+                      {card ? (
+                        <HotelCardHeader
+                          hotelName={hotel.name}
+                          distanceFromCenter={card.distance}
+                          meals={!!hotel.rate?.meal_data?.has_breakfast}
+                          roomName={roomName}
+                          rating={stars}
+                          guestRating={card.guestRating}
+                          address={hotel.address}
+                          coordinates={
+                            card.lat != null && card.lng != null
+                              ? { lat: card.lat, lng: card.lng }
+                              : undefined
+                          }
+                        />
                       ) : (
-                        <span>כלול במחיר</span>
+                        // No photos / place for this hotel (static info missing).
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-lg font-bold" dir="ltr">
+                              {hotel.name}
+                            </span>
+                            {stars > 0 && <Stars rating={stars} />}
+                          </div>
+                          <div className="text-[13px] text-muted-foreground" dir="ltr">
+                            {roomName}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onSwap(i)}
-                      className="rounded-lg border border-forest px-3 py-1.5 text-[13px] font-bold text-forest transition-colors hover:bg-forest/5 dark:border-glow dark:text-glow dark:hover:bg-glow/10"
-                    >
-                      החלפת מלון
-                    </button>
+                    <div className="order-3 flex items-center justify-between gap-3 lg:w-[180px] lg:shrink-0 lg:flex-col lg:justify-center lg:gap-3 lg:border-r lg:border-border lg:pr-4 lg:text-center">
+                      {Math.abs(delta) > 4 ? (
+                        <div className="flex items-baseline gap-1.5 lg:flex-col lg:items-center lg:gap-0">
+                          <span className="text-xl font-bold tabular-nums lg:text-2xl">
+                            {formatPrice(delta)}
+                          </span>
+                          <span className="whitespace-nowrap text-[14px] font-semibold lg:text-[15px]">
+                            {delta < 0 ? "חסכון לכל אורח" : "תוספת לכל אורח"}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-lg font-bold">כלול במחיר</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onSwap(i)}
+                        className="shrink-0 rounded-lg border-[1.5px] border-forest px-4 py-2 text-[14px] font-bold text-forest transition-colors hover:bg-forest/5 lg:w-full dark:border-glow dark:text-glow dark:hover:bg-glow/10"
+                      >
+                        החלפת מלון
+                      </button>
+                    </div>
                   </div>
                   <div className="w-full">
                     <SegmentBreakfast

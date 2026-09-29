@@ -250,6 +250,16 @@ export type BreakfastUpgradeInfo = {
   prev_refundable?: boolean;
 };
 
+/** In-session only (never saved): a split-stay segment card's photos + place. */
+export type SegmentCardInfo = {
+  images: string[];
+  /** Meters from the city center, like HotelInfoClient.metadata. */
+  distance: number;
+  guestRating?: number;
+  lat?: number;
+  lng?: number;
+};
+
 export type OrderHotel = {
   rate: Rate;
   address: string;
@@ -268,6 +278,10 @@ export type OrderHotel = {
    *  the segment's own search (captured at pick time - the provider holds
    *  just the main list's search). Stripped before persisting. */
   breakfast_offer?: { rate: Rate; delta_usd: number } | null;
+  /** Split-stay segment only, IN-SESSION: what the segment's hotel card draws
+   *  (photos, distance, map pin, guest score) from the segment's own search.
+   *  Stripped before persisting. */
+  segment_card?: SegmentCardInfo | null;
   isOffline?: boolean;
   // When isOffline is true: the offline_hotels.id values consumed by this
   // booking (one entry per room unit, so a triple+double combo yields two

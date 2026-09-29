@@ -285,11 +285,12 @@ export const segmentBreakfastOffer = (
     : null;
 
 /** The hotel as it is saved on the reservation: no in-session restore anchors
- *  (breakfast_offer / breakfast_upgrade.prev_rate are full Rate objects);
- *  the swapped-out rate's match_hash + refundability ride along for ops. */
+ *  (breakfast_offer / breakfast_upgrade.prev_rate are full Rate objects) and
+ *  no segment card photos; the swapped-out rate's match_hash + refundability
+ *  ride along for ops. */
 export const persistableHotel = (hotel: OrderHotel): OrderHotel => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { breakfast_offer, ...rest } = hotel;
+  const { breakfast_offer, segment_card, ...rest } = hotel;
   return rest.breakfast_upgrade
     ? {
         ...rest,

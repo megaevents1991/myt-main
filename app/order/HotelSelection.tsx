@@ -637,6 +637,32 @@ export const HotelSelection = () => {
     };
   };
 
+  // The segment card's photos + place, from the segment's own search too (same
+  // reason as the breakfast offer). The picked room's photos first, like HotelCard.
+  const withCardInfo = (h: OrderHotel, search: HotelsData): OrderHotel => {
+    const info = search.hotelsInfo[h.id];
+    if (!info?.metadata) return { ...h, segment_card: null };
+    const room = h.rate?.room_data_trans;
+    const roomKey = room
+      ? `${room.main_name}${room.bedding_type ? " " + room.bedding_type : ""}`
+      : "";
+    return {
+      ...h,
+      segment_card: {
+        images: [
+          ...(info.rooms?.[roomKey]?.images ?? []),
+          ...(info.general?.images ?? []),
+        ]
+          .filter(Boolean)
+          .slice(0, 12),
+        distance: Math.ceil(info.metadata.distanceFromCenter ?? 0),
+        guestRating: info.metadata.guestRating,
+        lat: info.metadata.latitude,
+        lng: info.metadata.longitude,
+      },
+    };
+  };
+
   // The segment's OrderHotel - what prepareHotelData builds for the main
   // list's auto-pick, plus the city it serves. `rate` defaults to the
   // cheapest; the same-hotel reuse passes the one closest to the earlier pick.
@@ -666,7 +692,7 @@ export const HotelSelection = () => {
       city: seg.city,
       cityName: cityName(event, seg.city),
     };
-    return withBreakfastOffer(picked, search);
+    return withCardInfo(withBreakfastOffer(picked, search), search);
   };
 
   // The anchor hotel again in this segment's search - same room, same board
@@ -874,15 +900,18 @@ export const HotelSelection = () => {
     if (swapIndex == null || !hotelSegments || !swapSearch) return;
     const seg = splitSegments[swapIndex];
     const segs = splitSegments;
-    const swapped = withBreakfastOffer(
-      {
-        ...picked,
-        guests: swapSearch.data.debug.request.guests,
-        checkin: swapSearch.data.debug.request.checkin,
-        checkout: swapSearch.data.debug.request.checkout,
-        city: seg.city,
-        cityName: cityName(event, seg.city),
-      },
+    const swapped = withCardInfo(
+      withBreakfastOffer(
+        {
+          ...picked,
+          guests: swapSearch.data.debug.request.guests,
+          checkin: swapSearch.data.debug.request.checkin,
+          checkout: swapSearch.data.debug.request.checkout,
+          city: seg.city,
+          cityName: cityName(event, seg.city),
+        },
+        swapSearch
+      ),
       swapSearch
     );
     manualSwapRef.current.add(segKey(seg));
