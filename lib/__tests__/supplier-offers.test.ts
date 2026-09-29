@@ -11,10 +11,11 @@ import {
   type SupplierLiveData,
 } from "../supplier-offers";
 import { ticketSupplier } from "../suppliers";
-import { seatsHeldByTicket, stockLeft } from "../own-stock";
+import { ownSeating, seatsHeldByTicket, stockLeft } from "../own-stock";
 import {
   categoryCanSatisfyQuantity,
   liveTicketsPriceForQuantity,
+  pairsPlusSingle,
   seatingForQuantity,
   seatingGroupMaxOf,
   seatingSplit,
@@ -316,6 +317,31 @@ assert.equal(doubles.seatingGroupMax, 2);
 assert.equal(seatingForQuantity(doubles, 2), "together");
 assert.deepEqual(seatingSplit(doubles, 4), [2, 2]);
 assert.equal(seatingForQuantity(doubles, 3), "none"); // odd party: no promise (Dor 28.09)
+// ...but the card SAYS so, at the listed price (LiveTickets has no triple fee in
+// doubles), and a together offer in the same zone is its other side (Alon + Dor 29.09)
+assert.deepEqual(pairsPlusSingle(doubles, 3), [2, 1]);
+assert.deepEqual(pairsPlusSingle(doubles, 5), [2, 2, 1]);
+assert.equal(pairsPlusSingle(doubles, 4), null);
+assert.equal(pairsPlusSingle({ maxPerOrder: 6, seatingGroupMax: 4 }, 3), null);
+const doublesLive = (listings: TixStockListing[] = []) =>
+  live({
+    tixstock: { status: "live", listings },
+    livetickets: {
+      status: "live",
+      offers: [{ id: "171442", title: "Category 3", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 2, tripleFeeUsd: 0, instant: true }],
+    },
+  });
+const ltThree = priceTicketsForQuantity([lt], "tx_event", 3, doublesLive(), 1.15)[0];
+assert.deepEqual([ltThree.seating, ltThree.seatingSplit, ltThree.price], ["groups", [2, 1], 431]);
+offers = zoneOffers(
+  priceTicketsForQuantity(tickets, "tx_event", 3, doublesLive([listing("CATEGORY 1", "480", 4)]), 1.15),
+  "tx_event",
+  3,
+);
+assert.deepEqual(
+  offers.map((t) => [t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
+  [["tx1", "171442"]],
+);
 assert.equal(seatingGroupMaxOf({ seatingMethodId: 4, seatingGroupMAXSize: 4 }), 4); // their size wins
 assert.equal(seatingGroupMaxOf({ seatingMethodId: 1, seatingGroupMAXSize: null }), null); // standing / GA
 
@@ -337,6 +363,18 @@ assert.ok(
 assert.deepEqual(
   cheapestSupplierPerZone([ticket({ id: "tx", zoneId: "z", price: 400 }), { ...own, zoneId: "z" }], "tx_event").map((t) => t.id),
   ["own1"],
+);
+
+// our own ticket says how its seats sit (Alon 29.09): up to seatsTogether
+// together, a bigger party in groups of up to that many, no field = no promise
+assert.deepEqual(ownSeating({ seatsTogether: 4 }, 3), { seating: "together" });
+assert.deepEqual(ownSeating({ seatsTogether: 4 }, 6), { seating: "groups", seatingGroupMax: 4 });
+assert.deepEqual(ownSeating({}, 3), { seating: "none" });
+assert.deepEqual(ownSeating({ seatsTogether: 4 }, 1), { seating: "none" });
+assert.deepEqual(ownSeating({ seatsTogether: 1 }, 2), { seating: "none" });
+assert.equal(
+  priceTicketsForQuantity([{ ...own, seatsTogether: 4 }], "tx_event", 4, live(), 1.15)[0].seating,
+  "together",
 );
 
 // seats held: live reservations only (24Save is a price hold, Cancelled / Lost are gone)

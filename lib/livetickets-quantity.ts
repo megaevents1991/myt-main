@@ -60,6 +60,25 @@ export function seatingSplit(
 }
 
 /**
+ * A "doubles" category (`seatingGroupMax` 2) and an odd party: pairs plus one
+ * seat of its own - [2, 1] for three, [2, 2, 1] for five. LiveTickets sells no
+ * triple in a doubles category and publishes no fee for one (29.09: 0 of 3,070
+ * doubles categories across 1,061 future events carry a `seatingGroupFee`; the
+ * group categories that do are priced by `liveTicketsPriceForQuantity`), so
+ * the price stays the listed one. The card says so out loud, and a zone offer
+ * that seats the whole party together becomes its other side (Alon + Dor
+ * 29.09, `zoneOffers`). null for anything else.
+ */
+export function pairsPlusSingle(
+  rules: LiveTicketsQuantityRules,
+  qty: number,
+): number[] | null {
+  if (rules.seatingGroupMax !== 2) return null;
+  if (!Number.isInteger(qty) || qty < 3 || qty % 2 === 0) return null;
+  return [...Array<number>((qty - 1) / 2).fill(2), 1];
+}
+
+/**
  * Price per ticket for `qty` tickets (Dor, 2026-09-19: a fee LiveTickets
  * charges us is simply folded into the ticket price). Pairs sell at the listed
  * price; the ONE triple an odd party is promised costs us their

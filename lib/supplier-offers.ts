@@ -2,7 +2,7 @@ import type { EventTicket, EventType } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import { ticketSupplier, type TicketSupplier } from "@/lib/suppliers";
-import { hasOwnStock } from "@/lib/own-stock";
+import { hasOwnStock, ownSeating } from "@/lib/own-stock";
 import { normalizeTxCategory } from "@/lib/tixstock-category";
 import {
   listingCanSatisfyQuantity,
@@ -11,7 +11,7 @@ import {
 import {
   categoryCanSatisfyQuantity,
   liveTicketsPriceForQuantity,
-  seatingForQuantity,
+  pairsPlusSingle,
   seatingSplit,
 } from "@/lib/livetickets-quantity";
 
@@ -203,8 +203,11 @@ function priceLiveTicketsTicket(
   if (!offer.instant && !ticket.nonInstant) return null;
   if (!categoryCanSatisfyQuantity(offer, qty)) return null;
 
-  const seating = seatingForQuantity(offer, qty);
-  const split = seatingSplit(offer, qty) ?? undefined;
+  // A doubles category seats an odd party as pairs + one seat on its own
+  // (`pairsPlusSingle`) - a split, so a zone offer that seats everyone
+  // together is offered beside it (`zoneOffers`).
+  const split = seatingSplit(offer, qty) ?? pairsPlusSingle(offer, qty) ?? undefined;
+  const seating: Seating = !split ? "none" : split.length === 1 ? "together" : "groups";
   return {
     ...ticket,
     price: liveTicketsPriceForQuantity(offer, qty),
@@ -240,15 +243,20 @@ export function priceTicketsForQuantity(
   }, []);
 }
 
-/** A static ticket at `qty`: our own stock sells only while enough seats are left. */
+/**
+ * A static ticket at `qty`: our own stock sells only while enough seats are
+ * left, and says how the party sits (`ownSeating` - up to `seatsTogether`
+ * together, a bigger party in groups of up to that many).
+ */
 function ownTicketForQuantity(
   ticket: EventTicket,
   ownStock: SupplierLiveData["ownStock"],
   qty: number,
-): EventTicket | null {
+): PricedTicket | null {
   if (!hasOwnStock(ticket)) return ticket;
   const left = ownStock?.[ticket.id];
-  return left === undefined || left >= qty ? ticket : null;
+  if (left !== undefined && left < qty) return null;
+  return { ...ticket, ...ownSeating(ticket, qty) };
 }
 
 /**

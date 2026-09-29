@@ -526,7 +526,7 @@ export async function POST(req: Request) {
             validatedData.event_order_info.seating_choice
               ? "\n          Seating chosen: " +
                 (validatedData.event_order_info.seating_choice === "split"
-                  ? "pairs + a triple (split)"
+                  ? "split - pairs, and for an odd party a triple or (LiveTickets doubles) one seat apart"
                   : "all together - buy seats that sit together, not the cheapest split listing")
               : ""
           }

@@ -69,14 +69,20 @@ const toOrderTicket = (
   seatingChoice,
 });
 
+/** "זוג" / "2 זוגות" */
+const pairsText = (pairs: number): string => (pairs === 1 ? "זוג" : pairs + " זוגות");
+
 /** Short label of a split seating, for the together / split toggle. */
 const splitLabel = (ticket: PricedTicket): string => {
   const split = ticket.seatingSplit ?? [];
   const pairs = split.filter((n) => n === 2).length;
   if (split.includes(3)) {
-    return pairs === 0 ? "שלשה" : (pairs === 1 ? "זוג" : pairs + " זוגות") + " + שלשה";
+    return pairs === 0 ? "שלשה" : pairsText(pairs) + " + שלשה";
   }
-  if (pairs > 0) return pairs === 1 ? "זוג" : pairs + " זוגות";
+  // A doubles category at an odd party: pairs and one seat apart (Alon 29.09).
+  if (split.includes(1)) return pairsText(pairs) + " + מושב נפרד";
+  if (pairs > 0) return pairsText(pairs);
+  if (ticket.seatingGroupMax) return "בקבוצות של עד " + ticket.seatingGroupMax;
   return "בזוגות/שלשות";
 };
 
@@ -88,11 +94,14 @@ const seatingNote = (ticket: PricedTicket): string | undefined => {
   // plus one triple when the party is odd - never a lone seat.
   if (ticket.seating === "groups" && ticket.seatingSplit?.length) {
     const pairs = ticket.seatingSplit.filter((n) => n === 2).length;
-    const triple = ticket.seatingSplit.includes(3);
-    const pairsText = pairs === 1 ? "זוג" : pairs + " זוגות";
-    return triple
-      ? "ישיבה מובטחת: " + pairsText + " + שלשה"
-      : "ישיבה בזוגות מובטחת (" + pairsText + ")";
+    // LiveTickets "doubles" and an odd party: no triple exists, so the party
+    // is pairs and one seat apart - said, not left to guess (Alon 29.09).
+    if (ticket.seatingSplit.includes(1)) {
+      return "ישיבה: " + pairsText(pairs) + " + מושב נפרד";
+    }
+    return ticket.seatingSplit.includes(3)
+      ? "ישיבה מובטחת: " + pairsText(pairs) + " + שלשה"
+      : "ישיבה בזוגות מובטחת (" + pairsText(pairs) + ")";
   }
   if (ticket.seating === "groups" && ticket.seatingGroupMax) {
     return "ישיבה יחד בקבוצות של עד " + ticket.seatingGroupMax;
