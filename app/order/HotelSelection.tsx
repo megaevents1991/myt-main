@@ -895,14 +895,16 @@ export const HotelSelection = () => {
       delete next[segKey(seg)]; // chosen by hand - nothing to explain
       return next;
     });
-    // The same city's other segments follow to the new hotel - unless the
-    // customer chose that segment's hotel by hand too. Their searches are
-    // cached from the auto-pick, so this spends no new search.
+    // The same city's LATER segments (the return leg) follow to the new
+    // hotel - unless the customer chose that segment's hotel by hand too.
+    // Never backwards: swapping the return leg is choosing a different hotel
+    // for it, so the first nights keep theirs (Alon 29.09). Their searches
+    // are cached from the auto-pick, so this spends no new search.
     const followers = segs
       .map((s, i) => ({ s, i }))
       .filter(
         ({ s, i }) =>
-          i !== swapIndex &&
+          i > swapIndex &&
           s.city === seg.city &&
           !manualSwapRef.current.has(segKey(s))
       );
@@ -1356,7 +1358,9 @@ export const HotelSelection = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
-                  showTooltip={true}
+                  // Not over the full-screen "החלפת מלון" modal (the tooltip
+                  // layer sits above modals).
+                  showTooltip={swapIndex == null}
                   tooltipText="רוצים תאריכים אחרים? בחרו כאן"
                 />
                 <button

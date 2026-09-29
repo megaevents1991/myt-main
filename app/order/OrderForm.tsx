@@ -434,12 +434,16 @@ export const OrderForm = ({
   /* ── Continue-bar model (steps 1–3) ─────────────────────────────────
      Slots fill as the customer picks; the last step folds into the
      summary with a short "building the package" animation. */
-  const priceNote = (delta: number) =>
-    delta > 0
+  // Whole dollars on the chip - a per-guest share of a split stay (or an odd
+  // room total over 2 guests) printed "-$104.5".
+  const priceNote = (raw: number) => {
+    const delta = Math.round(raw);
+    return delta > 0
       ? `+$${delta.toLocaleString("en-US")}`
       : delta < 0
         ? `-$${Math.abs(delta).toLocaleString("en-US")}`
         : "כלול";
+  };
 
   // Pills are navigation: completed steps (behind the current one) tap back to
   // modify; the IMMEDIATE next step taps forward - exactly like the primary

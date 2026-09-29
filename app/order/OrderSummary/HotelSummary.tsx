@@ -84,7 +84,8 @@ export const HotelSummary = ({
       event && h.city ? cityName(event, h.city) : shortPlace(h.cityName ?? h.name);
     const interactive = !!showUpsells && !!onAddSegmentBreakfast;
     return (
-      <div className="">
+      // gap-3: the heading sat right on the first hotel row (Alon 29.09).
+      <div className="flex flex-col gap-3">
         <h3 className="font-bold text-lg hidden md:block">
           לינה{" "}
           <span>

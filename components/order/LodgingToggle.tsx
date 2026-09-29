@@ -133,6 +133,8 @@ export const LodgingToggle = ({
     if (split || key !== city) onPickCity(key);
   };
 
+  // Separate outlined tiles with a radio dot - a choice of where to sleep, and
+  // visibly NOT the sort strip under it (one filled pill track, Alon 29.09).
   const optionButton = ({ key, label, sub, Icon, active }: (typeof options)[number]) => (
     <button
       key={key}
@@ -141,41 +143,44 @@ export const LodgingToggle = ({
       aria-checked={active}
       onClick={() => pick(key)}
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded px-2 py-2 leading-tight transition-colors lg:min-w-[150px] lg:flex-none lg:gap-0.5 lg:px-4",
+        "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl border-[1.5px] px-2 py-2.5 text-center leading-tight transition-colors lg:min-w-[172px] lg:flex-row lg:justify-start lg:gap-2.5 lg:px-3.5 lg:text-right",
         active
-          ? "bg-main text-white dark:bg-foreground dark:text-background"
-          : "text-foreground hover:bg-muted"
+          ? "border-forest bg-forest/10 dark:border-glow dark:bg-glow/10"
+          : "border-border bg-card hover:border-forest/60 dark:hover:border-glow/60"
       )}
     >
-      <Icon
-        className={cn(
-          "h-3.5 w-3.5 flex-shrink-0 lg:hidden",
-          active ? "text-white dark:text-background" : "text-muted-foreground"
-        )}
-        strokeWidth={1.8}
+      <span
         aria-hidden="true"
-      />
-      <span className="flex items-center gap-1.5 whitespace-nowrap text-[12px] font-bold lg:text-[14px]">
-        <Icon
-          className={cn(
-            "hidden h-4 w-4 flex-shrink-0 lg:block",
-            active ? "text-white dark:text-background" : "text-muted-foreground"
-          )}
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        {label}
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px]",
+          active ? "border-forest dark:border-glow" : "border-muted-foreground/60"
+        )}
+      >
+        {active && <span className="h-2 w-2 rounded-full bg-forest dark:bg-glow" />}
       </span>
-      {sub && (
-        <span
-          className={cn(
-            "hidden whitespace-nowrap text-[11px] lg:block",
-            active ? "text-white/80 dark:text-background/75" : "text-muted-foreground"
-          )}
-        >
-          {sub}
+      <span className="flex min-w-0 flex-col items-center gap-0.5 lg:items-start">
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-[12.5px] font-bold text-foreground lg:text-[14px]">
+          <Icon
+            className={cn(
+              "hidden h-4 w-4 flex-shrink-0 lg:block",
+              active ? "text-forest dark:text-glow" : "text-muted-foreground"
+            )}
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
+          {label}
         </span>
-      )}
+        {sub && (
+          <span
+            className={cn(
+              "text-balance text-[11px] lg:whitespace-nowrap",
+              active ? "text-forest dark:text-glow" : "text-muted-foreground"
+            )}
+          >
+            {sub}
+          </span>
+        )}
+      </span>
     </button>
   );
 
@@ -186,7 +191,10 @@ export const LodgingToggle = ({
         <div
           role="radiogroup"
           aria-label="איפה ישנים?"
-          className="flex w-full min-w-0 gap-[2px] rounded-md border border-border bg-card p-[3px] lg:w-auto"
+          className={cn(
+            "grid w-full min-w-0 gap-2 lg:flex lg:w-auto",
+            options.length === 3 ? "grid-cols-3" : "grid-cols-2"
+          )}
         >
           {options.map((opt) =>
             opt.key === "split" ? (
