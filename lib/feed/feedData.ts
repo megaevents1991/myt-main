@@ -9,6 +9,8 @@ import type { Event } from "@/lib/app.types";
 import type { EventCategory, EventTag } from "@/lib/taxonomy.types";
 import { getAllTags } from "@/lib/taxonomy";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
+import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
+import { markOwnStockSoldOut } from "@/lib/events/ownStock";
 import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
 import {
   buildFeedItem,
@@ -124,8 +126,13 @@ async function getFeedEvents(): Promise<{
       .range(from, to),
   );
 
-  const enriched = await enrichEventsWithFallbackImages(
-    events.filter((e) => !e.is_test),
+  // The same sold-out marks the site's catalog applies (getEvents): an own
+  // ticket with no seats left and a locked package whose flight is gone must
+  // not set the feed's price or keep the event "available" in Meta.
+  const enriched = await markOwnStockSoldOut(
+    await markLockedPackagesSoldOut(
+      await enrichEventsWithFallbackImages(events.filter((e) => !e.is_test)),
+    ),
   );
   return {
     events: enriched,
