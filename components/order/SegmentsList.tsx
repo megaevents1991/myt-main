@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Checkbox, Loader, Modal, ScrollArea, Skeleton, TextInput } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { useMediaQuery } from "@mantine/hooks";
-import { DollarSign, MapPin, Repeat, Search, Star } from "lucide-react";
+import { BedDouble, DollarSign, MapPin, Repeat, Search, Star } from "lucide-react";
 import dayjs from "dayjs";
 import type { Event, OrderHotel, SortOptions } from "@/lib/app.types";
 import { hotelSort } from "@/lib/hotelFilter";
@@ -42,7 +42,7 @@ const SegmentPhotos = ({ images, alt }: { images: string[]; alt: string }) => {
       styles={{ indicators: { maxWidth: "90%", justifySelf: "center" } }}
     >
       {images.map((src, i) => (
-        <Carousel.Slide key={`${i}-${src}`} className="h-[170px] lg:h-[160px]">
+        <Carousel.Slide key={`${i}-${src}`} className="h-[150px] lg:h-[120px]">
           <Image
             fill
             loading="lazy"
@@ -50,7 +50,7 @@ const SegmentPhotos = ({ images, alt }: { images: string[]; alt: string }) => {
             className="rounded-lg border"
             src={src.replace("{size}", size)}
             alt={alt}
-            sizes="(max-width: 1024px) 100vw, 240px"
+            sizes="(max-width: 1024px) 100vw, 180px"
           />
         </Carousel.Slide>
       ))}
@@ -136,15 +136,19 @@ export const SegmentsList = ({
                 {`רכבת ${cityName(event, segments[i - 1].city)} ← ${cityName(event, seg.city)}, לא כלול`}
               </p>
             )}
-            <div className="rounded-lg border-2 border-border bg-card px-4 py-3 text-card-foreground shadow-lg">
-
-              <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-[15px] font-bold">
-                  {`${cityName(event, seg.city)} · `}
-                  <span dir="ltr" className="tabular-nums">
-                    {`${fmt(seg.checkin)}–${fmt(seg.checkout)}`}
-                  </span>
-                  {` · ${seg.nights === 1 ? "לילה אחד" : `${seg.nights} לילות`}`}
+            <div className="overflow-hidden rounded-lg border-2 border-border bg-card text-card-foreground shadow-lg">
+              {/* The segment's city + nights as the card's own title strip (Alon 29.09:
+                  "תבליט את הכותרת") - it is what tells two cards apart. */}
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-border bg-forest/[0.06] px-4 py-2 dark:bg-glow/[0.06]">
+                <BedDouble className="h-[18px] w-[18px] shrink-0 text-forest dark:text-glow" strokeWidth={2} aria-hidden="true" />
+                <span className="text-[17px] font-extrabold leading-tight lg:text-[18px]">
+                  {cityName(event, seg.city)}
+                </span>
+                <span className="rounded-full bg-forest px-2.5 py-[3px] text-[12px] font-bold leading-none text-white dark:bg-glow dark:text-forest">
+                  {seg.nights === 1 ? "לילה אחד" : `${seg.nights} לילות`}
+                </span>
+                <span dir="ltr" className="text-[14px] font-semibold tabular-nums text-muted-foreground">
+                  {`${fmt(seg.checkin)}–${fmt(seg.checkout)}`}
                 </span>
                 {returning && !loading && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-forest/10 px-2 py-[2px] text-[11px] font-bold text-forest dark:bg-glow/10 dark:text-glow">
@@ -153,35 +157,36 @@ export const SegmentsList = ({
                   </span>
                 )}
               </div>
-              {!loading && hotel && anchorMisses?.[i] && anchorMisses[i] !== hotel.name && (
-                <p className="-mt-1 mb-2 text-[12px] text-muted-foreground">
-                  <bdi dir="ltr">{anchorMisses[i]}</bdi>
-                  {" לא פנוי בלילות האלה, אז בחרנו לכם מלון אחר."}
-                </p>
-              )}
-              {loading || !hotel ? (
-                // The segment searches run one after another (RateHawk 10/min) and a cold
-                // city takes 10-20 s - say so; a bare skeleton is invisible on the dark theme.
-                <div className="flex flex-col gap-2">
-                  <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                    <Loader size="xs" color="var(--mantine-color-myColor-4)" />
-                    {`מחפשים מלון ב${cityName(event, seg.city)}…`}
+              <div className="px-4 py-3">
+                {!loading && hotel && anchorMisses?.[i] && anchorMisses[i] !== hotel.name && (
+                  <p className="mb-2 text-[12px] text-muted-foreground">
+                    <bdi dir="ltr">{anchorMisses[i]}</bdi>
+                    {" לא פנוי בלילות האלה, אז בחרנו לכם מלון אחר."}
                   </p>
-                  <Skeleton visible className="h-10" />
-                </div>
-              ) : (
-                // Laid out like the list's HotelCard (Dor 29.09): name, stars, distance
-                // + map and room on top, the photos under them (beside them on a
-                // desktop), then - where the card has amenity icons - the price and
-                // "החלפת מלון".
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:gap-4">
+                )}
+                {loading || !hotel ? (
+                  // The segment searches run one after another (RateHawk 10/min) and a cold
+                  // city takes 10-20 s - say so; a bare skeleton is invisible on the dark theme.
+                  <div className="flex flex-col gap-2">
+                    <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <Loader size="xs" color="var(--mantine-color-myColor-4)" />
+                      {`מחפשים מלון ב${cityName(event, seg.city)}…`}
+                    </p>
+                    <Skeleton visible className="h-10" />
+                  </div>
+                ) : (
+                  // Laid out like the list's HotelCard (Dor 29.09): name, stars, distance
+                  // + map and room on top, the photos under them (beside them on a
+                  // desktop), then - where the card has amenity icons - the price and
+                  // "החלפת מלון". On a desktop the breakfast row sits under the name in
+                  // the middle column, where the card had empty space (Alon 29.09).
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-[180px_minmax(0,1fr)_150px] lg:grid-rows-[auto_1fr] lg:gap-x-4 lg:gap-y-2">
                     {!!card?.images.length && (
-                      <div className="order-2 w-full lg:order-1 lg:w-[240px] lg:shrink-0">
+                      <div className="order-2 w-full lg:order-none lg:col-start-1 lg:row-span-2 lg:row-start-1">
                         <SegmentPhotos images={card.images} alt={hotel.name} />
                       </div>
                     )}
-                    <div className="order-1 min-w-0 flex-1 lg:order-2">
+                    <div className="order-1 min-w-0 lg:order-none lg:col-start-2 lg:row-start-1">
                       {card ? (
                         <HotelCardHeader
                           hotelName={hotel.name}
@@ -212,7 +217,7 @@ export const SegmentsList = ({
                         </div>
                       )}
                     </div>
-                    <div className="order-3 flex items-center justify-between gap-3 lg:w-[180px] lg:shrink-0 lg:flex-col lg:justify-center lg:gap-3 lg:border-r lg:border-border lg:pr-4 lg:text-center">
+                    <div className="order-3 flex items-center justify-between gap-3 lg:order-none lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:flex-col lg:justify-center lg:gap-2.5 lg:border-r lg:border-border lg:pr-4 lg:text-center">
                       {Math.abs(delta) > 4 ? (
                         <div className="flex items-baseline gap-1.5 lg:flex-col lg:items-center lg:gap-0">
                           <span className="text-xl font-bold tabular-nums lg:text-2xl">
@@ -233,24 +238,24 @@ export const SegmentsList = ({
                         החלפת מלון
                       </button>
                     </div>
+                    <div className="order-4 min-w-0 lg:order-none lg:col-start-2 lg:row-start-2 lg:self-end">
+                      <SegmentBreakfast
+                        hotel={hotel}
+                        cityLabel={cityName(event, seg.city)}
+                        otherCities={
+                          hotels
+                            ? otherBreakfastCities(hotels, i, cityOf)
+                            : []
+                        }
+                        interactive
+                        perGuest={persons}
+                        onAdd={(everywhere) => onAddBreakfast(i, everywhere)}
+                        onRemove={() => onRemoveBreakfast(i)}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full">
-                    <SegmentBreakfast
-                      hotel={hotel}
-                      cityLabel={cityName(event, seg.city)}
-                      otherCities={
-                        hotels
-                          ? otherBreakfastCities(hotels, i, cityOf)
-                          : []
-                      }
-                      interactive
-                      perGuest={persons}
-                      onAdd={(everywhere) => onAddBreakfast(i, everywhere)}
-                      onRemove={() => onRemoveBreakfast(i)}
-                    />
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </Fragment>
         );
