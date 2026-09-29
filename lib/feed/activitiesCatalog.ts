@@ -15,7 +15,7 @@
  * reorder columns without re-verifying an upload in Commerce Manager.
  */
 import type { Event } from "@/lib/app.types";
-import { isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
+import { isEventSoldOut } from "@/lib/events/price";
 import {
   buildCustomLabels,
   FEED_BRAND,
@@ -25,6 +25,7 @@ import {
   plainText,
   type EventTaxonomyInfo,
 } from "./metaCatalog";
+import { isTicketOnlyEvent } from "@/lib/events/price";
 
 /**
  * Meta marks rating_count + user_rating "required", but we have NO ratings
