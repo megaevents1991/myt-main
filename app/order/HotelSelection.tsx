@@ -60,6 +60,19 @@ import {
 /** A split segment's identity for "the customer picked this one by hand". */
 const segKey = (s: StaySegment) => `${s.city}|${s.checkin}`;
 
+/** A segment search that got no answer (refused, 5xx, timeout) - not "no hotels". */
+class SegmentSearchFailed extends Error {}
+const SEGMENT_RETRY_MS = 8000;
+/** The search answered: a hotel list, and the static info for it (/api/hotels-info
+ *  answers `{ error }` for an empty list, so an empty answer skips that part). */
+const searchAnswered = (res: HotelsData) => {
+  const hotels = res?.data?.data?.hotels;
+  if (!Array.isArray(hotels)) return false;
+  return !hotels.length || (!!res.hotelsInfo && !("error" in res.hotelsInfo));
+};
+/** Dates inside a Hebrew sentence, kept left-to-right ("29.10–31.10", not reversed). */
+const ltr = (s: string) => `⁦${s}⁩`;
+
 export const HotelSelection = () => {
   const { addBreakfast, removeBreakfast } = useSegmentBreakfast();
   const {
@@ -208,7 +221,11 @@ export const HotelSelection = () => {
   // segment's nights (SegmentsList says so instead of silently switching).
   const [anchorMisses, setAnchorMisses] = useState<Record<string, string>>({});
   const [segmentsLoading, setSegmentsLoading] = useState(false);
-  const [segmentsError, setSegmentsError] = useState<string | null>(null);
+  const [segmentsError, setSegmentsError] = useState<{
+    message: string;
+    /** The search failed (vs. no hotel for those nights): offer "נסו שוב". */
+    retry: boolean;
+  } | null>(null);
   // Bumped by the search button in split mode - forces the segment searches
   // to run again even though nothing about the split itself changed.
   const [splitRunKey, setSplitRunKey] = useState(0);
@@ -604,25 +621,33 @@ export const HotelSelection = () => {
 
   // One segment's search, cached per (city, dates, rooms). Direct
   // fetchHotels() - the provider holds ONE result (the main list).
+  // A search that FAILED (RateHawk's serp/geo allows 10 a minute for the whole
+  // site, or a timeout) is not "no hotels": wait a moment, ask once more, and
+  // only then throw SegmentSearchFailed - the caller offers "נסו שוב" for it
+  // (Alon 29.09 got "לא מצאנו מלון בלונדון" for dates with 184 hotels).
   const searchSegment = async (seg: StaySegment, signal: AbortSignal) => {
     const key = `${seg.city}|${seg.checkin}|${seg.checkout}|${roomParamsKey}`;
     const cached = segmentSearchesRef.current.get(key);
     if (cached) return cached;
-    const res = await searchHotels(
-      {
-        dateRange: [
-          new Date(seg.checkin + "T00:00:00"),
-          new Date(seg.checkout + "T00:00:00"),
-        ],
-        location: lodgingLocation(event, seg.city),
-        guests: roomParams,
-        radius: distanceRange[1] || 2000,
-        eventId: event.id,
-      },
-      signal
-    );
-    if (res?.data?.data?.hotels) segmentSearchesRef.current.set(key, res);
-    return res;
+    const params = {
+      dateRange: [
+        new Date(seg.checkin + "T00:00:00"),
+        new Date(seg.checkout + "T00:00:00"),
+      ] as [Date, Date],
+      location: lodgingLocation(event, seg.city),
+      guests: roomParams,
+      radius: distanceRange[1] || 2000,
+      eventId: event.id,
+    };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, SEGMENT_RETRY_MS));
+      if (signal.aborted) break;
+      const res = await searchHotels(params, signal).catch(() => null);
+      if (!res || !searchAnswered(res)) continue;
+      if (res.data.data.hotels.length) segmentSearchesRef.current.set(key, res);
+      return res;
+    }
+    throw new SegmentSearchFailed();
   };
 
   // A segment's breakfast upsell, read from ITS OWN search now - later (the
@@ -770,7 +795,7 @@ export const HotelSelection = () => {
         );
         if (!first) {
           throw new Error(
-            `לא מצאנו מלון ב${cityName(event, seg.city)} לתאריכים ${dayjs(seg.checkin).format("DD.MM")}–${dayjs(seg.checkout).format("DD.MM")}. נסו פיצול אחר או לינה בעיר אחת.`
+            `לא מצאנו מלון ב${cityName(event, seg.city)} לתאריכים ${ltr(`${dayjs(seg.checkin).format("DD.MM")}–${dayjs(seg.checkout).format("DD.MM")}`)}. נסו פיצול אחר או לינה בעיר אחת.`
           );
         }
         const own = buildSegmentHotel(seg, search, first);
@@ -788,10 +813,16 @@ export const HotelSelection = () => {
       console.error("Split stay auto-pick failed:", err);
       setHotelSegments(null);
       setHotel(undefined);
+      // A real "no hotel for these nights" asks for another split; a search
+      // that got no answer asks for "נסו שוב" (the searches that did answer
+      // are cached, so a retry re-runs only the one that failed).
       setSegmentsError(
-        err instanceof Error && err.message
-          ? err.message
-          : "משהו השתבש בחיפוש המלונות. נסו שוב."
+        err instanceof SegmentSearchFailed || !(err instanceof Error) || !err.message
+          ? {
+              message: "החיפוש לא הצליח הפעם, כנראה עומס רגעי אצל ספק המלונות. נסו שוב בעוד רגע.",
+              retry: true,
+            }
+          : { message: err.message, retry: false }
       );
     } finally {
       if (run === segmentRunRef.current) setSegmentsLoading(false);
@@ -1561,7 +1592,10 @@ export const HotelSelection = () => {
             hotels={hotelSegments}
             anchorMisses={splitSegments.map((s) => anchorMisses[segKey(s)] ?? null)}
             loading={segmentsLoading}
-            error={segmentsError}
+            error={segmentsError?.message ?? null}
+            onRetry={
+              segmentsError?.retry ? () => setSplitRunKey((k) => k + 1) : undefined
+            }
             minPrice={event.base_hotel_price}
             persons={totalPersons}
             onSwap={openSwap}

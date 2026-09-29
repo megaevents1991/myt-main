@@ -75,6 +75,7 @@ export const SegmentsList = ({
   onSwap,
   onAddBreakfast,
   onRemoveBreakfast,
+  onRetry,
 }: {
   event: Event;
   segments: StaySegment[];
@@ -91,21 +92,27 @@ export const SegmentsList = ({
   onSwap: (index: number) => void;
   onAddBreakfast: (index: number, everywhere: boolean) => void;
   onRemoveBreakfast: (index: number) => void;
+  /** Set when the search failed (not "no hotels"): "נסו שוב" runs it again. */
+  onRetry?: () => void;
 }) => {
   const totalNights = segments.reduce((n, s) => n + s.nights, 0) || 1;
+  // Nothing is searching after an error - the blocks would only spin.
+  const failed = !!error && !loading;
   const cityOf = (h: OrderHotel) => (h.city ? cityName(event, h.city) : h.cityName ?? h.name);
 
   return (
     <div className="flex flex-col gap-3" dir="rtl">
-      {error && !loading && (
+      {failed && (
         <OrderIssueState
           className="min-h-40"
+          variant={onRetry ? "error" : "empty"}
           title="לא הצלחנו להרכיב את הלינה המפוצלת"
-          subtitle={error}
+          subtitle={error ?? undefined}
+          onRetry={onRetry}
           whatsAppText="היי, ניסיתי להזמין לינה מפוצלת באתר ולא נמצאו מלונות. אשמח לעזרה :)"
         />
       )}
-      {segments.map((seg, i) => {
+      {!failed && segments.map((seg, i) => {
         const hotel = hotels?.[i];
         // A segment's share of the package's hotel base: pro rata by nights,
         // so the per-block deltas add up to the summary's one hotel delta.
