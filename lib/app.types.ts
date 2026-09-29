@@ -96,6 +96,12 @@ export type Event = {
   // additional_image_link. Synced with backoffice types/app.types.ts.
   campaign_image_url?: string | null;
   campaign_banner_url?: string | null;
+  // The generator's footprints - /product-feed reads them to say WHY an event
+  // has no creative (lib/feed/skipExplain.ts): hash = it looked at the event,
+  // skip reason = it refused or crashed (null once a creative is made).
+  campaign_input_hash?: string | null;
+  campaign_generated_at?: string | null;
+  campaign_skip_reason?: string | null;
   // Direct video FILE url (mp4/mov/…) for the Meta activities feed's
   // video[0].url. Player/YouTube links are rejected by Meta and filtered out.
   campaign_video_url?: string | null;

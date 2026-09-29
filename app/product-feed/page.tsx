@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getFeedUser } from "@/lib/feed/feedAuth";
 import { getActivityItems, getFeedItems } from "@/lib/feed/feedData";
 import { FEED_SITE_ORIGIN } from "@/lib/feed/metaCatalog";
+import type { FeedSkip } from "@/lib/feed/skipExplain";
 import { CopyButton } from "./CopyButton";
 import { FeedTable } from "./FeedTable";
 
@@ -27,6 +28,59 @@ const ERRORS: Record<string, string> = {
   credentials: "אימייל או סיסמה שגויים.",
   missing: "יש למלא אימייל וסיסמה.",
 };
+
+/** Group headings; each row then says exactly what is missing (lib/feed/skipExplain.ts). */
+const REASON_LABELS: Record<string, string> = {
+  "no campaign creative": "חסרה תמונת קמפיין",
+  "no computable price": "אין מחיר",
+  "sold out": "אזל - לא נמכר באתר",
+  "inside booking window": "קרוב מדי - פחות מ-3 ימים לאירוע",
+};
+
+/** Where staff fix an event - the backoffice event editor. */
+const BACKOFFICE_ORIGIN = "https://mega-events-backoffice-mega-events.vercel.app";
+
+/** "2027-07-11" → "11.7.2027" */
+function dmy(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return y && m && d ? `${d}.${m}.${y}` : day;
+}
+
+function SkipRow({ skip }: { skip: FeedSkip }) {
+  return (
+    <li className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-semibold">
+          <span className="font-normal text-gray-500" dir="ltr">
+            #{skip.id}
+          </span>{" "}
+          {skip.name}{" "}
+          <span className="font-normal text-gray-500" dir="ltr">
+            · {dmy(skip.date)}
+          </span>
+        </span>
+        <a
+          href={`${BACKOFFICE_ORIGIN}/events/${skip.id}`}
+          target="_blank"
+          rel="noopener"
+          className="text-xs font-semibold text-main hover:underline"
+        >
+          פתח בבקאופיס
+        </a>
+      </div>
+      <p>
+        <span className="font-semibold">מה חסר: </span>
+        {skip.why.missing}
+      </p>
+      {skip.why.fix && (
+        <p className="text-gray-600">
+          <span className="font-semibold">מה עושים: </span>
+          {skip.why.fix}
+        </p>
+      )}
+    </li>
+  );
+}
 
 export default async function ProductFeedPage({
   searchParams,
@@ -103,20 +157,17 @@ export default async function ProductFeedPage({
   const inStock = items.filter((i) => i.availability === "in stock").length;
   const xmlUrl = `${FEED_SITE_ORIGIN}/feeds/meta-catalog.xml`;
 
-  const REASON_LABELS: Record<string, string> = {
-    "sold out": "אזלו הכרטיסים",
-    "inside booking window": "בתוך חלון ההזמנה (פחות מ-3 ימים)",
-    "no computable price": "אין מחיר לחישוב",
-    "no campaign creative":
-      "אין קריאטיב קמפיין - מוצר מתפרסם רק עם המיתוג שלנו. הרץ 'סנכרן הכל' בבקאופיס",
-    "no image": "אין תמונה - לא כרטיס, לא cutout ולא קריאטיב",
-  };
-  const activityDrops = activities.skipped.reduce<Record<string, typeof activities.skipped>>(
-    (acc, s) => {
+  // Groups with something to fix open first; the drops that are on purpose
+  // (sold out by hand, too close to the date) stay folded.
+  const activityDrops = Object.entries(
+    activities.skipped.reduce<Record<string, FeedSkip[]>>((acc, s) => {
       (acc[s.reason] ??= []).push(s);
       return acc;
-    },
-    {}
+    }, {})
+  ).sort(
+    (a, b) =>
+      Number(b[1].some((s) => s.why.actionable)) -
+        Number(a[1].some((s) => s.why.actionable)) || b[1].length - a[1].length
   );
 
   return (
@@ -205,11 +256,9 @@ export default async function ProductFeedPage({
           <h2 className="mb-2 text-lg font-bold text-amber-900">
             אירועים שלא נכנסו לפיד ה-e-commerce
           </h2>
-          <ul className="list-inside list-disc text-sm text-amber-900">
+          <ul className="space-y-2">
             {skipped.map((s) => (
-              <li key={s.id}>
-                #{s.id} {s.name} - {REASON_LABELS[s.reason] ?? s.reason}
-              </li>
+              <SkipRow key={s.id} skip={s} />
             ))}
           </ul>
         </div>
@@ -230,7 +279,9 @@ export default async function ProductFeedPage({
         </div>
         <p className="mb-4 text-sm text-gray-500">
           זה הקובץ הרשום ב-Commerce Manager. הוא מפיל אירועים שהטבלה למטה כן
-          מכילה: אזלו הכרטיסים, אירועים קרובים מדי, וכל אירוע בלי תמונה.
+          מכילה: אזלו הכרטיסים, אירועים קרובים מדי, וכל אירוע בלי תמונת קמפיין.
+          העמוד מחושב עכשיו מה-DB; הקובץ שמטא קוראת מתעדכן 6 פעמים ביום, ו-
+          &apos;העלה לפיד עכשיו&apos; בעורך האירוע מעדכן אותו מיד.
         </p>
 
         <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -260,29 +311,23 @@ export default async function ProductFeedPage({
           </p>
         ) : (
           <div className="space-y-3">
-            {Object.entries(activityDrops)
-              .sort((a, b) => b[1].length - a[1].length)
-              .map(([reason, list]) => (
-                <details
-                  key={reason}
-                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
-                >
-                  <summary className="cursor-pointer text-sm font-bold text-gray-900">
-                    {REASON_LABELS[reason] ?? reason}{" "}
-                    <span className="font-normal text-gray-500">({list.length})</span>
-                  </summary>
-                  <ul className="mt-2 space-y-0.5 text-sm text-gray-900">
-                    {list.map((s) => (
-                      <li key={s.id}>
-                        <span className="text-gray-500" dir="ltr">
-                          #{s.id}
-                        </span>{" "}
-                        {s.name}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ))}
+            {activityDrops.map(([reason, list]) => (
+              <details
+                key={reason}
+                open={list.some((s) => s.why.actionable)}
+                className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+              >
+                <summary className="cursor-pointer text-sm font-bold text-gray-900">
+                  {REASON_LABELS[reason] ?? reason}{" "}
+                  <span className="font-normal text-gray-500">({list.length})</span>
+                </summary>
+                <ul className="mt-2 space-y-2">
+                  {list.map((s) => (
+                    <SkipRow key={s.id} skip={s} />
+                  ))}
+                </ul>
+              </details>
+            ))}
           </div>
         )}
       </div>

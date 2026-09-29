@@ -190,6 +190,12 @@ Required in `.env.local`:
   Supabase-Auth Google SSO + `user_profiles` staff roles as the backoffice (`lib/feed/feedAuth.ts`,
   routes under `app/api/feed-auth/`). Requires this app's callback URL
   (`https://www.mega-events.co.il/api/feed-auth/callback`) in the Supabase Auth redirect allowlist.
+  Every dropped event is listed with WHAT is missing and WHAT gets it in, plus a link to its
+  backoffice editor - `lib/feed/skipExplain.ts` (pure, `lib/__tests__/feedSkipExplain.test.ts`).
+  "No campaign creative" is told apart by the backoffice generator's footprints on the row:
+  `campaign_skip_reason` (it refused, or crashed - the text says which) vs no
+  `campaign_input_hash` (never reached yet - the creatives cron handles never-rendered events
+  first; the editor's "העלה לפיד עכשיו" does one now).
 - `product_type` = the `categories` tree path (deepest linked category, root-first).
   `custom_label_0-4` = vertical / league\|genre / team\|artist / city / availability -
   one scheme shared by both feeds, built by `buildCustomLabels` in

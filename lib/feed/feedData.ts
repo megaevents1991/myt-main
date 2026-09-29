@@ -23,6 +23,7 @@ import {
   type DomainHint,
 } from "@/lib/feed/activitiesCatalog";
 import { normalizeName } from "@/lib/eventNameMatch";
+import { explainFeedSkip, type FeedSkip } from "@/lib/feed/skipExplain";
 
 // PostgREST hard-caps every response at max-rows (1000 on this project) -
 // a plain unranged select silently returns the first 1000 rows and drops the
@@ -140,6 +141,17 @@ async function getFeedEvents(): Promise<{
   };
 }
 
+/** A dropped event with its reason spelled out for /product-feed. */
+function skipOf(event: Event, reason: string): FeedSkip {
+  return {
+    id: event.id,
+    name: event.name,
+    date: event.date.split("T")[0],
+    reason,
+    why: explainFeedSkip(event, reason),
+  };
+}
+
 /**
  * Same events in Meta's ACTIVITIES schema - the vertical our Meta catalog
  * actually is (see `activitiesCatalog.ts`). Activities feeds have no
@@ -160,11 +172,7 @@ export async function getActivityItems(): Promise<ActivityBuildResult> {
       classify(event.name),
     );
     if ("skipped" in built) {
-      result.skipped.push({
-        id: event.id,
-        name: event.name,
-        reason: built.skipped,
-      });
+      result.skipped.push(skipOf(event, built.skipped));
     } else {
       result.items.push(built);
     }
@@ -191,11 +199,7 @@ export async function getFeedItems(): Promise<FeedBuildResult> {
       todayISO,
     );
     if ("skipped" in built) {
-      result.skipped.push({
-        id: event.id,
-        name: event.name,
-        reason: built.skipped,
-      });
+      result.skipped.push(skipOf(event, built.skipped));
     } else {
       result.items.push(built);
     }

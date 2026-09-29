@@ -8,6 +8,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import type { TagType } from "@/lib/taxonomy.types";
+import type { FeedSkip } from "@/lib/feed/skipExplain";
 import {
   computePackagePrice,
   getTotalMarkup,
@@ -95,7 +96,7 @@ export type FeedItem = {
 export type FeedBuildResult = {
   items: FeedItem[];
   /** Events dropped from the feed and why (shown on the admin page). */
-  skipped: { id: number; name: string; reason: string }[];
+  skipped: FeedSkip[];
 };
 
 /* ---------------- helpers ---------------- */

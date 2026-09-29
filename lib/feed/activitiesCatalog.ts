@@ -16,6 +16,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { isEventSoldOut } from "@/lib/events/price";
+import type { FeedSkip } from "@/lib/feed/skipExplain";
 import {
   buildCustomLabels,
   FEED_BRAND,
@@ -131,7 +132,7 @@ export function isDirectVideoUrl(url: string | null | undefined): boolean {
 
 export type ActivityBuildResult = {
   items: ActivityItem[];
-  skipped: { id: number; name: string; reason: string }[];
+  skipped: FeedSkip[];
 };
 
 /**
