@@ -1,10 +1,39 @@
 import Image from "next/image";
+import { Popover } from "@mantine/core";
+import { Info } from "lucide-react";
 import { FlightMeta } from "@/components/ui/FlightCard";
 import { Flight } from "@/lib/app.types";
+import { ELAL_CLASSIC_BRAND, ELAL_CLASSIC_INFO_HE } from "@/lib/flights/elal";
 import { formatPrice } from "@/lib/price.utils";
 import dayjs from "dayjs";
 import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
 import { addedCheckedBagsCount } from "../order-review.utils";
+
+const isClassic = (brand: string) => brand.toUpperCase() === ELAL_CLASSIC_BRAND;
+const upgradeLabel = (brand: string) =>
+  isClassic(brand) ? "שדרוג לקלאסיק" : `שדרוג כרטיס ל-${brand}`;
+
+/** The (i) beside "שדרוג לקלאסיק": what the upgrade buys. Opens on a tap, not
+ *  a hover - the summary is mostly read on a phone. `relative z-10` keeps it
+ *  above the chip's stretched button. */
+const ClassicUpgradeInfo = () => (
+  <Popover position="bottom" withArrow arrowSize={10} shadow="md" radius="md" width={270} zIndex={150}>
+    <Popover.Target>
+      <button
+        type="button"
+        aria-label="מה כולל השדרוג לקלאסיק"
+        className="relative z-10 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-forest/10 hover:text-forest dark:hover:bg-glow/15 dark:hover:text-glow"
+      >
+        <Info className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden="true" />
+      </button>
+    </Popover.Target>
+    <Popover.Dropdown p={0}>
+      <p dir="rtl" className="p-3 text-[13px] font-normal leading-snug text-foreground">
+        {ELAL_CLASSIC_INFO_HE}
+      </p>
+    </Popover.Dropdown>
+  </Popover>
+);
 
 /** Included/not-included line for one baggage kind, on one or both legs. */
 const BaggageLine = ({
@@ -119,7 +148,7 @@ export const FlightSummary = ({
    *  loading / unavailable (offline flight, virtual offer, nothing returned)
    *  - see app/order/hooks/useBagPricing.ts. */
   bagOptions?: BagPricingOptions;
-  /** El Al: branded-fare upgrade ("שדרוג כרטיס") instead of an ancillary bag. */
+  /** El Al: the upgrade to Classic ("שדרוג לקלאסיק") instead of an ancillary bag. */
   fareUpgrade?: FareUpgradeOption;
   onUpgradeFare?: () => void;
   onRemoveFareUpgrade?: () => void;
@@ -273,25 +302,28 @@ export const FlightSummary = ({
           absent otherwise - Amadeus didn't price it, the flight is offline
           (no ancillary price source, v1), or it's already included. */}
       <div className="mt-2 space-y-1.5 px-2" dir="rtl">
-        {/* El Al path: branded-fare upgrade ("שדרוג כרטיס") instead of an
+        {/* El Al path: the upgrade to Classic ("שדרוג לקלאסיק") and never an
             ancillary bag - the route returns fareUpgrade and no bagOptions
-            for FARE_UPGRADE_CARRIERS. */}
+            for FARE_UPGRADE_CARRIERS (lib/flights/elal.ts). */}
         {fareUpgraded && (
           <div
             className="flex items-center justify-between gap-2 rounded-lg border border-forest/40 bg-forest/5 px-2.5 py-1.5 text-[12px] dark:border-glow/40 dark:bg-glow/10"
             dir="rtl"
           >
-            <span className="font-semibold text-forest dark:text-glow">
-              שדרוג כרטיס ל-{selectedFlight.fare_upgrade!.brand} (כולל מזוודה){" "}
-              <span className="tabular-nums" dir="ltr">
-                +$
-                {Math.ceil(
-                  selectedFlight.fare_upgrade!.delta_total_usd,
-                ).toLocaleString("en-US")}
+            <span className="flex items-center gap-1 font-semibold text-forest dark:text-glow">
+              <span>
+                {upgradeLabel(selectedFlight.fare_upgrade!.brand)} (כולל מזוודה){" "}
+                <span className="tabular-nums" dir="ltr">
+                  +$
+                  {Math.ceil(
+                    selectedFlight.fare_upgrade!.delta_total_usd,
+                  ).toLocaleString("en-US")}
+                </span>
               </span>
+              {isClassic(selectedFlight.fare_upgrade!.brand) && <ClassicUpgradeInfo />}
             </span>
             {showUpsells &&
-              selectedFlight.fare_upgrade!.prev_offer &&
+              selectedFlight.fare_upgrade!.prev_price != null &&
               onRemoveFareUpgrade && (
                 <button
                   type="button"
@@ -304,21 +336,28 @@ export const FlightSummary = ({
           </div>
         )}
         {!fareUpgraded && !checkedIncluded && showUpsells && fareUpgrade && onUpgradeFare && (
-          <button
-            type="button"
-            onClick={onUpgradeFare}
+          // The whole chip adds the upgrade (the button's ::after covers it);
+          // the (i) sits above that and only opens its bubble.
+          <div
             dir="rtl"
-            className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
-            aria-label={`שדרוג כרטיס ל-${fareUpgrade.brand} כולל מזוודה, תוספת ${fareUpgrade.deltaPerPaxUsd} דולר לנוסע`}
+            className="relative flex w-full items-center justify-between gap-2 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-forest hover:bg-forest/5 hover:text-forest dark:hover:border-glow dark:hover:bg-glow/10 dark:hover:text-glow"
           >
-            <span>
-              שדרוג כרטיס ל-{fareUpgrade.brand} · כולל מזוודה
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onUpgradeFare}
+                className="font-semibold after:absolute after:inset-0 after:content-['']"
+                aria-label={`${upgradeLabel(fareUpgrade.brand)}, כולל מזוודה, תוספת ${fareUpgrade.deltaPerPaxUsd} דולר לנוסע`}
+              >
+                {upgradeLabel(fareUpgrade.brand)}
+              </button>
+              {isClassic(fareUpgrade.brand) && <ClassicUpgradeInfo />}
             </span>
             <span className="tabular-nums" dir="ltr">
               +${fareUpgrade.deltaPerPaxUsd.toLocaleString("en-US")}{" "}
               <span dir="rtl">לנוסע</span>
             </span>
-          </button>
+          </div>
         )}
         {/* A paid add-on already charged stays visible even if checkedIncluded
             later flips true (e.g. an עריכה flight swap) - only the "offer to

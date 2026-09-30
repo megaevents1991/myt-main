@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { amadeus } from "../amadeusClient";
 import { exchangeRateService } from "@/lib/exchangeRateService";
-import { offerSegmentIds, roundTripBagUsd } from "@/lib/flights/bagGroups";
+import {
+  chargedCheckedBagsAmount,
+  offerItineraries,
+  roundTripBagUsd,
+  withCheckedBag,
+} from "@/lib/flights/bagGroups";
+import {
+  ELAL_CLASSIC_BRAND,
+  ELAL_CLASSIC_UPGRADE_USD,
+  FARE_UPGRADE_CARRIERS,
+  validatingCarrier,
+} from "@/lib/flights/elal";
 
 export const maxDuration = 20;
 
@@ -22,6 +33,14 @@ type BaggageItem = {
 };
 
 type PricingResponseBody = {
+  data?: {
+    flightOffers?: Array<{
+      price?: {
+        currency?: string;
+        additionalServices?: Array<{ amount?: string; type?: string }>;
+      };
+    }>;
+  };
   included?: {
     bags?: Record<string, BaggageItem>;
   };
@@ -45,86 +64,16 @@ type BagPricingOptions = {
   cabin?: BagPricingOption;
 } | null;
 
-// Carriers whose "add a bag" is sold as a BRANDED-FARE upgrade instead of an
-// ancillary (Dor 21.8: El Al → "שדרוג כרטיס" ל-Classic; everyone else keeps
-// the per-bag add-on). Checked against the offer's validating carrier.
-const FARE_UPGRADE_CARRIERS = new Set(["LY"]);
-
+// El Al (FARE_UPGRADE_CARRIERS): no ancillary bag at all - the one upsell is
+// the fare upgrade to CLASSIC at a fixed price per traveler. Rules + why it
+// is not quoted live: lib/flights/elal.ts.
 type FareUpgradeOffer = {
   /** Branded-fare label, e.g. "CLASSIC". */
   brand: string;
-  /** Whole-booking price delta vs the current offer, USD. */
+  /** Whole-booking price added to the current offer, USD. */
   deltaTotalUsd: number;
   deltaPerPaxUsd: number;
-  /** The full upsell offer - the client swaps it onto the flight on accept. */
-  offer: FlightOffer;
 } | null;
-
-/** Branded-fare alternatives for the offer (Amadeus Branded Fares Upsell);
- *  returns the cheapest one that includes a checked bag on EVERY segment,
- *  or null (API unavailable / nothing qualifying / not actually pricier). */
-async function findFareUpgrade(
-  flightOffer: FlightOffer,
-  numOfTravelers: number,
-): Promise<FareUpgradeOffer> {
-  try {
-    const response = await amadeus!.shopping.flightOffers.upselling.post({
-      data: {
-        type: "flight-offers-upselling",
-        flightOffers: [flightOffer],
-      },
-    });
-    const upsells = (JSON.parse(response.body)?.data ?? []) as Array<{
-      price?: { grandTotal?: string; currency?: string };
-      travelerPricings?: Array<{
-        fareDetailsBySegment?: Array<{
-          brandedFare?: string;
-          brandedFareLabel?: string;
-          includedCheckedBags?: { quantity?: number; weight?: number };
-        }>;
-      }>;
-    }>;
-
-    const baseTotal = toUsd(
-      String(flightOffer.price?.grandTotal ?? ""),
-      String(flightOffer.price?.currency ?? "USD"),
-    );
-    if (baseTotal == null) return null;
-
-    let best: FareUpgradeOffer = null;
-    for (const offer of upsells) {
-      const segs = offer.travelerPricings?.[0]?.fareDetailsBySegment ?? [];
-      if (!segs.length) continue;
-      const allHaveBag = segs.every(
-        (s) =>
-          (s.includedCheckedBags?.quantity ?? 0) >= 1 ||
-          (s.includedCheckedBags?.weight ?? 0) > 0,
-      );
-      if (!allHaveBag) continue;
-      const totalUsd = toUsd(
-        String(offer.price?.grandTotal ?? ""),
-        String(offer.price?.currency ?? "USD"),
-      );
-      if (totalUsd == null || totalUsd <= baseTotal) continue;
-      const deltaTotalUsd = Math.ceil(totalUsd - baseTotal);
-      if (!best || deltaTotalUsd < best.deltaTotalUsd) {
-        best = {
-          brand:
-            segs[0].brandedFareLabel || segs[0].brandedFare || "CLASSIC",
-          deltaTotalUsd,
-          deltaPerPaxUsd: Math.ceil(deltaTotalUsd / Math.max(1, numOfTravelers)),
-          offer: offer as unknown as FlightOffer,
-        };
-      }
-    }
-    return best;
-  } catch (error) {
-    // Fail soft - the upsell API may not be enabled on the contract; the
-    // caller falls back to the plain ancillary-bag path.
-    console.error("bag-pricing: branded-fares upsell failed:", error);
-    return null;
-  }
-}
 
 /** Amadeus ancillary prices come back in whatever currency the fare was
  *  filed in - usually USD (the search itself requests currencyCode=USD, see
@@ -145,10 +94,8 @@ const toUsd = (amount: string, currencyCode: string): number | null => {
 
 // Amadeus lists incremental quantities as separate ancillary items - the
 // qty-1 line prices a single bag, the qty-2 line (when the carrier files
-// one) prices the pair - and each line covers only ITS segments (usually one
-// itinerary). roundTripBagUsd sums one line per segment group so the price is
-// for the whole trip, and returns null when the lines don't cover every
-// segment (a one-way bag is never sold).
+// one) prices the pair. What a line's price covers, and why the checked bag
+// is first read off a re-price WITH the bag on it: lib/flights/bagGroups.ts.
 const CHECKED = (name: string) => name === "CHECKED_BAG";
 const CABIN = (name: string) =>
   name !== "CHECKED_BAG" && name.toUpperCase().includes("CABIN");
@@ -182,63 +129,97 @@ export async function POST(request: Request) {
     return NextResponse.json({ bagOptions: null satisfies BagPricingOptions });
   }
 
+  const numOfTravelers = flightOffer.travelerPricings.length;
+  // null = every segment's fare already includes a checked bag.
+  const offerWithBag = withCheckedBag(flightOffer);
+
+  // El Al: only the upgrade to CLASSIC, never an ancillary bag - and nothing
+  // to offer when the fare already is one with a bag. No Amadeus call.
+  if (FARE_UPGRADE_CARRIERS.has(validatingCarrier(flightOffer))) {
+    const fareUpgrade: FareUpgradeOffer = offerWithBag
+      ? {
+          brand: ELAL_CLASSIC_BRAND,
+          deltaPerPaxUsd: ELAL_CLASSIC_UPGRADE_USD,
+          deltaTotalUsd: ELAL_CLASSIC_UPGRADE_USD * numOfTravelers,
+        }
+      : null;
+    return NextResponse.json({ bagOptions: null, fareUpgrade });
+  }
+
   if (!amadeus) {
     console.error("bag-pricing: Amadeus client is not initialized.");
     return NextResponse.json({ bagOptions: null satisfies BagPricingOptions });
   }
 
   try {
-    const numOfTravelers = flightOffer.travelerPricings.length;
-
-    // El Al (and any future FARE_UPGRADE_CARRIERS member): offer a branded
-    // fare upgrade ("שדרוג כרטיס" ל-Classic) instead of an ancillary bag.
-    // Falls through to the plain bag path when no qualifying upsell exists.
-    const validating =
-      flightOffer.validatingAirlineCodes?.[0] ??
-      flightOffer.itineraries?.[0]?.segments?.[0]?.carrierCode ??
-      "";
-    if (FARE_UPGRADE_CARRIERS.has(String(validating).toUpperCase())) {
-      const fareUpgrade = await findFareUpgrade(flightOffer, numOfTravelers);
-      if (fareUpgrade) {
-        return NextResponse.json({ bagOptions: null, fareUpgrade });
-      }
-    }
-
     const clientRef = eventId
       ? `MYT-BAGS-${eventId}-${Math.floor(Date.now() / 1000)}`
       : `MYT-BAGS-${Math.floor(Date.now() / 1000)}`;
 
-    const response = await amadeus.shopping.flightOffers.pricing.post(
-      {
-        data: {
-          type: "flight-offers-pricing",
-          flightOffers: [flightOffer],
+    const price = async (offer: FlightOffer): Promise<PricingResponseBody> => {
+      const response = await amadeus.shopping.flightOffers.pricing.post(
+        {
+          data: {
+            type: "flight-offers-pricing",
+            flightOffers: [offer],
+          },
         },
-      },
-      { include: ["bags"], clientRef },
-    );
+        { include: ["bags"], clientRef },
+      );
+      return JSON.parse(response.body) as PricingResponseBody;
+    };
 
-    const data = JSON.parse(response.body) as PricingResponseBody;
+    // One call: the offer WITH a bag on it, so Amadeus states the charge for
+    // the whole trip itself; the same answer carries the ancillary lines.
+    let data: PricingResponseBody;
+    try {
+      data = await price(offerWithBag ?? flightOffer);
+    } catch (error) {
+      if (!offerWithBag) throw error;
+      // The carrier refused the offer with a bag on it - read its lines off
+      // the plain offer instead.
+      console.warn("bag-pricing: re-price with a bag failed, reading lines:", error);
+      data = await price(flightOffer);
+    }
+
     const bagItems = Object.values(data.included?.bags ?? {});
-
+    const itineraries = offerItineraries(flightOffer);
     const bagOptions: BagPricingOptions = {};
 
-    const segmentIds = offerSegmentIds(flightOffer);
+    const charged = offerWithBag
+      ? chargedCheckedBagsAmount(data.data?.flightOffers?.[0])
+      : null;
+    const chargedTotalUsd = charged
+      ? toUsd(charged.amount, charged.currencyCode)
+      : null;
+    const chargedUsd =
+      chargedTotalUsd != null ? chargedTotalUsd / numOfTravelers : null;
+    const linesUsd = roundTripBagUsd(bagItems, itineraries, 1, CHECKED, toUsd);
+    if (
+      chargedUsd != null &&
+      linesUsd != null &&
+      Math.abs(chargedUsd - linesUsd) > 1
+    ) {
+      // Two readings of the same bag disagree - the charge wins, and the log
+      // says which carrier files its lines differently.
+      console.warn(
+        `bag-pricing: ${validatingCarrier(flightOffer)} charged $${chargedUsd.toFixed(2)} a traveler, its lines read $${linesUsd.toFixed(2)}`,
+      );
+    }
 
-    const checkedUsd = roundTripBagUsd(bagItems, segmentIds, 1, CHECKED, toUsd);
+    const checkedUsd = chargedUsd ?? linesUsd;
     if (checkedUsd != null) {
       const unit = Math.ceil(checkedUsd);
       bagOptions.checked = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };
       // Second-bag pricing: prefer the carrier's own qty-2 ancillary (its
-      // amount covers BOTH bags, per group of segments); UI falls back to
-      // 2×unit when absent.
-      const twoUsd = roundTripBagUsd(bagItems, segmentIds, 2, CHECKED, toUsd);
+      // amount covers BOTH bags); UI falls back to 2×unit when absent.
+      const twoUsd = roundTripBagUsd(bagItems, itineraries, 2, CHECKED, toUsd);
       if (twoUsd != null && twoUsd >= checkedUsd) {
         bagOptions.checked.twoBagsTotalPerPaxUsd = Math.ceil(twoUsd);
       }
     }
 
-    const cabinUsd = roundTripBagUsd(bagItems, segmentIds, 1, CABIN, toUsd);
+    const cabinUsd = roundTripBagUsd(bagItems, itineraries, 1, CABIN, toUsd);
     if (cabinUsd != null) {
       const unit = Math.ceil(cabinUsd);
       bagOptions.cabin = { unitPriceUsd: unit, totalUsd: unit * numOfTravelers };

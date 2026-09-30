@@ -289,28 +289,27 @@ export default function OrderReview({
     selectedFlight,
     showUpsells && !flightSkipped
   );
-  /** El Al path: swap the whole offer to the branded fare (Classic) - the
-   *  delta rides through flight.price, so the total updates exactly like
-   *  picking a pricier flight would. prev_* anchors power "הסרה". */
+  /** El Al path: the upgrade to Classic at its fixed price - the delta rides
+   *  through flight.price, so the total updates exactly like picking a
+   *  pricier flight would. The offer itself stays the searched (LITE) one;
+   *  fare_upgrade tells ops to book CLASSIC. prev_* anchors power "הסרה". */
   const handleUpgradeFare = useCallback(() => {
     if (!selectedFlight || !fareUpgrade) return;
     setFlight((prev) =>
       prev
         ? {
             ...prev,
-            offer: fareUpgrade.offer,
             price: prev.price + fareUpgrade.deltaTotalUsd,
             outbound: { ...prev.outbound, checkBagsIncluded: true },
             inbound: { ...prev.inbound, checkBagsIncluded: true },
-            // The fare changed - stale penalties must be refetched for the
-            // NEW offer (El Al with-bag terms differ from LITE's). The step-4
-            // effect in OrderForm picks this up.
+            // The fare changed - stale penalties must be refetched (El Al
+            // with-bag terms differ from LITE's). The step-4 effect in
+            // OrderForm picks this up.
             penalties: undefined,
             fare_upgrade: {
               brand: fareUpgrade.brand,
               delta_total_usd: fareUpgrade.deltaTotalUsd,
               prev_price: prev.price,
-              prev_offer: prev.offer,
               prev_check_bags_included: {
                 outbound: prev.outbound.checkBagsIncluded,
                 inbound: prev.inbound.checkBagsIncluded,
@@ -323,11 +322,12 @@ export default function OrderReview({
   const handleRemoveFareUpgrade = useCallback(() => {
     setFlight((prev) => {
       const up = prev?.fare_upgrade;
-      if (!prev || !up?.prev_offer) return prev;
+      // No prev_price = an upgrade restored from a saved order, not one made
+      // in this session - nothing here to go back to.
+      if (!prev || up?.prev_price == null) return prev;
       return {
         ...prev,
-        offer: up.prev_offer,
-        price: up.prev_price ?? prev.price - up.delta_total_usd,
+        price: up.prev_price,
         outbound: {
           ...prev.outbound,
           checkBagsIncluded: up.prev_check_bags_included?.outbound ?? false,
@@ -1327,9 +1327,8 @@ export default function OrderReview({
       },
       // A skipped-flight order never carries flight data, even if a late
       // flight search re-populated `flight` after the skip.
-      // fare_upgrade.prev_offer is an in-session restore anchor only (a full
-      // FlightOffer that would bloat the reservation JSON); ops needs just
-      // the brand + delta.
+      // fare_upgrade.prev_* are in-session restore anchors only; ops needs
+      // just the brand + delta.
       flight_order_info: flightSkipped
         ? {}
         : selectedFlight

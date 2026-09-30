@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { amadeus } from "../amadeusClient";
 import { exchangeRateService } from "@/lib/exchangeRateService";
-import { offerSegmentIds, roundTripBagUsd, type BagLine } from "@/lib/flights/bagGroups";
+import { offerItineraries, roundTripBagUsd, type BagLine } from "@/lib/flights/bagGroups";
+import {
+  ELAL_CLASSIC_CANCEL_FEE_USD,
+  ELAL_CLASSIC_CANCEL_HOURS,
+} from "@/lib/flights/elal";
 
 export const maxDuration = 30;
 
@@ -18,10 +22,13 @@ const toUsd = (amount: string, currencyCode: string): number | null => {
   return null;
 };
 
-// El Al online (Amadeus/virtual) cancellation texts - El Al files NO
-// detailed-fare-rules via Amadeus (verified 1.9.26 on a priced LY LITE offer),
-// so these ARE the rules shown, per Dor 1.9.26. Which one applies depends on
-// whether the FARE includes a checked bag (LITE = no bag, CLASSIC = bag).
+// El Al online (Amadeus/virtual) cancellation texts - OUR texts are the rules
+// shown, per Dor 1.9.26 (El Al filed no detailed-fare-rules for a priced LITE
+// offer then; on 30.09 CLASSIC did carry one - USD 190 to cancel before
+// departure - and LITE on some routes only). Which one applies depends on
+// whether the FARE includes a checked bag (LITE = no bag, CLASSIC = bag); the
+// CLASSIC fee and its window are lib/flights/elal.ts, shared with the
+// "שדרוג לקלאסיק" info bubble on the summary.
 const ELAL_ONLINE_NO_BAG_PENALTIES = `PE.PENALTIES
   CANCELLATIONS
   FULL CANCELLATION FEES APPLY FROM THE MOMENT OF BOOKING, SUBJECT TO THE ISRAELI CONSUMER PROTECTION LAW.
@@ -29,8 +36,8 @@ const ELAL_ONLINE_NO_BAG_PENALTIES = `PE.PENALTIES
 
 const ELAL_ONLINE_WITH_BAG_PENALTIES = `PE.PENALTIES
   CANCELLATIONS
-  UP TO 48 HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $120 PER PASSENGER.
-  LESS THAN 48 HOURS PRIOR TO DEPARTURE, FULL CANCELLATION FEES APPLY.
+  UP TO ${ELAL_CLASSIC_CANCEL_HOURS} HOURS PRIOR TO DEPARTURE, CANCELLATION IS POSSIBLE AT A COST OF $${ELAL_CLASSIC_CANCEL_FEE_USD} PER PASSENGER.
+  LESS THAN ${ELAL_CLASSIC_CANCEL_HOURS} HOURS PRIOR TO DEPARTURE, FULL CANCELLATION FEES APPLY.
   SUBJECT TO THE ISRAELI CONSUMER PROTECTION LAW.
   FOR MORE INFORMATION PLEASE VISIT WWW.ELAL.COM/HEB/LEGAL/TICKET-CANCELLATION`;
 
@@ -51,10 +58,14 @@ export async function POST(request: Request) {
     flightOffer,
     virtual,
     eventId,
+    fareUpgraded,
   }: {
     flightOffer: FlightOffer;
     virtual: boolean;
     eventId?: number | string;
+    /** The customer took "שדרוג לקלאסיק" on the summary - the offer itself
+     *  stays the LITE one, the terms are CLASSIC's. */
+    fareUpgraded?: boolean;
   } = await request.json();
 
   if (!amadeus) {
@@ -87,8 +98,8 @@ export async function POST(request: Request) {
 
   // El Al online: Amadeus carries no fare rules for LY, so OUR texts are the
   // rules - picked by whether the fare itself includes a checked bag on every
-  // segment (same test as bag-pricing's branded-fare check: LITE fails it,
-  // CLASSIC passes). Missing data defaults to the STRICTER no-bag text.
+  // segment (LITE fails it, CLASSIC passes) or the customer bought the upgrade
+  // to CLASSIC on the summary. Missing data defaults to the STRICTER no-bag text.
   const validating = flightOffer.validatingAirlineCodes?.[0];
   const fareSegs = flightOffer.travelerPricings?.[0]?.fareDetailsBySegment ?? [];
   const fareIncludesBag =
@@ -101,7 +112,7 @@ export async function POST(request: Request) {
   if (validating === "LY") {
     return NextResponse.json({
       bags: 65,
-      penalties: fareIncludesBag
+      penalties: fareIncludesBag || fareUpgraded === true
         ? ELAL_ONLINE_WITH_BAG_PENALTIES
         : ELAL_ONLINE_NO_BAG_PENALTIES,
     });
@@ -154,7 +165,7 @@ export async function POST(request: Request) {
     await exchangeRateService.ensureFresh();
     const bagUsd = roundTripBagUsd(
       Object.values(data?.included?.["bags"] ?? {}) as BagLine[],
-      offerSegmentIds(flightOffer),
+      offerItineraries(flightOffer),
       1,
       (name) => name === "CHECKED_BAG",
       toUsd,

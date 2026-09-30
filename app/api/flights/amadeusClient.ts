@@ -225,15 +225,9 @@ export const amadeus = {
             clientRef: opts?.clientRef,
           }),
       },
-      // POST /v1/shopping/flight-offers/upselling - Branded Fares Upsell
-      // (the "שדרוג כרטיס" alternatives for a priced offer).
-      upselling: {
-        post: (body: unknown, opts?: { clientRef?: string }) =>
-          request("POST", "/v1/shopping/flight-offers/upselling", {
-            body,
-            clientRef: opts?.clientRef,
-          }),
-      },
+      // No Branded Fares Upsell (/v1/shopping/flight-offers/upselling) here:
+      // the Enterprise credential answers it 401 "Invalid access token" while
+      // the same token prices and searches (verified 30.09, prod included).
     },
   },
 };

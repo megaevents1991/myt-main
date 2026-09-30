@@ -171,27 +171,27 @@ export type Flight = {
   // payment_link hold shows/keeps charging for it. null = explicitly
   // removed by a toggle; undefined = never added. One bag/traveler, v1.
   added_bags?: AddedBagsInfo | null;
-  // Branded-fare upgrade ("שדרוג כרטיס") applied on the summary - El Al's
-  // Classic instead of an ancillary bag (Dor 21.8: carriers in the route's
-  // FARE_UPGRADE_CARRIERS get a fare-family upsell, everyone else keeps the
-  // per-bag add-on). The delta rides inside `price`, so pricing needs no
-  // special handling. undefined/null = not upgraded.
+  // Fare upgrade ("שדרוג לקלאסיק") applied on the summary - El Al's Classic
+  // instead of an ancillary bag (carriers in lib/flights/elal.ts
+  // FARE_UPGRADE_CARRIERS get it, everyone else keeps the per-bag add-on).
+  // The delta rides inside `price`, so pricing needs no special handling;
+  // `offer` stays the fare that was searched (LITE) - ops book CLASSIC.
+  // undefined/null = not upgraded.
   fare_upgrade?: FareUpgradeInfo | null;
 };
 
 /**
- * A branded-fare upgrade chosen on the order summary (Amadeus Branded Fares
- * Upsell). `prev_*` are the in-session restore anchors for "הסרה" -
- * prev_offer is stripped before persisting to reservations.flight_order_info
- * (ops just needs the brand + the delta it added).
+ * A fare upgrade chosen on the order summary, at the fixed price of
+ * lib/flights/elal.ts. `prev_*` are the in-session restore anchors for "הסרה"
+ * and are not persisted to reservations.flight_order_info (ops just needs the
+ * brand + the delta it added).
  */
 export type FareUpgradeInfo = {
-  /** Branded-fare name from Amadeus, e.g. "CLASSIC". */
+  /** Fare name, e.g. "CLASSIC". */
   brand: string;
   /** Whole-booking delta in USD (already inside Flight.price when applied). */
   delta_total_usd: number;
   prev_price?: number;
-  prev_offer?: FlightOffer;
   prev_check_bags_included?: { outbound: boolean; inbound: boolean };
 };
 

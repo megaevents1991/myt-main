@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
-import { Coupon, OrderData } from "@/lib/app.types";
+import { Coupon, Flight, OrderData } from "@/lib/app.types";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
 import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
@@ -26,6 +26,32 @@ import {
   readUtmCookieFromHeader,
   touchRows,
 } from "@/lib/utm";
+
+/** Ops-mail lines for what the customer added to the flight on the summary.
+ *  The stored offer is the fare that was SEARCHED - a fare upgrade or a paid
+ *  bag lives only in these two fields, so the mail has to say it. */
+const flightExtrasForOps = (
+  flight: Partial<Pick<Flight, "fare_upgrade" | "added_bags" | "numOfTravelers">>,
+): string => {
+  const pax = flight.numOfTravelers || 1;
+  const lines: string[] = [];
+  if (flight.fare_upgrade) {
+    lines.push(
+      `!!! FARE UPGRADE - book ${flight.fare_upgrade.brand}, not the lower fare in the stored offer (customer paid +$${flight.fare_upgrade.delta_total_usd}) !!!`,
+    );
+  }
+  const bags = flight.added_bags;
+  const checked = bags?.checked_qty ?? (bags?.checked_qty_per_pax ?? 0) * pax;
+  if (bags && checked > 0) {
+    lines.push(`Added checked bags: ${checked} (customer paid +$${bags.total_usd})`);
+  }
+  if (bags?.cabin) {
+    lines.push(
+      `Added trolleys: ${bags.cabin.qty_per_pax * pax} (customer paid +$${bags.cabin.total_usd})`,
+    );
+  }
+  return lines.map((line) => `\n          ${line}`).join("");
+};
 
 export async function POST(req: Request) {
   // Bad JSON / failed validation is a client error - return 400 before any
@@ -539,7 +565,7 @@ export async function POST(req: Request) {
               : `Flight Outbound Number: ${validatedData.flight_order_info.outbound.flightNumber}
           Flight Outbound Date: ${validatedData.flight_order_info.outbound.departureTime}
           Flight Inbound Number: ${validatedData.flight_order_info.inbound?.flightNumber ?? "N/A"}
-          Flight Inbound Date: ${validatedData.flight_order_info.inbound?.departureTime ?? "N/A"}`
+          Flight Inbound Date: ${validatedData.flight_order_info.inbound?.departureTime ?? "N/A"}${flightExtrasForOps(validatedData.flight_order_info)}`
           }
 
           ******* Hotel Details *********

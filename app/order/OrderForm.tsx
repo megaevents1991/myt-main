@@ -167,9 +167,9 @@ export const OrderForm = ({
   useEffect(() => {
     if (step !== 4 || !flight || flightSkipped) return;
     if (flight.penalties) return; // already fetched (or restored with it)
-    // Key includes the branded-fare state: a LITE→CLASSIC upgrade (or its
-    // removal) swaps the offer under the same flight.id and clears penalties,
-    // and the new fare's terms must be refetched.
+    // Key includes the fare-upgrade state: a LITE→CLASSIC upgrade (or its
+    // removal) keeps the same flight.id and offer and clears penalties, and
+    // the new fare's terms must be refetched.
     const fetchKey = `${flight.id}:${flight.fare_upgrade?.brand ?? ""}`;
     if (penaltiesFetchedForRef.current === fetchKey) return;
     penaltiesFetchedForRef.current = fetchKey;
@@ -179,6 +179,7 @@ export const OrderForm = ({
         flightOffer: flight.offer,
         virtual: flight.virtualOfferType || false,
         eventId: event?.id,
+        fareUpgraded: !!flight.fare_upgrade,
       }),
     }).then((res) => {
       if (res.ok) {

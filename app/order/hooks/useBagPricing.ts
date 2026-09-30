@@ -18,13 +18,12 @@ export type BagPricingOptions = {
   cabin?: BagPricingOption;
 } | null;
 
-/** Branded-fare upgrade offered instead of an ancillary bag (El Al →
- *  "שדרוג כרטיס" ל-Classic). Mirrors the route's FareUpgradeOffer. */
+/** Fare upgrade offered instead of an ancillary bag (El Al → "שדרוג
+ *  לקלאסיק", fixed price per traveler). Mirrors the route's FareUpgradeOffer. */
 export type FareUpgradeOption = {
   brand: string;
   deltaTotalUsd: number;
   deltaPerPaxUsd: number;
-  offer: FlightOffer;
 } | null;
 
 /**
