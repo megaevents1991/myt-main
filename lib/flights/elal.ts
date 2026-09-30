@@ -20,9 +20,10 @@ export const ELAL_CLASSIC_BRAND = "CLASSIC";
 /** Per traveler, for the whole round trip. */
 export const ELAL_CLASSIC_UPGRADE_USD = 120;
 
-/** CLASSIC's cancellation fee per traveler, and until when it applies.
- *  Amadeus' own fare rule read USD 190 on 30.09 (LITE: non-refundable). */
-export const ELAL_CLASSIC_CANCEL_FEE_USD = 180;
+/** CLASSIC's cancellation fee per traveler, and until when it applies. The
+ *  fee is what Amadeus' own fare rule reads (USD 190 on 30.09, LON / BCN /
+ *  MIL; LITE: non-refundable) - Dor, 30.09. */
+export const ELAL_CLASSIC_CANCEL_FEE_USD = 190;
 export const ELAL_CLASSIC_CANCEL_HOURS = 48;
 
 /** The info bubble next to "שדרוג לקלאסיק". */
