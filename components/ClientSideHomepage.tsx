@@ -1,5 +1,6 @@
 "use client";
 
+import { placeLabel } from "@/lib/events/lodging";
 import React from "react";
 // Aliased: this file also calls the DOM `new Image()` to preload hero art.
 import NextImage from "next/image";
@@ -58,7 +59,7 @@ const DEFAULT_SECTION_ORDER: HomepageSectionKey[] = [
 const ROW_MAX = 12;
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english", "categoryText"], // Fields to search in
+  keys: ["name", "location.name", "event_location.name", "name_english", "categoryText"], // Fields to search in
   threshold: 0.3, // Lower = stricter match, Higher = more flexible
   findAllMatches: true, // Finds multiple matches
   ignoreLocation: true, // Ignore where the match is found in the string
@@ -155,7 +156,7 @@ const SearchCombobox = React.forwardRef<HTMLInputElement, {
       <span className="font-bold text-lg">{item.name}</span>
       <br />
       <span className="text-lg">
-        {item.date} | {item.location.name}
+        {item.date} | {placeLabel(item)}
       </span>
     </Combobox.Option>
   ));
@@ -433,7 +434,7 @@ function CompactEventCard({ event, loading }: { event: Event; loading?: "eager" 
       href={computedSold ? "#no-op" : `/order/${event.id}`}
       className={`${computedSold ? "cursor-default" : "cursor-pointer"}`}
       key={event.id}
-      aria-label={`${event.name} - ${event.date} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
+      aria-label={`${event.name} - ${event.date} ב${placeLabel(event)}${computedSold ? " - אזלו הכרטיסים" : ""}`}
       aria-disabled={computedSold}
       onClick={(e) => {
         trackEvent("eventSelected", {
@@ -499,7 +500,7 @@ function CompactEventCard({ event, loading }: { event: Event; loading?: "eager" 
                 : event.art_image_url || event.card_image_url
             }
             awayImageUrl={event.match_away_logo_url}
-            alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${event.date}`}
+            alt={`תמונת האירוע ${event.name} שמתקיים ב${placeLabel(event)} בתאריך ${event.date}`}
             variant={event.art_image_url ? "blob" : "photo"}
             colorIndex={event.art_color_index ?? undefined}
             shapeIndex={event.art_shape_index ?? undefined}
@@ -2052,7 +2053,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
         href={computedSold ? "#no-op" : `/order/${event.id}`}
         className={`flex flex-1 flex-col ${computedSold ? "cursor-default" : "cursor-pointer"}`}
         key={event.id}
-        aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}${computedSold ? " - אזלו הכרטיסים" : ""}`}
+        aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${placeLabel(event)}${computedSold ? " - אזלו הכרטיסים" : ""}`}
         aria-disabled={computedSold}
         onClick={(e) => {
           trackEvent("eventSelected", {
@@ -2115,7 +2116,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
                   : event.art_image_url || event.card_image_url
               }
               awayImageUrl={event.match_away_logo_url}
-              alt={`תמונת האירוע ${event.name} שמתקיים ב${event.location.name} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
+              alt={`תמונת האירוע ${event.name} שמתקיים ב${placeLabel(event)} בתאריך ${dayjs(event.date).format("DD/MM/YYYY")}`}
               variant={event.art_image_url ? "blob" : "photo"}
               colorIndex={event.art_color_index ?? undefined}
               shapeIndex={event.art_shape_index ?? undefined}
@@ -2154,7 +2155,7 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
                 {dayjs(event.date).format("DD/MM/YY")}
               </span>
               <span className="mx-1.5" aria-hidden="true">•</span>
-              {event.location.name}
+              {placeLabel(event)}
             </p>
 
             <div className="mt-2 min-h-[28px]">

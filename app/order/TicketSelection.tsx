@@ -1,5 +1,6 @@
 "use client";
 
+import { eventCityName } from "@/lib/events/lodging";
 import { Spoiler, ScrollArea, Text } from "@mantine/core";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
@@ -847,7 +848,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   return (
     <div>
       <div className="sr-only">
-        <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{headerEvent?.location?.name}</p>
+        <p>בחר כמות וקטגוריית כרטיסים עבור האירוע ב{eventCityName(headerEvent)}</p>
       </div>
       <div className="flex flex-col items-center ">
         <div dir="rtl" className="w-screen px-4 py-2 lg:p-4 bg-muted ">

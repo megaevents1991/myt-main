@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english", "categoryText"],
+  keys: ["name", "location.name", "event_location.name", "name_english", "categoryText"],
   threshold: 0.35,
   ignoreLocation: true,
 };

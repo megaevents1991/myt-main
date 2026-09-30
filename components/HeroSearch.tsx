@@ -1,5 +1,6 @@
 "use client";
 
+import { placeLabel } from "@/lib/events/lodging";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -26,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/mixpanel";
 
 const fuseOptions = {
-  keys: ["name", "location.name", "name_english", "categoryText"],
+  keys: ["name", "location.name", "event_location.name", "name_english", "categoryText"],
   threshold: 0.35,
   ignoreLocation: true,
 };
@@ -408,7 +409,7 @@ export const HeroSearch = ({
                         {m.name}
                       </span>
                       <span className="shrink-0 text-xs text-main-foreground/60">
-                        {m.location?.name ? `${m.location.name} · ` : ""}
+                        {placeLabel(m) ? `${placeLabel(m)} · ` : ""}
                         {fmtDate(m.date)}
                       </span>
                     </span>
@@ -491,7 +492,7 @@ export const HeroSearch = ({
             <p className="min-w-0 truncate text-base font-bold text-main-foreground">
               {selected.name}
               <span className="font-medium text-main-foreground/70">
-                {selected.location?.name ? ` · ${selected.location.name}` : ""}
+                {placeLabel(selected) ? ` · ${placeLabel(selected)}` : ""}
                 {` · ${fmtDate(selected.date)}`}
               </span>
             </p>
@@ -580,7 +581,7 @@ export const HeroSearch = ({
                           <span className="min-w-0 flex-1 text-sm leading-snug text-main-foreground/80 sm:truncate">
                             {m.name}
                             <span className="text-main-foreground/50">
-                              {m.location?.name ? ` · ${m.location.name}` : ""}
+                              {placeLabel(m) ? ` · ${placeLabel(m)}` : ""}
                               {` · ${fmtDate(m.date)}`}
                             </span>
                           </span>

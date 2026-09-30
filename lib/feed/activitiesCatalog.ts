@@ -14,6 +14,7 @@
  * (facebook-activities-10-events.csv, 2026-07-22). Do not add, drop or
  * reorder columns without re-verifying an upload in Commerce Manager.
  */
+import { eventCityName, hasEventCity, placeLabel } from "@/lib/events/lodging";
 import type { Event } from "@/lib/app.types";
 import { isEventSoldOut } from "@/lib/events/price";
 import type { FeedSkip } from "@/lib/feed/skipExplain";
@@ -209,10 +210,13 @@ export function buildActivityItem(
 
   const d = new Date(`${eventDate}T00:00:00Z`);
   const name = event.name.trim();
-  const city = cityOnly(event.location?.name);
+  // Two-city event: the title reads "<event city> · טיסה ל<flight city>"; the prose and
+  // location_names (Meta's city) the event city.
+  const city = hasEventCity(event) ? eventCityName(event) : cityOnly(event.location?.name);
+  const place = hasEventCity(event) ? placeLabel(event) : city;
   const activity_category = activityCategoryOf(event, taxonomy, hint);
 
-  const baseTitle = [name, city, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
+  const baseTitle = [name, place, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
     .filter(Boolean)
     .join(" · ");
   const title = (

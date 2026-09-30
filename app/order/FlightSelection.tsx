@@ -40,7 +40,7 @@ import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { parseDuration } from "@/lib/parseDuration";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
-import { lodgingLocation } from "@/lib/events/lodging";
+import { lodgingLocation, placeLabel } from "@/lib/events/lodging";
 
 const MAX_FLIGHT_DURATION = 30;
 
@@ -578,7 +578,7 @@ export const FlightSelection = () => {
     <div className="space-y-2 lg:space-y-6">
       <div className="sr-only">
         <h1>בחירת טיסה לאירוע {event.name}</h1>
-        <p>בחר טיסה, כמות נוסעים ותאריכי נסיעה עבור האירוע ב{event.location?.name}</p>
+        <p>בחר טיסה, כמות נוסעים ותאריכי נסיעה עבור האירוע ב{placeLabel(event)}</p>
       </div>
       {!matches && (
         <FiltersModal 

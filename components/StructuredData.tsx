@@ -1,3 +1,4 @@
+import { lodgingLocation, placeLabel } from "@/lib/events/lodging";
 import { Event } from "@/lib/app.types";
 import { computePackagePrice } from "@/lib/events/price";
 
@@ -61,7 +62,7 @@ export function StructuredData({ events }: StructuredDataProps) {
         "@type": "Offer",
         position: index + 1,
         name: event.name,
-        description: `חבילה מלאה לאירוע ${event.name} ב${event.location.name}`,
+        description: `חבילה מלאה לאירוע ${event.name} ב${placeLabel(event)}`,
         priceCurrency: "USD",
         price: (packagePrice ?? 0).toString(),
         validFrom: new Date().toISOString(),
@@ -73,11 +74,12 @@ export function StructuredData({ events }: StructuredDataProps) {
           startDate: event.date,
           location: {
             "@type": "Place",
-            name: event.location.name,
+            // The venue's city - on a two-city event that is the event city, not the flight city.
+            name: lodgingLocation(event, "event").name,
             geo: {
               "@type": "GeoCoordinates",
-              latitude: event.location.latitude,
-              longitude: event.location.longitude,
+              latitude: lodgingLocation(event, "event").latitude,
+              longitude: lodgingLocation(event, "event").longitude,
             },
           },
           offers: {

@@ -1,3 +1,4 @@
+import { placeLabel } from "@/lib/events/lodging";
 import { getCachedEvents, getEvents } from "@/lib/eventsData";
 import { getAllArtists } from "@/lib/artists";
 import { getAllFootballTeams } from "@/lib/football";
@@ -60,7 +61,7 @@ export async function generateMetadata({
         "hotels",
         "events",
         "mega events",
-        event.location.name,
+        placeLabel(event),
         event.date,
       ],
       openGraph: {

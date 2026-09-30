@@ -1,5 +1,6 @@
 "use server";
 
+import { placeLabel } from "@/lib/events/lodging";
 import { requirePartner } from "@/lib/partner-auth";
 import { supabase } from "@/lib/supabase";
 import { getEvents } from "@/lib/eventsData";
@@ -102,7 +103,7 @@ export async function savePreparedPackage(
     event_id: event.id,
     date: event.date,
     name: event.name,
-    location_name: event.location?.name ?? "",
+    location_name: placeLabel(event),
     number_of_ticket: qty,
     category: liveTicket.category,
     event_type: event.type,

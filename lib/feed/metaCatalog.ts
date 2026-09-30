@@ -6,6 +6,7 @@
  * Meta's catalog reference (RSS 2.0, `g:` namespace, `price` = "1811.00 USD",
  * availability exactly "in stock" / "out of stock").
  */
+import { eventCityName, hasEventCity, placeLabel } from "@/lib/events/lodging";
 import type { Event } from "@/lib/app.types";
 import type { TagType } from "@/lib/taxonomy.types";
 import type { FeedSkip } from "@/lib/feed/skipExplain";
@@ -208,12 +209,14 @@ export function buildFeedItem(
 
   const eventDate = event.date.split("T")[0];
   const d = new Date(`${eventDate}T00:00:00Z`);
-  const city = (event.location?.name ?? "").trim();
+  // Two-city event: the title reads "<event city> · טיסה ל<flight city>", the prose the event city.
+  const city = hasEventCity(event) ? eventCityName(event) : (event.location?.name ?? "").trim();
+  const place = hasEventCity(event) ? placeLabel(event) : city;
   // DB names sometimes carry trailing spaces → "name  · city" in titles.
   const name = event.name.trim();
 
   const soldOut = isEventSoldOut(event) || eventDate < availabilityCutoffISO;
-  const title = [name, city, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
+  const title = [name, place, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
     .filter(Boolean)
     .join(" · ")
     .slice(0, 200);

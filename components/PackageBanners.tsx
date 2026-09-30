@@ -1,5 +1,6 @@
 "use client";
 
+import { placeLabel } from "@/lib/events/lodging";
 import Link from "next/link";
 import dayjs from "dayjs";
 
@@ -48,7 +49,7 @@ export const PackageBanners = ({ events }: { events: Event[] }) => {
                 key={event.id}
                 href={`/order/${event.id}`}
                 className="group relative w-[88vw] shrink-0 snap-start overflow-hidden rounded-3xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover sm:w-auto"
-                aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${event.location.name}`}
+                aria-label={`${event.name} - ${dayjs(event.date).format("DD/MM/YYYY")} ב${placeLabel(event)}`}
               >
                 {/* Banner art with green brand wash + title overlay */}
                 <div className="relative h-44 sm:h-52">
@@ -84,7 +85,7 @@ export const PackageBanners = ({ events }: { events: Event[] }) => {
                         {dayjs(event.date).format("DD/MM/YY")}
                       </span>
                       <span className="mx-1.5" aria-hidden>•</span>
-                      {event.location.name}
+                      {placeLabel(event)}
                     </p>
                     <div className="mt-1.5 flex items-center gap-2">
                       <EventStatusBadge event={event} />

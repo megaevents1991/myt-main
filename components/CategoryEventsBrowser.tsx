@@ -1,5 +1,6 @@
 "use client";
 
+import { eventCityName, placeLabel } from "@/lib/events/lodging";
 import { useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/he";
@@ -66,7 +67,7 @@ const GROUP_CAP = 8;
 const DROPDOWN_CAP = 40;
 
 /** "לונדון, בריטניה" → "לונדון" - the city is what people filter by. */
-const cityOf = (event: Event) => (event.location?.name ?? "").split(",")[0].trim();
+const cityOf = (event: Event) => eventCityName(event);
 
 const monthKeyOf = (event: Event) => (event.date ? dayjs(event.date).format("YYYY-MM") : "");
 
@@ -445,7 +446,7 @@ export function CategoryEventsBrowser({
       if (!q) return true;
       return (
         e.name.toLowerCase().includes(q) ||
-        (e.location?.name ?? "").toLowerCase().includes(q)
+        placeLabel(e).toLowerCase().includes(q)
       );
     });
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { placeLabel } from "@/lib/events/lodging";
 import {
   requireAgent,
   requirePartner,
@@ -131,7 +132,7 @@ export async function getQuoteEvents(): Promise<QuoteEventOption[]> {
     id: event.id,
     name: event.name,
     date: event.date ?? null,
-    location: event.location?.name ?? null,
+    location: placeLabel(event) || null,
     suggested_price: computePackagePrice(event),
   }));
 }
