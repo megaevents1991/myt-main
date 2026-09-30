@@ -137,10 +137,13 @@ export const EventTicketCard = ({
               {seatingToggle && (
                 // Its own clicks pick an option; they must not also fire the
                 // card's click, which selects whatever option is showing.
+                // Two equal halves, always side by side: the text column is
+                // narrow (on a phone, a third of it goes to the price), and a
+                // wrapping pill dropped the second option under the first.
                 <div
                   role="radiogroup"
                   aria-label="אופן הישיבה"
-                  className="mt-1 inline-flex flex-wrap rounded-full border border-border p-0.5 text-sm"
+                  className="mt-1 grid w-full max-w-xs grid-cols-2 gap-0.5 rounded-xl border border-border p-0.5 text-sm"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {(["together", "split"] as const).map((option) => (
@@ -150,16 +153,23 @@ export const EventTicketCard = ({
                       role="radio"
                       aria-checked={seatingToggle.value === option}
                       className={cn(
-                        "rounded-full px-3 py-1 font-bold transition-colors",
+                        "flex flex-col items-center justify-center rounded-lg px-2 py-1 text-center font-bold leading-tight transition-colors",
                         seatingToggle.value === option
                           ? "bg-forest text-white dark:bg-glow dark:text-black"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                       onClick={() => seatingToggle.onChange(option)}
                     >
-                      {option === "together"
-                        ? `כולם יחד (+$${seatingToggle.togetherExtraUsd} לכרטיס)`
-                        : seatingToggle.splitLabel}
+                      {option === "together" ? (
+                        <>
+                          <span>כולם יחד</span>
+                          <span className="whitespace-nowrap text-xs font-normal">
+                            +${seatingToggle.togetherExtraUsd} לכרטיס
+                          </span>
+                        </>
+                      ) : (
+                        seatingToggle.splitLabel
+                      )}
                     </button>
                   ))}
                 </div>
