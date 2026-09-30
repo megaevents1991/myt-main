@@ -209,6 +209,11 @@ export const amadeus = {
           query: params,
           clientRef,
         }),
+      // POST /v2/shopping/flight-offers - the body form of the same search,
+      // needed for what the query form rejects (pricingOptions such as
+      // includedCheckedBagsOnly - 400 "Invalid query parameter" on GET).
+      post: (body: unknown, clientRef?: string) =>
+        request("POST", "/v2/shopping/flight-offers", { body, clientRef }),
     },
     flightOffers: {
       pricing: {

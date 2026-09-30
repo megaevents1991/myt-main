@@ -19,11 +19,16 @@ export type BagPricingOptions = {
 } | null;
 
 /** Fare upgrade offered instead of an ancillary bag (El Al → "שדרוג
- *  לקלאסיק", fixed price per traveler). Mirrors the route's FareUpgradeOffer. */
+ *  לקלאסיק": Amadeus' CLASSIC fare when it costs more than the $120 floor,
+ *  else the floor). Mirrors the route's FareUpgradeOffer. */
 export type FareUpgradeOption = {
   brand: string;
   deltaTotalUsd: number;
   deltaPerPaxUsd: number;
+  /** The CLASSIC offer to swap onto the flight; absent = floor price on the
+   *  searched offer. */
+  offer?: FlightOffer;
+  quotedPerPaxUsd?: number;
 } | null;
 
 /**

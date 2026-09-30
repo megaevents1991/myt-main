@@ -9,8 +9,10 @@ import {
 } from "@/lib/flights/bagGroups";
 import {
   ELAL_CLASSIC_BRAND,
-  ELAL_CLASSIC_UPGRADE_USD,
   FARE_UPGRADE_CARRIERS,
+  classicSearchBody,
+  elalClassicUpgradeUsd,
+  pickClassicOffer,
   validatingCarrier,
 } from "@/lib/flights/elal";
 
@@ -65,15 +67,39 @@ type BagPricingOptions = {
 } | null;
 
 // El Al (FARE_UPGRADE_CARRIERS): no ancillary bag at all - the one upsell is
-// the fare upgrade to CLASSIC at a fixed price per traveler. Rules + why it
-// is not quoted live: lib/flights/elal.ts.
+// the fare upgrade to CLASSIC: Amadeus' own CLASSIC fare for the same flights
+// when it costs more than the $120 floor, else the floor. Rules:
+// lib/flights/elal.ts.
 type FareUpgradeOffer = {
   /** Branded-fare label, e.g. "CLASSIC". */
   brand: string;
   /** Whole-booking price added to the current offer, USD. */
   deltaTotalUsd: number;
   deltaPerPaxUsd: number;
+  /** The CLASSIC offer itself when Amadeus had one for these flights - the
+   *  client swaps it onto the flight, so ops book exactly that fare. Absent =
+   *  the floor price on the searched (LITE) offer. */
+  offer?: FlightOffer;
+  /** What Amadeus quoted per traveler before the floor, rounded up. */
+  quotedPerPaxUsd?: number;
 } | null;
+
+/** Amadeus' CLASSIC offer on the same flights, or null (no result / search
+ *  failed - the floor price applies). */
+async function quoteClassic(
+  flightOffer: FlightOffer,
+  clientRef: string,
+): Promise<{ offer: FlightOffer; deltaPerPaxUsd: number } | null> {
+  const body = classicSearchBody(flightOffer);
+  if (!body) return null;
+  try {
+    const response = await amadeus.shopping.flightOffersSearch.post(body, clientRef);
+    return pickClassicOffer(flightOffer, (response.result?.data ?? []) as FlightOffer[]);
+  } catch (error) {
+    console.warn("bag-pricing: Classic fare search failed, floor price applies:", error);
+    return null;
+  }
+}
 
 /** Amadeus ancillary prices come back in whatever currency the fare was
  *  filed in - usually USD (the search itself requests currencyCode=USD, see
@@ -133,29 +159,38 @@ export async function POST(request: Request) {
   // null = every segment's fare already includes a checked bag.
   const offerWithBag = withCheckedBag(flightOffer);
 
-  // El Al: only the upgrade to CLASSIC, never an ancillary bag - and nothing
-  // to offer when the fare already is one with a bag. No Amadeus call.
-  if (FARE_UPGRADE_CARRIERS.has(validatingCarrier(flightOffer))) {
-    const fareUpgrade: FareUpgradeOffer = offerWithBag
-      ? {
-          brand: ELAL_CLASSIC_BRAND,
-          deltaPerPaxUsd: ELAL_CLASSIC_UPGRADE_USD,
-          deltaTotalUsd: ELAL_CLASSIC_UPGRADE_USD * numOfTravelers,
-        }
-      : null;
-    return NextResponse.json({ bagOptions: null, fareUpgrade });
-  }
-
   if (!amadeus) {
     console.error("bag-pricing: Amadeus client is not initialized.");
     return NextResponse.json({ bagOptions: null satisfies BagPricingOptions });
   }
 
-  try {
-    const clientRef = eventId
-      ? `MYT-BAGS-${eventId}-${Math.floor(Date.now() / 1000)}`
-      : `MYT-BAGS-${Math.floor(Date.now() / 1000)}`;
+  const clientRef = eventId
+    ? `MYT-BAGS-${eventId}-${Math.floor(Date.now() / 1000)}`
+    : `MYT-BAGS-${Math.floor(Date.now() / 1000)}`;
 
+  // El Al: only the upgrade to CLASSIC, never an ancillary bag - and nothing
+  // to offer when the fare already is one with a bag.
+  if (FARE_UPGRADE_CARRIERS.has(validatingCarrier(flightOffer))) {
+    if (!offerWithBag) {
+      return NextResponse.json({ bagOptions: null, fareUpgrade: null });
+    }
+    const quoted = await quoteClassic(flightOffer, clientRef);
+    const deltaPerPaxUsd = elalClassicUpgradeUsd(quoted?.deltaPerPaxUsd ?? null);
+    const fareUpgrade: FareUpgradeOffer = {
+      brand: ELAL_CLASSIC_BRAND,
+      deltaPerPaxUsd,
+      deltaTotalUsd: deltaPerPaxUsd * numOfTravelers,
+      ...(quoted
+        ? { offer: quoted.offer, quotedPerPaxUsd: Math.ceil(quoted.deltaPerPaxUsd) }
+        : {}),
+    };
+    console.log(
+      `bag-pricing: El Al Classic ${quoted ? `quoted $${Math.ceil(quoted.deltaPerPaxUsd)}` : "not quoted"} a traveler, charging $${deltaPerPaxUsd}`,
+    );
+    return NextResponse.json({ bagOptions: null, fareUpgrade });
+  }
+
+  try {
     const price = async (offer: FlightOffer): Promise<PricingResponseBody> => {
       const response = await amadeus.shopping.flightOffers.pricing.post(
         {

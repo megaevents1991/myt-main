@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
 import { Coupon, Flight, OrderData } from "@/lib/app.types";
+import { offerIncludesCheckedBag } from "@/lib/flights/elal";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
 import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
@@ -31,13 +32,18 @@ import {
  *  The stored offer is the fare that was SEARCHED - a fare upgrade or a paid
  *  bag lives only in these two fields, so the mail has to say it. */
 const flightExtrasForOps = (
-  flight: Partial<Pick<Flight, "fare_upgrade" | "added_bags" | "numOfTravelers">>,
+  flight: Partial<Pick<Flight, "fare_upgrade" | "added_bags" | "numOfTravelers" | "offer">>,
 ): string => {
   const pax = flight.numOfTravelers || 1;
   const lines: string[] = [];
   if (flight.fare_upgrade) {
+    // The stored offer is Amadeus' CLASSIC one when it was quoted; at the
+    // floor price it is still the LITE fare that was searched.
+    const storedIsUpgraded = !!flight.offer && offerIncludesCheckedBag(flight.offer);
     lines.push(
-      `!!! FARE UPGRADE - book ${flight.fare_upgrade.brand}, not the lower fare in the stored offer (customer paid +$${flight.fare_upgrade.delta_total_usd}) !!!`,
+      storedIsUpgraded
+        ? `FARE UPGRADE: ${flight.fare_upgrade.brand} - the stored offer IS the ${flight.fare_upgrade.brand} fare (customer paid +$${flight.fare_upgrade.delta_total_usd})`
+        : `!!! FARE UPGRADE - book ${flight.fare_upgrade.brand}, not the lower fare in the stored offer (customer paid +$${flight.fare_upgrade.delta_total_usd}) !!!`,
     );
   }
   const bags = flight.added_bags;

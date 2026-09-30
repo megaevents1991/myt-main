@@ -289,16 +289,19 @@ export default function OrderReview({
     selectedFlight,
     showUpsells && !flightSkipped
   );
-  /** El Al path: the upgrade to Classic at its fixed price - the delta rides
-   *  through flight.price, so the total updates exactly like picking a
-   *  pricier flight would. The offer itself stays the searched (LITE) one;
-   *  fare_upgrade tells ops to book CLASSIC. prev_* anchors power "הסרה". */
+  /** El Al path: the upgrade to Classic - the delta rides through
+   *  flight.price, so the total updates exactly like picking a pricier flight
+   *  would. When Amadeus quoted the CLASSIC offer it replaces the searched
+   *  one (ops book exactly that fare); at the floor price the offer stays
+   *  LITE and fare_upgrade tells ops to book CLASSIC. prev_* anchors power
+   *  "הסרה". */
   const handleUpgradeFare = useCallback(() => {
     if (!selectedFlight || !fareUpgrade) return;
     setFlight((prev) =>
       prev
         ? {
             ...prev,
+            offer: fareUpgrade.offer ?? prev.offer,
             price: prev.price + fareUpgrade.deltaTotalUsd,
             outbound: { ...prev.outbound, checkBagsIncluded: true },
             inbound: { ...prev.inbound, checkBagsIncluded: true },
@@ -310,6 +313,7 @@ export default function OrderReview({
               brand: fareUpgrade.brand,
               delta_total_usd: fareUpgrade.deltaTotalUsd,
               prev_price: prev.price,
+              prev_offer: prev.offer,
               prev_check_bags_included: {
                 outbound: prev.outbound.checkBagsIncluded,
                 inbound: prev.inbound.checkBagsIncluded,
@@ -327,6 +331,7 @@ export default function OrderReview({
       if (!prev || up?.prev_price == null) return prev;
       return {
         ...prev,
+        offer: up.prev_offer ?? prev.offer,
         price: up.prev_price,
         outbound: {
           ...prev.outbound,
