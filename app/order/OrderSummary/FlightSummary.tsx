@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useState } from "react";
 import { Popover } from "@mantine/core";
 import { Info } from "lucide-react";
 import { FlightMeta } from "@/components/ui/FlightCard";
@@ -13,27 +14,50 @@ const isClassic = (brand: string) => brand.toUpperCase() === ELAL_CLASSIC_BRAND;
 const upgradeLabel = (brand: string) =>
   isClassic(brand) ? "שדרוג לקלאסיק" : `שדרוג כרטיס ל-${brand}`;
 
-/** The (i) beside "שדרוג לקלאסיק": what the upgrade buys. Opens on a tap, not
- *  a hover - the summary is mostly read on a phone. `relative z-10` keeps it
- *  above the chip's stretched button. */
-const ClassicUpgradeInfo = () => (
-  <Popover position="bottom" withArrow arrowSize={10} shadow="md" radius="md" width={270} zIndex={150}>
-    <Popover.Target>
-      <button
-        type="button"
-        aria-label="מה כולל השדרוג לקלאסיק"
-        className="relative z-10 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-forest/10 hover:text-forest dark:hover:bg-glow/15 dark:hover:text-glow"
-      >
-        <Info className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden="true" />
-      </button>
-    </Popover.Target>
-    <Popover.Dropdown p={0}>
-      <p dir="rtl" className="p-3 text-[13px] font-normal leading-snug text-foreground">
-        {ELAL_CLASSIC_INFO_HE}
-      </p>
-    </Popover.Dropdown>
-  </Popover>
-);
+/** A mouse (or trackpad) is on this device - hover means something. */
+const canHover = () =>
+  typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+
+/** The (i) beside "שדרוג לקלאסיק": what the upgrade buys. Opens on hover
+ *  where there is a pointer to hover with and on a tap everywhere (Alon 30.09
+ *  hovered on a desktop, saw nothing and reported the bubble missing).
+ *  `relative z-10` keeps it above the chip's stretched button. */
+const ClassicUpgradeInfo = () => {
+  const [opened, setOpened] = useState(false);
+  return (
+    <Popover
+      opened={opened}
+      onChange={setOpened}
+      position="bottom"
+      withArrow
+      arrowSize={10}
+      shadow="md"
+      radius="md"
+      width={270}
+      zIndex={150}
+    >
+      <Popover.Target>
+        <button
+          type="button"
+          aria-label="מה כולל השדרוג לקלאסיק"
+          aria-expanded={opened}
+          onMouseEnter={() => canHover() && setOpened(true)}
+          onMouseLeave={() => canHover() && setOpened(false)}
+          // A tap toggles; a click on a hover device keeps what hover opened.
+          onClick={() => setOpened((o) => (canHover() ? true : !o))}
+          className="relative z-10 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-forest transition-colors hover:bg-forest/10 dark:text-glow dark:hover:bg-glow/15"
+        >
+          <Info className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      </Popover.Target>
+      <Popover.Dropdown p={0}>
+        <p dir="rtl" className="p-3 text-[13px] font-normal leading-snug text-foreground">
+          {ELAL_CLASSIC_INFO_HE}
+        </p>
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
 
 /** Included/not-included line for one baggage kind, on one or both legs. */
 const BaggageLine = ({
