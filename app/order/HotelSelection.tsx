@@ -1,6 +1,6 @@
 "use client";
 
-import { Hotel, HotelInfoClient, HotelKind } from "@/lib/hotel.type";
+import { Hotel, HotelInfoClient, HotelKind, Rate } from "@/lib/hotel.type";
 import { Popover, ScrollArea, Skeleton } from "@mantine/core";
 import {
   useState,
@@ -36,8 +36,45 @@ import { getRoomParams } from "@/lib/getRoomParams";
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import dayjs from "dayjs";
+import {
+  cityName,
+  LodgingCity,
+  lodgingLocation,
+  NightAssign,
+  nightsBetween,
+  proposedSplit,
+  refitNights,
+  segmentsFromNights,
+  StaySegment,
+} from "@/lib/events/lodging";
+import { fetchHotels as searchHotels } from "./fetchHotels";
+import { LodgingToggle } from "@/components/order/LodgingToggle";
+import { SplitEditor } from "@/components/order/SplitEditor";
+import { closestRate, findBreakfastUpgrade } from "./order-review.utils";
+import { useSegmentBreakfast } from "./hooks";
+import {
+  SegmentHotelModal,
+  SegmentsList,
+} from "@/components/order/SegmentsList";
+
+/** A split segment's identity for "the customer picked this one by hand". */
+const segKey = (s: StaySegment) => `${s.city}|${s.checkin}`;
+
+/** A segment search that got no answer (refused, 5xx, timeout) - not "no hotels". */
+class SegmentSearchFailed extends Error {}
+const SEGMENT_RETRY_MS = 8000;
+/** The search answered: a hotel list, and the static info for it (/api/hotels-info
+ *  answers `{ error }` for an empty list, so an empty answer skips that part). */
+const searchAnswered = (res: HotelsData) => {
+  const hotels = res?.data?.data?.hotels;
+  if (!Array.isArray(hotels)) return false;
+  return !hotels.length || (!!res.hotelsInfo && !("error" in res.hotelsInfo));
+};
+/** Dates inside a Hebrew sentence, kept left-to-right ("29.10–31.10", not reversed). */
+const ltr = (s: string) => `⁦${s}⁩`;
 
 export const HotelSelection = () => {
+  const { addBreakfast, removeBreakfast } = useSegmentBreakfast();
   const {
     setHotel,
     planeTickets,
@@ -50,13 +87,30 @@ export const HotelSelection = () => {
     numberOfEventTickets,
     personLink,
     returnToSummary,
+    lodgingCity,
+    setLodgingCity,
+    hotelSegments,
+    setHotelSegments,
+    splitNights,
+    setSplitNights,
+    hotel,
+    packageLocked,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedHotelId, setSelectedHotelId] = useState("");
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
-    getDefaultDateRange(event, flight)
-  );
+  // Edit-from-summary on a split stay keeps the split's own dates (they may
+  // differ from the flight's) - otherwise the step would refit and re-search
+  // every segment. Anywhere else the step starts from the flight's dates.
+  const initialRange = (): [Date | null, Date | null] => {
+    const segs = returnToSummary ? hotelSegments : null;
+    const first = segs?.[0]?.checkin;
+    const last = segs?.[segs.length - 1]?.checkout;
+    return segs && segs.length > 1 && first && last
+      ? [new Date(first + "T00:00:00"), new Date(last + "T00:00:00")]
+      : getDefaultDateRange(event, flight);
+  };
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(initialRange);
   const [roomParams, setRoomParams] = useState<
     {
       adults: number;
@@ -99,7 +153,7 @@ export const HotelSelection = () => {
   >(["withFreeCancellation"]);
   const [prevDateRange, setPrevDateRange] = useState<
     [Date | null, Date | null]
-  >(getDefaultDateRange(event, flight));
+  >(initialRange);
   const [, startTransition] = useTransition();
   const [isProcessingHotels, setIsProcessingHotels] = useState(false);
   const [hotelNameFilter, setHotelNameFilter] = useState("");
@@ -133,6 +187,56 @@ export const HotelSelection = () => {
     [roomParams]
   );
 
+  // ── Lodging city + split stay (lib/events/lodging.ts) ─────────────────────
+  // Where the main list searches. One-city events: always event.location.
+  const lodgingPoint = lodgingLocation(event, lodgingCity);
+  const checkinStr = dateRange[0] ? dayjs(dateRange[0]).format("YYYY-MM-DD") : "";
+  const checkoutStr = dateRange[1] ? dayjs(dateRange[1]).format("YYYY-MM-DD") : "";
+  // The last WHOLE range - while the picker holds half a range the lodging line
+  // keeps showing the stay it has (the split button must not blink away).
+  const wholeRange: [Date | null, Date | null] =
+    dateRange[0] && dateRange[1] ? dateRange : prevDateRange;
+  const stayIn = wholeRange[0] ? dayjs(wholeRange[0]).format("YYYY-MM-DD") : "";
+  const stayOut = wholeRange[1] ? dayjs(wholeRange[1]).format("YYYY-MM-DD") : "";
+  const splitSegments = useMemo<StaySegment[]>(
+    () => (splitNights ? segmentsFromNights(splitNights) : []),
+    [splitNights]
+  );
+  // 2+ segments = the segment blocks replace the hotel list.
+  const splitActive = splitSegments.length > 1;
+  // ── "איפה ישנים?" (Dor + Alon 28.09) ──────────────────────────────────────
+  // The step opens on the default city's ordinary list; the line above it
+  // offers each city and "פיצול מלונות" (the event's default split), and
+  // "עריכת הפיצול" opens the night squares in place.
+  const [editingSplit, setEditingSplit] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
+  // Same city twice in a split = the same hotel by default: the hotel each city
+  // is anchored to (the list pick the split started from, else the city's first
+  // segment), and the segments the customer swapped by hand (those never follow).
+  const anchorsRef = useRef<Partial<Record<LodgingCity, OrderHotel>>>({});
+  const manualSwapRef = useRef(new Set<string>());
+  const segmentsRef = useRef(hotelSegments);
+  segmentsRef.current = hotelSegments;
+  // segKey → the anchor hotel's name, where that hotel had nothing for the
+  // segment's nights (SegmentsList says so instead of silently switching).
+  const [anchorMisses, setAnchorMisses] = useState<Record<string, string>>({});
+  const [segmentsLoading, setSegmentsLoading] = useState(false);
+  const [segmentsError, setSegmentsError] = useState<{
+    message: string;
+    /** The search failed (vs. no hotel for those nights): offer "נסו שוב". */
+    retry: boolean;
+  } | null>(null);
+  // Bumped by the search button in split mode - forces the segment searches
+  // to run again even though nothing about the split itself changed.
+  const [splitRunKey, setSplitRunKey] = useState(0);
+  // Per-segment searches (city|checkin|checkout|rooms), kept for "החלפת
+  // מלון" so a swap never spends another RateHawk search.
+  const segmentSearchesRef = useRef(new Map<string, HotelsData>());
+  const segmentRunRef = useRef(0);
+  const [swapIndex, setSwapIndex] = useState<number | null>(null);
+  const [swapSearch, setSwapSearch] = useState<HotelsData | null>(null);
+  const [swapLoading, setSwapLoading] = useState(false);
+
   // Correct a stale online hotel search. An early preload (OrderForm, on event
   // load) fetches hotels with the default 2 guests - before the customer's real
   // party size is known - and a stale-cache guard then blocks later refetches.
@@ -143,23 +247,33 @@ export const HotelSelection = () => {
   const cachedGuestCount = getTotalPersons(
     hotelsData?.data?.debug?.request?.guests || []
   );
+  // Same idea for the lodging CITY: a preload or the flight step may have
+  // searched the other city (the request echoes its coords) - refetch once.
+  const cachedReq = hotelsData?.data?.debug?.request;
+  const cachedCityMatches =
+    !cachedReq ||
+    (Math.abs(Number(cachedReq.latitude) - Number(lodgingPoint.latitude)) < 0.001 &&
+      Math.abs(Number(cachedReq.longitude) - Number(lodgingPoint.longitude)) < 0.001);
+  const cityKey = `${roomParamsKey}|${lodgingCity}`;
   useEffect(() => {
     if (event?.location?.country_code === "US") return;
+    // Split mode has no main list - its searches run per segment below.
+    if (splitActive) return;
     const wantedGuests = getTotalPersons(roomParams);
     if (!wantedGuests) return;
     const hasHotels = !!hotelsData?.data?.data?.hotels;
-    if (hasHotels && cachedGuestCount === wantedGuests) {
-      guestCorrectedRef.current = roomParamsKey;
+    if (hasHotels && cachedGuestCount === wantedGuests && cachedCityMatches) {
+      guestCorrectedRef.current = cityKey;
       return;
     }
     // Only auto-correct once per party-size config to avoid a refetch loop if
     // the API ever normalizes the guest array differently than requested.
-    if (guestCorrectedRef.current === roomParamsKey) return;
-    guestCorrectedRef.current = roomParamsKey;
+    if (guestCorrectedRef.current === cityKey) return;
+    guestCorrectedRef.current = cityKey;
     getHotels(
       {
         dateRange,
-        location: event.location,
+        location: lodgingPoint,
         guests: roomParams,
         radius: distanceRange[1] || 2000,
         eventId: event.id,
@@ -167,7 +281,7 @@ export const HotelSelection = () => {
       { immediate: true }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cachedGuestCount, roomParamsKey]);
+  }, [cachedGuestCount, cityKey, cachedCityMatches, splitActive]);
 
   useEffect(() => {
     if (!event?.id) return;
@@ -218,6 +332,12 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
+    // Split mode: the list is hidden and `hotel` is owned by the segments -
+    // the main search must not auto-select over hotelSegments[0].
+    if (splitActive) {
+      setIsProcessingHotels(false);
+      return;
+    }
     if (hotelsData.data.debug && !isFetching) {
       setIsProcessingHotels(true);
       startTransition(() => {
@@ -436,15 +556,451 @@ export const HotelSelection = () => {
   };
 
   const fetchHotels = async (parameters?: { radius: number }) => {
+    // Split mode: re-run the per-segment searches instead of the main list.
+    if (splitActive) {
+      segmentSearchesRef.current.clear();
+      setHotelSegments(null); // the sync effect below sees "not picked" and re-runs
+      setHotel(undefined);
+      setSplitRunKey((k) => k + 1);
+      return;
+    }
     setHotel(undefined);
 
     await getHotels({
       dateRange,
-      location: event.location,
+      location: lodgingPoint,
       guests: roomParams,
       radius: parameters?.radius || distanceRange[1] || 2000,
       eventId: event.id,
     });
+  };
+
+  // ── Lodging city choice ───────────────────────────────────────────────────
+  // One tap: leave any split, clear the pick, show the city's list. When the
+  // provider already holds that city's search for these dates and guests (back
+  // from a split, or the list searched while the split was on screen) it is
+  // laid out again at once; otherwise one search, auto-selecting as always.
+  const handlePickCity = (city: LodgingCity) => {
+    segmentRunRef.current += 1; // cancels a segment run in flight
+    setEditingSplit(false);
+    setAnchorMisses({});
+    setSplitNights(null);
+    setHotelSegments(null);
+    setSegmentsError(null);
+    setSegmentsLoading(false);
+    setLodgingCity(city);
+    setHotel(undefined);
+    setSelectedHotelId("");
+    guestCorrectedRef.current = `${roomParamsKey}|${city}`;
+    const point = lodgingLocation(event, city);
+    const req = hotelsData?.data?.debug?.request;
+    const reusable =
+      !isFetching &&
+      !!req &&
+      !!hotelsData.data.data?.hotels &&
+      Math.abs(Number(req.latitude) - Number(point.latitude)) < 0.001 &&
+      Math.abs(Number(req.longitude) - Number(point.longitude)) < 0.001 &&
+      req.checkin === checkinStr &&
+      req.checkout === checkoutStr &&
+      getTotalPersons(req.guests) === getTotalPersons(roomParams);
+    if (reusable) {
+      prepareHotelData(hotelsData);
+      return;
+    }
+    getHotels(
+      {
+        dateRange,
+        location: point,
+        guests: roomParams,
+        radius: distanceRange[1] || 2000,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
+  };
+
+  // One segment's search, cached per (city, dates, rooms). Direct
+  // fetchHotels() - the provider holds ONE result (the main list).
+  // A search that FAILED (RateHawk's serp/geo allows 10 a minute for the whole
+  // site, or a timeout) is not "no hotels": wait a moment, ask once more, and
+  // only then throw SegmentSearchFailed - the caller offers "נסו שוב" for it
+  // (Alon 29.09 got "לא מצאנו מלון בלונדון" for dates with 184 hotels).
+  const searchSegment = async (seg: StaySegment, signal: AbortSignal) => {
+    const key = `${seg.city}|${seg.checkin}|${seg.checkout}|${roomParamsKey}`;
+    const cached = segmentSearchesRef.current.get(key);
+    if (cached) return cached;
+    const params = {
+      dateRange: [
+        new Date(seg.checkin + "T00:00:00"),
+        new Date(seg.checkout + "T00:00:00"),
+      ] as [Date, Date],
+      location: lodgingLocation(event, seg.city),
+      guests: roomParams,
+      radius: distanceRange[1] || 2000,
+      eventId: event.id,
+    };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, SEGMENT_RETRY_MS));
+      if (signal.aborted) break;
+      const res = await searchHotels(params, signal).catch(() => null);
+      if (!res || !searchAnswered(res)) continue;
+      if (res.data.data.hotels.length) segmentSearchesRef.current.set(key, res);
+      return res;
+    }
+    throw new SegmentSearchFailed();
+  };
+
+  // A segment's breakfast upsell, read from ITS OWN search now - later (the
+  // segment blocks, the summary) only the main list's search is at hand.
+  const withBreakfastOffer = (h: OrderHotel, search: HotelsData): OrderHotel => {
+    const upgrade = findBreakfastUpgrade(h, search);
+    return {
+      ...h,
+      breakfast_offer: upgrade
+        ? { rate: upgrade.rate, delta_usd: upgrade.deltaUsd }
+        : null,
+    };
+  };
+
+  // The segment card's photos + place, from the segment's own search too (same
+  // reason as the breakfast offer). The picked room's photos first, like HotelCard.
+  const withCardInfo = (h: OrderHotel, search: HotelsData): OrderHotel => {
+    const info = search.hotelsInfo[h.id];
+    if (!info?.metadata) return { ...h, segment_card: null };
+    const room = h.rate?.room_data_trans;
+    const roomKey = room
+      ? `${room.main_name}${room.bedding_type ? " " + room.bedding_type : ""}`
+      : "";
+    return {
+      ...h,
+      segment_card: {
+        images: [
+          ...(info.rooms?.[roomKey]?.images ?? []),
+          ...(info.general?.images ?? []),
+        ]
+          .filter(Boolean)
+          .slice(0, 12),
+        distance: Math.ceil(info.metadata.distanceFromCenter ?? 0),
+        guestRating: info.metadata.guestRating,
+        lat: info.metadata.latitude,
+        lng: info.metadata.longitude,
+      },
+    };
+  };
+
+  // The segment's OrderHotel - what prepareHotelData builds for the main
+  // list's auto-pick, plus the city it serves. `rate` defaults to the
+  // cheapest; the same-hotel reuse passes the one closest to the earlier pick.
+  const buildSegmentHotel = (
+    seg: StaySegment,
+    search: HotelsData,
+    hotel: Hotel,
+    rate: Rate = hotel.rates[0]
+  ): OrderHotel => {
+    const info = search.hotelsInfo[hotel.id];
+    const picked: OrderHotel = {
+      address: info?.metadata?.address,
+      guests: search.data.debug.request.guests,
+      id: hotel.id,
+      name: info?.metadata?.hotelName,
+      hotelInformation: {
+        hotelName: info?.metadata?.hotelName,
+        roomName: rate?.room_data_trans?.main_name || info?.rooms?.[0]?.name,
+        stars: info?.metadata?.rating,
+        amenities: info?.general?.amenities,
+        distance: info?.metadata?.distanceFromCenter,
+      },
+      price: rate.payment_options?.payment_types[0]?.show_amount,
+      rate,
+      checkin: search.data.debug.request.checkin,
+      checkout: search.data.debug.request.checkout,
+      city: seg.city,
+      cityName: cityName(event, seg.city),
+    };
+    return withCardInfo(withBreakfastOffer(picked, search), search);
+  };
+
+  // The anchor hotel again in this segment's search - same room, same board
+  // where it has one (the rate under an added breakfast is the one compared).
+  // Null when that hotel has nothing for these dates: the segment then gets
+  // its own default pick.
+  const sameHotelIn = (
+    seg: StaySegment,
+    search: HotelsData | null | undefined,
+    anchor: OrderHotel
+  ): OrderHotel | null => {
+    const again = search?.data?.data?.hotels?.find((h) => h.id === anchor.id);
+    if (!again || !search?.hotelsInfo[again.id]) return null;
+    const rate = closestRate(
+      again.rates ?? [],
+      anchor.breakfast_upgrade?.prev_rate ?? anchor.rate
+    );
+    return rate ? buildSegmentHotel(seg, search, again, rate) : null;
+  };
+
+  // First hotel per city - what a later segment of that city comes back to.
+  const firstPerCity = (segs: StaySegment[], hotels: OrderHotel[]) => {
+    const out: Partial<Record<LodgingCity, OrderHotel>> = {};
+    segs.forEach((s, i) => {
+      if (hotels[i] && !out[s.city]) out[s.city] = hotels[i];
+    });
+    return out;
+  };
+
+  const commitSegments = (next: OrderHotel[], segs: StaySegment[]) => {
+    setHotelSegments(next);
+    setHotel(next[0]); // invariant: hotel === hotelSegments[0]
+    setSelectedHotelId(next[0].id);
+    anchorsRef.current = { ...anchorsRef.current, ...firstPerCity(segs, next) };
+  };
+
+  // Auto-pick per segment: a city's anchor hotel when it has one (the hotel
+  // the customer had on the list, or this city's earlier segment - "same city
+  // twice = same hotel"), else the first hotel under the list's default
+  // filters (3★+, "Hotel"), else the first with static info. SEQUENTIAL on
+  // purpose - RateHawk allows 10 searches a minute shared by every customer.
+  const autoPickSegments = async (segs: StaySegment[]) => {
+    const run = ++segmentRunRef.current;
+    const controller = new AbortController();
+    const anchors = { ...anchorsRef.current };
+    const misses: Record<string, string> = {};
+    manualSwapRef.current.clear();
+    setSegmentsLoading(true);
+    setSegmentsError(null);
+    try {
+      const picked: OrderHotel[] = [];
+      for (const seg of segs) {
+        const search = await searchSegment(seg, controller.signal);
+        if (run !== segmentRunRef.current) return; // superseded
+        const anchor = anchors[seg.city];
+        const again = anchor ? sameHotelIn(seg, search, anchor) : null;
+        if (again) {
+          picked.push(again);
+          continue;
+        }
+        if (anchor?.name) misses[segKey(seg)] = anchor.name;
+        const all = search?.data?.data?.hotels ?? [];
+        const preferred = applyFiltersAndSorting({
+          hotels: all,
+          priceRange: [0, Number.MAX_SAFE_INTEGER],
+          rating: [false, false, true, true, true],
+          hotelsInfo: search.hotelsInfo,
+          meal: ["withoutMeal"],
+          kind: ["Hotel"],
+          freeCancellation: ["withFreeCancellation", "withoutFreeCancellation"],
+          distanceFromCenter: [0, Number.MAX_SAFE_INTEGER],
+        });
+        const first = [...preferred, ...all].find(
+          (h) => search.hotelsInfo[h.id] && h.rates?.length
+        );
+        if (!first) {
+          throw new Error(
+            `לא מצאנו מלון ב${cityName(event, seg.city)} לתאריכים ${ltr(`${dayjs(seg.checkin).format("DD.MM")}–${dayjs(seg.checkout).format("DD.MM")}`)}. נסו פיצול אחר או לינה בעיר אחת.`
+          );
+        }
+        const own = buildSegmentHotel(seg, search, first);
+        picked.push(own);
+        // The city's later segments come back here (also when the anchor had
+        // no room for these nights - the segments then still share a hotel).
+        anchors[seg.city] = own;
+      }
+      if (run !== segmentRunRef.current) return;
+      commitSegments(picked, segs);
+      setAnchorMisses(misses);
+    } catch (err) {
+      if (run !== segmentRunRef.current) return;
+      setAnchorMisses({});
+      console.error("Split stay auto-pick failed:", err);
+      setHotelSegments(null);
+      setHotel(undefined);
+      // A real "no hotel for these nights" asks for another split; a search
+      // that got no answer asks for "נסו שוב" (the searches that did answer
+      // are cached, so a retry re-runs only the one that failed).
+      setSegmentsError(
+        err instanceof SegmentSearchFailed || !(err instanceof Error) || !err.message
+          ? {
+              message: "החיפוש לא הצליח הפעם, כנראה עומס רגעי אצל ספק המלונות. נסו שוב בעוד רגע.",
+              retry: true,
+            }
+          : { message: err.message, retry: false }
+      );
+    } finally {
+      if (run === segmentRunRef.current) setSegmentsLoading(false);
+    }
+  };
+
+  // Keep the segments in step with the split, the dates and the party size:
+  // a flight-date change refits the night assignment (kept nights keep their
+  // city); a changed segment/guest count re-runs the auto-pick.
+  useEffect(() => {
+    if (!splitActive || !splitNights || !checkinStr || !checkoutStr) return;
+    const nights = nightsBetween(checkinStr, checkoutStr);
+    const datesMoved =
+      nights.length !== splitNights.length ||
+      nights.some((d, i) => d !== splitNights[i].date);
+    if (datesMoved) {
+      const refit = refitNights(splitNights, checkinStr, checkoutStr);
+      const segs = segmentsFromNights(refit);
+      if (segs.length < 2) {
+        handlePickCity(segs[0]?.city ?? lodgingCity);
+      } else {
+        setSplitNights(refit); // re-enters this effect with the new nights
+      }
+      return;
+    }
+    const wantedGuests = getTotalPersons(roomParams);
+    const upToDate =
+      !!hotelSegments &&
+      hotelSegments.length === splitSegments.length &&
+      hotelSegments.every(
+        (h, i) =>
+          h.city === splitSegments[i].city &&
+          h.checkin === splitSegments[i].checkin &&
+          h.checkout === splitSegments[i].checkout &&
+          getTotalPersons(h.guests) === wantedGuests
+      );
+    if (upToDate) return;
+    autoPickSegments(splitSegments);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitActive, splitNights, checkinStr, checkoutStr, roomParamsKey, splitRunKey]);
+
+  // ── Split: start / edit ───────────────────────────────────────────────────
+  // A new night layout drops the current segments; the segments effect above
+  // then runs its sequential searches (cached per segment, so an unchanged
+  // segment costs nothing) and auto-picks through the city anchors.
+  const startSplit = (nights: NightAssign[]) => {
+    segmentRunRef.current += 1; // cancels a segment run in flight
+    setEditingSplit(false);
+    setAnchorMisses({});
+    setSegmentsError(null);
+    setHotelSegments(null);
+    setHotel(undefined);
+    setSelectedHotelId("");
+    setSplitNights(nights);
+  };
+
+  // "פיצול מלונות": the event's default split over the step's dates. The hotel
+  // already chosen on the list anchors its city - coming back to that city
+  // after the event city means the same hotel.
+  const handlePickSplit = () => {
+    if (!stayIn || !stayOut) return;
+    const nights = proposedSplit(event, stayIn, stayOut);
+    if (segmentsFromNights(nights).length < 2) return;
+    if (!splitActive && hotel?.id && !hotel.isOffline) {
+      anchorsRef.current = { ...anchorsRef.current, [lodgingCity]: hotel };
+    }
+    startSplit(nights);
+  };
+
+  // "עריכת הפיצול" → "עדכון הלינה": every night in one city = that city's list.
+  const handleApplySplit = (nights: NightAssign[]) => {
+    const segs = segmentsFromNights(nights);
+    if (segs.length < 2) {
+      handlePickCity(segs[0]?.city ?? lodgingCity);
+      return;
+    }
+    startSplit(nights);
+  };
+
+  const toggleSplitEditor = () => {
+    if (!editingSplit) setEditorKey((k) => k + 1);
+    setEditingSplit((open) => !open);
+  };
+
+  // "החלפת מלון": the segment's own (cached) search in a modal.
+  const openSwap = async (index: number) => {
+    const seg = splitSegments[index];
+    if (!seg) return;
+    setSwapIndex(index);
+    setSwapSearch(null);
+    setSwapLoading(true);
+    try {
+      const search = await searchSegment(seg, new AbortController().signal);
+      setSwapSearch(search);
+    } catch (err) {
+      console.error("Segment hotel search failed:", err);
+      setSwapSearch({ data: {} as HotelsData["data"], hotelsInfo: {} });
+    } finally {
+      setSwapLoading(false);
+    }
+  };
+
+  const handleSwapPick = (
+    picked: Omit<OrderHotel, "guests" | "checkin" | "checkout">
+  ) => {
+    if (swapIndex == null || !hotelSegments || !swapSearch) return;
+    const seg = splitSegments[swapIndex];
+    const segs = splitSegments;
+    const swapped = withCardInfo(
+      withBreakfastOffer(
+        {
+          ...picked,
+          guests: swapSearch.data.debug.request.guests,
+          checkin: swapSearch.data.debug.request.checkin,
+          checkout: swapSearch.data.debug.request.checkout,
+          city: seg.city,
+          cityName: cityName(event, seg.city),
+        },
+        swapSearch
+      ),
+      swapSearch
+    );
+    manualSwapRef.current.add(segKey(seg));
+    commitSegments(
+      hotelSegments.map((h, i) => (i === swapIndex ? swapped : h)),
+      segs
+    );
+    setAnchorMisses((prev) => {
+      const next = { ...prev };
+      delete next[segKey(seg)]; // chosen by hand - nothing to explain
+      return next;
+    });
+    // The same city's LATER segments (the return leg) follow to the new
+    // hotel - unless the customer chose that segment's hotel by hand too.
+    // Never backwards: swapping the return leg is choosing a different hotel
+    // for it, so the first nights keep theirs (Alon 29.09). Their searches
+    // are cached from the auto-pick, so this spends no new search.
+    const followers = segs
+      .map((s, i) => ({ s, i }))
+      .filter(
+        ({ s, i }) =>
+          i > swapIndex &&
+          s.city === seg.city &&
+          !manualSwapRef.current.has(segKey(s))
+      );
+    if (!followers.length) return;
+    const run = segmentRunRef.current;
+    (async () => {
+      const moved: { i: number; hotel: OrderHotel }[] = [];
+      const missed: Record<string, string> = {};
+      const followed: string[] = [];
+      for (const { s, i } of followers) {
+        const search = await searchSegment(s, new AbortController().signal).catch(
+          () => null
+        );
+        if (run !== segmentRunRef.current) return; // the split changed meanwhile
+        const again = sameHotelIn(s, search, swapped);
+        if (again) {
+          moved.push({ i, hotel: again });
+          followed.push(segKey(s));
+        } else if (swapped.name) {
+          missed[segKey(s)] = swapped.name;
+        }
+      }
+      const current = segmentsRef.current;
+      if (!current || run !== segmentRunRef.current) return;
+      if (moved.length) {
+        commitSegments(
+          current.map((h, i) => moved.find((m) => m.i === i)?.hotel ?? h),
+          segs
+        );
+      }
+      setAnchorMisses((prev) => {
+        const next = { ...prev, ...missed };
+        followed.forEach((k) => delete next[k]);
+        return next;
+      });
+    })();
   };
 
   const hotelKinds: HotelKind[] = useMemo(
@@ -685,6 +1241,7 @@ export const HotelSelection = () => {
 
   // Default-select the cheapest offline hotel once it loads (and nothing is selected yet)
   useEffect(() => {
+    if (splitActive) return; // segments own the pick
     if (
       offlineHotels.length > 0 &&
       (!selectedHotelId || !mergedHotelsInfo[selectedHotelId])
@@ -861,7 +1418,9 @@ export const HotelSelection = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
-                  showTooltip={true}
+                  // Not over the full-screen "החלפת מלון" modal (the tooltip
+                  // layer sits above modals).
+                  showTooltip={swapIndex == null}
                   tooltipText="רוצים תאריכים אחרים? בחרו כאן"
                 />
                 <button
@@ -880,6 +1439,32 @@ export const HotelSelection = () => {
         </div>
       </div>
       <div dir="rtl" className="px-4 lg:px-6">
+        {/* Two-city events only - renders nothing otherwise. */}
+        <div className="mb-2 flex flex-col gap-3 empty:hidden lg:mb-4">
+          <LodgingToggle
+            event={event}
+            city={lodgingCity}
+            segments={splitActive ? splitSegments : null}
+            checkin={stayIn}
+            checkout={stayOut}
+            editing={editingSplit}
+            hintAllowed={!returnToSummary && !packageLocked}
+            onPickCity={handlePickCity}
+            onPickSplit={handlePickSplit}
+            onEditSplit={toggleSplitEditor}
+          />
+          {editingSplit && splitActive && splitNights && (
+            <SplitEditor
+              key={editorKey}
+              event={event}
+              initialNights={splitNights}
+              recommended={proposedSplit(event, stayIn, stayOut)}
+              onApply={handleApplySplit}
+              onCancel={() => setEditingSplit(false)}
+            />
+          )}
+        </div>
+        {!splitActive && (
         <Skeleton visible={isFetching || isProcessingHotels}>
           {/* Desktop: 3 cards in a row */}
           <div
@@ -996,7 +1581,29 @@ export const HotelSelection = () => {
             </div>
           </div>
         </Skeleton>
+        )}
       </div>
+      {splitActive ? (
+        // Split stay: one block per segment replaces the list + filters.
+        <div className="w-full px-4 pb-24 lg:px-6 lg:pb-28" dir="rtl">
+          <SegmentsList
+            event={event}
+            segments={splitSegments}
+            hotels={hotelSegments}
+            anchorMisses={splitSegments.map((s) => anchorMisses[segKey(s)] ?? null)}
+            loading={segmentsLoading}
+            error={segmentsError?.message ?? null}
+            onRetry={
+              segmentsError?.retry ? () => setSplitRunKey((k) => k + 1) : undefined
+            }
+            minPrice={event.base_hotel_price}
+            persons={totalPersons}
+            onSwap={openSwap}
+            onAddBreakfast={addBreakfast}
+            onRemoveBreakfast={removeBreakfast}
+          />
+        </div>
+      ) : (
       <div
         className={cn(
           "flex flex-row lg:gap-4 gap-2 items-start w-full",
@@ -1037,8 +1644,22 @@ export const HotelSelection = () => {
               // (dates/guests/distance) runs - gating on "no hotels" used to drop
               // us into the plain skeleton branch and lose the animation.
               <FlightLoadingTransition
-                title={flightSkipped ? "מחפשים לכם את המלונות הטובים ביותר" : "!?כבר הספקתם לבחור טיסות"}
-                subtitle={flightSkipped ? "ממש עוד רגע יופיעו המלונות" : "ממש עוד רגע יופיעו גם המלונות"}
+                title={
+                  // A re-search (dates / guests / lodging city) already has hotels
+                  // on screen - "did you pick flights yet?!" reads wrong there (Alon 24.09).
+                  hotelsData.data?.data?.hotels?.length
+                    ? "אנחנו מכינים עבורכם את החבילה"
+                    : flightSkipped
+                      ? "מחפשים לכם את המלונות הטובים ביותר"
+                      : "!?כבר הספקתם לבחור טיסות"
+                }
+                subtitle={
+                  hotelsData.data?.data?.hotels?.length
+                    ? `ממש עוד רגע יופיעו המלונות ב${cityName(event, lodgingCity)}`
+                    : flightSkipped
+                      ? "ממש עוד רגע יופיעו המלונות"
+                      : "ממש עוד רגע יופיעו גם המלונות"
+                }
                 showHotelOnly
                 className="py-12"
               />
@@ -1066,6 +1687,31 @@ export const HotelSelection = () => {
           </div>
         </ScrollArea.Autosize>
       </div>
+      )}
+      <SegmentHotelModal
+        opened={swapIndex != null}
+        onClose={() => setSwapIndex(null)}
+        title={
+          swapIndex != null && splitSegments[swapIndex]
+            ? `החלפת מלון · ${cityName(event, splitSegments[swapIndex].city)}`
+            : "החלפת מלון"
+        }
+        search={swapSearch}
+        loading={swapLoading}
+        minPrice={
+          // Pro-rata share of the base for this segment's nights - the same
+          // yardstick SegmentsList prints the block's delta against.
+          swapIndex != null && splitSegments[swapIndex]
+            ? (event.base_hotel_price * splitSegments[swapIndex].nights) /
+              (splitSegments.reduce((n, s) => n + s.nights, 0) || 1)
+            : event.base_hotel_price
+        }
+        persons={totalPersons}
+        selectedHotelId={
+          swapIndex != null ? hotelSegments?.[swapIndex]?.id : undefined
+        }
+        onPick={handleSwapPick}
+      />
     </div>
   );
 };

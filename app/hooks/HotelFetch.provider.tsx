@@ -38,6 +38,7 @@ const requestKey = ({
   dateRange,
   radius,
   guests,
+  location,
 }: FetchHotelsParams): string =>
   JSON.stringify({
     eventId,
@@ -45,6 +46,10 @@ const requestKey = ({
     checkout: dayjs(dateRange[1]?.toDateString()).format("YYYY-MM-DD"),
     radius,
     guests,
+    // Lodging city: the flight city and the event city are two different
+    // searches for the same event - without the coords they would coalesce.
+    lat: Number(location?.latitude ?? 0).toFixed(4),
+    lon: Number(location?.longitude ?? 0).toFixed(4),
   });
 
 export const HotelFetchContext = createContext<HotelFetch>({} as HotelFetch);

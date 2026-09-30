@@ -2,7 +2,7 @@ import validator from "validator";
 import type { AddedBagsInfo, OrderHotel } from "@/lib/app.types";
 import type { Rate } from "@/lib/hotel.type";
 import type { HotelsData } from "@/app/hooks/HotelFetch.provider";
-import { sameRateTerms } from "@/lib/hotelRateTerms";
+import { rateIsRefundable, sameRateTerms } from "@/lib/hotelRateTerms";
 
 export type Fields = "firstName" | "lastName" | "phone" | "email";
 
@@ -143,6 +143,22 @@ const isSameRoom = (a: Rate | undefined, b: Rate): boolean =>
   a.room_data_trans?.main_name === b.room_data_trans?.main_name &&
   a.room_data_trans?.bedding_type === b.room_data_trans?.bedding_type;
 
+/**
+ * The same hotel again on other dates (a split stay that comes back to a city,
+ * Dor 28.09): of that hotel's rates, the one closest to the rate picked before -
+ * same room first, then same breakfast, then same refundability; the cheapest
+ * wins a tie (rates arrive cheapest-first). Null when the hotel has no rates.
+ */
+export const closestRate = (rates: Rate[], ref: Rate | undefined): Rate | null => {
+  if (!rates.length) return null;
+  if (!ref) return rates[0];
+  const score = (r: Rate) =>
+    (isSameRoom(ref, r) ? 4 : 0) +
+    (!!r.meal_data?.has_breakfast === !!ref.meal_data?.has_breakfast ? 2 : 0) +
+    (rateIsRefundable(r) === rateIsRefundable(ref) ? 1 : 0);
+  return rates.reduce((best, r) => (score(r) > score(best) ? r : best), rates[0]);
+};
+
 /** Same sum as lib/price.utils getTotalPersons - kept local so this module
  *  stays free of that file's JSX (and testable under plain vitest). */
 const totalGuests = (rooms: { adults: number; children: number[] }[] | undefined): number =>
@@ -224,4 +240,66 @@ export const findBreakfastUpgrade = (
   const deltaUsd = cheapestPrice - currentPrice;
   if (deltaUsd < 0) return null;
   return { rate: cheapest, deltaUsd };
+};
+
+/** The breakfast rate swap: the charge moves by EXACTLY the shown delta
+ *  (never the sibling rate's raw amount - 23.8), the old pick kept so
+ *  "הסרה" can restore it. */
+export const withBreakfast = (
+  hotel: OrderHotel,
+  upgrade: BreakfastUpgrade
+): OrderHotel => ({
+  ...hotel,
+  rate: upgrade.rate,
+  price: String(+hotel.price + upgrade.deltaUsd),
+  breakfast_upgrade: {
+    delta_usd: upgrade.deltaUsd,
+    prev_price: hotel.price,
+    prev_rate: hotel.rate,
+    prev_match_hash: hotel.rate?.match_hash,
+    prev_refundable: rateIsRefundable(hotel.rate),
+  },
+});
+
+export const withoutBreakfast = (hotel: OrderHotel): OrderHotel => {
+  const upgrade = hotel.breakfast_upgrade;
+  if (!upgrade?.prev_rate) return hotel;
+  return {
+    ...hotel,
+    rate: upgrade.prev_rate,
+    price: upgrade.prev_price,
+    breakfast_upgrade: undefined,
+  };
+};
+
+/** A split-stay segment's breakfast upsell - captured from the segment's own
+ *  search when it was picked (HotelSelection), since the provider only keeps
+ *  the main list's search. Null once added or when the rate has breakfast. */
+export const segmentBreakfastOffer = (
+  hotel: OrderHotel | undefined
+): BreakfastUpgrade | null =>
+  hotel?.breakfast_offer &&
+  !hotel.breakfast_upgrade &&
+  !hotel.rate?.meal_data?.has_breakfast
+    ? { rate: hotel.breakfast_offer.rate, deltaUsd: hotel.breakfast_offer.delta_usd }
+    : null;
+
+/** The hotel as it is saved on the reservation: no in-session restore anchors
+ *  (breakfast_offer / breakfast_upgrade.prev_rate are full Rate objects) and
+ *  no segment card photos; the swapped-out rate's match_hash + refundability
+ *  ride along for ops. */
+export const persistableHotel = (hotel: OrderHotel): OrderHotel => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { breakfast_offer, segment_card, ...rest } = hotel;
+  return rest.breakfast_upgrade
+    ? {
+        ...rest,
+        breakfast_upgrade: {
+          delta_usd: rest.breakfast_upgrade.delta_usd,
+          prev_price: rest.breakfast_upgrade.prev_price,
+          prev_match_hash: rest.breakfast_upgrade.prev_match_hash,
+          prev_refundable: rest.breakfast_upgrade.prev_refundable,
+        },
+      }
+    : rest;
 };

@@ -1,9 +1,11 @@
 import { Event } from "@/lib/app.types";
+import type { LodgingPoint } from "@/lib/events/lodging";
 import { HotelResponse, HotelsInfoClient } from "@/lib/hotel.type";
 import dayjs from "dayjs";
 
 export type FetchHotelsParams = {
-  location: Event["location"];
+  // The flight city (event.location) or the event city (lodgingLocation()).
+  location: Event["location"] | LodgingPoint;
   radius?: number;
   dateRange: [Date | null, Date | null];
   guests: {

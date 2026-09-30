@@ -26,6 +26,7 @@ import {
   plainText,
   type EventTaxonomyInfo,
 } from "./metaCatalog";
+import { isTicketOnlyEvent } from "@/lib/events/price";
 
 /**
  * Meta marks rating_count + user_rating "required", but we have NO ratings
@@ -223,9 +224,11 @@ export function buildActivityItem(
   const fromCms = plainText(event.description || "");
   const generated = `${name} ב${city || "חו״ל"}, ${d.getUTCDate()}.${
     d.getUTCMonth() + 1
-  }.${d.getUTCFullYear()}. כרטיס רשמי לאירוע${
-    event.skip_flight ? " ומלון" : ", טיסה ומלון"
-  } - חבילה שאתם מרכיבים בעצמכם.`;
+  }.${d.getUTCFullYear()}. ${
+    isTicketOnlyEvent(event)
+      ? "כרטיס רשמי לאירוע - כרטיס בלבד."
+      : `כרטיס רשמי לאירוע${event.skip_flight ? " ומלון" : ", טיסה ומלון"} - חבילה שאתם מרכיבים בעצמכם.`
+  }`;
   const description = fromCms && fromCms !== title ? fromCms : generated;
 
   // Category names carry stray whitespace in the DB ("Football ").

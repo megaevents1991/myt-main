@@ -27,7 +27,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useFetchAffiliate, useOrderVars } from "./hooks";
+import { useFetchAffiliate, useOrderVars, useSegmentBreakfast } from "./hooks";
+import { cityName, hasEventCity } from "@/lib/events/lodging";
 import { trackEvent, getUTMParams } from "@/lib/mixpanel";
 import Image from "next/image";
 import Link from "next/link";
@@ -37,7 +38,10 @@ import {
   type Fields,
   findBreakfastUpgrade,
   getAddedBagsTotalUsd,
+  persistableHotel,
   validate,
+  withBreakfast,
+  withoutBreakfast,
 } from "./order-review.utils";
 import { LoaderWrapper } from "@/components/ui/loader";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -58,7 +62,6 @@ import { ButtonSummary } from "./OrderSummary/ButtonSummary";
 import { MobileHeader } from "./OrderSummary/MobileHeader";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { useBagPricing } from "./hooks/useBagPricing";
-import { rateIsRefundable } from "@/lib/hotelRateTerms";
 
 const TermsError = () => (
   <p className="text-sm text-red-500 text-center mt-1">
@@ -98,6 +101,7 @@ export default function OrderReview({
     flightSkipped,
     setFlightSkipped,
     setReturnToSummary,
+    hotelSegments,
   } = useContext(OrderContext);
   // Agent-locked prepared package - the summary's edit affordances go inert.
   // packageAdjustPerPerson is the agent's own price on that package (item 4).
@@ -252,40 +256,30 @@ export default function OrderReview({
   // hotelsData search for different dates (package-prefilled / resumed
   // order / a later date change) - see order-review.utils.ts for the exact
   // guards.
+  // Off on a split stay: the swap would move `hotel` away from
+  // hotelSegments[0] (the invariant every segment reader relies on).
   const breakfastUpgrade = useMemo(
-    () => findBreakfastUpgrade(selectedHotel, hotelsData),
-    [selectedHotel, hotelsData]
+    () =>
+      hotelSegments && hotelSegments.length > 1
+        ? null
+        : findBreakfastUpgrade(selectedHotel, hotelsData),
+    [selectedHotel, hotelsData, hotelSegments]
   );
+  // Charge moves by EXACTLY the delta the button showed (clamped ≥ 0 in
+  // findBreakfastUpgrade); the previous pick is kept so "הסרה" can restore it
+  // - mirrors the bag toggles. prev_rate is in-session only (stripped before
+  // persisting).
   const handleAddBreakfast = useCallback(() => {
     if (!selectedHotel || !breakfastUpgrade) return;
-    setHotel({
-      ...selectedHotel,
-      rate: breakfastUpgrade.rate,
-      // Charge moves by EXACTLY the delta the button showed (clamped ≥ 0 in
-      // findBreakfastUpgrade) - never the sibling rate's raw amount, which
-      // can sit BELOW the current rate and used to LOWER the total (23.8).
-      price: String(+selectedHotel.price + breakfastUpgrade.deltaUsd),
-      // Keeps the previous pick so "הסרה" can restore it - mirrors the bag
-      // toggles. prev_rate is in-session only (stripped before persisting).
-      breakfast_upgrade: {
-        delta_usd: breakfastUpgrade.deltaUsd,
-        prev_price: selectedHotel.price,
-        prev_rate: selectedHotel.rate,
-        prev_match_hash: selectedHotel.rate?.match_hash,
-        prev_refundable: rateIsRefundable(selectedHotel.rate),
-      },
-    });
+    setHotel(withBreakfast(selectedHotel, breakfastUpgrade));
   }, [selectedHotel, breakfastUpgrade, setHotel]);
   const handleRemoveBreakfast = useCallback(() => {
-    const upgrade = selectedHotel?.breakfast_upgrade;
-    if (!selectedHotel || !upgrade?.prev_rate) return;
-    setHotel({
-      ...selectedHotel,
-      rate: upgrade.prev_rate,
-      price: upgrade.prev_price,
-      breakfast_upgrade: undefined,
-    });
+    if (!selectedHotel?.breakfast_upgrade?.prev_rate) return;
+    setHotel(withoutBreakfast(selectedHotel));
   }, [selectedHotel, setHotel]);
+  // Split stay: breakfast per hotel, from each segment's own search.
+  const { addBreakfast: addSegmentBreakfast, removeBreakfast: removeSegmentBreakfast } =
+    useSegmentBreakfast();
 
   // Baggage: live Amadeus Flight Offers Pricing (include=bags) for the
   // selected offer - one call per flight id, skipped entirely when upsells
@@ -1306,7 +1300,12 @@ export default function OrderReview({
         event_id: event?.id || 0,
         date: event ? new Date(event.date) : new Date(),
         name: event?.name || "",
-        location_name: event?.location.name || "",
+        // Two-city event: the game's city and the flight's, no country
+        // (Alon 25.09) - the customer mail's "מיקום" reads this.
+        location_name:
+          event && hasEventCity(event)
+            ? `${cityName(event, "event")} · טיסה ל${cityName(event, "flight")}`
+            : event?.location.name || "",
         number_of_ticket: numberOfEventTickets,
         category: eventTicket.category,
         event_type: event?.type || "",
@@ -1352,22 +1351,14 @@ export default function OrderReview({
       hotel_order_info: skipHotel
         ? {}
         : selectedHotel
-          ? {
-              ...selectedHotel,
-              ...(selectedHotel.breakfast_upgrade
-                ? {
-                    breakfast_upgrade: {
-                      delta_usd: selectedHotel.breakfast_upgrade.delta_usd,
-                      prev_price: selectedHotel.breakfast_upgrade.prev_price,
-                      prev_match_hash:
-                        selectedHotel.breakfast_upgrade.prev_match_hash,
-                      prev_refundable:
-                        selectedHotel.breakfast_upgrade.prev_refundable,
-                    },
-                  }
-                : {}),
-            }
+          ? persistableHotel(selectedHotel)
           : {},
+      // Split stay: every segment in night order (hotel_order_info above is
+      // the first one). null = the usual single hotel.
+      hotel_segments:
+        !skipHotel && hotelSegments && hotelSegments.length > 1
+          ? hotelSegments.map(persistableHotel)
+          : null,
       user_shown_price: finalPurchasePrice,
       exchange_rate_usd_ils_100: usd_ils_rate * 100,
       final_purchase_price_ils: finalPurchasePriceILS,
@@ -1900,6 +1891,7 @@ export default function OrderReview({
                   event={event}
                   selectedFlight={selectedFlight!}
                   selectedHotel={selectedHotel!}
+                  hotelSegments={hotelSegments}
                   eventTicket={eventTicket}
                   numberOfEventTickets={numberOfEventTickets}
                   flightPriceAddition={flightPriceAddition}
@@ -1914,6 +1906,8 @@ export default function OrderReview({
                   breakfastUpgrade={breakfastUpgrade}
                   onAddBreakfast={handleAddBreakfast}
                   onRemoveBreakfast={handleRemoveBreakfast}
+                  onAddSegmentBreakfast={addSegmentBreakfast}
+                  onRemoveSegmentBreakfast={removeSegmentBreakfast}
                   bagOptions={bagOptions}
                   fareUpgrade={fareUpgrade}
                   onUpgradeFare={handleUpgradeFare}

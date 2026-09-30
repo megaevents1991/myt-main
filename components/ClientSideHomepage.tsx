@@ -28,7 +28,7 @@ import { GoogleReviews } from "@/components/GoogleReviews";
 import { ArtistBanners } from "@/components/ArtistBanners";
 import { HubTilesRow } from "@/components/vertical-hub/HubTilesRow";
 import type { GoogleReviewsData } from "@/lib/googleReviews";
-import { computePackagePrice, isEventSoldOut } from "@/lib/events/price";
+import { computePackagePrice, isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
 import { EventStatusBadge } from "@/components/EventStatusBadge";
 import { HeroCarousel, type HeroCarouselItem } from "@/components/HeroCarousel";
 import { TrustBadges } from "@/components/ui/TrustBadges";
@@ -2179,10 +2179,10 @@ function EventCard({ event, allEvents, artists, footballTeams, priority, loading
                   </div>
                 )}
                 <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
-                  לנוסע · כולל טיסה, מלון וכרטיס
+                  {isTicketOnlyEvent(event) ? "לכרטיס · כרטיס בלבד" : "לנוסע · כולל טיסה, מלון וכרטיס"}
                 </p>
               </div>
-              <PackageIcons cycle />
+              <PackageIcons cycle ticketOnly={isTicketOnlyEvent(event)} />
             </div>
 
             {/* Same size as before - shape (rounded-md) + font match the artist-page CTA. */}

@@ -24,29 +24,34 @@ const parts: { key: PackagePart; label: string; Icon: typeof Plane }[] = [
 export const PackageIcons = ({
   highlight,
   cycle = false,
+  ticketOnly = false,
   className,
 }: {
   highlight?: PackagePart;
   /** Travel the accent flight → hotel → ticket in a loop. */
   cycle?: boolean;
+  /** Ticket-only event: only the ticket icon, static accent (nothing to hop to). */
+  ticketOnly?: boolean;
   className?: string;
 }) => {
   // Start on the ticket (the product's anchor part) and hop from there.
   const [step, setStep] = useState(2);
+  const shown = ticketOnly ? parts.filter((p) => p.key === "ticket") : parts;
 
   useEffect(() => {
-    if (!cycle) return;
+    if (!cycle || ticketOnly) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = setInterval(() => setStep((s) => (s + 1) % parts.length), 1400);
     return () => clearInterval(id);
-  }, [cycle]);
+  }, [cycle, ticketOnly]);
 
-  const active: PackagePart | undefined =
-    highlight ?? (cycle ? parts[step].key : undefined);
+  const active: PackagePart | undefined = ticketOnly
+    ? "ticket"
+    : highlight ?? (cycle ? parts[step].key : undefined);
 
   return (
     <ul className={cn("flex items-start gap-4", className)}>
-      {parts.map(({ key, label, Icon }) => {
+      {shown.map(({ key, label, Icon }) => {
         const isActive = key === active;
         return (
           <li
