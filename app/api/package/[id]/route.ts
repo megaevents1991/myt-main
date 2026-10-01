@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getEvents } from "@/lib/eventsData";
 import { isEventSoldOut } from "@/lib/events/price";
+import { isMegaEventsFlight } from "@/lib/flights/company";
 import { getPartnerSession } from "@/lib/partner-auth";
 import type { Flight, OrderHotel } from "@/lib/app.types";
 
@@ -161,15 +162,22 @@ export async function GET(
       flight = null;
       flightNeedsRepick = true;
     } else if (flight.isOffline && flight.offlineId != null) {
+      // "*" and not a column list: the ownership check reads company_id, which
+      // may not exist yet when this deploys (see lib/flights/company.ts).
       const { data: flightRow } = await supabase
         .from("flights")
-        .select("initial_quantity, consumed_quantity")
+        .select("*")
         .eq("id", flight.offlineId)
         .maybeSingle();
       const remaining =
         (flightRow?.initial_quantity ?? 0) -
         (flightRow?.consumed_quantity ?? 0);
-      if (!flightRow || remaining < row.num_travelers) {
+      // A block of another company is treated like a flight that is gone.
+      if (
+        !flightRow ||
+        !isMegaEventsFlight(flightRow) ||
+        remaining < row.num_travelers
+      ) {
         flight = null;
         flightNeedsRepick = true;
       }

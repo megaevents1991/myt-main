@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
 import { Coupon, Flight, OrderData } from "@/lib/app.types";
 import { offerIncludesCheckedBag } from "@/lib/flights/elal";
+import { isMegaEventsFlight } from "@/lib/flights/company";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
 import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
@@ -715,12 +716,19 @@ async function holdOfflineInventory(orderData: OrderData) {
       | { offlineId?: number; numOfTravelers?: number }
       | undefined;
     if (flightInfo?.offlineId) {
+      // "*" and not a column list: the ownership check reads company_id, which
+      // may not exist yet when this deploys (see lib/flights/company.ts).
       const { data: flightRow } = await supabase
         .from("flights")
-        .select("consumed_quantity")
+        .select("*")
         .eq("id", flightInfo.offlineId)
         .single();
-      if (flightRow) {
+      if (flightRow && !isMegaEventsFlight(flightRow)) {
+        console.error(
+          "[confirm-order] offline flight belongs to another company - inventory not held:",
+          flightInfo.offlineId,
+        );
+      } else if (flightRow) {
         await supabase
           .from("flights")
           .update({

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/lib/app.types";
+import { isMegaEventsFlight } from "@/lib/flights/company";
 import {
   isLockedPackageSoldOut,
   type LockedFlightInventory,
@@ -35,10 +36,9 @@ export async function markLockedPackagesSoldOut(
   try {
     const [flightsResult, allocationsResult, consumedResult] =
       await Promise.all([
-        supabase
-          .from("flights")
-          .select("id, initial_quantity, consumed_quantity, is_deleted")
-          .in("id", flightIds),
+        // "*" and not a column list: the ownership check reads company_id,
+        // which may not exist yet when this deploys (lib/flights/company.ts).
+        supabase.from("flights").select("*").in("id", flightIds),
         supabase
           .from("flight_event_allocations")
           .select("event_id, flight_id, allocated_seats")
@@ -59,8 +59,12 @@ export async function markLockedPackagesSoldOut(
       return events;
     }
 
+    // A block of another company is not this site's to sell: left out of the
+    // map, it reads as a missing flight and the package is marked sold out.
     const flightById = new Map<number, LockedFlightInventory>(
-      (flightsResult.data ?? []).map((flight) => [flight.id, flight]),
+      (flightsResult.data ?? [])
+        .filter(isMegaEventsFlight)
+        .map((flight) => [flight.id, flight as LockedFlightInventory]),
     );
 
     // Keyed per (event, flight): the same flight can carry a different
