@@ -36,8 +36,9 @@ import { ISRAELI_AIRLINE_CODES } from "@/lib/flightCarriers";
 import { cn } from "@/lib/utils";
 import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import dayjs from "dayjs";
-import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
+import { getDefaultDateRange, getMinTravelDate } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
+import { flightSearchDates, sameFlight } from "@/lib/order/draft";
 import { parseDuration } from "@/lib/parseDuration";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { lodgingLocation, placeLabel } from "@/lib/events/lodging";
@@ -106,6 +107,7 @@ export const FlightSelection = () => {
     personLink,
     returnToSummary,
     lodgingCity,
+    orderResume,
   } = useContext(OrderContext);
 
   // A customer who skipped the flight can come back and add one ("+ להוספה").
@@ -156,8 +158,17 @@ export const FlightSelection = () => {
   // getDefaultDateRange (not raw def_date_depart/return) - it clamps stale
   // event defaults to the min travel date so the initial search never asks
   // Amadeus for a same-day/past departure.
+  // Order draft (lib/order/draft.ts): a refresh on this step comes back to the
+  // dates the customer had searched and - when the new search still offers it -
+  // the flight they had picked, instead of the default dates and the best
+  // flight. Undefined on every ordinary visit; a pick by hand ends it.
+  const resumeFlightRef = useRef<Flight | undefined>(
+    orderResume?.step === 2 ? orderResume.flight : undefined
+  );
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
-    getDefaultDateRange(event)
+    () =>
+      flightSearchDates(resumeFlightRef.current, getMinTravelDate()) ??
+      getDefaultDateRange(event)
   );
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"best" | "cheapest" | "israeli">("best");
@@ -347,7 +358,13 @@ export const FlightSelection = () => {
         directOnly,
       }));
       setFlights(flights);
-      setFlight(pickBestFlight(visibleFlights));
+      // After a refresh: the same itinerary in this fresh search (new offer,
+      // today's price), when it is still among the cards - else the best one.
+      const resumed = resumeFlightRef.current;
+      setFlight(
+        (resumed && visibleFlights.find((f) => sameFlight(f, resumed))) ||
+          pickBestFlight(visibleFlights)
+      );
       return flights;
     } catch (err) {
       console.error(err);
@@ -393,6 +410,7 @@ export const FlightSelection = () => {
 
   const handleFlightChange = useCallback(
     (value: string) => {
+      resumeFlightRef.current = undefined;
       setFlight(filteredFlights.find((f) => f.id === value));
     },
     [filteredFlights, setFlight]

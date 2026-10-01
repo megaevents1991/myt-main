@@ -1,7 +1,13 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { defaultCity, LodgingCity, NightAssign } from "@/lib/events/lodging";
+import { ownedByLink, type OrderResume } from "@/lib/order/draft";
+import {
+  clearStoredOrder,
+  readOrderDraft,
+  writeOrderDraft,
+} from "@/lib/order/draftStorage";
 import { OrderContext, PersonLink } from "../app.context";
 import {
   Event,
@@ -60,8 +66,102 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   const [lodgingCity, setLodgingCity] = useState<LodgingCity>("flight");
   const [hotelSegments, setHotelSegments] = useState<OrderHotel[] | null>(null);
   const [splitNights, setSplitNights] = useState<NightAssign[] | null>(null);
+
+  // ── Order draft (lib/order/draft.ts): a refresh keeps the order ────────────
+  // The pick the customer was in the middle of on steps 1-2, for that step only.
+  const [orderResume, setOrderResume] = useState<OrderResume | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null);
+  // Saving starts only after the stored draft was looked at - earlier it would
+  // overwrite it with the empty order every page opens on.
+  const [draftOn, setDraftOn] = useState(false);
+  const draftClosedRef = useRef(false);
+
+  // When the event lands: bring back the order this tab was holding for it, or
+  // start from the event's default lodging city. An effect, never an initial
+  // state - the first render must match the server's step-1 HTML. It runs after
+  // the ticket step's own auto-select (child effects first), so the restored
+  // ticket is the one that stays.
   useEffect(() => {
-    if (event) setLodgingCity(defaultCity(event));
+    if (!event) return;
+    // ?orderId / ?pkg bring their own order from the server: nothing is
+    // restored over them and nothing of theirs is recorded.
+    const owned = ownedByLink(window.location.search);
+    const saved = owned ? null : readOrderDraft(event);
+    if (!saved) {
+      setLodgingCity(defaultCity(event));
+      setDraftOn(!owned);
+      return;
+    }
+    setNumberOfEventTickets(saved.numberOfEventTickets);
+    setPlaneTickets(saved.planeTickets);
+    setCurrentMinTicketPrice(saved.currentMinTicketPrice);
+    setEventTicket(saved.eventTicket ?? ({} as OrderTicket));
+    setFlight(saved.flight ?? undefined);
+    setFlightSkipped(saved.flightSkipped);
+    setHotel(saved.hotel ?? undefined);
+    setSkipHotel(saved.skipHotel);
+    setSkippedHotelPricePerGuest(saved.skippedHotelPricePerGuest);
+    setLodgingCity(saved.lodgingCity);
+    setHotelSegments(saved.hotelSegments);
+    setSplitNights(saved.splitNights);
+    setReturnToSummary(saved.returnToSummary);
+    setStep(saved.step);
+    setOrderResume(saved.resume);
+    setDraftRestoredAt(Date.now());
+    setDraftOn(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.id]);
+
+  // The hint belongs to the step the customer was on - moving on drops it.
+  useEffect(() => {
+    if (orderResume && orderResume.step !== step) setOrderResume(null);
+  }, [step, orderResume]);
+
+  useEffect(() => {
+    if (!draftOn || !event || draftClosedRef.current) return;
+    writeOrderDraft(event.id, {
+      step,
+      returnToSummary,
+      numberOfEventTickets,
+      planeTickets,
+      currentMinTicketPrice,
+      eventTicket: eventTicket.id ? eventTicket : null,
+      // The flight step clears the flight while it searches - a second refresh
+      // in those seconds must still know which flight the customer had.
+      flight: flight ?? (orderResume?.step === 2 ? orderResume.flight : null),
+      flightSkipped,
+      hotel: hotel ?? null,
+      skipHotel,
+      skippedHotelPricePerGuest,
+      lodgingCity,
+      hotelSegments,
+      splitNights,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    draftOn,
+    event?.id,
+    step,
+    returnToSummary,
+    numberOfEventTickets,
+    planeTickets,
+    currentMinTicketPrice,
+    eventTicket,
+    flight,
+    flightSkipped,
+    hotel,
+    skipHotel,
+    skippedHotelPricePerGuest,
+    lodgingCity,
+    hotelSegments,
+    splitNights,
+    orderResume,
+  ]);
+
+  // The order went through: forget the draft and the typed form, and stop saving.
+  const closeOrderDraft = useCallback(() => {
+    draftClosedRef.current = true;
+    if (event) clearStoredOrder(event.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.id]);
 
@@ -166,6 +266,9 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setHotelSegments,
           splitNights,
           setSplitNights,
+          orderResume,
+          draftRestoredAt,
+          closeOrderDraft,
         }}
       >
         <HotelFetchProvider>

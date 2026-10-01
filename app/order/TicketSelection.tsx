@@ -264,7 +264,14 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     setPlaneTickets,
     setFlight,
     setHotel,
+    orderResume,
   } = useContext(OrderContext);
+
+  // Order draft (lib/order/draft.ts): after a refresh the customer's own ticket
+  // stays selected instead of the cheapest - until they pick or change the
+  // quantity themselves. Undefined on every ordinary visit.
+  const resumeTicketId = orderResume?.step === 1 ? orderResume.ticketId : undefined;
+  const pickedByHandRef = useRef(false);
 
   const matches = useMediaQuery("(min-width: 1024px)");
 
@@ -573,6 +580,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     }
     setErrorMessage("");
     setOverMaxRequest(null);
+    pickedByHandRef.current = true;
     // Party size changed → any flight/hotel already picked (user navigated back
     // from a later step) was priced for the OLD pax count. Clear them so the
     // customer re-picks and can never pay a stale mismatched price.
@@ -698,6 +706,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       return;
     }
 
+    pickedByHandRef.current = true;
     // Always built from the effective list - the live-resolved price and the
     // ticket's supplier - never from the (possibly stale) values passed in.
     setEventTicket(
@@ -752,7 +761,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     // (picking a hidden, unmapped ticket left no card selected) and one per
     // zone - a together/split card counts as the option it opens on, so the
     // default of that card is what gets pre-selected (zoneOffers).
-    const pool =
+    const pool: ZoneOffer[] =
       displayedTickets.length > 0
         ? displayedTickets
         : withoutTwins(effectiveTickets);
@@ -764,18 +773,33 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
 
     setCheapestTicket(cheapt);
 
+    // After a refresh: the ticket the customer had, when it is still one of the
+    // cards on screen (either side of a together/split card counts) - priced
+    // from this list like any other pick, never from the stored draft.
+    const kept: PricedTicket | undefined =
+      resumeTicketId && !pickedByHandRef.current
+        ? pool
+            .flatMap((shown: ZoneOffer): PricedTicket[] =>
+              shown.seatingOptions
+                ? [shown, shown.seatingOptions.together, shown.seatingOptions.split]
+                : [shown],
+            )
+            .find((t) => t.id === resumeTicketId)
+        : undefined;
+    const chosen = kept ?? cheapt;
+
     setCurrentMinTicketPrice(cheapt.price);
-    setSelectedTicket(cheapt.id);
+    setSelectedTicket(chosen.id);
     setEventTicket(
       toOrderTicket(
-        cheapt,
+        chosen,
         event?.type,
         numberOfEventTickets,
-        seatingChoiceOf(cheapt.id),
+        seatingChoiceOf(chosen.id),
       ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveTickets, displayedTickets, numberOfEventTickets, setCurrentMinTicketPrice, setEventTicket]);
+  }, [effectiveTickets, displayedTickets, numberOfEventTickets, resumeTicketId, setCurrentMinTicketPrice, setEventTicket]);
 
   /* ── Debug panel ──────────────────────────────────────────────── */
   const debugPanel = isDebugMode && isTxEvent && (

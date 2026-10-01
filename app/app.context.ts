@@ -8,6 +8,7 @@ import {
 } from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
 import type { LodgingCity, NightAssign } from "@/lib/events/lodging";
+import type { OrderResume } from "@/lib/order/draft";
 
 /** Link to the artist/football-team page this event belongs to (resolved
  *  server-side by name match) - href + ready-made Hebrew label. */
@@ -100,6 +101,15 @@ type AppContext = {
    *  split editor re-opens on it and a flight-date change can refit it). */
   splitNights: NightAssign[] | null;
   setSplitNights: Dispatch<SetStateAction<NightAssign[] | null>>;
+  /** Order draft (lib/order/draft.ts): after a refresh, the pick the customer
+   *  was in the middle of on the ticket / flight step - that step selects it
+   *  again instead of its default. Null on every ordinary visit, and as soon as
+   *  the step changes. */
+  orderResume: OrderResume | null;
+  /** When this page load restored an order from the draft; null otherwise. */
+  draftRestoredAt: number | null;
+  /** The order went through - forget the draft and the typed passenger form. */
+  closeOrderDraft: () => void;
 };
 
 export const OrderContext = createContext<AppContext>({} as AppContext);

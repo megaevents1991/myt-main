@@ -21,6 +21,7 @@ import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup, isTicketOnlyEvent } from "@/lib/events/price";
 import { defaultCity, lodgingLocation } from "@/lib/events/lodging";
+import { storedOrderPastFlight } from "@/lib/order/draftStorage";
 import type { OrderPartnerSession } from "@/lib/partner-auth/session";
 
 const shortenTicketCategory = (category: string): string => {
@@ -69,6 +70,7 @@ export const OrderForm = ({
     lodgingCity,
     setHotelSegments,
     setSplitNights,
+    draftRestoredAt,
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
@@ -115,6 +117,10 @@ export const OrderForm = ({
     if (isUS || ticketOnly) return;
     if (!event?.id) return;
     if (hotelsData?.data?.data?.hotels) return;
+    // A refresh is coming back to the hotel step or the summary: the search
+    // for the restored flight's dates (effect below) replaces this one - two
+    // would only spend a second hotel search on the same customer.
+    if (storedOrderPastFlight(event)) return;
     getHotels(
       {
         dateRange: getDefaultDateRange(event, undefined),
@@ -128,6 +134,30 @@ export const OrderForm = ({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.id]);
+
+  // A refresh brought the order back (order draft, lib/order/draft.ts) onto the
+  // hotel step or the summary: run the hotel search the flight step would have
+  // run for THIS flight's dates and party. Without it the hotel list - and the
+  // summary's breakfast upsell and hotel-skip reference - would rest on the
+  // default-dates preload above. Declared after it on purpose: the later call
+  // is the one the provider keeps. Same params as the hotel step's own search,
+  // so the two coalesce into one request.
+  useEffect(() => {
+    if (!draftRestoredAt || isUS || ticketOnly || step < 3) return;
+    if (!event?.id || (!flightSkipped && !flight?.id)) return;
+    getHotels(
+      {
+        dateRange: getDefaultDateRange(event, flightSkipped ? undefined : flight),
+        guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
+        location: lodgingLocation(event, lodgingCity),
+        radius: 2000,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
+    // Once per restore - the values read here are the restored ones.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftRestoredAt]);
 
   useEffect(() => {
     // US events are sold without hotel; if we ever land on step 3, skip to review.

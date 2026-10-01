@@ -62,6 +62,12 @@ import { ButtonSummary } from "./OrderSummary/ButtonSummary";
 import { MobileHeader } from "./OrderSummary/MobileHeader";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { useBagPricing } from "./hooks/useBagPricing";
+import { fitPassengers } from "@/lib/order/draft";
+import {
+  forgetOrderDraft,
+  readOrderForm,
+  writeOrderForm,
+} from "@/lib/order/draftStorage";
 
 const TermsError = () => (
   <p className="text-sm text-red-500 text-center mt-1">
@@ -102,6 +108,7 @@ export default function OrderReview({
     setFlightSkipped,
     setReturnToSummary,
     hotelSegments,
+    closeOrderDraft,
   } = useContext(OrderContext);
   // Agent-locked prepared package - the summary's edit affordances go inert.
   // packageAdjustPerPerson is the agent's own price on that package (item 4).
@@ -209,14 +216,16 @@ export default function OrderReview({
   const [validationErrors, setValidationErrors] = useState<
     { [key: string]: string }[]
   >(Array.from({ length: passengerCount }, () => ({})));
+  // Order draft (lib/order/draft.ts): what was typed on this step before a
+  // refresh - or before an edit of another step - read once. This step never
+  // renders on the server (every order page opens on step 1), so reading
+  // sessionStorage in an initial state cannot mismatch the HTML. A held order
+  // (?orderId) brings its own travellers and is left alone.
+  const [savedForm] = useState(() =>
+    passengersContext ? null : readOrderForm(event?.id)
+  );
   const [passengers, setPassengers] = useState(
-    passengersContext ||
-      Array.from({ length: passengerCount }, () => ({
-        firstName: "",
-        lastName: "",
-        phone: "",
-        email: "",
-      }))
+    passengersContext || fitPassengers(savedForm?.passengers, passengerCount)
   );
   const [touched, setTouched] = useState(
     Array.from({ length: passengerCount }, () => ({
@@ -228,7 +237,8 @@ export default function OrderReview({
   );
   const [termsAccepted, setTermsAccepted] = useState(
     //If there are passengers in context from existing order, assume terms were accepted, we can keep separate state for it if needed in the future
-    passengersContext ? true : false
+    // Otherwise the tick is as the customer left it before the refresh.
+    passengersContext ? true : (savedForm?.termsAccepted ?? false)
   );
   const [termsCheckboxTouched, setTermsCheckboxTouched] = useState(false);
   const {
@@ -447,6 +457,18 @@ export default function OrderReview({
   const [couponStatus, setCouponStatus] = useState<
     "idle" | "checking" | "invalid" | "applied" | "expired"
   >("idle");
+
+  // Keep what is typed here for this browser tab (order draft): a refresh, or
+  // an edit of another step, must not ask for the travellers again. Cleared
+  // when the order goes through (closeOrderDraft).
+  useEffect(() => {
+    if (isResumedOrder) return;
+    writeOrderForm(event?.id, {
+      passengers,
+      termsAccepted,
+      coupon: appliedCoupon?.code ?? null,
+    });
+  }, [passengers, termsAccepted, appliedCoupon, event?.id, isResumedOrder]);
 
   useEffect(() => {
     return () => {
@@ -686,43 +708,62 @@ export default function OrderReview({
     ? couponDiscountUsd
     : affiliateDiscountTotalUsd;
 
+  const validateCoupon = useCallback(
+    async (code: string) => {
+      setCouponStatus("checking");
+      try {
+        const response = await fetch(
+          `/api/coupons/validate?code=${encodeURIComponent(code)}&eventId=${
+            event?.id ?? ""
+          }`
+        );
+        const data = await response.json();
+        if (data?.discountType) {
+          setAppliedCoupon({
+            code: data.code || code,
+            discountType: data.discountType,
+            discountValue: data.discountValue,
+            perPerson: data.perPerson === true,
+          });
+          setCouponStatus("applied");
+        } else {
+          setAppliedCoupon(null);
+          setCouponStatus("invalid");
+        }
+      } catch (e) {
+        console.error("Coupon validation request failed:", e);
+        setAppliedCoupon(null);
+        setCouponStatus("invalid");
+      }
+    },
+    [event?.id]
+  );
+
   const applyCoupon = useCallback(async () => {
     const code = normalizeCouponCode(couponInput);
     if (!code || couponStatus === "checking") {
       if (!code && couponInput.trim()) setCouponStatus("invalid");
       return;
     }
-    setCouponStatus("checking");
-    try {
-      const response = await fetch(
-        `/api/coupons/validate?code=${encodeURIComponent(code)}&eventId=${
-          event?.id ?? ""
-        }`
-      );
-      const data = await response.json();
-      if (data?.discountType) {
-        setAppliedCoupon({
-          code: data.code || code,
-          discountType: data.discountType,
-          discountValue: data.discountValue,
-          perPerson: data.perPerson === true,
-        });
-        setCouponStatus("applied");
-      } else {
-        setAppliedCoupon(null);
-        setCouponStatus("invalid");
-      }
-    } catch (e) {
-      console.error("Coupon validation request failed:", e);
-      setAppliedCoupon(null);
-      setCouponStatus("invalid");
-    }
+    await validateCoupon(code);
     try {
       trackEvent("couponApply", { code, eventId: event?.id });
     } catch {
       /* analytics must never break the flow */
     }
-  }, [couponInput, couponStatus, event?.id]);
+  }, [couponInput, couponStatus, validateCoupon, event?.id]);
+
+  // Order draft: the coupon that was applied before a refresh is asked for
+  // again - validated like the button does, never trusted from storage (and
+  // dropped below like any other coupon on a partner-link visit).
+  useEffect(() => {
+    const code = savedForm?.coupon ? normalizeCouponCode(savedForm.coupon) : "";
+    if (!code) return;
+    setCouponInput(code);
+    validateCoupon(code);
+    // Mount only - afterwards the customer decides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);
@@ -993,7 +1034,10 @@ export default function OrderReview({
   const handleTimeout = useCallback(() => {
     setIsTimeout(true);
     setOpenModal(true);
-  }, []);
+    // The hold is over - a refresh from here must not bring the order back
+    // (the modal's button restarts it; nothing is saved again until then).
+    forgetOrderDraft(event?.id);
+  }, [event?.id]);
 
   const updatePassenger = useCallback(
     (index: number, field: Fields, value: string) => {
@@ -1448,8 +1492,11 @@ export default function OrderReview({
         if (!url) {
           throw new Error("Failed to get payment URL");
         }
+        // The order exists now - coming Back must not offer it again from the draft.
+        closeOrderDraft();
         window.location.replace(url);
       } else {
+        closeOrderDraft();
         // Redirect to the order confirmation page.
         // If this was a 24h hold (onlySave), append a query param so the confirmation screen can show hold-specific messaging.
         const basePath = `/confirmation/${result.id}/${result.newPromoterCode}`;

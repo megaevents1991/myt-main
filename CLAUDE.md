@@ -221,6 +221,38 @@ The core ordering flow lives under `/app/order/[eventId]`. The `app/order/layout
 
 State flows up through `OrderContext`: event, selected ticket, flight, hotel, passenger info, number of travelers. The `HotelFetchProvider` (`app/hooks/HotelFetch.provider.tsx`) handles hotel fetching separately from render.
 
+**A refresh keeps the order (order draft, 2026-10-01).** That state used to live in React
+only, so F5 - or a phone dropping a background tab - sent the customer back to step 1 with
+nothing. `app/order/layout.tsx` now mirrors it into `sessionStorage` (this browser tab only)
+and reads it back when the event lands. Rules are pure in `lib/order/draft.ts`
+(`lib/__tests__/orderDraft.test.ts`), storage calls in `lib/order/draftStorage.ts`:
+
+- Key `myt:order-draft:<eventId>`, 30 min from the last save (`ORDER_DRAFT_TTL_MS`), versioned
+  (`ORDER_DRAFT_VERSION` - bump it when the stored shape changes; an old draft is ignored).
+- `resumeOrder` decides what may come back: the ticket must still be on sale on the event, a
+  departed flight / a hotel whose check-in passed / a broken split are dropped, and the step
+  never runs ahead of the order (no flight -> flight step at most, no hotel -> hotel step at
+  most). A draft is never a price promise - `confirm-order` re-checks everything as before.
+- Restored in an EFFECT (never an initial state: the first render must match the server's
+  step-1 HTML), in the layout, so it runs after the ticket step's own auto-select.
+- Steps 1-2 re-run their search and pick a default when they mount; `orderResume` (context)
+  hands them the customer's own pick for that step only - the ticket (`TicketSelection`), and
+  the flight's dates + the same itinerary in the fresh search (`FlightSelection`,
+  `sameFlight`). The hotel step keeps everything before it and a split stay; a hand-picked
+  single hotel goes back to the recommended one.
+- On the hotel step / the summary `OrderForm` runs the hotel search for the restored flight's
+  dates (the mount preload is skipped then - one search, not three).
+- The summary's passenger form, terms tick and applied coupon are a second key
+  (`myt:order-form:<eventId>`, written by `OrderReview`); they also survive an edit of another
+  step. The coupon is validated again, never trusted from storage.
+- `?orderId` / `?pkg` links own their composition: nothing is restored over them or recorded
+  (`ownedByLink`); the passenger form is still remembered on a `?pkg` visit.
+- Cleared when the order goes through (`closeOrderDraft`) and when the summary's 15-minute
+  hold runs out (`forgetOrderDraft` - the travellers stay).
+
+A new piece of order state that a refresh should keep goes into `OrderDraftState`, the
+layout's save / restore, and `parseOrderDraft`.
+
 ### ISR Strategy
 
 Order pages (`/app/order/[eventId]/page.tsx`) use ISR:
