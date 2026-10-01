@@ -20,6 +20,7 @@ import {
   isoDurationToHours,
 } from "@/lib/flights/offlineStops";
 import { resolveLockedFlight } from "@/lib/flights/lockedFlight";
+import { isMegaEventsFlight } from "@/lib/flights/company";
 import {
   trackServerSideEvent,
   extractIpFromRequest,
@@ -242,9 +243,13 @@ const getOfflineFlightsFromDB = async (
 
     if (error) throw error;
 
-    // Transform DB records to Flight objects
+    // Transform DB records to Flight objects. The table is shared with other
+    // companies of the platform: a block of another company never carries an
+    // event link, so it should not be here at all - the row check makes sure a
+    // wrongly linked one is still never offered (lib/flights/company.ts).
     return flights
       ? flights
+          .filter(isMegaEventsFlight)
           .map((flight, index) =>
             transformDbFlightToFlight(
               flight,
