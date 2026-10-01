@@ -22,6 +22,11 @@ const isFootballTx = (e: Event): boolean =>
 export const isSportsEvent = (e: Event): boolean =>
   SPORTS_TYPES.has(e.type) || isFootballTx(e);
 
+/** What copy calls the event itself: "המשחק" for sports, "ההופעה" for a
+ *  concert - "ההופעה במנצ'סטר והטיסה ללונדון". */
+export const eventNounHe = (e: Event): string =>
+  isSportsEvent(e) ? "המשחק" : "ההופעה";
+
 const SPORTS_WORDS = "כדורגל ספורט משחק משחקים football";
 const MUSIC_WORDS = "הופעה הופעות קונצרט מוזיקה מוסיקה אומן concert music";
 

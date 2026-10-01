@@ -4,6 +4,7 @@ import { useState } from "react";
 import dayjs from "dayjs";
 import type { Event } from "@/lib/app.types";
 import { cityName, flipNight, MAX_SEGMENTS, NightAssign } from "@/lib/events/lodging";
+import { eventNounHe } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
 /**
@@ -58,7 +59,7 @@ export const NightStrip = ({
               </span>
               {n.date === eventDay && (
                 <span className="mt-0.5 rounded-full bg-forest px-1.5 py-[1px] text-[10px] font-bold text-white dark:bg-glow dark:text-background">
-                  המשחק
+                  {eventNounHe(event)}
                 </span>
               )}
             </button>

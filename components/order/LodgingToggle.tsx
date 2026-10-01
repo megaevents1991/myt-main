@@ -14,6 +14,7 @@ import {
   splitOffered,
   StaySegment,
 } from "@/lib/events/lodging";
+import { eventNounHe } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
 const nightsLabel = (n: number) => (n === 1 ? "לילה אחד" : `${n} לילות`);
@@ -85,6 +86,8 @@ export const LodgingToggle = ({
 
   const eventCity = cityName(event, "event");
   const flightCity = cityName(event, "flight");
+  // "המשחק" / "ההופעה" - a concert's hint must not talk about a match.
+  const eventNoun = eventNounHe(event);
   // The split's nights per city: the active split, else what the button would lay out.
   const layout = split
     ? segments!
@@ -218,7 +221,7 @@ export const LodgingToggle = ({
                       אפשר לפצל את הלינה
                     </div>
                     <p className="text-[13px] leading-snug text-muted-foreground">
-                      {`המשחק ב${eventCity} והטיסה ל${flightCity}. בפיצול נשבץ לכם ${nightsLabel(eventNights)} ב${eventCity} סביב המשחק ואת השאר ב${flightCity} - ואפשר לשנות את החלוקה.`}
+                      {`${eventNoun} ב${eventCity} והטיסה ל${flightCity}. בפיצול נשבץ לכם ${nightsLabel(eventNights)} ב${eventCity} סביב ${eventNoun} ואת השאר ב${flightCity} - ואפשר לשנות את החלוקה.`}
                     </p>
                     <div className="flex items-center gap-2 pt-1">
                       <button
