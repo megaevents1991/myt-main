@@ -705,7 +705,8 @@ export type FootballTeam = {
     heroVideoUrl?: string;
     /** #20: promo banners on the page. */
     banners?: { image_url?: string; link_url?: string; title?: string }[];
-    /** #21: image gallery URLs. */
+    /** #21: MOOD gallery URLs - this page only. Event cards rotate through the
+     *  separate `event_gallery` pool (lib/cms/people.ts `eventGallery`). */
     gallery?: string[];
     /** #24: performance videos (YouTube). */
     videos?: { url?: string; label?: string }[];
@@ -761,7 +762,8 @@ export type Artist = {
     heroVideoUrl?: string;
     /** #20: promo banners on the page. */
     banners?: { image_url?: string; link_url?: string; title?: string }[];
-    /** #21: image gallery URLs. */
+    /** #21: MOOD gallery URLs - this page only. Event cards rotate through the
+     *  separate `event_gallery` pool (lib/cms/people.ts `eventGallery`). */
     gallery?: string[];
     /** #24: performance videos (YouTube). */
     videos?: { url?: string; label?: string }[];

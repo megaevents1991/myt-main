@@ -24,11 +24,16 @@ import type { PersonImageEntry } from "@/lib/cms/people";
  * (2026-08-24 prod bug). Teams keep the crest. The backoffice creative
  * generator already loads gallery "only for artists" (lib/creative/auto.ts);
  * this is the site-side half of that same rule.
+ *
+ * The pool is `event_gallery` (2026-10-01) - NOT `gallery`, which is the mood
+ * gallery of the artist page: three plain photos uploaded for the Oasis page
+ * became the art of every Oasis event card. A picture is in one pool or the
+ * other (backoffice lib/person-gallery.ts).
  */
 export const galleryArtFor = (
-  match: Pick<PersonImageEntry, "kind" | "gallery">,
+  match: Pick<PersonImageEntry, "kind" | "eventGallery">,
   eventId: number,
 ): string | null =>
-  match.kind === "artist" && match.gallery.length
-    ? match.gallery[eventId % match.gallery.length]
+  match.kind === "artist" && match.eventGallery.length
+    ? match.eventGallery[eventId % match.eventGallery.length]
     : null;

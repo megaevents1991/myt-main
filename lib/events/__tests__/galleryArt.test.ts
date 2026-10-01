@@ -25,20 +25,27 @@ const teamGallery = [
 ];
 
 // 1. Artist: deterministic id % length pick, stable across calls.
-const artist = { kind: "artist" as const, gallery: artistGallery };
+const artist = { kind: "artist" as const, eventGallery: artistGallery };
 assert.strictEqual(galleryArtFor(artist, 7), artistGallery[1]);
 assert.strictEqual(galleryArtFor(artist, 7), artistGallery[1]);
 assert.strictEqual(galleryArtFor(artist, 9), artistGallery[0]);
 console.log("✓ Artist gallery: deterministic per-event cut-out pick");
 
 // 2. Artist without a gallery falls through to the person's art.
-assert.strictEqual(galleryArtFor({ kind: "artist", gallery: [] }, 7), null);
+assert.strictEqual(galleryArtFor({ kind: "artist", eventGallery: [] }, 7), null);
 console.log("✓ Empty artist gallery: falls through");
+
+// 2b. 2026-10-01: the page's MOOD gallery is another pool and is not even part
+//     of what galleryArtFor is handed - an artist with mood photos only (Oasis:
+//     three plain jpegs uploaded for the page) keeps its own art on every card.
+const moodOnly = { kind: "artist" as const, eventGallery: [], gallery: ["https://cdn/card_images/oasis-1.jpeg"] };
+assert.strictEqual(galleryArtFor(moodOnly, 1176), null);
+console.log("✓ Mood-only artist: a page photo never becomes event card art");
 
 // 3. THE REGRESSION - a team gallery never becomes blob art, so the crest
 //    standard (FOOTBALL_CREST_ART) still wins. Event 732 is the real
 //    "FC Barcelona vs RC Deportivo de La Coruña" card from the bug report.
-const team = { kind: "team" as const, gallery: teamGallery };
+const team = { kind: "team" as const, eventGallery: teamGallery };
 assert.strictEqual(galleryArtFor(team, 732), null);
 for (const id of [1, 2, 3, 4, 5, 732, 1001]) {
   assert.strictEqual(galleryArtFor(team, id), null);

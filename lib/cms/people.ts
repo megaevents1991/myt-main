@@ -33,7 +33,10 @@ type PersonRow = {
   // Page enrichments (may be absent on Contentful-fallback rows).
   hero_video_url?: string | null;
   banners?: { image_url?: string; link_url?: string; title?: string }[] | null;
+  /** Mood gallery - the artist / team page only. */
   gallery?: string[] | null;
+  /** Event variety - the pictures an artist's event cards rotate through. */
+  event_gallery?: string[] | null;
   videos?: { url?: string; label?: string }[] | null;
 };
 
@@ -44,9 +47,8 @@ type PeopleConfig = {
 /** One row of the name→image fallback index (see listImageIndex). */
 export type PersonImageEntry = {
   name: string;
-  /** Which people table the row came from. Artist galleries are cut-out PNGs
-   *  (the gallery editor's upload pipeline); TEAM galleries are plain venue /
-   *  matchday photos, so only artists may feed the blob card-art - see
+  /** Which people table the row came from. Only artists feed the blob
+   *  card-art from their event pictures; a team's events wear the crest - see
    *  `galleryArtFor` in lib/events/galleryArt.ts. */
   kind: "artist" | "team";
   /** Hero photo, full https URL (artist-page main image). */
@@ -61,10 +63,10 @@ export type PersonImageEntry = {
     offsetX: number | null;
     offsetY: number | null;
   } | null;
-  /** Gallery photos (full https URLs) - photo-less events pick one
-   *  deterministically so the same artist's events don't all share one image.
-   *  Empty when the person has no gallery. */
-  gallery: string[];
+  /** Event pictures (`event_gallery`, full https URLs) - photo-less events pick
+   *  one deterministically so the same artist's events don't all share one
+   *  image. NOT the page's mood gallery (`gallery`). Empty when there are none. */
+  eventGallery: string[];
 };
 
 // Consumers build the final src as `"https:" + url`, so return a
@@ -161,7 +163,7 @@ export function makePeopleReaders(cfg: PeopleConfig) {
       const { data, error } = await supabase
         .from(table)
         .select(
-          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y, gallery",
+          "name_english, image_url, art_image_url, art_color_index, art_shape_index, art_image_scale, art_bg_scale, art_image_offset_x, art_image_offset_y, event_gallery",
         )
         .eq("is_deleted", false)
         .eq("is_active", true);
@@ -173,7 +175,7 @@ export function makePeopleReaders(cfg: PeopleConfig) {
         .filter(
           (r) =>
             r.name_english &&
-            (r.image_url || r.art_image_url || r.gallery?.length),
+            (r.image_url || r.art_image_url || r.event_gallery?.length),
         )
         .map((r) => ({
           name: r.name_english as string,
@@ -192,7 +194,7 @@ export function makePeopleReaders(cfg: PeopleConfig) {
                 offsetY: r.art_image_offset_y ?? null,
               }
             : null,
-          gallery: (r.gallery ?? []).filter(
+          eventGallery: (r.event_gallery ?? []).filter(
             (u): u is string => typeof u === "string" && u.length > 0,
           ),
         }));
