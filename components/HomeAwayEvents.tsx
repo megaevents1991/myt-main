@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-
 import type { Event } from "@/lib/app.types";
 import { ArtistEventsFilter } from "@/components/ArtistEventsFilter";
+import { useSessionState } from "@/app/hooks/useSessionState";
 import { cn } from "@/lib/utils";
+import { oneOf } from "@/lib/viewState";
 
 /** Green-cube heading, same look as TeamCmsPage's CubeHeading. */
 const Cubes = () => (
@@ -15,7 +15,9 @@ const Cubes = () => (
   </>
 );
 
-type FixtureKind = "home" | "away" | "champions";
+const FIXTURE_KINDS = ["home", "away", "champions"] as const;
+type FixtureKind = (typeof FIXTURE_KINDS)[number];
+const parseKind = oneOf(FIXTURE_KINDS);
 
 /**
  * Team-page fixtures with a home/away choice (creative 2026-08-20: "שיהיה
@@ -44,9 +46,15 @@ export function HomeAwayEvents({
     ] as { key: FixtureKind; label: string; events: Event[] }[]
   ).filter((b) => b.events.length > 0);
 
-  const [primary, setPrimary] = useState<FixtureKind>(
-    blocks[0]?.key ?? "home",
+  // Remembered for this page in this tab (lib/viewState.ts) - a refresh keeps
+  // the picked kind on top. A kind this team no longer has falls back to the first.
+  const firstKind = blocks[0]?.key ?? "home";
+  const [pickedKind, setPrimary] = useSessionState<FixtureKind>(
+    "fixtures",
+    firstKind,
+    parseKind,
   );
+  const primary = blocks.some((b) => b.key === pickedKind) ? pickedKind : firstKind;
   const hasChoice = blocks.length > 1;
 
   const ordered = [...blocks].sort((a, b) =>
@@ -90,7 +98,12 @@ export function HomeAwayEvents({
               </h3>
             )}
           </div>
-          <ArtistEventsFilter events={block.events} title={title} showName />
+          <ArtistEventsFilter
+            events={block.events}
+            title={title}
+            showName
+            stateKey={`sort:${block.key}`}
+          />
         </div>
       ))}
     </div>

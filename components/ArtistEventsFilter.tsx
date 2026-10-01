@@ -8,8 +8,11 @@ import { Event } from "@/lib/app.types";
 import { computePackagePrice } from "@/lib/events/price";
 import { EventCard } from "@/components/EventCard";
 import { cn } from "@/lib/utils";
+import { useSessionState } from "@/app/hooks/useSessionState";
+import { BROWSER_SORTS, oneOf, type BrowserSort } from "@/lib/viewState";
 
-type SortKey = "date" | "price_asc" | "price_desc";
+type SortKey = BrowserSort;
+const parseSort = oneOf(BROWSER_SORTS);
 
 const SORTS: { value: SortKey; label: string }[] = [
   { value: "date", label: "תאריך קרוב" },
@@ -27,12 +30,17 @@ export const ArtistEventsFilter = ({
   events,
   title,
   showName = false,
+  stateKey = "sort",
 }: {
   events: Event[];
   title: string;
   showName?: boolean;
+  /** Name the sort is remembered under on this page (lib/viewState.ts) - a
+   *  page with several lists gives each its own. */
+  stateKey?: string;
 }) => {
-  const [sort, setSort] = useState<SortKey>("date");
+  // Remembered for this page in this tab - a refresh keeps the chosen order.
+  const [sort, setSort] = useSessionState<SortKey>(stateKey, "date", parseSort);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

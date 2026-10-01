@@ -2,6 +2,7 @@
 
 import { eventCityName, placeLabel } from "@/lib/events/lodging";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import dayjs from "dayjs";
 import "dayjs/locale/he";
 import { Slider } from "@mantine/core";
@@ -15,6 +16,14 @@ import { EventCard } from "@/components/EventCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import { displayTagName } from "@/lib/tagDisplay";
+import {
+  fitBrowserView,
+  parseBrowserView,
+  readStoredView,
+  viewStateKey,
+  writeStoredView,
+  type BrowserView,
+} from "@/lib/viewState";
 
 /**
  * The category page's event browser.
@@ -469,10 +478,53 @@ export function CategoryEventsBrowser({
   }, [events, query, city, months, dateFrom, dateTo, maxPrice, sort, hideSoldOut, tags, tagsByEvent, typeByName]);
 
   // A narrower filter should show its results from the top, not mid-list.
-  useEffect(
-    () => setVisible(PAGE_SIZE),
-    [query, city, months, dateFrom, dateTo, maxPrice, sort, hideSoldOut, tags]
-  );
+  // Keyed by the filters' own signature so the filters a refresh brings back
+  // (below) do not count as a change and keep their "הצג עוד" count.
+  const filterSig = JSON.stringify([
+    query, city, months, dateFrom, dateTo, maxPrice, sort, hideSoldOut, tags,
+  ]);
+  const filterSigRef = useRef(filterSig);
+  useEffect(() => {
+    if (filterSigRef.current === filterSig) return;
+    filterSigRef.current = filterSig;
+    setVisible(PAGE_SIZE);
+  }, [filterSig]);
+
+  // ── A refresh, or Back from a package, finds the list as it was left ──────
+  // (lib/viewState.ts). Read after hydration - the first render must match the
+  // server's unfiltered HTML - and fitted to what the page offers today.
+  const viewKey = viewStateKey(usePathname(), "events");
+  const [viewLoadedKey, setViewLoadedKey] = useState<string | null>(null);
+  useEffect(() => {
+    const stored = readStoredView(viewKey, parseBrowserView);
+    if (stored) {
+      const view = fitBrowserView(stored, {
+        all: ALL,
+        cities: new Set(cityOptions.map((o) => o.value)),
+        months: new Set(monthOptions.map((o) => o.value)),
+        tags: new Set(tagGroups.flatMap((g) => g.options.map(([name]) => name))),
+        priceBounds,
+      });
+      filterSigRef.current = JSON.stringify([
+        view.query, view.city, view.months, view.dateFrom, view.dateTo,
+        view.maxPrice, view.sort, view.hideSoldOut, view.tags,
+      ]);
+      setQuery(view.query);
+      setCity(view.city);
+      setMonths(view.months);
+      setDateFrom(view.dateFrom);
+      setDateTo(view.dateTo);
+      setMaxPrice(view.maxPrice);
+      setSort(view.sort);
+      setHideSoldOut(view.hideSoldOut);
+      setTags(view.tags);
+      setVisible(view.visible);
+      setAdvancedOpen(view.advancedOpen);
+    }
+    setViewLoadedKey(viewKey);
+    // The page's own events and options - constant for a pathname.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewKey]);
 
   const dirty =
     query.trim() !== "" ||
@@ -483,6 +535,20 @@ export function CategoryEventsBrowser({
     maxPrice !== ALL ||
     hideSoldOut ||
     tags.length > 0;
+
+  // Remember the view - only once the stored one was read (else the defaults
+  // the page opens on would overwrite it), and only while there is something
+  // to remember: back at the defaults the key is dropped.
+  useEffect(() => {
+    if (viewLoadedKey !== viewKey) return;
+    const worthKeeping = dirty || sort !== "date" || visible > PAGE_SIZE;
+    const view: BrowserView = {
+      query, city, months, dateFrom, dateTo, maxPrice, sort, hideSoldOut, tags,
+      visible, advancedOpen,
+    };
+    writeStoredView(viewKey, worthKeeping ? view : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewLoadedKey, viewKey, filterSig, visible, advancedOpen]);
 
   // Advanced-only filters that are active while the advanced block is closed -
   // the toggle shows a dot so a hidden filter never narrows silently. The

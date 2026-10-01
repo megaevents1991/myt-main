@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { MYT } from "./ui/myt";
 import { MYTMark } from "./ui/mytMark";
 import { useIsMobile } from "@/app/hooks/useIsMobile";
+import { useSessionState } from "@/app/hooks/useSessionState";
+import { intBetween } from "@/lib/viewState";
 import Fuse from "fuse.js";
 import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { eventMatchesName, normalizeName, teamFixtureRole } from "@/lib/eventNameMatch";
@@ -57,6 +59,8 @@ const DEFAULT_SECTION_ORDER: HomepageSectionKey[] = [
 ];
 // Netflix-style rows ("המבוקשים ביותר" / "החדשים ביותר") show at most this many.
 const ROW_MAX = 12;
+// A remembered "הצג עוד אירועים" count (lib/viewState.ts).
+const parseMoreEvents = intBetween(1, 2000);
 
 const fuseOptions = {
   keys: ["name", "location.name", "event_location.name", "name_english", "categoryText"], // Fields to search in
@@ -855,7 +859,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   const [errorDebug, setErrorDebug] = useState(Object);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   // Mobile shows 5 events up-front; desktop bumps to 20 on mount (below).
-  const [visibleMusicCount, setVisibleMusicCount] = useState(5);
+  // Remembered for this tab (lib/viewState.ts): a refresh, or Back from a
+  // package, keeps the cards "הצג עוד אירועים" had already opened.
+  const [visibleMusicCount, setVisibleMusicCount] = useSessionState(
+    "moreEvents",
+    5,
+    parseMoreEvents,
+  );
 
   // NOTE: no scroll-to-top on mount. This page hydrates late (big client tree,
   // ~120 images), and a visitor who had already started scrolling got thrown

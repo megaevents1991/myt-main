@@ -253,6 +253,20 @@ and reads it back when the event lands. Rules are pure in `lib/order/draft.ts`
 A new piece of order state that a refresh should keep goes into `OrderDraftState`, the
 layout's save / restore, and `parseOrderDraft`.
 
+**Lists keep their view too (2026-10-01).** Filters, sort and "show more" counts lived in
+`useState`, so F5 - or Back from a package - reopened the unfiltered first page. They are
+mirrored into `sessionStorage` under `myt:view:<pathname>:<name>` (`lib/viewState.ts`, pure
+parsers + `lib/__tests__/viewState.test.ts`): `CategoryEventsBrowser` (every `/c/` hub - search,
+city, months, dates, price cap, sort, tags, "הצג עוד"; `fitBrowserView` drops a city / month /
+tag the page no longer offers), `HomeAwayEvents` (picked fixture kind), `ArtistEventsFilter`
+(sort - `stateKey` per list on a page with several) and the homepage's "הצג עוד אירועים".
+For a single value use `app/hooks/useSessionState.ts` (a `useState` drop-in). Two rules: the
+first render always uses the default (these pages are server-rendered - the stored value is
+applied right after hydration), and never the URL (ISR pages: `useSearchParams` needs a
+Suspense boundary around the list, reading `searchParams` on the server makes the page
+dynamic). `/search` keeps its own URL sync. Scroll position is NOT restored - `app/layout.tsx`
+sets `history.scrollRestoration = 'manual'` on purpose.
+
 ### ISR Strategy
 
 Order pages (`/app/order/[eventId]/page.tsx`) use ISR:
