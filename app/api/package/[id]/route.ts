@@ -5,6 +5,7 @@ import { isEventSoldOut } from "@/lib/events/price";
 import { isMegaEventsFlight } from "@/lib/flights/company";
 import { getPartnerSession } from "@/lib/partner-auth";
 import type { Flight, OrderHotel } from "@/lib/app.types";
+import { pickPax, readyMode, variantSizes } from "@/lib/events/readyPackage";
 
 /**
  * Resolves a prepared package into what OrderReview needs, re-validated
@@ -47,6 +48,24 @@ type PreparedPackageRow = {
    * has to carry the agent's price, not just the signed quote.
    */
   price_adjust_per_person?: number | string | null;
+  /**
+   * 'house' = a ready package ("חבילה מוכנה", lib/events/readyPackage.ts): it
+   * belongs to no partner, is attached to its event, and holds one priced
+   * composition per party size in `variants`. Absent / 'partner' = a partner's
+   * shared link, exactly as before.
+   */
+  kind?: string | null;
+  max_travelers?: number | null;
+  variants?: Record<string, ReadyVariantRow> | null;
+};
+
+type ReadyVariantRow = {
+  event_order_info: PreparedPackageRow["event_order_info"];
+  flight_order_info: Flight | null;
+  flight_skipped: boolean;
+  hotel_order_info: OrderHotel | null;
+  hotel_skipped: boolean;
+  hotel_image?: string | null;
 };
 
 function isInFuture(dateStr: string | undefined | null): boolean {
@@ -56,7 +75,7 @@ function isInFuture(dateStr: string | undefined | null): boolean {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -69,9 +88,21 @@ export async function GET(
 
   let { data, error } = await supabase
     .from("prepared_packages")
-    .select(`${PACKAGE_COLUMNS}, allow_edit, price_adjust_per_person`)
+    .select(
+      `${PACKAGE_COLUMNS}, allow_edit, price_adjust_per_person, kind, max_travelers, variants`,
+    )
     .eq("share_token", id)
     .maybeSingle();
+
+  // The ready-package columns may not be migrated yet (absent = a partner's
+  // package, today's behavior) - shed like the two columns below.
+  if (error && error.code === "42703") {
+    ({ data, error } = await supabase
+      .from("prepared_packages")
+      .select(`${PACKAGE_COLUMNS}, allow_edit, price_adjust_per_person`)
+      .eq("share_token", id)
+      .maybeSingle());
+  }
 
   // Either newer column may not be migrated yet - shed them one at a time
   // (absent = no price change / editable, today's behavior).
@@ -108,6 +139,37 @@ export async function GET(
   }
   const row = data as unknown as PreparedPackageRow;
 
+  // A ready package holds one composition per party size: serve the one asked
+  // for (?pax=N) when it is priced, else the size it was built for. From here
+  // on `row` carries that composition, so every check below runs on it exactly
+  // as it does on a partner's package.
+  const isHouse = row.kind === "house";
+  let paxOptions: number[] = [];
+  let hotelImage: string | null = null;
+  if (isHouse) {
+    paxOptions = variantSizes(row.variants, row.max_travelers);
+    const asked = Number(new URL(request.url).searchParams.get("pax"));
+    const pax = pickPax(
+      paxOptions,
+      Number.isInteger(asked) ? asked : null,
+      row.num_travelers,
+    );
+    const variant = pax != null ? row.variants?.[String(pax)] : undefined;
+    if (pax == null || !variant) {
+      return NextResponse.json(
+        { error: "החבילה כבר אינה זמינה" },
+        { status: 410 },
+      );
+    }
+    row.event_order_info = variant.event_order_info;
+    row.flight_order_info = variant.flight_order_info;
+    row.flight_skipped = variant.flight_skipped;
+    row.hotel_order_info = variant.hotel_order_info;
+    row.hotel_skipped = variant.hotel_skipped;
+    row.num_travelers = pax;
+    hotelImage = variant.hotel_image ?? null;
+  }
+
   // getEvents() already filters is_deleted + the availability window - an
   // empty result here means the event is gone or has moved outside the
   // sell window, either way this package can no longer be honored at all.
@@ -118,6 +180,15 @@ export async function GET(
       { error: "האירוע כבר אינו זמין להזמנה" },
       { status: 410 },
     );
+  }
+  // A ready package is served only while its event still points at it and the
+  // backoffice has not switched it off - a detached or replaced one is gone.
+  if (
+    isHouse &&
+    (event.ready_package_token !== id ||
+      readyMode(event.ready_package_mode) === "off")
+  ) {
+    return NextResponse.json({ error: "Package not found" }, { status: 404 });
   }
 
   const availableTickets = (event.tickets_and_rates || []).filter(
@@ -251,5 +322,8 @@ export async function GET(
     hotel_needs_repick: hotelNeedsRepick,
     num_travelers: row.num_travelers,
     allow_edit: isOwner || row.allow_edit !== false,
+    ...(isHouse
+      ? { house: true, pax_options: paxOptions, hotel_image: hotelImage }
+      : {}),
   });
 }

@@ -44,6 +44,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 >    `agent_card_discount_ils`, voucher flow) - runs inside customer checkout.
 > 3. `utm_source` affiliate tracking + the funnel writes.
 
+> **Ready package ("חבילה מוכנה", 2026-10-04; spec in the backoffice,
+> `docs/superpowers/specs/2026-10-04-ready-package-design.md`).** An event can
+> carry ONE house-built package (ticket + flight + hotel), built and re-priced in
+> the backoffice: `events.ready_package_token` / `ready_package_mode` (`off` |
+> `preview` | `live`) / `ready_package_price_usd`, and a `kind = 'house'` row of
+> `prepared_packages` holding one composition per party size (`variants`).
+> `lib/events/readyPackage.ts` (pure, `lib/__tests__/readyPackage.test.ts`)
+> decides which token a page load opens: `live` = every plain visit to
+> `/order/{id}`, `preview` = only the staff link `?ready=<token>`; `?orderId` /
+> `?pkg` always win and `?build=1` forces the regular flow.
+> `useHandlePreparedPackage(event)` loads it through the SAME
+> `/api/package/[id]` route (house branch: served only while its event still
+> points at it and the mode is not off; `?pax=N` picks the variant; the answer
+> adds `house`, `pax_options`, `hotel_image`) and sets `readyPackage` in
+> `OrderContext`. The summary (`OrderReview`) then draws
+> `components/order/ReadyPackageShowcase` in place of `<Review>` - three cards
+> (flight / hotel / ticket), a traveller picker over the priced sizes
+> (`useReadyPackagePax`), a quiet "החלפה" per card that opens the regular step
+> and returns. Price summary, coupon, traveller form, payment and
+> `confirm-order` are untouched; the order draft treats such a load like a
+> `?pkg` link. In `live`, `computePackagePrice` returns the package's price so
+> the card and the landing agree. A partner's `?pkg` link and every event in
+> `off` behave exactly as before.
+
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future
 > partner-facing work lands under) sits behind a real Supabase Auth session -

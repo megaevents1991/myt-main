@@ -8,7 +8,8 @@ import {
   readOrderDraft,
   writeOrderDraft,
 } from "@/lib/order/draftStorage";
-import { OrderContext, PersonLink } from "../app.context";
+import { OrderContext, PersonLink, type ReadyPackageState } from "../app.context";
+import { readyPackageEntry } from "@/lib/events/readyPackage";
 import {
   Event,
   OrderTicket,
@@ -60,6 +61,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
   // Agent's price for a prepared package (doc 2026-08-30, item 4) - 0 unless
   // the visitor arrived on a ?pkg= link whose agent changed the price.
   const [packageAdjustPerPerson, setPackageAdjustPerPerson] = useState(0);
+  // The event's ready package ("חבילה מוכנה") when this load opened on it.
+  const [readyPackage, setReadyPackage] = useState<ReadyPackageState | null>(null);
   // Lodging city + split stay (lib/events/lodging.ts). The city follows the
   // event's default once per event id - a re-set of the same event (live
   // ticket refresh) must not wipe the customer's choice.
@@ -85,7 +88,10 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
     if (!event) return;
     // ?orderId / ?pkg bring their own order from the server: nothing is
     // restored over them and nothing of theirs is recorded.
-    const owned = ownedByLink(window.location.search);
+    // A ready package is brought by the server like a ?pkg link is.
+    const owned =
+      ownedByLink(window.location.search) ||
+      !!readyPackageEntry(event, window.location.search);
     const saved = owned ? null : readOrderDraft(event);
     if (!saved) {
       setLodgingCity(defaultCity(event));
@@ -260,6 +266,8 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
           setPackageLocked,
           packageAdjustPerPerson,
           setPackageAdjustPerPerson,
+          readyPackage,
+          setReadyPackage,
           lodgingCity,
           setLodgingCity,
           hotelSegments,

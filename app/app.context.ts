@@ -10,6 +10,24 @@ import { createContext, Dispatch, SetStateAction } from "react";
 import type { LodgingCity, NightAssign } from "@/lib/events/lodging";
 import type { OrderResume } from "@/lib/order/draft";
 
+/**
+ * Ready package ("חבילה מוכנה", lib/events/readyPackage.ts): this page load
+ * opened the event's house-built package. The summary then draws the package
+ * view (components/order/ReadyPackageShowcase) instead of the plain Review.
+ */
+export type ReadyPackageState = {
+  /** The package's share token - what the traveller picker asks the route with. */
+  token: string;
+  /** Party sizes the package is priced for, ascending. */
+  paxOptions: number[];
+  /** A photo of the package's hotel; null when there is none. */
+  hotelImage: string | null;
+  /** The traveller picker is fetching another party size. */
+  loading: boolean;
+  /** Why the last traveller change did not go through; null otherwise. */
+  error: string | null;
+};
+
 /** Link to the artist/football-team page this event belongs to (resolved
  *  server-side by name match) - href + ready-made Hebrew label. */
 export type PersonLink = { href: string; label: string };
@@ -86,6 +104,11 @@ type AppContext = {
    *  (backoffice doc 2026-08-30, item 4). 0 for every non-package visit. */
   packageAdjustPerPerson: number;
   setPackageAdjustPerPerson: (usdPerTraveler: number) => void;
+  /** Set when this page load opened the event's ready package (a house-built
+   *  ticket + flight + hotel); null on every other visit - a partner's ?pkg
+   *  link included. */
+  readyPackage: ReadyPackageState | null;
+  setReadyPackage: Dispatch<SetStateAction<ReadyPackageState | null>>;
   /** Lodging city of the hotel step (lib/events/lodging.ts): "flight" =
    *  event.location, "event" = event.event_location. Set to defaultCity(event)
    *  when the event lands; "flight" before. */

@@ -74,7 +74,7 @@ export const OrderForm = ({
   } = useContext(OrderContext);
 
   useHandleExistingOrder();
-  useHandlePreparedPackage();
+  useHandlePreparedPackage(event);
 
   const { affDiscount, affId } = useFetchAffiliate(); // @TODO: should be removed and called once in ticket selection
   const {

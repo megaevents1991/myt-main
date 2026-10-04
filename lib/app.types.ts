@@ -85,6 +85,15 @@ export type Event = {
   // its order page shows sold out. Synced with backoffice types/app.types.ts.
   deactivated_reason?: string | null;
   deactivated_at?: string | null;
+  // Ready package ("חבילה מוכנה", lib/events/readyPackage.ts): the house-built
+  // prepared package this event opens on. `ready_package_token` is that row's
+  // share_token; mode 'preview' = only the staff link (?ready=<token>) opens it,
+  // 'live' = a click on the event card does (anything else = off); the price is
+  // per person at the package's default party and is what the card shows in
+  // 'live'. Written by the backoffice only. Synced with backoffice types/app.types.ts.
+  ready_package_token?: string | null;
+  ready_package_mode?: "off" | "preview" | "live" | null;
+  ready_package_price_usd?: number | null;
   tags: string;
   tx_excluded_sections?: string[];
   event_additional_markup?: number | null;

@@ -1,4 +1,5 @@
 import { Event } from "@/lib/app.types";
+import { readyPackageCardPrice } from "@/lib/events/readyPackage";
 
 /**
  * Default markup value for package pricing.
@@ -143,6 +144,11 @@ export function computePackagePrice(
   if (availableTickets.length === 0) {
     return null;
   }
+
+  // An event that opens on its ready package (mode 'live') costs what that
+  // package costs - the card and the landing must say the same number.
+  const readyPrice = readyPackageCardPrice(event);
+  if (readyPrice !== null) return readyPrice;
 
   // Find minimum ticket price
   const minTicketPrice = Math.min(

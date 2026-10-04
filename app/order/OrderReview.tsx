@@ -57,6 +57,8 @@ import {
 } from "@/lib/coupon.utils";
 import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { Review } from "./OrderSummary/Review";
+import { ReadyPackageShowcase } from "@/components/order/ReadyPackageShowcase";
+import { useReadyPackagePax } from "../hooks/useHandlePreparedPackage";
 import { PriceSummary } from "./OrderSummary/PriceSummary";
 import { ButtonSummary } from "./OrderSummary/ButtonSummary";
 import { MobileHeader } from "./OrderSummary/MobileHeader";
@@ -114,6 +116,10 @@ export default function OrderReview({
   // packageAdjustPerPerson is the agent's own price on that package (item 4).
   const { packageLocked, setPackageLocked, packageAdjustPerPerson } =
     useContext(OrderContext);
+  // The event's ready package ("חבילה מוכנה"): the summary draws the package
+  // view instead of the plain Review. Null on every other visit.
+  const { readyPackage } = useContext(OrderContext);
+  const { changePax: changeReadyPax } = useReadyPackagePax();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isMobile } = useIsMobile();
@@ -1938,6 +1944,27 @@ export default function OrderReview({
                     addOnsTotalUsd={bagAddOnsUsd}
                   />
                 )}
+                {readyPackage ? (
+                  <ReadyPackageShowcase
+                    event={event}
+                    flight={flightSkipped ? undefined : selectedFlight}
+                    hotel={skipHotel ? undefined : selectedHotel}
+                    eventTicket={eventTicket}
+                    travelers={numberOfEventTickets}
+                    airlineFullName={airlineFullName}
+                    ready={readyPackage}
+                    onChangePax={changeReadyPax}
+                    // Same rule as the Review below: a locked package offers no swap.
+                    onEdit={
+                      packageLocked
+                        ? undefined
+                        : (target) => {
+                            setQuotePriceDropped(true);
+                            (onEditStep ?? setStep)(target);
+                          }
+                    }
+                  />
+                ) : (
                 <Review
                   event={event}
                   selectedFlight={selectedFlight!}
@@ -1982,6 +2009,7 @@ export default function OrderReview({
                         }
                   }
                 />
+                )}
                 {/* Coupon - hidden on any partner-link visit, agent mode
                     included (partner terms and coupons don't mix). */}
                 {!arrivedViaPartner && (
