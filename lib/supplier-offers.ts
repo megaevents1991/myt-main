@@ -244,6 +244,37 @@ export function priceTicketsForQuantity(
 }
 
 /**
+ * When nothing sells at `qty`: the nearest quantity that at least one ticket -
+ * of ANY supplier - can still supply. Fewer first (the cheaper ask), then more
+ * up to `max`, so a lone "1 ticket" request on an event whose sellers only
+ * split into 2+ still gets a way forward.
+ * null = something already sells at `qty`, or NO quantity sells. The second is
+ * not a quantity problem and must never be shown as one: on event 1100 (04.10)
+ * a copy of a Berlin event kept Berlin's category, the Amsterdam feed had no
+ * such category at any quantity, and the page told the customer "no 2 tickets
+ * together - try another quantity".
+ */
+export function nearestFeasibleQuantity(
+  tickets: EventTicket[],
+  eventType: EventType | undefined,
+  qty: number,
+  live: SupplierLiveData,
+  fallbackMultiplier: number,
+  max: number,
+): { qty: number; direction: "down" | "up" } | null {
+  const feasible = (q: number) =>
+    priceTicketsForQuantity(tickets, eventType, q, live, fallbackMultiplier).length > 0;
+  if (feasible(qty)) return null;
+  for (let q = qty - 1; q >= 1; q--) {
+    if (feasible(q)) return { qty: q, direction: "down" };
+  }
+  for (let q = qty + 1; q <= max; q++) {
+    if (feasible(q)) return { qty: q, direction: "up" };
+  }
+  return null;
+}
+
+/**
  * A static ticket at `qty`: our own stock sells only while enough seats are
  * left, and says how the party sits (`ownSeating` - up to `seatsTogether`
  * together, a bigger party in groups of up to that many).

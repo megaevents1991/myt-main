@@ -18,6 +18,7 @@ import { hasOwnStock } from "@/lib/own-stock";
 import type { LiveTicketsOffer } from "@/lib/livetickets";
 import {
   bestPriceTicketIds,
+  nearestFeasibleQuantity,
   orderTicketId,
   priceTicketsForQuantity,
   withoutTwins,
@@ -509,31 +510,21 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   );
 
   /**
-   * Nearest quantity that at least one ticket - of ANY supplier - can still
-   * supply. Powers the one-tap "change quantity" rescue when the requested
-   * amount can't be fulfilled. Searches downward first (fewer tickets is the
-   * cheaper ask), then upward to MAX_TICKETS - so a lone "1 ticket" request on
-   * an event whose sellers only split into 2+ still gets a button instead of a
-   * dead-end. null when nothing else works.
+   * Powers the one-tap "change quantity" rescue when the requested amount
+   * can't be fulfilled (`nearestFeasibleQuantity`). null when no quantity
+   * sells either - then the step says "sold out", never "change the quantity".
    */
   const nearestFeasibleQty: { qty: number; direction: "down" | "up" } | null =
     useMemo(() => {
       if (!hasLiveSupplier || effectiveTickets.length > 0) return null;
-      const feasible = (q: number) =>
-        priceTicketsForQuantity(
-          availableTickets,
-          event?.type,
-          q,
-          supplierLive,
-          TX_FALLBACK_MULTIPLIER,
-        ).length > 0;
-      for (let q = numberOfEventTickets - 1; q >= 1; q--) {
-        if (feasible(q)) return { qty: q, direction: "down" };
-      }
-      for (let q = numberOfEventTickets + 1; q <= MAX_TICKETS; q++) {
-        if (feasible(q)) return { qty: q, direction: "up" };
-      }
-      return null;
+      return nearestFeasibleQuantity(
+        availableTickets,
+        event?.type,
+        numberOfEventTickets,
+        supplierLive,
+        TX_FALLBACK_MULTIPLIER,
+        MAX_TICKETS,
+      );
     }, [
       hasLiveSupplier,
       effectiveTickets.length,
@@ -1009,29 +1000,25 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                     </Text>
                   </div>
                 ) : effectiveTickets.length === 0 ? (
-                  hasLiveSupplier && availableTickets.length > 0 ? (
+                  nearestFeasibleQty ? (
                     // Quantity dead-end: the event HAS tickets, just not N together.
-                    // Rescue instead of a wall - one-tap reduce to the max that
-                    // works, or leave details / WhatsApp for a group offer.
+                    // Rescue instead of a wall - one-tap change to a quantity that
+                    // works, or leave details / WhatsApp for a group offer. Only
+                    // when another quantity really sells: with none, it is the
+                    // sold-out state below (event 1100, 04.10).
                     <div className="flex flex-col items-center justify-center p-6 text-center gap-4">
                       <Text size="xl" fw={700} c="red" aria-live="polite">
                         אין {numberOfEventTickets} כרטיסים ביחד כרגע
                       </Text>
-                      {nearestFeasibleQty ? (
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(nearestFeasibleQty.qty)}
-                          className="rounded-xl bg-main px-5 py-2.5 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90"
-                        >
-                          {nearestFeasibleQty.direction === "down"
-                            ? `יש עד ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`
-                            : `המוכרים מוכרים מינימום ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`}
-                        </button>
-                      ) : (
-                        <Text size="md" c="dimmed">
-                          נסו לשנות את כמות הכרטיסים.
-                        </Text>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(nearestFeasibleQty.qty)}
+                        className="rounded-xl bg-main px-5 py-2.5 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90"
+                      >
+                        {nearestFeasibleQty.direction === "down"
+                          ? `יש עד ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`
+                          : `המוכרים מוכרים מינימום ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`}
+                      </button>
                       <GroupTicketsInquiry
                         eventName={headerEvent?.name || ""}
                         eventId={headerEvent?.id}

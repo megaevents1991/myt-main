@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   bestPriceTicketIds,
   cheapestSupplierPerZone,
+  nearestFeasibleQuantity,
   orderTicketId,
   preferTogether,
   priceTicketsForQuantity,
@@ -388,5 +389,27 @@ assert.equal(held.get("own1"), 6);
 assert.equal(stockLeft(own, held), 4);
 assert.equal(stockLeft({ ...own, stock: 5 }, held), 0);
 assert.equal(stockLeft(tx, held), null);
+
+// the quantity rescue: the nearest quantity anything still sells at - fewer
+// first, then more - and null when NO quantity sells, which is "sold out" and
+// never "try another quantity"
+const txOnly = (listings: TixStockListing[]) =>
+  live({ tixstock: { status: "live", listings }, livetickets: { status: "none", offers: [] } });
+const nearest = (qty: number, listings: TixStockListing[], list: EventTicket[] = [tx]) =>
+  nearestFeasibleQuantity(list, "tx_event", qty, txOnly(listings), 1.15, 9);
+assert.deepEqual(nearest(4, [listing("CATEGORY 1", "402.2", 2)]), { qty: 2, direction: "down" });
+assert.deepEqual(
+  nearest(1, [{ ...listing("CATEGORY 1", "402.2", 2), ticket: { split_type: "All Together" } } as unknown as TixStockListing]),
+  { qty: 2, direction: "up" },
+);
+// event 1100 (04.10): a J. Cole Amsterdam copy of the Berlin event kept Berlin's
+// category - the live feed sells "Floor Standing" and "VIP", never "Unterrang".
+// No quantity can fix that, yet the page said "no 2 tickets together".
+const berlinCopy = [ticket({ id: "berlin", category: "Unterrang", price: 147 })];
+const amsterdamFeed = [listing("Floor Standing", "383.03", 2), listing("VIP", "853.77", 4)];
+assert.equal(priceTicketsForQuantity(berlinCopy, "tx_event", 2, txOnly(amsterdamFeed), 1.15).length, 0);
+assert.equal(nearest(2, amsterdamFeed, berlinCopy), null);
+// something already sells at the asked quantity → no rescue to offer
+assert.equal(nearest(2, [listing("CATEGORY 1", "402.2", 2)]), null);
 
 console.log("supplier-offers: all assertions passed");
