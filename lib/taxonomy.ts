@@ -10,7 +10,11 @@ import type {
 } from "@/lib/taxonomy.types";
 import { buildTree, descendantIds, slugPathOf } from "@/lib/taxonomy-tree";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
-import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
+import {
+  AVAILABILITY_WINDOW_DAYS,
+  futureDateISO,
+  isListedEvent,
+} from "@/lib/eventsData";
 
 /**
  * Event taxonomy readers.
@@ -102,7 +106,7 @@ export async function getEventsInCategory(
   return {
     category,
     events: await enrichEventsWithFallbackImages(
-      (events ?? []).filter((e) => !e.is_test),
+      (events ?? []).filter(isListedEvent),
     ),
   };
 }

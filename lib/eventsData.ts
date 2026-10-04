@@ -70,6 +70,17 @@ export async function getCachedEvents(): Promise<{ events: Event[] }> {
  */
 export const AVAILABILITY_WINDOW_DAYS = 3;
 
+/**
+ * May this event appear on a listing - catalog, search, category, person page?
+ * Not a QA event (`is_test`), and not one the backoffice took off the site
+ * because it has no ticket left to sell (`deactivated_reason`, 2026-10-04).
+ * Both stay reachable by direct /order/{id}; a deactivated one shows sold out
+ * there, its tickets being off sale.
+ */
+export const isListedEvent = (
+  event: Pick<Event, "is_test" | "deactivated_reason">,
+): boolean => !event.is_test && !event.deactivated_reason;
+
 /** `YYYY-MM-DD` for `daysAhead` from now - the DB-comparable availability cutoff. */
 export function futureDateISO(daysAhead: number): string {
   const d = new Date();
@@ -118,11 +129,10 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     console.log(
       `[EventsData] Query successful - Returned ${events?.length || 0} events in ${queryTime}ms`,
     );
-    // Test events (backoffice QA) stay orderable by direct id but never list.
+    // Test events (backoffice QA) and events taken off the site stay reachable
+    // by direct id but never list.
     const visible = stripBackofficeOnlyColumns(
-      id !== undefined
-        ? events || []
-        : (events || []).filter((e) => !e.is_test),
+      id !== undefined ? events || [] : (events || []).filter(isListedEvent),
     );
     if (id === undefined) {
       const bytes = JSON.stringify(visible).length;
@@ -175,7 +185,7 @@ export async function getEventsByName(
   // plays in (team "Milan" must not pull in "Inter Milan" games), plus
   // fixtures whose club name drifted on qualifiers ("Atlético de Madrid").
   const matched = (events ?? []).filter(
-    (e) => !e.is_test && eventMatchesName(e.name_english, searchName),
+    (e) => isListedEvent(e) && eventMatchesName(e.name_english, searchName),
   );
   return {
     events: await markLockedPackagesSoldOut(
