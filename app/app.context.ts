@@ -22,6 +22,8 @@ export type ReadyPackageState = {
   paxOptions: number[];
   /** A photo of the package's hotel; null when there is none. */
   hotelImage: string | null;
+  /** The hotel id that photo shows - a hotel the customer swapped in has no photo here. */
+  hotelImageFor: string | null;
   /** The traveller picker is fetching another party size. */
   loading: boolean;
   /** Why the last traveller change did not go through; null otherwise. */

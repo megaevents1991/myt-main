@@ -99,6 +99,7 @@ const useApplyPackage = () => {
           token,
           paxOptions: data.pax_options ?? [party],
           hotelImage: data.hotel_image ?? null,
+          hotelImageFor: data.hotel_order_info?.id ?? null,
           loading: false,
           error: null,
         });

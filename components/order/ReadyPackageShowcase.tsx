@@ -136,6 +136,9 @@ export const ReadyPackageShowcase = ({
       : hotel.rate?.room_data_trans?.main_name || hotel.hotelInformation?.roomName
     : "";
   const hasMeal = !!hotel?.rate?.meal_data?.has_breakfast;
+  // The photo is of the PACKAGE's hotel - never drawn over a hotel swapped in.
+  const hotelPhoto =
+    hotel && ready.hotelImage && hotel.id === ready.hotelImageFor ? ready.hotelImage : null;
 
   const checkedBag = !!flight && flight.outbound.checkBagsIncluded && flight.inbound.checkBagsIncluded;
   const cabinBag = !!flight && flight.outbound.cabinBagsIncluded && flight.inbound.cabinBagsIncluded;
@@ -236,10 +239,10 @@ export const ReadyPackageShowcase = ({
 
         {hotel ? (
           <div className="overflow-hidden rounded-2xl border border-border bg-background">
-            {ready.hotelImage && (
+            {hotelPhoto && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={ready.hotelImage}
+                src={hotelPhoto}
                 alt={hotel.name}
                 className="h-44 w-full object-cover md:h-56"
                 loading="lazy"
