@@ -65,8 +65,70 @@ export function readyPackageCardPrice(
   return Number.isFinite(price) && price > 0 ? Math.ceil(price) : null;
 }
 
-/** Hard top of the traveller picker, whatever the row says (backoffice READY_MAX_TRAVELERS_CAP). */
-export const READY_MAX_TRAVELERS_CAP = 6;
+/**
+ * Top of the traveller picker: the site's own cap on tickets per order (the
+ * ticket step's MAX_TICKETS, and the 1..9 traveller select of the flight
+ * step). A ready package has no limit of its own - the backoffice prices it
+ * for every size up to this, and a size it could not price is simply absent.
+ * Mirrors the backoffice's READY_MAX_TRAVELERS_CAP.
+ */
+export const READY_MAX_TRAVELERS_CAP = 9;
+
+/** Which pieces of a ready package the customer may swap ("החלפה" on that card). */
+export type ReadySwap = { ticket: boolean; flight: boolean; hotel: boolean };
+
+const SWAP_ALL: ReadySwap = { ticket: true, flight: true, hotel: true };
+const SWAP_NONE: ReadySwap = { ticket: false, flight: false, hotel: false };
+
+/**
+ * Per piece: may the customer swap it. The package's own breakdown when it has
+ * a whole one (three booleans); a package saved before the breakdown existed
+ * follows `allow_edit` for every piece. Mirrors the backoffice's swapOf.
+ */
+export function swapOf(spec: unknown, allowEdit: boolean | null | undefined): ReadySwap {
+  const raw =
+    spec && typeof spec === "object" && !Array.isArray(spec)
+      ? (spec as { swap?: unknown }).swap
+      : undefined;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const value = raw as Record<string, unknown>;
+    if (
+      typeof value.ticket === "boolean" &&
+      typeof value.flight === "boolean" &&
+      typeof value.hotel === "boolean"
+    ) {
+      return { ticket: value.ticket, flight: value.flight, hotel: value.hotel };
+    }
+  }
+  return allowEdit === false ? SWAP_NONE : SWAP_ALL;
+}
+
+/**
+ * How a party is roomed, from a hotel's room list (one entry per room):
+ * "חדר זוגי", "2 חדרים זוגיים", "חדר ל-3 + חדר זוגי". Empty when unknown.
+ */
+export function roomsLabel(
+  guests: { adults?: number; children?: unknown[] }[] | null | undefined,
+): string {
+  const sizes = (guests ?? [])
+    .map((room) => Math.max(0, Math.floor(Number(room?.adults) || 0)) + (room?.children?.length ?? 0))
+    .filter((size) => size > 0);
+  if (sizes.length === 0) return "";
+  const rooms = new Map<number, number>();
+  for (const size of sizes) rooms.set(size, (rooms.get(size) ?? 0) + 1);
+  const one = (size: number) =>
+    size === 1 ? "חדר ליחיד" : size === 2 ? "חדר זוגי" : `חדר ל-${size}`;
+  const several = (size: number, count: number) =>
+    size === 1
+      ? `${count} חדרים ליחיד`
+      : size === 2
+        ? `${count} חדרים זוגיים`
+        : `${count} חדרים ל-${size}`;
+  return [...rooms.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([size, count]) => (count === 1 ? one(size) : several(size, count)))
+    .join(" + ");
+}
 
 /** Party sizes a house package is priced for: within its max, ascending. */
 export function variantSizes(variants: unknown, maxTravelers: unknown): number[] {

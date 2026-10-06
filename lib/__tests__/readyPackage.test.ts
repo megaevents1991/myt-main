@@ -5,8 +5,57 @@ import {
   readyMode,
   readyPackageCardPrice,
   readyPackageEntry,
+  roomsLabel,
+  swapOf,
   variantSizes,
 } from "../events/readyPackage";
+
+describe("swapOf", () => {
+  const all = { ticket: true, flight: true, hotel: true };
+  const none = { ticket: false, flight: false, hotel: false };
+
+  it("follows allow_edit for a package saved before the breakdown", () => {
+    expect(swapOf(null, true)).toEqual(all);
+    expect(swapOf({}, undefined)).toEqual(all);
+    expect(swapOf({ ticket: { category: "A" } }, false)).toEqual(none);
+  });
+
+  it("uses the package's own breakdown, whatever allow_edit says", () => {
+    const hotelOnly = { ticket: false, flight: false, hotel: true };
+    expect(swapOf({ swap: hotelOnly }, false)).toEqual(hotelOnly);
+    expect(swapOf({ swap: none }, true)).toEqual(none);
+  });
+
+  it("ignores a breakdown that is not three booleans", () => {
+    expect(swapOf({ swap: { hotel: true } }, false)).toEqual(none);
+    expect(swapOf({ swap: { ticket: "yes", flight: true, hotel: true } }, true)).toEqual(all);
+    expect(swapOf("spec", false)).toEqual(none);
+  });
+});
+
+describe("roomsLabel", () => {
+  const room = (adults: number, children: number[] = []) => ({ adults, children });
+
+  it("names one room by how many sleep in it", () => {
+    expect(roomsLabel([room(1)])).toBe("חדר ליחיד");
+    expect(roomsLabel([room(2)])).toBe("חדר זוגי");
+    expect(roomsLabel([room(3)])).toBe("חדר ל-3");
+    expect(roomsLabel([room(2, [7])])).toBe("חדר ל-3");
+  });
+
+  it("counts rooms of one kind and joins different kinds, biggest first", () => {
+    expect(roomsLabel([room(2), room(2)])).toBe("2 חדרים זוגיים");
+    expect(roomsLabel([room(2), room(3)])).toBe("חדר ל-3 + חדר זוגי");
+    expect(roomsLabel([room(3), room(3), room(2)])).toBe("2 חדרים ל-3 + חדר זוגי");
+    expect(roomsLabel([room(1), room(1)])).toBe("2 חדרים ליחיד");
+  });
+
+  it("says nothing when the room list is unknown", () => {
+    expect(roomsLabel(null)).toBe("");
+    expect(roomsLabel([])).toBe("");
+    expect(roomsLabel([room(0)])).toBe("");
+  });
+});
 
 const TOKEN = "69729631-8be5-418b-ab09-dea86e55de02";
 const event = (mode: string | null, token: string | null = TOKEN) => ({
@@ -90,7 +139,8 @@ describe("party sizes", () => {
     expect(variantSizes({ "4": v, "1": v, "2": v }, 4)).toEqual([1, 2, 4]);
     expect(variantSizes({ "1": v, "2": v, "5": v }, 4)).toEqual([1, 2]);
     expect(variantSizes({ "2": v, x: v, "3": null }, 4)).toEqual([2]);
-    expect(variantSizes({ "2": v, "9": v }, 99)).toEqual([2]);
+    // No limit of its own: the top is the site's cap on tickets per order (9).
+    expect(variantSizes({ "2": v, "9": v, "10": v }, 99)).toEqual([2, 9]);
     expect(variantSizes(null, 4)).toEqual([]);
     expect(variantSizes([v], 4)).toEqual([]);
   });

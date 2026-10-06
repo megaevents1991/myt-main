@@ -8,6 +8,7 @@ import {
 } from "@/lib/app.types";
 import { createContext, Dispatch, SetStateAction } from "react";
 import type { LodgingCity, NightAssign } from "@/lib/events/lodging";
+import type { ReadySwap } from "@/lib/events/readyPackage";
 import type { OrderResume } from "@/lib/order/draft";
 
 /**
@@ -24,6 +25,16 @@ export type ReadyPackageState = {
   hotelImage: string | null;
   /** The hotel id that photo shows - a hotel the customer swapped in has no photo here. */
   hotelImageFor: string | null;
+  /** Per piece: may the customer swap it (the backoffice decides; lib/events/readyPackage.ts swapOf). */
+  swap: ReadySwap;
+  /**
+   * Party sizes the package's ticket cannot be sold for right now, by the ticket
+   * step's own live rule (app/hooks/useReadyTicketLive.ts). Kept out of
+   * `paxOptions` for the rest of the visit.
+   */
+  blockedPax: number[];
+  /** A word to the customer about a size that had to change; null otherwise. */
+  notice: string | null;
   /** The traveller picker is fetching another party size. */
   loading: boolean;
   /** Why the last traveller change did not go through; null otherwise. */

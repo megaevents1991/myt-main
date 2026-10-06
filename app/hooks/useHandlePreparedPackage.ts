@@ -2,7 +2,7 @@ import { useCallback, useContext, useLayoutEffect } from "react";
 import { OrderContext } from "../app.context";
 import { Event, Flight, OrderHotel } from "@/lib/app.types";
 import { useSearchParams } from "next/navigation";
-import { readyPackageEntry } from "@/lib/events/readyPackage";
+import { readyPackageEntry, swapOf, type ReadySwap } from "@/lib/events/readyPackage";
 
 /** What /api/package/[id] answers (app/api/package/[id]/route.ts). */
 type PackageAnswer = {
@@ -25,6 +25,8 @@ type PackageAnswer = {
   /** Ready package only: the party sizes it is priced for, ascending. */
   pax_options?: number[];
   hotel_image?: string | null;
+  /** Ready package only: per piece, may the customer swap it. */
+  swap?: ReadySwap;
 };
 
 /**
@@ -95,13 +97,21 @@ const useApplyPackage = () => {
       if (data.house) {
         const party = data.event_order_info.number_of_ticket;
         setPlaneTickets({ adults: party, children: 0 });
-        setReadyPackage({
-          token,
-          paxOptions: data.pax_options ?? [party],
-          hotelImage: data.hotel_image ?? null,
-          hotelImageFor: data.hotel_order_info?.id ?? null,
-          loading: false,
-          error: null,
+        setReadyPackage((prev) => {
+          // Sizes the ticket could not be sold for stay out for the whole visit.
+          const blockedPax = prev?.blockedPax ?? [];
+          return {
+            token,
+            paxOptions: (data.pax_options ?? [party]).filter((n) => !blockedPax.includes(n)),
+            hotelImage: data.hotel_image ?? null,
+            hotelImageFor: data.hotel_order_info?.id ?? null,
+            // An older route answer has no breakdown: every piece follows allow_edit.
+            swap: data.swap ?? swapOf(null, data.allow_edit),
+            blockedPax,
+            notice: prev?.notice ?? null,
+            loading: false,
+            error: null,
+          };
         });
       }
 
@@ -198,7 +208,9 @@ export const useReadyPackagePax = () => {
     async (pax: number) => {
       if (!readyPackage || readyPackage.loading) return;
       const { token } = readyPackage;
-      setReadyPackage((prev) => (prev ? { ...prev, loading: true, error: null } : prev));
+      setReadyPackage((prev) =>
+        prev ? { ...prev, loading: true, error: null, notice: null } : prev,
+      );
       const fail = () =>
         setReadyPackage((prev) =>
           prev

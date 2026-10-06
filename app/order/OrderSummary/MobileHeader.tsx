@@ -6,14 +6,21 @@ import { TIMEOUT } from "../utils";
 export const MobileHeader = ({
   handleTimeout,
   saving,
-  skipHotel
+  skipHotel,
+  showTimer = true,
 }: {
   handleTimeout: () => void;
   saving: number;
   skipHotel: boolean;
+  /**
+   * False on a ready package's landing (components/order/ReadyPackageShowcase):
+   * it is the first page the customer sees, so nothing counts down on it.
+   */
+  showTimer?: boolean;
 }) => {
   return (
     <>
+      {showTimer && (
       <div
         className="bg-yellow-100 w-full text-main p-2 -mt-3 text-center text-sm font-semibold flex items-center justify-center gap-1"
         dir="rtl"
@@ -25,6 +32,7 @@ export const MobileHeader = ({
         </span>
         דקות
       </div>
+      )}
       {saving > 0 && !skipHotel && (
         <div className="w-full bg-[#EBFFEE] mt-3 p-2 rounded-xl flex items-center justify-center dark:bg-emerald-950/50 dark:text-emerald-100">
           <span className="">וואו! חסכת <span className="font-bold">${saving}</span> עם החבילה הזאת</span>

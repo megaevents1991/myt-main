@@ -67,6 +67,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > `?pkg` link. In `live`, `computePackagePrice` returns the package's price so
 > the card and the landing agree. A partner's `?pkg` link and every event in
 > `off` behave exactly as before.
+> **It is a LANDING page (Alon's QA, 2026-10-06).** The customer's first page,
+> so in `OrderReview` - all behind `readyPackage`, the regular summary keeps its
+> classes: no "כמעט שם" popup (`openModal` starts false), no 15-minute countdown
+> (neither `Timer` is mounted; `MobileHeader showTimer`), and on desktop a
+> one-pager - a narrow column (travellers, total, terms, pay button, trust)
+> beside the wide package, done by showing the column's "mobile" terms / pay
+> blocks on every width and hiding the summary column's desktop ones. The
+> package view says how many each piece holds and names the hotel's rooms
+> (`roomsLabel` over `hotel.guests`), draws the flight with `FlightMeta`, the
+> hotel photo beside its details, and the venue map with the ticket's zone
+> painted (`TixstockDynamicMap`, one listing). **Swap per piece:** the route
+> answers `swap = { ticket, flight, hotel }` (`swapOf(spec, allow_edit)`) and
+> "החלפה" shows only on an open piece. **No limit of its own:**
+> `READY_MAX_TRAVELERS_CAP` = 9 = the ticket step's `MAX_TICKETS`. **The ticket
+> step's rules still run** (`app/hooks/useReadyTicketLive.ts`): the package's one
+> ticket goes through `priceTicketsForQuantity` with the same three live calls
+> (TixStock / LiveTickets / own stock) on landing and after every traveller
+> change - the order gets the live price and the supplier (`toOrderTicket`,
+> exported from `TicketSelection` with `TX_FALLBACK_MULTIPLIER`); a size the
+> supplier cannot sell leaves the picker (`blockedPax`, `notice`) and the
+> package moves to the nearest one; none left = the regular flow on step 1. A
+> package ticket is "unchecked" while it has no `supplier` - a ticket the
+> customer picked in the ticket step always has one and is never touched.
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future

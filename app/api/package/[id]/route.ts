@@ -5,7 +5,7 @@ import { isEventSoldOut } from "@/lib/events/price";
 import { isMegaEventsFlight } from "@/lib/flights/company";
 import { getPartnerSession } from "@/lib/partner-auth";
 import type { Flight, OrderHotel } from "@/lib/app.types";
-import { pickPax, readyMode, variantSizes } from "@/lib/events/readyPackage";
+import { pickPax, readyMode, swapOf, variantSizes } from "@/lib/events/readyPackage";
 
 /**
  * Resolves a prepared package into what OrderReview needs, re-validated
@@ -57,6 +57,8 @@ type PreparedPackageRow = {
   kind?: string | null;
   max_travelers?: number | null;
   variants?: Record<string, ReadyVariantRow> | null;
+  /** House row only: the pieces' identity; read here for `swap` alone (lib/events/readyPackage.ts swapOf). */
+  spec?: unknown;
 };
 
 type ReadyVariantRow = {
@@ -89,7 +91,7 @@ export async function GET(
   let { data, error } = await supabase
     .from("prepared_packages")
     .select(
-      `${PACKAGE_COLUMNS}, allow_edit, price_adjust_per_person, kind, max_travelers, variants`,
+      `${PACKAGE_COLUMNS}, allow_edit, price_adjust_per_person, kind, max_travelers, variants, spec`,
     )
     .eq("share_token", id)
     .maybeSingle();
@@ -323,7 +325,13 @@ export async function GET(
     num_travelers: row.num_travelers,
     allow_edit: isOwner || row.allow_edit !== false,
     ...(isHouse
-      ? { house: true, pax_options: paxOptions, hotel_image: hotelImage }
+      ? {
+          house: true,
+          pax_options: paxOptions,
+          hotel_image: hotelImage,
+          // Per piece: may the customer swap it (staff decide in the backoffice).
+          swap: swapOf(row.spec, row.allow_edit),
+        }
       : {}),
   });
 }

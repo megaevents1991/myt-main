@@ -40,15 +40,18 @@ import {
 const TX_FALLBACK_BUFFER_PCT = Number(
   process.env.NEXT_PUBLIC_TX_FALLBACK_BUFFER_PCT ?? "15",
 );
-const TX_FALLBACK_MULTIPLIER =
+// Exported for the ready package's ticket check (app/hooks/useReadyTicketLive.ts),
+// which prices its one ticket by this step's own rule.
+export const TX_FALLBACK_MULTIPLIER =
   1 + (Number.isFinite(TX_FALLBACK_BUFFER_PCT) ? TX_FALLBACK_BUFFER_PCT : 15) / 100;
 
 /**
  * The ticket as the order carries it. Besides what the customer sees it keeps
  * WHO we buy it from (supplier, that supplier's event id and category name) -
  * on a multi-supplier event ops can no longer infer that from the event.
+ * Exported for the ready package's ticket check (app/hooks/useReadyTicketLive.ts).
  */
-const toOrderTicket = (
+export const toOrderTicket = (
   ticket: PricedTicket,
   eventType: EventType | undefined,
   quantity: number,

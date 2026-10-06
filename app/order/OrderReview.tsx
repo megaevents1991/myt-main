@@ -58,7 +58,9 @@ import {
 import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { Review } from "./OrderSummary/Review";
 import { ReadyPackageShowcase } from "@/components/order/ReadyPackageShowcase";
+import { PaymentLogos } from "@/components/order/PaymentLogos";
 import { useReadyPackagePax } from "../hooks/useHandlePreparedPackage";
+import { useReadyTicketLive } from "../hooks/useReadyTicketLive";
 import { PriceSummary } from "./OrderSummary/PriceSummary";
 import { ButtonSummary } from "./OrderSummary/ButtonSummary";
 import { MobileHeader } from "./OrderSummary/MobileHeader";
@@ -120,6 +122,10 @@ export default function OrderReview({
   // view instead of the plain Review. Null on every other visit.
   const { readyPackage } = useContext(OrderContext);
   const { changePax: changeReadyPax } = useReadyPackagePax();
+  // The package's ticket goes through the ticket step's own live rules (price
+  // for this quantity, can the supplier sell it, our stock) - a no-op on every
+  // order that is not a ready package.
+  useReadyTicketLive();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isMobile } = useIsMobile();
@@ -484,7 +490,10 @@ export default function OrderReview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [openModal, setOpenModal] = useState(true);
+  // A ready package lands the customer HERE - it is the first page they see, so
+  // no "almost there" popup greets them and nothing counts down (the two timers
+  // below are not mounted either, so the order never "runs out" on a landing).
+  const [openModal, setOpenModal] = useState(!readyPackage);
   const [isTimeout, setIsTimeout] = useState(false);
   const [isPayNow, setIsPayNow] = useState(false);
   // Special offer (inactivity) modal state
@@ -1623,7 +1632,7 @@ export default function OrderReview({
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center">
-      {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} skipHotel={skipHotel} />}
+      {isMobile && <MobileHeader handleTimeout={handleTimeout} saving={recommendedPriceAllPax - finalPurchasePrice} skipHotel={skipHotel} showTimer={!readyPackage} />}
       <div className="sr-only">
         <h1>סיכום הזמנה לאירוע {event?.name}</h1>
         <p>
@@ -1858,13 +1867,25 @@ export default function OrderReview({
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4 items-start">
+          {/* A ready package is a one-pager: the package wide, and beside it a
+              narrow column with the travellers, the total and the pay button
+              (every `readyPackage` condition below serves only that layout). */}
+          <div
+            className={cn(
+              "grid gap-4 items-start",
+              readyPackage
+                ? "md:grid-cols-[minmax(300px,340px)_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]"
+                : "md:grid-cols-2"
+            )}
+          >
             <div className="space-y-4 order-1 md:order-2">
               <Card className="bg-card text-card-foreground shadow-lg overflow-hidden">
                 <div
                   dir="rtl"
                   className={cn(
-                    "bg-main text-main-foreground py-4 px-6 flex flex-row justify-between items-center"
+                    "bg-main text-main-foreground py-4 px-6 flex flex-row justify-between items-center",
+                    // The package view has its own heading - and no countdown.
+                    readyPackage && "hidden"
                   )}
                 >
                   {/* RTL: title + photo sit on the right, timer on the left. */}
@@ -1901,7 +1922,7 @@ export default function OrderReview({
                       סיכום הזמנה
                     </h2>
                   </div>
-                  {!isMobile ? (
+                  {readyPackage ? null : !isMobile ? (
                     <div className="flex items-center gap-2">
                       <span className="text-sm">ההזמנה שמורה עבורך למשך</span>
                       <span dir="ltr">
@@ -1929,7 +1950,8 @@ export default function OrderReview({
                     </div>
                   )}
                 </div>
-                {!isMobile && (
+                {/* A ready package shows its total beside the pay button instead. */}
+                {!isMobile && !readyPackage && (
                   <PriceSummary
                     finalPurchasePrice={finalPurchasePrice}
                     finalPurchasePriceILS={finalPurchasePriceILS}
@@ -1953,6 +1975,12 @@ export default function OrderReview({
                     travelers={numberOfEventTickets}
                     airlineFullName={airlineFullName}
                     ready={readyPackage}
+                    total={finalPurchasePrice}
+                    // Same figure the price summary prints as "(לאדם)".
+                    perPerson={Math.ceil(
+                      Math.max(0, finalPurchasePrice - bagAddOnsUsd) /
+                        Math.max(1, numberOfPersons)
+                    )}
                     onChangePax={changeReadyPax}
                     // Same rule as the Review below: a locked package offers no swap.
                     onEdit={
@@ -2298,8 +2326,14 @@ export default function OrderReview({
                   );
                 })()}
               </Card> */}
+              {/* Desktop terms, logos and pay buttons of the regular summary. A
+                  ready package has them in the narrow column instead (the
+                  blocks marked "mobile" there show on every width). */}
               <div
-                className="hidden md:flex flex-col mr-2 mt-4 mb-2 text-right"
+                className={cn(
+                  "hidden flex-col mr-2 mt-4 mb-2 text-right",
+                  !readyPackage && "md:flex"
+                )}
                 dir="rtl"
               >
                 <div className="flex items-center justify-center space-x-2">
@@ -2424,7 +2458,12 @@ export default function OrderReview({
                 {termsCheckboxTouched && !termsAccepted && <TermsError />}{" "}
               </div>
               {/* Payment security logos */}
-              <div className="flex items-center justify-center gap-4 my-4 hidden md:flex">
+              <div
+                className={cn(
+                  "items-center justify-center gap-4 my-4 hidden",
+                  !readyPackage && "md:flex"
+                )}
+              >
                 <Image
                   src="/amex.svg"
                   alt="American Express"
@@ -2464,7 +2503,7 @@ export default function OrderReview({
                   CTA + secondary row entirely (2026-08-21). Non-agent: the
                   original single-CTA flow, unchanged. */}
               {isAgentSettlementMode ? (
-                <div className="hidden md:block">
+                <div className={cn("hidden", !readyPackage && "md:block")}>
                   <AgentSettlementActions
                     onSettle={handleAgentSettle}
                     agentCommissionUsd={agentCommissionUsd}
@@ -2479,14 +2518,17 @@ export default function OrderReview({
                 <>
                   <Button
                     onClick={(e) => handleSubmit(e, true)}
-                    className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] hidden md:block"
+                    className={cn(
+                      "w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] hidden",
+                      !readyPackage && "md:block"
+                    )}
                     disabled={isSubmitting}
                     aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
                   >
                     המשך לתשלום מאובטח
                   </Button>
 
-                  <div className="hidden md:flex gap-2 mt-0">
+                  <div className={cn("hidden gap-2 mt-0", !readyPackage && "md:flex")}>
                     <Button
                       onClick={handleSubmit}
                       variant={"link"}
@@ -2515,9 +2557,20 @@ export default function OrderReview({
                 </>
               )}
             </div>
-            <div className="space-y-6 order-2 md:order-1">
+            {/* Ready package: this is the narrow column - travellers, total,
+                terms, pay, then the trust card (a flex column so they can be
+                ordered without moving any markup). */}
+            <div
+              className={cn(
+                readyPackage ? "flex flex-col gap-6" : "space-y-6",
+                "order-2 md:order-1"
+              )}
+            >
               <Card
-                className="bg-card text-card-foreground shadow-lg overflow-hidden"
+                className={cn(
+                  "bg-card text-card-foreground shadow-lg overflow-hidden",
+                  readyPackage && "order-1"
+                )}
                 ref={passengerDetailsRef}
               >
                 <div className="px-8 pt-6 pb-8">
@@ -2755,10 +2808,33 @@ export default function OrderReview({
                   </form>
                 </div>
               </Card>
+              {/* Ready package, desktop: the total and the card logos sit right
+                  above the terms and the pay button. */}
+              {readyPackage && !isMobile && (
+                <Card className="order-2 bg-card text-card-foreground shadow-lg overflow-hidden">
+                  <PriceSummary
+                    finalPurchasePrice={finalPurchasePrice}
+                    finalPurchasePriceILS={finalPurchasePriceILS}
+                    recommendedPriceAllPax={recommendedPriceAllPax}
+                    numberOfPersons={numberOfPersons}
+                    agentCommission={agentCommission}
+                    agentCommissionUsd={agentCommissionUsd}
+                    isAgent={isAgentVisitor}
+                    affDiscount={effectiveDiscountTotalUsd}
+                    isCouponDiscount={couponWins}
+                    isNumberOfPersonsEqual={isNumberOfPersonsEqual}
+                    addOnsTotalUsd={bagAddOnsUsd}
+                  />
+                  <PaymentLogos className="py-3" />
+                </Card>
+              )}
               {/* Trust */}
               {!isAgentVisitor && (
                 <Card
-                  className="bg-card text-card-foreground shadow-lg overflow-hidden order-4 md:order-3 hidden md:block"
+                  className={cn(
+                    "bg-card text-card-foreground shadow-lg overflow-hidden order-4 md:order-3 hidden md:block",
+                    readyPackage && "order-5 md:order-5"
+                  )}
                   dir="rtl"
                 >
                   {(() => {
@@ -2808,7 +2884,10 @@ export default function OrderReview({
                 </Card>
               )}
               <div
-                className="flex md:hidden flex-col mr-2 mt-4 mb-2 text-right"
+                className={cn(
+                  "flex flex-col mr-2 mt-4 mb-2 text-right",
+                  readyPackage ? "order-3" : "md:hidden"
+                )}
                 dir="rtl"
               >
                 <div className="flex items-center space-x-2 justify-center">
@@ -2932,9 +3011,9 @@ export default function OrderReview({
               {/* CTA Button(s) - ref wraps the whole area (not one button)
                   since agent mode renders 3; the sticky-footer visibility
                   check below only needs getBoundingClientRect on it. */}
-              <div ref={originalButtonRef}>
+              <div ref={originalButtonRef} className={cn(readyPackage && "order-4")}>
                 {isAgentSettlementMode ? (
-                  <div className="block md:hidden">
+                  <div className={cn("block", !readyPackage && "md:hidden")}>
                     <AgentSettlementActions
                       onSettle={handleAgentSettle}
                       agentCommissionUsd={agentCommissionUsd}
@@ -2949,7 +3028,10 @@ export default function OrderReview({
                   <>
                     <Button
                       onClick={(e) => handleSubmit(e, true)}
-                      className="w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] block md:hidden"
+                      className={cn(
+                        "w-full bg-main text-main-foreground hover:bg-main/90 dark:bg-glow dark:text-forest dark:hover:bg-glow/90 font-bold text-[18px] h-[52px] block",
+                        !readyPackage && "md:hidden"
+                      )}
                       disabled={isSubmitting}
                       aria-label="המשך לתשלום מאובטח בכרטיס אשראי"
                     >
@@ -2968,7 +3050,12 @@ export default function OrderReview({
                       />
                     </Button>
 
-                    <div className="flex !mt-2 md:hidden w-full flex-nowrap gap-2">
+                    <div
+                      className={cn(
+                        "flex !mt-2 w-full flex-nowrap gap-2",
+                        !readyPackage && "md:hidden"
+                      )}
+                    >
                       <Button
                         onClick={handleSubmit}
                         variant={"link"}
