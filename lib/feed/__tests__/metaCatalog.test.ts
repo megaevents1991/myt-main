@@ -329,4 +329,64 @@ assert.ok(
 );
 assert.ok(toCsv([amp]).includes('"'), "comma/quote-worthy cells get quoted");
 
+/* ticket-only event (the backoffice switch): title, price, label 4 and an internal label -
+   all from the event alone */
+const ticketOnlyEvent = baseEvent({
+  package_mode: "ticket_only",
+  ticket_only_markup: 250,
+  base_flight_price: 0,
+  base_hotel_price: 0,
+});
+const ticketOnly = buildFeedItem(ticketOnlyEvent, TAX, CUTOFF, TODAY) as FeedItem;
+assert.strictEqual(ticketOnly.title, "בריאן אדמס · ברלין · 2.10 · כרטיס בלבד");
+assert.strictEqual(ticketOnly.price, "370.00 USD"); // 120 + 250, no package markup
+assert.deepStrictEqual(ticketOnly.custom_labels, [
+  "music",
+  "rock",
+  "bryan-adams",
+  "berlin",
+  "ticket-only",
+]);
+assert.deepStrictEqual(ticketOnly.internal_labels, [
+  "berlin",
+  "music",
+  "rock",
+  "status:available",
+  "ticket-only",
+]);
+assert.ok(ticketOnly.description.includes("כרטיס בלבד"));
+/* sold out wins label 4, the internal label stays, and the price keeps the ticket-only rule */
+const ticketOnlySold = buildFeedItem(
+  { ...ticketOnlyEvent, tickets_and_rates: soldOut.tickets_and_rates },
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
+assert.strictEqual(ticketOnlySold.custom_labels[4], "sold_out");
+assert.ok(ticketOnlySold.internal_labels.includes("ticket-only"));
+assert.strictEqual(ticketOnlySold.price, "370.00 USD");
+/* two cities: no flight is sold, so the title never says "טיסה ל..." */
+const ticketOnlyTwoCities = buildFeedItem(
+  {
+    ...ticketOnlyEvent,
+    location: { latitude: 51.5, longitude: -0.12, name: "לונדון, בריטניה", city_iata: "LON" },
+    event_location: { latitude: 53.48, longitude: -2.24, name: "מנצ'סטר" },
+  } as Event,
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
+assert.strictEqual(ticketOnlyTwoCities.title, "בריאן אדמס · מנצ'סטר · 2.10 · כרטיס בלבד");
+/* a package that only carries a ticket-only markup is untouched */
+const packageWithMarkup = buildFeedItem(
+  baseEvent({ package_mode: "package", ticket_only_markup: 200 }),
+  TAX,
+  CUTOFF,
+  TODAY,
+) as FeedItem;
+assert.strictEqual(packageWithMarkup.title, item.title);
+assert.strictEqual(packageWithMarkup.price, item.price);
+assert.deepStrictEqual(packageWithMarkup.custom_labels, item.custom_labels);
+assert.deepStrictEqual(packageWithMarkup.internal_labels, item.internal_labels);
+
 console.log("metaCatalog: all assertions passed ✅");

@@ -23,8 +23,10 @@ import {
   FEED_BRAND,
   feedPriceUSD,
   formatPriceUSD,
+  labelStatusOf,
   orderLink,
   plainText,
+  TICKET_ONLY_SUFFIX,
   type EventTaxonomyInfo,
 } from "./metaCatalog";
 import { isTicketOnlyEvent } from "@/lib/events/price";
@@ -210,20 +212,27 @@ export function buildActivityItem(
 
   const d = new Date(`${eventDate}T00:00:00Z`);
   const name = event.name.trim();
+  const ticketOnly = isTicketOnlyEvent(event);
   // Two-city event: the title reads "<event city> · טיסה ל<flight city>"; the prose and
-  // location_names (Meta's city) the event city.
+  // location_names (Meta's city) the event city. A ticket-only event sells no
+  // flight, so its title names the event city alone.
   const city = hasEventCity(event) ? eventCityName(event) : cityOnly(event.location?.name);
-  const place = hasEventCity(event) ? placeLabel(event) : city;
+  const place = hasEventCity(event) && !ticketOnly ? placeLabel(event) : city;
   const activity_category = activityCategoryOf(event, taxonomy, hint);
 
-  const baseTitle = [name, place, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
+  // The title is the line of text under the ad's picture. A ticket-only event
+  // says so, whatever its category; until 2026-10-06 every concert got the
+  // package suffix, a ticket-only one included (Stevie Wonder Hannover ran as
+  // "טיסה+מלון+כרטיס").
+  const suffix = ticketOnly
+    ? TICKET_ONLY_SUFFIX
+    : activity_category === "Concert"
+      ? PACKAGE_SUFFIX
+      : "";
+  const title = [name, place, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`, suffix]
     .filter(Boolean)
-    .join(" · ");
-  const title = (
-    activity_category === "Concert"
-      ? `${baseTitle} · ${PACKAGE_SUFFIX}`
-      : baseTitle
-  ).slice(0, 200);
+    .join(" · ")
+    .slice(0, 200);
 
   const fromCms = plainText(event.description || "");
   const generated = `${name} ב${city || "חו״ל"}, ${d.getUTCDate()}.${
@@ -241,10 +250,11 @@ export function buildActivityItem(
   const subCategory = leaf || (hint === "football-team" ? "Football" : "");
   // Shared vertical/league|genre/team|artist/city/availability hierarchy -
   // same builder the Google feed uses (spec 2026-08-12). This feed drops
-  // sold-out events above, so status is always "available" here.
+  // sold-out events above, so the status here is "available" or, for an event
+  // sold as the ticket alone, "ticket-only" (the label ad sets split on).
   const labels = buildCustomLabels(
     taxonomy,
-    "available",
+    labelStatusOf(event, false),
     event.location?.city_iata,
     hint,
   );

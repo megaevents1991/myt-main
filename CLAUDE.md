@@ -249,6 +249,18 @@ Required in `.env.local`:
   `lib/feed/metaCatalog.ts` from typed `event_tags` (`EventTag.type`) with
   category-path/CMS-hint fallbacks for vertical and IATA fallback for city
   (spec 2026-08-12).
+- **Ticket-only events in the feeds (2026-10-06).** Everything follows the event's own
+  `package_mode` - nothing is tagged by hand, so a future ticket-only event is right by
+  itself. Title ends with "כרטיס בלבד" (`TICKET_ONLY_SUFFIX`; a concert's "טיסה+מלון+כרטיס"
+  suffix is for packages only) and names the event city alone (no "טיסה ל...").
+  `custom_label_4` = `ticket-only` while on sale (`labelStatusOf`; `sold_out` wins) - the
+  value a ticket-only product set is built on; the commerce feed also adds the internal
+  label `ticket-only` and keeps `status:available|sold_out` as it was. Price = ticket +
+  `ticket_only_markup`, also for a sold-out row (`feedPriceUSD`). The PICTURE is drawn by
+  the backoffice (`lib/creative/auto.ts`), which prices it with `siteCardPrice` - a mirror
+  of `computePackagePrice` here. **A new branch in `computePackagePrice` must be mirrored
+  there**, or the ad's picture and its price field disagree (until 06.10 a ticket-only
+  picture said ticket + 175 while the site charged ticket + its markup).
 - Middleware skips `/feeds/` so the routes' own `Cache-Control` applies.
 
 ## Architecture

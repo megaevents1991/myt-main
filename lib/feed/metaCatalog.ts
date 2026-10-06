@@ -12,6 +12,7 @@ import type { TagType } from "@/lib/taxonomy.types";
 import type { FeedSkip } from "@/lib/feed/skipExplain";
 import {
   computePackagePrice,
+  getTicketOnlyMarkup,
   getTotalMarkup,
   isEventSoldOut,
 } from "@/lib/events/price";
@@ -38,15 +39,36 @@ export type EventTaxonomyInfo = {
 };
 
 /**
+ * custom_label_4. "ticket-only" = an event sold as the ticket alone (the
+ * backoffice switch `events.package_mode`) that is on sale - the label an ad set
+ * splits on, so a ticket never runs under package copy. Derived from the event,
+ * never typed by hand, so every future ticket-only event carries it by itself.
+ */
+export type FeedLabelStatus = "available" | "sold_out" | "ticket-only";
+export const TICKET_ONLY_LABEL = "ticket-only";
+/** What a ticket-only event's feed title ends with. */
+export const TICKET_ONLY_SUFFIX = "כרטיס בלבד";
+
+/** Sold out wins: an event nobody can buy is "sold_out" whatever it sells. */
+export function labelStatusOf(
+  event: Pick<Event, "package_mode">,
+  soldOut: boolean,
+): FeedLabelStatus {
+  if (soldOut) return "sold_out";
+  return isTicketOnlyEvent(event) ? TICKET_ONLY_LABEL : "available";
+}
+
+/**
  * ONE label scheme for BOTH feeds (spec 2026-08-12):
- *   0 vertical · 1 league|genre · 2 team|artist · 3 city · 4 availability.
+ *   0 vertical · 1 league|genre · 2 team|artist · 3 city ·
+ *   4 availability (available | sold_out | ticket-only - see FeedLabelStatus).
  * Fallbacks: vertical <- root category name <- CMS hint; city <- IATA code.
  * Alphabetical pick inside a type keeps the label deterministic when an event
  * carries two teams (fixtures always do).
  */
 export function buildCustomLabels(
   taxonomy: EventTaxonomyInfo,
-  status: "available" | "sold_out",
+  status: FeedLabelStatus,
   cityIata: string | null | undefined,
   hint?: "artist" | "football-team" | null,
 ): [string, string, string, string, string] {
@@ -150,6 +172,12 @@ export function feedPriceUSD(event: Event): number | null {
     .map((t) => Number(t?.price))
     .filter((p) => Number.isFinite(p) && p > 0);
   if (allPrices.length > 0) {
+    // A sold-out ticket-only event keeps its own rule: ticket + its markup.
+    if (isTicketOnlyEvent(event)) {
+      return Math.ceil(
+        Math.min(...allPrices) + (getTicketOnlyMarkup(event) ?? 0),
+      );
+    }
     return (
       event.base_flight_price +
       event.base_hotel_price +
@@ -209,14 +237,21 @@ export function buildFeedItem(
 
   const eventDate = event.date.split("T")[0];
   const d = new Date(`${eventDate}T00:00:00Z`);
+  const ticketOnly = isTicketOnlyEvent(event);
   // Two-city event: the title reads "<event city> · טיסה ל<flight city>", the prose the event city.
+  // A ticket-only event sells no flight, so its title names the event city alone.
   const city = hasEventCity(event) ? eventCityName(event) : (event.location?.name ?? "").trim();
-  const place = hasEventCity(event) ? placeLabel(event) : city;
+  const place = hasEventCity(event) && !ticketOnly ? placeLabel(event) : city;
   // DB names sometimes carry trailing spaces → "name  · city" in titles.
   const name = event.name.trim();
 
   const soldOut = isEventSoldOut(event) || eventDate < availabilityCutoffISO;
-  const title = [name, place, `${d.getUTCDate()}.${d.getUTCMonth() + 1}`]
+  const title = [
+    name,
+    place,
+    `${d.getUTCDate()}.${d.getUTCMonth() + 1}`,
+    ticketOnly ? TICKET_ONLY_SUFFIX : "",
+  ]
     .filter(Boolean)
     .join(" · ")
     .slice(0, 200);
@@ -235,7 +270,7 @@ export function buildFeedItem(
   const status = soldOut ? "sold_out" : "available";
   const custom_labels = buildCustomLabels(
     taxonomy,
-    status,
+    labelStatusOf(event, soldOut),
     event.location?.city_iata,
   );
 
@@ -263,7 +298,13 @@ export function buildFeedItem(
     brand: FEED_BRAND,
     expiration_date: expirationDateOf(eventDate),
     product_type: taxonomy.categoryPath.join(" > "),
-    internal_labels: [...taxonomy.tagSlugs, `status:${status}`],
+    // `status:` stays availability alone (filters already built on it keep
+    // working); a ticket-only event adds its own internal label, sold out or not.
+    internal_labels: [
+      ...taxonomy.tagSlugs,
+      `status:${status}`,
+      ...(ticketOnly ? [TICKET_ONLY_LABEL] : []),
+    ],
     custom_labels,
     custom_numbers: [d.getUTCFullYear(), daysUntil, nights],
   };

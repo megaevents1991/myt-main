@@ -315,4 +315,63 @@ assert.ok(csv.endsWith("\r\n"));
 assert.ok(csv.includes('"'), "description with commas is quoted");
 assert.ok(!csv.includes("availability"), "no e-commerce columns");
 
+/* ticket-only event (the backoffice switch): the title, the price and the label all say so -
+   from the event alone, so every future ticket-only event is right without tagging */
+const ticketOnlyConcert = buildActivityItem(
+  baseEvent({
+    package_mode: "ticket_only",
+    ticket_only_markup: 250,
+    base_flight_price: 0,
+    base_hotel_price: 0,
+  }),
+  MUSIC,
+  CUTOFF,
+) as ActivityItem;
+assert.strictEqual(
+  ticketOnlyConcert.title,
+  "גאנס אנד רוזס · ברלין · 2.10 · כרטיס בלבד",
+);
+assert.ok(!ticketOnlyConcert.title.includes("טיסה"));
+assert.strictEqual(ticketOnlyConcert.price, "370.00 USD"); // 120 + 250, no package markup
+assert.strictEqual(ticketOnlyConcert.custom_label_4, "ticket-only");
+assert.strictEqual(ticketOnlyConcert.custom_label_0, "music", "the other labels did not move");
+assert.ok(ticketOnlyConcert.description.includes("כרטיס בלבד"));
+/* a match too - sports titles carry no suffix otherwise */
+const ticketOnlyMatch = buildActivityItem(
+  baseEvent({
+    type: "sports_event",
+    name: "ליברפול - מנצ'סטר סיטי",
+    package_mode: "ticket_only",
+    ticket_only_markup: 0,
+  }),
+  SPORT,
+  CUTOFF,
+) as ActivityItem;
+assert.ok(ticketOnlyMatch.title.endsWith(" · כרטיס בלבד"));
+assert.strictEqual(ticketOnlyMatch.custom_label_4, "ticket-only");
+/* two cities: no flight is sold, so the title never says "טיסה ל..." */
+const ticketOnlyTwoCities = buildActivityItem(
+  baseEvent({
+    package_mode: "ticket_only",
+    ticket_only_markup: 250,
+    location: { latitude: 51.5, longitude: -0.12, name: "לונדון, בריטניה", city_iata: "LON" },
+    event_location: { latitude: 53.48, longitude: -2.24, name: "מנצ'סטר" },
+  } as Partial<Event>),
+  MUSIC,
+  CUTOFF,
+) as ActivityItem;
+assert.strictEqual(
+  ticketOnlyTwoCities.title,
+  "גאנס אנד רוזס · מנצ'סטר · 2.10 · כרטיס בלבד",
+);
+/* a package that only CARRIES a ticket-only markup (for customers who skip both) stays a package */
+const packageWithMarkup = buildActivityItem(
+  baseEvent({ package_mode: "package", ticket_only_markup: 200 }),
+  MUSIC,
+  CUTOFF,
+) as ActivityItem;
+assert.strictEqual(packageWithMarkup.title, item.title);
+assert.strictEqual(packageWithMarkup.price, item.price);
+assert.strictEqual(packageWithMarkup.custom_label_4, "available");
+
 console.log("activitiesCatalog: all assertions passed ✅");
