@@ -253,9 +253,11 @@ Required in `.env.local`:
   `package_mode` - nothing is tagged by hand, so a future ticket-only event is right by
   itself. Title ends with "כרטיס בלבד" (`TICKET_ONLY_SUFFIX`; a concert's "טיסה+מלון+כרטיס"
   suffix is for packages only) and names the event city alone (no "טיסה ל...").
-  `custom_label_4` = `ticket-only` while on sale (`labelStatusOf`; `sold_out` wins) - the
-  value a ticket-only product set is built on; the commerce feed also adds the internal
-  label `ticket-only` and keeps `status:available|sold_out` as it was. Price = ticket +
+  **It stays in the same catalog and the same ad sets** (Dor 06.10: everything goes up by
+  itself, a ticket-only event just gets its own post): the `custom_label`s do not move,
+  `custom_label_4` stays availability alone - never put the mode there, a set filtering
+  `available` would lose the event. The commerce feed only ADDS the internal label
+  `ticket-only`. Price = ticket +
   `ticket_only_markup`, also for a sold-out row (`feedPriceUSD`). The PICTURE is drawn by
   the backoffice (`lib/creative/auto.ts`), which prices it with `siteCardPrice` - a mirror
   of `computePackagePrice` here. **A new branch in `computePackagePrice` must be mirrored

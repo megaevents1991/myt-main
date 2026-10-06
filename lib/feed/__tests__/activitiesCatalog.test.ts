@@ -315,8 +315,8 @@ assert.ok(csv.endsWith("\r\n"));
 assert.ok(csv.includes('"'), "description with commas is quoted");
 assert.ok(!csv.includes("availability"), "no e-commerce columns");
 
-/* ticket-only event (the backoffice switch): the title, the price and the label all say so -
-   from the event alone, so every future ticket-only event is right without tagging */
+/* ticket-only event (the backoffice switch): its own post - title and price - from the event alone,
+   so every future one is right without tagging. It stays in the SAME ad sets: the labels do not move. */
 const ticketOnlyConcert = buildActivityItem(
   baseEvent({
     package_mode: "ticket_only",
@@ -333,8 +333,10 @@ assert.strictEqual(
 );
 assert.ok(!ticketOnlyConcert.title.includes("טיסה"));
 assert.strictEqual(ticketOnlyConcert.price, "370.00 USD"); // 120 + 250, no package markup
-assert.strictEqual(ticketOnlyConcert.custom_label_4, "ticket-only");
-assert.strictEqual(ticketOnlyConcert.custom_label_0, "music", "the other labels did not move");
+assert.strictEqual(ticketOnlyConcert.custom_label_4, "available", "a set filtering available keeps it");
+assert.strictEqual(ticketOnlyConcert.custom_label_0, "music");
+assert.strictEqual(ticketOnlyConcert.custom_label_2, item.custom_label_2);
+assert.strictEqual(ticketOnlyConcert.custom_label_3, item.custom_label_3);
 assert.ok(ticketOnlyConcert.description.includes("כרטיס בלבד"));
 /* a match too - sports titles carry no suffix otherwise */
 const ticketOnlyMatch = buildActivityItem(
@@ -348,7 +350,7 @@ const ticketOnlyMatch = buildActivityItem(
   CUTOFF,
 ) as ActivityItem;
 assert.ok(ticketOnlyMatch.title.endsWith(" · כרטיס בלבד"));
-assert.strictEqual(ticketOnlyMatch.custom_label_4, "ticket-only");
+assert.strictEqual(ticketOnlyMatch.custom_label_4, "available");
 /* two cities: no flight is sold, so the title never says "טיסה ל..." */
 const ticketOnlyTwoCities = buildActivityItem(
   baseEvent({

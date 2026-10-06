@@ -329,8 +329,8 @@ assert.ok(
 );
 assert.ok(toCsv([amp]).includes('"'), "comma/quote-worthy cells get quoted");
 
-/* ticket-only event (the backoffice switch): title, price, label 4 and an internal label -
-   all from the event alone */
+/* ticket-only event (the backoffice switch): its own title and price, from the event alone.
+   It stays in the same ad sets - the custom labels do not move; one internal label is added. */
 const ticketOnlyEvent = baseEvent({
   package_mode: "ticket_only",
   ticket_only_markup: 250,
@@ -340,13 +340,7 @@ const ticketOnlyEvent = baseEvent({
 const ticketOnly = buildFeedItem(ticketOnlyEvent, TAX, CUTOFF, TODAY) as FeedItem;
 assert.strictEqual(ticketOnly.title, "בריאן אדמס · ברלין · 2.10 · כרטיס בלבד");
 assert.strictEqual(ticketOnly.price, "370.00 USD"); // 120 + 250, no package markup
-assert.deepStrictEqual(ticketOnly.custom_labels, [
-  "music",
-  "rock",
-  "bryan-adams",
-  "berlin",
-  "ticket-only",
-]);
+assert.deepStrictEqual(ticketOnly.custom_labels, item.custom_labels);
 assert.deepStrictEqual(ticketOnly.internal_labels, [
   "berlin",
   "music",
@@ -355,7 +349,7 @@ assert.deepStrictEqual(ticketOnly.internal_labels, [
   "ticket-only",
 ]);
 assert.ok(ticketOnly.description.includes("כרטיס בלבד"));
-/* sold out wins label 4, the internal label stays, and the price keeps the ticket-only rule */
+/* sold out: label 4 as for any event, the internal label stays, and the price keeps the ticket-only rule */
 const ticketOnlySold = buildFeedItem(
   { ...ticketOnlyEvent, tickets_and_rates: soldOut.tickets_and_rates },
   TAX,

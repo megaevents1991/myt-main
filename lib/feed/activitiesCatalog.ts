@@ -23,7 +23,6 @@ import {
   FEED_BRAND,
   feedPriceUSD,
   formatPriceUSD,
-  labelStatusOf,
   orderLink,
   plainText,
   TICKET_ONLY_SUFFIX,
@@ -250,11 +249,12 @@ export function buildActivityItem(
   const subCategory = leaf || (hint === "football-team" ? "Football" : "");
   // Shared vertical/league|genre/team|artist/city/availability hierarchy -
   // same builder the Google feed uses (spec 2026-08-12). This feed drops
-  // sold-out events above, so the status here is "available" or, for an event
-  // sold as the ticket alone, "ticket-only" (the label ad sets split on).
+  // sold-out events above, so status is always "available" here - for a
+  // ticket-only event too: it stays in the same ad sets as everything else and
+  // differs by its post alone (picture + title), Dor 06.10.
   const labels = buildCustomLabels(
     taxonomy,
-    labelStatusOf(event, false),
+    "available",
     event.location?.city_iata,
     hint,
   );
