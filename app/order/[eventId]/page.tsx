@@ -1,5 +1,6 @@
 import { placeLabel } from "@/lib/events/lodging";
-import { getCachedEvents, getEvents } from "@/lib/eventsData";
+import { cache } from "react";
+import { getEvents } from "@/lib/eventsData";
 import { getAllArtists } from "@/lib/artists";
 import { getAllFootballTeams } from "@/lib/football";
 import OrderPageClient from "../OrderPageClient";
@@ -25,6 +26,22 @@ export async function generateStaticParams() {
   return [];
 }
 
+/**
+ * The page's ONE event, read by id - one indexed row. Until 2026-10-07 the page looked its
+ * event up in the whole cached catalog, and a regeneration does not get that catalog from
+ * the cache: Vercel re-renders an ISR page as an on-demand revalidation, where
+ * `unstable_cache` skips its lookup and runs the query - so every regeneration of every
+ * order page pulled the whole events table (2.6 MB) to find one row.
+ * By id is also what keeps a QA event (`is_test`) or one taken off the listings orderable
+ * by its direct link. `cache` = one read per render, shared by the metadata and the page.
+ */
+const loadOrderEvent = cache(async (eventId: string): Promise<Event | undefined> => {
+  const id = parseInt(eventId);
+  if (!Number.isFinite(id)) return undefined;
+  const { events } = await getEvents(id);
+  return events[0];
+});
+
 export async function generateMetadata({
   params,
 }: {
@@ -33,15 +50,7 @@ export async function generateMetadata({
   const { eventId } = await params;
   
   try {
-    const { events } = await getCachedEvents();
-    let event = events.find((e) => e.id === parseInt(eventId));
-
-    // QA test events (is_test) are excluded from the cached catalog but stay
-    // orderable by direct link - fetch by id, which keeps them.
-    if (!event) {
-      const { events: direct } = await getEvents(parseInt(eventId));
-      event = direct[0];
-    }
+    const event = await loadOrderEvent(eventId);
 
     if (!event) {
       return {
@@ -111,14 +120,7 @@ export default async function OrderPageWithId({
   // Fetch the event data server-side
   let event: Event | undefined;
   try {
-    const { events } = await getCachedEvents();
-    event = events.find((e) => e.id === parseInt(eventId));
-    // QA test events (is_test) are excluded from the cached catalog but stay
-    // orderable by direct link - fetch by id, which keeps them.
-    if (!event) {
-      const { events: direct } = await getEvents(parseInt(eventId));
-      event = direct[0];
-    }
+    event = await loadOrderEvent(eventId);
   } catch (error) {
     console.error("Error fetching event:", error);
     return <EventNotFoundNotice eventId={eventId} />;

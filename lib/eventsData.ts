@@ -5,6 +5,11 @@ import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
 import { markOwnStockSoldOut } from "@/lib/events/ownStock";
 import { eventMatchesName, normalizeName } from "@/lib/eventNameMatch";
+import {
+  DATA_CACHE_ITEM_LIMIT,
+  dataCacheItemSize,
+  dataCacheItemState,
+} from "@/lib/events/cacheItemSize";
 
 // Inner cached reader THROWS on a failed/empty query so unstable_cache never
 // stores the failure - a transient Supabase hiccup during revalidation used to
@@ -18,6 +23,7 @@ const cachedNonEmptyEvents = nextCache(
         "[EventsData] query failed or returned 0 events - not caching",
       );
     }
+    warnWhenCatalogOutgrowsTheCache(res);
     return res;
   },
   ["all-events"],
@@ -38,7 +44,28 @@ const BACKOFFICE_ONLY_COLUMNS = [
   "campaign_input_hash",
   "campaign_generated_at",
 ] as const;
-const CACHE_ITEM_WARN_BYTES = 1_700_000;
+
+/**
+ * Says so in the log when the catalog is near the cache's item limit, and loudly when it is
+ * over it. Measured on what is actually stored - after the enrichment, and the way Next
+ * counts it (lib/events/cacheItemSize.ts). The old check counted the plain JSON before the
+ * enrichment and read 1.60M on 2026-10-07 while the stored item was 1.86M of 2.10M.
+ */
+function warnWhenCatalogOutgrowsTheCache(catalog: { events: Event[] }): void {
+  const size = dataCacheItemSize(catalog);
+  const state = dataCacheItemState(size);
+  if (state === "ok") return;
+  const share = Math.round((size / DATA_CACHE_ITEM_LIMIT) * 100);
+  if (state === "over") {
+    console.error(
+      `[EventsData] the catalog is ${size} characters, OVER the cache's ${DATA_CACHE_ITEM_LIMIT} item limit - it is NOT cached, every render reads it from the database again. Drop a column from the catalog (BACKOFFICE_ONLY_COLUMNS).`,
+    );
+    return;
+  }
+  console.warn(
+    `[EventsData] the catalog is ${size} characters, ${share}% of the cache's item limit - over it the cache silently stops storing`,
+  );
+}
 
 function stripBackofficeOnlyColumns(events: Event[]): Event[] {
   return events.map((event) => {
@@ -134,14 +161,6 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
     const visible = stripBackofficeOnlyColumns(
       id !== undefined ? events || [] : (events || []).filter(isListedEvent),
     );
-    if (id === undefined) {
-      const bytes = JSON.stringify(visible).length;
-      if (bytes > CACHE_ITEM_WARN_BYTES) {
-        console.warn(
-          `[EventsData] catalog is ${bytes} bytes - nearing the 2MB cache item limit, over it the cache stops storing`,
-        );
-      }
-    }
     return {
       events: await markOwnStockSoldOut(
         await markLockedPackagesSoldOut(
@@ -163,33 +182,24 @@ export async function getEvents(id?: number): Promise<{ events: Event[] }> {
 export async function getEventsByName(
   searchName: string,
 ): Promise<{ events: Event[] }> {
-  // Only events at least AVAILABILITY_WINDOW_DAYS out count (shared with the
-  // catalog's on-tour check in lib/tourStatus.ts - keep them on one threshold).
-  const futureDate = futureDateISO(AVAILABILITY_WINDOW_DAYS);
   const needle = normalizeName(searchName);
   if (!needle) return { events: [] };
+
+  // Read from the cached catalog, never from the database: this runs on EVERY view of an
+  // artist / team page (those pages are rendered per request), and until 2026-10-07 each
+  // view pulled the whole events table - 2.6 MB a time, most of the 5,800 catalog reads a
+  // day. The catalog is the same rows already narrowed the same way (the availability
+  // window, listed events only), with the backoffice-only columns dropped, the fallback
+  // pictures filled in and sold-out packages and stock marked.
+  const { events } = await getCachedEvents();
 
   // The substring match happens in JS (not SQL ILIKE) so it can be accent- and
   // punctuation-insensitive via normalizeName - backoffice-entered events
   // ("Andre Rieu") must still land on the accented template page ("André Rieu").
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("*")
-    .is("is_deleted", null)
-    .gte("date", futureDate) // Only get events 7+ days in the future
-    .order("date", { ascending: true });
-
-  if (error) return Promise.resolve({ events: [] as Event[] });
-
   // eventMatchesName: fuzzy substring refined to fixtures the team actually
   // plays in (team "Milan" must not pull in "Inter Milan" games), plus
   // fixtures whose club name drifted on qualifiers ("Atlético de Madrid").
-  const matched = (events ?? []).filter(
-    (e) => isListedEvent(e) && eventMatchesName(e.name_english, searchName),
-  );
   return {
-    events: await markLockedPackagesSoldOut(
-      await enrichEventsWithFallbackImages(matched),
-    ),
+    events: events.filter((e) => eventMatchesName(e.name_english, searchName)),
   };
 }
