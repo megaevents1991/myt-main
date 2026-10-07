@@ -14,6 +14,7 @@ import {
   AVAILABILITY_WINDOW_DAYS,
   futureDateISO,
   isListedEvent,
+  stripBackofficeOnlyColumns,
 } from "@/lib/eventsData";
 
 /**
@@ -103,10 +104,13 @@ export async function getEventsInCategory(
     console.error("getEventsInCategory events failed:", JSON.stringify(error));
     return { category, events: [] };
   }
+  // The rows go into the page as they are, so the backoffice's own columns come off first
+  // (until 2026-10-07 every category page carried light_detail - competitor prices and our
+  // net costs - in its source).
   return {
     category,
     events: await enrichEventsWithFallbackImages(
-      (events ?? []).filter(isListedEvent),
+      stripBackofficeOnlyColumns((events ?? []).filter(isListedEvent)),
     ),
   };
 }

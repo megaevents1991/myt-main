@@ -67,7 +67,9 @@ function warnWhenCatalogOutgrowsTheCache(catalog: { events: Event[] }): void {
   );
 }
 
-function stripBackofficeOnlyColumns(events: Event[]): Event[] {
+/** Every reader that hands event rows to a page drops these first - they are the
+ *  backoffice's (competitor prices, our net costs) and must never reach a browser. */
+export function stripBackofficeOnlyColumns(events: Event[]): Event[] {
   return events.map((event) => {
     const slim: Event & Record<string, unknown> = { ...event };
     for (const column of BACKOFFICE_ONLY_COLUMNS) delete slim[column];
