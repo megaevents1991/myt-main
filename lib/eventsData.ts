@@ -10,28 +10,61 @@ import {
   dataCacheItemSize,
   dataCacheItemState,
 } from "@/lib/events/cacheItemSize";
+import { catalogPart, mergeCatalogParts } from "@/lib/events/catalogParts";
 
-// Inner cached reader THROWS on a failed/empty query so unstable_cache never
-// stores the failure - a transient Supabase hiccup during revalidation used to
-// cache {events: []} for a full hour and the whole site rendered "sold out"
-// (2026-07-19). A thrown error is not cached, so the next request re-queries.
-const cachedNonEmptyEvents = nextCache(
-  async (): Promise<{ events: Event[] }> => {
-    const res = await getEvents();
-    if (!res.events.length) {
-      throw new Error(
-        "[EventsData] query failed or returned 0 events - not caching",
-      );
-    }
-    warnWhenCatalogOutgrowsTheCache(res);
-    return res;
-  },
-  ["all-events"],
-  {
-    tags: ["events"],
-    revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
-  },
-);
+// The catalog is cached in parts (lib/events/catalogParts.ts). In one item it was 87% of
+// the 2 MB a cache item may be at 440 events, and over that the cache stops storing without
+// a word - every render then reads the database (the 2026-09-17 outage). Four parts carry
+// about four times that catalog. The number is part of every key, so changing it is safe:
+// the old parts are simply never read again.
+const CATALOG_PARTS = 4;
+
+/** The catalog could not be read, or came back empty: nothing to cache, nothing to retry. */
+class CatalogUnavailableError extends Error {}
+
+// THROWS on a failed/empty query so unstable_cache never stores the failure - a transient
+// Supabase hiccup during revalidation used to cache {events: []} for a full hour and the
+// whole site rendered "sold out" (2026-07-19). A thrown error is not cached, so the next
+// request re-queries.
+async function loadNonEmptyCatalog(): Promise<Event[]> {
+  const { events } = await getEvents();
+  if (!events.length) {
+    throw new CatalogUnavailableError(
+      "[EventsData] query failed or returned 0 events - not caching",
+    );
+  }
+  return events;
+}
+
+/**
+ * Every part of the catalog, from the cache where it is there. The parts that are not -
+ * after an invalidation, after an hour, or on a page regeneration, where the cache is not
+ * consulted at all - share ONE read of the database. `whole` lives for this call only: the
+ * parts a call fills always come from the same read, and no other request is ever handed
+ * a read that began before its own (which could cache data older than an invalidation).
+ */
+async function readCatalogParts(): Promise<Event[][]> {
+  let whole: Promise<Event[]> | null = null;
+  const loadWhole = () => (whole ??= loadNonEmptyCatalog());
+
+  return Promise.all(
+    Array.from({ length: CATALOG_PARTS }, (_, part) =>
+      nextCache(
+        async (): Promise<Event[]> => {
+          const events = catalogPart(await loadWhole(), part, CATALOG_PARTS);
+          warnWhenPartOutgrowsTheCache(events, part);
+          return events;
+        },
+        // A cache key is the function's text plus these: the part is what tells them apart.
+        ["all-events", `part-${part}-of-${CATALOG_PARTS}`],
+        {
+          tags: ["events"],
+          revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
+        },
+      )(),
+    ),
+  );
+}
 
 // Backoffice-only columns this app never reads. `light_detail` alone was a third
 // of the catalog and pushed it past unstable_cache's 2MB item limit - the write
@@ -46,24 +79,26 @@ const BACKOFFICE_ONLY_COLUMNS = [
 ] as const;
 
 /**
- * Says so in the log when the catalog is near the cache's item limit, and loudly when it is
- * over it. Measured on what is actually stored - after the enrichment, and the way Next
- * counts it (lib/events/cacheItemSize.ts). The old check counted the plain JSON before the
- * enrichment and read 1.60M on 2026-10-07 while the stored item was 1.86M of 2.10M.
+ * Says so in the log when a part of the catalog is near the cache's item limit, and loudly
+ * when it is over it. Measured on what is actually stored - after the enrichment, and the
+ * way Next counts it (lib/events/cacheItemSize.ts). The check before this counted the plain
+ * JSON ahead of the enrichment and read 1.60M on 2026-10-07 while the stored item was
+ * 1.83M of 2.10M.
  */
-function warnWhenCatalogOutgrowsTheCache(catalog: { events: Event[] }): void {
-  const size = dataCacheItemSize(catalog);
+function warnWhenPartOutgrowsTheCache(events: Event[], part: number): void {
+  const size = dataCacheItemSize(events);
   const state = dataCacheItemState(size);
   if (state === "ok") return;
-  const share = Math.round((size / DATA_CACHE_ITEM_LIMIT) * 100);
+  const which = `part ${part + 1} of ${CATALOG_PARTS} of the catalog (${events.length} events)`;
   if (state === "over") {
     console.error(
-      `[EventsData] the catalog is ${size} characters, OVER the cache's ${DATA_CACHE_ITEM_LIMIT} item limit - it is NOT cached, every render reads it from the database again. Drop a column from the catalog (BACKOFFICE_ONLY_COLUMNS).`,
+      `[EventsData] ${which} is ${size} characters, OVER the cache's ${DATA_CACHE_ITEM_LIMIT} item limit - it is NOT cached, every render reads the database again. Raise CATALOG_PARTS.`,
     );
     return;
   }
+  const share = Math.round((size / DATA_CACHE_ITEM_LIMIT) * 100);
   console.warn(
-    `[EventsData] the catalog is ${size} characters, ${share}% of the cache's item limit - over it the cache silently stops storing`,
+    `[EventsData] ${which} is ${size} characters, ${share}% of the cache's item limit - over it the cache silently stops storing. Raise CATALOG_PARTS.`,
   );
 }
 
@@ -81,13 +116,22 @@ export function stripBackofficeOnlyColumns(events: Event[]): Event[] {
  *  result is served for THIS request only, never written to the shared cache. */
 export async function getCachedEvents(): Promise<{ events: Event[] }> {
   try {
-    return await cachedNonEmptyEvents();
+    return { events: mergeCatalogParts(await readCatalogParts()) };
   } catch (error) {
+    if (error instanceof CatalogUnavailableError) {
+      console.error(
+        "[EventsData] events unavailable - serving empty, uncached:",
+        error,
+      );
+      return { events: [] };
+    }
+    // Not the data - the caching around it. A slower page beats an empty site, so the
+    // catalog is read straight from the database for this request (getEvents never throws).
     console.error(
-      "[EventsData] events unavailable - serving empty, uncached:",
+      "[EventsData] the cached catalog failed - reading the database directly for this request:",
       error,
     );
-    return { events: [] };
+    return getEvents();
   }
 }
 
