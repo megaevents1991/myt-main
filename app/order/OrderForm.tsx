@@ -640,7 +640,10 @@ export const OrderForm = ({
             primaryDisabled={buttonDisabled}
             onPrimary={() => nextStep()}
             skip={skipAction}
-            isFinalStep={isFinalStep}
+            // "מרכיבים את החבילה…" belongs to the walk into the summary. A swap
+            // from a ready package is a save: it goes straight back (the hotel
+            // step used to hold the customer 2.2s on that animation first).
+            isFinalStep={isFinalStep && !(readyPackage && returnToSummary)}
           />
         </div>
       )}

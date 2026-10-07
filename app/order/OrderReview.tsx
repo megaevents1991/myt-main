@@ -79,6 +79,25 @@ const TermsError = () => (
   </p>
 );
 
+/** The three promises beside the pay button (and, on a wide ready-package page, under the package). */
+const TRUST_ITEMS = [
+  {
+    title: "100% אחריות",
+    description:
+      "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל- 30 שנות ניסיון ואלפי לקוחות מרוצים.",
+  },
+  {
+    title: "כרטיסים מובטחים",
+    description:
+      "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים - אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
+  },
+  {
+    title: "שירות אישי ואנושי",
+    description:
+      "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 03-768-4800 (גם בווטסאפ!)",
+  },
+];
+
 // One line shift down, imports
 export default function OrderReview({
   onEditStep,
@@ -2123,6 +2142,39 @@ export default function OrderReview({
                 )}
               </Card>
 
+              {/* Ready package, wide screen: the three pieces stand in one row, so the
+                  package is shorter than the travellers column - the three promises
+                  move here, one under each piece, and the two columns end together. */}
+              {readyPackage && !isAgentVisitor && (
+                <Card
+                  dir="rtl"
+                  className="hidden bg-card text-card-foreground shadow-lg min-[1536px]:block"
+                >
+                  <ul className="grid grid-cols-3 gap-6 p-7 text-right">
+                    {TRUST_ITEMS.map((item) => (
+                      <li key={item.title} className="flex gap-3">
+                        <Image
+                          src="/icons/checkmark-wavey-circle.svg"
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="mt-0.5 h-7 w-7 shrink-0"
+                          unoptimized
+                        />
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold text-gray-800 dark:text-foreground">
+                            {item.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-muted-foreground">
+                            {item.description}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
               {/* Mobile: Payment security logos moved directly after summary (before passenger details) */}
               <div className="flex items-center justify-center gap-4 !my-6 md:hidden">
                 <Image
@@ -2838,28 +2890,13 @@ export default function OrderReview({
                 <Card
                   className={cn(
                     "bg-card text-card-foreground shadow-lg overflow-hidden order-4 md:order-3 hidden md:block",
-                    readyPackage && "order-5 md:order-5"
+                    // A wide ready-package page prints these under the package instead.
+                    readyPackage && "order-5 md:order-5 min-[1536px]:hidden"
                   )}
                   dir="rtl"
                 >
                   {(() => {
-                    const items = [
-                      {
-                        title: "100% אחריות",
-                        description:
-                          "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל- 30 שנות ניסיון ואלפי לקוחות מרוצים.",
-                      },
-                      {
-                        title: "כרטיסים מובטחים",
-                        description:
-                          "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים - אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
-                      },
-                      {
-                        title: "שירות אישי ואנושי",
-                        description:
-                          "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 03-768-4800 (גם בווטסאפ!)",
-                      },
-                    ];
+                    const items = TRUST_ITEMS;
 
                     return (
                       <div className="bg-card p-4 md:p-8 space-y-6 mx-auto text-right">

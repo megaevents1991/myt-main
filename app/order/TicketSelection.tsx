@@ -238,12 +238,16 @@ const supplierTimeout = () =>
     : undefined;
 
 export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
-  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary, readyPackage } = useContext(OrderContext);
+  const { eventTicket, setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary, readyPackage } = useContext(OrderContext);
   // A ticket swapped from a ready package ("החלפה" on its card): the party size is the
   // PACKAGE's - its flight and hotel are priced for it, and its picker on the summary
   // knows which sizes exist. Changing the quantity here used to wipe that flight and
   // hotel and drop the customer into the regular flight → hotel walk (2026-10-07).
   const quantityLocked = !!readyPackage && returnToSummary;
+  // ...and the step opens on the ticket the order holds (the package's, or the one
+  // swapped in before), not on the cheapest: "save and return" with nothing touched
+  // must hand the same ticket back. Read once, when the step opens.
+  const heldTicketIdRef = useRef(quantityLocked ? eventTicket?.id : undefined);
   // Context `event` is only populated client-side (useEffect in OrderPageClient),
   // so it's empty during SSR. Fall back to the server-provided `initialEvent`
   // so the header - including the <h1> - renders real HTML in the initial
@@ -776,15 +780,17 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
     // After a refresh: the ticket the customer had, when it is still one of the
     // cards on screen (either side of a together/split card counts) - priced
     // from this list like any other pick, never from the stored draft.
+    // A swap from a ready package keeps the order's own ticket the same way.
+    const keepId = resumeTicketId ?? heldTicketIdRef.current;
     const kept: PricedTicket | undefined =
-      resumeTicketId && !pickedByHandRef.current
+      keepId && !pickedByHandRef.current
         ? pool
             .flatMap((shown: ZoneOffer): PricedTicket[] =>
               shown.seatingOptions
                 ? [shown, shown.seatingOptions.together, shown.seatingOptions.split]
                 : [shown],
             )
-            .find((t) => t.id === resumeTicketId)
+            .find((t) => t.id === keepId || orderTicketId(t) === keepId)
         : undefined;
     const chosen = kept ?? cheapt;
 
@@ -889,7 +895,8 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       {debugPanel}
       <main className="flex flex-col" dir="rtl" role="main">
         <div className="mt-4 text-lg">
-          בחרו כמות כרטיסים וקטגוריה מועדפת,
+          {/* A package swap changes the category alone - the quantity is the package's. */}
+          {quantityLocked ? "בחרו קטגוריה אחרת לכרטיסים שלכם," : "בחרו כמות כרטיסים וקטגוריה מועדפת,"}
           {/* Several suppliers = several seating promises - each card says its own. */}
           {isMultiSupplier ? null : isTxEvent ? <span className="font-bold"> ישיבה בזוגות/שלשות מובטחת.</span> : <span className="font-bold"> ישיבה בזוגות מובטחת.</span>}
         </div>

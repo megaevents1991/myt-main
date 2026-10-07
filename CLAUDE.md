@@ -110,6 +110,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > event sits beside the traveller picker and the hotel beside the ticket, each
 > with its picture on top taking the row's height (no empty band under the text).
 > Every class is behind `readyPackage`; the regular summary's are byte-identical.
+> **Second pass (2026-10-07, evening).** (a) From **1536px** the three pieces
+> stand in ONE row - flight (legs stacked), hotel, ticket - so the whole package
+> is on screen at once (1920px: the package was 1,210px tall, now 785px); the
+> package is then shorter than the travellers column, so the three promises
+> (`TRUST_ITEMS`) print in a row under it and the copy in the narrow column hides
+> (`min-[1536px]:hidden`). Between 1360px and 1535px the hotel photo is a band of
+> a fixed height (210px) and the map box takes what is left - a photo that grew
+> with the row made both cards a screen tall. (b) **A swap opens on what the order
+> holds**, package swaps only: the ticket step keeps the order's ticket selected
+> (`heldTicketIdRef` - it used to open on the cheapest, so a second "החלפה" undid
+> the first), the flight step searches the flight's own dates and keeps it
+> (`resumeFlightRef` takes the order's flight), the step heading says "בחרו
+> קטגוריה אחרת" while the quantity is locked, and a save goes straight back - no
+> "מרכיבים את החבילה" animation (`isFinalStep` is false during a package swap; the
+> hotel step held the customer 2.2s on it). **NOT fixed: the hotel step** still
+> auto-selects the cheapest hotel and its cheapest rate when it opens, so a hotel
+> swap saved with nothing touched loses the package's rate (measured: breakfast
+> gone, -$77 a person). No package has the hotel open to a swap today - fix
+> `prepareHotelData` (keep the held hotel, `closestRate` for its rate) before one does.
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future

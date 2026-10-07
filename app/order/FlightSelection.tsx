@@ -106,6 +106,7 @@ export const FlightSelection = () => {
     setFlightSkipped,
     personLink,
     returnToSummary,
+    readyPackage,
     lodgingCity,
     orderResume,
   } = useContext(OrderContext);
@@ -162,8 +163,15 @@ export const FlightSelection = () => {
   // dates the customer had searched and - when the new search still offers it -
   // the flight they had picked, instead of the default dates and the best
   // flight. Undefined on every ordinary visit; a pick by hand ends it.
+  // A flight swapped from a ready package ("החלפה" on its card) opens the same
+  // way: on the package's own dates, with its own flight selected - "save and
+  // return" with nothing touched must hand the same flight back.
   const resumeFlightRef = useRef<Flight | undefined>(
-    orderResume?.step === 2 ? orderResume.flight : undefined
+    orderResume?.step === 2
+      ? orderResume.flight
+      : readyPackage && returnToSummary
+        ? orderFlight
+        : undefined
   );
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>(
     () =>

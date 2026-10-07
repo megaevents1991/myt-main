@@ -216,8 +216,9 @@ export const ReadyPackageShowcase = ({
   // Layout, by the room the package column really has (the page gives it the whole
   // screen - app/order/OrderReview.tsx): one column of cards on a phone and a tablet;
   // from 1360px the event sits beside the traveller picker and the hotel beside the
-  // ticket, so a wide screen is used instead of scrolled. The flight's two legs sit
-  // side by side from 768px.
+  // ticket; from 1536px the three pieces stand in one row - flight, hotel, ticket -
+  // so the whole package is on screen at once. The flight's two legs sit side by
+  // side from 768px and stack again inside the narrow card of that row.
   return (
     <section
       dir="rtl"
@@ -314,13 +315,16 @@ export const ReadyPackageShowcase = ({
 
       <div
         className={cn(
-          "grid gap-4 transition-opacity min-[1360px]:grid-cols-2 min-[1360px]:gap-5",
+          "grid gap-4 transition-opacity min-[1360px]:grid-cols-2 min-[1360px]:gap-5 min-[1536px]:grid-cols-3",
           ready.loading && "opacity-60",
         )}
       >
         {flight ? (
-          <div className={cn(card, "min-[1360px]:col-span-2")} data-ready-piece="flight">
-            <div className="space-y-3 p-4 min-[1360px]:p-5">
+          <div
+            className={cn(card, "min-[1360px]:col-span-2 min-[1536px]:col-span-1 min-[1536px]:flex min-[1536px]:flex-col")}
+            data-ready-piece="flight"
+          >
+            <div className="space-y-3 p-4 min-[1360px]:p-5 min-[1536px]:flex min-[1536px]:flex-1 min-[1536px]:flex-col min-[1536px]:gap-3 min-[1536px]:space-y-0">
               <Head
                 icon={<Plane className="h-5 w-5" />}
                 title="טיסה"
@@ -347,18 +351,19 @@ export const ReadyPackageShowcase = ({
                   {cabinBag && <Included>טרולי כלול</Included>}
                 </div>
               </div>
-              <div className="grid gap-3 rounded-xl bg-muted/40 p-3 md:grid-cols-2 md:gap-0 md:p-4">
-                <div className="md:pe-5">
+              {/* In the three-in-a-row layout the legs stack and share the height the hotel card sets. */}
+              <div className="grid gap-3 rounded-xl bg-muted/40 p-3 md:grid-cols-2 md:gap-0 md:p-4 min-[1536px]:flex min-[1536px]:flex-1 min-[1536px]:flex-col min-[1536px]:justify-around min-[1536px]:gap-4">
+                <div className="md:pe-5 min-[1536px]:pe-0">
                   <Leg label="הלוך" leg={flight.outbound} />
                 </div>
-                <div className="border-t border-border pt-3 md:border-s md:border-t-0 md:ps-5 md:pt-0">
+                <div className="border-t border-border pt-3 md:border-s md:border-t-0 md:ps-5 md:pt-0 min-[1536px]:border-s-0 min-[1536px]:border-t min-[1536px]:ps-0 min-[1536px]:pt-4">
                   <Leg label="חזור" leg={flight.inbound} />
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground min-[1360px]:col-span-2">
+          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground min-[1360px]:col-span-2 min-[1536px]:col-span-1">
             החבילה הזו ללא טיסה.
           </p>
         )}
@@ -370,13 +375,14 @@ export const ReadyPackageShowcase = ({
               <img
                 src={hotelPhoto}
                 alt={hotel.name}
-                // Wide screen: the photo is the top of the card and takes the height the
-                // ticket card beside it sets - the text below never floats over an empty band.
-                className="h-44 w-full object-cover md:h-auto md:min-h-[220px] md:w-[38%] md:shrink-0 min-[1360px]:min-h-[240px] min-[1360px]:w-full min-[1360px]:flex-1 min-[1360px]:shrink"
+                // Wide screen: the photo is a band of a fixed height on top of the card; the
+                // text under it sets the row's height and the ticket's map takes what is left
+                // (a photo that grew with the row made both cards a screen tall).
+                className="h-44 w-full object-cover md:h-auto md:min-h-[220px] md:w-[38%] md:shrink-0 min-[1360px]:h-[210px] min-[1360px]:min-h-0 min-[1360px]:w-full min-[1536px]:h-[180px]"
                 loading="lazy"
               />
             )}
-            <div className="min-w-0 flex-1 space-y-2.5 p-4 min-[1360px]:flex-none min-[1360px]:p-5">
+            <div className="min-w-0 flex-1 space-y-2.5 p-4 min-[1360px]:p-5">
               <Head
                 icon={<BedDouble className="h-5 w-5" />}
                 title="מלון"
@@ -437,14 +443,18 @@ export const ReadyPackageShowcase = ({
         )}
 
         <div
-          className={cn(card, "md:flex md:items-stretch min-[1360px]:flex-col", !hotel && "min-[1360px]:col-span-2")}
+          className={cn(
+            card,
+            "md:flex md:items-stretch min-[1360px]:flex-col",
+            !hotel && "min-[1360px]:col-span-2 min-[1536px]:col-span-1",
+          )}
           data-ready-piece="ticket"
         >
           {event.map_image_url && (
             // Beside the text on a medium screen; on a wide one it is the top of the card and
             // takes whatever height the hotel card next to it leaves - no empty band under the text.
             <div className="flex items-center justify-center border-b border-border bg-muted/30 p-3 md:w-[40%] md:shrink-0 md:border-b-0 md:border-l xl:w-[32%] min-[1360px]:w-full min-[1360px]:flex-1 min-[1360px]:border-b min-[1360px]:border-l-0 min-[1360px]:p-4">
-              <div className="w-full min-[1360px]:max-w-[380px]">
+              <div className="w-full min-[1360px]:max-w-[300px] min-[1536px]:max-w-[270px]">
               {mapListing ? (
                 <TixstockDynamicMap
                   mapUrl={event.map_image_url}
