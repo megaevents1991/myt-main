@@ -238,7 +238,12 @@ const supplierTimeout = () =>
     : undefined;
 
 export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
-  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary } = useContext(OrderContext);
+  const { setEventTicket, event, setEvent, setCurrentMinTicketPrice, personLink, returnToSummary, readyPackage } = useContext(OrderContext);
+  // A ticket swapped from a ready package ("החלפה" on its card): the party size is the
+  // PACKAGE's - its flight and hotel are priced for it, and its picker on the summary
+  // knows which sizes exist. Changing the quantity here used to wipe that flight and
+  // hotel and drop the customer into the regular flight → hotel walk (2026-10-07).
+  const quantityLocked = !!readyPackage && returnToSummary;
   // Context `event` is only populated client-side (useEffect in OrderPageClient),
   // so it's empty during SSR. Fall back to the server-provided `initialEvent`
   // so the header - including the <h1> - renders real HTML in the initial
@@ -565,6 +570,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
   }, [matches]); // Add matches as dependency
 
   const handleQuantityChange = (value: number | string) => {
+    if (quantityLocked) return;
     if (+value > MAX_TICKETS) {
       // 10+ tickets = a group order - instead of just a red wall, offer the
       // group-lead form (details / WhatsApp) with a way back to the picker.
@@ -1013,6 +1019,8 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                       <Text size="xl" fw={700} c="red" aria-live="polite">
                         אין {numberOfEventTickets} כרטיסים ביחד כרגע
                       </Text>
+                      {/* A package swap keeps the package's party size - no one-tap quantity change. */}
+                      {!quantityLocked && (
                       <button
                         type="button"
                         onClick={() => handleQuantityChange(nearestFeasibleQty.qty)}
@@ -1022,6 +1030,7 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                           ? `יש עד ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`
                           : `המוכרים מוכרים מינימום ${nearestFeasibleQty.qty} כרטיסים ביחד - עדכנו את הכמות`}
                       </button>
+                      )}
                       <GroupTicketsInquiry
                         eventName={headerEvent?.name || ""}
                         eventId={headerEvent?.id}
@@ -1071,6 +1080,9 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
                           onClick={() => selectTicket(ticket)}
                           numberOfTickets={numberOfEventTickets}
                           onChangeNumberOfTickets={handleQuantityChange}
+                          quantityLockedNote={
+                            quantityLocked ? "מספר הנוסעים משתנה בסיכום החבילה" : undefined
+                          }
                           key={options ? `zone-${shown.zoneId}` : shown.id}
                           category={ticket.zoneLabel || ticket.category}
                           categoryDescription={ticket.description}

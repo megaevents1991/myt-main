@@ -1770,7 +1770,10 @@ export default function OrderReview({
         {/* Main Content */}
         <main
           className={cn(
-            "max-w-[1200px] mx-auto lg:px-6 py-3",
+            // A ready package is the whole page, so it takes the screen it is given
+            // (up to 1680px) instead of the summary's 1200px.
+            readyPackage ? "max-w-[1680px] lg:px-6 xl:px-8" : "max-w-[1200px] lg:px-6",
+            "mx-auto py-3",
             showStickyFooter && (showStickyOptions ? "pb-32" : "pb-24")
           )}
         >
@@ -1873,12 +1876,15 @@ export default function OrderReview({
           <div
             className={cn(
               "grid gap-4 items-start",
+              // Phone and tablet: one column, the package first (two columns at 768px
+              // squeezed its cards to 390px). From 1024px the narrow column sits beside
+              // it and both grow with the screen.
               readyPackage
-                ? "md:grid-cols-[minmax(300px,340px)_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]"
+                ? "mx-auto max-w-[760px] lg:max-w-none lg:grid-cols-[clamp(340px,27vw,430px)_minmax(0,1fr)] lg:gap-6"
                 : "md:grid-cols-2"
             )}
           >
-            <div className="space-y-4 order-1 md:order-2">
+            <div className={cn("space-y-4 order-1", readyPackage ? "lg:order-2" : "md:order-2")}>
               <Card className="bg-card text-card-foreground shadow-lg overflow-hidden">
                 <div
                   dir="rtl"
@@ -2562,8 +2568,7 @@ export default function OrderReview({
                 ordered without moving any markup). */}
             <div
               className={cn(
-                readyPackage ? "flex flex-col gap-6" : "space-y-6",
-                "order-2 md:order-1"
+                readyPackage ? "flex flex-col gap-6 order-2 lg:order-1" : "space-y-6 order-2 md:order-1"
               )}
             >
               <Card

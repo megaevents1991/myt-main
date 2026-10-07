@@ -213,13 +213,23 @@ export const ReadyPackageShowcase = ({
     "flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-forest hover:text-forest disabled:opacity-35 disabled:hover:border-border disabled:hover:text-foreground dark:hover:border-glow dark:hover:text-glow";
   const card = "overflow-hidden rounded-2xl border border-border bg-background";
 
+  // Layout, by the room the package column really has (the page gives it the whole
+  // screen - app/order/OrderReview.tsx): one column of cards on a phone and a tablet;
+  // from 1360px the event sits beside the traveller picker and the hotel beside the
+  // ticket, so a wide screen is used instead of scrolled. The flight's two legs sit
+  // side by side from 768px.
   return (
-    <section dir="rtl" className="space-y-4 px-4 py-5 text-right md:px-6" data-ready-package>
-      <header className="space-y-1.5 text-center">
+    <section
+      dir="rtl"
+      className="space-y-4 px-4 py-5 text-right md:px-6 min-[1360px]:space-y-5 min-[1360px]:p-7"
+      data-ready-package
+    >
+      <div className="grid gap-4 min-[1360px]:grid-cols-[minmax(0,1fr)_minmax(380px,460px)] min-[1360px]:items-center min-[1360px]:gap-8">
+      <header className="space-y-1.5 text-center min-[1360px]:text-right">
         <span className="inline-flex items-center rounded-full bg-forest/10 px-3 py-1 text-[13px] font-bold text-forest dark:bg-glow/15 dark:text-glow">
           חבילה מוכנה
         </span>
-        <h2 className="text-2xl font-bold leading-tight md:text-3xl">{event.name}</h2>
+        <h2 className="text-balance text-2xl font-bold leading-tight md:text-3xl min-[1360px]:text-[2rem]">{event.name}</h2>
         <p className="text-[16px] text-muted-foreground md:text-lg">
           {placeLine(event)} | {dayjs(event.date).format("DD/MM/YYYY")}
         </p>
@@ -300,59 +310,73 @@ export const ReadyPackageShowcase = ({
           </p>
         )}
       </div>
+      </div>
 
-      <div className={cn("space-y-4 transition-opacity", ready.loading && "opacity-60")}>
+      <div
+        className={cn(
+          "grid gap-4 transition-opacity min-[1360px]:grid-cols-2 min-[1360px]:gap-5",
+          ready.loading && "opacity-60",
+        )}
+      >
         {flight ? (
-          <div className={card} data-ready-piece="flight">
-            <div className="space-y-3 p-4">
+          <div className={cn(card, "min-[1360px]:col-span-2")} data-ready-piece="flight">
+            <div className="space-y-3 p-4 min-[1360px]:p-5">
               <Head
                 icon={<Plane className="h-5 w-5" />}
                 title="טיסה"
                 count={people(flightTravelers, "נוסע אחד", "נוסעים")}
                 onSwap={swapFlight}
               />
-              <div className="flex items-center gap-2.5">
-                {flight.metadata?.logo && (
-                  <span className="rounded-md dark:bg-white/95 dark:p-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={flight.metadata.logo} alt="" className="h-9 w-9 object-contain" />
-                  </span>
-                )}
-                <p className="text-lg font-bold">{airlineFullName || flight.metadata?.name || flight.airline}</p>
+              {/* The airline and what the fare carries share one line when there is room. */}
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                <div className="flex items-center gap-2.5">
+                  {flight.metadata?.logo && (
+                    <span className="rounded-md dark:bg-white/95 dark:p-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={flight.metadata.logo} alt="" className="h-9 w-9 object-contain" />
+                    </span>
+                  )}
+                  <p className="text-lg font-bold">{airlineFullName || flight.metadata?.name || flight.airline}</p>
+                </div>
+                <div className="flex flex-wrap gap-x-5 gap-y-1">
+                  {checkedBag ? (
+                    <Included>מזוודה כלולה{bagKg ? ` (${bagKg} ק״ג)` : ""}</Included>
+                  ) : (
+                    <p className="text-[15px] text-muted-foreground">ללא מזוודה לבטן המטוס</p>
+                  )}
+                  {cabinBag && <Included>טרולי כלול</Included>}
+                </div>
               </div>
-              <div className="space-y-3 rounded-xl bg-muted/40 p-3">
-                <Leg label="הלוך" leg={flight.outbound} />
-                <div className="border-t border-border" />
-                <Leg label="חזור" leg={flight.inbound} />
-              </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-1">
-                {checkedBag ? (
-                  <Included>מזוודה כלולה{bagKg ? ` (${bagKg} ק״ג)` : ""}</Included>
-                ) : (
-                  <p className="text-[15px] text-muted-foreground">ללא מזוודה לבטן המטוס</p>
-                )}
-                {cabinBag && <Included>טרולי כלול</Included>}
+              <div className="grid gap-3 rounded-xl bg-muted/40 p-3 md:grid-cols-2 md:gap-0 md:p-4">
+                <div className="md:pe-5">
+                  <Leg label="הלוך" leg={flight.outbound} />
+                </div>
+                <div className="border-t border-border pt-3 md:border-s md:border-t-0 md:ps-5 md:pt-0">
+                  <Leg label="חזור" leg={flight.inbound} />
+                </div>
               </div>
             </div>
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground">
+          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground min-[1360px]:col-span-2">
             החבילה הזו ללא טיסה.
           </p>
         )}
 
         {hotel ? (
-          <div className={cn(card, "md:flex")} data-ready-piece="hotel">
+          <div className={cn(card, "md:flex min-[1360px]:flex-col")} data-ready-piece="hotel">
             {hotelPhoto && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={hotelPhoto}
                 alt={hotel.name}
-                className="h-44 w-full object-cover md:h-auto md:min-h-[220px] md:w-[38%] md:shrink-0"
+                // Wide screen: the photo is the top of the card and takes the height the
+                // ticket card beside it sets - the text below never floats over an empty band.
+                className="h-44 w-full object-cover md:h-auto md:min-h-[220px] md:w-[38%] md:shrink-0 min-[1360px]:min-h-[240px] min-[1360px]:w-full min-[1360px]:flex-1 min-[1360px]:shrink"
                 loading="lazy"
               />
             )}
-            <div className="min-w-0 flex-1 space-y-2.5 p-4">
+            <div className="min-w-0 flex-1 space-y-2.5 p-4 min-[1360px]:flex-none min-[1360px]:p-5">
               <Head
                 icon={<BedDouble className="h-5 w-5" />}
                 title="מלון"
@@ -412,9 +436,15 @@ export const ReadyPackageShowcase = ({
           </p>
         )}
 
-        <div className={cn(card, "md:flex md:items-stretch")} data-ready-piece="ticket">
+        <div
+          className={cn(card, "md:flex md:items-stretch min-[1360px]:flex-col", !hotel && "min-[1360px]:col-span-2")}
+          data-ready-piece="ticket"
+        >
           {event.map_image_url && (
-            <div className="border-b border-border bg-muted/30 p-3 md:w-[42%] md:shrink-0 md:border-b-0 md:border-l">
+            // Beside the text on a medium screen; on a wide one it is the top of the card and
+            // takes whatever height the hotel card next to it leaves - no empty band under the text.
+            <div className="flex items-center justify-center border-b border-border bg-muted/30 p-3 md:w-[40%] md:shrink-0 md:border-b-0 md:border-l xl:w-[32%] min-[1360px]:w-full min-[1360px]:flex-1 min-[1360px]:border-b min-[1360px]:border-l-0 min-[1360px]:p-4">
+              <div className="w-full min-[1360px]:max-w-[380px]">
               {mapListing ? (
                 <TixstockDynamicMap
                   mapUrl={event.map_image_url}
@@ -433,9 +463,10 @@ export const ReadyPackageShowcase = ({
                   loading="lazy"
                 />
               )}
+              </div>
             </div>
           )}
-          <div className="min-w-0 flex-1 space-y-2.5 p-4">
+          <div className="min-w-0 flex-1 space-y-2.5 p-4 md:flex md:flex-col md:justify-center md:space-y-0 md:gap-2.5 min-[1360px]:flex-none min-[1360px]:p-5">
             <Head
               icon={<Ticket className="h-5 w-5" />}
               title="כרטיס לאירוע"

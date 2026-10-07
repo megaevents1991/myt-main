@@ -12,6 +12,8 @@ type StepperProps = {
   steps?: string[];
   /** Step 4 (checkout) hides the steps but keeps the logo as a way home. */
   hideSteps?: boolean;
+  /** The page under it runs wide (the ready-package landing): the logo keeps to its edge. */
+  wide?: boolean;
 };
 
 /**
@@ -26,13 +28,14 @@ export const Stepper = ({
   onStepperClick,
   steps = defaultSteps,
   hideSteps = false,
+  wide = false,
 }: StepperProps) => {
   const active = currentStep - 1;
   return (
     // Static (non-sticky) header - it scrolls away with the page. The global
     // header is hidden inside the order flow, so this just marks the top.
     <div className="border-b border-border bg-background">
-    <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 px-4 py-3 sm:flex-row sm:gap-8 sm:px-10 sm:py-4">
+    <div className={`mx-auto flex w-full ${wide ? "max-w-[1760px]" : "max-w-5xl"} flex-col items-center gap-3 px-4 py-3 sm:flex-row sm:gap-8 sm:px-10 sm:py-4`}>
       <Link href="/" aria-label="חזרה לדף הבית" className="shrink-0">
         <MYT className="h-5 w-auto text-foreground md:h-6" />
       </Link>

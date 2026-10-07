@@ -221,6 +221,7 @@ const OrderLayoutContent = ({ children }: { children: ReactNode }) => {
         // Hidden on the summary AND during edit-from-summary - an edit is a
         // focused single-step task, not a walk through the flow.
         hideSteps={step === 4 || returnToSummary}
+        wide={!!readyPackage && step === 4}
       />
       <OrderContext.Provider
         value={{

@@ -90,6 +90,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > package moves to the nearest one; none left = the regular flow on step 1. A
 > package ticket is "unchecked" while it has no `supplier` - a ticket the
 > customer picked in the ticket step always has one and is never touched.
+>
+> **A swap always comes back to the summary (2026-10-07).** "החלפה" arms
+> `returnToSummary` and opens the step; confirming it returns to the package. The
+> one way out was the ticket step's quantity `+/-`: it wipes the flight and the
+> hotel (they are priced per party), so the customer was walked through the
+> regular flight → hotel steps. During a package swap the quantity is now LOCKED
+> (`quantityLocked = !!readyPackage && returnToSummary` in `TicketSelection`,
+> `EventTicketCard quantityLockedNote`: the count and "מספר הנוסעים משתנה בסיכום
+> החבילה", no buttons, no one-tap quantity rescue) - the party size belongs to the
+> package's picker, which knows which sizes exist.
+> **Layout uses the screen (2026-10-07).** The landing was 1,150px wide whatever
+> the screen. Now `main` runs to 1680px for a ready package (`OrderForm` wrapper
+> 1760px, `Stepper wide` so the logo keeps to the edge), the narrow column is
+> `clamp(340px, 27vw, 430px)` and the package takes the rest. Below 1024px it is
+> ONE column, package first (two columns at 768px squeezed the cards to 390px).
+> Inside the package (`ReadyPackageShowcase`, viewport variants - Tailwind 3 here
+> has no container queries): flight legs side by side from 768px; from 1360px the
+> event sits beside the traveller picker and the hotel beside the ticket, each
+> with its picture on top taking the row's height (no empty band under the text).
+> Every class is behind `readyPackage`; the regular summary's are byte-identical.
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future

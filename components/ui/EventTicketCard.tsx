@@ -15,6 +15,12 @@ export type TicketCardProps = {
   index: number;
   numberOfTickets: number;
   onChangeNumberOfTickets: (value: number) => void;
+  /**
+   * Set = the quantity is not this step's to change: the count is printed with no
+   * +/- and this line under it says where it IS changed. A ticket swapped from a
+   * ready package keeps the package's party size (app/order/TicketSelection.tsx).
+   */
+  quantityLockedNote?: string;
   vip?: VipConfig;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -53,6 +59,7 @@ export const EventTicketCard = ({
   index,
   numberOfTickets = 1,
   onChangeNumberOfTickets,
+  quantityLockedNote,
   vip,
   onMouseEnter,
   onMouseLeave,
@@ -188,6 +195,7 @@ export const EventTicketCard = ({
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}
+              lockedNote={quantityLockedNote}
             />
           </div>
           <div className="w-1/3 lg:w-2/9 text-center font-bold ">
@@ -222,6 +230,7 @@ export const EventTicketCard = ({
             <CounterInput
               value={numberOfTickets}
               onChange={onChangeNumberOfTickets}
+              lockedNote={quantityLockedNote}
             />
           </div>
         )}
@@ -234,9 +243,19 @@ type CounterInputProps = {
   value: number;
   onChange: (value: number) => void;
   minValue?: number;
+  lockedNote?: string;
 };
 
-const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
+const CounterInput = ({ value, onChange, minValue = 1, lockedNote }: CounterInputProps) =>
+  lockedNote ? (
+    // The quantity belongs to another screen: the count alone, and where it is changed.
+    <div className="flex flex-col items-center gap-1 text-center" data-quantity-locked>
+      <span className="text-xl font-bold" role="status" aria-label={`${value} כרטיסים נבחרו`}>
+        {value} כרטיסים
+      </span>
+      <span className="text-xs leading-snug text-muted-foreground">{lockedNote}</span>
+    </div>
+  ) : (
   <div className="flex items-center flex-col items-center text-center gap-2">
     <span className="text-me">אנחנו רוצים</span>
     <div className="flex items-center gap-2 justify-between">
@@ -261,4 +280,4 @@ const CounterInput = ({ value, onChange, minValue = 1 }: CounterInputProps) => (
     </div>
     <span className="text-me">כרטיסים לאירוע</span>
   </div>
-);
+  );

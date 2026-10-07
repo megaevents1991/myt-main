@@ -67,6 +67,7 @@ export const OrderForm = ({
     returnToSummary,
     setReturnToSummary,
     packageLocked,
+    readyPackage,
     lodgingCity,
     setHotelSegments,
     setSplitNights,
@@ -601,7 +602,8 @@ export const OrderForm = ({
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-2 pt-3">
+      {/* The ready-package landing is one page that uses the screen it gets. */}
+      <div className={`${readyPackage && step === 4 ? "max-w-[1760px]" : "max-w-7xl"} mx-auto px-2 pt-3`}>
         {/* Partner badge moved into the Stepper header row (one badge, symmetric
             with the MegaEvents wordmark). */}
         {step === 1 && <TicketSelection initialEvent={event} />}
