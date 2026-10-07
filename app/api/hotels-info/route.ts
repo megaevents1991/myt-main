@@ -30,6 +30,22 @@ interface RoomGroup {
 
 const HOTEL_INFO_URL = "https://api.worldota.net/api/b2b/v3/hotel/info/";
 
+/**
+ * The columns the answer below is built from - named, so a column added to the cache table
+ * later is not shipped here by default. It is NOT what makes this read heavy: `room_groups`
+ * is 79% of a row (11 KB of 14) and the page needs it. Measured 2026-10-07 on 100 hotels:
+ * 15 ms when the rows are in memory, 67 ms and more when they are not - the table (617 MB)
+ * does not fit the database's 1 GB machine, and that, not the query, is the 133 ms average.
+ */
+const HOTEL_STATIC_COLUMNS =
+  "hid,_id,name,address,latitude,longitude,star_rating,kind,room_groups,images_ext,amenity_groups,guest_rating,guest_review_count";
+
+/** A cached hotel as this route reads it: the columns above. */
+type HotelStaticRow = Omit<
+  HotelInfoDB,
+  "city" | "created_at" | "guest_detailed_ratings" | "guest_rating_updated_at"
+>;
+
 const getHotelInfo = async (hid: number): Promise<HotelInfo | null> => {
   try {
     const hotelInfoResponse = await fetch(HOTEL_INFO_URL, {
@@ -56,7 +72,7 @@ const getHotelInfo = async (hid: number): Promise<HotelInfo | null> => {
 
 const getHotelsStaticDataFromDB = async (
   hids: number[]
-): Promise<HotelInfoDB[] | null> => {
+): Promise<HotelStaticRow[] | null> => {
   try {
     // Limit batch size to prevent timeouts
     const BATCH_SIZE = 100;
@@ -66,12 +82,12 @@ const getHotelsStaticDataFromDB = async (
       batches.push(hids.slice(i, i + BATCH_SIZE));
     }
 
-    const allHotels: HotelInfoDB[] = [];
+    const allHotels: HotelStaticRow[] = [];
     
     for (const batch of batches) {
       const { data: hotels, error } = await supabase
         .from("hotels")
-        .select("*")
+        .select(HOTEL_STATIC_COLUMNS)
         .in("hid", batch)
         .abortSignal(AbortSignal.timeout(15000)); // 15 second timeout
 
