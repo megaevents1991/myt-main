@@ -122,15 +122,24 @@ export const OrderForm = ({
   // rather than the default two. Landings that open past the ticket step (a ready
   // package, a package link, a restored order) still search at once.
   const pastTicketStep = step >= 2;
+  // Whether this page load is a refresh coming back past the flight step. Read
+  // ONCE, on arrival: the stored draft is rewritten as the customer advances, so
+  // read at step 4 it says "past the flight step" about this very visit - and a
+  // ready package, which lands there, would get no hotel search at all (its
+  // summary measures the hotel-skip fee against that search).
+  const refreshPastFlight = useRef<boolean | null>(null);
   useEffect(() => {
+    if (!event?.id) return;
+    if (refreshPastFlight.current === null) {
+      refreshPastFlight.current = storedOrderPastFlight(event);
+    }
     if (!pastTicketStep) return;
     if (isUS || ticketOnly) return;
-    if (!event?.id) return;
     if (hotelsData?.data?.data?.hotels) return;
     // A refresh is coming back to the hotel step or the summary: the search
     // for the restored flight's dates (effect below) replaces this one - two
     // would only spend a second hotel search on the same customer.
-    if (storedOrderPastFlight(event)) return;
+    if (refreshPastFlight.current) return;
     getHotels(
       {
         dateRange: getDefaultDateRange(event, undefined),
