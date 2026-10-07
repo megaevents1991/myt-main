@@ -35,6 +35,8 @@ export const listingSeatsTogether = (listing: TixStockListing): boolean =>
   splitTypeOf(listing).includes("together") ||
   ROW_SAYS_TOGETHER.test(listing.seat_details?.row ?? "");
 
+// MIRRORED in the backoffice (`lib/tixstock-listings.ts`): its TixStock price sync must pick
+// the listing this picks, or the two write different prices to the same ticket. Change both.
 export function listingCanSatisfyQuantity(
   listing: TixStockListing,
   qty: number,

@@ -178,6 +178,11 @@ async function updateDbTicketPricesFromLiveListings(
   return { priceUpdates, ticketsAndRates: nextTicketsAndRates };
 }
 
+// The two filters below - restricted view, excluded sections - and the quantity rule
+// (lib/tixstock-quantity.ts) decide which listing prices a ticket. They are MIRRORED in the
+// backoffice (`lib/tixstock-listings.ts`) for its price sync: change both, or the sync and
+// this route write different prices to the same ticket again (2026-10-07).
+
 /** Return true if a restriction text signals any kind of obstructed / degraded view. */
 function isObstructedViewText(text: string): boolean {
   const lower = text.toLowerCase();

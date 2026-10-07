@@ -374,10 +374,12 @@ views were re-renders (0.4 s / 1.3 s against 0.06 s / 0.1 s cached), and it ping
 `mondial` branch deployment, which pulled the whole events table each time.
 **Never drop `events` from a customer route.** Most of those writes were not the market: the
 backoffice's TixStock price sync (4 times a day) priced without the 3.5% this route adds, so
-the first visitor after each sync wrote every price back up. The sync prices with the same
-formula since 2026-10-07 (backoffice `tixstockTicketPriceUsd`); the two still choose their
-listing by different rules - this route drops restricted-view listings, excluded sections and
-listings that cannot sell a pair, the sync does not (backoffice CLAUDE.md, "Price Logic Chain").
+the first visitor after each sync wrote every price back up, and it priced any listing with
+two seats while this route drops restricted-view listings, excluded sections and listings
+that cannot sell a pair. Since 2026-10-07 the sync uses this route's formula
+(`tixstockTicketPriceUsd`) and its three listing rules, mirrored in the backoffice's
+`lib/tixstock-listings.ts`. **Change a listing rule here (`lib/tixstock-quantity.ts`, the two
+filters in the route, `categoryMatchesMapId`) and change it there**, or the two drift again.
 
 ### Key Directories
 
