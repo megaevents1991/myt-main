@@ -1,4 +1,4 @@
-import { Event } from "@/lib/app.types";
+import { Event, EventTicket } from "@/lib/app.types";
 import { readyPackageCardPrice } from "@/lib/events/readyPackage";
 
 /**
@@ -170,6 +170,23 @@ export function computePackagePrice(
     minTicketPrice +
     effectiveMarkup
   );
+}
+
+/**
+ * The ticket part of a card's price: the cheapest ticket still on sale - the same filter
+ * and the same minimum `computePackagePrice` uses above. Null when nothing is on sale.
+ *
+ * A change to any other ticket's price never moves what a card, a search result or a feed
+ * row shows, so this is the number to compare before deciding that the listings went stale.
+ */
+export function cheapestAvailableTicketPrice(
+  tickets: Pick<EventTicket, "price" | "available">[] | null | undefined,
+): number | null {
+  const available = (tickets || []).filter(
+    (ticket) => ticket?.available !== false,
+  );
+  if (available.length === 0) return null;
+  return Math.min(...available.map((ticket) => ticket.price));
 }
 
 /**

@@ -359,6 +359,23 @@ Order pages (`/app/order/[eventId]/page.tsx`) use ISR:
 
 To invalidate the events cache manually: call `/api/revalidate` with the secret (`NEXT_SECRET_REVALIDATION_SECRET`).
 
+**Two cache tags, two switches (2026-10-07).** `events` is on everything the backoffice
+refreshes at once: the catalog, the menu, the fallback pictures, the logo library. The root
+layout reads the menu, so EVERY page carries `events` - dropping it re-renders the whole
+site. Only `/api/revalidate` (the backoffice) does that. `events-catalog` (`CATALOG_TAG`,
+`lib/events/catalogParts.ts`) is on the catalog alone.
+A customer route that writes a fresher price to one event (`/api/tixstock/tickets`, on a
+visitor's ticket step) calls `invalidateAfterLivePriceSync` (`lib/events/livePriceInvalidation.ts`):
+that event's order page always; the catalog tag + the `/c/` tree (category pages read their
+events themselves) only when the cheapest ticket on sale moved - the one ticket price a card
+shows (`cheapestAvailableTicketPrice`, `lib/events/price.ts`). Until then the route dropped
+`events` on every write, 340 times a day: 61% of order-page views and half of category-page
+views were re-renders (0.4 s / 1.3 s against 0.06 s / 0.1 s cached), and it pinged the old
+`mondial` branch deployment, which pulled the whole events table each time.
+**Never drop `events` from a customer route.** Most of those writes are not the market: the
+backoffice's TixStock price sync (4 times a day) prices without the 3.5% this route adds, so
+the first visitor after each sync writes every price back up.
+
 ### Key Directories
 
 - `app/` - Next.js pages and API routes

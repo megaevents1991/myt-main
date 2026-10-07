@@ -10,7 +10,11 @@ import {
   dataCacheItemSize,
   dataCacheItemState,
 } from "@/lib/events/cacheItemSize";
-import { catalogPart, mergeCatalogParts } from "@/lib/events/catalogParts";
+import {
+  CATALOG_TAG,
+  catalogPart,
+  mergeCatalogParts,
+} from "@/lib/events/catalogParts";
 
 // The catalog is cached in parts (lib/events/catalogParts.ts). In one item it was 87% of
 // the 2 MB a cache item may be at 440 events, and over that the cache stops storing without
@@ -56,9 +60,13 @@ async function readCatalogParts(): Promise<Event[][]> {
           return events;
         },
         // A cache key is the function's text plus these: the part is what tells them apart.
-        ["all-events", `part-${part}-of-${CATALOG_PARTS}`],
+        // The catalog's own tag is in the key too, so no part stored before it had that tag
+        // is ever read (it would not hear the tag being dropped).
+        ["all-events", CATALOG_TAG, `part-${part}-of-${CATALOG_PARTS}`],
         {
-          tags: ["events"],
+          // `events` = everything the backoffice refreshes at once. CATALOG_TAG = the
+          // listings alone (lib/events/livePriceInvalidation.ts).
+          tags: ["events", CATALOG_TAG],
           revalidate: 3600, // Revalidate every hour (1 hour = 3600 seconds)
         },
       )(),

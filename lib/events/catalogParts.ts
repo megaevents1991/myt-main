@@ -7,6 +7,15 @@
  * refreshed a moment after the others still holds exactly its own events: put together,
  * the parts cannot show an event twice or lose one.
  */
+
+/**
+ * The cache tag of the catalog alone. Every part carries it beside `events`, so the
+ * listings can be refreshed without the rest: `events` also sits on the menu, the fallback
+ * pictures and the logo library, which the root layout and every order page read - dropping
+ * `events` re-renders every page of the site.
+ */
+export const CATALOG_TAG = "events-catalog";
+
 export function catalogPart<T extends { id: number }>(
   events: T[],
   part: number,

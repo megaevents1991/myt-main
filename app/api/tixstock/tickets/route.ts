@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeTxCategory } from "@/lib/tixstock-category";
-import { revalidateTag } from "next/cache";
+import { cheapestAvailableTicketPrice } from "@/lib/events/price";
+import { invalidateAfterLivePriceSync } from "@/lib/events/livePriceInvalidation";
 import { exchangeRateService } from "@/lib/exchangeRateService";
 import { supabase } from "@/lib/supabase";
 import type { EventTicket } from "@/lib/app.types";
@@ -15,7 +16,6 @@ import { ticketSupplier } from "@/lib/suppliers";
 
 const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
 const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
-const REVALIDATE_API_ORIGIN = "https://mondial2026.mega-events.co.il";
 
 /** Convert an amount string in any supported currency to USD, with per-currency markup */
 function toUsd(amount: string, currency: string): string {
@@ -68,34 +68,6 @@ function getCheapestCategoryPrices(
   }
 
   return prices;
-}
-
-async function callRevalidateEndpoint() {
-  const secret = process.env.NEXT_SECRET_REVALIDATION_SECRET;
-  if (!secret) {
-    console.warn(
-      "[TixStock Tickets] Skipping /api/revalidate call: missing NEXT_SECRET_REVALIDATION_SECRET",
-    );
-    return;
-  }
-
-  try {
-    const revalidateUrl = new URL("/api/revalidate", REVALIDATE_API_ORIGIN);
-    revalidateUrl.searchParams.set("secret", secret);
-
-    const response = await fetch(revalidateUrl.toString(), {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      console.warn(
-        `[TixStock Tickets] /api/revalidate returned ${response.status}: ${await response.text()}`,
-      );
-    }
-  } catch (error) {
-    console.error("[TixStock Tickets] Failed to call /api/revalidate:", error);
-  }
 }
 
 async function updateDbTicketPricesFromLiveListings(
@@ -190,8 +162,13 @@ async function updateDbTicketPricesFromLiveListings(
     return { priceUpdates: [], ticketsAndRates };
   }
 
-  revalidateTag("events");
-  callRevalidateEndpoint();
+  // Only what this write made stale: this event's order page, and the listings when the
+  // cheapest ticket - the one a card shows - is what moved.
+  invalidateAfterLivePriceSync(
+    numericDbEventId,
+    cheapestAvailableTicketPrice(ticketsAndRates) !==
+      cheapestAvailableTicketPrice(nextTicketsAndRates),
+  );
 
   console.log(
     `[TixStock Tickets] Synced ${priceUpdates.length} DB ticket price(s) for event ${dbEventId}`,
