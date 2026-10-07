@@ -73,6 +73,34 @@ const searchAnswered = (res: HotelsData) => {
 /** Dates inside a Hebrew sentence, kept left-to-right ("29.10–31.10", not reversed). */
 const ltr = (s: string) => `⁦${s}⁩`;
 
+// ── A hotel swapped from a ready package (see `heldHotelRef` below) ─────────
+type StayRooms = { adults: number; children?: number[] }[] | undefined;
+/** How a party is roomed, whatever order the rooms come in: "2,1". */
+const roomSplitKey = (rooms: StayRooms) =>
+  (rooms ?? [])
+    .map((room) => room.adults + (room.children?.length ?? 0))
+    .sort((a, b) => b - a)
+    .join(",");
+const dayKey = (value: string | Date | null | undefined) =>
+  value ? dayjs(value).format("YYYY-MM-DD") : "";
+/** Is this hotel search the very stay the order's hotel is booked for - its dates and its rooms? */
+const isStayOf = (
+  request: { checkin?: string; checkout?: string; guests?: StayRooms } | undefined,
+  held: OrderHotel
+) =>
+  !!request &&
+  dayKey(request.checkin) === dayKey(held.checkin) &&
+  dayKey(request.checkout) === dayKey(held.checkout) &&
+  roomSplitKey(request.guests) === roomSplitKey(held.guests);
+/** Of a hotel's rates, the package's own: the same board first (a promised
+ *  breakfast is never dropped), then the closest room among those. */
+const packageRate = (rates: Rate[], ref: Rate | undefined): Rate | null => {
+  const sameBoard = rates.filter(
+    (r) => !!r.meal_data?.has_breakfast === !!ref?.meal_data?.has_breakfast
+  );
+  return closestRate(sameBoard.length ? sameBoard : rates, ref);
+};
+
 export const HotelSelection = () => {
   const { addBreakfast, removeBreakfast } = useSegmentBreakfast();
   const {
@@ -95,14 +123,47 @@ export const HotelSelection = () => {
     setSplitNights,
     hotel,
     packageLocked,
+    readyPackage,
   } = useContext(OrderContext);
   const { getHotels, hotelsData, isFetching } = useContext(HotelFetchContext);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedHotelId, setSelectedHotelId] = useState("");
+  // ── A hotel swapped from a ready package ("החלפה" on its card) ────────────
+  // The step opens on the package's own STAY - its dates and its rooms (a party
+  // of three may sleep in a twin and a single) - with its own hotel selected and
+  // its own rate first on that card, so "save and return" with nothing touched
+  // hands the same hotel back. It used to open on the cheapest hotel's cheapest
+  // rate and commit that to the order at once (the package's breakfast was gone
+  // before the customer chose anything, 2026-10-07). Read once, when the step
+  // opens; ends when the customer filters, searches again or leaves the list.
+  const heldHotelRef = useRef<OrderHotel | undefined>(
+    readyPackage &&
+      returnToSummary &&
+      hotel?.id &&
+      !hotel.isOffline &&
+      !(hotelSegments && hotelSegments.length > 1)
+      ? hotel
+      : undefined
+  );
+  // The package's hotel and its rate in the list on screen (drives the cards).
+  const [heldPick, setHeldPick] = useState<{ id: string; rate: Rate } | null>(null);
+  // The search for the package's own stay: asked for ("wait"), in flight, answered.
+  const heldFetchRef = useRef<"idle" | "wait" | "running" | "done">("idle");
+  const endHeld = () => {
+    heldHotelRef.current = undefined;
+    setHeldPick(null);
+  };
   // Edit-from-summary on a split stay keeps the split's own dates (they may
   // differ from the flight's) - otherwise the step would refit and re-search
   // every segment. Anywhere else the step starts from the flight's dates.
   const initialRange = (): [Date | null, Date | null] => {
+    const held = heldHotelRef.current;
+    if (held?.checkin && held.checkout) {
+      return [
+        new Date(dayKey(held.checkin) + "T00:00:00"),
+        new Date(dayKey(held.checkout) + "T00:00:00"),
+      ];
+    }
     const segs = returnToSummary ? hotelSegments : null;
     const first = segs?.[0]?.checkin;
     const last = segs?.[segs.length - 1]?.checkout;
@@ -123,7 +184,15 @@ export const HotelSelection = () => {
     // / US / direct-to-hotel) - otherwise getRoomParams(undefined) returns [],
     // collapsing the per-person divisor to 1 and showing the full room price
     // (e.g. 940) as the per-traveler price instead of 470.
-  >(getRoomParams(planeTickets?.adults || numberOfEventTickets || 1));
+  >(
+    // A package swap searches the package's own rooms, not a fresh split.
+    heldHotelRef.current?.guests?.length
+      ? heldHotelRef.current.guests.map((room) => ({
+          adults: room.adults,
+          children: room.children ?? [],
+        }))
+      : getRoomParams(planeTickets?.adults || numberOfEventTickets || 1)
+  );
 
   const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(0);
@@ -283,6 +352,36 @@ export const HotelSelection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cachedGuestCount, cityKey, cachedCityMatches, splitActive]);
 
+  // A package swap: when the list in hand is another stay's (the page preloads
+  // the event's default dates for two), the package's own stay is asked for
+  // once. `prepareHotelData` touches nothing of the order until it answers.
+  useEffect(() => {
+    const held = heldHotelRef.current;
+    if (!held || isStayOf(hotelsData?.data?.debug?.request, held)) return;
+    heldFetchRef.current = "wait";
+    getHotels(
+      {
+        dateRange,
+        location: lodgingPoint,
+        guests: roomParams,
+        radius: distanceRange[1] || 2000,
+        eventId: event.id,
+      },
+      { immediate: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (heldFetchRef.current === "wait" && isFetching) heldFetchRef.current = "running";
+    else if (heldFetchRef.current === "running" && !isFetching) heldFetchRef.current = "done";
+  }, [isFetching]);
+  // Other rooms asked for = another stay: the package's hotel no longer leads.
+  const openedRoomsKeyRef = useRef(roomParamsKey);
+  useEffect(() => {
+    if (roomParamsKey !== openedRoomsKeyRef.current) endHeld();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomParamsKey]);
+
   useEffect(() => {
     if (!event?.id) return;
     if (!dateRange[0] || !dateRange[1]) return;
@@ -371,6 +470,15 @@ export const HotelSelection = () => {
     const arraysEqual = <T,>(a: T[], b: T[]) =>
       a.length === b.length && a.every((value, index) => value === b[index]);
 
+    // A package swap: nothing of the order is touched until the list IS the
+    // package's own stay. Asked for and still another stay's (the search
+    // failed) - the ordinary step from here.
+    if (heldHotelRef.current && !isStayOf(data.debug?.request, heldHotelRef.current)) {
+      if (heldFetchRef.current !== "done") return;
+      endHeld();
+    }
+    const held = heldHotelRef.current;
+
     // No hotels at all (0-result search / all dropped for missing rates):
     // bail to the empty state - Math.max(...[]) below is -Infinity and
     // hotelsToSet[0] would throw.
@@ -379,6 +487,13 @@ export const HotelSelection = () => {
       setHotel(undefined);
       return;
     }
+
+    // The package's hotel in this list, on the package's own rate. Gone from
+    // the list (nothing left for these nights) = the ordinary pick below.
+    const heldRate = held
+      ? packageRate(data.data.hotels.find((h) => h.id === held.id)?.rates ?? [], held.rate)
+      : null;
+    if (held && !heldRate) endHeld();
 
     // Calculate all values first
     let maxDistance = Math.max(
@@ -486,7 +601,8 @@ export const HotelSelection = () => {
 
     // Every hotel filtered out even after the relax pass: keep the computed
     // filter ranges so the customer can widen them, show the empty state.
-    if (!hotelsToSet.length) {
+    // (A package swap still has its own hotel to show - it leads the list.)
+    if (!hotelsToSet.length && !heldRate) {
       setBasePricePerPerson(basePricePerPerson);
       setMaxDistance(maxDistance);
       setDistanceRange(distanceRangeToSet);
@@ -499,7 +615,11 @@ export const HotelSelection = () => {
     }
 
     // Batch all state updates together using React's automatic batching
-    const selectedHotelId = hotelsToSet[0].id;
+    // A package swap selects the package's own hotel on its own rate; anything
+    // else selects the first (cheapest) hotel's first rate, as always.
+    const selectedHotelId = held && heldRate ? held.id : hotelsToSet[0].id;
+    const selectedRate = heldRate ?? hotelsToSet[0].rates[0];
+    setHeldPick(held && heldRate ? { id: held.id, rate: heldRate } : null);
 
     // Info of the AUTO-SELECTED hotel - hotelsInfo is keyed by hotel id, so
     // the old hotelsInfo[0] was always undefined and orders accepted with the
@@ -507,7 +627,9 @@ export const HotelSelection = () => {
     const selectedInfo = hotelsInfo[selectedHotelId];
     const hotelInformation = {
       hotelName: selectedInfo?.metadata?.hotelName,
-      roomName: selectedInfo?.rooms?.[0]?.name,
+      roomName: heldRate
+        ? heldRate.room_data_trans?.main_name
+        : selectedInfo?.rooms?.[0]?.name,
       stars: selectedInfo?.metadata?.rating,
       amenities: selectedInfo?.general?.amenities,
       distance: selectedInfo?.metadata?.distanceFromCenter,
@@ -547,15 +669,15 @@ export const HotelSelection = () => {
       id: selectedHotelId || "",
       name: selectedInfo?.metadata?.hotelName,
       hotelInformation,
-      price:
-        hotelsToSet[0].rates[0].payment_options?.payment_types[0]?.show_amount,
-      rate: hotelsToSet[0].rates[0],
+      price: selectedRate.payment_options?.payment_types[0]?.show_amount,
+      rate: selectedRate,
       checkin: data.debug.request.checkin,
       checkout: data.debug.request.checkout,
     });
   };
 
   const fetchHotels = async (parameters?: { radius: number }) => {
+    endHeld(); // the customer searches again: the ordinary step from here
     // Split mode: re-run the per-segment searches instead of the main list.
     if (splitActive) {
       segmentSearchesRef.current.clear();
@@ -581,6 +703,7 @@ export const HotelSelection = () => {
   // from a split, or the list searched while the split was on screen) it is
   // laid out again at once; otherwise one search, auto-selecting as always.
   const handlePickCity = (city: LodgingCity) => {
+    endHeld();
     segmentRunRef.current += 1; // cancels a segment run in flight
     setEditingSplit(false);
     setAnchorMisses({});
@@ -869,6 +992,7 @@ export const HotelSelection = () => {
   // then runs its sequential searches (cached per segment, so an unchanged
   // segment costs nothing) and auto-picks through the city anchors.
   const startSplit = (nights: NightAssign[]) => {
+    endHeld();
     segmentRunRef.current += 1; // cancels a segment run in flight
     setEditingSplit(false);
     setAnchorMisses({});
@@ -1018,6 +1142,7 @@ export const HotelSelection = () => {
   const handleSearchCriteriaChange = ({ type, value }: HotelSearchCriteria) => {
     let filterValue = value;
 
+    endHeld(); // the customer filters or sorts: the list is theirs from here
     setUserInteracted(true);
 
     setSelectedHotelFilters((prev) => ({
@@ -1200,6 +1325,7 @@ export const HotelSelection = () => {
     [roomParams, numberOfEventTickets]
   );
 
+  const searchedHotels = hotelsData?.data?.data?.hotels;
   const displayHotels = useMemo(() => {
     if (userInteracted) {
       return filteredHotels;
@@ -1213,13 +1339,30 @@ export const HotelSelection = () => {
             .includes(nameQuery)
         )
       : offlineHotels;
-    return [...offline, ...online];
+    const list = [...offline, ...online];
+    // A package swap: the package's own hotel leads the list (even when the
+    // default filters would hide it), its own rate first on the card - a
+    // selected card commits its first rate, so that rate is what stays.
+    if (!heldPick) return list;
+    const own =
+      list.find((h) => h.id === heldPick.id) ??
+      searchedHotels?.find((h) => h.id === heldPick.id);
+    if (!own) return list;
+    return [
+      { ...own, rates: [heldPick.rate, ...own.rates.filter((r) => r !== heldPick.rate)] },
+      ...list.filter((h) => h.id !== heldPick.id),
+    ];
   }, [
     userInteracted,
     offlineHotels,
     offlineHotelsInfo,
     filteredHotels,
     hotelNameFilter,
+    heldPick,
+    // The provider's `hotelsData` is a new object on every render; the list
+    // inside it is state. Depending on the object re-made the package card's
+    // rates each render, and a selected card commits its rates when they change.
+    searchedHotels,
   ]);
 
   const mergedHotelsInfo = useMemo(
@@ -1242,6 +1385,7 @@ export const HotelSelection = () => {
   // Default-select the cheapest offline hotel once it loads (and nothing is selected yet)
   useEffect(() => {
     if (splitActive) return; // segments own the pick
+    if (heldHotelRef.current) return; // a package swap keeps its own hotel
     if (
       offlineHotels.length > 0 &&
       (!selectedHotelId || !mergedHotelsInfo[selectedHotelId])

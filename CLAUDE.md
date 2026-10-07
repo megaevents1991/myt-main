@@ -124,11 +124,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > (`resumeFlightRef` takes the order's flight), the step heading says "בחרו
 > קטגוריה אחרת" while the quantity is locked, and a save goes straight back - no
 > "מרכיבים את החבילה" animation (`isFinalStep` is false during a package swap; the
-> hotel step held the customer 2.2s on it). **NOT fixed: the hotel step** still
-> auto-selects the cheapest hotel and its cheapest rate when it opens, so a hotel
-> swap saved with nothing touched loses the package's rate (measured: breakfast
-> gone, -$77 a person). No package has the hotel open to a swap today - fix
-> `prepareHotelData` (keep the held hotel, `closestRate` for its rate) before one does.
+> hotel step held the customer 2.2s on it). (c) **The hotel step** opened on the
+> cheapest hotel's cheapest rate and committed it at once - a hotel swap saved
+> with nothing touched lost the package's rate (measured: breakfast gone, -$77 a
+> person). In a package swap it now opens on the package's own STAY
+> (`heldHotelRef` in `HotelSelection`: its dates and its ROOMS - a party of three
+> in a twin and a single is searched as 2 + 1, not as one triple; when the list
+> in hand is another stay's, the package's is asked for once and
+> `prepareHotelData` touches nothing of the order until it answers), selects the
+> package's hotel on its own rate (`packageRate`: same board first - a promised
+> breakfast is never dropped - then the closest room) and puts that hotel first
+> in the list with that rate first on its card (`heldPick`; a selected
+> `HotelCard` commits its first rate, so that is the rate that stays). It ends
+> when the customer filters, sorts, searches again, changes rooms or leaves the
+> single list; a hotel no longer in the results falls back to the ordinary pick.
+> **Trap met on the way:** `HotelFetchProvider` hands out a NEW `hotelsData`
+> object on every render - never put it in a memo's deps (use the list inside,
+> `hotelsData.data.data.hotels`, which is state): a memo that re-made a card's
+> `rates` each render looped through the card's commit effect ("Maximum update
+> depth exceeded").
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future
