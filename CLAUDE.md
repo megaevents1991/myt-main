@@ -333,6 +333,23 @@ The core ordering flow lives under `/app/order/[eventId]`. The `app/order/layout
 3. **Step 3 – Hotel Selection** (`HotelSelection.tsx`) - skipped for US events; calls `/api/hotels`
 4. **Step 4 – Order Review + Payment** (`OrderReview.tsx`) - submits to `/api/confirm-order`, then `/api/payment`
 
+**The hotel supplier takes 10 searches a minute - for the whole account (2026-10-07).** RateHawk
+limits `serp/geo` to 10 a clock minute; past it, it answers 429 `endpoint_exceeded_limit` and
+names the second its next window opens. The backoffice's hotel reads share the same ten. Two
+rules follow, and both were broken until then (18 of 1,224 customer searches failed in a day,
+14 of them in 75 seconds when eleven people landed from one ad):
+- **A search is spent only on a customer who is past the ticket step.** `OrderForm`'s hotel
+  preload fires at `step >= 2`, not on arrival: 733 of 766 visitors fired a search within 3
+  seconds of opening the page, and 54% of them never left the ticket step. Landings that open
+  past it (ready package, package link, restored order) still search at once. Never start a
+  hotel search from something every visitor does.
+- **A refused search waits for the window, it does not fail.** `/api/hotels` POST goes through
+  `withinSupplierLimit` (`lib/hotels/supplierLimit.ts`, tests `lib/__tests__/hotelSupplierLimit.test.ts`):
+  it waits until the supplier's own reset time (1-27 s in that burst), up to two windows, then
+  answers **429** `{ busy: true }` - never 500 for the limit. The GET (backoffice pricing reads)
+  does not wait: its callers have their own timeouts and next run. Any other supplier failure
+  fails at once, as before.
+
 State flows up through `OrderContext`: event, selected ticket, flight, hotel, passenger info, number of travelers. The `HotelFetchProvider` (`app/hooks/HotelFetch.provider.tsx`) handles hotel fetching separately from render.
 
 **A refresh keeps the order (order draft, 2026-10-01).** That state used to live in React

@@ -2,25 +2,57 @@ import { Hotel, HotelResponse, HotelSearchRequest } from "@/lib/hotel.type";
 import { NextResponse } from "next/server";
 import { authHeader } from "../keys";
 import { supabase } from "@/lib/supabase";
+import {
+  SupplierBusyError,
+  withinSupplierLimit,
+} from "@/lib/hotels/supplierLimit";
 
 const API_URL = "https://api.worldota.net/api/b2b/v3/search/serp/geo";
 
-const fetchHotels = async (hotelSearchRequest: HotelSearchRequest) => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${authHeader}`,
+/**
+ * Windows of the supplier's limit a customer's search may wait through. The supplier takes
+ * 10 searches a minute for the whole account and says when the next minute starts
+ * (lib/hotels/supplierLimit.ts); a search that arrives past the limit waits for it instead
+ * of failing. Two, because the searches that waited all land in the next window together
+ * and can fill it too.
+ */
+const LIMIT_WAITS = 2;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const fetchHotels = (
+  hotelSearchRequest: HotelSearchRequest,
+  waits = LIMIT_WAITS,
+) =>
+  withinSupplierLimit(
+    () =>
+      fetch(API_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+        },
+        body: JSON.stringify(hotelSearchRequest),
+      }),
+    {
+      waits,
+      onLimit: ({ waited, pauseMs }) =>
+        console.warn(
+          pauseMs === null
+            ? `[Hotels] supplier limit: not served after ${waited} wait(s)`
+            : `[Hotels] supplier limit reached - waiting ${pauseMs}ms for its next window (wait ${waited} of ${waits})`,
+        ),
+      onFailure: (body) => console.log(body),
     },
-    body: JSON.stringify(hotelSearchRequest),
-  });
+  );
 
-  if (!response.ok) {
-    console.log(await response.text());
-    throw new Error("API request failed");
-  }
-
-  return response;
-};
+/** A search the supplier would not serve in time answers 429, any other failure 500. */
+const searchFailed = (error: unknown, message: string) =>
+  error instanceof SupplierBusyError
+    ? NextResponse.json(
+        { error: "Hotel search is busy - try again in a minute", busy: true },
+        { status: 429, headers: { "Retry-After": "60" } },
+      )
+    : NextResponse.json({ error: message }, { status: 500 });
 
 // offline_hotels has no hid column - it is a standalone inventory not linked to Ratehawk.
 // Returns empty set until offline hotels are shown separately (like offline flights).
@@ -145,10 +177,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("API error:", error);
-    return NextResponse.json(
-      { error: "An error occurred while fetching hotel data" },
-      { status: 500 },
-    );
+    return searchFailed(error, "An error occurred while fetching hotel data");
   }
 }
 
@@ -203,14 +232,16 @@ export async function GET(request: Request) {
   };
 
   try {
-    // Step 1: Search for hotels
-    const hotelResponse: HotelResponse = await fetchHotels(hotelSearchRequest)
+    // Step 1: Search for hotels. No waiting for the supplier's limit here: this is the
+    // backoffice's pricing read (syncs with their own timeouts and their own next run),
+    // and a held request would spend a search after its caller had already given up.
+    const hotelResponse: HotelResponse = await fetchHotels(hotelSearchRequest, 0)
       .then((res) => res.json())
       .then(async (data: HotelResponse) => {
         if (!data.data.total_hotels) {
           console.log("No hotels found, retrying in 1 second");
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          return (await fetchHotels(hotelSearchRequest)).json();
+          await sleep(1000);
+          return (await fetchHotels(hotelSearchRequest, 0)).json();
         }
         return data;
       });
@@ -303,9 +334,9 @@ export async function GET(request: Request) {
     }
   } catch (error) {
     console.error("API error:", error);
-    return NextResponse.json(
-      { error: "An error occurred while fetching cheapest hotel price" },
-      { status: 500 },
+    return searchFailed(
+      error,
+      "An error occurred while fetching cheapest hotel price",
     );
   }
 }

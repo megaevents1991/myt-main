@@ -112,9 +112,18 @@ export const OrderForm = ({
     if (step === 4) setReturnToSummary(false);
   }, [step, setReturnToSummary]);
 
-  // Preload hotels as soon as the order flow starts so they're ready
-  // by the time the customer reaches step 3 (especially after skip flight).
+  // Preload hotels once the customer is past the ticket step, so they're ready by
+  // the time they reach step 3 (especially after skip flight). NOT on arrival:
+  // until 2026-10-07 every visitor who opened an order page fired a search at the
+  // hotel supplier, and 54% of them never left the ticket step. The supplier takes
+  // 10 searches a minute for the whole account - eleven people landing from one ad
+  // together were enough for customers who did reach the hotel step to get no
+  // answer. Started here, the search also knows the party the customer chose
+  // rather than the default two. Landings that open past the ticket step (a ready
+  // package, a package link, a restored order) still search at once.
+  const pastTicketStep = step >= 2;
   useEffect(() => {
+    if (!pastTicketStep) return;
     if (isUS || ticketOnly) return;
     if (!event?.id) return;
     if (hotelsData?.data?.data?.hotels) return;
@@ -134,7 +143,7 @@ export const OrderForm = ({
       { immediate: true }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event?.id]);
+  }, [event?.id, pastTicketStep]);
 
   // A refresh brought the order back (order draft, lib/order/draft.ts) onto the
   // hotel step or the summary: run the hotel search the flight step would have
