@@ -23,7 +23,13 @@ export async function GET(req: NextRequest) {
         { status: 502 },
       );
     }
-    return NextResponse.json({ success: true, offers });
+    // What LiveTickets charges US stays on the server (lib/ticket-cost.ts reads
+    // it at confirm-order); the order page needs the selling price alone.
+    const publicOffers = offers.map(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ({ costUsd, tripleFeeCostUsd, ...offer }) => offer,
+    );
+    return NextResponse.json({ success: true, offers: publicOffers });
   } catch (error) {
     console.error(
       `[LiveTickets Tickets] Failed for event ${eid}:`,

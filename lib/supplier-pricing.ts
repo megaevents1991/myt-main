@@ -55,3 +55,17 @@ export function supplierCostToUsd(
   if (!Number.isFinite(rate) || rate <= 0) return null;
   return (cost + SUPPLIER_CURRENCY_MARKUP[code]) * rate * CARD_FEE_MULTIPLIER;
 }
+
+/**
+ * What a supplier charges US, in USD: the supplier's own amount at the live
+ * rate - before our per-currency markup and before the card step. This is the
+ * cost side of an order (`reservations.ticket_cost_usd`); `supplierCostToUsd`
+ * above is the selling side. Null for a currency we don't price.
+ */
+export function rawCostToUsd(cost: number, currency: string): number | null {
+  const code = currency.toUpperCase();
+  if (!Number.isFinite(cost) || !isSupplierCurrency(code)) return null;
+  const rate = usdPerUnit(code);
+  if (!Number.isFinite(rate) || rate <= 0) return null;
+  return cost * rate;
+}

@@ -57,7 +57,7 @@ const live = (over: Partial<SupplierLiveData> = {}): SupplierLiveData => ({
   livetickets: {
     status: "live",
     offers: [
-      { id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 80, instant: true },
+      { id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 80, costUsd: 0, tripleFeeCostUsd: 0, instant: true },
     ],
   },
   ...over,
@@ -216,7 +216,7 @@ assert.equal(priceTicketsForQuantity([lt], "tx_event", 3, live(), 1.15)[0].price
 const notInstant = live({
   livetickets: {
     status: "live",
-    offers: [{ id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 0, instant: false }],
+    offers: [{ id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 4, tripleFeeUsd: 0, costUsd: 0, tripleFeeCostUsd: 0, instant: false }],
   },
 });
 assert.equal(priceTicketsForQuantity([lt], "tx_event", 2, notInstant, 1.15).length, 0);
@@ -225,7 +225,7 @@ assert.equal(priceTicketsForQuantity([{ ...lt, nonInstant: true }], "tx_event", 
 const single = live({
   livetickets: {
     status: "live",
-    offers: [{ id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 1, seatingGroupMax: null, tripleFeeUsd: 0, instant: true }],
+    offers: [{ id: "171442", title: "Category 2", priceUsd: 431, maxPerOrder: 1, seatingGroupMax: null, tripleFeeUsd: 0, costUsd: 0, tripleFeeCostUsd: 0, instant: true }],
   },
 });
 assert.equal(priceTicketsForQuantity([lt], "tx_event", 1, single, 1.15).length, 1);
@@ -329,7 +329,7 @@ const doublesLive = (listings: TixStockListing[] = []) =>
     tixstock: { status: "live", listings },
     livetickets: {
       status: "live",
-      offers: [{ id: "171442", title: "Category 3", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 2, tripleFeeUsd: 0, instant: true }],
+      offers: [{ id: "171442", title: "Category 3", priceUsd: 431, maxPerOrder: 6, seatingGroupMax: 2, tripleFeeUsd: 0, costUsd: 0, tripleFeeCostUsd: 0, instant: true }],
     },
   });
 const ltThree = priceTicketsForQuantity([lt], "tx_event", 3, doublesLive(), 1.15)[0];

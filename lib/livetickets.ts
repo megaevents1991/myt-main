@@ -2,7 +2,7 @@
 // isn't a dependency here; never import this from a client component.)
 import { unstable_cache } from "next/cache";
 import { exchangeRateService } from "@/lib/exchangeRateService";
-import { supplierCostToUsd } from "@/lib/supplier-pricing";
+import { rawCostToUsd, supplierCostToUsd } from "@/lib/supplier-pricing";
 import { seatingGroupMaxOf } from "@/lib/livetickets-quantity";
 
 /**
@@ -72,6 +72,18 @@ export type LiveTicketsOffer = {
    * (0 = none). Folded into the price by `liveTicketsPriceForQuantity`.
    */
   tripleFeeUsd: number;
+  /**
+   * What LiveTickets charges us for ONE ticket, USD at the same rate the price
+   * used, before our markup and the card step. The cost side of an order
+   * (`reservations.ticket_cost_usd`, lib/ticket-cost.ts).
+   */
+  costUsd: number;
+  /**
+   * The group fee LiveTickets charges us on ONE ticket seated in a triple, in
+   * the same raw USD as `costUsd` (0 = none). `tripleFeeUsd` is its selling-side
+   * twin, with our markup and card step folded in.
+   */
+  tripleFeeCostUsd: number;
   /**
    * LiveTickets confirms it instantly. A non-instant offer is sold ONLY for a
    * ticket the backoffice attached on purpose as `nonInstant` (Alon 23.09) -
@@ -185,6 +197,11 @@ export async function getLiveTicketsOffers(
         category.cost * (1 + category.groupFeePct / 100),
         stock.currency,
       );
+      const rawUsd = rawCostToUsd(category.cost, stock.currency);
+      const rawUsdWithFee = rawCostToUsd(
+        category.cost * (1 + category.groupFeePct / 100),
+        stock.currency,
+      );
       offers.push({
         id: category.id,
         title: category.title,
@@ -192,6 +209,11 @@ export async function getLiveTicketsOffers(
         maxPerOrder: category.maxPerOrder,
         seatingGroupMax: category.seatingGroupMax,
         tripleFeeUsd: usdWithFee === null ? 0 : Math.max(0, usdWithFee - usd),
+        costUsd: rawUsd ?? 0,
+        tripleFeeCostUsd:
+          rawUsd === null || rawUsdWithFee === null
+            ? 0
+            : Math.max(0, rawUsdWithFee - rawUsd),
         // A stock cached by the previous deploy has no `instant` - it only ever
         // held instant categories.
         instant: category.instant !== false,

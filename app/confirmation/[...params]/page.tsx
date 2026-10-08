@@ -124,6 +124,10 @@ export default function ConfirmationPage() {
             name: orderData.event_order_info.name,
             date: orderData.event_order_info.date,
             category: orderData.event_order_info.event_type,
+            // The order's real total (USD) - never a made-up default.
+            value: orderData.user_shown_price,
+            currency: "USD",
+            quantity: orderData.event_order_info.number_of_ticket,
           },
           eventType: "purchase",
           gtmIdnts,

@@ -20,7 +20,7 @@ export async function GET(
     const { data, error } = await supabase
       .from("reservations")
       .select(
-        "event_id, event_order_info, flight_order_info, hotel_order_info, booking_reference, aff_partner_tracking_code, final_purchase_price_ils, payment_info, partner_settlement_method",
+        "event_id, event_order_info, flight_order_info, hotel_order_info, booking_reference, aff_partner_tracking_code, final_purchase_price_ils, payment_info, partner_settlement_method, user_shown_price",
       )
       .eq("id", id)
       .limit(1)

@@ -76,7 +76,8 @@ export async function trackServerSideEvent(
             user_agent: userAgent,
             ip_override: ip,
             timestamp_micros: new Date().getTime() * 1000,
-            value: eventData.value || 1500,
+            // No value -> no `value` key: never a made-up number in the reports.
+            ...(eventData.value != null ? { value: eventData.value } : {}),
             currency: eventData.currency || "USD",
             product_name: eventData.name,
             product_id: eventData.id, // @todo: sort the category and brand
@@ -89,7 +90,7 @@ export async function trackServerSideEvent(
                 item_name: eventData.name,
                 item_brand: eventData.brand || "Mega Events",
                 item_category: eventData.category || "music_event",
-                price: eventData.value || 1500,
+                ...(eventData.value != null ? { price: eventData.value } : {}),
                 quantity: eventData.quantity || 1,
               },
             ],

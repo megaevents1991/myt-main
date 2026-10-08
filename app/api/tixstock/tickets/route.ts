@@ -8,14 +8,12 @@ import type { EventTicket } from "@/lib/app.types";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import { listingCanSatisfyQuantity } from "@/lib/tixstock-quantity";
 import {
-  categoryMatchesMapId,
-  UNLABELED_SECTION_MARK,
-} from "@/lib/tixstock-map";
+  fetchTixstockFeed,
+  hasObstructedViewRestriction,
+  isExcludedSection,
+} from "@/lib/tixstock-feed";
 import { supplierCostToUsd } from "@/lib/supplier-pricing";
 import { ticketSupplier } from "@/lib/suppliers";
-
-const TIXSTOCK_API_URL = process.env.NEXT_SECRET_TIXSTOCK_API_URL as string;
-const TIXSTOCK_TOKEN = process.env.NEXT_SECRET_TIXSTOCK_TOKEN as string;
 
 /** Convert an amount string in any supported currency to USD, with per-currency markup */
 function toUsd(amount: string, currency: string): string {
@@ -31,11 +29,6 @@ function toUsd(amount: string, currency: string): string {
     return amount;
   }
   return usd.toFixed(2);
-}
-
-/** Slugify a name the same way the SVG map IDs are built */
-function slugify(name: string): string {
-  return (name || "").trim().toLowerCase().replace(/\s+/g, "-");
 }
 
 // Accent/punctuation-insensitive - TixStock renames venue categories over time.
@@ -178,101 +171,11 @@ async function updateDbTicketPricesFromLiveListings(
   return { priceUpdates, ticketsAndRates: nextTicketsAndRates };
 }
 
-// The two filters below - restricted view, excluded sections - and the quantity rule
-// (lib/tixstock-quantity.ts) decide which listing prices a ticket. They are MIRRORED in the
-// backoffice (`lib/tixstock-listings.ts`) for its price sync: change both, or the sync and
-// this route write different prices to the same ticket again (2026-10-07).
-
-/** Return true if a restriction text signals any kind of obstructed / degraded view. */
-function isObstructedViewText(text: string): boolean {
-  const lower = text.toLowerCase();
-  if (
-    (lower.includes("limited") ||
-      lower.includes("side") ||
-      lower.includes("restricted") ||
-      lower.includes("partial")) &&
-    lower.includes("view")
-  )
-    return true;
-  return false;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hasObstructedViewRestriction(listing: any): boolean {
-  const rb = listing.restrictions_benefits;
-  if (!rb) return false;
-  if (rb.other && isObstructedViewText(String(rb.other))) return true;
-  const options: unknown[] = Array.isArray(rb.options) ? rb.options : [];
-  return options.some((opt) => {
-    const text =
-      typeof opt === "string"
-        ? opt
-        : `${(opt as { name?: string })?.name ?? ""} ${(opt as { value?: string })?.value ?? ""}`;
-    return isObstructedViewText(text);
-  });
-}
-
-/**
- * Return true when a listing's seat_details match one of the excluded
- * section IDs (format: "{category-slug}_{section-number}").
- */
-function isExcludedSection(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listing: any,
-  excludedSections: string[],
-): boolean {
-  if (excludedSections.length === 0) return false;
-  const listingCategory: string = listing.seat_details?.category ?? "";
-  const listingCatSlug = slugify(listingCategory);
-  // The excluded id carries the category as the DRAWING names it, the listing
-  // as TixStock names it today - they drift apart (the older Bernabéu file says
-  // "categoría-1", listings say "CATEGORÍA 1 (CAT1)"), and an exact slug match
-  // then let every excluded section sell (QA 23.09). Same rule as the map.
-  const sameCategory = (catSlug: string) =>
-    catSlug === listingCatSlug || categoryMatchesMapId(listingCategory, catSlug);
-  const listingSection = (listing.seat_details?.section ?? "")
-    .trim()
-    .toLowerCase();
-  const listingSectionSlug = slugify(listingSection);
-
-  const parsedExcludedSections = excludedSections
-    .map((excl) => {
-      const lastUnderscore = excl.lastIndexOf("_");
-      if (lastUnderscore === -1) return null;
-
-      return {
-        catSlug: excl.substring(0, lastUnderscore),
-        sectionId: excl.substring(lastUnderscore + 1).toLowerCase(),
-      };
-    })
-    .filter(
-      (section): section is { catSlug: string; sectionId: string } =>
-        section !== null,
-    );
-
-  const isCategoryOnlyListing =
-    listingCatSlug !== "" && listingSectionSlug === listingCatSlug;
-  // Numbered unlabeled wedges (`lower-tier_~3`, see numberUnlabeledSections
-  // in lib/tixstock-map.ts) carry no tickets - like the legacy empty id, they
-  // must not count as a concrete section that hides category-only listings.
-  const hasConcreteExcludedSectionInCategory = parsedExcludedSections.some(
-    ({ catSlug, sectionId }) =>
-      sameCategory(catSlug) &&
-      sectionId !== "" &&
-      !sectionId.startsWith(UNLABELED_SECTION_MARK) &&
-      sectionId !== listingCatSlug,
-  );
-
-  return parsedExcludedSections.some(({ catSlug, sectionId }) => {
-    if (!sameCategory(catSlug)) return false;
-
-    if (isCategoryOnlyListing) {
-      return hasConcreteExcludedSectionInCategory;
-    }
-
-    return listingSection === sectionId;
-  });
-}
+// The two listing filters - restricted view, excluded sections - live in lib/tixstock-feed.ts
+// with the feed read, because the cost snapshot confirm-order takes (lib/ticket-cost.ts) applies
+// the very same ones. They and the quantity rule (lib/tixstock-quantity.ts) are MIRRORED in the
+// backoffice (`lib/tixstock-listings.ts`) for its price sync: change both, or the sync and this
+// route write different prices to the same ticket again (2026-10-07).
 
 export async function GET(req: NextRequest) {
   const eventId = req.nextUrl.searchParams.get("event_id");
@@ -296,48 +199,8 @@ export async function GET(req: NextRequest) {
   try {
     // toUsd() reads GBP/EUR rates synchronously - make sure they are live first.
     await exchangeRateService.ensureFresh();
-    const fetchPage = async (page: number) => {
-      const params = new URLSearchParams({
-        event_id: eventId,
-        per_page: "50",
-        order_by: "price",
-        sort_order: "asc",
-        page: String(page),
-      });
-      const res = await fetch(
-        `${TIXSTOCK_API_URL}/tickets/feed?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${TIXSTOCK_TOKEN}`,
-            Accept: "application/json",
-          },
-          cache: "no-store",
-        },
-      );
-      if (!res.ok) {
-        throw new Error(`Upstream ${res.status} ${res.statusText}`);
-      }
-      return res.json();
-    };
-
-    // Fetch first page to discover total pages
-    const firstPage = await fetchPage(1);
-    const lastPage: number = firstPage?.meta?.last_page ?? 1;
-
-    let allListings = firstPage?.data ?? [];
-
-    if (lastPage > 1) {
-      const remaining = await Promise.all(
-        Array.from({ length: lastPage - 1 }, (_, i) => fetchPage(i + 2)),
-      );
-      for (const page of remaining) {
-        allListings = allListings.concat(page?.data ?? []);
-      }
-    }
-
-    console.log(
-      `[TixStock Tickets] Fetched ${allListings.length} listings across ${lastPage} page(s) for event ${eventId}`,
-    );
+    const { firstPage, listings: allListings } =
+      await fetchTixstockFeed(eventId);
 
     // Normalise all proceed_price amounts to USD so the client never has to deal with currencies
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

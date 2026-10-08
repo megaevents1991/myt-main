@@ -18,6 +18,7 @@ import {
   partnerLinkCode,
 } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
+import { snapshotTicketCost } from "@/lib/ticket-cost";
 import {
   trackServerSideEvent,
   extractIpFromRequest,
@@ -299,6 +300,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // What the supplier charges us for this ticket, where it is in reach right now
+  // (LiveTickets' live offer, TixStock's live feed). Null = not found - the
+  // backoffice estimates it overnight. Never throws, never blocks the order.
+  const ticketCost = await snapshotTicketCost(
+    validatedData.event_order_info,
+    Number(validatedData.event_id),
+  );
+
   const reservationPayload = {
     main_contact_first_name: validatedData.main_contact_first_name,
     main_contact_last_name: validatedData.main_contact_last_name,
@@ -314,6 +323,9 @@ export async function POST(req: Request) {
       ? { hotel_segments: validatedData.hotel_segments }
       : {}),
     user_shown_price: validatedData.user_shown_price,
+    // ticket_cost_usd / ticket_cost_source: only when found - a checkout must not
+    // depend on the columns existing (backoffice migration 20261008120000).
+    ...(ticketCost ?? {}),
     event_id: validatedData.event_id,
     payment_info: payNow ? {} : null,
     // Resolved once, above (before resolveAgentSettlement) - see the
@@ -368,6 +380,23 @@ export async function POST(req: Request) {
     .select()
     .single();
 
+  if (error?.code === "42703" && ticketCost) {
+    // The cost-snapshot columns' migration hasn't landed yet. Drop ONLY those -
+    // the settlement columns below may well exist, and losing them would charge
+    // an agent_card order in full.
+    const {
+      ticket_cost_usd: _ticketCostUsd,
+      ticket_cost_source: _ticketCostSource,
+      ...payloadWithoutCostColumns
+    } = reservationPayload;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ data, error } = await (supabase as any)
+      .from("reservations")
+      .insert(payloadWithoutCostColumns)
+      .select()
+      .single());
+  }
+
   if (error?.code === "42703") {
     // The settlement/attribution columns' migration hasn't landed yet - retry
     // without them rather than failing EVERY order confirmation (not just
@@ -377,6 +406,8 @@ export async function POST(req: Request) {
       agent_card_discount_ils: _agentCardDiscountIls,
       source_share_token: _sourceShareToken,
       quote_id: _quoteId,
+      ticket_cost_usd: _ticketCostUsd,
+      ticket_cost_source: _ticketCostSource,
       ...payloadWithoutSettlementColumns
     } = reservationPayload;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
