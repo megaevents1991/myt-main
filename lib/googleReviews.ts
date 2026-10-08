@@ -8,7 +8,22 @@ import { supabase } from "@/lib/supabase";
  *
  * Server-only (service client). Pages that render it are ISR, so the query
  * runs once per revalidation, not per visitor.
+ *
+ * The two tables hold MORE than one Google profile: since 2026-10-05 the
+ * backoffice mirrors the tours companies' profiles into them too, each under
+ * its own Place ID. Both reads are therefore scoped to OUR profile. Unscoped,
+ * the summary was "the row with the most reviews" and the carousel "every
+ * review in the table": on 2026-10-08 the homepage said 4.6 (100) while Google
+ * said 5.0, and 44 of the 100 reviews shown belonged to the other company.
  */
+
+/** Mega Events – חבילות להופעות ואירועי ספורט בחו״ל. Same id as the backoffice's `DEFAULT_PLACE_ID`. */
+export const MEGA_EVENTS_PLACE_ID = "ChIJ4_iJNrNJZWoRHYuKTpYGzDE";
+
+/** The profile this site shows; the env name is the one the backoffice sync reads. */
+function sitePlaceId(): string {
+  return process.env.NEXT_SECRET_GOOGLE_PLACE_ID || MEGA_EVENTS_PLACE_ID;
+}
 
 export interface GoogleReview {
   key: string;
@@ -56,12 +71,14 @@ interface SourceRow {
 }
 
 export async function getGoogleReviews(): Promise<GoogleReviewsData | null> {
+  const placeId = sitePlaceId();
   const [reviewsRes, sourceRes] = await Promise.all([
     supabase
       .from("google_reviews")
       .select(
         "review_key,author_name,author_photo_url,rating,text,published_at,review_url,reply_text,reply_at",
       )
+      .eq("place_id", placeId)
       .eq("is_hidden", false)
       .gte("rating", MIN_RATING)
       .not("text", "is", null)
@@ -71,8 +88,7 @@ export async function getGoogleReviews(): Promise<GoogleReviewsData | null> {
     supabase
       .from("google_review_sources")
       .select("rating,review_count,maps_url")
-      .order("review_count", { ascending: false, nullsFirst: false })
-      .limit(1)
+      .eq("place_id", placeId)
       .maybeSingle(),
   ]);
 
