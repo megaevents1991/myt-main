@@ -17,6 +17,7 @@ import { useHandlePreparedPackage } from "../hooks/useHandlePreparedPackage";
 import { shortenAirlineName } from "./order-review.utils";
 import { getTotalPersons } from "@/lib/price.utils";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
+import dayjs from "dayjs";
 import { getDefaultDateRange } from "@/lib/getDefaultDateRange";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { getTotalMarkup, isTicketOnlyEvent } from "@/lib/events/price";
@@ -140,13 +141,23 @@ export const OrderForm = ({
     // for the restored flight's dates (effect below) replaces this one - two
     // would only spend a second hotel search on the same customer.
     if (refreshPastFlight.current) return;
+    // A ready package lands with its hotel already on the order: the search is
+    // for THAT stay - its dates, its rooms - so the summary can price a
+    // breakfast for it (the same room's breakfast rate comes from this list)
+    // and a hotel swap finds the list it needs already here.
+    const readyStay =
+      readyPackage && hotel && !skipHotel && !hotel.isOffline ? hotel : null;
     getHotels(
       {
-        dateRange: getDefaultDateRange(event, undefined),
-        guests: getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
+        dateRange: readyStay
+          ? [dayjs(readyStay.checkin).toDate(), dayjs(readyStay.checkout).toDate()]
+          : getDefaultDateRange(event, undefined),
+        guests: readyStay?.guests?.length
+          ? readyStay.guests
+          : getRoomParams(planeTickets.adults || numberOfEventTickets || 1),
         // The event's default lodging city - the context's lodgingCity is
         // still "flight" this early (it follows the event in the layout).
-        location: lodgingLocation(event, defaultCity(event)),
+        location: lodgingLocation(event, readyStay?.city ?? defaultCity(event)),
         eventId: event.id,
       },
       { immediate: true }

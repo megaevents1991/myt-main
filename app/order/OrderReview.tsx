@@ -28,7 +28,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useFetchAffiliate, useOrderVars, useSegmentBreakfast } from "./hooks";
-import { cityName, hasEventCity } from "@/lib/events/lodging";
+import {
+  cityName,
+  defaultCity,
+  hasEventCity,
+  lodgingLocation,
+} from "@/lib/events/lodging";
 import { trackEvent, getUTMParams } from "@/lib/mixpanel";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,6 +41,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Timer } from "@/components/ui/Timer";
 import {
   type Fields,
+  addedCheckedBagsCount,
   findBreakfastUpgrade,
   getAddedBagsTotalUsd,
   persistableHotel,
@@ -57,7 +63,11 @@ import {
 } from "@/lib/coupon.utils";
 import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { Review } from "./OrderSummary/Review";
-import { ReadyPackageShowcase, ReadyPaxPicker } from "@/components/order/ReadyPackageShowcase";
+import {
+  ReadyPackageShowcase,
+  ReadyPaxPicker,
+  type ReadyExtras,
+} from "@/components/order/ReadyPackageShowcase";
 import { PaymentLogos } from "@/components/order/PaymentLogos";
 import { useReadyPackagePax } from "../hooks/useHandlePreparedPackage";
 import { useReadyTicketLive } from "../hooks/useReadyTicketLive";
@@ -139,7 +149,7 @@ export default function OrderReview({
     useContext(OrderContext);
   // The event's ready package ("חבילה מוכנה"): the summary draws the package
   // view instead of the plain Review. Null on every other visit.
-  const { readyPackage } = useContext(OrderContext);
+  const { readyPackage, setReadyPackage } = useContext(OrderContext);
   const { changePax: changeReadyPax } = useReadyPackagePax();
   // The package's ticket goes through the ticket step's own live rules (price
   // for this quantity, can the supplier sell it, our stock) - a no-op on every
@@ -210,8 +220,13 @@ export default function OrderReview({
   // "may not change what's charged" posture as a resumed/locked order.
   // Included-info display stays visible regardless - only the upsell
   // BUTTONS are gated by showUpsells.
-  const showUpsells = !isResumedOrder && !packageLocked && !quotePriceActive;
-  const { hotelsData } = useContext(HotelFetchContext);
+  // A READY package is the exception to the lock: "closed" there means the
+  // customer may not swap a piece, and a suitcase or breakfast on top of the
+  // same flight and hotel swaps none (it is the house's own sale, not an
+  // agent's priced composition).
+  const showUpsells =
+    !isResumedOrder && (!packageLocked || !!readyPackage) && !quotePriceActive;
+  const { hotelsData, getHotels } = useContext(HotelFetchContext);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
   // "supplier": the server re-checked the ticket against its supplier and it
@@ -344,7 +359,7 @@ export default function OrderReview({
   // selected offer - one call per flight id, skipped entirely when upsells
   // are off (resumed order / locked package) or the flight has no real
   // Amadeus offer (offline, skipped).
-  const { bagOptions, fareUpgrade } = useBagPricing(
+  const { bagOptions, fareUpgrade, loading: bagPricingLoading } = useBagPricing(
     selectedFlight,
     showUpsells && !flightSkipped
   );
@@ -495,6 +510,183 @@ export default function OrderReview({
         : prev
     );
   }, [selectedFlight, bagOptions, setFlight]);
+
+  // ── Ready package: the same paid extras, on the package's own cards ──
+  // Its traveller picker replaces the flight and the hotel with the same pieces
+  // priced for the new party, so a suitcase or a breakfast added on top would
+  // vanish without a word. What the customer asked for is remembered while this
+  // summary stays open (a swap of a piece leaves it and starts clean) and is
+  // added again once the new piece's own price for it is known; when there is
+  // none, the picker says the extra came off.
+  const readyWish = useRef({ bag: false, trolley: false, breakfast: false });
+  // A breakfast is priced from the hotel search of the hotel's OWN stay. The
+  // page asked for the stay the package landed with (OrderForm's preload); when
+  // the picker changes the rooms the new stay is asked for here - one search,
+  // and only while there is a breakfast to sell: a hotel whose rate already
+  // includes one spends nothing.
+  const readyStayKey =
+    readyPackage && selectedHotel && !skipHotel && !selectedHotel.isOffline
+      ? [
+          selectedHotel.id,
+          selectedHotel.checkin,
+          selectedHotel.checkout,
+          JSON.stringify(selectedHotel.guests),
+        ].join("|")
+      : null;
+  const readyStayAsked = useRef<string | null>(null);
+  const [readyStayFailed, setReadyStayFailed] = useState<string | null>(null);
+  useEffect(() => {
+    if (!readyStayKey || !selectedHotel || !event?.id) return;
+    if (readyStayAsked.current === readyStayKey) return;
+    const landing = readyStayAsked.current === null;
+    if (landing) {
+      readyStayAsked.current = readyStayKey;
+      return;
+    }
+    if (selectedHotel.rate?.meal_data?.has_breakfast) return;
+    readyStayAsked.current = readyStayKey;
+    getHotels(
+      {
+        dateRange: [
+          dayjs(selectedHotel.checkin).toDate(),
+          dayjs(selectedHotel.checkout).toDate(),
+        ],
+        guests: selectedHotel.guests,
+        location: lodgingLocation(event, selectedHotel.city ?? defaultCity(event)),
+        eventId: event.id,
+      },
+      { immediate: true }
+    ).catch(() => setReadyStayFailed(readyStayKey));
+    // The stay's identity is the trigger; the rest is read as it stands then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyStayKey]);
+  // Is the hotel list in hand this very stay's? Then "no breakfast rate" is its
+  // answer; until then it is only not here yet (findBreakfastUpgrade's own test).
+  const stayRequest = hotelsData?.data?.debug?.request;
+  const countGuests = (rooms?: { adults: number; children?: number[] }[]) =>
+    (rooms ?? []).reduce((n, r) => n + r.adults + (r.children?.length ?? 0), 0);
+  const readyStayListed =
+    !!stayRequest &&
+    !!selectedHotel &&
+    stayRequest.checkin === selectedHotel.checkin &&
+    stayRequest.checkout === selectedHotel.checkout &&
+    countGuests(stayRequest.guests) === countGuests(selectedHotel.guests);
+  const readyExtras = useMemo<ReadyExtras | undefined>(
+    () =>
+      readyPackage && showUpsells
+        ? {
+            bagOptions,
+            fareUpgrade,
+            breakfastUpgrade,
+            onAddBag: () => {
+              readyWish.current.bag = true;
+              if (fareUpgrade) handleUpgradeFare();
+              else handleSetCheckedBagQty(selectedFlight?.numOfTravelers || 1);
+            },
+            onRemoveBag: () => {
+              readyWish.current.bag = false;
+              if (selectedFlight?.fare_upgrade) handleRemoveFareUpgrade();
+              else handleSetCheckedBagQty(0);
+            },
+            onToggleTrolley: () => {
+              readyWish.current.trolley = !selectedFlight?.added_bags?.cabin;
+              handleToggleCabinBag();
+            },
+            onAddBreakfast: () => {
+              readyWish.current.breakfast = true;
+              handleAddBreakfast();
+            },
+            onRemoveBreakfast: () => {
+              readyWish.current.breakfast = false;
+              handleRemoveBreakfast();
+            },
+          }
+        : undefined,
+    [
+      readyPackage,
+      showUpsells,
+      bagOptions,
+      fareUpgrade,
+      breakfastUpgrade,
+      selectedFlight,
+      handleUpgradeFare,
+      handleRemoveFareUpgrade,
+      handleSetCheckedBagQty,
+      handleToggleCabinBag,
+      handleAddBreakfast,
+      handleRemoveBreakfast,
+    ]
+  );
+  useEffect(() => {
+    if (!readyPackage || readyPackage.loading || !showUpsells) return;
+    const wish = readyWish.current;
+    const dropped: string[] = [];
+    if (selectedFlight && !flightSkipped && !bagPricingLoading) {
+      const pax = selectedFlight.numOfTravelers || 1;
+      const { outbound, inbound, added_bags: added } = selectedFlight;
+      const bagOnOrder =
+        !!selectedFlight.fare_upgrade || addedCheckedBagsCount(added, pax) > 0;
+      if (
+        wish.bag &&
+        !bagOnOrder &&
+        !(outbound.checkBagsIncluded && inbound.checkBagsIncluded)
+      ) {
+        if (fareUpgrade) handleUpgradeFare();
+        else if (bagOptions?.checked) handleSetCheckedBagQty(pax);
+        else {
+          wish.bag = false;
+          dropped.push("מזוודה");
+        }
+      }
+      if (
+        wish.trolley &&
+        !added?.cabin &&
+        !(outbound.cabinBagsIncluded && inbound.cabinBagsIncluded)
+      ) {
+        if (bagOptions?.cabin) handleToggleCabinBag();
+        else {
+          wish.trolley = false;
+          dropped.push("טרולי");
+        }
+      }
+    }
+    if (
+      wish.breakfast &&
+      selectedHotel &&
+      !skipHotel &&
+      !selectedHotel.breakfast_upgrade &&
+      !selectedHotel.rate?.meal_data?.has_breakfast
+    ) {
+      if (breakfastUpgrade) handleAddBreakfast();
+      else if (readyStayListed || readyStayFailed === readyStayKey) {
+        wish.breakfast = false;
+        dropped.push("ארוחת בוקר");
+      }
+    }
+    if (dropped.length) {
+      const notice = `התוספת שבחרתם (${dropped.join(", ")}) לא זמינה להרכב הזה וירדה מההזמנה.`;
+      setReadyPackage((prev) => (prev ? { ...prev, notice } : prev));
+    }
+  }, [
+    readyPackage,
+    showUpsells,
+    selectedFlight,
+    flightSkipped,
+    selectedHotel,
+    skipHotel,
+    bagOptions,
+    fareUpgrade,
+    bagPricingLoading,
+    breakfastUpgrade,
+    readyStayListed,
+    readyStayFailed,
+    readyStayKey,
+    handleUpgradeFare,
+    handleSetCheckedBagQty,
+    handleToggleCabinBag,
+    handleAddBreakfast,
+    setReadyPackage,
+  ]);
 
   // Coupon (customer-entered code). Validated by /api/coupons/validate and
   // re-validated server-side in confirm-order. Never stacks with the
@@ -2102,6 +2294,8 @@ export default function OrderReview({
                     ready={readyPackage}
                     total={finalPurchasePrice}
                     perPerson={readyPerPerson}
+                    addOnsUsd={bagAddOnsUsd}
+                    extras={readyExtras}
                     onChangePax={changeReadyPax}
                     // The cancellation terms, one quiet link at the head of the
                     // package (the tick box beside the pay button opens them in full).
@@ -2912,6 +3106,7 @@ export default function OrderReview({
                     travelers={numberOfEventTickets}
                     total={finalPurchasePrice}
                     perPerson={readyPerPerson}
+                    addOnsUsd={bagAddOnsUsd}
                     onChangePax={changeReadyPax}
                   />
                   {couponRow}

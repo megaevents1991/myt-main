@@ -15,7 +15,13 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import type { ReadyPackageState } from "@/app/app.context";
-import { mealPlanLabel } from "@/app/order/order-review.utils";
+import type { BagPricingOptions, FareUpgradeOption } from "@/app/order/hooks/useBagPricing";
+import { ClassicUpgradeInfo, isClassic, upgradeLabel } from "@/app/order/OrderSummary/FlightSummary";
+import {
+  addedCheckedBagsCount,
+  mealPlanLabel,
+  type BreakfastUpgrade,
+} from "@/app/order/order-review.utils";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import { Amenities } from "@/components/ui/Amenities";
 import { FlightMeta } from "@/components/ui/FlightCard";
@@ -87,6 +93,93 @@ const Included = ({ children }: { children: ReactNode }) => (
   </p>
 );
 
+const Money = ({ amount }: { amount: number }) => (
+  <span className="tabular-nums" dir="ltr">
+    +${Math.ceil(amount).toLocaleString("en-US")}
+  </span>
+);
+
+/**
+ * A paid extra on one piece - a suitcase, breakfast: the summary's own add-ons
+ * (FlightSummary / HotelSummary), drawn to this page's scale. Not on the order: a
+ * dashed row that adds it, with what it costs. On the order: a confirmed row with
+ * the sum it added and, where it can be undone, "הסרה".
+ */
+const Extra = ({
+  label,
+  cost,
+  info,
+  added,
+  onAdd,
+  onRemove,
+}: {
+  label: string;
+  /** What adding it costs or, once added, what it added. */
+  cost: ReactNode;
+  /** A small "what is this" control after the label. */
+  info?: ReactNode;
+  added?: boolean;
+  onAdd?: () => void;
+  onRemove?: () => void;
+}) =>
+  added ? (
+    <div
+      className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 rounded-xl border border-forest/40 bg-forest/5 px-3.5 py-1.5 text-[15px] dark:border-glow/40 dark:bg-glow/10"
+      data-ready-extra="added"
+    >
+      <span className="flex flex-wrap items-center gap-x-1.5 font-bold text-forest dark:text-glow">
+        <Check className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+        {label}
+        {info}
+        {cost}
+      </span>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="-me-2 shrink-0 rounded-lg px-2 py-2 text-[14px] font-semibold text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+        >
+          הסרה
+        </button>
+      )}
+    </div>
+  ) : (
+    // The whole row adds it (the button's ::after covers the row); an info control sits above that.
+    <div
+      className="relative flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-xl border border-dashed border-forest/45 px-3.5 py-1.5 text-[15px] transition-colors hover:border-forest hover:bg-forest/5 dark:border-glow/45 dark:hover:border-glow dark:hover:bg-glow/10"
+      data-ready-extra="offer"
+    >
+      <span className="flex items-center gap-1.5">
+        <Plus className="h-4 w-4 shrink-0 text-forest dark:text-glow" strokeWidth={3} aria-hidden />
+        <button
+          type="button"
+          onClick={onAdd}
+          className="text-start font-bold after:absolute after:inset-0 after:content-['']"
+        >
+          {label}
+        </button>
+        {info}
+      </span>
+      <span className="font-semibold text-muted-foreground">{cost}</span>
+    </div>
+  );
+
+/**
+ * The summary's paid add-ons, offered on the package's own cards. Undefined =
+ * nothing new may be added; what is already on the order is still shown.
+ */
+export type ReadyExtras = {
+  bagOptions: BagPricingOptions;
+  fareUpgrade: FareUpgradeOption;
+  breakfastUpgrade: BreakfastUpgrade | null;
+  /** A suitcase for every traveller - as a fare upgrade where the airline sells it that way. */
+  onAddBag: () => void;
+  onRemoveBag: () => void;
+  onToggleTrolley: () => void;
+  onAddBreakfast: () => void;
+  onRemoveBreakfast: () => void;
+};
+
 /** One direction: which day, which flight, then the site's own times / duration / stops strip. */
 const Leg = ({ label, leg }: { label: string; leg: FlightSegment }) => {
   const departure = dayjs(leg.departureTime);
@@ -116,6 +209,19 @@ const Leg = ({ label, leg }: { label: string; leg: FlightSegment }) => {
 const STEP_BUTTON =
   "flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-forest hover:text-forest disabled:opacity-35 disabled:hover:border-border disabled:hover:text-foreground dark:hover:border-glow dark:hover:text-glow";
 const CARD = "overflow-hidden rounded-2xl border border-border bg-background";
+// One piece of the package = what it says, then what it shows - the flight's times,
+// the hotel's photo, the seat map - in that order on every card and every screen
+// (Dor 08.10). From 1360px the two parts are two rows of the grid the pieces share,
+// so the texts start on one line and the pictures stand on another, one height,
+// however long each text is.
+const PIECE =
+  "min-[1360px]:row-span-2 min-[1360px]:grid min-[1360px]:grid-cols-1 min-[1360px]:grid-rows-subgrid min-[1360px]:gap-y-0";
+const PIECE_TEXT = "flex min-w-0 flex-col gap-2.5 p-4 min-[1360px]:p-5";
+const PIECE_SHOW = "p-4 pt-0 min-[1360px]:p-5 min-[1360px]:pt-0";
+// 768-1360px: the hotel and the ticket set the two parts side by side, text first.
+const SHOW_BESIDE =
+  "md:shrink-0 md:ps-0 md:pt-4 min-[1360px]:w-auto min-[1360px]:ps-5 min-[1360px]:pt-0";
+const SHOW_PANEL = "rounded-xl bg-muted/40";
 
 /**
  * How many travel, and the price that gives - per person and for everyone. The ONE
@@ -128,6 +234,7 @@ export const ReadyPaxPicker = ({
   travelers,
   total,
   perPerson,
+  addOnsUsd = 0,
   onChangePax,
   className,
 }: {
@@ -137,6 +244,8 @@ export const ReadyPaxPicker = ({
   total: number;
   /** Per traveller, USD. */
   perPerson: number;
+  /** Suitcases the customer added, USD - inside the total, outside the price per person. */
+  addOnsUsd?: number;
   onChangePax: (pax: number) => void;
   className?: string;
 }) => {
@@ -207,6 +316,16 @@ export const ReadyPaxPicker = ({
           </span>
         </p>
       )}
+      {total > 0 && addOnsUsd > 0 && (
+        // Suitcases are for the order, not per person - so the total is more than
+        // the price per person times the party, and this line says why.
+        <p className="mt-1 text-[14px] text-muted-foreground" data-ready-addons>
+          הסה״כ כולל מזוודות שהוספתם:{" "}
+          <span className="font-semibold tabular-nums text-foreground" dir="ltr">
+            ${Math.ceil(addOnsUsd).toLocaleString("en-US")}
+          </span>
+        </p>
+      )}
       {gapped && (
         <p className="mt-2 text-[14px] text-muted-foreground">
           החבילה זמינה ל-{sizes.slice(0, -1).join(", ")} או {sizes[sizes.length - 1]} נוסעים. להרכב אחר דברו איתנו.
@@ -227,13 +346,14 @@ export const ReadyPaxPicker = ({
 };
 
 /**
- * The order summary of a READY package ("חבילה מוכנה", lib/events/readyPackage.ts),
- * drawn in place of the plain Review - the page the customer lands on. The event,
- * a traveller picker with the price it gives, and one card per piece - flight,
- * hotel, ticket - each saying how many it holds and what is included. The customer
+ * The order summary of a READY package (lib/events/readyPackage.ts), drawn in place
+ * of the plain Review - the page the customer lands on. The event, a traveller
+ * picker with the price it gives, and one card per piece - flight, hotel, ticket -
+ * each saying how many it holds and what is included, then showing it. The customer
  * chooses nothing; a quiet "החלפה" appears only on a piece the backoffice left
- * open, opens the regular step for that piece and comes back here. The traveller
- * form and payment stay where the summary already has them.
+ * open, opens the regular step for that piece and comes back here. What the regular
+ * summary sells on top - a suitcase, breakfast - is offered on the piece it belongs
+ * to. The traveller form and payment stay where the summary already has them.
  */
 export const ReadyPackageShowcase = ({
   event,
@@ -245,9 +365,11 @@ export const ReadyPackageShowcase = ({
   ready,
   total,
   perPerson,
+  addOnsUsd,
   onChangePax,
   onEdit,
   headerAside,
+  extras,
 }: {
   event: Event;
   /** Undefined = the package has no flight. */
@@ -262,11 +384,14 @@ export const ReadyPackageShowcase = ({
   total: number;
   /** Per traveller, USD. */
   perPerson: number;
+  /** Suitcases the customer added, USD (the picker names them under the total). */
+  addOnsUsd?: number;
   onChangePax: (pax: number) => void;
   /** Opens a step (1 ticket / 2 flight / 3 hotel) to swap that piece; undefined = nothing may be swapped. */
   onEdit?: (step: 1 | 2 | 3) => void;
   /** Printed at the far end of the header from 1024px (the summary's terms link). */
   headerAside?: ReactNode;
+  extras?: ReadyExtras;
 }) => {
   const swapTicket = onEdit && ready.swap.ticket ? () => onEdit(1) : undefined;
   const swapFlight = onEdit && ready.swap.flight ? () => onEdit(2) : undefined;
@@ -280,6 +405,7 @@ export const ReadyPackageShowcase = ({
       : hotel.rate?.room_data_trans?.main_name || hotel.hotelInformation?.roomName
     : "";
   const hasMeal = !!hotel?.rate?.meal_data?.has_breakfast;
+  const breakfastAdded = hotel?.breakfast_upgrade;
   const hotelGuests = (hotel?.guests ?? []).reduce(
     (sum, room) => sum + (room.adults || 0) + (room.children?.length ?? 0),
     0,
@@ -295,6 +421,11 @@ export const ReadyPackageShowcase = ({
   const checkedBag = !!flight && flight.outbound.checkBagsIncluded && flight.inbound.checkBagsIncluded;
   const cabinBag = !!flight && flight.outbound.cabinBagsIncluded && flight.inbound.cabinBagsIncluded;
   const bagKg = flight?.outbound.checkedBagKg;
+  const addedBags = flight?.added_bags;
+  const bagsAdded = flight ? addedCheckedBagsCount(addedBags, flightTravelers) : 0;
+  const fareUp = flight?.fare_upgrade;
+  // A bag's price covers the whole trip, so a round trip says so ("$80 למזוודה" read as one way).
+  const perBag = (flight?.offer?.itineraries?.length ?? 0) > 1 ? "למזוודה הלוך-חזור" : "למזוודה";
 
   // The order's ticket carries a name and an id; where it sits is on the event's own ticket.
   const ticket = useMemo(() => {
@@ -319,14 +450,13 @@ export const ReadyPackageShowcase = ({
     [mapTicketId],
   );
 
-  const card = CARD;
-
   // Layout, by the room the package column really has (the page gives it the whole
   // screen - app/order/OrderReview.tsx): one column of cards on a phone and a tablet;
   // the traveller picker opens the package there and moves to the summary's narrow
-  // column from 1024px; from 1360px the hotel sits beside the ticket; from 1536px the three pieces stand in one row - flight, hotel, ticket -
-  // so the whole package is on screen at once. The flight's two legs sit side by
-  // side from 768px and stack again inside the narrow card of that row.
+  // column from 1024px; from 1360px the hotel sits beside the ticket; from 1536px the
+  // three pieces stand in one row - flight, hotel, ticket - so the whole package is on
+  // screen at once. Every card reads the same way: what the piece is, then what it
+  // looks like (PIECE above).
   return (
     <section
       dir="rtl"
@@ -336,9 +466,6 @@ export const ReadyPackageShowcase = ({
       <div className="grid gap-4">
         <div className="lg:flex lg:items-start lg:justify-between lg:gap-6">
           <header className="space-y-1.5 text-center lg:text-right">
-            <span className="inline-flex items-center rounded-full bg-forest/10 px-3 py-1 text-[13px] font-bold text-forest dark:bg-glow/15 dark:text-glow">
-              חבילה מוכנה
-            </span>
             <h2 className="text-balance text-2xl font-bold leading-tight md:text-3xl min-[1360px]:text-[2rem]">{event.name}</h2>
             <p className="text-[16px] text-muted-foreground md:text-lg">
               {placeLine(event)} | {dayjs(event.date).format("DD/MM/YYYY")}
@@ -355,6 +482,7 @@ export const ReadyPackageShowcase = ({
           travelers={travelers}
           total={total}
           perPerson={perPerson}
+          addOnsUsd={addOnsUsd}
           onChangePax={onChangePax}
         />
       </div>
@@ -367,10 +495,10 @@ export const ReadyPackageShowcase = ({
       >
         {flight ? (
           <div
-            className={cn(card, "min-[1360px]:col-span-2 min-[1536px]:col-span-1 min-[1536px]:flex min-[1536px]:flex-col")}
+            className={cn(CARD, PIECE, "min-[1360px]:col-span-2 min-[1536px]:col-span-1")}
             data-ready-piece="flight"
           >
-            <div className="space-y-3 p-4 min-[1360px]:p-5 min-[1536px]:flex min-[1536px]:flex-1 min-[1536px]:flex-col min-[1536px]:gap-3 min-[1536px]:space-y-0">
+            <div className={PIECE_TEXT}>
               <Head
                 icon={<Plane className="h-5 w-5" />}
                 title="טיסה"
@@ -389,16 +517,78 @@ export const ReadyPackageShowcase = ({
                   <p className="text-lg font-bold">{airlineFullName || flight.metadata?.name || flight.airline}</p>
                 </div>
                 <div className="flex flex-wrap gap-x-5 gap-y-1">
-                  {checkedBag ? (
+                  {/* A suitcase the customer added is said by its own row below, not here. */}
+                  {checkedBag && !fareUp ? (
                     <Included>מזוודה כלולה{bagKg ? ` (${bagKg} ק״ג)` : ""}</Included>
-                  ) : (
+                  ) : !checkedBag && bagsAdded === 0 ? (
                     <p className="text-[15px] text-muted-foreground">ללא מזוודה לבטן המטוס</p>
-                  )}
+                  ) : null}
                   {cabinBag && <Included>טרולי כלול</Included>}
                 </div>
               </div>
-              {/* In the three-in-a-row layout the legs stack and share the height the hotel card sets. */}
-              <div className="grid gap-3 rounded-xl bg-muted/40 p-3 md:grid-cols-2 md:gap-0 md:p-4 min-[1536px]:flex min-[1536px]:flex-1 min-[1536px]:flex-col min-[1536px]:justify-around min-[1536px]:gap-4">
+              {/* The suitcase: the airline's fare upgrade where it sells one (El Al),
+                  else a bag for every traveller at the airline's own price for this flight. */}
+              {fareUp ? (
+                <Extra
+                  added
+                  label={`${upgradeLabel(fareUp.brand)} (כולל מזוודה)`}
+                  info={isClassic(fareUp.brand) ? <ClassicUpgradeInfo /> : undefined}
+                  cost={<Money amount={fareUp.delta_total_usd} />}
+                  onRemove={extras && fareUp.prev_price != null ? extras.onRemoveBag : undefined}
+                />
+              ) : bagsAdded > 0 ? (
+                <Extra
+                  added
+                  label={`מזוודות (${bagsAdded})`}
+                  cost={<Money amount={addedBags?.total_usd || 0} />}
+                  onRemove={extras?.onRemoveBag}
+                />
+              ) : checkedBag || !extras ? null : extras.fareUpgrade ? (
+                <Extra
+                  label={upgradeLabel(extras.fareUpgrade.brand)}
+                  info={isClassic(extras.fareUpgrade.brand) ? <ClassicUpgradeInfo /> : undefined}
+                  cost={
+                    <>
+                      <Money amount={extras.fareUpgrade.deltaPerPaxUsd} /> לנוסע
+                    </>
+                  }
+                  onAdd={extras.onAddBag}
+                />
+              ) : extras.bagOptions?.checked ? (
+                <Extra
+                  label="הוסף מזוודה לכל נוסע"
+                  cost={
+                    <>
+                      <Money amount={extras.bagOptions.checked.unitPriceUsd} /> {perBag}
+                    </>
+                  }
+                  onAdd={extras.onAddBag}
+                />
+              ) : null}
+              {addedBags?.cabin ? (
+                <Extra
+                  added
+                  label={`טרולים (${addedBags.cabin.qty_per_pax * flightTravelers})`}
+                  cost={<Money amount={addedBags.cabin.total_usd || 0} />}
+                  onRemove={extras?.onToggleTrolley}
+                />
+              ) : !cabinBag && extras?.bagOptions?.cabin ? (
+                <Extra
+                  label="הוסף טרולי לכל נוסע"
+                  cost={<Money amount={extras.bagOptions.cabin.unitPriceUsd * flightTravelers} />}
+                  onAdd={extras.onToggleTrolley}
+                />
+              ) : null}
+            </div>
+            <div className={PIECE_SHOW}>
+              {/* Side by side from 768px; in the three-in-a-row layout the legs stack
+                  and share the height of the row of pictures. */}
+              <div
+                className={cn(
+                  SHOW_PANEL,
+                  "grid h-full gap-3 p-3 md:grid-cols-2 md:gap-0 md:p-4 min-[1536px]:flex min-[1536px]:flex-col min-[1536px]:justify-around min-[1536px]:gap-4",
+                )}
+              >
                 <div className="md:pe-5 min-[1536px]:pe-0">
                   <Leg label="הלוך" leg={flight.outbound} />
                 </div>
@@ -409,26 +599,14 @@ export const ReadyPackageShowcase = ({
             </div>
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground min-[1360px]:col-span-2 min-[1536px]:col-span-1">
+          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground min-[1360px]:col-span-2 min-[1360px]:row-span-2 min-[1536px]:col-span-1">
             החבילה הזו ללא טיסה.
           </p>
         )}
 
         {hotel ? (
-          <div className={cn(card, "md:flex min-[1360px]:flex-col")} data-ready-piece="hotel">
-            {hotelPhoto && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={hotelPhoto}
-                alt={hotel.name}
-                // Wide screen: the photo is a band of a fixed height on top of the card; the
-                // text under it sets the row's height and the ticket's map takes what is left
-                // (a photo that grew with the row made both cards a screen tall).
-                className="h-44 w-full object-cover md:h-auto md:min-h-[220px] md:w-[38%] md:shrink-0 min-[1360px]:h-[210px] min-[1360px]:min-h-0 min-[1360px]:w-full min-[1536px]:h-[180px]"
-                loading="lazy"
-              />
-            )}
-            <div className="min-w-0 flex-1 space-y-2.5 p-4 min-[1360px]:p-5">
+          <div className={cn(CARD, PIECE, "md:flex")} data-ready-piece="hotel">
+            <div className={cn(PIECE_TEXT, "md:flex-1")}>
               <Head
                 icon={<BedDouble className="h-5 w-5" />}
                 title="מלון"
@@ -470,10 +648,35 @@ export const ReadyPackageShowcase = ({
                   )}
                 </p>
               )}
-              {hasMeal ? (
+              {breakfastAdded ? (
+                <Extra
+                  added
+                  label="ארוחת בוקר נוספה"
+                  cost={breakfastAdded.delta_usd > 0 ? <Money amount={breakfastAdded.delta_usd} /> : "חינם"}
+                  onRemove={extras && breakfastAdded.prev_rate ? extras.onRemoveBreakfast : undefined}
+                />
+              ) : hasMeal ? (
                 <Included>{mealPlanLabel(hotel.rate)}</Included>
               ) : (
-                <p className="text-[15px] text-muted-foreground">{mealPlanLabel(hotel.rate)}</p>
+                <>
+                  <p className="text-[15px] text-muted-foreground">{mealPlanLabel(hotel.rate)}</p>
+                  {/* The same room's breakfast rate, when the hotel search behind this page has one. */}
+                  {extras?.breakfastUpgrade && (
+                    <Extra
+                      label="הוסף ארוחת בוקר"
+                      cost={
+                        extras.breakfastUpgrade.deltaUsd > 0 ? (
+                          <>
+                            <Money amount={extras.breakfastUpgrade.deltaUsd} /> לכל השהות
+                          </>
+                        ) : (
+                          "חינם"
+                        )
+                      }
+                      onAdd={extras.onAddBreakfast}
+                    />
+                  )}
+                </>
               )}
               {amenities.length > 0 && (
                 <div>
@@ -481,48 +684,39 @@ export const ReadyPackageShowcase = ({
                 </div>
               )}
             </div>
+            {hotelPhoto && (
+              <div className={cn(PIECE_SHOW, SHOW_BESIDE, "md:w-[38%]")}>
+                {/* The photo fills its part and never sets its height: the text beside it,
+                    or the row of pictures, does (a photo that grew with the row made the
+                    cards a screen tall). */}
+                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={hotelPhoto}
+                    alt={hotel.name}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground">
+          <p className="rounded-2xl border border-dashed border-border p-4 text-[15px] text-muted-foreground min-[1360px]:row-span-2">
             החבילה הזו ללא מלון.
           </p>
         )}
 
         <div
           className={cn(
-            card,
-            "md:flex md:items-stretch min-[1360px]:flex-col",
+            CARD,
+            PIECE,
+            "md:flex",
             !hotel && "min-[1360px]:col-span-2 min-[1536px]:col-span-1",
           )}
           data-ready-piece="ticket"
         >
-          {event.map_image_url && (
-            // Beside the text on a medium screen; on a wide one it is the top of the card and
-            // takes whatever height the hotel card next to it leaves - no empty band under the text.
-            <div className="flex items-center justify-center border-b border-border bg-muted/30 p-3 md:w-[40%] md:shrink-0 md:border-b-0 md:border-l xl:w-[32%] min-[1360px]:w-full min-[1360px]:flex-1 min-[1360px]:border-b min-[1360px]:border-l-0 min-[1360px]:p-4">
-              <div className="w-full min-[1360px]:max-w-[300px] min-[1536px]:max-w-[270px]">
-              {mapListing ? (
-                <TixstockDynamicMap
-                  mapUrl={event.map_image_url}
-                  tickets={mapListing}
-                  hoveredTicket={null}
-                  selectedTicketId={mapListing[0].id}
-                  onMatchedTicketIds={onMapMatched}
-                  excludedSections={event.tx_excluded_sections}
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={event.map_image_url}
-                  alt="מפת המקום"
-                  className="mx-auto max-h-64 w-full rounded-lg object-contain"
-                  loading="lazy"
-                />
-              )}
-              </div>
-            </div>
-          )}
-          <div className="min-w-0 flex-1 space-y-2.5 p-4 md:flex md:flex-col md:justify-center md:space-y-0 md:gap-2.5 min-[1360px]:flex-none min-[1360px]:p-5">
+          <div className={cn(PIECE_TEXT, "md:flex-1")}>
             <Head
               icon={<Ticket className="h-5 w-5" />}
               title="כרטיס"
@@ -537,6 +731,32 @@ export const ReadyPackageShowcase = ({
               <p className="text-[14px] text-muted-foreground">האזור שלכם מסומן במפה.</p>
             )}
           </div>
+          {event.map_image_url && (
+            <div className={cn(PIECE_SHOW, SHOW_BESIDE, "md:w-[40%] xl:w-[32%]")}>
+              <div className={cn(SHOW_PANEL, "flex h-full items-center justify-center p-3 min-[1360px]:p-4")}>
+                <div className="w-full max-w-[300px] min-[1360px]:max-w-[260px]">
+                  {mapListing ? (
+                    <TixstockDynamicMap
+                      mapUrl={event.map_image_url}
+                      tickets={mapListing}
+                      hoveredTicket={null}
+                      selectedTicketId={mapListing[0].id}
+                      onMatchedTicketIds={onMapMatched}
+                      excludedSections={event.tx_excluded_sections}
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={event.map_image_url}
+                      alt="מפת המקום"
+                      className="mx-auto max-h-64 w-full rounded-lg object-contain"
+                      loading="lazy"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

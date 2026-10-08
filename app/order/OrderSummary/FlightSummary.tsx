@@ -10,8 +10,10 @@ import dayjs from "dayjs";
 import type { BagPricingOptions, FareUpgradeOption } from "../hooks/useBagPricing";
 import { addedCheckedBagsCount } from "../order-review.utils";
 
-const isClassic = (brand: string) => brand.toUpperCase() === ELAL_CLASSIC_BRAND;
-const upgradeLabel = (brand: string) =>
+// Exported for the ready package's flight card (components/order/ReadyPackageShowcase),
+// which offers the same upgrade under the same name.
+export const isClassic = (brand: string) => brand.toUpperCase() === ELAL_CLASSIC_BRAND;
+export const upgradeLabel = (brand: string) =>
   isClassic(brand) ? "שדרוג לקלאסיק" : `שדרוג כרטיס ל-${brand}`;
 
 /** A mouse (or trackpad) is on this device - hover means something. */
@@ -22,7 +24,7 @@ const canHover = () =>
  *  where there is a pointer to hover with and on a tap everywhere (Alon 30.09
  *  hovered on a desktop, saw nothing and reported the bubble missing).
  *  `relative z-10` keeps it above the chip's stretched button. */
-const ClassicUpgradeInfo = () => {
+export const ClassicUpgradeInfo = () => {
   const [opened, setOpened] = useState(false);
   return (
     <Popover

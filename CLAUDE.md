@@ -166,6 +166,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > `passengerCount`, for a ready package only, keeps the rows typed so far, drops
 > extra ones and adds blank ones - and gives `validationErrors` a row per
 > traveller (`isFormValidForAction` reads `validationErrors[i]`).
+>
+> **Fourth pass (2026-10-08 evening, Dor's sketch).** (a) **Every piece card
+> reads the same way: what it says, then what it shows** - the flight's times,
+> the hotel's photo, the seat map are always the SECOND part of the card
+> (`PIECE_TEXT` / `PIECE_SHOW` in `ReadyPackageShowcase`), each an inset rounded
+> panel. From 1360px the two parts are two rows of the grid the cards share
+> (`PIECE`: `row-span-2` + `grid-rows-subgrid`), so the texts start on one line
+> and the pictures stand on another at ONE height, however long each text is;
+> 768-1360px the hotel and the ticket set them side by side, text first; a
+> phone stacks them. The photo is `absolute` inside its panel - it fills the
+> part and never sets its height. The "חבילה מוכנה" tag above the title is gone.
+> (b) **The summary's paid add-ons on the package's own cards** (`ReadyExtras`,
+> row component `Extra`): "הוסף מזוודה לכל נוסע" (El Al: the Classic upgrade),
+> a trolley where the airline sells one, "הוסף ארוחת בוקר" - the SAME handlers
+> and prices as the regular summary (`useBagPricing`, `findBreakfastUpgrade`),
+> never a pricing rule of their own. `showUpsells` is true for a ready package
+> even when it is CLOSED (`packageLocked`): closed = no piece may be swapped,
+> and an add-on swaps none; a partner's locked package is unchanged. Suitcases
+> are for the order, so the picker prints "הסה״כ כולל מזוודות שהוספתם: $X"
+> under a total that is no longer price-per-person times the party.
+> (c) **An add-on follows a change of party.** The picker replaces the flight
+> and the hotel with the same pieces priced for the new party, which would
+> drop what was added without a word. `readyWish` (a ref in `OrderReview`,
+> alive while the summary is mounted - a swap of a piece leaves it and starts
+> clean) remembers what the customer asked for and adds it again once the new
+> piece's own price is known; when there is none the picker's notice says the
+> add-on came off. Two things make that safe: `useBagPricing` keys its answer
+> by the flight's id AND its party (a ready package keeps id "1" across
+> sizes, and the summary stays mounted) and hands it out only for that flight -
+> `loading` is derived, so it is already true on the render the flight changed
+> in; and a breakfast is "not available" only when the hotel list in hand IS
+> this stay's (`readyStayListed`) or its search failed. (d) **The hotel search
+> behind a ready package is the package's own stay** (`OrderForm`'s preload:
+> the hotel's dates and rooms, not the event's default dates for two) - the
+> breakfast rate is read from that list, and a hotel swap finds its list
+> already there. On a change of party the new stay is searched ONLY while
+> there is a breakfast to sell (the hotel's rate has no meal); a hotel that
+> already includes one - the usual package - spends no search (measured: one
+> search for a landing and three changes of party). A change of party does
+> spend one Amadeus bag-pricing call. Not ours: the site's idle-offer popup
+> (22 s without a click) opens on this landing too, as on every summary.
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future
