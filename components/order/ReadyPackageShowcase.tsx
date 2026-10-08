@@ -113,6 +113,119 @@ const Leg = ({ label, leg }: { label: string; leg: FlightSegment }) => {
   );
 };
 
+const STEP_BUTTON =
+  "flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-forest hover:text-forest disabled:opacity-35 disabled:hover:border-border disabled:hover:text-foreground dark:hover:border-glow dark:hover:text-glow";
+const CARD = "overflow-hidden rounded-2xl border border-border bg-background";
+
+/**
+ * How many travel, and the price that gives - per person and for everyone. The ONE
+ * place the package's price is printed (a second total beside the pay button read
+ * as a second price, Alon 08.10). Its "+" and "-" walk the party sizes the package
+ * is priced for; the flight, the hotel, the tickets and the travellers' form follow.
+ */
+export const ReadyPaxPicker = ({
+  ready,
+  travelers,
+  total,
+  perPerson,
+  onChangePax,
+  className,
+}: {
+  ready: ReadyPackageState;
+  travelers: number;
+  /** Whole order, USD, as the summary charges it; 0 while it is still being worked out. */
+  total: number;
+  /** Per traveller, USD. */
+  perPerson: number;
+  onChangePax: (pax: number) => void;
+  className?: string;
+}) => {
+  const fewer = neighbourPax(ready.paxOptions, travelers, -1);
+  const more = neighbourPax(ready.paxOptions, travelers, 1);
+  const sizes = ready.paxOptions;
+  // Sizes with a hole in the middle (1, 2, 4) deserve a word: "+" jumps over it.
+  const gapped = sizes.length > 1 && sizes[sizes.length - 1] - sizes[0] + 1 !== sizes.length;
+
+  return (
+    <div className={cn(CARD, "p-4", className)}>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-lg font-bold">כמה נוסעים?</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="פחות נוסעים"
+            disabled={fewer == null || ready.loading}
+            onClick={() => fewer != null && onChangePax(fewer)}
+            className={STEP_BUTTON}
+          >
+            <Minus className="h-5 w-5" aria-hidden />
+          </button>
+          <span
+            className="flex min-w-[2.5ch] items-center justify-center text-2xl font-bold tabular-nums"
+            aria-live="polite"
+            data-ready-pax
+          >
+            {ready.loading ? <Loader2 className="h-6 w-6 animate-spin" aria-label="מעדכן" /> : travelers}
+          </span>
+          <button
+            type="button"
+            aria-label="עוד נוסעים"
+            disabled={more == null || ready.loading}
+            onClick={() => more != null && onChangePax(more)}
+            className={STEP_BUTTON}
+          >
+            <Plus className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+      </div>
+      <p className="mt-1.5 text-[14px] text-muted-foreground">
+        הטיסה, המלון והכרטיסים מתעדכנים למספר שתבחרו.
+      </p>
+      {total > 0 && (
+        // The total is what is paid, so it is the figure that leads; the price per
+        // person - the one the site quotes everywhere else - stands beside it.
+        <p
+          className={cn(
+            "mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-t border-border pt-3 transition-opacity",
+            ready.loading && "opacity-50",
+          )}
+          data-ready-price
+        >
+          <span className="flex flex-col items-start">
+            <span className="text-[15px] text-muted-foreground">
+              סה״כ ל-{people(travelers, "נוסע אחד", "נוסעים")}
+            </span>
+            <span className="text-[1.75rem] font-bold leading-tight tabular-nums" dir="ltr">
+              ${total.toLocaleString("en-US")}
+            </span>
+          </span>
+          <span className="pb-1 text-[15px] text-muted-foreground">
+            מחיר לאדם{" "}
+            <span className="text-lg font-bold tabular-nums text-foreground" dir="ltr">
+              ${perPerson.toLocaleString("en-US")}
+            </span>
+          </span>
+        </p>
+      )}
+      {gapped && (
+        <p className="mt-2 text-[14px] text-muted-foreground">
+          החבילה זמינה ל-{sizes.slice(0, -1).join(", ")} או {sizes[sizes.length - 1]} נוסעים. להרכב אחר דברו איתנו.
+        </p>
+      )}
+      {ready.notice && (
+        <p role="status" className="mt-2 text-[14px] font-semibold text-amber-700 dark:text-amber-300" data-ready-notice>
+          {ready.notice}
+        </p>
+      )}
+      {ready.error && (
+        <p role="alert" className="mt-2 text-[14px] font-semibold text-red-600 dark:text-red-400">
+          {ready.error}
+        </p>
+      )}
+    </div>
+  );
+};
+
 /**
  * The order summary of a READY package ("חבילה מוכנה", lib/events/readyPackage.ts),
  * drawn in place of the plain Review - the page the customer lands on. The event,
@@ -134,6 +247,7 @@ export const ReadyPackageShowcase = ({
   perPerson,
   onChangePax,
   onEdit,
+  headerAside,
 }: {
   event: Event;
   /** Undefined = the package has no flight. */
@@ -151,13 +265,9 @@ export const ReadyPackageShowcase = ({
   onChangePax: (pax: number) => void;
   /** Opens a step (1 ticket / 2 flight / 3 hotel) to swap that piece; undefined = nothing may be swapped. */
   onEdit?: (step: 1 | 2 | 3) => void;
+  /** Printed at the far end of the header from 1024px (the summary's terms link). */
+  headerAside?: ReactNode;
 }) => {
-  const fewer = neighbourPax(ready.paxOptions, travelers, -1);
-  const more = neighbourPax(ready.paxOptions, travelers, 1);
-  const sizes = ready.paxOptions;
-  // Sizes with a hole in the middle (1, 2, 4) deserve a word: "+" jumps over it.
-  const gapped = sizes.length > 1 && sizes[sizes.length - 1] - sizes[0] + 1 !== sizes.length;
-
   const swapTicket = onEdit && ready.swap.ticket ? () => onEdit(1) : undefined;
   const swapFlight = onEdit && ready.swap.flight ? () => onEdit(2) : undefined;
   const swapHotel = onEdit && ready.swap.hotel ? () => onEdit(3) : undefined;
@@ -209,14 +319,12 @@ export const ReadyPackageShowcase = ({
     [mapTicketId],
   );
 
-  const stepButton =
-    "flex h-11 w-11 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-forest hover:text-forest disabled:opacity-35 disabled:hover:border-border disabled:hover:text-foreground dark:hover:border-glow dark:hover:text-glow";
-  const card = "overflow-hidden rounded-2xl border border-border bg-background";
+  const card = CARD;
 
   // Layout, by the room the package column really has (the page gives it the whole
   // screen - app/order/OrderReview.tsx): one column of cards on a phone and a tablet;
-  // from 1360px the event sits beside the traveller picker and the hotel beside the
-  // ticket; from 1536px the three pieces stand in one row - flight, hotel, ticket -
+  // the traveller picker opens the package there and moves to the summary's narrow
+  // column from 1024px; from 1360px the hotel sits beside the ticket; from 1536px the three pieces stand in one row - flight, hotel, ticket -
   // so the whole package is on screen at once. The flight's two legs sit side by
   // side from 768px and stack again inside the narrow card of that row.
   return (
@@ -225,92 +333,30 @@ export const ReadyPackageShowcase = ({
       className="space-y-4 px-4 py-5 text-right md:px-6 min-[1360px]:space-y-5 min-[1360px]:p-7"
       data-ready-package
     >
-      <div className="grid gap-4 min-[1360px]:grid-cols-[minmax(0,1fr)_minmax(380px,460px)] min-[1360px]:items-center min-[1360px]:gap-8">
-      <header className="space-y-1.5 text-center min-[1360px]:text-right">
-        <span className="inline-flex items-center rounded-full bg-forest/10 px-3 py-1 text-[13px] font-bold text-forest dark:bg-glow/15 dark:text-glow">
-          חבילה מוכנה
-        </span>
-        <h2 className="text-balance text-2xl font-bold leading-tight md:text-3xl min-[1360px]:text-[2rem]">{event.name}</h2>
-        <p className="text-[16px] text-muted-foreground md:text-lg">
-          {placeLine(event)} | {dayjs(event.date).format("DD/MM/YYYY")}
-        </p>
-        <p className="text-[15px]">בחרנו עבורכם טיסה, מלון וכרטיס. נשאר רק למלא פרטים ולהזמין.</p>
-      </header>
-
-      <div className={cn(card, "p-4")}>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          <div>
-            <span className="block text-lg font-bold">כמה נוסעים?</span>
-            <span className="block text-[14px] text-muted-foreground">
-              הטיסה, המלון והכרטיסים מתעדכנים למספר שתבחרו.
+      <div className="grid gap-4">
+        <div className="lg:flex lg:items-start lg:justify-between lg:gap-6">
+          <header className="space-y-1.5 text-center lg:text-right">
+            <span className="inline-flex items-center rounded-full bg-forest/10 px-3 py-1 text-[13px] font-bold text-forest dark:bg-glow/15 dark:text-glow">
+              חבילה מוכנה
             </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="פחות נוסעים"
-              disabled={fewer == null || ready.loading}
-              onClick={() => fewer != null && onChangePax(fewer)}
-              className={stepButton}
-            >
-              <Minus className="h-5 w-5" aria-hidden />
-            </button>
-            <span
-              className="flex min-w-[2.5ch] items-center justify-center text-2xl font-bold tabular-nums"
-              aria-live="polite"
-              data-ready-pax
-            >
-              {ready.loading ? <Loader2 className="h-6 w-6 animate-spin" aria-label="מעדכן" /> : travelers}
-            </span>
-            <button
-              type="button"
-              aria-label="עוד נוסעים"
-              disabled={more == null || ready.loading}
-              onClick={() => more != null && onChangePax(more)}
-              className={stepButton}
-            >
-              <Plus className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
+            <h2 className="text-balance text-2xl font-bold leading-tight md:text-3xl min-[1360px]:text-[2rem]">{event.name}</h2>
+            <p className="text-[16px] text-muted-foreground md:text-lg">
+              {placeLine(event)} | {dayjs(event.date).format("DD/MM/YYYY")}
+            </p>
+            <p className="text-[15px]">בחרנו עבורכם טיסה, מלון וכרטיס. נשאר רק למלא פרטים ולהזמין.</p>
+          </header>
+          {headerAside && <div className="hidden shrink-0 pt-1 lg:block">{headerAside}</div>}
         </div>
-        {total > 0 && (
-          <p
-            className={cn(
-              "mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-border pt-3 transition-opacity",
-              ready.loading && "opacity-50",
-            )}
-            data-ready-price
-          >
-            <span className="text-[15px] text-muted-foreground">
-              מחיר לאדם{" "}
-              <span className="text-lg font-bold tabular-nums text-foreground" dir="ltr">
-                ${perPerson.toLocaleString("en-US")}
-              </span>
-            </span>
-            <span className="text-[15px] text-muted-foreground">
-              סה״כ ל-{people(travelers, "נוסע אחד", "נוסעים")}{" "}
-              <span className="text-lg font-bold tabular-nums text-foreground" dir="ltr">
-                ${total.toLocaleString("en-US")}
-              </span>
-            </span>
-          </p>
-        )}
-        {gapped && (
-          <p className="mt-2 text-[14px] text-muted-foreground">
-            החבילה זמינה ל-{sizes.slice(0, -1).join(", ")} או {sizes[sizes.length - 1]} נוסעים. להרכב אחר דברו איתנו.
-          </p>
-        )}
-        {ready.notice && (
-          <p role="status" className="mt-2 text-[14px] font-semibold text-amber-700 dark:text-amber-300" data-ready-notice>
-            {ready.notice}
-          </p>
-        )}
-        {ready.error && (
-          <p role="alert" className="mt-2 text-[14px] font-semibold text-red-600 dark:text-red-400">
-            {ready.error}
-          </p>
-        )}
-      </div>
+        {/* Phone and tablet: the picker opens the package. From 1024px the summary
+            prints it at the top of its narrow column, above the travellers' form. */}
+        <ReadyPaxPicker
+          className="lg:hidden"
+          ready={ready}
+          travelers={travelers}
+          total={total}
+          perPerson={perPerson}
+          onChangePax={onChangePax}
+        />
       </div>
 
       <div
@@ -479,7 +525,7 @@ export const ReadyPackageShowcase = ({
           <div className="min-w-0 flex-1 space-y-2.5 p-4 md:flex md:flex-col md:justify-center md:space-y-0 md:gap-2.5 min-[1360px]:flex-none min-[1360px]:p-5">
             <Head
               icon={<Ticket className="h-5 w-5" />}
-              title="כרטיס לאירוע"
+              title="כרטיס"
               count={people(travelers, "כרטיס אחד", "כרטיסים")}
               onSwap={swapTicket}
             />

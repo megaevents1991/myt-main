@@ -143,6 +143,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > `hotelsData.data.data.hotels`, which is state): a memo that re-made a card's
 > `rates` each render looped through the card's commit effect ("Maximum update
 > depth exceeded").
+> **Third pass (2026-10-08, Alon's sketch after his QA walk).** (a) **One price
+> on the page.** The traveller picker is its own component (`ReadyPaxPicker`,
+> exported beside `ReadyPackageShowcase`) and prints the package's ONE price -
+> the total leads, the price per person beside it. From 1024px it opens the
+> narrow column, above the travellers' form it sizes (`OrderReview`, a `Card`
+> with `order-first hidden lg:block`); below 1024px it opens the package
+> (`lg:hidden` inside the showcase) - two instances, one visible, so a test
+> clicks `button[aria-label="עוד נוסעים"]:visible`. The separate total card
+> (`PriceSummary`) is gone for a ready package - two totals on one screen read
+> as two prices - and with it the struck-through "before" price; the card logos
+> moved under the pay button. (b) The **coupon row** is one const (`couponRow`)
+> printed in one of two places: inside the picker's card from 1024px (beside the
+> price it changes), at the foot of the package below that; every other summary
+> keeps it exactly where it was. (c) A quiet "התנאים ומדיניות הביטולים" link at
+> the head of the package (`headerAside`, opens `/cancellation` in a new tab;
+> the tick box beside the pay button still opens the full terms). (d) The three
+> promises stand under the package from 1024px (one row from 1200px), no longer
+> in the narrow column. (e) **The travellers' form follows the picker**: it was
+> sized once, when the summary mounted, so 3 travellers still got two rows (the
+> regular flow never changes the party on this step). An effect on
+> `passengerCount`, for a ready package only, keeps the rows typed so far, drops
+> extra ones and adds blank ones - and gives `validationErrors` a row per
+> traveller (`isFormValidForAction` reads `validationErrors[i]`).
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future

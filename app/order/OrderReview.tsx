@@ -57,7 +57,7 @@ import {
 } from "@/lib/coupon.utils";
 import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { Review } from "./OrderSummary/Review";
-import { ReadyPackageShowcase } from "@/components/order/ReadyPackageShowcase";
+import { ReadyPackageShowcase, ReadyPaxPicker } from "@/components/order/ReadyPackageShowcase";
 import { PaymentLogos } from "@/components/order/PaymentLogos";
 import { useReadyPackagePax } from "../hooks/useHandlePreparedPackage";
 import { useReadyTicketLive } from "../hooks/useReadyTicketLive";
@@ -266,6 +266,24 @@ export default function OrderReview({
       email: false,
     }))
   );
+  // A ready package's traveller picker changes the party while this step stays
+  // on screen, so the travellers' form follows it: rows typed so far are kept,
+  // extra rows dropped, new ones blank (it stayed at two rows whatever was
+  // picked, Alon 08.10). Any other change of party happens on another step, and
+  // this one is mounted again with the new count. `touched` follows `passengers`
+  // through the effect below; the errors need a row per traveller as well.
+  useEffect(() => {
+    if (!readyPackage || passengersContext) return;
+    if (passengers.length === passengerCount) return;
+    setPassengers((prev) => [
+      ...prev.slice(0, passengerCount),
+      ...fitPassengers(null, passengerCount - prev.length),
+    ]);
+    setValidationErrors((prev) =>
+      Array.from({ length: passengerCount }, (_, i) => prev[i] ?? {})
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passengerCount]);
   const [termsAccepted, setTermsAccepted] = useState(
     //If there are passengers in context from existing order, assume terms were accepted, we can keep separate state for it if needed in the future
     // Otherwise the tick is as the customer left it before the refresh.
@@ -1648,6 +1666,88 @@ export default function OrderReview({
   };
 
   const penText = selectedFlight ? getPenText(selectedFlight) : "";
+  // Coupon - hidden on any partner-link visit, agent mode included (partner
+  // terms and coupons don't mix). One row, printed in one of two places.
+  const couponRow = !arrivedViaPartner && (
+    <div dir="rtl" className="px-6 py-4 border-t border-border">
+      {appliedCoupon && couponStatus === "applied" ? (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-success">
+            {couponWins ? (
+              <>
+                קופון {appliedCoupon.code} הופעל - הנחת{" "}
+                <span dir="ltr" className="tabular-nums">
+                  ${couponDiscountUsd.toLocaleString("en-US")}
+                </span>
+              </>
+            ) : (
+              <>
+                קופון {appliedCoupon.code} נקלט, אך הנחה קיימת
+                גבוהה יותר כבר חלה על ההזמנה
+              </>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={removeCoupon}
+            className="text-sm text-muted-foreground underline shrink-0"
+          >
+            הסרה
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            <Input
+              value={couponInput}
+              onChange={(e) => {
+                setCouponInput(e.target.value);
+                if (couponStatus !== "idle")
+                  setCouponStatus("idle");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyCoupon();
+                }
+              }}
+              placeholder="קוד קופון"
+              aria-label="קוד קופון"
+              className="h-10"
+              maxLength={64}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 shrink-0"
+              onClick={applyCoupon}
+              disabled={
+                couponStatus === "checking" ||
+                !couponInput.trim()
+              }
+            >
+              {couponStatus === "checking" ? "בודק..." : "החל"}
+            </Button>
+          </div>
+          {couponStatus === "invalid" && (
+            <p className="text-sm text-red-500 mt-1">
+              קוד הקופון אינו תקף
+            </p>
+          )}
+          {couponStatus === "expired" && (
+            <p className="text-sm text-red-500 mt-1">
+              הקופון כבר אינו בתוקף - המחיר עודכן
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+  // A ready package's price per traveller - the same figure the price summary
+  // prints as "(לאדם)".
+  const readyPerPerson = Math.ceil(
+    Math.max(0, finalPurchasePrice - bagAddOnsUsd) / Math.max(1, numberOfPersons)
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center">
@@ -2001,12 +2101,20 @@ export default function OrderReview({
                     airlineFullName={airlineFullName}
                     ready={readyPackage}
                     total={finalPurchasePrice}
-                    // Same figure the price summary prints as "(לאדם)".
-                    perPerson={Math.ceil(
-                      Math.max(0, finalPurchasePrice - bagAddOnsUsd) /
-                        Math.max(1, numberOfPersons)
-                    )}
+                    perPerson={readyPerPerson}
                     onChangePax={changeReadyPax}
+                    // The cancellation terms, one quiet link at the head of the
+                    // package (the tick box beside the pay button opens them in full).
+                    headerAside={
+                      <a
+                        href="/cancellation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[14px] font-semibold text-muted-foreground underline underline-offset-4 transition-colors hover:text-forest dark:hover:text-glow"
+                      >
+                        התנאים ומדיניות הביטולים
+                      </a>
+                    }
                     // Same rule as the Review below: a locked package offers no swap.
                     onEdit={
                       packageLocked
@@ -2063,94 +2171,20 @@ export default function OrderReview({
                   }
                 />
                 )}
-                {/* Coupon - hidden on any partner-link visit, agent mode
-                    included (partner terms and coupons don't mix). */}
-                {!arrivedViaPartner && (
-                  <div dir="rtl" className="px-6 py-4 border-t border-border">
-                    {appliedCoupon && couponStatus === "applied" ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-success">
-                          {couponWins ? (
-                            <>
-                              קופון {appliedCoupon.code} הופעל - הנחת{" "}
-                              <span dir="ltr" className="tabular-nums">
-                                ${couponDiscountUsd.toLocaleString("en-US")}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              קופון {appliedCoupon.code} נקלט, אך הנחה קיימת
-                              גבוהה יותר כבר חלה על ההזמנה
-                            </>
-                          )}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={removeCoupon}
-                          className="text-sm text-muted-foreground underline shrink-0"
-                        >
-                          הסרה
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex gap-2">
-                          <Input
-                            value={couponInput}
-                            onChange={(e) => {
-                              setCouponInput(e.target.value);
-                              if (couponStatus !== "idle")
-                                setCouponStatus("idle");
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                applyCoupon();
-                              }
-                            }}
-                            placeholder="קוד קופון"
-                            aria-label="קוד קופון"
-                            className="h-10"
-                            maxLength={64}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-10 shrink-0"
-                            onClick={applyCoupon}
-                            disabled={
-                              couponStatus === "checking" ||
-                              !couponInput.trim()
-                            }
-                          >
-                            {couponStatus === "checking" ? "בודק..." : "החל"}
-                          </Button>
-                        </div>
-                        {couponStatus === "invalid" && (
-                          <p className="text-sm text-red-500 mt-1">
-                            קוד הקופון אינו תקף
-                          </p>
-                        )}
-                        {couponStatus === "expired" && (
-                          <p className="text-sm text-red-500 mt-1">
-                            הקופון כבר אינו בתוקף - המחיר עודכן
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
+                {/* Coupon (`couponRow`). A ready package prints it beside its price
+                    from 1024px - see the narrow column - and here below that. */}
+                {readyPackage ? <div className="lg:hidden">{couponRow}</div> : couponRow}
               </Card>
 
-              {/* Ready package, wide screen: the three pieces stand in one row, so the
-                  package is shorter than the travellers column - the three promises
-                  move here, one under each piece, and the two columns end together. */}
+              {/* Ready package, from 1024px: the narrow column holds the picker, the
+                  travellers and the payment, so the three promises stand here, under
+                  the package - in one row once there is room for three (1200px). */}
               {readyPackage && !isAgentVisitor && (
                 <Card
                   dir="rtl"
-                  className="hidden bg-card text-card-foreground shadow-lg min-[1536px]:block"
+                  className="hidden bg-card text-card-foreground shadow-lg lg:block"
                 >
-                  <ul className="grid grid-cols-3 gap-6 p-7 text-right">
+                  <ul className="grid gap-5 p-7 text-right min-[1200px]:grid-cols-3 min-[1200px]:gap-6">
                     {TRUST_ITEMS.map((item) => (
                       <li key={item.title} className="flex gap-3">
                         <Image
@@ -2865,24 +2899,22 @@ export default function OrderReview({
                   </form>
                 </div>
               </Card>
-              {/* Ready package, desktop: the total and the card logos sit right
-                  above the terms and the pay button. */}
-              {readyPackage && !isMobile && (
-                <Card className="order-2 bg-card text-card-foreground shadow-lg overflow-hidden">
-                  <PriceSummary
-                    finalPurchasePrice={finalPurchasePrice}
-                    finalPurchasePriceILS={finalPurchasePriceILS}
-                    recommendedPriceAllPax={recommendedPriceAllPax}
-                    numberOfPersons={numberOfPersons}
-                    agentCommission={agentCommission}
-                    agentCommissionUsd={agentCommissionUsd}
-                    isAgent={isAgentVisitor}
-                    affDiscount={effectiveDiscountTotalUsd}
-                    isCouponDiscount={couponWins}
-                    isNumberOfPersonsEqual={isNumberOfPersonsEqual}
-                    addOnsTotalUsd={bagAddOnsUsd}
+              {/* Ready package, from 1024px: the traveller picker - with the ONE
+                  price of the page - opens this column, above the travellers' form
+                  it sizes (below 1024px it opens the package instead). A separate
+                  total card stood here; two prices on one screen read as two
+                  different prices (Alon 08.10). */}
+              {readyPackage && (
+                <Card className="order-first hidden bg-card text-card-foreground shadow-lg lg:block">
+                  <ReadyPaxPicker
+                    className="border-0 bg-transparent p-6"
+                    ready={readyPackage}
+                    travelers={numberOfEventTickets}
+                    total={finalPurchasePrice}
+                    perPerson={readyPerPerson}
+                    onChangePax={changeReadyPax}
                   />
-                  <PaymentLogos className="py-3" />
+                  {couponRow}
                 </Card>
               )}
               {/* Trust */}
@@ -2890,8 +2922,8 @@ export default function OrderReview({
                 <Card
                   className={cn(
                     "bg-card text-card-foreground shadow-lg overflow-hidden order-4 md:order-3 hidden md:block",
-                    // A wide ready-package page prints these under the package instead.
-                    readyPackage && "order-5 md:order-5 min-[1536px]:hidden"
+                    // A ready package prints these under the package from 1024px.
+                    readyPackage && "order-5 md:order-5 lg:hidden"
                   )}
                   dir="rtl"
                 >
@@ -3125,6 +3157,9 @@ export default function OrderReview({
                     </div>
                   </>
                 )}
+                {/* Ready package, desktop: the card logos sit under the pay button
+                    (on a phone they already follow the package). */}
+                {readyPackage && !isMobile && <PaymentLogos className="pt-4" />}
               </div>
             </div>
           </div>
