@@ -30,7 +30,7 @@ export type TixstockFeed = {
 };
 
 /** One deadline for the whole feed read when a caller is on a checkout's clock. */
-export const COST_FEED_TIMEOUT_MS = 10_000;
+export const COST_FEED_TIMEOUT_MS = 4_000;
 
 /**
  * Every page of an event's feed. `proceed_price` is left in the seller's

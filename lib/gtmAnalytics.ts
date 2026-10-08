@@ -29,6 +29,12 @@ export interface AnalyticsOptions {
   ip?: string;
 }
 
+/** The order total spread over its units (GA4 item `price`), in cents; a quantity under 1 or unknown counts as 1. */
+export function unitPrice(value: number, quantity?: number): number {
+  const units = Math.max(1, Number(quantity) || 1);
+  return Math.round((value / units) * 100) / 100;
+}
+
 /**
  * Tracks analytics events server-side
  * @param options - Analytics tracking options
@@ -90,7 +96,10 @@ export async function trackServerSideEvent(
                 item_name: eventData.name,
                 item_brand: eventData.brand || "Mega Events",
                 item_category: eventData.category || "music_event",
-                ...(eventData.value != null ? { price: eventData.value } : {}),
+                // GA4 item `price` is PER UNIT; `value` above is the order total.
+                ...(eventData.value != null
+                  ? { price: unitPrice(eventData.value, eventData.quantity) }
+                  : {}),
                 quantity: eventData.quantity || 1,
               },
             ],

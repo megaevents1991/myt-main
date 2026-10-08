@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { snapshotTicketCost } from "@/lib/ticket-cost";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { snapshotTicketCost, withDeadline } from "@/lib/ticket-cost";
 
 const deps = {
   getLiveTicketsOffers: async () => [{ id: "77", costUsd: 101.5 } as never],
@@ -136,5 +136,39 @@ describe("snapshotTicketCost", () => {
         { ...deps, getLiveTicketsOffers: async () => [{ id: "77", costUsd: 0 } as never] },
       ),
     ).toBeNull();
+  });
+});
+
+describe("withDeadline", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("the value, when the promise beats the deadline - and it leaves no timer behind", async () => {
+    vi.useFakeTimers();
+    await expect(withDeadline(Promise.resolve(42), 3000)).resolves.toBe(42);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("null once the deadline passes, whatever the promise does later", async () => {
+    vi.useFakeTimers();
+    const slow = new Promise<number>((resolve) => setTimeout(() => resolve(42), 10_000));
+    const raced = withDeadline(slow, 3000);
+    await vi.advanceTimersByTimeAsync(3000);
+    await expect(raced).resolves.toBeNull();
+    await vi.advanceTimersByTimeAsync(10_000); // the late answer is dropped, nothing throws
+  });
+
+  it("holds a slow cost snapshot to the deadline", async () => {
+    vi.useFakeTimers();
+    const slowDeps = {
+      getLiveTicketsOffers: () =>
+        new Promise<never[]>((resolve) => setTimeout(() => resolve([{ id: "77", costUsd: 100 } as never]), 20_000)),
+      cheapestListingCostUsd: async () => 80,
+    };
+    const raced = withDeadline(
+      snapshotTicketCost({ supplier: "livetickets", supplier_event_id: "e1", id: "77", number_of_ticket: 1 }, 1, slowDeps),
+      3000,
+    );
+    await vi.advanceTimersByTimeAsync(3000);
+    await expect(raced).resolves.toBeNull();
   });
 });

@@ -12,6 +12,26 @@ import { cheapestListingCostUsd } from "@/lib/tixstock-feed";
 
 export type TicketCostSnapshot = { ticket_cost_usd: number; ticket_cost_source: "live" } | null;
 
+/** How long confirm-order waits for the snapshot before saving the order without it. */
+export const TICKET_COST_DEADLINE_MS = 3_000;
+
+/**
+ * The promise's value, or null once `ms` have passed - whichever comes first. The
+ * promise itself keeps running (a read, nothing to undo); its late answer is dropped.
+ * Used so a slow supplier can never hold a checkout up: the nightly estimate in the
+ * backoffice covers a miss.
+ */
+export function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[ticket-cost] gave up after ${ms} ms, saving the order without a cost`);
+      resolve(null);
+    }, ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+}
+
 export async function snapshotTicketCost(
   info: {
     supplier?: string;

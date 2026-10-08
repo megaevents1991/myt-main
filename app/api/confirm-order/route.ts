@@ -18,7 +18,12 @@ import {
   partnerLinkCode,
 } from "./utils";
 import { sendUserEmail } from "../sendUserEmail";
-import { snapshotTicketCost } from "@/lib/ticket-cost";
+import {
+  TICKET_COST_DEADLINE_MS,
+  snapshotTicketCost,
+  withDeadline,
+} from "@/lib/ticket-cost";
+import { insertReservation } from "@/lib/reservation-insert";
 import {
   trackServerSideEvent,
   extractIpFromRequest,
@@ -302,10 +307,14 @@ export async function POST(req: Request) {
 
   // What the supplier charges us for this ticket, where it is in reach right now
   // (LiveTickets' live offer, TixStock's live feed). Null = not found - the
-  // backoffice estimates it overnight. Never throws, never blocks the order.
-  const ticketCost = await snapshotTicketCost(
-    validatedData.event_order_info,
-    Number(validatedData.event_id),
+  // backoffice estimates it overnight. Never throws, and never holds the order
+  // up for more than TICKET_COST_DEADLINE_MS.
+  const ticketCost = await withDeadline(
+    snapshotTicketCost(
+      validatedData.event_order_info,
+      Number(validatedData.event_id),
+    ),
+    TICKET_COST_DEADLINE_MS,
   );
 
   const reservationPayload = {
@@ -373,50 +382,15 @@ export async function POST(req: Request) {
         : null,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let { data, error } = await (supabase as any)
-    .from("reservations")
-    .insert(reservationPayload)
-    .select()
-    .single();
-
-  if (error?.code === "42703" && ticketCost) {
-    // The cost-snapshot columns' migration hasn't landed yet. Drop ONLY those -
-    // the settlement columns below may well exist, and losing them would charge
-    // an agent_card order in full.
-    const {
-      ticket_cost_usd: _ticketCostUsd,
-      ticket_cost_source: _ticketCostSource,
-      ...payloadWithoutCostColumns
-    } = reservationPayload;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ({ data, error } = await (supabase as any)
-      .from("reservations")
-      .insert(payloadWithoutCostColumns)
-      .select()
-      .single());
-  }
-
-  if (error?.code === "42703") {
-    // The settlement/attribution columns' migration hasn't landed yet - retry
-    // without them rather than failing EVERY order confirmation (not just
-    // agent ones) on a column that doesn't exist yet.
-    const {
-      partner_settlement_method: _partnerSettlementMethod,
-      agent_card_discount_ils: _agentCardDiscountIls,
-      source_share_token: _sourceShareToken,
-      quote_id: _quoteId,
-      ticket_cost_usd: _ticketCostUsd,
-      ticket_cost_source: _ticketCostSource,
-      ...payloadWithoutSettlementColumns
-    } = reservationPayload;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ({ data, error } = await (supabase as any)
-      .from("reservations")
-      .insert(payloadWithoutSettlementColumns)
-      .select()
-      .single());
-  }
+  // The insert and its retries for columns whose migration has not landed yet
+  // (cost snapshot first, then settlement/attribution) - lib/reservation-insert.ts.
+  const { data, error } = await insertReservation(
+    reservationPayload,
+    ticketCost,
+    (row) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from("reservations").insert(row).select().single(),
+  );
 
   const id = data?.id;
 
