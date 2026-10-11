@@ -165,6 +165,23 @@ const Extra = ({
   );
 
 /**
+ * An extra the customer chose before the party changed, on its way back at the new
+ * party's own price. It keeps the extra's row in place: the row used to vanish for
+ * the seconds the airline takes to price a suitcase, and came back with a jump.
+ * As tall as the confirmed row it turns into (that one holds a "הסרה" button).
+ */
+const Pending = ({ children }: { children: ReactNode }) => (
+  <div
+    role="status"
+    className="flex min-h-[52px] items-center gap-2 rounded-xl border border-forest/25 bg-forest/5 px-3.5 py-1.5 text-[15px] font-semibold text-muted-foreground dark:border-glow/25 dark:bg-glow/10"
+    data-ready-extra="pending"
+  >
+    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-forest dark:text-glow" aria-hidden />
+    {children}
+  </div>
+);
+
+/**
  * The summary's paid add-ons, offered on the package's own cards. Undefined =
  * nothing new may be added; what is already on the order is still shown.
  */
@@ -172,6 +189,8 @@ export type ReadyExtras = {
   bagOptions: BagPricingOptions;
   fareUpgrade: FareUpgradeOption;
   breakfastUpgrade: BreakfastUpgrade | null;
+  /** Chosen, and being priced again for the party the picker just set. */
+  pending: { bag: boolean; trolley: boolean; breakfast: boolean };
   /** A suitcase for every traveller - as a fare upgrade where the airline sells it that way. */
   onAddBag: () => void;
   onRemoveBag: () => void;
@@ -213,10 +232,12 @@ const CARD = "overflow-hidden rounded-2xl border border-border bg-background";
 // the hotel's photo, the seat map - in that order on every card and every screen
 // (Dor 08.10). From 1360px the two parts are two rows of the grid the pieces share,
 // so the texts start on one line and the pictures stand on another, one height,
-// however long each text is.
+// however long each text is. The longest text sets the first row and the tallest
+// picture the second, so both are kept short: every line a shorter text lacks is an
+// empty band above its picture (Alon 11.10).
 const PIECE =
   "min-[1360px]:row-span-2 min-[1360px]:grid min-[1360px]:grid-cols-1 min-[1360px]:grid-rows-subgrid min-[1360px]:gap-y-0";
-const PIECE_TEXT = "flex min-w-0 flex-col gap-2.5 p-4 min-[1360px]:p-5";
+const PIECE_TEXT = "flex min-w-0 flex-col gap-2.5 p-4 min-[1360px]:p-5 min-[1360px]:pb-4";
 const PIECE_SHOW = "p-4 pt-0 min-[1360px]:p-5 min-[1360px]:pt-0";
 // 768-1360px: the hotel and the ticket set the two parts side by side, text first.
 const SHOW_BESIDE =
@@ -235,6 +256,7 @@ export const ReadyPaxPicker = ({
   total,
   perPerson,
   addOnsUsd = 0,
+  settling = false,
   onChangePax,
   className,
 }: {
@@ -246,6 +268,8 @@ export const ReadyPaxPicker = ({
   perPerson: number;
   /** Suitcases the customer added, USD - inside the total, outside the price per person. */
   addOnsUsd?: number;
+  /** An extra the customer chose is being priced for the new party: the total is not final yet. */
+  settling?: boolean;
   onChangePax: (pax: number) => void;
   className?: string;
 }) => {
@@ -296,8 +320,9 @@ export const ReadyPaxPicker = ({
         <p
           className={cn(
             "mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-t border-border pt-3 transition-opacity",
-            ready.loading && "opacity-50",
+            (ready.loading || settling) && "opacity-50",
           )}
+          aria-busy={ready.loading || settling || undefined}
           data-ready-price
         >
           <span className="flex flex-col items-start">
@@ -316,7 +341,18 @@ export const ReadyPaxPicker = ({
           </span>
         </p>
       )}
-      {total > 0 && addOnsUsd > 0 && (
+      {total > 0 && settling ? (
+        // The total above still lacks an extra the customer chose - said in the
+        // line that will name it, so nothing moves when the price lands.
+        <p
+          role="status"
+          className="mt-1 flex items-center gap-1.5 text-[14px] text-muted-foreground"
+          data-ready-settling
+        >
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+          מעדכן את התוספות שבחרתם
+        </p>
+      ) : total > 0 && addOnsUsd > 0 ? (
         // Suitcases are for the order, not per person - so the total is more than
         // the price per person times the party, and this line says why.
         <p className="mt-1 text-[14px] text-muted-foreground" data-ready-addons>
@@ -325,7 +361,7 @@ export const ReadyPaxPicker = ({
             ${Math.ceil(addOnsUsd).toLocaleString("en-US")}
           </span>
         </p>
-      )}
+      ) : null}
       {gapped && (
         <p className="mt-2 text-[14px] text-muted-foreground">
           החבילה זמינה ל-{sizes.slice(0, -1).join(", ")} או {sizes[sizes.length - 1]} נוסעים. להרכב אחר דברו איתנו.
@@ -426,6 +462,8 @@ export const ReadyPackageShowcase = ({
   const fareUp = flight?.fare_upgrade;
   // A bag's price covers the whole trip, so a round trip says so ("$80 למזוודה" read as one way).
   const perBag = (flight?.offer?.itineraries?.length ?? 0) > 1 ? "למזוודה הלוך-חזור" : "למזוודה";
+  const pending = extras?.pending;
+  const settling = !!pending && (pending.bag || pending.trolley || pending.breakfast);
 
   // The order's ticket carries a name and an id; where it sits is on the event's own ticket.
   const ticket = useMemo(() => {
@@ -483,6 +521,7 @@ export const ReadyPackageShowcase = ({
           total={total}
           perPerson={perPerson}
           addOnsUsd={addOnsUsd}
+          settling={settling}
           onChangePax={onChangePax}
         />
       </div>
@@ -520,7 +559,7 @@ export const ReadyPackageShowcase = ({
                   {/* A suitcase the customer added is said by its own row below, not here. */}
                   {checkedBag && !fareUp ? (
                     <Included>מזוודה כלולה{bagKg ? ` (${bagKg} ק״ג)` : ""}</Included>
-                  ) : !checkedBag && bagsAdded === 0 ? (
+                  ) : !checkedBag && bagsAdded === 0 && !pending?.bag ? (
                     <p className="text-[15px] text-muted-foreground">ללא מזוודה לבטן המטוס</p>
                   ) : null}
                   {cabinBag && <Included>טרולי כלול</Included>}
@@ -543,6 +582,12 @@ export const ReadyPackageShowcase = ({
                   cost={<Money amount={addedBags?.total_usd || 0} />}
                   onRemove={extras?.onRemoveBag}
                 />
+              ) : pending?.bag ? (
+                <Pending>
+                  {flightTravelers === 1
+                    ? "מעדכן מזוודה לנוסע אחד"
+                    : `מעדכן מזוודות ל-${flightTravelers} נוסעים`}
+                </Pending>
               ) : checkedBag || !extras ? null : extras.fareUpgrade ? (
                 <Extra
                   label={upgradeLabel(extras.fareUpgrade.brand)}
@@ -572,6 +617,12 @@ export const ReadyPackageShowcase = ({
                   cost={<Money amount={addedBags.cabin.total_usd || 0} />}
                   onRemove={extras?.onToggleTrolley}
                 />
+              ) : pending?.trolley ? (
+                <Pending>
+                  {flightTravelers === 1
+                    ? "מעדכן טרולי לנוסע אחד"
+                    : `מעדכן טרולים ל-${flightTravelers} נוסעים`}
+                </Pending>
               ) : !cabinBag && extras?.bagOptions?.cabin ? (
                 <Extra
                   label="הוסף טרולי לכל נוסע"
@@ -581,18 +632,20 @@ export const ReadyPackageShowcase = ({
               ) : null}
             </div>
             <div className={PIECE_SHOW}>
-              {/* Side by side from 768px; in the three-in-a-row layout the legs stack
-                  and share the height of the row of pictures. */}
+              {/* Side by side from 768px; in the three-in-a-row layout the legs stack,
+                  each in its own half of the panel, so the line between them stays in
+                  the middle however tall the row of pictures is. The two legs are the
+                  tallest picture of the row, so the panel is as tight as they allow. */}
               <div
                 className={cn(
                   SHOW_PANEL,
-                  "grid h-full gap-3 p-3 md:grid-cols-2 md:gap-0 md:p-4 min-[1536px]:flex min-[1536px]:flex-col min-[1536px]:justify-around min-[1536px]:gap-4",
+                  "grid h-full gap-3 p-3 md:grid-cols-2 md:gap-0 md:p-4 min-[1536px]:flex min-[1536px]:flex-col min-[1536px]:py-3",
                 )}
               >
-                <div className="md:pe-5 min-[1536px]:pe-0">
+                <div className="md:pe-5 min-[1536px]:flex min-[1536px]:flex-1 min-[1536px]:flex-col min-[1536px]:justify-center min-[1536px]:pb-3 min-[1536px]:pe-0">
                   <Leg label="הלוך" leg={flight.outbound} />
                 </div>
-                <div className="border-t border-border pt-3 md:border-s md:border-t-0 md:ps-5 md:pt-0 min-[1536px]:border-s-0 min-[1536px]:border-t min-[1536px]:ps-0 min-[1536px]:pt-4">
+                <div className="border-t border-border pt-3 md:border-s md:border-t-0 md:ps-5 md:pt-0 min-[1536px]:flex min-[1536px]:flex-1 min-[1536px]:flex-col min-[1536px]:justify-center min-[1536px]:border-s-0 min-[1536px]:border-t min-[1536px]:ps-0 min-[1536px]:pt-3">
                   <Leg label="חזור" leg={flight.inbound} />
                 </div>
               </div>
@@ -613,41 +666,48 @@ export const ReadyPackageShowcase = ({
                 count={people(hotelGuests || travelers, "אורח אחד", "אורחים")}
                 onSwap={swapHotel}
               />
+              {/* Which hotel: its name, then its stars and where it stands on one line
+                  (the stars used to take a line of their own under a long name). */}
               <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <p className="text-lg font-bold" dir="auto">
-                    {hotel.name}
-                  </p>
-                  {stars > 0 && (
-                    <span aria-label={`${stars} כוכבים`}>
-                      <Stars rating={stars} />
-                    </span>
-                  )}
-                </div>
-                {distanceKm > 0 && (
-                  <p className="flex items-center gap-1 text-[14px] text-muted-foreground">
-                    <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-                    {distanceKm} ק״מ ממרכז העיר
+                <p className="text-lg font-bold leading-snug" dir="auto">
+                  {hotel.name}
+                </p>
+                {(stars > 0 || distanceKm > 0) && (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-muted-foreground">
+                    {stars > 0 && (
+                      <span aria-label={`${stars} כוכבים`}>
+                        <Stars rating={stars} />
+                      </span>
+                    )}
+                    {distanceKm > 0 && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                        {distanceKm} ק״מ ממרכז העיר
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* The stay: how long and when, then which rooms. */}
+              <div className="space-y-0.5">
+                <p className="text-[16px]">
+                  {people(nights, "לילה אחד", "לילות")} ·{" "}
+                  <span className="tabular-nums" dir="ltr">
+                    {dayjs(hotel.checkin).format("DD/MM")} – {dayjs(hotel.checkout).format("DD/MM")}
+                  </span>
+                </p>
+                {(rooms || roomName) && (
+                  <p className="text-[15px]" data-ready-rooms>
+                    {rooms && <span className="font-bold">{rooms}</span>}
+                    {rooms && roomName && <span className="text-muted-foreground"> · </span>}
+                    {roomName && (
+                      <span className="text-muted-foreground" dir="auto">
+                        {roomName}
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
-              <p className="text-[16px]">
-                {people(nights, "לילה אחד", "לילות")} ·{" "}
-                <span className="tabular-nums" dir="ltr">
-                  {dayjs(hotel.checkin).format("DD/MM")} – {dayjs(hotel.checkout).format("DD/MM")}
-                </span>
-              </p>
-              {(rooms || roomName) && (
-                <p className="text-[15px]" data-ready-rooms>
-                  {rooms && <span className="font-bold">{rooms}</span>}
-                  {rooms && roomName && <span className="text-muted-foreground"> · </span>}
-                  {roomName && (
-                    <span className="text-muted-foreground" dir="auto">
-                      {roomName}
-                    </span>
-                  )}
-                </p>
-              )}
               {breakfastAdded ? (
                 <Extra
                   added
@@ -657,6 +717,8 @@ export const ReadyPackageShowcase = ({
                 />
               ) : hasMeal ? (
                 <Included>{mealPlanLabel(hotel.rate)}</Included>
+              ) : pending?.breakfast ? (
+                <Pending>מעדכן את ארוחת הבוקר</Pending>
               ) : (
                 <>
                   <p className="text-[15px] text-muted-foreground">{mealPlanLabel(hotel.rate)}</p>
@@ -689,7 +751,7 @@ export const ReadyPackageShowcase = ({
                 {/* The photo fills its part and never sets its height: the text beside it,
                     or the row of pictures, does (a photo that grew with the row made the
                     cards a screen tall). */}
-                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px]">
+                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px] min-[1360px]:min-h-40">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={hotelPhoto}
@@ -733,8 +795,10 @@ export const ReadyPackageShowcase = ({
           </div>
           {event.map_image_url && (
             <div className={cn(PIECE_SHOW, SHOW_BESIDE, "md:w-[40%] xl:w-[32%]")}>
-              <div className={cn(SHOW_PANEL, "flex h-full items-center justify-center p-3 min-[1360px]:p-4")}>
-                <div className="w-full max-w-[300px] min-[1360px]:max-w-[260px]">
+              <div className={cn(SHOW_PANEL, "flex h-full items-center justify-center p-3")}>
+                {/* From 1360px the map is no taller than the flight's two legs, so it
+                    never sets the height of the row of pictures. */}
+                <div className="w-full max-w-[300px] min-[1360px]:max-w-[230px]">
                   {mapListing ? (
                     <TixstockDynamicMap
                       mapUrl={event.map_image_url}

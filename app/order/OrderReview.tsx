@@ -518,7 +518,7 @@ export default function OrderReview({
   // summary stays open (a swap of a piece leaves it and starts clean) and is
   // added again once the new piece's own price for it is known; when there is
   // none, the picker says the extra came off.
-  const readyWish = useRef({ bag: false, trolley: false, breakfast: false });
+  const [readyWish, setReadyWish] = useState({ bag: false, trolley: false, breakfast: false });
   // A breakfast is priced from the hotel search of the hotel's OWN stay. The
   // page asked for the stay the package landed with (OrderForm's preload); when
   // the picker changes the rooms the new stay is asked for here - one search,
@@ -571,6 +571,31 @@ export default function OrderReview({
     stayRequest.checkin === selectedHotel.checkin &&
     stayRequest.checkout === selectedHotel.checkout &&
     countGuests(stayRequest.guests) === countGuests(selectedHotel.guests);
+  // Asked for, and not on the order: the new party's piece has landed and its own
+  // price for the extra is still on the way (the effect below adds it, or lets it
+  // go). The cards say so in the extra's own row and the picker holds its total.
+  // Without it a suitcase vanished for the 2-3 seconds the airline takes to price
+  // it, and the total in between read as final (Alon 11.10).
+  const readyAsks = !!readyPackage && showUpsells;
+  const readyFlight = readyAsks && !flightSkipped ? selectedFlight : undefined;
+  const readyHotel = readyAsks && !skipHotel ? selectedHotel : undefined;
+  const bagPending =
+    readyWish.bag &&
+    !!readyFlight &&
+    !readyFlight.fare_upgrade &&
+    addedCheckedBagsCount(readyFlight.added_bags, readyFlight.numOfTravelers || 1) === 0 &&
+    !(readyFlight.outbound.checkBagsIncluded && readyFlight.inbound.checkBagsIncluded);
+  const trolleyPending =
+    readyWish.trolley &&
+    !!readyFlight &&
+    !readyFlight.added_bags?.cabin &&
+    !(readyFlight.outbound.cabinBagsIncluded && readyFlight.inbound.cabinBagsIncluded);
+  const breakfastPending =
+    readyWish.breakfast &&
+    !!readyHotel &&
+    !readyHotel.breakfast_upgrade &&
+    !readyHotel.rate?.meal_data?.has_breakfast;
+  const readySettling = bagPending || trolleyPending || breakfastPending;
   const readyExtras = useMemo<ReadyExtras | undefined>(
     () =>
       readyPackage && showUpsells
@@ -578,26 +603,28 @@ export default function OrderReview({
             bagOptions,
             fareUpgrade,
             breakfastUpgrade,
+            pending: { bag: bagPending, trolley: trolleyPending, breakfast: breakfastPending },
             onAddBag: () => {
-              readyWish.current.bag = true;
+              setReadyWish((wish) => ({ ...wish, bag: true }));
               if (fareUpgrade) handleUpgradeFare();
               else handleSetCheckedBagQty(selectedFlight?.numOfTravelers || 1);
             },
             onRemoveBag: () => {
-              readyWish.current.bag = false;
+              setReadyWish((wish) => ({ ...wish, bag: false }));
               if (selectedFlight?.fare_upgrade) handleRemoveFareUpgrade();
               else handleSetCheckedBagQty(0);
             },
             onToggleTrolley: () => {
-              readyWish.current.trolley = !selectedFlight?.added_bags?.cabin;
+              const trolley = !selectedFlight?.added_bags?.cabin;
+              setReadyWish((wish) => ({ ...wish, trolley }));
               handleToggleCabinBag();
             },
             onAddBreakfast: () => {
-              readyWish.current.breakfast = true;
+              setReadyWish((wish) => ({ ...wish, breakfast: true }));
               handleAddBreakfast();
             },
             onRemoveBreakfast: () => {
-              readyWish.current.breakfast = false;
+              setReadyWish((wish) => ({ ...wish, breakfast: false }));
               handleRemoveBreakfast();
             },
           }
@@ -608,6 +635,9 @@ export default function OrderReview({
       bagOptions,
       fareUpgrade,
       breakfastUpgrade,
+      bagPending,
+      trolleyPending,
+      breakfastPending,
       selectedFlight,
       handleUpgradeFare,
       handleRemoveFareUpgrade,
@@ -619,7 +649,8 @@ export default function OrderReview({
   );
   useEffect(() => {
     if (!readyPackage || readyPackage.loading || !showUpsells) return;
-    const wish = readyWish.current;
+    // What stays asked for after this pass: an extra the new party cannot have is let go.
+    const wish = { ...readyWish };
     const dropped: string[] = [];
     if (selectedFlight && !flightSkipped && !bagPricingLoading) {
       const pax = selectedFlight.numOfTravelers || 1;
@@ -665,10 +696,12 @@ export default function OrderReview({
     }
     if (dropped.length) {
       const notice = `התוספת שבחרתם (${dropped.join(", ")}) לא זמינה להרכב הזה וירדה מההזמנה.`;
+      setReadyWish(wish);
       setReadyPackage((prev) => (prev ? { ...prev, notice } : prev));
     }
   }, [
     readyPackage,
+    readyWish,
     showUpsells,
     selectedFlight,
     flightSkipped,
@@ -3107,6 +3140,7 @@ export default function OrderReview({
                     total={finalPurchasePrice}
                     perPerson={readyPerPerson}
                     addOnsUsd={bagAddOnsUsd}
+                    settling={readySettling}
                     onChangePax={changeReadyPax}
                   />
                   {couponRow}
