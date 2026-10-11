@@ -207,6 +207,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > search for a landing and three changes of party). A change of party does
 > spend one Amadeus bag-pricing call. Not ours: the site's idle-offer popup
 > (22 s without a click) opens on this landing too, as on every summary.
+>
+> **Fifth pass (2026-10-11, Alon's note on round 6).** (a) **The ticket card
+> no longer shares the two rows** (`PIECE_ALONE`): the flight and the hotel
+> still start their texts on one line and their pictures on another (`PIECE`,
+> subgrid), but the ticket - a name and a line of text - held a 175px empty
+> band above its map, so it takes the two rows as one column and its map
+> starts under its own text, ending on the line the pictures end on. With the
+> pictures of all three on one line that band can only shrink (it is the gap
+> between the hotel's six lines and the ticket's two); letting every picture
+> fill what its text leaves removes every band but staggers the picture tops -
+> Dor chose this middle. The shared rows are kept short: the hotel's stars and
+> distance share a line, each flight leg takes half of its panel (the line
+> between them stays centred), the photo is 160px at least and never sets the
+> row. Measured at 1536px: cards 554 -> 498, the band in the flight card
+> 95 -> 56, in the ticket card 175 -> 0. (b) **An add-on is never off the
+> card while it is priced again.** After a change of party the suitcase row
+> vanished for the ~2.5 s Amadeus takes to price a bag for the new offer and
+> the total in between read as final. `readyWish` is STATE now (it was a ref),
+> so `OrderReview` derives `ReadyExtras.pending` (asked for, not on the order,
+> not included): the card draws the row as `Pending` ("מעדכן מזוודות ל-3
+> נוסעים", as tall as the confirmed row), and the picker holds its total
+> dimmed (`settling`) with "מעדכן את התוספות שבחרתם" in the line that names
+> the suitcases. The wait itself is the supplier's and was not shortened
+> (pre-pricing the neighbouring sizes would cost two more Amadeus calls per
+> customer who adds a bag - not built).
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future

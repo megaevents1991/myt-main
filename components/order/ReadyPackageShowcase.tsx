@@ -230,13 +230,16 @@ const STEP_BUTTON =
 const CARD = "overflow-hidden rounded-2xl border border-border bg-background";
 // One piece of the package = what it says, then what it shows - the flight's times,
 // the hotel's photo, the seat map - in that order on every card and every screen
-// (Dor 08.10). From 1360px the two parts are two rows of the grid the pieces share,
-// so the texts start on one line and the pictures stand on another, one height,
-// however long each text is. The longest text sets the first row and the tallest
-// picture the second, so both are kept short: every line a shorter text lacks is an
-// empty band above its picture (Alon 11.10).
+// (Dor 08.10). From 1360px the flight and the hotel share two rows of the grid, so
+// their texts start on one line and their pictures stand on another, one height.
+// The longer text sets the first row and the taller picture the second, so both are
+// kept short: every line a shorter text lacks is an empty band above its picture.
 const PIECE =
   "min-[1360px]:row-span-2 min-[1360px]:grid min-[1360px]:grid-cols-1 min-[1360px]:grid-rows-subgrid min-[1360px]:gap-y-0";
+// The ticket says the least - a name and a line - and held the widest of those bands,
+// so it takes the two rows as one column: its map starts under its own text and ends
+// on the line the pictures end on (Alon's note, Dor's pick, 11.10).
+const PIECE_ALONE = "min-[1360px]:row-span-2 min-[1360px]:flex min-[1360px]:flex-col";
 const PIECE_TEXT = "flex min-w-0 flex-col gap-2.5 p-4 min-[1360px]:p-5 min-[1360px]:pb-4";
 const PIECE_SHOW = "p-4 pt-0 min-[1360px]:p-5 min-[1360px]:pt-0";
 // 768-1360px: the hotel and the ticket set the two parts side by side, text first.
@@ -751,7 +754,7 @@ export const ReadyPackageShowcase = ({
                 {/* The photo fills its part and never sets its height: the text beside it,
                     or the row of pictures, does (a photo that grew with the row made the
                     cards a screen tall). */}
-                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px] min-[1360px]:min-h-40">
+                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px] min-[1536px]:min-h-40">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={hotelPhoto}
@@ -772,13 +775,13 @@ export const ReadyPackageShowcase = ({
         <div
           className={cn(
             CARD,
-            PIECE,
+            PIECE_ALONE,
             "md:flex",
             !hotel && "min-[1360px]:col-span-2 min-[1536px]:col-span-1",
           )}
           data-ready-piece="ticket"
         >
-          <div className={cn(PIECE_TEXT, "md:flex-1")}>
+          <div className={cn(PIECE_TEXT, "md:flex-1 min-[1360px]:flex-none")}>
             <Head
               icon={<Ticket className="h-5 w-5" />}
               title="כרטיס"
@@ -794,11 +797,22 @@ export const ReadyPackageShowcase = ({
             )}
           </div>
           {event.map_image_url && (
-            <div className={cn(PIECE_SHOW, SHOW_BESIDE, "md:w-[40%] xl:w-[32%]")}>
-              <div className={cn(SHOW_PANEL, "flex h-full items-center justify-center p-3")}>
-                {/* From 1360px the map is no taller than the flight's two legs, so it
-                    never sets the height of the row of pictures. */}
-                <div className="w-full max-w-[300px] min-[1360px]:max-w-[230px]">
+            <div
+              className={cn(
+                PIECE_SHOW,
+                SHOW_BESIDE,
+                "md:w-[40%] xl:w-[32%] min-[1360px]:flex min-[1360px]:grow min-[1360px]:flex-col",
+              )}
+            >
+              <div
+                className={cn(
+                  SHOW_PANEL,
+                  "flex h-full items-center justify-center p-3 min-[1360px]:h-auto min-[1360px]:grow",
+                )}
+              >
+                {/* Beside the hotel alone (1360-1536px) the map stays under the height
+                    the hotel's text and photo need, so it never stretches that card. */}
+                <div className="w-full max-w-[300px] min-[1360px]:max-w-[260px] min-[1536px]:max-w-[300px]">
                   {mapListing ? (
                     <TixstockDynamicMap
                       mapUrl={event.map_image_url}
