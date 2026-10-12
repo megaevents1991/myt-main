@@ -422,6 +422,19 @@ The core ordering flow lives under `/app/order/[eventId]`. The `app/order/layout
 3. **Step 3 – Hotel Selection** (`HotelSelection.tsx`) - skipped for US events; calls `/api/hotels`
 4. **Step 4 – Order Review + Payment** (`OrderReview.tsx`) - submits to `/api/confirm-order`, then `/api/payment`
 
+**Hotel dates follow the flight, guarded (2026-10-12).** `lib/getDefaultDateRange.ts`
+(`lib/__tests__/defaultDateRange.test.ts`) is the one rule: check-in = the day the outbound
+LANDS (the evening before when it lands before 08:00), check-out = the day the return LEAVES;
+the hotel step takes it when it opens, the flight step's hotel prefetch and `OrderForm`'s
+preload use it too. A landing is trusted only when it is on or after its takeoff and within
+`MAX_LEG_HOURS` (48) of it (`trustedArrival`); otherwise the check-in is the takeoff's day. An
+offline flight saved in the backoffice with its outbound landing in the wrong month (20/07 for
+20/05) opened the hotel step on a check-in two months after the check-out, with no hotel to
+show - the flight card prints the landing's hour alone (`FlightCard`), so nothing on the way
+there showed it. The backoffice refuses such a leg now (`lib/flight-leg-times.ts`, same
+constant); this side stays safe on its own, and the "0" an Amadeus offer with no landing
+segment leaves (`/api/flights/search`) no longer reads as a year-2000 check-in either.
+
 **The hotel supplier takes 10 searches a minute - for the whole account (2026-10-07).** RateHawk
 limits `serp/geo` to 10 a clock minute; past it, it answers 429 `endpoint_exceeded_limit` and
 names the second its next window opens. The backoffice's hotel reads share the same ten. Two
