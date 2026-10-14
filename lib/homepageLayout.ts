@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { getAllCategories, getEventIdsByCategories } from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
+import { ROW_MAX_LIMIT, toRef, type RowLayout, type RowRef } from "@/lib/homepage/merge";
 
 /**
  * Homepage layout - which sections the homepage shows, in what order, under
@@ -28,7 +29,7 @@ export const HOMEPAGE_SECTION_KEYS = [
   "more_events",
 ] as const;
 export type HomepageSectionKey = (typeof HOMEPAGE_SECTION_KEYS)[number];
-export type HomepageItemKind = "event" | "artist" | "team";
+export type HomepageItemKind = "event" | "artist" | "team" | "review";
 
 /** Blocks staff add from the board (2026-09-18); text / destinations / gallery since 2026-09-19. */
 export const HOMEPAGE_BLOCK_TYPES = ["event_slider", "banner", "text", "destinations", "gallery"] as const;
@@ -53,6 +54,10 @@ type SectionBase = {
   /** Staff title; null = the title coded here (builtin) / no heading (block). */
   title: string | null;
   visible: boolean;
+  /** Cards staff removed from THIS row ("event:812", "team:liverpool", ...). A pin beats it. */
+  hidden: RowRef[];
+  /** How many cards the row shows; null = the row's default (lib/homepage/merge rowDefaultMax). */
+  maxItems: number | null;
 };
 export type HomepageSection =
   | (SectionBase & { type: "builtin"; key: HomepageSectionKey })
@@ -65,19 +70,18 @@ export type HomepageSection =
   | (SectionBase & { type: "destinations"; categoryIds: number[]; parentId: number | null })
   | (SectionBase & { type: "gallery"; images: HomepageGalleryImage[] });
 
-export type HomepagePin = { kind: HomepageItemKind; ref_id: string };
+/** A pinned card; `slot` = the place it holds in its row (0 = first). */
+export type HomepagePin = { kind: HomepageItemKind; ref_id: string; slot: number };
 
 export type HomepageLayout = {
   /** Site order, hero first, hidden sections included (visible=false). */
   sections: HomepageSection[];
-  /** Pinned items per section key in position order. Builtin keys are always present. */
+  /** Pinned items per section key in slot order. Builtin keys are always present. */
   pins: Record<string, HomepagePin[]>;
-  /** Events staff removed from the AUTOMATIC part of "החדשים ביותר" (a pin still shows). */
-  hiddenNewest: number[];
 };
 
-/** Per event_slider block: pinned event ids (board order) + the category's ids (soonest first). */
-export type HomepageBlockEvents = Record<string, { pinned: number[]; auto: number[] }>;
+/** Per visible event_slider block that names a category: that category's event ids. */
+export type HomepageSliderMembers = Record<string, Set<number>>;
 
 /** Per destinations block: its tiles in display order. */
 export type HomepageBlockTiles = Record<string, HomepageTile[]>;
@@ -85,9 +89,12 @@ export type HomepageBlockTiles = Record<string, HomepageTile[]>;
 /** The subset the client component needs. */
 export type HomepageClientLayout = {
   sections: HomepageSection[];
-  pinnedEventIds: { most_wanted: number[]; newest: number[] };
-  hiddenEventIds: { newest: number[] };
-  blockEvents: HomepageBlockEvents;
+  /**
+   * The event ids each event row shows, in order - "most_wanted", "newest",
+   * "more_events" and every event slider by its block key. Built on the server
+   * (lib/homepage/rows + merge); the client only maps them to its events.
+   */
+  rows: Record<string, number[]>;
   blockTiles: HomepageBlockTiles;
 };
 
@@ -109,12 +116,13 @@ const builtin = (key: HomepageSectionKey, visible = true, title: string | null =
   type: "builtin",
   title,
   visible,
+  hidden: [],
+  maxItems: null,
 });
 
 export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayout = {
   sections: HOMEPAGE_SECTION_KEYS.map((key) => builtin(key)),
   pins: emptyPins(),
-  hiddenNewest: [],
 };
 
 type SectionRow = {
@@ -143,14 +151,45 @@ const positiveIds = (v: unknown): number[] => {
   return out;
 };
 
+const REF_RE = /^(event|artist|team|review):\S{1,200}$/;
+const HIDDEN_MAX = 300;
+
+/**
+ * A row's hidden cards: `config.hidden` ("kind:id" strings), plus the older
+ * `hidden_event_ids` "החדשים ביותר" stored before every row could hide
+ * (2026-10-14) - read as event refs so either form works.
+ */
+const hiddenRefs = (config: Record<string, unknown>): RowRef[] => {
+  const out: RowRef[] = [];
+  for (const v of Array.isArray(config.hidden) ? config.hidden : []) {
+    if (typeof v === "string" && REF_RE.test(v) && !out.includes(v)) out.push(v);
+  }
+  for (const id of positiveIds(config.hidden_event_ids)) {
+    const ref = toRef("event", id);
+    if (!out.includes(ref)) out.push(ref);
+  }
+  return out.slice(-HIDDEN_MAX);
+};
+
+/** `config.max_items` - a whole number 1..ROW_MAX_LIMIT, else null (the row's default). */
+const maxItemsOf = (config: Record<string, unknown>): number | null => {
+  const n = Number(config.max_items);
+  return Number.isInteger(n) && n >= 1 && n <= ROW_MAX_LIMIT ? n : null;
+};
+
 /** A stored row → a section, or null when this build cannot render it. */
 function toSection(row: SectionRow): HomepageSection | null {
   const type = row.type ?? "builtin";
-  const base = { title: cleanTitle(row.title), visible: row.is_visible !== false };
+  const config = isRecord(row.config) ? row.config : {};
+  const base = {
+    title: cleanTitle(row.title),
+    visible: row.is_visible !== false,
+    hidden: hiddenRefs(config),
+    maxItems: maxItemsOf(config),
+  };
   if (type === "builtin") {
     return isKey(row.key) ? { ...base, key: row.key, type: "builtin" } : null;
   }
-  const config = isRecord(row.config) ? row.config : {};
   if (type === "event_slider") {
     const id = Number(config.category_id);
     return {
@@ -233,17 +272,12 @@ export async function getHomepageLayout(): Promise<HomepageLayout> {
 
     const sections: HomepageSection[] = [];
     const seen = new Set<string>();
-    let hiddenNewest: number[] = [];
     for (const row of [...rows].sort((a, b) => a.position - b.position)) {
       if ((row.page ?? HOMEPAGE_PAGE) !== HOMEPAGE_PAGE || seen.has(row.key)) continue;
       const section = toSection(row);
       if (!section) continue;
       seen.add(section.key);
       sections.push(section);
-      // The one builtin with a config: what staff removed from the newest row.
-      if (section.type === "builtin" && section.key === "newest" && isRecord(row.config)) {
-        hiddenNewest = positiveIds(row.config.hidden_event_ids);
-      }
     }
     // Keys the table lacks (a section added in code before staff saved the
     // board) are appended in the default order, visible.
@@ -253,18 +287,24 @@ export async function getHomepageLayout(): Promise<HomepageLayout> {
     // Hero is always first whatever the row says.
     sections.sort((a, b) => (a.key === "hero" ? -1 : b.key === "hero" ? 1 : 0));
 
+    // `position` is the card's place in its row (pins saved before 2026-10-14
+    // are 0..n-1, which reads the same).
     const pins = emptyPins();
     for (const it of (itemsRes.data ?? []) as ItemRow[]) {
       if (!isKey(it.section) && !seen.has(it.section)) continue;
-      (pins[it.section] ??= []).push({ kind: it.kind, ref_id: String(it.ref_id) });
+      const slot = Number(it.position);
+      (pins[it.section] ??= []).push({
+        kind: it.kind,
+        ref_id: String(it.ref_id),
+        slot: Number.isFinite(slot) && slot >= 0 ? Math.floor(slot) : 0,
+      });
     }
-    return { sections, pins, hiddenNewest };
+    return { sections, pins };
   } catch (error) {
     console.error("[homepageLayout] falling back to defaults:", error);
     return {
       sections: DEFAULT_HOMEPAGE_LAYOUT.sections.map((s) => ({ ...s })),
       pins: emptyPins(),
-      hiddenNewest: [],
     };
   }
 }
@@ -299,53 +339,36 @@ export function pinnedFirst<T>(
   return withIdx.map((x) => x.item);
 }
 
-/** Category events handed to the client per slider - it shows 12 of them at most. */
-const BLOCK_AUTO_POOL = 60;
-
-const pinnedEventIds = (pins: HomepagePin[] | undefined): number[] =>
-  (pins ?? [])
-    .filter((p) => p.kind === "event")
-    .map((p) => Number(p.ref_id))
-    .filter((n) => Number.isFinite(n));
-
 /**
- * The events behind every visible event slider: its pins, plus - when it names
- * a category - that category's events from the homepage's own pool, soonest
- * first. One `event_category_links` read for all sliders; if it fails the
- * sliders keep their pins (getEventIdsByCategories logs and returns empty).
- * The client trims to one row and collapses several dates of one artist.
+ * The category behind every visible event slider: its event ids (the slider's
+ * automatic pool is built from them by lib/homepage/rows `sliderPool`). One
+ * `event_category_links` read for all sliders; if it fails the sliders keep
+ * their pins (getEventIdsByCategories logs and returns empty).
  */
-export async function resolveBlockEvents(
-  layout: HomepageLayout,
-  events: { id: number; date: string }[],
-): Promise<HomepageBlockEvents> {
+export async function resolveSliderMembers(layout: HomepageLayout): Promise<HomepageSliderMembers> {
   const sliders = layout.sections.flatMap((s) =>
-    s.type === "event_slider" && s.visible ? [s] : [],
+    s.type === "event_slider" && s.visible && s.categoryId ? [s] : [],
   );
   if (!sliders.length) return {};
-
-  const categoryIds = [...new Set(sliders.flatMap((s) => (s.categoryId ? [s.categoryId] : [])))];
-  const byCategory = await getEventIdsByCategories(categoryIds);
-  const byDate = [...events].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
-
-  const out: HomepageBlockEvents = {};
+  const byCategory = await getEventIdsByCategories([
+    ...new Set(sliders.map((s) => s.categoryId as number)),
+  ]);
+  const out: HomepageSliderMembers = {};
   for (const s of sliders) {
-    const members = s.categoryId ? byCategory.get(s.categoryId) : undefined;
-    out[s.key] = {
-      pinned: pinnedEventIds(layout.pins[s.key]),
-      // Far more than one row needs, so the client can still fill it after it
-      // drops sold-out events and collapses an artist's dates into one card.
-      auto: members
-        ? byDate
-            .filter((e) => members.has(e.id))
-            .slice(0, BLOCK_AUTO_POOL)
-            .map((e) => e.id)
-        : [],
-    };
+    const members = byCategory.get(s.categoryId as number);
+    if (members) out[s.key] = members;
   }
   return out;
+}
+
+/** Each row's settings in the shape lib/homepage/merge reads. */
+export function rowLayouts(layout: HomepageLayout): RowLayout[] {
+  return layout.sections.map((s) => ({
+    key: s.key,
+    pins: (layout.pins[s.key] ?? []).map((p) => ({ ref: toRef(p.kind, p.ref_id), slot: p.slot })),
+    hidden: s.hidden,
+    max: s.maxItems,
+  }));
 }
 
 /** Tiles per destinations slider - a ceiling for one scroll row, not a target. */
@@ -386,17 +409,8 @@ export async function resolveBlockTiles(layout: HomepageLayout): Promise<Homepag
 
 export function toClientLayout(
   layout: HomepageLayout,
-  blockEvents: HomepageBlockEvents = {},
+  rows: Record<string, number[]> = {},
   blockTiles: HomepageBlockTiles = {},
 ): HomepageClientLayout {
-  return {
-    sections: layout.sections,
-    pinnedEventIds: {
-      most_wanted: pinnedEventIds(layout.pins.most_wanted),
-      newest: pinnedEventIds(layout.pins.newest),
-    },
-    hiddenEventIds: { newest: layout.hiddenNewest },
-    blockEvents,
-    blockTiles,
-  };
+  return { sections: layout.sections, rows, blockTiles };
 }

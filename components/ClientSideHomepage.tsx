@@ -25,6 +25,7 @@ import { intBetween } from "@/lib/viewState";
 import Fuse from "fuse.js";
 import { multiTermSearch, withCategoryText } from "@/lib/search";
 import { eventMatchesName, normalizeName, teamFixtureRole } from "@/lib/eventNameMatch";
+import { findEventHomeTeam, wholeWordMatch } from "@/lib/homepage/grouping";
 import { ContactUs } from "@/components/ui/ContactUs";
 import { trackEvent } from "@/lib/mixpanel";
 import { GoogleReviews } from "@/components/GoogleReviews";
@@ -57,8 +58,6 @@ const DEFAULT_SECTION_ORDER: HomepageSectionKey[] = [
   "reviews",
   "more_events",
 ];
-// Netflix-style rows ("המבוקשים ביותר" / "החדשים ביותר") show at most this many.
-const ROW_MAX = 12;
 // A remembered "הצג עוד אירועים" count (lib/viewState.ts).
 const parseMoreEvents = intBetween(1, 2000);
 
@@ -85,8 +84,8 @@ interface Props {
   // "לקוחות משתפים" - mirrored Google reviews, fetched server-side in app/page.tsx.
   googleReviews?: GoogleReviewsData | null;
   homeFootball?: FootballTeam[];
-  // Section order/visibility + the events pinned to the front of the two event
-  // rows, from the backoffice Homepage board (lib/homepageLayout.ts).
+  // Section order/visibility + the event ids every event row shows, in order,
+  // from the backoffice Homepage board (lib/homepageLayout.ts, built in app/page.tsx).
   layout?: HomepageClientLayout;
 }
 
@@ -1058,137 +1057,22 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
   // Separate VIP events
   // const vipEvents = initialEvents.filter((event) => event.tags === "VIP");
 
-  // Collapse events that have a dedicated page (artist OR football team) down to
-  // a single representative card, so the homepage shows one card + "see all"
-  // strip per artist/team. Football collapses by HOME team - home games only.
-  const filterEventsFromArtistsWithPages = (events: Event[]) => {
-    const hasArtistPages = !!artists && artists.length > 0;
-    const teamsForGrouping = allFootballTeams && allFootballTeams.length > 0 ? allFootballTeams : [];
-    if (!hasArtistPages && teamsForGrouping.length === 0) return events;
-
-    // Artist identifiers that have pages, longest-first so the most specific
-    // artist wins a whole-word match (see artistIdForEvent).
-    const artistIdsWithPages = Array.from(
-      new Set(
-        (artists ?? [])
-          .map(artist => normalizeName(artist.fields.nameDBenglish))
-          .filter(Boolean)
-      )
-    ).sort((a, b) => b.length - a.length);
-
-    // Best representative for a collapsed group (prefer a real tag, then earliest date)
-    const pickRepresentative = (groupEvents: Event[]) =>
-      [...groupEvents].sort((a, b) => {
-        const aHasTag = a.tags && a.tags !== "Sold";
-        const bHasTag = b.tags && b.tags !== "Sold";
-        if (aHasTag && !bHasTag) return -1;
-        if (!aHasTag && bHasTag) return 1;
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      })[0];
-
-    // 1) Group by artist (whole-word name match - same rule as the artist page,
-    //    so "Bon Jovi London" collapses into the "Bon Jovi" card).
-    const eventsByArtist = new Map<string, Event[]>();
-    const afterArtistGrouping: Event[] = [];
-
-    events.forEach(event => {
-      if (isEventSoldOut(event)) return; // Skip sold-out events entirely
-
-      const matchedId = artistIdForEvent(event.name_english, event.name, artistIdsWithPages);
-      if (matchedId) {
-        if (!eventsByArtist.has(matchedId)) eventsByArtist.set(matchedId, []);
-        eventsByArtist.get(matchedId)!.push(event);
-      } else {
-        afterArtistGrouping.push(event);
-      }
-    });
-
-    // 2) Group the rest by football HOME team (away games are left as-is)
-    const eventsByTeam = new Map<string, Event[]>();
-    const nonGroupedEvents: Event[] = [];
-
-    afterArtistGrouping.forEach(event => {
-      const team = findEventHomeTeam(event, teamsForGrouping);
-      if (team) {
-        const key = team.sys.id;
-        if (!eventsByTeam.has(key)) eventsByTeam.set(key, []);
-        eventsByTeam.get(key)!.push(event);
-      } else {
-        nonGroupedEvents.push(event);
-      }
-    });
-
-    const collapsedArtistEvents = [...eventsByArtist.values()].map(pickRepresentative);
-    const collapsedTeamEvents = [...eventsByTeam.values()].map(pickRepresentative);
-
-    return [...nonGroupedEvents, ...collapsedArtistEvents, ...collapsedTeamEvents];
-  };
-
-  // Events the backoffice Homepage board pinned to the front of a row, in the
-  // board's order - sold-out / no-longer-live ones simply drop out.
+  // Every event row arrives as ids, in the order the site shows them - built on
+  // the server from the backoffice Homepage board (app/page.tsx with
+  // lib/homepage/rows + lib/homepage/merge): the cards staff pinned in their
+  // places, the row's automatic rule around them, one card per artist / team page.
   const eventById = new Map(initialEvents.map((e) => [e.id, e]));
-  const pickPinned = (ids: number[] | undefined): Event[] => {
-    const out: Event[] = [];
-    for (const id of ids ?? []) {
+  const rowEvents = (key: string): Event[] =>
+    (layout?.rows?.[key] ?? []).flatMap((id) => {
       const e = eventById.get(id);
-      if (e && !isEventSoldOut(e) && !out.includes(e)) out.push(e);
-    }
-    return out;
-  };
-  const byTagThenDate = (a: Event, b: Event) => {
-    // Sort events with tags first, then by date
-    if (a.tags && !b.tags) return -1;
-    if (!a.tags && b.tags) return 1;
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
-  };
-
-  // "המבוקשים ביותר" row: pinned first, then the automatic rule - Prioritized
-  // events, then non-VIP non-sports fill (one card per artist/team page).
-  const mostWantedEvents = (() => {
-    const pinned = pickPinned(layout?.pinnedEventIds.most_wanted);
-    const pinnedIds = new Set(pinned.map((e) => e.id));
-    const availableEvents = initialEvents.filter(
-      (event) => !isEventSoldOut(event) && !pinnedIds.has(event.id)
-    );
-    const prioritizedEvents = availableEvents
-      .filter((event) => event.is_prioritized === true)
-      .sort(byTagThenDate);
-    const room = ROW_MAX - pinned.length;
-    if (room <= 0) return pinned.slice(0, ROW_MAX);
-    if (prioritizedEvents.length >= room) {
-      return [...pinned, ...prioritizedEvents.slice(0, room)];
-    }
-    const nonPrioritizedEvents = availableEvents.filter(
-      (event) =>
-        event.is_prioritized === false &&
-        event.tags !== "VIPevent" &&
-        event.type !== "sports_event"
-    );
-    // Filter out duplicate events for artists with pages before using them to fill slots
-    const fill = filterEventsFromArtistsWithPages(nonPrioritizedEvents)
-      .sort(byTagThenDate)
-      .slice(0, room - prioritizedEvents.length);
-    return [...pinned, ...prioritizedEvents, ...fill];
-  })();
-
-  // "החדשים ביותר" row: pinned first, then the most recently created events
-  // (created_at desc), skipping anything the row above already shows and the
-  // events staff removed from this row on the board (a pin still wins).
-  const newestEvents = (() => {
-    const pinned = pickPinned(layout?.pinnedEventIds.newest);
-    const used = new Set([
-      ...[...mostWantedEvents, ...pinned].map((e) => e.id),
-      ...(layout?.hiddenEventIds?.newest ?? []),
-    ]);
-    const createdAt = (e: Event) => (e.created_at ? Date.parse(e.created_at) || 0 : 0);
-    const auto = filterEventsFromArtistsWithPages(
-      initialEvents.filter(
-        (event) =>
-          !isEventSoldOut(event) && !used.has(event.id) && event.tags !== "VIPevent"
-      )
-    ).sort((a, b) => createdAt(b) - createdAt(a) || b.id - a.id);
-    return [...pinned, ...auto].slice(0, ROW_MAX);
-  })();
+      return e ? [e] : [];
+    });
+  const mostWantedEvents = rowEvents("most_wanted");
+  const newestEvents = rowEvents("newest");
+  // "אירועים נוספים" - the music events the rows above do not show.
+  const musicEvents = rowEvents("more_events");
+  // An event slider staff added on the board, by its block key.
+  const blockSliderEvents = rowEvents;
 
   // Order + visibility of everything under the hero, from the backoffice
   // Homepage board (hero is rendered above, always first).
@@ -1196,52 +1080,16 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     layout?.sections?.length
       ? layout.sections.filter((s) => s.visible)
       : DEFAULT_SECTION_ORDER.map(
-          (key): HomepageSection => ({ key, type: "builtin", title: null, visible: true })
+          (key): HomepageSection => ({
+            key,
+            type: "builtin",
+            title: null,
+            visible: true,
+            hidden: [],
+            maxItems: null,
+          })
         )
   ).filter((s) => s.key !== "hero");
-
-  // An event slider staff added on the board: its pinned events in board
-  // order, then the events of the category it names - soonest first, one card
-  // per artist/team page like the rows above, one row at most.
-  const blockSliderEvents = (key: string): Event[] => {
-    const ids = layout?.blockEvents?.[key];
-    if (!ids) return [];
-    const pinned = pickPinned(ids.pinned);
-    const room = ROW_MAX - pinned.length;
-    if (room <= 0) return pinned.slice(0, ROW_MAX);
-    const pinnedIds = new Set(pinned.map((e) => e.id));
-    const auto = filterEventsFromArtistsWithPages(
-      pickPinned(ids.auto).filter((e) => !pinnedIds.has(e.id) && e.tags !== "VIPevent")
-    )
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, room);
-    return [...pinned, ...auto];
-  };
-
-  // Get music events (only music types, excluding VIPevent and events already shown in the rows above)
-  const musicEvents = (() => {
-    const usedEventIds = new Set([...mostWantedEvents, ...newestEvents].map((event) => event.id));
-    const remainingEvents = initialEvents.filter(
-      (event) =>
-        !isEventSoldOut(event) && // Exclude sold-out events
-        (event.type === 'music_live_event_dynamic' || event.type === "music_event" || (event.type === "tx_event" && !event.name.startsWith("מונדיאל 2026"))) &&
-        event.tags !== "VIPevent" &&
-        !usedEventIds.has(event.id)
-    );
-
-    // Filter out duplicate events for artists with pages (keeping only one per artist)
-    const filteredEvents = filterEventsFromArtistsWithPages(remainingEvents);
-
-    return filteredEvents.sort((a, b) => {
-      // Sort events with tags first (except "Sold"), then by date
-      const aHasPriorityTag = a.tags && a.tags !== "Sold";
-      const bHasPriorityTag = b.tags && b.tags !== "Sold";
-
-      if (aHasPriorityTag && !bHasPriorityTag) return -1;
-      if (!aHasPriorityTag && bHasPriorityTag) return 1;
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
-    });
-  })();
 
   // Sort VIP events by date
   //const sortedVipEvents = vipEvents.sort((a, b) => {
@@ -1887,65 +1735,6 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
     </>
   );
 }
-
-// Name comparison uses the shared normalizeName (lib/eventNameMatch) -
-// case/accent/punctuation-insensitive, same rule as getEventsByName - so the
-// homepage collapses exactly the events the artist/team detail page lists.
-
-// Escape a string for safe use inside a RegExp.
-const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-// Whole-word match of `id` inside the already-normalized `haystack`. Returns the
-// RegExp match (with `.index`) or null. Prevents "Milan" matching "Milano".
-const wholeWordMatch = (haystack: string, id: string) =>
-  id ? haystack.match(new RegExp(`(^|[^a-z0-9])${escapeRegExp(id)}([^a-z0-9]|$)`, "i")) : null;
-
-// Which artist page an event belongs to. The artist detail page lists events by
-// normalized SUBSTRING (`eventsData.getEventsByName` over `name_english`), so the
-// homepage must use the same rule or an event like "Bon Jovi London" won't be
-// collapsed into the "Bon Jovi" card and won't get the "see all events" strip.
-// Whole-word containment (not raw substring) keeps a short name from matching
-// inside a longer word (e.g. "Sting" in "Stinger"). Pass artist ids sorted
-// longest-first so the most specific artist wins. Returns the matched id or null.
-const artistIdForEvent = (
-  nameEnglish: string | null | undefined,
-  name: string | null | undefined,
-  artistIdsLongestFirst: string[]
-): string | null => {
-  const hay = normalizeName(nameEnglish) || normalizeName(name);
-  if (!hay) return null;
-  return artistIdsLongestFirst.find((id) => wholeWordMatch(hay, id)) ?? null;
-};
-
-// Identify the HOME team of a fixture. Football collide is home-only: "Arsenal"
-// collects a match only when Arsenal hosts it ("Arsenal FC vs X"), never its away
-// games ("X vs Arsenal"). The home team is the side named to the LEFT of the
-// "vs"/"-" separator. The LONGEST team-name match within that side wins, so
-// "Inter Milan vs Napoli" resolves to "Inter Milan" and never to "Milan" (whose
-// name is contained in Inter's). Rightmost position only breaks length ties,
-// keeping competition prefixes like "Champions League: Arsenal vs ..." resolving
-// to Arsenal even if the prefix happens to contain a team name.
-const findEventHomeTeam = (event: Event, teams?: FootballTeam[]): FootballTeam | null => {
-  if (!teams || teams.length === 0) return null;
-  const full = normalizeName(event.name_english) || normalizeName(event.name);
-  if (!full) return null;
-  const sep = full.match(/\s(?:vs\.?|v\.?|[-–-])\s/i);
-  const homeSide = sep && sep.index !== undefined ? full.slice(0, sep.index) : full;
-  let best: FootballTeam | null = null;
-  let bestLen = -1;
-  let bestIndex = -1;
-  for (const team of teams) {
-    const id = normalizeName(team.fields.nameDBenglish);
-    const match = wholeWordMatch(homeSide, id);
-    if (match?.index === undefined) continue;
-    if (id.length > bestLen || (id.length === bestLen && match.index > bestIndex)) {
-      bestLen = id.length;
-      bestIndex = match.index;
-      best = team;
-    }
-  }
-  return best;
-};
 
 function EventCard({ event, allEvents, artists, footballTeams, priority, loading, sizes, size }: { event: Event; allEvents?: Event[]; artists?: Artist[]; footballTeams?: FootballTeam[]; priority?: boolean; loading?: "eager" | "lazy"; sizes?: string; size?: "default" | "row" }) {
   const [isMounted, setIsMounted] = useState(false);

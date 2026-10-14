@@ -6,7 +6,6 @@ import { TrustSection } from "@/components/TrustSection";
 import { AirlinesStrip } from "@/components/ui/AirlinesStrip";
 import { getCachedEvents } from "@/lib/eventsData";
 import { StructuredData } from "@/components/StructuredData";
-import { Artist, FootballTeam } from "@/lib/app.types";
 import { CategorySection, type HomeCategory } from "@/components/CategorySection";
 import { getCategories as getCategoryRows } from "@/lib/categories";
 import { getAllArtists as listAllArtists } from "@/lib/artists";
@@ -14,13 +13,20 @@ import { getAllFootballTeams } from "@/lib/football";
 import { getAvailabilityChecker } from "@/lib/tourStatus";
 import {
   getHomepageLayout,
-  resolveBlockEvents,
   resolveBlockTiles,
-  pinRank,
-  pinnedFirst,
+  resolveSliderMembers,
+  rowLayouts,
   toClientLayout,
-  type HomepagePin,
 } from "@/lib/homepageLayout";
+import { buildPools, showFlags, sliderPool, type PoolInput } from "@/lib/homepage/rows";
+import {
+  defaultPinnable,
+  defaultShowable,
+  planHomepage,
+  refId,
+  refKind,
+  type MergedRow,
+} from "@/lib/homepage/merge";
 import type { HeroCarouselItem } from "@/components/HeroCarousel";
 
 // Force static generation with ISR
@@ -60,71 +66,6 @@ async function getCategories(): Promise<HomeCategory[]> {
   }));
 }
 
-// Hero carousel ring: the artists/teams PINNED on the backoffice Homepage
-// board first, in the board's order (only those we currently have an
-// available event for - "זמין באתר", same rule as the catalog pages), then
-// every other available artist + team interleaved so the ring mixes music
-// and football.
-function buildHeroItems(
-  heroPins: HomepagePin[],
-  allArtists: Artist[],
-  allTeams: FootballTeam[],
-  isAvailable: (nameEnglish?: string) => boolean
-): HeroCarouselItem[] {
-  const available = <T extends Artist | FootballTeam>(x: T) =>
-    isAvailable(String(x.fields.nameDBenglish ?? ""));
-  const artistBySlug = new Map(allArtists.map((a) => [a.sys.id, a]));
-  const teamBySlug = new Map(allTeams.map((t) => [t.sys.id, t]));
-
-  const items: HeroCarouselItem[] = [];
-  const used = new Set<string>();
-  for (const pin of heroPins) {
-    const key = `${pin.kind}:${pin.ref_id}`;
-    if (used.has(key)) continue;
-    if (pin.kind === "artist") {
-      const entry = artistBySlug.get(pin.ref_id);
-      if (!entry || !available(entry)) continue;
-      items.push({ kind: "artist", entry });
-    } else if (pin.kind === "team") {
-      const entry = teamBySlug.get(pin.ref_id);
-      if (!entry || !available(entry)) continue;
-      items.push({ kind: "team", entry });
-    } else {
-      continue;
-    }
-    used.add(key);
-  }
-
-  const artists = allArtists.filter((a) => available(a) && !used.has(`artist:${a.sys.id}`));
-  const teams = allTeams.filter((t) => available(t) && !used.has(`team:${t.sys.id}`));
-  for (let i = 0; i < Math.max(artists.length, teams.length); i++) {
-    if (artists[i]) items.push({ kind: "artist", entry: artists[i] });
-    if (teams[i]) items.push({ kind: "team", entry: teams[i] });
-  }
-  return items;
-}
-
-// Homepage artist/football slides: EVERY entry, ordered with the ones we have
-// an available event for ("זמין באתר") FIRST and the rest appended at the end.
-// Within each group: the order pinned on the backoffice Homepage board
-// (`homepage_items`), unpinned entries after it alphabetically (stable sort
-// keeps the DB name order). (The hero ring, by contrast, shows only the
-// available ones - see buildHeroItems.)
-function availableFirst<T extends Artist | FootballTeam>(
-  list: T[],
-  rank: Map<string, number>,
-  isAvailable: (nameEnglish?: string) => boolean
-): T[] {
-  const avail: T[] = [];
-  const rest: T[] = [];
-  for (const item of list) {
-    if (isAvailable(String(item.fields.nameDBenglish ?? ""))) avail.push(item);
-    else rest.push(item);
-  }
-  const bySlug = (x: T) => x.sys.id;
-  return [...pinnedFirst(avail, rank, bySlug), ...pinnedFirst(rest, rank, bySlug)];
-}
-
 export default async function Home() {
   // Add timestamp for cache validation
   const timestamp = Date.now();
@@ -140,23 +81,66 @@ export default async function Home() {
       getHomepageLayout(),
     ]);
 
-  const heroItems = buildHeroItems(layout.pins.hero, artists, allFootballTeams, isAvailable);
-
-  // Event sliders staff added on the backoffice Homepage board: their pinned
-  // events + the events of the category each one names.
-  // ...and the category tiles behind every destinations slider.
-  const [blockEvents, blockTiles] = await Promise.all([
-    resolveBlockEvents(layout, events.events),
+  // The category behind every event slider staff added on the board, and the
+  // category tiles behind every destinations slider.
+  const [sliderMembers, blockTiles] = await Promise.all([
+    resolveSliderMembers(layout),
     resolveBlockTiles(layout),
   ]);
 
-  // Homepage "אמנים מובילים" / "כדורגל" slides - all entries, available first.
-  const homeArtists = availableFirst(artists, pinRank(layout.pins.artists, "artist"), isAvailable);
-  const homeFootball = availableFirst(
-    allFootballTeams,
-    pinRank(layout.pins.football, "team"),
-    isAvailable
+  // Every carousel = its automatic pool (lib/homepage/rows - the site's rules)
+  // merged with what staff set on the backoffice board: cards pinned in their
+  // places, cards hidden from the row, the row's length (lib/homepage/merge).
+  // The board draws with the same two files, so it shows exactly this.
+  const poolInput: PoolInput = {
+    events: events.events,
+    artists,
+    teams: allFootballTeams,
+    isAvailable,
+    reviews: googleReviews?.reviews ?? [],
+  };
+  const pools = buildPools(poolInput);
+  const sliderKeys = layout.sections.flatMap((s) => (s.type === "event_slider" ? [s.key] : []));
+  for (const key of sliderKeys) pools[key] = sliderPool(poolInput, sliderMembers[key]);
+  const flags = showFlags(poolInput);
+  const plan = planHomepage(
+    rowLayouts(layout),
+    pools,
+    (ref, key) => defaultShowable(flags.get(ref), key, ref),
+    (ref, key) => defaultPinnable(flags.get(ref), key, ref)
   );
+  const refsOf = (row: MergedRow | undefined, kind: string) =>
+    (row?.cards ?? []).filter((c) => refKind(c.ref) === kind).map((c) => refId(c.ref));
+
+  // Event rows go to the client as ids, in order.
+  const rows: Record<string, number[]> = {};
+  for (const key of ["most_wanted", "newest", "more_events", ...sliderKeys]) {
+    rows[key] = refsOf(plan[key], "event").map(Number);
+  }
+
+  const artistBySlug = new Map(artists.map((a) => [a.sys.id, a]));
+  const teamBySlug = new Map(allFootballTeams.map((t) => [t.sys.id, t]));
+  const heroItems: HeroCarouselItem[] = (plan.hero?.cards ?? []).flatMap((c): HeroCarouselItem[] => {
+    const id = refId(c.ref);
+    if (refKind(c.ref) === "artist") {
+      const entry = artistBySlug.get(id);
+      return entry ? [{ kind: "artist", entry }] : [];
+    }
+    if (refKind(c.ref) === "team") {
+      const entry = teamBySlug.get(id);
+      return entry ? [{ kind: "team", entry }] : [];
+    }
+    return [];
+  });
+  const homeArtists = refsOf(plan.artists, "artist").flatMap((id) => artistBySlug.get(id) ?? []);
+  const homeFootball = refsOf(plan.football, "team").flatMap((id) => teamBySlug.get(id) ?? []);
+  const reviewByKey = new Map((googleReviews?.reviews ?? []).map((r) => [r.key, r]));
+  const homeReviews = googleReviews
+    ? {
+        ...googleReviews,
+        reviews: refsOf(plan.reviews, "review").flatMap((k) => reviewByKey.get(k) ?? []),
+      }
+    : null;
 
   return (
     <main>
@@ -179,8 +163,8 @@ export default async function Home() {
         heroItems={heroItems}
         homeArtists={homeArtists}
         homeFootball={homeFootball}
-        googleReviews={googleReviews}
-        layout={toClientLayout(layout, blockEvents, blockTiles)}
+        googleReviews={homeReviews}
+        layout={toClientLayout(layout, rows, blockTiles)}
       />
       {/* קטגוריות (categories) visual hidden for now - needs rework before re-enabling. */}
       {/* <CategorySection categories={categories} /> */}

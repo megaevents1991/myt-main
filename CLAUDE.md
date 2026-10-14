@@ -622,7 +622,7 @@ backoffice `types/homepage.types.ts`. `getHomepageLayout` never breaks the page:
 row it does not understand (unknown key / block type / config) is skipped, missing
 columns fall back to the old select (order kept, no titles or blocks), any other
 failure = the default layout. `app/page.tsx` resolves the sliders' events
-server-side (`resolveBlockEvents`); `ClientSideHomepage` switches on `section.type`.
+server-side (`resolveSliderMembers`, since 14.10); `ClientSideHomepage` switches on `section.type`.
 A new block type needs code HERE first, then the backoffice editor.
 **2026-09-19:** three more types - `text` (`config.body` → plain paragraphs, never
 HTML), `destinations` (`config.category_ids` first, then the active children of
@@ -631,6 +631,23 @@ football hub's `HubTilesRow`, 24 max) and `gallery` (`config.images`, one scroll
 row, `alt` doubles as the caption). `newest` is the one builtin with a config:
 `hidden_event_ids` = events staff removed from the AUTOMATIC fill of "החדשים
 ביותר" (`layout.hiddenEventIds.newest`) - a PINNED event is never filtered.
+**2026-10-14 - every row is built on the SERVER, pins hold a place** (backoffice spec
+`docs/superpowers/specs/2026-10-14-homepage-carousel-control-design.md`). The rules that
+lived inside `ClientSideHomepage` (most wanted, newest, more events, sliders) and in
+`app/page.tsx` (hero, football, artists) are now `lib/homepage/rows.ts` `buildPools` /
+`sliderPool` - each row's AUTOMATIC pool in the site's order; one card per artist / home
+team (`lib/homepage/grouping.ts` `collapseByPage`, with the matchers EventCard uses) is
+applied to the pool. `lib/homepage/merge.ts` (`planHomepage`) merges the pools with the
+board: a pin's `homepage_items.position` is its PLACE in the row, `config.hidden` (any row;
+`hidden_event_ids` still read) drops cards from one row, `config.max_items` sets a row's
+length (default 12 for event rows / sliders, all for the rest). **merge.ts is
+byte-identical in the backoffice** (the board draws with it) - change both. A pin that
+cannot be placed (sold out; artist / team with nothing on sale) is skipped and the pins
+after it close up, as before. `ClientSideHomepage` gets `layout.rows` (event ids per row)
+and maps them; hero / football / artists / reviews arrive ordered from `app/page.tsx`.
+`GET /api/homepage-pools` (`x-hotel-secret`) serves the pools + a card per event / artist /
+team / review (the picture the site's card draws) to the backoffice board. Vitest:
+`lib/__tests__/homepageMerge.test.ts`.
 
 ### Shared Types - Keep In Sync!
 
