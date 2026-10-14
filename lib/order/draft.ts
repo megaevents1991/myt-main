@@ -85,6 +85,26 @@ export function ownedByLink(search: string): boolean {
   }
 }
 
+/**
+ * The browser is not on this event's order page (`/order/<id>`). The id must be the whole
+ * segment: /order/7171 is not event 717's order.
+ */
+export function leftOrder(pathname: string, eventId: number | string): boolean {
+  return pathname.replace(/\/+$/, "") !== `/order/${eventId}`;
+}
+
+/**
+ * A draft lives only while the tab is on its order page. Given the tab's storage keys and
+ * the page it shows now, the drafts to let go: every order this page is not - the customer
+ * left it for the homepage, the event page, another event's order, by a link inside the
+ * site or a full load alike. Forms (the typed travellers) and other keys are never named.
+ */
+export function draftKeysToForget(keys: string[], pathname: string): string[] {
+  return keys.filter(
+    (key) => key.startsWith(DRAFT_PREFIX) && leftOrder(pathname, key.slice(DRAFT_PREFIX.length)),
+  );
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
 const intIn = (v: unknown, min: number, max: number): number | null =>

@@ -482,6 +482,18 @@ and reads it back when the event lands. Rules are pure in `lib/order/draft.ts`
   (`ownedByLink`); the passenger form is still remembered on a `?pkg` visit.
 - Cleared when the order goes through (`closeOrderDraft`) and when the summary's 15-minute
   hold runs out (`forgetOrderDraft` - the travellers stay).
+- **A draft lives only while the tab is on its order page (2026-10-14).** `OrderDraftSweeper`
+  (`components/order/OrderDraftSweeper.tsx`, mounted once in the root layout) runs
+  `forgetOrdersLeft(pathname)` on every page load and route change: every draft whose
+  `/order/<id>` this page is not is removed (`draftKeysToForget` / `leftOrder`, pure, tested) -
+  the homepage, the event page, another event's order, by a `Link` or a full load alike (the
+  order page's own "חזרה לדף הבית" is a full load, which is why an unmount cleanup in the order
+  layout was not enough). A new visit to the event then starts from step 1: a customer who had
+  reached the summary with two travellers and wanted five had no way to start over inside the
+  tab's 30 minutes (the "עריכה" on the summary's ticket card also does it - a party change clears
+  flight + hotel and walks the flow again - but she did not know). A refresh or a tab the phone
+  dropped reloads the same `/order/<id>`, so those still restore; so does a redirect out of the
+  site that comes back to the order page. The typed travellers (`myt:order-form`) stay.
 
 A new piece of order state that a refresh should keep goes into `OrderDraftState`, the
 layout's save / restore, and `parseOrderDraft`.

@@ -8,6 +8,7 @@ import Script from "next/script";
 import { MantineThemeProvider } from "@/components/MantineThemeProvider";
 import Link from "next/link";
 import MixpanelProvider from "./hooks/Mixpanel";
+import { OrderDraftSweeper } from "@/components/order/OrderDraftSweeper";
 import { Header } from "@/components/Header";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { SocialLinks } from "@/components/ui/SocialLinks";
@@ -210,6 +211,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             so decorative overflow never causes sideways scrolling on mobile */}
         <div className="w-full relative min-h-screen overflow-x-clip">
           <MixpanelProvider />
+          <OrderDraftSweeper />
           <Suspense>
             <MantineThemeProvider>
               <a

@@ -9,6 +9,7 @@ import type { Event } from "@/lib/app.types";
 import {
   buildOrderDraft,
   buildOrderForm,
+  draftKeysToForget,
   isBlankForm,
   isOrderStorageKey,
   isStale,
@@ -77,6 +78,25 @@ export function writeOrderDraft(eventId: number, state: OrderDraftState) {
   } catch (error) {
     // Quota / blocked storage: the order carries on in memory, as it always did.
     console.error("Order draft could not be saved:", error);
+  }
+}
+
+/**
+ * The tab shows `pathname` now: let go of every order draft this page is not
+ * (OrderDraftSweeper, on every page load and route change). The typed travellers stay.
+ */
+export function forgetOrdersLeft(pathname: string) {
+  const store = storage();
+  if (!store) return;
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key) keys.push(key);
+    }
+    draftKeysToForget(keys, pathname).forEach((key) => store.removeItem(key));
+  } catch {
+    /* nothing to forget */
   }
 }
 

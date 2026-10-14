@@ -7,6 +7,8 @@ import {
   freshOrder,
   isBlankForm,
   isStale,
+  draftKeysToForget,
+  leftOrder,
   ORDER_DRAFT_TTL_MS,
   ownedByLink,
   parseOrderDraft,
@@ -370,5 +372,53 @@ describe("ownedByLink - orders that arrive from the server", () => {
     expect(ownedByLink("?utm_source=aviran&pkg=abc123")).toBe(true);
     expect(ownedByLink("?utm_source=aviran")).toBe(false);
     expect(ownedByLink("")).toBe(false);
+  });
+});
+
+// Leaving the order inside the site lets the draft go (2026-10-14): a customer who had
+// reached the summary with 2 travellers and wanted 5 left the order, opened it again and
+// landed on the same summary - no way to start over inside the tab's 30 minutes.
+describe("leftOrder - the browser is no longer on this event's order page", () => {
+  it("stays on the same order (also with a trailing slash)", () => {
+    expect(leftOrder("/order/717", 717)).toBe(false);
+    expect(leftOrder("/order/717/", 717)).toBe(false);
+  });
+
+  it("left for another page of the site", () => {
+    expect(leftOrder("/", 717)).toBe(true);
+    expect(leftOrder("/football/liverpool", 717)).toBe(true);
+    expect(leftOrder("/order", 717)).toBe(true);
+  });
+
+  it("moved to another event's order - the id is the whole segment, never a prefix", () => {
+    expect(leftOrder("/order/718", 717)).toBe(true);
+    expect(leftOrder("/order/7171", 717)).toBe(true);
+    expect(leftOrder("/order/71", 717)).toBe(true);
+  });
+});
+
+// A draft lives only while the tab is on its order page: whatever page the tab shows
+// next - by a link inside the site or a full load - forgets the drafts of the orders it
+// is not on. The typed travellers (form keys) are never touched here.
+describe("draftKeysToForget - drafts of orders this page is not", () => {
+  const keys = [
+    "myt:order-draft:717",
+    "myt:order-draft:718",
+    "myt:order-form:717",
+    "myt:order-form:718",
+    "myt:view:/football:sort",
+  ];
+
+  it("on an order page keeps that order's draft and forgets the others", () => {
+    expect(draftKeysToForget(keys, "/order/717")).toEqual(["myt:order-draft:718"]);
+    expect(draftKeysToForget(keys, "/order/717/")).toEqual(["myt:order-draft:718"]);
+  });
+
+  it("on any other page forgets every draft", () => {
+    expect(draftKeysToForget(keys, "/")).toEqual(["myt:order-draft:717", "myt:order-draft:718"]);
+  });
+
+  it("never names a form or an unrelated key", () => {
+    expect(draftKeysToForget(["myt:order-form:717", "myt:view:/x:y"], "/")).toEqual([]);
   });
 });
