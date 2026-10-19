@@ -10,6 +10,7 @@ import { OrderHotel } from "@/lib/app.types";
 import { HotelCardHeader } from "./HotelCardHeader";
 import { Amenities } from "./Amenities";
 import { formatPrice } from "@/lib/price.utils";
+import { rateRoomName } from "@/lib/hotels/roomName";
 // import { isMobile } from "react-device-detect";
 import { cn } from "@/lib/utils"; // Import cn utility
 import { useMediaQuery } from "@mantine/hooks";
@@ -51,11 +52,7 @@ export const HotelCard = memo(
 
     const handleRoomSelect = useCallback(
       (room: Rate, isSelected = false) => {
-        const roomName = `${room.room_data_trans.main_name}${
-          room.room_data_trans.bedding_type
-            ? " " + room.room_data_trans.bedding_type
-            : ""
-        }`;
+        const roomName = rateRoomName(room);
 
         setSelectedRoom(room);
         setSelectedRoomInfo(hotelInfo?.rooms[roomName]);

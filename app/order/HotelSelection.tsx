@@ -51,6 +51,7 @@ import { fetchHotels as searchHotels } from "./fetchHotels";
 import { LodgingToggle } from "@/components/order/LodgingToggle";
 import { SplitEditor } from "@/components/order/SplitEditor";
 import { closestRate, findBreakfastUpgrade } from "./order-review.utils";
+import { rateRoomName } from "@/lib/hotels/roomName";
 import { useSegmentBreakfast } from "./hooks";
 import {
   SegmentHotelModal,
@@ -627,9 +628,8 @@ export const HotelSelection = () => {
     const selectedInfo = hotelsInfo[selectedHotelId];
     const hotelInformation = {
       hotelName: selectedInfo?.metadata?.hotelName,
-      roomName: heldRate
-        ? heldRate.room_data_trans?.main_name
-        : selectedInfo?.rooms?.[0]?.name,
+      // The picked rate's room - not the hotel's first room (lib/hotels/roomName.ts).
+      roomName: rateRoomName(selectedRate, selectedInfo?.rooms?.[0]?.name),
       stars: selectedInfo?.metadata?.rating,
       amenities: selectedInfo?.general?.amenities,
       distance: selectedInfo?.metadata?.distanceFromCenter,
@@ -1234,7 +1234,14 @@ export const HotelSelection = () => {
 
       const hotelInformation = {
         hotelName: info?.metadata?.hotelName,
-        roomName: info?.rooms[Object.keys(info?.rooms || {})[0]]?.name || "",
+        // The room of the rate the card committed - the card names it; the
+        // hotel's first room only when neither the card nor the rate does.
+        roomName:
+          orderHotel.hotelInformation?.roomName ||
+          rateRoomName(
+            orderHotel.rate,
+            info?.rooms[Object.keys(info?.rooms || {})[0]]?.name || ""
+          ),
         stars: info?.metadata?.rating,
         amenities: info?.general?.amenities,
         distance: info?.metadata?.distanceFromCenter,
