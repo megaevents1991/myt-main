@@ -6,6 +6,7 @@ import { isMegaEventsFlight } from "@/lib/flights/company";
 import { getPartnerSession } from "@/lib/partner-auth";
 import type { Flight, OrderHotel } from "@/lib/app.types";
 import { pickPax, readyMode, swapOf, variantSizes } from "@/lib/events/readyPackage";
+import { orderHotelSellable } from "@/lib/hotelRateTerms";
 
 /**
  * Resolves a prepared package into what OrderReview needs, re-validated
@@ -293,6 +294,15 @@ export async function GET(
         }
       }
     }
+  }
+
+  // A package built on a non-refundable rate (before 19.10.2026, or a rate
+  // whose free cancellation has since passed) is not sold more than a week
+  // before check-in - the customer picks the hotel again, from a search that
+  // only answers what the site may sell (lib/hotelRateTerms.ts).
+  if (hotel && !orderHotelSellable(hotel, new Date())) {
+    hotel = null;
+    hotelNeedsRepick = true;
   }
 
   // The lock binds the CUSTOMER to the composition - never its own author.

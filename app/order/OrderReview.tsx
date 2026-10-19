@@ -125,6 +125,7 @@ export default function OrderReview({
     hotel: selectedHotel,
     setFlight,
     setHotel,
+    setHotelSegments,
     eventTicket,
     setEventTicket,
     event,
@@ -231,8 +232,10 @@ export default function OrderReview({
   const [submitFailed, setSubmitFailed] = useState(false);
   // "supplier": the server re-checked the ticket against its supplier and it
   // is gone or repriced - retrying the same order cannot succeed.
+  // "hotel": the hotel's rate is non-refundable and the stay is more than a
+  // week away (lib/hotelRateTerms.ts) - the hotel must be picked again.
   const [submitFailReason, setSubmitFailReason] = useState<
-    "generic" | "supplier"
+    "generic" | "supplier" | "hotel"
   >("generic");
   const {
     affId,
@@ -1477,6 +1480,11 @@ export default function OrderReview({
         if (body?.error === "PRICE_VALIDATION_FAILED") {
           throw new Error("PRICE_VALIDATION_FAILED");
         }
+        // The hotel's rate is non-refundable more than a week before
+        // check-in (confirm-order, lib/hotelRateTerms.ts).
+        if (body?.error === "HOTEL_NOT_REFUNDABLE") {
+          throw new Error("HOTEL_NOT_REFUNDABLE");
+        }
       }
       // Coupon died between "apply" and "pay" (expired/exhausted) - surface
       // it so the customer sees the corrected price instead of a silent fail.
@@ -1807,6 +1815,9 @@ export default function OrderReview({
       } else if (error instanceof Error && error.message === "PRICE_VALIDATION_FAILED") {
         setSubmitFailReason("supplier");
         setSubmitFailed(true);
+      } else if (error instanceof Error && error.message === "HOTEL_NOT_REFUNDABLE") {
+        setSubmitFailReason("hotel");
+        setSubmitFailed(true);
       } else {
         setSubmitFailReason("generic");
         setSubmitFailed(true);
@@ -2044,10 +2055,19 @@ export default function OrderReview({
         title={
           submitFailReason === "supplier"
             ? "הכרטיס שבחרתם כבר לא זמין במחיר הזה"
-            : "אופס, ההזמנה לא נשלחה"
+            : submitFailReason === "hotel"
+              ? "המלון שבחרתם כבר לא זמין עם ביטול חינם"
+              : "אופס, ההזמנה לא נשלחה"
         }
         description={
-          submitFailReason === "supplier" ? (
+          submitFailReason === "hotel" ? (
+            <>
+              אנחנו מוכרים רק מלונות עם אפשרות ביטול חינם. לא חויבתם ושום דבר
+              לא אבד.
+              <br />
+              חזרו לבחירת המלון ובחרו שוב - הרשימה שם מעודכנת.
+            </>
+          ) : submitFailReason === "supplier" ? (
             <>
               בזמן שמילאתם את הפרטים המחיר או הזמינות של הכרטיס אצל הספק
               השתנו. לא חויבתם ושום דבר לא אבד.
@@ -2074,7 +2094,21 @@ export default function OrderReview({
           )
         }
         action={
-          submitFailReason === "supplier" ? (
+          submitFailReason === "hotel" ? (
+            <Button
+              variant="secondary"
+              className="font-bold w-full"
+              onClick={() => {
+                setSubmitFailed(false);
+                setHotel(undefined);
+                setHotelSegments(null);
+                setStep(3);
+              }}
+              aria-label="חזרה לבחירת המלון"
+            >
+              חזרה לבחירת המלון
+            </Button>
+          ) : submitFailReason === "supplier" ? (
             <Button
               variant="secondary"
               className="font-bold w-full"

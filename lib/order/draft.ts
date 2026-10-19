@@ -22,6 +22,7 @@ import {
   type NightAssign,
 } from "@/lib/events/lodging";
 import { isTicketOnlyEvent } from "@/lib/events/price";
+import { orderHotelSellable } from "@/lib/hotelRateTerms";
 
 /** Bump when the stored shape changes - an older draft is then ignored, never migrated. */
 export const ORDER_DRAFT_VERSION = 1;
@@ -240,6 +241,13 @@ const hotelStillAhead = (hotel: OrderHotel | null, now: number): hotel is OrderH
   return Number.isFinite(checkin) && checkin >= startOfDay(now);
 };
 
+/** Still ahead AND still sold: a draft saved on a non-refundable rate (or one whose
+ *  free cancellation has passed) loses its hotel more than a week before check-in
+ *  (lib/hotelRateTerms.ts) - the customer picks again from a search that only
+ *  answers what the site may sell. */
+const hotelStillSold = (hotel: OrderHotel | null, now: number): hotel is OrderHotel =>
+  hotelStillAhead(hotel, now) && orderHotelSellable(hotel, now);
+
 /**
  * What a stored draft may bring back on THIS event today.
  *
@@ -290,10 +298,10 @@ export function resumeOrder(draft: OrderDraft, event: Event, now: number): Resum
   const segments = draft.hotelSegments;
   const splitHolds =
     !segments ||
-    (segments[0].id === draft.hotel?.id && segments.every((h) => hotelStillAhead(h, now)));
+    (segments[0].id === draft.hotel?.id && segments.every((h) => hotelStillSold(h, now)));
   const skipHotel = flightSettled && draft.skipHotel;
   const hotel =
-    flightSettled && !isUS && !skipHotel && splitHolds && hotelStillAhead(draft.hotel, now)
+    flightSettled && !isUS && !skipHotel && splitHolds && hotelStillSold(draft.hotel, now)
       ? draft.hotel
       : null;
   const hotelSettled = isUS || skipHotel || !!hotel;

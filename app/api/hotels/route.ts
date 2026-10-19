@@ -2,6 +2,7 @@ import { Hotel, HotelResponse, HotelSearchRequest } from "@/lib/hotel.type";
 import { NextResponse } from "next/server";
 import { authHeader } from "../keys";
 import { supabase } from "@/lib/supabase";
+import { rateSellable, sellableHotels } from "@/lib/hotelRateTerms";
 import {
   SupplierBusyError,
   withinSupplierLimit,
@@ -168,11 +169,23 @@ export async function POST(request: Request) {
       [] as Hotel[],
     );
 
+    // Non-refundable rates are not sold more than NON_REFUNDABLE_WINDOW_DAYS
+    // before check-in (lib/hotelRateTerms.ts) - dropped HERE, so the list, the
+    // hotel-name search, the split stay and every package builder that reads
+    // this route see only what the site may sell. No hotel left = the step's
+    // "contact us" card.
+    const sellable = sellableHotels(fixedHotels, checkin, new Date());
+    if (sellable.length !== fixedHotels.length) {
+      console.log(
+        `[Hotels] ${fixedHotels.length - sellable.length} of ${fixedHotels.length} hotels had no free-cancellation rate (check-in ${checkin}) - not shown`,
+      );
+    }
+
     return NextResponse.json<HotelResponse>({
       ...data,
       data: {
-        hotels: fixedHotels,
-        total_hotels: data.data.total_hotels,
+        hotels: sellable,
+        total_hotels: sellable.length,
       },
     });
   } catch (error) {
@@ -292,8 +305,11 @@ export async function GET(request: Request) {
         continue;
       }
 
-      // Check all rates for this hotel
+      // Check all rates for this hotel - only those the site may sell (no
+      // non-refundable rate more than a week before check-in), so the base
+      // this quote sets is a hotel the customer can actually pick.
       for (const rate of hotel.rates || []) {
+        if (!rateSellable(rate, checkin, new Date())) continue;
         for (const paymentType of rate.payment_options?.payment_types || []) {
           const price = parseFloat(paymentType.show_amount);
           if (price < cheapestPrice) {

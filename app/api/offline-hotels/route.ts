@@ -9,6 +9,7 @@ import {
 } from "@/lib/hotel.type";
 import { getDistance } from "geolib";
 import { getOfflineRoomCapacity } from "@/lib/offlineRoomCapacity";
+import { rateSellable } from "@/lib/hotelRateTerms";
 
 interface AmenityGroup {
   group_name: string;
@@ -359,6 +360,11 @@ export async function GET(request: Request) {
         value: anchor.meal_plan || "",
       },
     };
+
+    // Same rule as the supplier's hotels (lib/hotelRateTerms.ts): a block we
+    // can no longer cancel - no last_cancellation_date, or one already past -
+    // is not offered more than a week before check-in.
+    if (!rateSellable(rate, anchor.check_in, new Date())) continue;
 
     const hotel: Hotel = {
       hid: anchor.hid ?? 0,

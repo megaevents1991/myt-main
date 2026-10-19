@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabase } from "@/lib/supabase";
-import { Coupon, Flight, OrderData } from "@/lib/app.types";
+import { Coupon, Flight, OrderData, OrderHotel } from "@/lib/app.types";
+import { orderHotelSellable } from "@/lib/hotelRateTerms";
 import { offerIncludesCheckedBag } from "@/lib/flights/elal";
 import { isMegaEventsFlight } from "@/lib/flights/company";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
@@ -224,6 +225,29 @@ export async function POST(req: Request) {
     );
     return NextResponse.json(
       { error: "TICKET_ONLY_EVENT_WITH_TRAVEL" },
+      { status: 400 },
+    );
+  }
+
+  // No non-refundable hotel more than a week before check-in
+  // (lib/hotelRateTerms.ts). The searches no longer offer one; this catches a
+  // tab opened before that, a resumed order or a hand-made payload.
+  const now = new Date();
+  const unsellableHotel = [
+    validatedData.hotel_order_info as Partial<OrderHotel> | null,
+    ...(Array.isArray(validatedData.hotel_segments) ? validatedData.hotel_segments : []),
+  ].find((h) => !orderHotelSellable(h, now));
+  if (unsellableHotel) {
+    console.error(
+      "Rejected order - non-refundable hotel:",
+      JSON.stringify({
+        event_id: validatedData.event_id,
+        hotel: unsellableHotel.name,
+        checkin: unsellableHotel.checkin,
+      }),
+    );
+    return NextResponse.json(
+      { error: "HOTEL_NOT_REFUNDABLE" },
       { status: 400 },
     );
   }

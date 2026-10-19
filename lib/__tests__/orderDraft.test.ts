@@ -228,6 +228,22 @@ describe("resumeOrder - what a draft may bring back today", () => {
     expect(resumed({ hotel: hotel({ checkin: "2026-10-01" }) }).step).toBe(4);
   });
 
+  it("a non-refundable hotel is dropped more than a week before check-in, kept inside it", () => {
+    const terms = (freeUntil: string | null) =>
+      ({
+        payment_options: {
+          payment_types: [{ cancellation_penalties: { policies: [], free_cancellation_before: freeUntil } }],
+        },
+      }) as unknown as OrderHotel["rate"];
+    // Check-in 29.10, 28 days after NOW.
+    expect(resumed({ hotel: hotel({ rate: terms(null) }) }).step).toBe(3);
+    expect(resumed({ hotel: hotel({ rate: terms("2026-10-26T23:00:00") }) }).step).toBe(4);
+    // A free-cancellation deadline that already passed is no free cancellation.
+    expect(resumed({ hotel: hotel({ rate: terms("2026-09-30T23:00:00") }) }).step).toBe(3);
+    // Check-in 05.10, four days out: a non-refundable rate may be sold.
+    expect(resumed({ hotel: hotel({ checkin: "2026-10-05", rate: terms(null) }) }).step).toBe(4);
+  });
+
   it("a skipped hotel is a settled hotel", () => {
     const order = resumed({ hotel: null, skipHotel: true, skippedHotelPricePerGuest: 97.5 });
     expect(order.step).toBe(4);

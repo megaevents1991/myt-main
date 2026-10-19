@@ -264,6 +264,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 >   header + rotate (cross-project: backoffice calls these).
 > - **No rate limiting** on `/api/confirm-order` (inventory-exhaustion / inbox flood).
 
+> **No non-refundable hotel more than a week out (2026-10-19, Dor - reservation
+> 2233: a Paris hotel bought seven months ahead on a rate that refunds nothing).**
+> 53 orders since April held such a rate: the free-cancellation default lived in
+> ONE client filter that the hotel-name search, the split stay's auto-pick and the
+> "relax when empty" pass all bypassed. Now the rule is pure in
+> `lib/hotelRateTerms.ts` (`NON_REFUNDABLE_WINDOW_DAYS` 7 - inside it a
+> non-refundable rate may be sold; `sellableHotels`, `rateSellable`,
+> `orderHotelSellable`; a free-cancellation deadline already passed counts as
+> none; vitest `lib/__tests__/hotelSellable.test.ts`) and enforced where a hotel
+> ENTERS: `/api/hotels` POST drops the rates (and hotels left with none) - every
+> list, name search, split, swap modal, ready-package landing and both backoffice
+> package builders read it; `/api/hotels` GET (the backoffice's base-price quote)
+> counts only sellable rates, so the base is a hotel the customer can pick;
+> `/api/offline-hotels` (a block with no live `last_cancellation_date`);
+> `/api/package/[id]` (a stored package on such a rate -> `hotel_needs_repick`);
+> the order draft (`resumeOrder` drops the hotel); `confirm-order` answers 400
+> `HOTEL_NOT_REFUNDABLE` and the summary sends the customer back to the hotel
+> step. A search with no sellable hotel shows the usual "contact us" card
+> (`OrderIssueState` + WhatsApp). Never re-add a client-only gate for this.
+>
 > **Multi-supplier events (2026-09-18, pilot).** One event page can sell
 > tickets from several suppliers. The supplier lives ON THE TICKET
 > (`EventTicket.supplier`, values in `lib/suppliers.ts`; absent = implied by
