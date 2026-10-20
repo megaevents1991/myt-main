@@ -1,6 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { rateIsRefundable } from "@/lib/hotelRateTerms";
+import { NonRefundableTag } from "@/components/ui/NonRefundableTag";
 import Image from "next/image";
 import { Checkbox, Loader, Modal, ScrollArea, Skeleton, TextInput } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
@@ -123,6 +125,8 @@ export const SegmentsList = ({
         const card = hotel?.segment_card;
         const roomName =
           hotel?.rate?.room_data_trans?.main_name || hotel?.hotelInformation?.roomName || "";
+        // Only possible within a week of check-in (lib/hotelRateTerms.ts).
+        const nonRefundable = !!hotel?.rate && !rateIsRefundable(hotel.rate, Date.now());
         // Back in a city after the other one, in the same hotel (the default).
         const returning =
           !!hotel &&
@@ -193,6 +197,7 @@ export const SegmentsList = ({
                           distanceFromCenter={card.distance}
                           meals={!!hotel.rate?.meal_data?.has_breakfast}
                           roomName={roomName}
+                          nonRefundable={nonRefundable}
                           rating={stars}
                           guestRating={card.guestRating}
                           address={hotel.address}
@@ -214,6 +219,7 @@ export const SegmentsList = ({
                           <div className="text-[13px] text-muted-foreground" dir="ltr">
                             {roomName}
                           </div>
+                          {nonRefundable && <NonRefundableTag className="mt-1" />}
                         </div>
                       )}
                     </div>

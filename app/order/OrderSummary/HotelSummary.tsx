@@ -1,5 +1,7 @@
 import { Event, OrderHotel } from "@/lib/app.types";
 import { formatPrice } from "@/lib/price.utils";
+import { rateIsRefundable } from "@/lib/hotelRateTerms";
+import { NonRefundableTag } from "@/components/ui/NonRefundableTag";
 import { Coffee } from "lucide-react";
 import dayjs from "dayjs";
 import { mealPlanLabel } from "../order-review.utils";
@@ -169,6 +171,10 @@ export const HotelSummary = ({
             ? selectedHotel.hotelInformation.roomName
             : selectedHotel.rate?.room_data_trans?.main_name}
         </p>
+          {/* Only possible within a week of check-in (lib/hotelRateTerms.ts). */}
+          {selectedHotel.rate && !rateIsRefundable(selectedHotel.rate, Date.now()) && (
+            <NonRefundableTag className="mt-1" />
+          )}
         </div>
         {!agentViewer && (
           <div>

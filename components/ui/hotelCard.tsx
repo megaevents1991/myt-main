@@ -11,6 +11,7 @@ import { HotelCardHeader } from "./HotelCardHeader";
 import { Amenities } from "./Amenities";
 import { formatPrice } from "@/lib/price.utils";
 import { rateRoomName } from "@/lib/hotels/roomName";
+import { rateIsRefundable } from "@/lib/hotelRateTerms";
 // import { isMobile } from "react-device-detect";
 import { cn } from "@/lib/utils"; // Import cn utility
 import { useMediaQuery } from "@mantine/hooks";
@@ -190,6 +191,9 @@ export const HotelCard = memo(
                         guestRating={hotelInfo.metadata.guestRating}
                         guestReviewCount={hotelInfo.metadata.guestReviewCount}
                         roomName={selectedRoom?.room_data_trans.main_name || ""}
+                        nonRefundable={
+                          !!selectedRoom && !rateIsRefundable(selectedRoom, Date.now())
+                        }
                         address={hotelInfo.metadata.address}
                         coordinates={{
                           lat: hotelInfo.metadata.latitude,

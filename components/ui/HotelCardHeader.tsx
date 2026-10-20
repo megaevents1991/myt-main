@@ -1,6 +1,7 @@
 import { formatHotelName } from "@/lib/formatHotelName";
 import { Stars } from "./stars";
 import { GuestScoreBadge } from "./GuestScoreBadge";
+import { NonRefundableTag } from "./NonRefundableTag";
 import { Utensils, MapPin } from "lucide-react";
 import { Tooltip, Modal } from "@mantine/core";
 import { useClickOutside, useDisclosure } from "@mantine/hooks";
@@ -19,6 +20,8 @@ type HotelCardHeaderProps = {
   guestReviewCount?: number;
   address?: string;
   coordinates?: { lat: number; lng: number };
+  /** The shown rate refunds nothing (only sold within a week of check-in). */
+  nonRefundable?: boolean;
 };
 
 export const HotelCardHeader = ({
@@ -31,6 +34,7 @@ export const HotelCardHeader = ({
   meals,
   address,
   coordinates,
+  nonRefundable = false,
 }: HotelCardHeaderProps) => {
   const [tooltipOpened, setTooltipOpened] = useState(false);
   const [opened, { open, close }] = useDisclosure(false);
@@ -135,6 +139,7 @@ export const HotelCardHeader = ({
               ) : (
                 <div />
               )}
+              {nonRefundable && <NonRefundableTag className="mx-2" />}
             </div>
           </div>
         )}

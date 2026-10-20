@@ -77,6 +77,7 @@ import { MobileHeader } from "./OrderSummary/MobileHeader";
 import { HotelFetchContext } from "../hooks/HotelFetch.provider";
 import { useBagPricing } from "./hooks/useBagPricing";
 import { fitPassengers } from "@/lib/order/draft";
+import { rateIsRefundable } from "@/lib/hotelRateTerms";
 import {
   forgetOrderDraft,
   readOrderForm,
@@ -2788,6 +2789,15 @@ export default function OrderReview({
 
                           {!skipHotel && selectedHotel && (() => {
                             const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                            // Sold only within a week of check-in (lib/hotelRateTerms.ts).
+                            if (!rateIsRefundable(selectedHotel.rate, Date.now())) {
+                              return (
+                                <>
+                                  <h3 className="font-bold mt-4 mb-2">מלון</h3>
+                                  <p>החדר אינו ניתן לביטול או לשינוי.</p>
+                                </>
+                              );
+                            }
                             if (!rawDate) return null;
                             const formattedDate = selectedHotel.isOffline
                               ? dayjs(rawDate).format("DD/MM/YYYY")
@@ -3320,6 +3330,15 @@ export default function OrderReview({
                               </p>
                               {!skipHotel && selectedHotel && (() => {
                                 const rawDate = selectedHotel.rate.payment_options?.payment_types[0].cancellation_penalties.free_cancellation_before;
+                                // Sold only within a week of check-in (lib/hotelRateTerms.ts).
+                                if (!rateIsRefundable(selectedHotel.rate, Date.now())) {
+                                  return (
+                                    <>
+                                      <h3 className="font-bold mt-4">מלון</h3>
+                                      <p>החדר אינו ניתן לביטול או לשינוי.</p>
+                                    </>
+                                  );
+                                }
                                 if (!rawDate) return null;
                                 const formattedDate = selectedHotel.isOffline
                                   ? dayjs(rawDate).format("DD/MM/YYYY")
