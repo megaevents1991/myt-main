@@ -30,31 +30,17 @@ const MAX_ROUTES_PER_EVENT = 2;
 /** Only a clean fit is suggested: `warn` (a long gap) and `blocked` are left to the customer. */
 const recommendable = (c: Compat): boolean => c.status === "best" || c.status === "same" || c.status === "ok";
 
-type Candidate = RecommendedRoute & {
-  /** `ids` joined: the identity of the event set, and the last tie-break. */
-  key: string;
-  /** Day of the first event, `YYYY-MM-DD`: the tie-break after the score. */
-  first: string;
-};
+/** Σ day gaps + Σ km / 200 - 2 when music and football are both in - 1 for three events. */
+const routeScore = (gaps: number, km: number, bothKinds: boolean, size: 2 | 3): number =>
+  gaps + km / KM_PER_SCORE_POINT - (bothKinds ? BOTH_KINDS_BONUS : 0) - (size === 3 ? TRIPLE_BONUS : 0);
+
+/** A way to reach a later event from an earlier one in a clean pair. */
+type Link = { to: number; gap: number; km: number };
+
+/** A route as indexes into the pool (a smaller index is an earlier event); `c` is -1 for a pair. */
+type Candidate = { a: number; b: number; c: number; score: number };
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-
-/** Σ day gaps + Σ km / 200 - 2 when music and football are both in - 1 for three events. */
-function scoreRoute(route: Event[]): number {
-  let gaps = 0;
-  let km = 0;
-  for (let i = 1; i < route.length; i++) {
-    gaps += dayDiff(eventDay(route[i - 1]), eventDay(route[i]));
-    km += haversineKm(eventPoint(route[i - 1]), eventPoint(route[i]));
-  }
-  const bothKinds = new Set(route.map(eventKind)).size === 2;
-  return gaps + km / KM_PER_SCORE_POINT - (bothKinds ? BOTH_KINDS_BONUS : 0) - (route.length === 3 ? TRIPLE_BONUS : 0);
-}
-
-const candidateOf = (route: Event[]): Candidate => {
-  const ids = route.map((e) => e.id);
-  return { ids, score: scoreRoute(route), key: ids.join(","), first: eventDay(route[0]) };
-};
 
 /**
  * Up to `limit` suggested routes of two or three events, the best (lowest score) first.
@@ -64,6 +50,7 @@ const candidateOf = (route: Event[]): Candidate => {
  *    (placed by date: before, between or after), the same event set kept once;
  *  - an event is in at most 2 routes of each size - pairs and triples count apart, or every
  *    triple would lose to its own cheaper pairs.
+ * Ties on the score go to the earlier first day, then to the lower ids (compared as text).
  */
 export function recommendRoutes(
   events: Event[],
@@ -73,57 +60,72 @@ export function recommendRoutes(
 ): RecommendedRoute[] {
   if (limit <= 0) return [];
 
-  // In trip order, so the result does not depend on the order the events arrive in.
+  // In trip order, so the result does not depend on the order the events arrive in. From here
+  // on an event is its index in the pool.
   const pool = sortRoute(events.filter((e) => isItineraryEligible(e, todayIso)));
   const names = pool.map((e) => e.name.trim());
-  // Whole days from today: a cheap integer test, so the pair scan can stop early.
+  const kinds = pool.map(eventKind);
+  // Whole days from today: the pair scan and the tie-break on the first day need no strings.
   const days = pool.map((e) => dayDiff(todayIso, eventDay(e)));
+  // A gap over `okGapDays` is a `warn` (or already blocked over `maxGapDays`): never a clean fit.
+  const maxPairGap = Math.min(s.okGapDays, s.maxGapDays);
 
   const candidates: Candidate[] = [];
-  const pairs: [number, number][] = [];
-  // Which events form a clean pair with each one (by index in `pool`).
-  const partners: Set<number>[] = pool.map(() => new Set<number>());
+  const links: Link[][] = pool.map(() => []); // links[i]: the later events that pair cleanly with i
 
   for (let i = 0; i < pool.length; i++) {
     for (let j = i + 1; j < pool.length; j++) {
-      // The pool is sorted: from here on every event is further than `maxGapDays` from `i`.
-      if (days[j] - days[i] > s.maxGapDays) break;
+      // The pool is sorted: from here on every event is further than a clean pair may be.
+      if (days[j] - days[i] > maxPairGap) break;
       if (names[i] === names[j]) continue;
       if (!recommendable(compatibility([pool[i]], pool[j], s))) continue;
-      pairs.push([i, j]);
-      partners[i].add(j);
-      partners[j].add(i);
-      candidates.push(candidateOf([pool[i], pool[j]]));
+      const gap = days[j] - days[i];
+      const km = haversineKm(eventPoint(pool[i]), eventPoint(pool[j]));
+      links[i].push({ to: j, gap, km });
+      candidates.push({ a: i, b: j, c: -1, score: routeScore(gap, km, kinds[i] !== kinds[j], 2) });
     }
   }
 
-  const seen = new Set<string>(); // triples taken so far
-  for (const [i, j] of pairs) {
-    // Placed by date, a third event sits next to `i`, to `j` or to both, and each link must be a
-    // clean fit on its own: one that is no clean pair with either cannot be recommendable.
-    // (Only a shortcut - `compatibility` below decides.)
-    for (const k of new Set([...partners[i], ...partners[j]])) {
-      if (k === i || k === j) continue;
-      if (names[k] === names[i] || names[k] === names[j]) continue;
-      const route = sortRoute([pool[i], pool[j], pool[k]]);
-      const key = route.map((e) => e.id).join(",");
-      if (seen.has(key)) continue; // the same three, already taken from another pair
-      if (!recommendable(compatibility([pool[i], pool[j]], pool[k], s))) continue;
-      seen.add(key);
-      candidates.push(candidateOf(route));
+  // Triples. `compatibility` looks at the third event's neighbours by date only, so a set of three
+  // fits exactly when each of its two neighbouring links is a clean pair and the trip as a whole
+  // fits (span, one event a day). Every such set is therefore found once - as its first two events
+  // plus the last - and the other ways to build it (the last two plus the first; the outer two plus
+  // the one between, which needs one more clean link) add nothing. So the triples are the chains of
+  // two links: no sorting, no dedupe, and a set reached by three routes is still one candidate.
+  // Here they are only scored; `compatibility` has the last word when one is about to be taken.
+  if (s.maxEvents >= 3) {
+    for (let i = 0; i < pool.length; i++) {
+      for (const first of links[i]) {
+        for (const second of links[first.to]) {
+          const j = first.to;
+          const k = second.to;
+          if (names[k] === names[i]) continue; // names[k] differs from names[j]: (j, k) is a pair
+          const bothKinds = kinds[i] !== kinds[j] || kinds[j] !== kinds[k];
+          const score = routeScore(first.gap + second.gap, first.km + second.km, bothKinds, 3);
+          candidates.push({ a: i, b: j, c: k, score });
+        }
+      }
     }
   }
 
-  candidates.sort((a, b) => a.score - b.score || cmp(a.first, b.first) || cmp(a.key, b.key));
+  const idText = pool.map((e) => String(e.id));
+  const byId = (x: Candidate, y: Candidate): number =>
+    cmp(idText[x.a], idText[y.a]) ||
+    cmp(idText[x.b], idText[y.b]) ||
+    (x.c < 0 || y.c < 0 ? Number(x.c >= 0) - Number(y.c >= 0) : cmp(idText[x.c], idText[y.c]));
+  candidates.sort((x, y) => x.score - y.score || days[x.a] - days[y.a] || byId(x, y));
 
   const used = new Map<string, number>(); // `${size}:${eventId}` -> routes taken so far
   const picked: RecommendedRoute[] = [];
-  for (const c of candidates) {
+  for (const cand of candidates) {
     if (picked.length >= limit) break;
-    const slots = c.ids.map((id) => `${c.ids.length}:${id}`);
+    const at = cand.c < 0 ? [cand.a, cand.b] : [cand.a, cand.b, cand.c];
+    const ids = at.map((index) => pool[index].id);
+    const slots = ids.map((id) => `${ids.length}:${id}`);
     if (slots.some((slot) => (used.get(slot) ?? 0) >= MAX_ROUTES_PER_EVENT)) continue;
+    if (cand.c >= 0 && !recommendable(compatibility([pool[cand.a], pool[cand.b]], pool[cand.c], s))) continue;
     for (const slot of slots) used.set(slot, (used.get(slot) ?? 0) + 1);
-    picked.push({ ids: c.ids, score: c.score });
+    picked.push({ ids, score: cand.score });
   }
   return picked;
 }

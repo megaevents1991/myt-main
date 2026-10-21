@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
 import { dayDiff, eventDay, eventKind, eventPoint, haversineKm } from "../itinerary/geo";
+import { isItineraryEligible } from "../itinerary/eligibility";
 import { compatibility, sortRoute } from "../itinerary/rules";
 import { recommendRoutes, type RecommendedRoute } from "../itinerary/recommend";
-import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
+import { DEFAULT_ITINERARY_SETTINGS as S, type ItinerarySettings } from "../itinerary/settings";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 
@@ -84,6 +85,61 @@ function countsBySize(routes: RecommendedRoute[], size: number): Map<number, num
   return counts;
 }
 
+const FIT = ["best", "same", "ok"];
+
+/**
+ * Every route the brief allows, before any cap: a pair is two events with `compatibility([a], b)`
+ * best / same / ok; a triple is ANY pair of the three plus the remaining one, best / same / ok
+ * against that pair - tried in every combination, not only the way the implementation builds it.
+ * Names differ inside a route. Keyed by the ids in trip order.
+ */
+function validRoutes(events: Event[], s: ItinerarySettings, todayIso: string): Map<string, Event[]> {
+  const pool = events.filter((e) => isItineraryEligible(e, todayIso));
+  const distinct = (...es: Event[]) => new Set(es.map((e) => e.name.trim())).size === es.length;
+  const found = new Map<string, Event[]>();
+  const keep = (route: Event[]) => {
+    const sorted = sortRoute(route);
+    found.set(sorted.map((e) => e.id).join(","), sorted);
+  };
+  for (const x of pool) {
+    for (const y of pool) {
+      if (x === y || !distinct(x, y) || !FIT.includes(compatibility([x], y, s).status)) continue;
+      keep([x, y]);
+      for (const z of pool) {
+        if (z === x || z === y || !distinct(x, y, z)) continue;
+        if (FIT.includes(compatibility([x, y], z, s).status)) keep([x, y, z]);
+      }
+    }
+  }
+  return found;
+}
+
+/** The suggested list written out from scratch: all valid routes, best first, then the cap per size. */
+function referenceRoutes(
+  events: Event[],
+  s: ItinerarySettings,
+  todayIso: string,
+  limit: number,
+): RecommendedRoute[] {
+  const ranked = [...validRoutes(events, s, todayIso).entries()]
+    .map(([key, route]) => ({ key, route, score: expectedScore(events, route.map((e) => e.id)) }))
+    .sort(
+      (a, b) =>
+        a.score - b.score ||
+        (eventDay(a.route[0]) < eventDay(b.route[0]) ? -1 : eventDay(a.route[0]) > eventDay(b.route[0]) ? 1 : 0) ||
+        (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
+    );
+  const taken = new Map<string, number>();
+  const out: RecommendedRoute[] = [];
+  for (const r of ranked) {
+    const slots = r.route.map((e) => `${r.route.length}:${e.id}`);
+    if (out.length >= limit || slots.some((slot) => (taken.get(slot) ?? 0) >= 2)) continue;
+    for (const slot of slots) taken.set(slot, (taken.get(slot) ?? 0) + 1);
+    out.push({ ids: r.route.map((e) => e.id), score: r.score });
+  }
+  return out;
+}
+
 describe("recommendRoutes", () => {
   const all = recommendRoutes(MAIN, S, TODAY, 48);
 
@@ -91,8 +147,7 @@ describe("recommendRoutes", () => {
     expect(idsOf(all)).toContainEqual([3, 1, 2]);
   });
 
-  it("never puts Madrid in a route with Paris (and nothing is within 1000 km of it)", () => {
-    expect(all.filter((r) => r.ids.includes(4) && r.ids.includes(1))).toEqual([]);
+  it("puts Madrid in no route: nothing else in the list is within 1000 km of it", () => {
     expect(all.filter((r) => r.ids.includes(4))).toEqual([]);
   });
 
@@ -120,6 +175,20 @@ describe("recommendRoutes", () => {
     expect(Math.max(...pairs.values())).toBe(2); // the cap is what stopped it, not a short list
     expect(Math.max(...triples.values())).toBeLessThanOrEqual(2);
     expect(triples.size).toBeGreaterThan(0);
+  });
+
+  it("stops at 2 triples for an event that has more valid ones", () => {
+    // Céline (id 1) sits in many valid triples: with Gracie, Berlin, Chelsea, Arsenal around her.
+    const valid = [...validRoutes(MAIN, S, TODAY).values()].filter((r) => r.length === 3 && r.some((e) => e.id === 1));
+    expect(valid.length).toBeGreaterThanOrEqual(3);
+    const taken = all.filter((r) => r.ids.length === 3 && r.ids.includes(1));
+    expect(taken).toHaveLength(2);
+    // ...and they are the two best of those, not just any two.
+    const best = valid
+      .map((r) => expectedScore(MAIN, r.map((e) => e.id)))
+      .sort((a, b) => a - b)
+      .slice(0, 2);
+    expect(taken.map((r) => r.score)).toEqual(best);
   });
 
   it("returns only addable pairs and triples (best / same / ok), never a warn gap", () => {
@@ -183,6 +252,18 @@ describe("recommendRoutes", () => {
     expect(recommendRoutes(MAIN, S, TODAY, 48)).toEqual(all);
     expect(recommendRoutes([...MAIN].reverse(), S, TODAY, 48)).toEqual(all);
     expect(recommendRoutes([...MAIN].sort((a, b) => a.name.localeCompare(b.name)), S, TODAY, 48)).toEqual(all);
+  });
+
+  it("breaks a tie on score and first day by the ids, compared as text", () => {
+    // Two London matches on one day: Céline pairs with each at exactly the same score.
+    const nine = ev(9, "משחק א בלונדון", "2027-05-15", LONDON, "sports_event");
+    const ten = ev(10, "משחק ב בלונדון", "2027-05-15", LONDON, "sports_event");
+    const routes = recommendRoutes([celine, nine, ten], S, TODAY);
+    expect(routes.map((r) => r.score)[0]).toBe(routes[1].score);
+    expect(idsOf(routes)).toEqual([
+      [1, 10],
+      [1, 9],
+    ]);
   });
 
   it("leaves out events that are not eligible", () => {
@@ -267,5 +348,63 @@ describe("recommendRoutes on a larger catalog", () => {
 
   it("is deterministic", () => {
     expect(recommendRoutes([...events].reverse(), S, TODAY, 48)).toEqual(routes);
+  });
+});
+
+describe("recommendRoutes against a from-scratch reference", () => {
+  const LOOSE_OK_GAP = { ...S, okGapDays: 12, maxGapDays: 8 }; // an "ok" gap longer than the blocked one
+  const SETTINGS: [string, ItinerarySettings][] = [
+    ["default", S],
+    ["tight", { ...S, maxGapDays: 6, okGapDays: 3, maxKm: 800, bestKm: 400, maxSpanDays: 9 }],
+    ["okGapDays above maxGapDays", LOOSE_OK_GAP],
+    ["two events", { ...S, maxEvents: 2 }],
+    ["a trip shorter than two legs", { ...S, maxSpanDays: 5 }],
+  ];
+
+  it("a triple whose outer two events are not a clean pair is still suggested", () => {
+    // Amsterdam 05-10 -> Paris 05-15 -> London 05-20: 5 days a leg (ok), but 10 days end to end.
+    const x = ev(31, "קונצרט באמסטרדם", "2027-05-10", AMSTERDAM);
+    const y = ev(32, "משחק בפריז", "2027-05-15", PARIS, "sports_event");
+    const z = ev(33, "קונצרט בלונדון", "2027-05-20", LONDON);
+    expect(compatibility([x], z, S).status).toBe("warn");
+
+    const routes = recommendRoutes([x, y, z], S, TODAY);
+    expect(idsOf(routes)).toContainEqual([31, 32, 33]);
+    expect(idsOf(routes)).not.toContainEqual([31, 33]); // the long way round is not a pair
+    expect(idsOf(routes)).toHaveLength(3); // the two legs and the whole trip
+    expect(routes).toEqual(referenceRoutes([x, y, z], S, TODAY, 48));
+  });
+
+  it("A3's fixtures give the reference's list, whatever the settings and the limit", () => {
+    for (const events of [MAIN, [...MAIN, gracieParis]]) {
+      for (const [name, s] of SETTINGS) {
+        const want = referenceRoutes(events, s, TODAY, 1000);
+        expect(recommendRoutes(events, s, TODAY, 1000), name).toEqual(want);
+        expect(recommendRoutes(events, s, TODAY, 3), name).toEqual(want.slice(0, 3));
+      }
+    }
+  });
+
+  it("small dense calendars give the reference's list", () => {
+    const CITIES = [PARIS, LONDON, AMSTERDAM, MADRID, MILAN, BERLIN, KRAKOW];
+    for (let seed = 1; seed <= 4; seed++) {
+      // 12 events in 9 days, a few repeated names, both kinds: nearly every combination is in play.
+      let state = seed * 7919;
+      const next = () => (state = (state * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const events = Array.from({ length: 12 }, (_, i) =>
+        ev(
+          200 + i,
+          `אירוע ${i % 10}`,
+          `2027-05-${String(1 + Math.floor(next() * 9)).padStart(2, "0")}`,
+          CITIES[Math.floor(next() * CITIES.length)],
+          next() < 0.5 ? "sports_event" : "music_event",
+        ),
+      );
+      for (const [name, s] of SETTINGS) {
+        const want = referenceRoutes(events, s, TODAY, 1000);
+        expect(want.length, `seed ${seed} ${name}`).toBeGreaterThan(0);
+        expect(recommendRoutes(events, s, TODAY, 1000), `seed ${seed} ${name}`).toEqual(want);
+      }
+    }
   });
 });
