@@ -257,6 +257,17 @@ export type FlightSegment = {
 };
 
 /**
+ * A multi-event itinerary's flight ("Build Your Euro Trip"): the ordinary Flight
+ * (outbound = TLV -> first stay, inbound = last stay -> TLV, so everything that
+ * reads a Flight keeps working) plus every leg of the trip in order, and the moves
+ * between stays that are made by train instead of a flight.
+ */
+export type ItineraryFlight = Flight & {
+  legs: FlightSegment[];
+  trainLegs: { from: string; to: string; date: string }[];
+};
+
+/**
  * Breakfast upsell chosen on the order summary (a rate swap to the same
  * room's breakfast-included sibling). `prev_rate` exists only IN-SESSION so
  * "הסרה" can restore the original pick - it is stripped before the hotel
