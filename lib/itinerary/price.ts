@@ -2,7 +2,7 @@
  * "Build Your Euro Trip" - tiered markup and the trip's price estimate. Pure: no I/O, no clock.
  *
  * All money is USD per traveller. The trip is one package: the markup of the dearest event is
- * charged in full, the next one's is cut by `tier2Pct`, the third's by `tier3Pct` (spec §6).
+ * charged in full, the next one's is cut by `tier2Pct`, the third's by `tier3Pct`.
  * The estimate is a PRICE-FROM figure for the builder's summary - the real flight and hotel
  * prices come from the order flow's own searches; this only has the events' package bases.
  */
@@ -18,8 +18,8 @@ import type { ItinerarySettings } from "./settings";
 import type { TripDates } from "./types";
 
 /**
- * Without an Amadeus quote the trip's flight is estimated from the events' own package flights:
- * one open-jaw trip is cheaper than the sum of the round trips each package assumes.
+ * Without a flight quote the trip's flight is estimated as this share of the events' own
+ * package flights (each package prices its own flight).
  */
 const FLIGHT_FALLBACK_SHARE = 0.6;
 
