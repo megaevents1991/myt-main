@@ -6,8 +6,8 @@
  * (see `compatibility`); the UI turns the code into Hebrew with `describeCompat`.
  */
 import type { Event } from "@/lib/app.types";
-import { shortPlace } from "@/lib/events/lodging";
-import { dayDiff, eventDay, eventPoint, haversineKm, sameCity, stayPoint } from "./geo";
+import { eventCityName } from "@/lib/events/lodging";
+import { dayDiff, eventDay, eventPoint, haversineKm, sameCity } from "./geo";
 import type { ItinerarySettings } from "./settings";
 import type { Compat } from "./types";
 
@@ -19,10 +19,8 @@ export function sortRoute(route: Event[]): Event[] {
   return [...route].sort((a, b) => eventDay(a).localeCompare(eventDay(b)) || a.id - b.id);
 }
 
-/** The customer-facing name of the city the traveller stays in for an event ("פריז"). */
-const stayCityName = (e: Event): string => shortPlace(stayPoint(e).point.name);
-
 type Neighbour = {
+  /** The city the neighbour event is played in ("מנצ'סטר" for a Manchester match sold as a flight to London). */
   city: string;
   /** Distance between the two events, 0 when they share a city. */
   km: number;
@@ -34,7 +32,7 @@ type Neighbour = {
 const measure = (candidate: Event, n: Event): Neighbour => {
   const same = sameCity(candidate, n);
   return {
-    city: stayCityName(n),
+    city: eventCityName(n),
     km: same ? 0 : haversineKm(eventPoint(candidate), eventPoint(n)),
     days: Math.abs(dayDiff(eventDay(candidate), eventDay(n))),
     sameCity: same,
@@ -58,10 +56,13 @@ const maxBy = (list: Neighbour[], key: (n: Neighbour) => number): Neighbour =>
  *  8. every neighbour in the same city                   -> same `same_city`
  *  9. farthest <= `bestKm` and every gap <= 3 days       -> best `best`
  * 10. otherwise                                          -> ok `fits`
- * `km` / `nearCity` on an addable answer describe the farthest neighbour.
+ * `km` / `nearCity` on an addable answer describe the farthest neighbour. Distances are measured
+ * between the events' own cities (`eventPoint`) and named by them (`eventCityName`), so a match
+ * played in Manchester and sold as a flight to London is "מנצ'סטר", 605 km from Paris (not London's 343).
+ * Only `same_city` looks at the stay points: events whose travellers sleep in one city share a hotel.
  */
 export function compatibility(route: Event[], candidate: Event, s: ItinerarySettings): Compat {
-  if (route.length >= s.maxEvents) return { status: "blocked", reason: { code: "full" } };
+  if (route.length >= s.maxEvents) return { status: "blocked", reason: { code: "full", max: s.maxEvents } };
   if (route.length === 0) return { status: "ok", reason: { code: "first" } };
 
   const clash = route.find((e) => eventDay(e) === eventDay(candidate));
@@ -113,7 +114,7 @@ export function describeCompat(c: Compat): string {
     case "first":
       return "אפשר להתחיל מכאן";
     case "full":
-      return "המסלול מלא - עד 3 אירועים";
+      return `המסלול מלא - עד ${r.max} אירועים`;
     case "same_day":
       return `באותו יום כמו ${r.with}`;
     case "span":

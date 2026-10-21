@@ -11,7 +11,7 @@ export type CompatStatus = "best" | "same" | "ok" | "warn" | "blocked";
 /** Why - the UI turns the code (and its numbers / names) into Hebrew copy. */
 export type CompatReason =
   | { code: "first" }
-  | { code: "full" }
+  | { code: "full"; max: number }
   | { code: "same_day"; with: string }
   | { code: "span"; days: number }
   | { code: "too_far"; km: number; from: string }
@@ -24,9 +24,9 @@ export type CompatReason =
 export type Compat = {
   status: CompatStatus;
   reason: CompatReason;
-  /** Distance to the nearest event already in the trip, km. */
+  /** Distance to the farthest neighbour the event would sit next to in the trip, km. */
   km?: number;
-  /** Name of that nearest event's city. */
+  /** Name of that neighbour's event city. */
   nearCity?: string;
 };
 

@@ -24,6 +24,21 @@ const ev = (id: number, name: string, date: string, city: City, type = "music_ev
     location: { ...city, country_code: "XX" },
   }) as unknown as Event;
 
+/**
+ * A two-city event: sold as a flight to London, played in Manchester (a stay in London by default,
+ * in Manchester with `lodging_mode: "event_city_only"`). The km are measured on the event's own city.
+ */
+const twoCity = (id: number, name: string, date: string, over: Record<string, unknown> = {}) =>
+  ({
+    id,
+    name,
+    date: `${date}T20:00:00`,
+    type: "sports_event",
+    location: { ...LONDON, name: "לונדון, בריטניה", country_code: "GB" },
+    event_location: { latitude: 53.48, longitude: -2.24, name: "מנצ'סטר", city_iata: "MAN", country_code: "GB" },
+    ...over,
+  }) as unknown as Event;
+
 const celine = ev(1, "סלין דיון", "2027-05-12", PARIS);
 const chelsea = ev(2, "צ'לסי - אברטון", "2027-05-15", LONDON, "sports_event");
 const gracie = ev(3, "גרייסי אברמס", "2027-05-10", AMSTERDAM);
@@ -54,13 +69,24 @@ describe("compatibility", () => {
   it("a full route blocks every candidate, before any other check", () => {
     const route = [gracie, celine, chelsea];
     // Even a same-day candidate reports `full` first.
-    expect(compatibility(route, arsenal, S)).toMatchObject({ status: "blocked", reason: { code: "full" } });
-    expect(compatibility(route, berlin, S)).toMatchObject({ status: "blocked", reason: { code: "full" } });
+    expect(compatibility(route, arsenal, S)).toMatchObject({
+      status: "blocked",
+      reason: { code: "full", max: 3 },
+    });
+    expect(compatibility(route, berlin, S)).toMatchObject({
+      status: "blocked",
+      reason: { code: "full", max: 3 },
+    });
   });
 
   it("honours maxEvents from the settings", () => {
     const two = { ...S, maxEvents: 2 };
-    expect(compatibility([celine, chelsea], berlin, two).reason).toEqual({ code: "full" });
+    const c = compatibility([celine, chelsea], berlin, two);
+    expect(c.status).toBe("blocked");
+    expect(c.reason).toEqual({ code: "full", max: 2 });
+    expect(describeCompat(c)).toBe("המסלול מלא - עד 2 אירועים");
+    // ...and with the default 3 the same two-event route still has room.
+    expect(compatibility([celine, chelsea], berlin, S).status).toBe("ok");
   });
 
   it("blocks a second event on the same day and names the one it clashes with", () => {
@@ -216,6 +242,53 @@ describe("compatibility", () => {
   });
 });
 
+describe("compatibility on a two-city event (flight city vs event city)", () => {
+  // Manchester - Paris 605 km, Manchester - London 262 km, London - Paris 343 km, Manchester - Madrid 1,456 km.
+  const mcMatch = twoCity(20, "מנצ'סטר יונייטד - ליברפול", "2027-05-14");
+
+  it("measures km from the event's own city, not the flight city", () => {
+    // A stay-point (London) distance would be 343 km and `best`; the match is in Manchester: 605 km.
+    const c = compatibility([celine], mcMatch, S);
+    expect(c.status).toBe("ok");
+    expect(c.reason).toEqual({ code: "fits" });
+    expect(c.km).toBe(605);
+    expect(c.nearCity).toBe("פריז");
+  });
+
+  it("measures it the same way when the two-city event is already in the route", () => {
+    const c = compatibility([mcMatch], ev(21, "קונצרט בפריז", "2027-05-16", PARIS), S);
+    expect(c.km).toBe(605);
+    expect(c.status).toBe("ok");
+  });
+
+  it("names the event city of a two-city neighbour, not its flight city", () => {
+    // Madrid - Manchester is 1,456 km (Madrid - London 1,263): too far either way, but the label
+    // must be the city the match is in.
+    const c = compatibility([mcMatch], ev(22, "קונצרט במדריד", "2027-05-16", MADRID), S);
+    expect(c.reason).toEqual({ code: "too_far", km: 1456, from: "מנצ'סטר" });
+    expect(describeCompat(c)).toBe("1,456 ק״מ ממנצ'סטר - רחוק מדי");
+    const ok = compatibility([mcMatch], celine, S);
+    expect(ok.nearCity).toBe("מנצ'סטר");
+  });
+
+  it("a flight-city stay makes a London event the same city (both sleep in London)", () => {
+    const c = compatibility([mcMatch], ev(23, "קונצרט בלונדון", "2027-05-16", LONDON), S);
+    expect(c.status).toBe("same");
+    expect(c.reason).toEqual({ code: "same_city" });
+    expect(c.km).toBe(0);
+  });
+
+  it("with event_city_only lodging the stay is Manchester: no longer the same city, 262 km", () => {
+    const manchesterStay = twoCity(20, "מנצ'סטר יונייטד - ליברפול", "2027-05-14", {
+      lodging_mode: "event_city_only",
+    });
+    const c = compatibility([manchesterStay], ev(23, "קונצרט בלונדון", "2027-05-16", LONDON), S);
+    expect(c.status).toBe("best");
+    expect(c.km).toBe(262);
+    expect(c.nearCity).toBe("מנצ'סטר");
+  });
+});
+
 describe("isAddable", () => {
   it("is false only for blocked", () => {
     const mk = (status: Compat["status"]): Compat => ({ status, reason: { code: "fits" } });
@@ -235,7 +308,8 @@ describe("describeCompat", () => {
 
   it("says every reason in Hebrew, exactly", () => {
     expect(d({ code: "first" })).toBe("אפשר להתחיל מכאן");
-    expect(d({ code: "full" })).toBe("המסלול מלא - עד 3 אירועים");
+    expect(d({ code: "full", max: 3 })).toBe("המסלול מלא - עד 3 אירועים");
+    expect(d({ code: "full", max: 2 })).toBe("המסלול מלא - עד 2 אירועים");
     expect(d({ code: "same_day", with: "צ'לסי - אברטון" })).toBe("באותו יום כמו צ'לסי - אברטון");
     expect(d({ code: "span", days: 29 })).toBe("טיול של 29 ימים - ארוך מדי");
     expect(d({ code: "too_far", km: 1053, from: "פריז" })).toBe("1,053 ק״מ מפריז - רחוק מדי");
