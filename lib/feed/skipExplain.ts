@@ -56,6 +56,13 @@ export function explainFeedSkip(
   reason: string,
 ): SkipExplanation {
   switch (reason) {
+    case "hidden":
+      return {
+        missing: "מוסתר - ממתין לאישור ב-AI Uploader",
+        fix: "לאשר את האירוע ב-AI Uploader בבקאופיס - רק אחרי האישור הוא נבדק לפיד",
+        actionable: true,
+      };
+
     case "sold out":
       return explainSoldOut(event);
 

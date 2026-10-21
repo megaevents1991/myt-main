@@ -31,6 +31,7 @@ const ERRORS: Record<string, string> = {
 
 /** Group headings; each row then says exactly what is missing (lib/feed/skipExplain.ts). */
 const REASON_LABELS: Record<string, string> = {
+  hidden: "מוסתר - ממתין לאישור",
   "no campaign creative": "חסרה תמונת קמפיין",
   "no computable price": "אין מחיר",
   "sold out": "אזל - לא נמכר באתר",

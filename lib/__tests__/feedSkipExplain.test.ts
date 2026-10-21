@@ -70,6 +70,13 @@ describe("explainFeedSkip - other codes", () => {
     expect(why.actionable).toBe(false);
   });
 
+  it("a hidden event says it waits for approval in the AI Uploader", () => {
+    const why = explainFeedSkip(ev({}), "hidden");
+    expect(why.missing).toBe("מוסתר - ממתין לאישור ב-AI Uploader");
+    expect(why.fix).toContain("AI Uploader");
+    expect(why.actionable).toBe(true);
+  });
+
   it("an unknown code is shown as is", () => {
     expect(explainFeedSkip(ev({}), "something new").missing).toBe("something new");
   });

@@ -6,6 +6,7 @@ vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 
 import { isListedEvent } from "../eventsData";
 import { isHiddenForCheckout } from "../events/hidden";
+import { listedEventIds } from "../taxonomy";
 
 describe("isListedEvent", () => {
   it("lists an ordinary event", () => {
@@ -53,5 +54,25 @@ describe("isHiddenForCheckout", () => {
     expect(isHiddenForCheckout({ is_hidden: false })).toBe(false);
     expect(isHiddenForCheckout({})).toBe(false);
     expect(isHiddenForCheckout({ is_hidden: undefined })).toBe(false);
+  });
+});
+
+describe("listedEventIds (what the header nav counts)", () => {
+  it("leaves out hidden, test and deactivated events, keeps the rest", () => {
+    const base = { is_test: false, deactivated_reason: null, is_hidden: false };
+    const ids = listedEventIds([
+      { id: 1, ...base },
+      { id: 2, ...base, is_hidden: true },
+      { id: 3, ...base, is_test: true },
+      { id: 4, ...base, deactivated_reason: "tx_sold_out" },
+      { id: 5, is_test: false, deactivated_reason: null }, // row from before the column
+    ]);
+    expect([...ids].sort()).toEqual([1, 5]);
+  });
+
+  it("a hub whose only events are hidden counts nothing", () => {
+    expect(
+      listedEventIds([{ id: 9, is_test: false, deactivated_reason: null, is_hidden: true }]).size,
+    ).toBe(0);
   });
 });

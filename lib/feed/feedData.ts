@@ -115,6 +115,9 @@ async function fetchPeopleNames(
 /** Shared fetch for both feed shapes: sellable events + their taxonomy. */
 async function getFeedEvents(): Promise<{
   events: Event[];
+  /** Hidden (unapproved uploader) events: never feed items, but /product-feed
+   *  names them as skipped so "why isn't event X in the feed" has an answer. */
+  hidden: Event[];
   taxonomyByEvent: Map<number, EventTaxonomyInfo>;
 }> {
   const events = await fetchAllPages<Event>("events", (from, to) =>
@@ -140,6 +143,7 @@ async function getFeedEvents(): Promise<{
   );
   return {
     events: enriched,
+    hidden: events.filter((e) => !e.is_test && isHiddenForCheckout(e)),
     taxonomyByEvent: await getTaxonomyByEvent(enriched.map((e) => e.id)),
   };
 }
@@ -163,10 +167,13 @@ function skipOf(event: Event, reason: string): FeedSkip {
  */
 export async function getActivityItems(): Promise<ActivityBuildResult> {
   const cutoffISO = futureDateISO(AVAILABILITY_WINDOW_DAYS);
-  const { events, taxonomyByEvent } = await getFeedEvents();
+  const { events, hidden, taxonomyByEvent } = await getFeedEvents();
   const classify = await peopleClassifier();
 
-  const result: ActivityBuildResult = { items: [], skipped: [] };
+  const result: ActivityBuildResult = {
+    items: [],
+    skipped: hidden.map((event) => skipOf(event, "hidden")),
+  };
   for (const event of events) {
     const built = buildActivityItem(
       event,
@@ -191,9 +198,12 @@ export async function getActivityItems(): Promise<ActivityBuildResult> {
 export async function getFeedItems(): Promise<FeedBuildResult> {
   const todayISO = futureDateISO(0);
   const cutoffISO = futureDateISO(AVAILABILITY_WINDOW_DAYS);
-  const { events: enriched, taxonomyByEvent } = await getFeedEvents();
+  const { events: enriched, hidden, taxonomyByEvent } = await getFeedEvents();
 
-  const result: FeedBuildResult = { items: [], skipped: [] };
+  const result: FeedBuildResult = {
+    items: [],
+    skipped: hidden.map((event) => skipOf(event, "hidden")),
+  };
   for (const event of enriched) {
     const built = buildFeedItem(
       event,

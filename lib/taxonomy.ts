@@ -185,6 +185,44 @@ export async function getAllTags(): Promise<EventTag[]> {
  */
 export type NavCategory = { href: string; label: string; children?: NavCategory[] };
 
+/**
+ * Ids of the rows that may appear on a listing (`isListedEvent`: not a QA event,
+ * not taken off the site, not an unapproved uploader event). The nav counts only
+ * these - a hub whose events are all hidden would otherwise get a header link to
+ * an empty /c/ page and name an unapproved tour.
+ */
+export function listedEventIds(
+  rows: Array<
+    Pick<Event, "id" | "is_test" | "deactivated_reason" | "is_hidden">
+  >,
+): Set<number> {
+  return new Set(rows.filter(isListedEvent).map((row) => row.id));
+}
+
+/** The column is not in the database yet (42703; PostgREST says PGRST204). */
+const isMissingColumn = (error: { code?: string } | null): boolean =>
+  error?.code === "42703" || error?.code === "PGRST204";
+
+/**
+ * Future events' listing flags. A deploy that beat the backoffice migration
+ * (`events.is_hidden`) must not wipe the nav for the cache's hour, so a missing
+ * column reads again without it - nothing is hidden before the column exists.
+ */
+async function readFutureEventFlags() {
+  const future = futureDateISO(AVAILABILITY_WINDOW_DAYS);
+  const withHidden = await supabase
+    .from("events")
+    .select("id,is_test,deactivated_reason,is_hidden")
+    .is("is_deleted", null)
+    .gte("date", future);
+  if (!isMissingColumn(withHidden.error)) return withHidden;
+  return supabase
+    .from("events")
+    .select("id,is_test,deactivated_reason")
+    .is("is_deleted", null)
+    .gte("date", future);
+}
+
 export const getNavCategories = nextCache(
   async (): Promise<NavCategory[]> => {
     const all = await getAllCategories();
@@ -201,11 +239,7 @@ export const getNavCategories = nextCache(
           "category_id",
           all.map((c) => c.id),
         ),
-      supabase
-        .from("events")
-        .select("id")
-        .is("is_deleted", null)
-        .gte("date", futureDateISO(AVAILABILITY_WINDOW_DAYS)),
+      readFutureEventFlags(),
     ]);
     if (linksRes.error || futureRes.error) {
       console.error(
@@ -214,7 +248,7 @@ export const getNavCategories = nextCache(
       );
       return [];
     }
-    const futureIds = new Set((futureRes.data ?? []).map((e) => e.id as number));
+    const futureIds = listedEventIds(futureRes.data ?? []);
     const counts = new Map<number, number>();
     (linksRes.data ?? []).forEach((l) => {
       if (!futureIds.has(l.event_id as number)) return;
