@@ -1,7 +1,11 @@
-# Multi-event itinerary ("מסלולים") - design
+# Euro Trip - multi-event itinerary - design
 
 **Date:** 2026-10-21 · **Owner:** Dor · **Branch:** `feat/multi-event-itinerary` (myt-main), backoffice on `master`
-**Status:** design - direction approved on clickable mock v3 (see §3)
+**Status:** approved by Dor 2026-10-21 (after clickable mock v3, see §3)
+
+**Name (Dor, 2026-10-21):** the customer-facing name is **"Build Your Euro Trip"** - homepage row title (editable on
+the homepage board like every section title), hub page, and copy ("בנו את היורו טריפ שלכם"). Code keeps the
+neutral name `itinerary`.
 
 ## 1. Intent
 
@@ -47,14 +51,20 @@ The build uses the **real components**, not the mock's replicas: `EventArt`, the
 layout, `OrderContinueBar`, `TicketSelection` category cards + seat map, the `FlightCard` family, `HotelCard`.
 
 ### 3.1 Entry points
-1. **Homepage row "מסלולים מומלצים"** - a new builtin homepage section. Route card = the homepage event card with
+1. **Homepage row "Build Your Euro Trip"** - a new builtin homepage section. Route card = the homepage event card with
    a split art panel (one `EventArt` per event), a route pill ("פריז ← לונדון"), the events with dates, the
-   "from" price per traveller, and a savings badge when real (§6.3). Last card: "בנו מסלול משלכם". Hidden
-   unless the feature switch is on (§9).
-2. **`/itinerary?events=618,702`** - a route opened from a card or a link (staff can share it).
-3. **`/itinerary`** (no events) - build-your-own.
+   "from" price per traveller, and a savings badge when real (§6.3). Last card: "בנו טריפ משלכם". A "לכל
+   הטריפים" link opens the hub. Hidden unless the feature switch is on (§9).
+2. **Hub page `/euro-trip`** - a landing page in the style of the `/c/` category hubs (`CategoryEventsBrowser`):
+   a hero ("Build Your Euro Trip" + one line on how it works: 2-3 events, one flight, a hotel in every city), a big
+   "בנו טריפ משלכם" CTA, filters (search, months, city, הופעות / כדורגל / מיקס, price cap, sort) over a grid of
+   route cards (staff + auto routes, §8.2), and a short "איך זה עובד" strip. Filters/sort/"הצג עוד" kept in
+   `sessionStorage` with `lib/viewState.ts`, like the hubs. Server-rendered + cached (ISR), indexable only once the
+   switch is on; added to the sitemap then.
+3. **`/euro-trip/build?events=618,702`** - a route opened from a card or a link (staff can share it).
+4. **`/euro-trip/build`** (no events) - build-your-own.
 Phase 4 option (needs Dor's go - it touches the live order page): a quiet "רוצים לשלב עוד אירוע בטיול?" link on
-`/order/[eventId]` that opens `/itinerary?events=<id>`.
+`/order/[eventId]` that opens `/euro-trip/build?events=<id>`.
 
 ### 3.2 The route step ("המסלול")
 - Header: overlapping round `EventArt` avatars, title = the cities ("פריז ← לונדון"), dates + nights.
@@ -169,10 +179,10 @@ change `validatePurchasePriceFloor` (shared with `confirm-order`, whose slack as
 ## 7. Technical design (myt-main)
 
 ### 7.1 Routes and modules (all new unless stated)
-- `app/itinerary/page.tsx` + client component - one page, steps in client state, `noindex` while the switch is off.
+- `app/euro-trip/build/page.tsx` + client component - one page, steps in client state, `noindex` while the switch is off.
   Catalog from `getCachedEvents()`; selection in the URL (`?events=`) + client state. **Never read cookies/headers
   in this page** (see the 2026-09-17 outage notes).
-- `app/itinerary/ItineraryContext.tsx` - its own context (route, dates, pax, per-event ticket, flight, per-stay
+- `app/euro-trip/build/ItineraryContext.tsx` - its own context (route, dates, pax, per-event ticket, flight, per-stay
   hotel, step). It does **not** reuse `OrderContext`; shared presentational components get props. Where a shared
   component reads `OrderContext` directly, wrap it or extract a props-only inner component without changing its
   output in the regular flow.
@@ -236,7 +246,7 @@ lists all events. Gated by `payments_enabled`; while off, the summary offers onl
   An itinerary hold email has **no pay link** ("נציג יחזור אליכם") - sales converts it by phone.
 - Protective guards (small, behaviour-preserving for single orders): `/api/find-order` and the hold-email builder
   skip rows that have an `itinerary_group`, so a grouped row can never be resumed into the single-event checkout.
-- Launch (phase 3) adds `/itinerary?hold=<group>`: restores the held trip from its rows and pays it through §7.5.
+- Launch (phase 3) adds `/euro-trip/build?hold=<group>`: restores the held trip from its rows and pays it through §7.5.
 
 ### 7.6 Draft / refresh
 Mirror the trip into `sessionStorage` (`myt:itinerary-draft`, versioned, 30 min), same rules as `lib/order/draft.ts`:
@@ -244,13 +254,13 @@ restored in an effect, never trusted for price.
 
 ## 8. Backoffice + CMS (myt-backoffice, `master`) - required, not optional
 
-Dor: staff must **fully control** "מסלולים מומלצים" - what appears, in what order, built easily.
+Dor: staff must **fully control** the Euro Trip routes - what appears, in what order, built easily.
 
 ### 8.1 Settings - `itinerary_settings` (key/value jsonb, the `marketing_settings` pattern)
-`enabled` (row + `/itinerary`), `payments_enabled`, `tier_2_pct` 30, `tier_3_pct` 50, `max_events` 3, `max_km` 1000,
+`enabled` (row + `/euro-trip` pages), `payments_enabled`, `tier_2_pct` 30, `tier_3_pct` 50, `max_events` 3, `max_km` 1000,
 `best_km` 600, `ok_gap_days` 5, `max_gap_days` 10, `max_span_days` 21, `max_auto_routes` 12. Screen: Templates →
 מסלולים → הגדרות. Main reads it server-side with defaults, cached under a new tag `itinerary-settings` (carried
-only by the homepage and `/itinerary`). The backoffice save calls a **new** main endpoint
+only by the homepage and the `/euro-trip` pages). The backoffice save calls a **new** main endpoint
 `POST /api/itinerary/revalidate` (secret header, same secret as today) that drops that tag - "off" takes effect on
 the next request. `/api/revalidate` and the `events` tag are not touched (dropping `events` re-renders the whole site).
 
@@ -286,12 +296,12 @@ Deploy main first (unknown keys are dropped there), then the backoffice.
 
 ## 9. Isolation and rollout
 
-- Everything new lives under `app/itinerary`, `app/api/itinerary/*`, `lib/itinerary/*`, plus additive types, the
+- Everything new lives under `app/euro-trip`, `app/api/itinerary/*`, `lib/itinerary/*`, plus additive types, the
   homepage section case, and the two behaviour-preserving extractions (`loadLive`, flight-offer helpers) - each with
   a test proving identical output before/after.
 - One switch, in the DB: `itinerary_settings.enabled` (row + page; the page answers 404 when off), plus
   `payments_enabled`. On Vercel **preview** deployments and in local dev (`VERCEL_ENV !== 'production'`) the page
-  and row are always on - that is how staff preview. No preview token, so `/itinerary` never reads
+  and row are always on - that is how staff preview. No preview token, so the `/euro-trip` pages never read
   `searchParams`/cookies on the server and stays cached (the 2026-09-17 lesson); `?events=` is read on the client.
 - Migrations are additive (new tables, nullable columns) and run on backoffice `master` push - the only shared
   production change before launch, harmless to the live site.
@@ -311,10 +321,12 @@ Deploy main first (unknown keys are dropped there), then the backoffice.
   flight-helper extraction are behaviour-preserving with tests.
 
 ## 11. Phases
-1. **Core** - main: rules/dates/price modules + tests, `/itinerary` self-build + route page, tickets/flights/hotels
-   steps, summary, confirm with 24h hold, settings read with defaults. Backoffice: migrations, settings screen,
-   reservation group panel.
-2. **Recommended routes** - `itineraries` table, editor, auto cron, homepage section + board.
+1. **Core** - main: rules/dates/price/recommend modules + tests; `/euro-trip` hub listing auto routes computed on
+   the fly by `recommend.ts` from the cached catalog (no table yet); `/euro-trip/build` self-build + route step,
+   tickets/flights/hotels steps, summary, confirm with the 24h hold; settings read with defaults (works before the
+   table exists). Backoffice: migrations (settings + reservation columns), settings screen, reservation group panel.
+2. **Recommended routes (CMS)** - `itineraries` table, staff editor, auto cron, the hub reads staff + auto routes,
+   homepage row "Build Your Euro Trip" + board pins.
 3. **Payment** - group payment, confirmation page, emails; one real paid order by Dor; switch on.
 4. **Later** - entry link from `/order/[eventId]`, per-region `max_km`, coupons/partners on itineraries, US events.
 
@@ -343,6 +355,6 @@ earn N× on an N-event trip, while events 2-3 carry a discounted markup. Commiss
 affiliate's `user_discount` apply to itinerary orders (phase 1 has no coupons)?
 
 ## 14. Left to the builder
-Component composition and file split inside `app/itinerary`; copy beyond the strings above; debounce values; the
+Component composition and file split inside `app/euro-trip`; copy beyond the strings above; debounce values; the
 scoring weights in `recommend.ts` (prefer short gaps, short distance, music+football mix, fewer moves); Amadeus
 request tuning (max offers, sources); visual details, as long as they use the site's components.
