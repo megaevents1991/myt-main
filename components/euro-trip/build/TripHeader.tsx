@@ -44,14 +44,15 @@ export function TripHeader() {
             <span className="mb-1 text-2xl font-bold leading-tight md:text-3xl">
               {route.length ? tripCities(route).join(" ← ") : "בנו את היורו טריפ שלכם"}
             </span>
-            {/* Two unbreakable halves: a narrow screen breaks the line at the "|" only. */}
+            {/* Two lines on a phone (dates / events · nights), one from 640px with the "|" between. */}
             <span className="text-sm tabular-nums md:text-xl">
               {datesValid ? (
                 <>
-                  <span className="whitespace-nowrap">
-                    {dayMonthYear(dates.depart)} – {dayMonthYear(dates.ret)} |
+                  <span className="block whitespace-nowrap sm:inline">
+                    {dayMonthYear(dates.depart)} – {dayMonthYear(dates.ret)}
+                    <span className="hidden sm:inline"> |</span>
                   </span>{" "}
-                  <span className="whitespace-nowrap">
+                  <span className="block whitespace-nowrap sm:inline">
                     {count} · {nightsLabel(dayDiff(dates.depart, dates.ret))}
                   </span>
                 </>

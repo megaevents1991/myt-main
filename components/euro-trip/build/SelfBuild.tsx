@@ -28,6 +28,9 @@ import { ADD_BUTTON, CompatChip, KindTabs, LIST_PAGE, ShowMore } from "./parts";
 
 const SLOT_LABELS = ["אירוע ראשון", "אירוע שני", "אירוע שלישי (לא חובה)"];
 
+/** A slot's label; past the named three (a wider `max_events`) it is numbered, and optional. */
+const slotLabel = (i: number): string => SLOT_LABELS[i] ?? `אירוע ${i + 1} (לא חובה)`;
+
 const NO_FILTER: CatalogFilter = { query: "", month: "", kind: "all" };
 
 /** The category hubs' filter chip (components/CategoryEventsBrowser.tsx). */
@@ -86,7 +89,7 @@ function Tray() {
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted font-display text-xs font-black text-foreground">
                     {i + 1}
                   </span>
-                  <span className="text-muted-foreground">{SLOT_LABELS[i] ?? ""}</span>
+                  <span className="text-muted-foreground">{slotLabel(i)}</span>
                 </>
               )}
             </li>
@@ -97,10 +100,22 @@ function Tray() {
   );
 }
 
-/** A compact catalog card: the homepage card's art and body, with the route's add / remove. */
-function EventPick({ item: { event: e, compat, inRoute }, labelled }: { item: CatalogItem; labelled: boolean }) {
+/**
+ * A compact catalog card: the homepage card's art and body, with the route's add / remove.
+ * `full` = the route already holds `max_events`: nothing is "not fitting", there is just no room -
+ * no chip, no dimming, a neutral "המסלול מלא".
+ */
+function EventPick({
+  item: { event: e, compat, inRoute },
+  labelled,
+  full,
+}: {
+  item: CatalogItem;
+  labelled: boolean;
+  full: boolean;
+}) {
   const { addEvent, removeEvent } = useItinerary();
-  const blocked = !inRoute && !isAddable(compat);
+  const blocked = !inRoute && !full && !isAddable(compat);
   const price = computePackagePrice(e);
   return (
     <article
@@ -121,7 +136,7 @@ function EventPick({ item: { event: e, compat, inRoute }, labelled }: { item: Ca
         <p className={cn("text-[12.5px] text-muted-foreground", blocked && "opacity-40")}>
           <b className="tabular-nums text-foreground">{dayMonthYear(eventDay(e))}</b> • {placeLabel(e)}
         </p>
-        {labelled && !inRoute && <CompatChip compat={compat} className="mt-1" />}
+        {labelled && !inRoute && !full && <CompatChip compat={compat} className="mt-1" />}
         {price !== null && (
           <div className={cn("mt-auto flex items-baseline justify-between gap-1.5 pt-2", blocked && "opacity-40")}>
             <span className="text-[11px] text-muted-foreground">מחיר ממוצע לחבילה</span>
@@ -132,12 +147,23 @@ function EventPick({ item: { event: e, compat, inRoute }, labelled }: { item: Ca
           <button
             type="button"
             onClick={() => removeEvent(e.id)}
+            aria-label={`הסרת ${e.name} מהמסלול`}
             className="mt-2 w-full rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             ✓ במסלול · הסרה
           </button>
+        ) : full ? (
+          <button type="button" disabled aria-label={`${e.name} - המסלול מלא`} className={cn(ADD_BUTTON, "mt-2 w-full")}>
+            המסלול מלא
+          </button>
         ) : (
-          <button type="button" onClick={() => addEvent(e)} disabled={blocked} className={cn(ADD_BUTTON, "mt-2 w-full")}>
+          <button
+            type="button"
+            onClick={() => addEvent(e)}
+            disabled={blocked}
+            aria-label={blocked ? `${e.name} - לא מתאים למסלול` : `הוספת ${e.name} למסלול`}
+            className={cn(ADD_BUTTON, "mt-2 w-full")}
+          >
             {blocked ? "לא מתאים למסלול" : "+ הוספה למסלול"}
           </button>
         )}
@@ -167,6 +193,7 @@ export function SelfBuild() {
     setVisible(LIST_PAGE);
   };
   const range = settings.maxEvents > MIN_TRIP_EVENTS ? `${MIN_TRIP_EVENTS}-${settings.maxEvents}` : `${MIN_TRIP_EVENTS}`;
+  const full = state.route.length >= settings.maxEvents;
 
   return (
     <div className="flex flex-col gap-4">
@@ -219,11 +246,18 @@ export function SelfBuild() {
         <KindTabs value={filter.kind} onChange={(kind) => update({ kind })} />
       </div>
 
+      {full && (
+        // Said once here, not on every card.
+        <p role="status" className="m-0 rounded-2xl border-[1.5px] border-dashed border-border p-4 text-center text-sm font-semibold text-muted-foreground">
+          המסלול מלא - הסירו אירוע כדי להחליף
+        </p>
+      )}
+
       {items.length ? (
         <div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {items.slice(0, visible).map((item) => (
-              <EventPick key={item.event.id} item={item} labelled={state.route.length > 0} />
+              <EventPick key={item.event.id} item={item} labelled={state.route.length > 0} full={full} />
             ))}
           </div>
           <ShowMore hidden={items.length - visible} onClick={() => setVisible((v) => v + LIST_PAGE)} />

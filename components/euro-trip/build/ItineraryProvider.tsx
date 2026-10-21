@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -39,7 +40,7 @@ export type ItineraryApi = {
   settings: ItinerarySettings;
   /** Set once the page's `?events=` was read - before that the builder shows its empty state. */
   urlApplied: boolean;
-  /** Reads `?events=` into the state - `useItineraryUrl` calls it once. */
+  /** Reads `?events=` into the state - once per mount; later calls do nothing. */
   applyUrl: () => void;
   /** A message about the route the link opened (an event that is gone, or does not fit). */
   notice: string | null;
@@ -86,7 +87,12 @@ export function ItineraryProvider({
 
   // Read ?events= once. Called by `useItineraryUrl` from inside the page's Suspense boundary:
   // run from here (outside it) the update reached the flow before it hydrated - a mismatch.
+  // Exactly once per mount: the layout effect runs again on a Suspense re-reveal or a Fast
+  // Refresh, and a second `load` would send a customer mid-trip back to the build step.
+  const urlRead = useRef(false);
   const applyUrl = useCallback(() => {
+    if (urlRead.current) return;
+    urlRead.current = true;
     const ids = parseEventsParam(new URLSearchParams(window.location.search).get(EVENTS_PARAM), settings.maxEvents);
     const { route: found, dropped } = reconcileRoute(ids, byId);
     const { route, refused } = fitRoute(found, settings);

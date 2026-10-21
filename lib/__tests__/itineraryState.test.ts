@@ -220,6 +220,16 @@ describe("tickets, flight, hotels, steps", () => {
     expect(next.hotels).toEqual(s.hotels);
   });
 
+  it("fresh event data that moves the stay (coordinates only) re-fits the trip", () => {
+    // Same day, same flight city, same place name - but the venue is now in Paris: no move left.
+    const moved = { ...chelsea, location: { ...chelsea.location, latitude: 48.86, longitude: 2.35 } } as unknown as Event;
+    const next = reduce(parisLondon(), { type: "setEventData", event: moved });
+    expect(next.dates.moves).toEqual({});
+    expect(next.flight).toBeNull();
+    expect(next.hotels).toEqual({});
+    expect(next.tickets[702]).toEqual(ticket("t702"));
+  });
+
   it("fresh event data on another day re-fits the dates and clears flight + hotels", () => {
     const moved = { ...celine, date: "2027-05-11T20:00:00" } as unknown as Event;
     const next = reduce(parisLondon(), { type: "setEventData", event: moved });

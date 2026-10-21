@@ -68,14 +68,20 @@ export function catalogMonths(catalog: Event[]): string[] {
   return [...new Set(catalog.map((e) => eventDay(e).slice(0, 7)))].sort();
 }
 
-/** The self-build search: any word of the name or of the event's / flight's city; then month and kind. */
+/**
+ * The self-build search, then month and kind. Like the site's search (`multiTermSearch`,
+ * lib/search.ts) every word of the query must match, each in any field - "באד באני פריז" is the
+ * artist AND the city - over the Hebrew name, the English name, the event's city and the flight
+ * city. Plain substring matching: the builder's list is the catalog itself, no fuzzy index.
+ */
 export function filterCatalog(catalog: Event[], f: CatalogFilter): Event[] {
-  const q = f.query.trim().toLowerCase();
+  const words = f.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return catalog.filter((e) => {
     if (f.kind !== "all" && eventKind(e) !== f.kind) return false;
     if (f.month && !eventDay(e).startsWith(f.month)) return false;
-    if (!q) return true;
-    return [e.name, eventCityName(e), e.location?.name ?? ""].some((t) => t.toLowerCase().includes(q));
+    if (!words.length) return true;
+    const text = [e.name, e.name_english ?? "", eventCityName(e), e.location?.name ?? ""].join(" ").toLowerCase();
+    return words.every((w) => text.includes(w));
   });
 }
 

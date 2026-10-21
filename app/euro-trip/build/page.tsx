@@ -6,6 +6,7 @@ import { getCachedEvents } from "@/lib/eventsData";
 import { isItineraryEligible } from "@/lib/itinerary/eligibility";
 import { itineraryOn } from "@/lib/itinerary/settings";
 import { getItinerarySettings } from "@/lib/itinerary/settings.server";
+import { slimTripEvent } from "@/lib/itinerary/slim";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { ItineraryProvider } from "@/components/euro-trip/build/ItineraryProvider";
 import { ItineraryFlow } from "@/components/euro-trip/build/ItineraryFlow";
@@ -43,7 +44,8 @@ export default async function EuroTripBuildPage() {
   if (!events.length) throw new Error("Euro trip builder: events unavailable - keeping last good static page");
 
   const todayIso = new Date().toISOString().slice(0, 10);
-  const catalog = events.filter((e) => isItineraryEligible(e, todayIso));
+  // Only what the builder reads goes to the browser (1.6 MB -> a fraction): lib/itinerary/slim.ts.
+  const catalog = events.filter((e) => isItineraryEligible(e, todayIso)).map(slimTripEvent);
 
   return (
     <>

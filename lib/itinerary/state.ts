@@ -13,7 +13,7 @@
  */
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { clampTripDates, defaultTripDates, moves, stays } from "./dates";
-import { eventDay, stayPoint } from "./geo";
+import { eventDay, eventPoint, stayPoint } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import type { Compat, TripDates } from "./types";
@@ -150,9 +150,23 @@ function withRoute(state: ItineraryState, next: Event[]): ItineraryState {
   };
 }
 
-/** Where the trip goes and sleeps for this event: what its dates, stays and legs hang on. */
-const shapeOf = (e: Event): string =>
-  [eventDay(e), e.location?.city_iata ?? "", stayPoint(e).point.name].join("|");
+/**
+ * Where the trip goes and sleeps for this event: what its dates, stays and legs hang on. The
+ * coordinates count too - moving a venue can make two neighbours one city (or two).
+ */
+const shapeOf = (e: Event): string => {
+  const { point } = stayPoint(e);
+  const at = eventPoint(e);
+  return [
+    eventDay(e),
+    e.location?.city_iata ?? "",
+    point.name,
+    point.latitude,
+    point.longitude,
+    at.latitude,
+    at.longitude,
+  ].join("|");
+};
 
 export function itineraryReducer(state: ItineraryState, action: ItineraryAction): ItineraryState {
   switch (action.type) {

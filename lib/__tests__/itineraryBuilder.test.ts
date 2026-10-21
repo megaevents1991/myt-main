@@ -89,6 +89,18 @@ describe("the self-build catalog", () => {
     expect(filterCatalog(catalog, { query: "  גרייסי ", month: "", kind: "all" }).map((e) => e.id)).toEqual([896, 1097]);
   });
 
+  it("every word of a query must match - each in any field, English names too", () => {
+    const badParis = { ...ev(1500, "באד באני", "2027-05-20", PARIS), name_english: "Bad Bunny" } as unknown as Event;
+    const badLondon = { ...ev(1501, "באד באני", "2027-05-22", LONDON), name_english: "Bad Bunny" } as unknown as Event;
+    const list = [...catalog, badParis, badLondon];
+    const ids = (query: string) => filterCatalog(list, { query, month: "", kind: "all" }).map((e) => e.id);
+    expect(ids("באד באני פריז")).toEqual([1500]);
+    expect(ids("באד באני")).toEqual([1500, 1501]);
+    expect(ids("bad bunny london")).toEqual([]); // the city is stored in Hebrew
+    expect(ids("BAD   bunny")).toEqual([1500, 1501]);
+    expect(ids("סלין לונדון")).toEqual([]);
+  });
+
   it("an empty route sorts by date and labels nothing", () => {
     const items = catalogItems([], [chelsea, celine], S);
     expect(items.map((i) => i.event.id)).toEqual([618, 702]);

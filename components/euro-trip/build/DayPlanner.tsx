@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/he";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -9,6 +10,7 @@ import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { addDays, moves, stays, tripDateBounds } from "@/lib/itinerary/dates";
 import { dayDiff, eventDay } from "@/lib/itinerary/geo";
 import { MIN_TRIP_EVENTS } from "@/lib/itinerary/state";
+import type { TripDates } from "@/lib/itinerary/types";
 import { useItinerary } from "./ItineraryProvider";
 import { PANEL, PanelTitle, nightsLabel } from "./parts";
 
@@ -68,6 +70,8 @@ function DateStepper({
  */
 export function DayPlanner() {
   const { state, setDates } = useItinerary();
+  // What the last stepper press set, read out by screen readers ("טיסה הלוך 22/10").
+  const [said, setSaid] = useState("");
   const { route, dates } = state;
   if (route.length < MIN_TRIP_EVENTS || !DAY_RE.test(dates.depart) || !DAY_RE.test(dates.ret)) return null;
 
@@ -77,6 +81,10 @@ export function DayPlanner() {
   const count = dayDiff(dates.depart, dates.ret) + 1;
   const days = Array.from({ length: count }, (_, i) => addDays(dates.depart, i));
   const eventNo = new Map(route.map((e, i) => [eventDay(e), i + 1]));
+  const move = (label: string, day: string, next: TripDates) => {
+    setDates(next);
+    setSaid(`${label} ${dayMonth(day)}`);
+  };
 
   return (
     <section className={PANEL} aria-labelledby="trip-days-heading">
@@ -153,19 +161,30 @@ export function DayPlanner() {
           label="טיסה הלוך"
           value={dates.depart}
           range={bounds.depart}
-          onChange={(depart) => setDates({ ...dates, depart })}
+          onChange={(depart) => move("טיסה הלוך", depart, { ...dates, depart })}
         />
-        {ms.map((m) => (
-          <DateStepper
-            key={m.key}
-            label={`מעבר ל${stayCityName(m.b)}`}
-            value={dates.moves[m.key]}
-            range={bounds.moves[m.key]}
-            onChange={(day) => setDates({ ...dates, moves: { ...dates.moves, [m.key]: day } })}
-          />
-        ))}
-        <DateStepper label="טיסה חזור" value={dates.ret} range={bounds.ret} onChange={(ret) => setDates({ ...dates, ret })} />
+        {ms.map((m) => {
+          const label = `מעבר ל${stayCityName(m.b)}`;
+          return (
+            <DateStepper
+              key={m.key}
+              label={label}
+              value={dates.moves[m.key]}
+              range={bounds.moves[m.key]}
+              onChange={(day) => move(label, day, { ...dates, moves: { ...dates.moves, [m.key]: day } })}
+            />
+          );
+        })}
+        <DateStepper
+          label="טיסה חזור"
+          value={dates.ret}
+          range={bounds.ret}
+          onChange={(ret) => move("טיסה חזור", ret, { ...dates, ret })}
+        />
       </div>
+      <p className="sr-only" aria-live="polite">
+        {said}
+      </p>
     </section>
   );
 }

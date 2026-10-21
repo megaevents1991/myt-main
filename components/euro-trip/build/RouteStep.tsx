@@ -170,7 +170,13 @@ function CandidateRow({ candidate: { event: e, compat }, onAdd }: { candidate: C
         </div>
         <CompatChip compat={compat} className="mt-1.5" />
       </div>
-      <button type="button" className={cn(ADD_BUTTON, "shrink-0")} disabled={blocked} onClick={onAdd}>
+      <button
+        type="button"
+        className={cn(ADD_BUTTON, "shrink-0")}
+        disabled={blocked}
+        onClick={onAdd}
+        aria-label={blocked ? `${e.name} - לא מתאים למסלול` : `הוספת ${e.name} למסלול`}
+      >
         {blocked ? "לא מתאים" : "+ הוספה"}
       </button>
     </li>
