@@ -18,8 +18,8 @@ import {
   type HubKind,
   type HubSort,
   type HubView,
-  type RouteCardData,
-} from "@/lib/itinerary/routeCard";
+} from "@/lib/itinerary/hubView";
+import type { RouteCardData } from "@/lib/itinerary/routeCard";
 
 const KINDS: { value: HubKind; label: string }[] = [
   { value: "all", label: "הכל" },
@@ -59,7 +59,7 @@ function BuildTile() {
       </span>
       <span className="font-display text-xl font-extrabold">בנו טריפ משלכם</span>
       <span className="max-w-[16rem] text-sm leading-relaxed text-muted-foreground">
-        בחרו אירוע, ואנחנו נראה מה עוד אפשר לשלב אליו - לפי ימים ומרחק.
+        בחרו אירוע, ואנחנו נראה מה עוד אפשר לשלב אליו, לפי ימים ומרחק.
       </span>
     </Link>
   );
@@ -217,7 +217,7 @@ export function EuroTripHub({ cards, headingId }: { cards: RouteCardData[]; head
           <div className="grid gap-4 sm:auto-rows-fr sm:grid-cols-2 lg:grid-cols-3" role="list" aria-labelledby={headingId}>
             {shown.slice(0, fitted.visible).map((c, i) => (
               <div key={c.ids.join("-")} role="listitem">
-                <RouteCard data={c} priority={i < 3} />
+                <RouteCard data={c} eager={i < 3} />
               </div>
             ))}
             <div role="listitem">

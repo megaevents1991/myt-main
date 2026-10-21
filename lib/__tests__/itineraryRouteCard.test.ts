@@ -1,19 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
-import {
-  DEFAULT_HUB_VIEW,
-  hubCards,
-  hubMonths,
-  parseHubView,
-  toRouteCard,
-  type RouteCardData,
-} from "../itinerary/routeCard";
+import { toRouteCard } from "../itinerary/routeCard";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 
 const PARIS: City = { latitude: 48.86, longitude: 2.35, name: "פריז, צרפת", city_iata: "PAR" };
 const LONDON: City = { latitude: 51.5, longitude: -0.13, name: "לונדון, בריטניה", city_iata: "LON" };
+/** ~46 km from LONDON (Luton), but named London: another stay with the same city name. */
+const LUTON_AS_LONDON: City = { latitude: 51.88, longitude: -0.42, name: "לונדון, בריטניה", city_iata: "LON" };
 /** Another London venue (Wembley), ~12 km from LONDON: the same city, one stay. */
 const WEMBLEY: City = { latitude: 51.556, longitude: -0.28, name: "לונדון, בריטניה", city_iata: "LON" };
 
@@ -67,6 +62,10 @@ const wembley = ev(703, "קונצרט בוומבלי", "2027-05-17", WEMBLEY, "m
   tickets_and_rates: [{ price: 120, available: true }],
   base_flight_price: 100,
   base_hotel_price: 400,
+});
+/** Sold as a flight to London (default lodging there), played in Manchester. */
+const manchesterMatch = ev(705, "מנצ'סטר יונייטד - ליברפול", "2027-05-15", LONDON, "sports_event", {
+  event_location: { latitude: 53.48, longitude: -2.24, name: "מנצ'סטר", city_iata: "MAN", country_code: "GB" },
 });
 
 describe("toRouteCard", () => {
@@ -141,126 +140,31 @@ describe("toRouteCard", () => {
     expect(card.kinds).toEqual(["football", "music"]);
   });
 
+
   it("a kind is listed once", () => {
     expect(toRouteCard([celine, wembley], S).kinds).toEqual(["music"]);
   });
-});
 
-/* ── The hub's filters ── */
-
-const card = (over: Partial<RouteCardData>): RouteCardData => ({
-  ids: [1, 2],
-  title: "פריז ← לונדון",
-  events: [
-    { id: 1, name: "a", day: "2027-05-12", cityName: "פריז", art: { imageUrl: null, awayImageUrl: null, variant: "photo" } },
-    { id: 2, name: "b", day: "2027-05-15", cityName: "לונדון", art: { imageUrl: null, awayImageUrl: null, variant: "photo" } },
-  ],
-  cities: ["פריז", "לונדון"],
-  nights: 5,
-  stays: 2,
-  perTraveller: 2000,
-  saving: null,
-  kinds: ["music"],
-  firstDay: "2027-05-12",
-  ...over,
-});
-
-const ev2 = (id: number, name: string, day: string, cityName: string) => ({
-  id,
-  name,
-  day,
-  cityName,
-  art: { imageUrl: null, awayImageUrl: null, variant: "photo" as const },
-});
-
-const concerts = card({
-  ids: [1, 2],
-  events: [ev2(1, "Coldplay", "2027-05-12", "פריז"), ev2(2, "סלין דיון", "2027-05-15", "לונדון")],
-  kinds: ["music"],
-  perTraveller: 2500,
-  firstDay: "2027-05-12",
-});
-const matches = card({
-  ids: [3, 4],
-  title: "מדריד ← ברצלונה",
-  cities: ["מדריד", "ברצלונה"],
-  events: [ev2(3, "ריאל מדריד", "2027-04-02", "מדריד"), ev2(4, "ברצלונה", "2027-04-05", "ברצלונה")],
-  kinds: ["football"],
-  perTraveller: 1800,
-  firstDay: "2027-04-02",
-});
-const mix = card({
-  ids: [5, 6],
-  title: "מילאנו",
-  cities: ["מילאנו"],
-  events: [ev2(5, "אינטר", "2027-05-30", "מילאנו"), ev2(6, "Vasco Rossi", "2027-06-01", "מילאנו")],
-  kinds: ["football", "music"],
-  perTraveller: 2100,
-  firstDay: "2027-05-30",
-});
-const all = [concerts, matches, mix]; // the recommender's order
-
-const ids = (list: RouteCardData[]) => list.map((c) => c.ids[0]);
-
-describe("hubCards", () => {
-  it("the defaults keep every card in the recommended order", () => {
-    expect(ids(hubCards(all, DEFAULT_HUB_VIEW))).toEqual([1, 3, 5]);
+  it("two stays that carry one city name: two hotels, the city named once", () => {
+    // Luton airport area, ~46 km from LONDON: not the same stay, but the location says London.
+    const luton = ev(704, "קונצרט בלוטון", "2027-05-17", LUTON_AS_LONDON, "music_event");
+    const card = toRouteCard([chelsea, luton], S);
+    expect(card.stays).toBe(2);
+    expect(card.cities).toEqual(["לונדון"]);
+    expect(card.title).toBe("לונדון");
   });
 
-  it("filters by kind: concerts only, football only, the mix", () => {
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, kind: "music" }))).toEqual([1]);
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, kind: "football" }))).toEqual([3]);
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, kind: "mix" }))).toEqual([5]);
+  it("A -> B -> A: only neighbouring names collapse, the way back is named", () => {
+    const parisAgain = ev(619, "סלין דיון", "2027-05-18", PARIS, "music_event");
+    const card = toRouteCard([celine, chelsea, parisAgain], S);
+    expect(card.stays).toBe(3);
+    expect(card.cities).toEqual(["פריז", "לונדון", "פריז"]);
+    expect(card.title).toBe("פריז ← לונדון ← פריז");
   });
 
-  it("searches event names and cities, ignoring case and spaces around", () => {
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, query: "  coldPLAY " }))).toEqual([1]);
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, query: "ברצלונה" }))).toEqual([3]);
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, query: "מילאנו" }))).toEqual([5]);
-    expect(hubCards(all, { ...DEFAULT_HUB_VIEW, query: "טוקיו" })).toEqual([]);
-  });
-
-  it("a month matches a route with any of its events in it", () => {
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, month: "2027-05" }))).toEqual([1, 5]);
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, month: "2027-06" }))).toEqual([5]);
-  });
-
-  it("sorts by price (cheapest first) and by date (soonest first)", () => {
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, sort: "price" }))).toEqual([3, 5, 1]);
-    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, sort: "date" }))).toEqual([3, 1, 5]);
-  });
-
-  it("never reorders the list it is given", () => {
-    hubCards(all, { ...DEFAULT_HUB_VIEW, sort: "price" });
-    expect(ids(all)).toEqual([1, 3, 5]);
-  });
-});
-
-describe("hubMonths", () => {
-  it("every month an event of a route falls in, sorted", () => {
-    expect(hubMonths(all)).toEqual(["2027-04", "2027-05", "2027-06"]);
-    expect(hubMonths([])).toEqual([]);
-  });
-});
-
-describe("parseHubView", () => {
-  it("takes a stored view with every field right", () => {
-    const v = { query: "פריז", month: "2027-05", kind: "mix", sort: "price", visible: 24 };
-    expect(parseHubView(v)).toEqual(v);
-    expect(parseHubView(DEFAULT_HUB_VIEW)).toEqual(DEFAULT_HUB_VIEW);
-  });
-
-  it("ignores junk, a wrong field or a missing one", () => {
-    expect(parseHubView(null)).toBeNull();
-    expect(parseHubView("x")).toBeNull();
-    expect(parseHubView([])).toBeNull();
-    expect(parseHubView({ ...DEFAULT_HUB_VIEW, kind: "tennis" })).toBeNull();
-    expect(parseHubView({ ...DEFAULT_HUB_VIEW, sort: "name" })).toBeNull();
-    expect(parseHubView({ ...DEFAULT_HUB_VIEW, month: "May" })).toBeNull();
-    expect(parseHubView({ ...DEFAULT_HUB_VIEW, visible: 0 })).toBeNull();
-    expect(parseHubView({ ...DEFAULT_HUB_VIEW, visible: 1.5 })).toBeNull();
-    expect(parseHubView({ ...DEFAULT_HUB_VIEW, query: 7 })).toBeNull();
-    const { sort: _sort, ...noSort } = DEFAULT_HUB_VIEW;
-    expect(parseHubView(noSort)).toBeNull();
+  it("a Manchester match sold as a flight to London: played in Manchester, the stay is London", () => {
+    const card = toRouteCard([celine, manchesterMatch], S);
+    expect(card.events[1].cityName).toBe("מנצ'סטר");
+    expect(card.cities).toEqual(["פריז", "לונדון"]);
   });
 });

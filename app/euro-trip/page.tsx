@@ -60,6 +60,12 @@ export default async function EuroTripPage() {
   if (!itineraryOn(settings, process.env.VERCEL_ENV)) notFound();
 
   const { events } = await getCachedEvents();
+  // Never publish a hub with zero routes because the catalog failed to load - a transient DB
+  // failure during ISR regeneration would bake an empty page in for an hour. Throwing makes
+  // the regeneration fail, so Next keeps serving the last good page instead.
+  if (!events.length) {
+    throw new Error("Euro trip hub: events unavailable - keeping last good static page");
+  }
   const todayIso = new Date().toISOString().slice(0, 10);
   const byId = new Map(events.map((e) => [e.id, e]));
   const cards: RouteCardData[] = recommendRoutes(events, settings, todayIso).flatMap((r) => {
@@ -109,7 +115,7 @@ export default async function EuroTripPage() {
         </svg>
 
         <div className="container mx-auto max-w-4xl text-center">
-          <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-secondary">בנו את היורו טריפ שלכם</p>
+          <p className="mb-3 text-xs font-semibold tracking-wide text-secondary">בנו את היורו טריפ שלכם</p>
           <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl" dir="ltr">
             {TITLE}
           </h1>
@@ -127,7 +133,7 @@ export default async function EuroTripPage() {
       <div className="w-full bg-background px-4 py-10 md:px-6 lg:py-14" dir="rtl">
         <div className="container mx-auto space-y-12 lg:space-y-16">
           <section aria-labelledby="euro-trip-routes-heading">
-            <SectionHeading id="euro-trip-routes-heading">מסלולים מומלצים</SectionHeading>
+            <SectionHeading id="euro-trip-routes-heading">טריפים מוכנים</SectionHeading>
             <EuroTripHub cards={cards} headingId="euro-trip-routes-heading" />
           </section>
 

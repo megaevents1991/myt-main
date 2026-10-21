@@ -16,11 +16,15 @@ const dayMonth = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}`;
  */
 export function RouteCard({
   data,
-  priority = false,
+  eager = false,
 }: {
   data: RouteCardData;
-  /** The first row on screen: fetch its art with the page. */
-  priority?: boolean;
+  /**
+   * The first row: its art loads with the page (normal priority, not preloaded - the grid is
+   * below the hero, and `priority` on every card saturated the phone network on the homepage).
+   * The rest stays lazy.
+   */
+  eager?: boolean;
 }) {
   const names = data.events.map((e) => e.name).join(" + ");
   const tickets = data.events.length;
@@ -55,7 +59,7 @@ export function RouteCard({
                   bgScale={e.art.bgScale}
                   imageOffsetX={e.art.imageOffsetX}
                   imageOffsetY={e.art.imageOffsetY}
-                  priority={priority}
+                  loading={eager ? "eager" : "lazy"}
                   sizes={tickets > 2 ? "(max-width: 640px) 30vw, 160px" : "(max-width: 640px) 45vw, 240px"}
                   className="h-full w-full"
                 />
