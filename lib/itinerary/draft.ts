@@ -171,6 +171,29 @@ export function parseDraft(raw: string | null, now: number, catalog: Map<number,
   };
 }
 
+/** What the browser says about how this page was loaded (`PerformanceNavigationTiming`). */
+export type PageNavigation = { type?: string; name?: string };
+
+const trimPath = (p: string): string => p.replace(/\/+$/, "") || "/";
+
+/**
+ * May this page load bring the tab's draft back? Only when the builder page ITSELF was
+ * reloaded or reached by the browser's back / forward - a refresh, or a phone bringing back a
+ * dropped tab. A fresh visit (a hub card, a link, a typed address) starts clean, and its first
+ * save replaces the old draft: the regular order's rule (a draft lives while the tab is on its
+ * order page - components/order/OrderDraftSweeper.tsx), without touching the root layout.
+ * `nav.name` is the URL the document was loaded at: a reload of the hub followed by a click on
+ * a card is a reload entry for the hub, not for this page.
+ */
+export function draftMayRestore(nav: PageNavigation | null | undefined, pathname: string): boolean {
+  if (!nav || (nav.type !== "reload" && nav.type !== "back_forward")) return false;
+  try {
+    return trimPath(new URL(nav.name ?? "").pathname) === trimPath(pathname);
+  } catch {
+    return false;
+  }
+}
+
 /** The same events, in any order (`?events=` and a draft name the same trip). */
 export function sameRouteIds(a: Event[], b: Event[]): boolean {
   if (!a.length || a.length !== b.length) return false;

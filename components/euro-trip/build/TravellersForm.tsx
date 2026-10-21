@@ -22,11 +22,12 @@ const LABELS: Record<ContactField, string> = {
   phone: "טלפון נייד",
 };
 
-const INPUT_ATTRS: Record<ContactField, { type: string; autoComplete: string; name: string }> = {
-  firstName: { type: "text", autoComplete: "given-name", name: "first-name" },
-  lastName: { type: "text", autoComplete: "family-name", name: "last-name" },
-  email: { type: "email", autoComplete: "email", name: "email" },
-  phone: { type: "tel", autoComplete: "tel", name: "phone" },
+/** An email and a phone number are typed left to right (aligned with the form's column); names as the live form. */
+const INPUT_ATTRS: Record<ContactField, { type: string; autoComplete: string; name: string; dir: "rtl" | "ltr" }> = {
+  firstName: { type: "text", autoComplete: "given-name", name: "first-name", dir: "rtl" },
+  lastName: { type: "text", autoComplete: "family-name", name: "last-name", dir: "rtl" },
+  email: { type: "email", autoComplete: "email", name: "email", dir: "ltr" },
+  phone: { type: "tel", autoComplete: "tel", name: "phone", dir: "ltr" },
 };
 
 /** An input id from an error key (`contact.firstName` -> `trip-pax-contact-firstName`). */
@@ -39,6 +40,7 @@ function Field({
   value,
   error,
   traveller,
+  required,
   onChange,
   onBlur,
 }: {
@@ -48,6 +50,8 @@ function Field({
   /** Shown only once the field was left or the form was sent (the live rule). */
   error: string | undefined;
   traveller: number;
+  /** Required in the form's current mode (another traveller's name only to pay). */
+  required: boolean;
   onChange: (value: string) => void;
   onBlur: () => void;
 }) {
@@ -61,16 +65,21 @@ function Field({
       </Label>
       <Input
         id={id}
-        dir="rtl"
+        dir={attrs.dir}
         type={attrs.type}
         name={attrs.name}
         autoComplete={attrs.autoComplete}
         placeholder={LABELS[field]}
         aria-label={`${LABELS[field]} לנוסע ${traveller}`}
-        aria-required="true"
+        aria-required={required || undefined}
         aria-invalid={!!error}
         aria-describedby={error ? errorId : undefined}
-        className={cn("h-11 text-start", error && "border-red-500 focus-visible:ring-red-500")}
+        className={cn(
+          "h-11",
+          // Aligned with the form's (right-hand) edge either way: the end of a left-to-right field.
+          attrs.dir === "ltr" ? "text-end" : "text-start",
+          error && "border-red-500 focus-visible:ring-red-500",
+        )}
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         onBlur={onBlur}
@@ -95,12 +104,15 @@ export function TravellersForm({
   value,
   errors,
   touched,
+  othersRequired,
   onChange,
   onTouch,
   formRef,
 }: {
   /** Already fitted to the party (`fitTravellers`). */
   value: TravellersInput;
+  /** Every traveller's name is required (to pay); for the 24-hour hold only the main contact's. */
+  othersRequired: boolean;
   errors: Record<string, string>;
   /** Error keys whose message may show (left once, or the form was sent). */
   touched: ReadonlySet<string>;
@@ -123,7 +135,7 @@ export function TravellersForm({
         </PanelTitle>
         <p className="m-0 text-sm text-muted-foreground">יש להזין שמות כפי שמופיעים בדרכון</p>
       </div>
-      <form className="flex flex-col gap-5" dir="rtl" aria-labelledby="trip-pax-title" noValidate onSubmit={(e) => e.preventDefault()}>
+      <form className="flex flex-col gap-5" dir="rtl" noValidate onSubmit={(e) => e.preventDefault()}>
         <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
           <legend className="mb-2 p-0 text-[15px] font-bold">נוסע 1 · איש הקשר</legend>
           <div className="grid grid-cols-2 gap-3">
@@ -135,6 +147,7 @@ export function TravellersForm({
                 value={value.contact[f]}
                 error={shown(contactKey(f))}
                 traveller={1}
+                required
                 onChange={(v) => setContact(f, v)}
                 onBlur={() => onTouch(contactKey(f))}
               />
@@ -149,6 +162,7 @@ export function TravellersForm({
                 value={value.contact[f]}
                 error={shown(contactKey(f))}
                 traveller={1}
+                required
                 onChange={(v) => setContact(f, v)}
                 onBlur={() => onTouch(contactKey(f))}
               />
@@ -168,6 +182,7 @@ export function TravellersForm({
                     value={other[f]}
                     error={shown(otherKey(row, f))}
                     traveller={row + 2}
+                    required={othersRequired}
                     onChange={(v) => setOther(row, f, v)}
                     onBlur={() => onTouch(otherKey(row, f))}
                   />

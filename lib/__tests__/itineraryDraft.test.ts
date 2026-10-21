@@ -5,6 +5,7 @@ import {
   ITINERARY_DRAFT_KEY,
   ITINERARY_DRAFT_TTL_MS,
   ITINERARY_DRAFT_VERSION,
+  draftMayRestore,
   parseDraft,
   sameRouteIds,
   serializeDraft,
@@ -216,5 +217,32 @@ describe("sameRouteIds - the URL wins over a draft for another trip", () => {
 
   it("one key for the tab", () => {
     expect(ITINERARY_DRAFT_KEY).toBe("myt:itinerary-draft");
+  });
+});
+
+describe("draftMayRestore - only a reload or back / forward of the builder itself", () => {
+  const BUILD = "/euro-trip/build";
+  const at = (path: string) => `http://localhost:3200${path}`;
+
+  it("a refresh of the builder, or the browser's back / forward to it, brings the draft back", () => {
+    expect(draftMayRestore({ type: "reload", name: at("/euro-trip/build?events=872,644") }, BUILD)).toBe(true);
+    expect(draftMayRestore({ type: "back_forward", name: at("/euro-trip/build?events=872,644") }, BUILD)).toBe(true);
+    expect(draftMayRestore({ type: "reload", name: at("/euro-trip/build/") }, BUILD)).toBe(true);
+  });
+
+  it("a fresh visit starts clean (a hub card, a link, a typed address)", () => {
+    expect(draftMayRestore({ type: "navigate", name: at("/euro-trip/build?events=872,644") }, BUILD)).toBe(false);
+    expect(draftMayRestore({ type: "prerender", name: at(BUILD) }, BUILD)).toBe(false);
+  });
+
+  it("a reload of ANOTHER page, then a click into the builder, is not a reload of the builder", () => {
+    expect(draftMayRestore({ type: "reload", name: at("/euro-trip") }, BUILD)).toBe(false);
+  });
+
+  it("the browser does not say: no restore", () => {
+    expect(draftMayRestore(null, BUILD)).toBe(false);
+    expect(draftMayRestore(undefined, BUILD)).toBe(false);
+    expect(draftMayRestore({ type: "reload" }, BUILD)).toBe(false);
+    expect(draftMayRestore({ type: "reload", name: "not a url" }, BUILD)).toBe(false);
   });
 });

@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
 import { defaultTripDates, stays } from "../itinerary/dates";
 import { markupDiscount, tierMarkups } from "../itinerary/price";
-import { canContinue, hotelPerTraveller, livePerTraveller, livePrice } from "../itinerary/progress";
+import {
+  SUMMARY_HOLD_SECONDS,
+  canContinue,
+  hotelPerTraveller,
+  livePerTraveller,
+  livePrice,
+} from "../itinerary/progress";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
-import { INITIAL_ITINERARY_STATE, type ItineraryState } from "../itinerary/state";
+import { INITIAL_ITINERARY_STATE, itineraryReducer, type ItineraryState } from "../itinerary/state";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 
@@ -117,9 +123,12 @@ describe("canContinue - each stage of the flow", () => {
     expect(canContinue({ ...withTickets, tickets: { ...withTickets.tickets, 702: ticket("", 150) } }).tickets).toBe(false);
   });
 
-  it("flights: a flight is set", () => {
+  it("flights: a flight is set, searched for the trip's party", () => {
     expect(canContinue(withTickets).flights).toBe(false);
     expect(canContinue(withFlight).flights).toBe(true);
+    // An offer priced for three is not the price of a party of two.
+    const forThree = { ...flight, numOfTravelers: 3 } as ItineraryFlight;
+    expect(canContinue({ ...withFlight, flight: forThree }).flights).toBe(false);
   });
 
   it("hotels: every stay passes the hotels step's own rule (its nights under the flight, the party)", () => {
@@ -163,13 +172,34 @@ describe("livePerTraveller", () => {
     expect(livePerTraveller({ ...withFlight, hotels: { [parisStay.key]: parisHotel } }, S)).toBeNull();
     // A ticket bought for another party size.
     expect(livePerTraveller({ ...full, tickets: { ...full.tickets, 702: ticket("t702", 150, 3) } }, S)).toBeNull();
+    // A flight priced for another party size.
+    expect(livePerTraveller({ ...full, flight: { ...flight, numOfTravelers: 3 } as ItineraryFlight }, S)).toBeNull();
   });
 
-  it("Σ tickets + flight / pax + Σ hotels per traveller + Σ tiered markups, rounded up like the live summary", () => {
+  it("the live summary's rounding: the party's total up once, then the price per traveller up", () => {
     // tickets 210 + 150 = 360; flight 1300 / 2 = 650; hotels 450 + 300 = 750;
-    // markups: 250 in full (the dearest) + 175 x 70% = 122.5 -> 372.5. Exact: 2132.5 -> $2,133.
+    // markups: 250 in full (the dearest) + 175 x 70% = 122.5 -> 372.5. Exact: 2132.5 a traveller,
+    // 4265 for the party (no rounding needed) -> $4,265; per traveller ceil(4265 / 2) = $2,133.
     expect([...tierMarkups(route, S).values()].reduce((a, b) => a + b, 0)).toBe(372.5);
+    expect(livePrice(full, S)?.total).toBe(4265);
     expect(livePerTraveller(full, S)).toBe(2133);
+  });
+
+  it("an uneven flight share is never rounded before the party's total", () => {
+    // A party of three: the $1,000.01 flight is charged once, not as 3 x 333.34.
+    const three: ItineraryState = {
+      ...full,
+      pax: 3,
+      tickets: { 618: ticket("t618", 100, 3), 702: ticket("t702", 100, 3) },
+      flight: { ...flight, price: 1000.01, numOfTravelers: 3 } as ItineraryFlight,
+      hotels: {
+        [parisStay.key]: hotel("p", "900", "2027-05-11", "2027-05-13", 3),
+        [londonStay.key]: hotel("l", "1200", "2027-05-13", "2027-05-16", 3),
+      },
+    };
+    // (200 tickets + 300 + 400 hotels + 372.5 markups) x 3 = 3817.5, + 1000.01 = 4817.51 -> 4818;
+    // per traveller ceil(4818 / 3) = 1606.
+    expect(livePrice(three, S)).toMatchObject({ total: 4818, perTraveller: 1606 });
   });
 
   it("the price box's lines: the service is the full markups, the trip's discount is markupDiscount", () => {
@@ -181,15 +211,15 @@ describe("livePerTraveller", () => {
       service: 425,
       discount: markupDiscount(route, S),
       perTraveller: 2133,
-      total: 4266,
+      total: 4265,
     });
     expect(p?.discount).toBe(52.5);
     expect(p ? p.tickets + p.flight + p.hotels + p.service - p.discount : 0).toBe(2132.5);
   });
 
   it("follows the settings' tiers", () => {
-    // 175 x 50% = 87.5 instead of 122.5: 35 less -> 2097.5 -> 2098.
-    expect(livePerTraveller(full, { ...S, tier2Pct: 50 })).toBe(2098);
+    // 175 x 50% = 87.5 instead of 122.5: 35 less a traveller -> 4195 for two -> 2097.5 -> 2098.
+    expect(livePrice(full, { ...S, tier2Pct: 50 })).toMatchObject({ total: 4195, perTraveller: 2098 });
   });
 
   it("a ticket or a hotel whose price is not a number prices nothing", () => {
@@ -197,5 +227,26 @@ describe("livePerTraveller", () => {
     expect(livePerTraveller(broken, S)).toBeNull();
     const noPrice = { ...full, hotels: { ...full.hotels, [parisStay.key]: { ...parisHotel, price: "" } } };
     expect(livePerTraveller(noPrice as ItineraryState, S)).toBeNull();
+  });
+});
+
+describe("the summary's 15-minute hold", () => {
+  it("lasts the regular summary's 15 minutes", () => {
+    expect(SUMMARY_HOLD_SECONDS).toBe(15 * 60);
+  });
+
+  it("running out releases every priced piece and keeps the trip's shape", () => {
+    const held = { ...full, step: "summary" as const, train: [] };
+    const out = itineraryReducer(held, { type: "releaseHold" });
+    expect(out.tickets).toEqual({});
+    expect(out.flight).toBeNull();
+    expect(out.hotels).toEqual({});
+    expect(out).toMatchObject({ route, dates, pax: 2, step: "summary", mode: held.mode });
+    expect(livePerTraveller(out, S)).toBeNull();
+    expect(canContinue(out)).toEqual({ build: true, tickets: false, flights: false, hotels: false });
+  });
+
+  it("nothing left to release: the same state back", () => {
+    expect(itineraryReducer(base, { type: "releaseHold" })).toBe(base);
   });
 });

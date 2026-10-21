@@ -1,21 +1,24 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BedDouble, CircleAlert, Lock, Plane, TrainFront } from "lucide-react";
+import { AlarmClockCheck, BedDouble, CircleAlert, Lock, Plane, TrainFront } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { OrderIssueState } from "@/components/ui/OrderIssueState";
+import { Timer } from "@/components/ui/Timer";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
 import { roomsLabel } from "@/lib/events/readyPackage";
 import { rateRoomName } from "@/lib/hotels/roomName";
-import { dayMonth, dayMonthYear, stayCityName } from "@/lib/itinerary/builder";
+import { dayMonth, dayMonthYear, stayCityName, tripCities } from "@/lib/itinerary/builder";
 import { moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import { cardRows } from "@/lib/itinerary/flightsView";
 import { dayDiff, eventDay } from "@/lib/itinerary/geo";
 import { estimateItinerary } from "@/lib/itinerary/price";
-import { canContinue, livePrice } from "@/lib/itinerary/progress";
+import { SUMMARY_HOLD_SECONDS, canContinue, livePrice } from "@/lib/itinerary/progress";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import {
   contactKey,
@@ -51,6 +54,8 @@ const legStops = (leg: FlightSegment): string => {
 const TERMS_ERROR = "יש לאשר את פרטי ההזמנה ותנאי השימוש";
 /** Task A15 builds the hold; until then the button says so. */
 const HOLD_PENDING = "שמירה תתווסף בשלב הבא";
+/** The live summary's kill switch for the customer's 24-hour hold (app/order/OrderReview.tsx `isHoldAllowed`). */
+const HOLD_ENABLED = process.env.NEXT_PUBLIC_DISABLE_24H_HOLD !== "true";
 
 /** A quiet "שינוי" that takes the customer back to the step. */
 function EditLink({ onClick, label }: { onClick: () => void; label: string }) {
@@ -256,7 +261,11 @@ function HotelsPanel({ onEdit }: { onEdit: (i: number) => void }) {
                   </Chip>
                 }
                 title={`מלון ב${city}`}
-                detail="עוד לא נבחר מלון ללינה הזו"
+                detail={
+                  h
+                    ? "המלון שבחרתם לא מתאים לתאריכי הלינה או למספר הנוסעים - בחרו שוב"
+                    : "עוד לא נבחר מלון ללינה הזו"
+                }
                 extra={
                   <span className="mt-0.5">
                     <EditLink onClick={() => onEdit(i)} label={`בחירת מלון ב${city}`} />
@@ -289,7 +298,9 @@ function HotelsPanel({ onEdit }: { onEdit: (i: number) => void }) {
                   {stars > 0 && (
                     <>
                       {" · "}
-                      <span aria-label={`${stars} כוכבים`}>{"★".repeat(stars)}</span>
+                      <span role="img" aria-label={`${stars} כוכבים`}>
+                        {"★".repeat(stars)}
+                      </span>
                     </>
                   )}
                 </>
@@ -333,9 +344,15 @@ function PriceLine({ label, value, tone }: { label: ReactNode; value: string; to
  * shows the estimate, said to be one.
  *
  * "שמרו לי ל-24 שעות" checks the form with the regular summary's hold rules (the main contact)
- * and the terms, then hands the travellers to `onHold` (the hold itself is Task A15). "לתשלום
- * מאובטח" stays off - "בקרוב" - while payments are off (`settings.paymentsEnabled`) or there is
- * no `onPay` yet.
+ * and the terms, then hands the travellers to `onHold` (the hold itself is Task A15); it is not
+ * offered while the live kill switch is on (`NEXT_PUBLIC_DISABLE_24H_HOLD`). "לתשלום מאובטח"
+ * stays off - "בקרוב" - while payments are off (`settings.paymentsEnabled`) or there is no
+ * `onPay` yet. With neither, the order flow's own contact card (WhatsApp) takes their place.
+ *
+ * The regular summary's 15-minute hold: the clock starts when the summary opens (not kept over a
+ * refresh); when it runs out every priced piece is released (`releaseHold` - tickets, flight,
+ * hotels; the trip's shape, the travellers and the terms stay), nothing can be sent, and the
+ * live "הזמן אזל" message offers "שננסה מחדש?" - back to the tickets.
  */
 export function SummaryStep({
   onHold,
@@ -344,9 +361,23 @@ export function SummaryStep({
   onHold?: (travellers: TravellersInput) => void | Promise<void>;
   onPay?: (travellers: TravellersInput) => void | Promise<void>;
 } = {}) {
+  const api = useItinerary();
   const { state, settings, travellers, setTravellers, termsAccepted, setTermsAccepted, goStep, setActiveEvent, setActiveStay } =
-    useItinerary();
+    api;
   const { route, dates, pax, flight } = state;
+
+  // The hold's clock (the live Timer, read only). Its effect lists the callback, so the callback
+  // keeps its identity and reads the provider through a ref: the release changes the state,
+  // and a new callback would run the elapsed check - and the release - again.
+  const latest = useRef(api);
+  useLayoutEffect(() => {
+    latest.current = api;
+  });
+  const [expired, setExpired] = useState(false);
+  const onElapsed = useCallback(() => {
+    setExpired(true);
+    latest.current.releaseHold();
+  }, []);
 
   const form = useMemo(() => fitTravellers(travellers, pax), [travellers, pax]);
   const progress = canContinue(state);
@@ -356,7 +387,7 @@ export function SummaryStep({
   // The live rule for messages: a field's error shows once it was left, or the form was sent.
   // Typing checks the main contact fully and another traveller only where typed (hold); a pay
   // attempt asks for every name.
-  const [mode, setMode] = useState<TravellersMode>("hold");
+  const [mode, setMode] = useState<TravellersMode>(HOLD_ENABLED ? "hold" : "pay");
   const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
   const [termsTouched, setTermsTouched] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -382,9 +413,14 @@ export function SummaryStep({
   ].filter((m): m is { label: string; go: () => void } => !!m);
 
   const payOpen = settings.paymentsEnabled && !!onPay;
+  const contactOnly = !payOpen && !HOLD_ENABLED;
+  const whatsAppText = `היי, אשמח להזמין טיול ${tripCities(route).join(" - ")} (${dayMonth(dates.depart)}-${dayMonth(
+    dates.ret,
+  )}) ל-${pax === 1 ? "נוסע אחד" : `${pax} נוסעים`}`;
 
   /** Sends the form for `next`: every message on screen, the first wrong field focused. */
   const attempt = async (next: TravellersMode, run?: (t: TravellersInput) => void | Promise<void>) => {
+    if (expired) return;
     setStatus(null);
     setMode(next);
     const found = validateTravellers(form, pax, next);
@@ -431,6 +467,44 @@ export function SummaryStep({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* The live summary's hold: a band across a phone (MobileHeader), a line on a wider screen. */}
+      <div className="-mx-4 -mt-4 flex items-center justify-center gap-1 bg-yellow-100 p-2 text-center text-sm font-semibold text-main md:m-0 md:justify-start md:bg-transparent md:p-0 md:text-foreground">
+        <AlarmClockCheck className="size-5 text-yellow-700 md:size-4 md:text-muted-foreground" aria-hidden />
+        ההזמנה שמורה עבורך למשך
+        <span dir="ltr" className="text-success">
+          <Timer onTimeElapsed={onElapsed} duration={SUMMARY_HOLD_SECONDS} />
+        </span>
+        דקות
+      </div>
+
+      {/* "הזמן אזל" - the live summary's words. Not dismissable: the pieces are already released. */}
+      <Dialog open={expired}>
+        <DialogContent
+          dir="rtl"
+          className="max-w-sm rounded-2xl text-center [&>button]:hidden"
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <div className="mx-auto mt-2 flex size-16 items-center justify-center rounded-2xl bg-accent text-primary" aria-hidden>
+            <Plane className="size-8" />
+          </div>
+          <DialogTitle className="text-center font-display text-lg font-bold">הזמן אזל</DialogTitle>
+          <DialogDescription className="text-center text-muted-foreground">
+            לצערנו היינו חייבים לשחרר את ההזמנה
+          </DialogDescription>
+          {/* Wrapped: the dialog's own close button (a direct child) is hidden by `[&>button]`. */}
+          <div>
+            <button
+              type="button"
+              onClick={() => goStep("tickets")}
+              className="h-11 w-full rounded-md bg-secondary text-sm font-bold text-secondary-foreground transition-colors hover:bg-secondary/80"
+            >
+              שננסה מחדש?
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="m-0 text-[15px]">
           כמעט שם. <b>בדקו את המסלול</b> ומלאו את פרטי הנוסעים.
@@ -474,6 +548,7 @@ export function SummaryStep({
               value={form}
               errors={errors}
               touched={touched}
+              othersRequired={mode === "pay"}
               onChange={setTravellers}
               onTouch={touch}
               formRef={formRef}
@@ -548,7 +623,7 @@ export function SummaryStep({
                 <Label htmlFor="trip-terms" className="text-sm leading-snug">
                   אני מאשר/ת שקראתי את{" "}
                   <Link
-                    href="/terms"
+                    href="/cancellation"
                     target="_blank"
                     rel="noopener"
                     className="font-semibold text-foreground underline underline-offset-2 hover:text-primary"
@@ -566,7 +641,7 @@ export function SummaryStep({
 
             <button
               type="button"
-              disabled={!payOpen || busy}
+              disabled={!payOpen || busy || expired}
               onClick={() => attempt("pay", onPay)}
               className="relative flex h-[52px] w-full items-center justify-center gap-2 rounded-md bg-main text-[17px] font-bold text-main-foreground transition-colors hover:bg-main/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground dark:bg-glow dark:text-forest dark:hover:bg-glow/90 dark:disabled:bg-muted dark:disabled:text-muted-foreground"
             >
@@ -576,17 +651,31 @@ export function SummaryStep({
                 <span className="rounded-full bg-background px-2 py-0.5 text-xs font-bold text-foreground">בקרוב</span>
               )}
             </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => attempt("hold", onHold)}
-              className="flex h-[52px] w-full items-center justify-center rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              שמרו לי ל-24 שעות
-            </button>
-            <p className="m-0 text-center text-xs text-muted-foreground">
-              {payOpen ? "שומרים את המחיר ל-24 שעות, נציג יחזור אליכם." : "התשלום באתר ייפתח בקרוב. בינתיים שומרים את הטיול ל-24 שעות ונציג יחזור אליכם."}
-            </p>
+            {HOLD_ENABLED && (
+              <button
+                type="button"
+                disabled={busy || expired}
+                onClick={() => attempt("hold", onHold)}
+                className="flex h-[52px] w-full items-center justify-center rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                שמרו לי ל-24 שעות
+              </button>
+            )}
+            {HOLD_ENABLED && (
+              <p className="m-0 text-center text-xs text-muted-foreground">
+                {payOpen
+                  ? "שומרים את המחיר ל-24 שעות, נציג יחזור אליכם."
+                  : "התשלום באתר ייפתח בקרוב. בינתיים שומרים את הטיול ל-24 שעות ונציג יחזור אליכם."}
+              </p>
+            )}
+            {contactOnly && (
+              <OrderIssueState
+                className="py-6"
+                title="רוצים לסגור את הטיול?"
+                subtitle="התשלום באתר ייפתח בקרוב. כתבו לנו ונציג ישלים איתכם את ההזמנה."
+                whatsAppText={whatsAppText}
+              />
+            )}
             <p role="status" aria-live="polite" className={cn("m-0 text-center text-sm font-semibold", !status && "sr-only")}>
               {status ?? ""}
             </p>

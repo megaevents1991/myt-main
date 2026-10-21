@@ -12,6 +12,7 @@ import {
   serializeDraft,
   type HeldTicket,
   type ItineraryDraftForm,
+  type PageNavigation,
   type RestoredDraft,
 } from "./draft";
 import type { ItineraryState } from "./state";
@@ -23,6 +24,16 @@ const storage = (): Storage | null => {
     return null;
   }
 };
+
+/** How this document was loaded (reload / back_forward / navigate) and at which URL; null when the browser does not say. */
+export function pageNavigation(): PageNavigation | null {
+  try {
+    const entry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return entry ? { type: entry.type, name: entry.name } : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The trip this tab held, matched against the page's catalog; a stale or broken one is removed. */
 export function readItineraryDraft(catalog: Map<number, Event>): RestoredDraft | null {

@@ -14,8 +14,13 @@ import {
 } from "react";
 
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
-import { sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
-import { readItineraryDraft, writeItineraryDraft } from "@/lib/itinerary/draftStorage";
+import { draftMayRestore, sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
+import {
+  forgetItineraryDraft,
+  pageNavigation,
+  readItineraryDraft,
+  writeItineraryDraft,
+} from "@/lib/itinerary/draftStorage";
 import { describeCompat } from "@/lib/itinerary/rules";
 import type { ItinerarySettings } from "@/lib/itinerary/settings";
 import {
@@ -79,6 +84,13 @@ export type ItineraryApi = {
   setTravellers: (t: TravellersInput) => void;
   termsAccepted: boolean;
   setTermsAccepted: (v: boolean) => void;
+  /**
+   * The summary's 15 minutes ran out: every priced piece goes (tickets, flight, hotels) and so
+   * do the held categories; the route, dates, party, train moves, travellers and terms stay.
+   */
+  releaseHold: () => void;
+  /** The trip is done (held / paid): its draft is forgotten and never written again on this page. */
+  closeDraft: () => void;
 };
 
 const ItineraryContext = createContext<ItineraryApi | null>(null);
@@ -123,11 +135,13 @@ export function ItineraryProvider({
     const { route: found, dropped } = reconcileRoute(ids, byId);
     const { route, refused } = fitRoute(found, settings);
     if (ids.length) dispatch({ type: "load", route, mode: route.length ? "route" : "custom" });
-    // The trip this tab held before a refresh (lib/itinerary/draft.ts) - only for the trip the
-    // URL names: a link to another route wins, and the draft is left alone (the next save
-    // replaces it). It brings back the trip's shape and the travellers' form; prices never - the
-    // flow reopens on the tickets step at most, each tab on the category it held.
-    const draft = route.length ? readItineraryDraft(byId) : null;
+    // The trip this tab held before a refresh (lib/itinerary/draft.ts) - only when this page was
+    // reloaded or reached by back / forward (a fresh visit starts clean), and only for the trip
+    // the URL names: a link to another route wins. Either way the next save replaces the old
+    // draft. It brings back the trip's shape and the travellers' form; prices never - the flow
+    // reopens on the tickets step at most, each tab on the category it held.
+    const mayRestore = route.length > 0 && draftMayRestore(pageNavigation(), window.location.pathname);
+    const draft = mayRestore ? readItineraryDraft(byId) : null;
     const restored = draft && sameRouteIds(draft.route, route) ? draft : null;
     if (restored) {
       dispatch({ type: "setMode", mode: restored.mode });
@@ -164,11 +178,22 @@ export function ItineraryProvider({
   }, [urlApplied, value]);
 
   // Mirror the trip into the tab's draft on every change - only once the URL (and the draft) was
-  // read, so the first renders never overwrite the trip a refresh is about to bring back.
+  // read, so the first renders never overwrite the trip a refresh is about to bring back - and
+  // never after the trip was closed (a hold went through): that draft is gone for good.
+  const draftClosed = useRef(false);
   useEffect(() => {
-    if (!urlApplied) return;
+    if (!urlApplied || draftClosed.current) return;
     writeItineraryDraft(state, { held: heldTickets, form: { travellers, termsAccepted } });
   }, [urlApplied, state, heldTickets, travellers, termsAccepted]);
+
+  const releaseHold = useCallback(() => {
+    dispatch({ type: "releaseHold" });
+    setHeldTickets((prev) => (Object.keys(prev).length ? {} : prev));
+  }, []);
+  const closeDraft = useCallback(() => {
+    draftClosed.current = true;
+    forgetItineraryDraft();
+  }, []);
 
   const api = useMemo<ItineraryApi>(
     () => ({
@@ -200,8 +225,10 @@ export function ItineraryProvider({
       setTravellers,
       termsAccepted,
       setTermsAccepted,
+      releaseHold,
+      closeDraft,
     }),
-    [state, catalog, byId, settings, urlApplied, applyUrl, notice, heldTickets, travellers, termsAccepted],
+    [state, catalog, byId, settings, urlApplied, applyUrl, notice, heldTickets, travellers, termsAccepted, releaseHold, closeDraft],
   );
 
   return <ItineraryContext.Provider value={api}>{children}</ItineraryContext.Provider>;

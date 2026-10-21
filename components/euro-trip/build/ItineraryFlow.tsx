@@ -80,7 +80,8 @@ export function ItineraryFlow() {
     () => (route.length ? estimateItinerary(route, dates, settings, null).perTraveller : 0),
     [route, dates, settings],
   );
-  const total = livePerTraveller(state, settings) ?? estimate;
+  const live = livePerTraveller(state, settings);
+  const total = live ?? estimate;
   const progress = canContinue(state);
 
   // A new step or mode opens at the top of the page - and so does the next city's hotels.
@@ -101,17 +102,17 @@ export function ItineraryFlow() {
   const ticketsReady = progress.tickets;
   // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
   // the flights step sets it only then.
-  const flightMissing = step === "flights" && !state.flight;
+  const flightMissing = step === "flights" && !progress.flights;
   // The hotels step moves on only from a stay whose hotel is ready: to the next stay without one,
   // or - when every stay has one - to the summary. No flight = no hotel dates (the step says so).
   const openStay = stayList[openIndex];
-  const hotelMissing = step === "hotels" && (!state.flight || !openStay || !hotelReady(openIndex));
+  const hotelMissing = step === "hotels" && (!progress.flights || !openStay || !hotelReady(openIndex));
   const blocked = (step === "tickets" && !ticketsReady) || flightMissing || hotelMissing;
 
   const primaryLabel = !enough
     ? "בחרו לפחות 2 אירועים"
     : blocked
-      ? flightMissing || (hotelMissing && !state.flight)
+      ? flightMissing || (hotelMissing && !progress.flights)
         ? "בחרו טיסה לכל המסלול"
         : hotelMissing
           ? `בחרו מלון ב${openStay ? stayCityName(openStay.events[0]) : "כל עיר"}`
@@ -158,7 +159,7 @@ export function ItineraryFlow() {
     {
       icon: "flight",
       label: "טיסות",
-      filled: !!state.flight,
+      filled: progress.flights,
       value: state.flight ? `${state.flight.airline} · ${state.flight.legs.length} טיסות` : "",
       onClick: slotNav("flights"),
     },
@@ -208,6 +209,13 @@ export function ItineraryFlow() {
             onPrimary={onPrimary}
             isFinalStep={false}
           />
+          {/* The bar's figure is the live price only once every piece is picked; until then it is
+              the trip's estimate - said so (the bar itself is the order flow's, unchanged). */}
+          {live === null && (
+            <p className="-mt-1 pb-1.5 text-center text-xs font-semibold text-muted-foreground">
+              הערכה - המחיר המדויק לנוסע יופיע אחרי בחירת הטיסה והמלונות
+            </p>
+          )}
           {solo && (
             <p className="-mt-1 pb-2 text-center">
               <Link

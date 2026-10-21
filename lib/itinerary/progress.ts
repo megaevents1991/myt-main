@@ -8,6 +8,10 @@
  *   offer's grandTotal + any low-cost surcharge for every adult - lib/itinerary/flightOffers.ts);
  * - hotels: each stay's hotel per traveller by the regular summary's own rule (`hotelPerTraveller`);
  * - markups: `tierMarkups` (the dearest event in full, the next ones discounted).
+ *
+ * Server-safe (no window, no JSX): the itinerary's confirm route (Task A15) rebuilds the trip's
+ * state from what was submitted and calls the SAME `livePrice` - its `total` is the party's
+ * charge in USD.
  */
 import type { Event, OrderHotel } from "@/lib/app.types";
 import { getTotalMarkup } from "@/lib/events/price";
@@ -24,7 +28,8 @@ export type ItineraryProgress = { build: boolean; tickets: boolean; flights: boo
  * May the flow leave each step?
  * - build: two events or more;
  * - tickets: every event has a ticket (an id) bought for the whole party;
- * - flights: a flight is set (the flights step sets it only once priced);
+ * - flights: a flight is set (the flights step sets it only once priced), searched for the
+ *   trip's party (`numOfTravelers === pax` - the offer's price is for that many);
  * - hotels: every stay passes `stayHotelReady` - the hotels step's own rule (its nights under
  *   the trip's flight, booked for the party). No flight = no hotel dates = not ready.
  */
@@ -35,7 +40,7 @@ export function canContinue(state: ItineraryState): ItineraryProgress {
   return {
     build: route.length >= MIN_TRIP_EVENTS,
     tickets: allTicketsReady(route, state.tickets, pax),
-    flights: !!flight,
+    flights: !!flight && flight.numOfTravelers === pax,
     hotels: list.length > 0 && list.every((stay, i) => stayHotelReady(state.hotels[stay.key], ranges[i], pax)),
   };
 }
@@ -65,6 +70,9 @@ export function hotelPerTraveller(hotel: OrderHotel, event: Event, range: StayRa
   return Math.abs(perGuest - base) > PACK_BOUNDARY_USD ? perGuest : base;
 }
 
+/** How long the summary holds the trip: the regular summary's `TIMEOUT` (app/order/utils.ts), 15 minutes. */
+export const SUMMARY_HOLD_SECONDS = 15 * 60;
+
 /** The summary's price box, USD. Lines per traveller (cents); the totals in whole dollars. */
 export type LivePrice = {
   /** Σ ticket prices. */
@@ -77,17 +85,21 @@ export type LivePrice = {
   service: number;
   /** What the trip takes off the markups ("הנחת מסלול") - `markupDiscount`. */
   discount: number;
-  /** tickets + flight + hotels + service - discount, rounded UP like the live summary's "לאדם". */
+  /** `total` / the party, rounded UP - the live summary's "(לאדם)" (`getPrices`, app/order/utils.ts). */
   perTraveller: number;
-  /** `perTraveller` × the party: the box's "סה״כ ל-N נוסעים". */
+  /**
+   * The party's charge: (tickets + hotels + tiered markups) × the party + the flight's price,
+   * rounded UP once - the live `calculateBaseTotal` (app/order/hooks.tsx). The box's
+   * "סה״כ ל-N נוסעים".
+   */
   total: number;
 };
 
 /**
- * The trip's live price, or null until every ticket, the flight and every hotel are in (and
- * each has a price that is a number). Rounding: the regular summary rounds its totals UP
- * (`Math.ceil` in `calculateBaseTotal` and in `getPrices`' per-person figure) - so does this,
- * once, on the per-traveller sum; the party's total is that figure times the party.
+ * The trip's live price, or null until every ticket, the flight (for the party) and every hotel
+ * are in (and each has a price that is a number). Rounding is the regular summary's: the
+ * party's total is rounded UP once (`Math.ceil` in `calculateBaseTotal`), and the price per
+ * traveller is that total over the party, rounded UP (`getPrices`).
  */
 export function livePrice(state: ItineraryState, s: ItinerarySettings): LivePrice | null {
   const ready = canContinue(state);
@@ -110,15 +122,16 @@ export function livePrice(state: ItineraryState, s: ItinerarySettings): LivePric
   const tiered = [...tierMarkups(route, s).values()].reduce((sum, m) => sum + m, 0);
   if (![tickets, flight, hotels, service, tiered].every(Number.isFinite)) return null;
 
-  const perTraveller = Math.ceil(cents(tickets + flight + hotels + tiered));
+  // The party's sum from the pieces as charged: the flight's own price (not its share × pax).
+  const total = Math.ceil(cents((tickets + hotels + tiered) * pax + Number(state.flight.price)));
   return {
     tickets: cents(tickets),
     flight: cents(flight),
     hotels: cents(hotels),
     service: cents(service),
     discount: markupDiscount(route, s),
-    perTraveller,
-    total: perTraveller * pax,
+    perTraveller: Math.ceil(total / pax),
+    total,
   };
 }
 
