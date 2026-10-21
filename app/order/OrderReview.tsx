@@ -2077,7 +2077,7 @@ export default function OrderReview({
             <>
               לא חויבתם ושום דבר לא אבד.
               <br />
-              ברגע שהאירוע ייפתח להזמנה הוא יופיע באתר.
+              האירוע אינו פתוח להזמנה כרגע.
             </>
           ) : submitFailReason === "hotel" ? (
             <>

@@ -4,6 +4,7 @@ import { unstable_cache as nextCache } from "next/cache";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
 import { markOwnStockSoldOut } from "@/lib/events/ownStock";
+import { isHiddenForCheckout } from "@/lib/events/hidden";
 import { eventMatchesName, normalizeName } from "@/lib/eventNameMatch";
 import {
   DATA_CACHE_ITEM_LIMIT,
@@ -162,7 +163,8 @@ export const AVAILABILITY_WINDOW_DAYS = 3;
  */
 export const isListedEvent = (
   event: Pick<Event, "is_test" | "deactivated_reason" | "is_hidden">,
-): boolean => !event.is_test && !event.deactivated_reason && !event.is_hidden;
+): boolean =>
+  !event.is_test && !event.deactivated_reason && !isHiddenForCheckout(event);
 
 /** `YYYY-MM-DD` for `daysAhead` from now - the DB-comparable availability cutoff. */
 export function futureDateISO(daysAhead: number): string {

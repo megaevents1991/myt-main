@@ -37,6 +37,11 @@ import {
   touchRows,
 } from "@/lib/utm";
 
+/** The column is not in the database yet (Postgres 42703; PostgREST says
+ *  PGRST204 from its schema cache) - the same pair lib/reservation-insert.ts reads. */
+const isMissingColumn = (error: { code?: string } | null): boolean =>
+  error?.code === "42703" || error?.code === "PGRST204";
+
 /** Ops-mail lines for what the customer added to the flight on the summary.
  *  The stored offer is the fare that was SEARCHED - a fare upgrade or a paid
  *  bag lives only in these two fields, so the mail has to say it. */
@@ -91,9 +96,11 @@ export async function POST(req: Request) {
   // (events.is_hidden) does not exist for a customer: refuse it before any
   // price work, even for an id typed into the URL by hand. Read straight from
   // the row - getEvents() would return nothing inside the 3-day sell window,
-  // which would let an imminent hidden event through. Fails open like the other
-  // guards (a failed read is logged and never blocks a customer; the insert
-  // below needs the same database anyway).
+  // which would let an imminent hidden event through. Fails open ONLY when the
+  // column is not there yet (this deploy beat the backoffice migration: 42703 /
+  // PGRST204, the same pair lib/reservation-insert.ts reads); any other read
+  // error fails CLOSED - an event staff have not approved must not be sold on
+  // a coin flip.
   const hiddenCheckId = Number(validatedData.event_id);
   if (Number.isFinite(hiddenCheckId)) {
     const { data: eventRow, error: eventRowError } = await supabase
@@ -101,11 +108,17 @@ export async function POST(req: Request) {
       .select("is_hidden")
       .eq("id", hiddenCheckId)
       .maybeSingle();
-    if (eventRowError) {
+    if (eventRowError && isMissingColumn(eventRowError)) {
       console.error(
-        "Hidden-event check failed open:",
+        "Hidden-event check skipped - events.is_hidden is not migrated yet:",
         JSON.stringify(eventRowError),
       );
+    } else if (eventRowError) {
+      console.error("Rejected order - hidden check failed", {
+        eventId: hiddenCheckId,
+        error: JSON.stringify(eventRowError),
+      });
+      return NextResponse.json({ error: "EVENT_NOT_OPEN" }, { status: 400 });
     } else if (eventRow && isHiddenForCheckout(eventRow)) {
       console.error("Rejected order - hidden event", {
         eventId: hiddenCheckId,

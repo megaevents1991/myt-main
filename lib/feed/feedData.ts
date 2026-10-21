@@ -11,6 +11,7 @@ import { getAllTags } from "@/lib/taxonomy";
 import { enrichEventsWithFallbackImages } from "@/lib/events/fallbackImage";
 import { markLockedPackagesSoldOut } from "@/lib/events/lockedPackageAvailability";
 import { markOwnStockSoldOut } from "@/lib/events/ownStock";
+import { isHiddenForCheckout } from "@/lib/events/hidden";
 import { AVAILABILITY_WINDOW_DAYS, futureDateISO } from "@/lib/eventsData";
 import {
   buildFeedItem,
@@ -133,7 +134,7 @@ async function getFeedEvents(): Promise<{
   const enriched = await markOwnStockSoldOut(
     await markLockedPackagesSoldOut(
       await enrichEventsWithFallbackImages(
-        events.filter((e) => !e.is_test && !e.is_hidden),
+        events.filter((e) => !e.is_test && !isHiddenForCheckout(e)),
       ),
     ),
   );

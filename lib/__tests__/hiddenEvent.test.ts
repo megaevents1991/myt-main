@@ -27,6 +27,13 @@ describe("isListedEvent", () => {
     ).toBe(false);
   });
 
+  it("answers hidden exactly as isHiddenForCheckout does (one predicate)", () => {
+    for (const is_hidden of [true, false, undefined]) {
+      const row = { is_test: false, deactivated_reason: null, is_hidden };
+      expect(isListedEvent(row)).toBe(!isHiddenForCheckout(row));
+    }
+  });
+
   it("still drops test and deactivated events", () => {
     expect(
       isListedEvent({ is_test: true, deactivated_reason: null, is_hidden: false }),
