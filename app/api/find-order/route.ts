@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { blocksSingleOrderResume } from "@/lib/itinerary/groupGuard";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -38,6 +39,25 @@ export async function GET(request: NextRequest) {
         { error: "Order not found" },
         { status: 404 }
       );
+    }
+
+    // A "Build Your Euro Trip" row (shared `itinerary_group`) is never a single-event order:
+    // answer as for an unknown id. Read apart from the explicit select above - before the
+    // migration the column does not exist, the read errors, and the route carries on unchanged.
+    try {
+      const groupRead = await supabase
+        .from("reservations")
+        .select("itinerary_group")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (blocksSingleOrderResume(groupRead)) {
+        return NextResponse.json(
+          { error: "Order not found" },
+          { status: 404 }
+        );
+      }
+    } catch {
+      // unreadable column / transport failure: no group known, resume as before
     }
 
     // Validate that the event ID matches the order's event ID if provided
