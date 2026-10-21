@@ -4,6 +4,7 @@
  * `YYYY-MM-DD` strings and the day math is UTC so a DST change never moves one.
  */
 import type { Event } from "@/lib/app.types";
+import { isSportsEvent } from "@/lib/search";
 import {
   defaultCity,
   lodgingLocation,
@@ -61,7 +62,11 @@ export function dayDiff(a: string, b: string): number {
   return Math.round((ms(b) - ms(a)) / MS_PER_DAY);
 }
 
-/** The two kinds the trip builder tells apart (the picker's filter, the card's badge). */
+/**
+ * The two kinds the trip builder tells apart (the picker's filter, the card's badge).
+ * Uses the site's shared rule: `tx_event` is a mixed feed (football + concerts), so the
+ * type alone is not enough - `isSportsEvent` reads the name too (lib/search.ts).
+ */
 export function eventKind(e: Event): "music" | "football" {
-  return e.type.includes("music") ? "music" : "football";
+  return isSportsEvent(e) ? "football" : "music";
 }

@@ -32,7 +32,7 @@ const place = (name: string, p: { latitude: number; longitude: number }, cc = "G
   country_code: cc,
 });
 
-/** A package event happening `days` from `today`, with an available ticket. */
+/** A package event on 2026-11-20 (30 days after the tests' `today`), with an available ticket. */
 const ev = (over: Record<string, unknown> = {}) =>
   ({
     id: 1,
@@ -146,14 +146,36 @@ describe("eventDay and dayDiff", () => {
 });
 
 describe("eventKind", () => {
-  it("is music when the type contains music", () => {
+  it("is music for the music types", () => {
     expect(eventKind(ev({ type: "music_event" }))).toBe("music");
     expect(eventKind(ev({ type: "music_live_event_dynamic" }))).toBe("music");
   });
 
-  it("is football otherwise", () => {
+  it("is football for the sports types", () => {
     expect(eventKind(ev({ type: "sports_event" }))).toBe("football");
-    expect(eventKind(ev({ type: "tx_event" }))).toBe("football");
+    expect(eventKind(ev({ type: "sports_event_dynamic" }))).toBe("football");
+    expect(eventKind(ev({ type: "sports_live_event_dynamic" }))).toBe("football");
+  });
+
+  // tx_event is a mixed feed (football + concerts): the site's isSportsEvent
+  // (lib/search.ts) tells them apart by name, and eventKind must agree with it.
+  it("tells a tx_event concert from a tx_event match by name", () => {
+    expect(
+      eventKind(ev({ type: "tx_event", name: "קולדפליי", name_english: "Coldplay" })),
+    ).toBe("music");
+    expect(
+      eventKind(ev({ type: "tx_event", name: "ארסנל נגד צלסי", name_english: "Arsenal vs Chelsea" })),
+    ).toBe("football");
+    expect(
+      eventKind(ev({ type: "tx_event", name: "גמר", name_english: "World Cup 2026 Final" })),
+    ).toBe("football");
+    expect(
+      eventKind(ev({ type: "tx_event", name: "מונדיאל 2026 - גמר", name_english: "" })),
+    ).toBe("football");
+  });
+
+  it("is music for a tx_event with no name to go by", () => {
+    expect(eventKind(ev({ type: "tx_event" }))).toBe("music");
   });
 });
 
