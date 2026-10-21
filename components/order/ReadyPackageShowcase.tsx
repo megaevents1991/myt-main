@@ -24,7 +24,7 @@ import {
 } from "@/app/order/order-review.utils";
 import { TixstockDynamicMap } from "@/components/TixstockDynamicMap";
 import { Amenities } from "@/components/ui/Amenities";
-import { EventArt } from "@/components/ui/EventArt";
+import { EventAvatar } from "@/components/ui/EventDataHeader";
 import { FlightMeta } from "@/components/ui/FlightCard";
 import { Stars } from "@/components/ui/stars";
 import type { Event, Flight, FlightSegment, OrderHotel } from "@/lib/app.types";
@@ -456,10 +456,6 @@ export const ReadyPackageShowcase = ({
   // The photo is of the PACKAGE's hotel - never drawn over a hotel swapped in.
   const hotelPhoto =
     hotel && ready.hotelImage && hotel.id === ready.hotelImageFor ? ready.hotelImage : null;
-  // A fixture = home crest VS away crest; otherwise the artist's / team's art or photo.
-  const eventArt = event.match_away_logo_url
-    ? event.match_home_logo_url
-    : event.art_image_url || event.card_image_url;
 
   const flightTravelers = flight?.numOfTravelers || travelers;
   const checkedBag = !!flight && flight.outbound.checkBagsIncluded && flight.inbound.checkBagsIncluded;
@@ -512,31 +508,16 @@ export const ReadyPackageShowcase = ({
       <div className="grid gap-4">
         <div className="lg:flex lg:items-start lg:justify-between lg:gap-6">
           <div className="flex flex-col items-center gap-3 lg:flex-row lg:gap-5">
-            {/* Who the trip is for - the artist's / the team's art, the same card the
-                homepage draws (an event with no picture of its own borrows its artist's
-                or team's, lib/events/fallbackImage.ts). The landing had no picture of
+            {/* Who the trip is for - the round photo the order steps' header draws
+                (an event with no picture of its own borrows its artist's or team's,
+                lib/events/fallbackImage.ts), a size up. The landing had no picture of
                 the event at all (Dor 21.10). */}
-            {eventArt && (
-              <div className="h-24 w-32 shrink-0 overflow-hidden rounded-2xl md:h-28 md:w-36 min-[1360px]:h-32 min-[1360px]:w-44">
-                <EventArt
-                  id={event.id}
-                  imageUrl={eventArt}
-                  awayImageUrl={event.match_away_logo_url}
-                  alt={event.name}
-                  variant={event.art_image_url ? "blob" : "photo"}
-                  colorIndex={event.art_color_index ?? undefined}
-                  shapeIndex={event.art_shape_index ?? undefined}
-                  imageScale={event.art_image_scale}
-                  bgScale={event.art_bg_scale}
-                  imageOffsetX={event.art_image_offset_x}
-                  imageOffsetY={event.art_image_offset_y}
-                  loading="eager"
-                  sizes="176px"
-                  hoverZoom={false}
-                  className="h-full w-full"
-                />
-              </div>
-            )}
+            <EventAvatar
+              event={event}
+              alt={event.name}
+              px={112}
+              className="size-20 md:size-24 min-[1360px]:size-28"
+            />
             <header className="space-y-1.5 text-center lg:text-right">
               <h2 className="text-balance text-2xl font-bold leading-tight md:text-3xl min-[1360px]:text-[2rem]">{event.name}</h2>
               <p className="text-[16px] text-muted-foreground md:text-lg">

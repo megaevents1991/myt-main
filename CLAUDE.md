@@ -234,9 +234,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > customer who adds a bag - not built).
 >
 > **Pictures (2026-10-21, Dor - event 1221, all own stock, read as a bare page).**
-> (a) The header draws the event's art beside its title - the homepage card's
-> `EventArt` (artist cut-out on its blob, crest VS crest for a fixture, else the
-> photo); a photo-less event borrows its artist's / team's through
+> (a) The header draws the event's round photo beside its title - the order
+> steps' `EventAvatar` (`components/ui/EventDataHeader.tsx`: blob art, else the
+> photo), a size up; a photo-less event borrows its artist's / team's through
 > `lib/events/fallbackImage.ts`. (b) A package on OUR OWN hotel stock had no
 > hotel photo: the backoffice builder stores `hotel_image` only for a live
 > hotel. `/api/package/[id]` now finds it for an offline hotel from

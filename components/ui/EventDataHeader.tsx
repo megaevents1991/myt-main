@@ -6,6 +6,50 @@ import { isMobile } from "react-device-detect";
 import { ChevronLeft } from "lucide-react";
 import { EventArt } from "@/components/ui/EventArt";
 import { cityName, hasEventCity } from "@/lib/events/lodging";
+import { cn } from "@/lib/utils";
+
+/**
+ * The event's round photo. Blob card-art wins when set (backoffice art_* fields,
+ * or borrowed from the matching artist/team by the fallback enrichment);
+ * otherwise the plain photo; null when the event has neither. `className` sets
+ * the size, `px` the largest it is drawn at.
+ */
+export const EventAvatar = ({
+  event,
+  alt,
+  px = 80,
+  className = "size-16 md:size-20",
+}: {
+  event?: Event;
+  alt: string;
+  px?: number;
+  className?: string;
+}) =>
+  event?.art_image_url ? (
+    <EventArt
+      id={event.id}
+      imageUrl={event.art_image_url}
+      alt={alt}
+      colorIndex={event.art_color_index ?? undefined}
+      shapeIndex={event.art_shape_index ?? undefined}
+      imageScale={event.art_image_scale}
+      bgScale={event.art_bg_scale}
+      imageOffsetX={event.art_image_offset_x}
+      imageOffsetY={event.art_image_offset_y}
+      bgFit={(event.art_shape_index ?? 0) >= 6 ? "cover" : undefined}
+      sizes={`${px}px`}
+      hoverZoom={false}
+      className={cn("shrink-0 rounded-full border-2 border-white shadow-md", className)}
+    />
+  ) : event?.card_image_url ? (
+    <Image
+      src={event.card_image_url}
+      alt={alt}
+      width={px}
+      height={px}
+      className={cn("shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md", className)}
+    />
+  ) : null;
 
 export const EventDataHeader = ({
   event,
@@ -20,33 +64,8 @@ export const EventDataHeader = ({
   artistLinkLabel?: string;
 }) => {
   const alt = artistHref ? `${event?.name ?? ""} - לעמוד האמן` : "";
-  // Blob card-art wins when set (backoffice art_* fields, or borrowed from the
-  // matching artist/team by the fallback enrichment); otherwise the plain photo.
-  const photo = event?.art_image_url ? (
-    <EventArt
-      id={event.id}
-      imageUrl={event.art_image_url}
-      alt={alt}
-      colorIndex={event.art_color_index ?? undefined}
-      shapeIndex={event.art_shape_index ?? undefined}
-      imageScale={event.art_image_scale}
-      bgScale={event.art_bg_scale}
-      imageOffsetX={event.art_image_offset_x}
-      imageOffsetY={event.art_image_offset_y}
-      bgFit={(event.art_shape_index ?? 0) >= 6 ? "cover" : undefined}
-      sizes="80px"
-      hoverZoom={false}
-      className="size-16 shrink-0 rounded-full border-2 border-white shadow-md md:size-20"
-    />
-  ) : event?.card_image_url ? (
-    <Image
-      src={event.card_image_url}
-      alt={alt}
-      width={80}
-      height={80}
-      className="size-16 shrink-0 rounded-full border-2 border-white object-cover object-top shadow-md md:size-20"
-    />
-  ) : null;
+  const photo =
+    event?.art_image_url || event?.card_image_url ? <EventAvatar event={event} alt={alt} /> : null;
   return (
     <div className="flex w-full flex-row items-center gap-4 lg:w-[30%]">
       {photo &&
