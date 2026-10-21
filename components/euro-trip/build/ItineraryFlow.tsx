@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Building2, Plane, Ticket, X } from "lucide-react";
+import { Ticket, X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { allTicketsReady } from "@/lib/itinerary/adapter";
-import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
+import { stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
-import { dayDiff } from "@/lib/itinerary/geo";
 import { estimateItinerary } from "@/lib/itinerary/price";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
-import type { Stay } from "@/lib/itinerary/types";
+import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import { FlightsStep } from "./FlightsStep";
 import { HotelsStep } from "./HotelsStep";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
@@ -20,21 +19,16 @@ import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
 import { TicketsStep } from "./TicketsStep";
 import { TripHeader } from "./TripHeader";
-import { nightsLabel } from "./parts";
 
-/** A step that is not built yet (flights / hotels / summary land in later tasks). */
-function ComingSoon({ step, stay }: { step: Exclude<ItineraryStep, "build" | "tickets">; stay?: Stay }) {
-  const copy = {
-    flights: { icon: <Plane className="size-7" aria-hidden />, title: "טיסות לכל המסלול - בקרוב" },
-    hotels: {
-      icon: <Building2 className="size-7" aria-hidden />,
-      title: stay
-        ? `מלון ב${stayCityName(stay.events[0])} · ${dayMonth(stay.from)}–${dayMonth(stay.to)} · ${nightsLabel(dayDiff(stay.from, stay.to))} - בקרוב`
-        : "מלונות - בקרוב",
-    },
-    summary: { icon: <Ticket className="size-7" aria-hidden />, title: "סיכום ותשלום - בקרוב" },
-  }[step];
-  return <EmptyState icon={copy.icon} title={copy.title} description="השלב הזה עוד בבנייה. אפשר לחזור למסלול ולשנות אותו." />;
+/** The summary - not built yet (Task A14). */
+function ComingSoon() {
+  return (
+    <EmptyState
+      icon={<Ticket className="size-7" aria-hidden />}
+      title="סיכום ותשלום - בקרוב"
+      description="השלב הזה עוד בבנייה. אפשר לחזור למסלול ולשנות אותו."
+    />
+  );
 }
 
 /** The step on screen - one switch, so each step's real component slots in here. */
@@ -47,20 +41,23 @@ function StepBody({ state }: { state: ItineraryState }) {
     case "flights":
       return <FlightsStep />;
     case "hotels":
-      return <HotelsStep />;
+      // Drawn beside the switch (ItineraryFlow): it stays mounted while the trip has its flight.
+      return null;
     case "summary":
-      return <ComingSoon step="summary" />;
+      return <ComingSoon />;
   }
 }
 
 /**
- * The next stay without a hotel: the first after the open one, else the first before it (a
- * customer who opened a later city first). -1 = every other stay has one: on to the summary.
+ * The next stay whose hotel is not ready (`stayHotelReady`): the first after the open one, else
+ * the first before it (a customer who opened a later city first). -1 = every other stay is
+ * ready: on to the summary.
  */
-const nextOpenStay = (state: ItineraryState, list: Stay[]): number => {
-  const open = (s: Stay, i: number) => i !== state.activeStay && !state.hotels[s.key];
-  const after = list.findIndex((s, i) => i > state.activeStay && open(s, i));
-  return after >= 0 ? after : list.findIndex(open);
+const nextOpenStay = (active: number, count: number, ready: (i: number) => boolean): number => {
+  const open = (i: number) => i !== active && !ready(i);
+  const all = Array.from({ length: count }, (_, i) => i);
+  const after = all.find((i) => i > active && open(i));
+  return after ?? all.find(open) ?? -1;
 };
 
 /**
@@ -73,6 +70,22 @@ export function ItineraryFlow() {
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
+  // Each stay's nights under the trip's flight - with `stayHotelReady`, THE rule for a stay's hotel.
+  const ranges = useMemo(
+    () => stayRanges(route, dates, state.flight, new Set(state.train)),
+    [route, dates, state.flight, state.train],
+  );
+  const hotelReady = (i: number) => stayHotelReady(state.hotels[stayList[i]?.key ?? ""], ranges[i], state.pax);
+
+  // The hotels step stays mounted (hidden) once opened, for as long as the trip has a flight: a
+  // visit to the summary or an earlier step and back spends no hotel search and finds every
+  // opened city as the customer left it (pick, rate, filters). No flight = no hotel dates: it
+  // goes (the reducer drops the flight on any change of route, dates, party or train). Another
+  // flight keeps it: a city whose nights moved gets a new pane, the others keep theirs.
+  const [hotelsOpened, setHotelsOpened] = useState(false);
+  if (step === "hotels" && state.flight && !hotelsOpened) setHotelsOpened(true);
+  else if (!state.flight && hotelsOpened) setHotelsOpened(false);
+  const hotelsMounted = step === "hotels" || (hotelsOpened && !!state.flight);
   // The estimate until the live steps price the trip (Task A14 switches to the live total).
   const total = useMemo(
     () => (route.length ? estimateItinerary(route, dates, settings, null).perTraveller : 0),
@@ -90,17 +103,18 @@ export function ItineraryFlow() {
 
   const enough = route.length >= MIN_TRIP_EVENTS;
   const at = ITINERARY_STEPS.indexOf(step);
-  const nextStay = step === "hotels" ? nextOpenStay(state, stayList) : -1;
+  const openIndex = Math.min(state.activeStay, stayList.length - 1);
+  const nextStay = step === "hotels" ? nextOpenStay(openIndex, stayList.length, hotelReady) : -1;
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
   // to be picked again for the new party).
   const ticketsReady = allTicketsReady(route, state.tickets, state.pax);
   // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
   // the flights step sets it only then.
   const flightMissing = step === "flights" && !state.flight;
-  // The hotels step moves on only from a stay that has its hotel: to the next stay without one,
+  // The hotels step moves on only from a stay whose hotel is ready: to the next stay without one,
   // or - when every stay has one - to the summary. No flight = no hotel dates (the step says so).
-  const openStay = stayList[Math.min(state.activeStay, stayList.length - 1)];
-  const hotelMissing = step === "hotels" && (!state.flight || !openStay || !state.hotels[openStay.key]);
+  const openStay = stayList[openIndex];
+  const hotelMissing = step === "hotels" && (!state.flight || !openStay || !hotelReady(openIndex));
   const blocked = (step === "tickets" && !ticketsReady) || flightMissing || hotelMissing;
 
   const primaryLabel = !enough
@@ -141,7 +155,7 @@ export function ItineraryFlow() {
     return undefined;
   };
 
-  const allHotels = stayList.length > 0 && stayList.every((s) => state.hotels[s.key]);
+  const allHotels = stayList.length > 0 && stayList.every((_, i) => hotelReady(i));
   const slots: ContinueSlot[] = [
     {
       icon: "ticket",
@@ -189,6 +203,7 @@ export function ItineraryFlow() {
           </div>
         )}
         <StepBody state={state} />
+        {hotelsMounted && <HotelsStep shown={step === "hotels"} />}
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
           Not on an empty builder: there is no trip to price yet (the bar would say $0). */}

@@ -6,7 +6,8 @@
  *  - `dates` is always `clampTripDates` output for the route (never raw input), so `stays`,
  *    `tripLegs` and `trainLegs` can read it as is; an empty route has `EMPTY_DATES`;
  *  - a change of route, dates, travellers or train toggles clears `flight` and `hotels`
- *    (both were searched for the old trip); a route change drops the tickets of events
+ *    (both were searched for the old trip); another flight keeps only the hotels still on
+ *    their stay's nights under it (`hotelsForFlight`); a route change drops the tickets of events
  *    that left it and the train toggles of moves that no longer exist;
  *  - the flow leaves the build step only with two events or more.
  * An action that changes nothing returns the same state object.
@@ -16,6 +17,7 @@ import { clampTripDates, defaultTripDates, moves, stays } from "./dates";
 import { eventDay, eventPoint, stayPoint } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
+import { hotelsForFlight } from "./stayAdapter";
 import type { Compat, TripDates } from "./types";
 
 export const ITINERARY_STEPS = ["build", "tickets", "flights", "hotels", "summary"] as const;
@@ -224,8 +226,14 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
       return { ...state, ...cleared, train, dates: clampTripDates(state.route, state.dates) };
     }
 
-    case "setFlight":
-      return state.flight === action.flight ? state : { ...state, flight: action.flight };
+    case "setFlight": {
+      if (state.flight === action.flight) return state;
+      // No flight (a new search answer) leaves the hotels: there are no dates to judge them by.
+      if (!action.flight) return { ...state, flight: null };
+      // Another flight can move a stay's check-in by a day: a hotel goes once it is off its stay's nights.
+      const hotels = hotelsForFlight(state.route, state.dates, new Set(state.train), state.hotels, action.flight);
+      return { ...state, flight: action.flight, hotels };
+    }
 
     case "setHotel":
       if (!stays(state.route, state.dates).some((s) => s.key === action.stayKey)) return state;

@@ -7,11 +7,21 @@ import { OrderContext } from "@/app/app.context";
 import { HotelFetchProvider } from "@/app/hooks/HotelFetch.provider";
 import { HotelSelection } from "@/app/order/HotelSelection";
 import { EmptyState } from "@/components/ui/EmptyState";
-import type { Event, Flight } from "@/lib/app.types";
+import type { Event, Flight, OrderHotel } from "@/lib/app.types";
 import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
 import { dayDiff } from "@/lib/itinerary/geo";
-import { hotelOnStayDates, sameHotel, stayEvent, stayFlight, stayHotelRange } from "@/lib/itinerary/stayAdapter";
+import {
+  hotelGuests,
+  hotelOnStayDates,
+  sameHotel,
+  stayEvent,
+  stayFlight,
+  stayHotelRange,
+  stayHotelReady,
+  withStayBase,
+  type StayRange,
+} from "@/lib/itinerary/stayAdapter";
 import type { Stay } from "@/lib/itinerary/types";
 import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
@@ -29,10 +39,30 @@ type StayView = {
   event: Event;
   flight: Flight;
   /** Check-in / check-out the live step opens on (`getDefaultDateRange`), `YYYY-MM-DD`. */
-  range: [string, string];
+  range: StayRange;
   /** A pane is mounted per stay AND what it searches: other dates or party = a new search. */
   paneKey: string;
 };
+
+/** "לאורח אחד" / "ל-N אורחים". */
+const guestsLabel = (n: number): string => (n === 1 ? "לאורח אחד" : `ל-${n} אורחים`);
+
+/**
+ * Why a picked hotel does not count for its stay (`stayHotelReady`): booked for other nights
+ * (the step's date picker) or for another party (its rooms popover). Null = nothing to say.
+ */
+function pickIssue(hotel: OrderHotel | undefined, view: StayView, pax: number): string | null {
+  if (!hotel) return null;
+  const parts: string[] = [];
+  if (!hotelOnStayDates(hotel, view.range)) {
+    parts.push(
+      `המלון נבחר ל-${dayMonth(hotel.checkin)}–${dayMonth(hotel.checkout)}, והלינה ב${view.city} במסלול היא ${dayMonth(view.range[0])}–${dayMonth(view.range[1])}.`,
+    );
+  }
+  const guests = hotelGuests(hotel);
+  if (guests !== pax) parts.push(`המלון נבחר ${guestsLabel(guests)}, והטיול ${pax === 1 ? "לנוסע אחד" : `ל-${pax} נוסעים`}.`);
+  return parts.length ? `${parts.join(" ")} החזירו את החיפוש לתאריכים ולמספר הנוסעים של הטיול כדי להמשיך.` : null;
+}
 
 /**
  * One stay's hotel step: the order flow's own HotelSelection, unchanged, in its own
@@ -55,7 +85,8 @@ function StayHotelPane({ view }: { view: StayView }) {
   const [cb] = useState<HotelStepCallbacks>(() => ({
     setHotel: (h) => {
       const now = latest.current;
-      // The selected card writes its pick again on every render of the provider above it.
+      // The step writes its pick from more than one place (the search's auto-pick, then the
+      // selected card's commit), often unchanged: a write that changes nothing is not stored.
       if (sameHotel(now.state.hotels[stayKey], h)) return;
       now.setHotel(stayKey, h);
     },
@@ -64,19 +95,17 @@ function StayHotelPane({ view }: { view: StayView }) {
     () => adapterForStay({ event: view.event, city: view.stay.city, flight: view.flight, hotel, pax }, cb),
     [view.event, view.stay.city, view.flight, hotel, pax, cb],
   );
+  const issue = pickIssue(hotel, view, pax);
 
   return (
     <>
-      {hotel && !hotelOnStayDates(hotel, view.range) && (
+      {issue && (
         <div
           role="status"
           className="mb-3 flex items-start gap-3 rounded-xl border border-badge-vip/60 bg-badge-vip/20 px-4 py-3 text-sm font-semibold text-foreground"
         >
           <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span className="flex-1">
-            המלון נבחר ל-{dayMonth(hotel.checkin)}–{dayMonth(hotel.checkout)}, והלינה ב{view.city} במסלול היא{" "}
-            {dayMonth(view.range[0])}–{dayMonth(view.range[1])}. כדאי להחזיר את התאריכים בחיפוש.
-          </span>
+          <span className="flex-1">{issue}</span>
         </div>
       )}
       <HotelFetchProvider>
@@ -88,7 +117,7 @@ function StayHotelPane({ view }: { view: StayView }) {
   );
 }
 
-/** The stays as tabs: "מלון ב{city}", "DD/MM–DD/MM · N לילות", and a check once its hotel is picked. */
+/** The stays as tabs: "מלון ב{city}", "DD/MM–DD/MM · N לילות", and a check once its hotel is ready (`stayHotelReady`). */
 function StayTabs({
   views,
   active,
@@ -180,11 +209,16 @@ function StayTabs({
  * rates, the supplier's limit handling) for that city and those nights.
  *
  * RateHawk allows 10 searches a minute for the whole account, shared with the live site, so a
- * city is searched only when its tab opens: the open stay's pane is mounted, a stay opened
- * before stays mounted but hidden (its search and pick kept), a stay never opened is not
+ * city is searched only when its tab is open on screen: the open stay's pane is mounted, a stay
+ * opened before stays mounted but hidden (its search and pick kept), a stay never opened is not
  * mounted at all. Nothing is searched ahead.
+ *
+ * `shown` = the hotels step is the step on screen. The flow keeps this step mounted (hidden)
+ * while the trip has its flight (ItineraryFlow), so a visit to the summary or an earlier step
+ * and back finds every opened city as it was - its search, the customer's pick, rate and
+ * filters - with no new search. Hidden, nothing new mounts.
  */
-export function HotelsStep() {
+export function HotelsStep({ shown = true }: { shown?: boolean }) {
   const { state, setActiveStay, goStep } = useItinerary();
   const { route, dates, flight, hotels, pax, train } = state;
 
@@ -192,13 +226,14 @@ export function HotelsStep() {
     if (!flight || !route.length) return [];
     const trainSet = new Set(train);
     return stays(route, dates).map((stay, i) => {
-      const event = stayEvent(stay.events[0], stay.city);
+      const lodging = stayEvent(stay.events[0], stay.city);
       const f = stayFlight(i, flight, route, dates, trainSet);
-      const range = stayHotelRange(event, f);
+      const range = stayHotelRange(lodging, f);
       return {
         stay,
         city: stayCityName(stay.events[0]),
-        event,
+        // The step's "included" line, measured against the package base for THESE nights.
+        event: withStayBase(lodging, range),
         flight: f,
         range,
         paneKey: `${stay.key}|${range[0]}|${range[1]}|${pax}`,
@@ -208,25 +243,28 @@ export function HotelsStep() {
 
   const active = Math.min(Math.max(0, state.activeStay), Math.max(0, views.length - 1));
   const activeKey = views[active]?.paneKey;
-  // Panes opened during this visit of the step (their search is done - keep them).
+  // Panes opened while the step was on screen (their search is done - keep them).
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => {
-    if (!activeKey) return;
+    if (!activeKey || !shown) return;
     setOpened((prev) => (prev.has(activeKey) ? prev : new Set(prev).add(activeKey)));
-  }, [activeKey]);
+  }, [activeKey, shown]);
 
   // The live step's date field opens a "רוצים תאריכים אחרים?" tooltip that only a press outside
-  // it closes (Mantine useClickOutside on mousedown). A tab switched by mouse makes that press;
-  // one switched from the keyboard (a tab, or the continue bar) left the hidden pane's tooltip on
-  // screen, portalled to the page's corner. Press outside once, as the mouse would have.
-  const shownStay = useRef(active);
+  // it closes (Mantine useClickOutside on mousedown), and it is portalled out of the hidden
+  // pane. A switch made by mouse makes that press; one made from the keyboard (a tab, the
+  // continue bar, a slot) left it on screen in the page's corner - over another city or another
+  // step. Press outside once, as the mouse would have.
+  const onScreen = `${shown ? active : "hidden"}`;
+  const lastOnScreen = useRef(onScreen);
   useEffect(() => {
-    if (shownStay.current === active) return;
-    shownStay.current = active;
+    if (lastOnScreen.current === onScreen) return;
+    lastOnScreen.current = onScreen;
     document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-  }, [active]);
+  }, [onScreen]);
 
   if (!flight) {
+    if (!shown) return null;
     // The hotels' dates come from the flight (a change of party or dates drops it).
     return (
       <EmptyState
@@ -243,11 +281,11 @@ export function HotelsStep() {
   }
   if (!views.length) return null;
 
-  const isDone = (v: StayView) => !!hotels[v.stay.key];
+  const isDone = (v: StayView) => stayHotelReady(hotels[v.stay.key], v.range, pax);
   const doneCount = views.filter(isDone).length;
 
   return (
-    <section aria-labelledby="trip-hotels-title" className="flex flex-col gap-3">
+    <section aria-labelledby="trip-hotels-title" className="flex flex-col gap-3" hidden={!shown}>
       <div className="flex flex-col gap-1">
         <PanelTitle>
           <span id="trip-hotels-title">מלון בכל עיר</span>
@@ -259,15 +297,16 @@ export function HotelsStep() {
       </div>
       <StayTabs views={views} active={active} isDone={isDone} onSelect={setActiveStay} />
       {views.map((v, i) => {
-        const shown = i === active;
-        const mounted = shown || opened.has(v.paneKey);
+        const open = i === active;
+        // Mounted = searched: only for the tab open on screen, or a pane opened before.
+        const mounted = (shown && open) || opened.has(v.paneKey);
         return (
           <div
             key={v.stay.key}
             role="tabpanel"
             id={panelId(v.stay.key)}
             aria-labelledby={tabId(v.stay.key)}
-            hidden={!shown}
+            hidden={!open}
           >
             {mounted && <StayHotelPane key={v.paneKey} view={v} />}
           </div>

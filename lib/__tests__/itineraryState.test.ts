@@ -284,3 +284,54 @@ describe("fitRoute", () => {
     expect(refused[0].compat.reason.code).toBe("too_far");
   });
 });
+
+describe("setFlight keeps only the hotels still on their stay's nights", () => {
+  // Paris -> London: depart 11/05, move 13/05, return 16/05.
+  const seg = (departureTime: string, arrivalTime: string) => ({
+    departureTime,
+    arrivalTime,
+    departureAirport: "AAA",
+    arrivalAirport: "BBB",
+    stops: [],
+    duration: "PT2H",
+    checkBagsIncluded: true,
+    cabinBagsIncluded: true,
+  });
+  const offer = (id: string, outLands: string) => {
+    const legs = [
+      seg("2027-05-11T01:00:00", outLands),
+      seg("2027-05-13T13:05:00", "2027-05-13T13:25:00"),
+      seg("2027-05-16T22:40:00", "2027-05-17T05:20:00"),
+    ];
+    return { id, outbound: legs[0], inbound: legs[2], legs, trainLegs: [] } as unknown as ItineraryFlight;
+  };
+  const guests = [{ adults: 2, children: [] }];
+  const paris = { id: "p", checkin: "2027-05-11", checkout: "2027-05-13", guests } as unknown as OrderHotel;
+  const london = { id: "l", checkin: "2027-05-13", checkout: "2027-05-16", guests } as unknown as OrderHotel;
+  const picked = () =>
+    run(
+      parisLondon(),
+      { type: "setFlight", flight: offer("f2", "2027-05-11T09:55:00") },
+      { type: "setHotel", stayKey: "618", hotel: paris },
+      { type: "setHotel", stayKey: "702", hotel: london },
+    );
+
+  it("another offer on the same nights keeps both hotels", () => {
+    const s = picked();
+    const out = reduce(s, { type: "setFlight", flight: offer("f3", "2027-05-11T11:00:00") });
+    expect(out.flight?.id).toBe("f3");
+    expect(out.hotels).toBe(s.hotels);
+  });
+
+  it("an offer landing at 06:30 moves Paris' check-in to the 10th: Paris' hotel goes, London's stays", () => {
+    const out = reduce(picked(), { type: "setFlight", flight: offer("f4", "2027-05-11T06:30:00") });
+    expect(out.hotels).toEqual({ "702": london });
+  });
+
+  it("no flight (a new search answer) keeps the hotels: no dates to judge them by", () => {
+    const s = picked();
+    const out = reduce(s, { type: "setFlight", flight: null });
+    expect(out.flight).toBeNull();
+    expect(out.hotels).toBe(s.hotels);
+  });
+});

@@ -76,6 +76,15 @@ function packageNights(e: Event): number {
 }
 
 /**
+ * The event's package hotel, per traveller per night: its base hotel price over the nights its
+ * own package assumes. What the estimate prices a stay with, and what the hotels step's
+ * "included" line is measured against for the nights it searches (lib/itinerary/stayAdapter.ts).
+ */
+export function nightlyHotelBase(e: Event): number {
+  return usd(e.base_hotel_price) / packageNights(e);
+}
+
+/**
  * The trip's price per traveller, in whole dollars, and what buying the same events one by one
  * would cost (`separate`).
  *
@@ -101,8 +110,7 @@ export function estimateItinerary(
   const flight = quote ?? FLIGHT_FALLBACK_SHARE * route.reduce((sum, e) => sum + usd(e.base_flight_price), 0);
 
   const hotel = stays(route, d).reduce((sum, stay) => {
-    const first = stay.events[0];
-    const nightly = usd(first.base_hotel_price) / packageNights(first);
+    const nightly = nightlyHotelBase(stay.events[0]);
     const nights = dayDiff(stay.from, stay.to); // NaN for a draft without dates: no hotel yet
     return sum + (Number.isFinite(nights) ? nightly * Math.max(0, nights) : 0);
   }, 0);

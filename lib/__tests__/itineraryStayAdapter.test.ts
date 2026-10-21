@@ -5,12 +5,17 @@ import { defaultCity, lodgingLocation, offeredCities, splitOffered } from "../ev
 import { getDefaultDateRange } from "../getDefaultDateRange";
 import { defaultTripDates, stays } from "../itinerary/dates";
 import {
+  hotelGuests,
   hotelOnStayDates,
+  hotelsForFlight,
   sameHotel,
   stayAdapterFields,
   stayEvent,
   stayFlight,
   stayHotelRange,
+  stayHotelReady,
+  stayRanges,
+  withStayBase,
 } from "../itinerary/stayAdapter";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
@@ -125,10 +130,38 @@ describe("stayFlight - the live date rule yields each stay's check-in / check-ou
     const london = stayFlight(1, flight, route, d, none);
     expect(paris.outbound).toBe(OUT);
     expect(paris.inbound).toBe(PAR_LON);
-    expect(london.outbound).toBe(PAR_LON);
+    // Into a later city: the move flight's own day, at noon (the airports kept).
+    expect(london.outbound).toMatchObject({
+      departureTime: "2027-05-13T12:00:00",
+      arrivalTime: "2027-05-13T12:00:00",
+      departureAirport: "CDG",
+      arrivalAirport: "LHR",
+    });
     expect(london.inbound).toBe(RET);
     expect(opens(stayEvent(celine, "flight"), paris)).toEqual(["2027-05-11", "2027-05-13"]);
     expect(opens(stayEvent(chelsea, "flight"), london)).toEqual(["2027-05-13", "2027-05-16"]);
+  });
+
+  it("a move flight that lands before 08:00 checks in on the move day, not the evening before (that night is Paris')", () => {
+    const dawn = seg("CDG", "LHR", "2027-05-13T06:10:00", "2027-05-13T06:35:00");
+    const flight = tripFlight([OUT, dawn, RET]);
+    expect(opens(stayEvent(celine, "flight"), stayFlight(0, flight, route, d, none))).toEqual([
+      "2027-05-11",
+      "2027-05-13",
+    ]);
+    expect(opens(stayEvent(chelsea, "flight"), stayFlight(1, flight, route, d, none))).toEqual([
+      "2027-05-13",
+      "2027-05-16",
+    ]);
+  });
+
+  it("an overnight move flight that lands after 08:00 the next day checks in on the landing day", () => {
+    const night = seg("CDG", "LHR", "2027-05-13T23:30:00", "2027-05-14T09:00:00");
+    const flight = tripFlight([OUT, night, RET]);
+    expect(opens(stayEvent(chelsea, "flight"), stayFlight(1, flight, route, d, none))).toEqual([
+      "2027-05-14",
+      "2027-05-16",
+    ]);
   });
 
   it("the same move by train on 13/05: the same dates, from a ground segment at noon", () => {
@@ -193,7 +226,7 @@ describe("stayFlight - three stays, one move by train", () => {
     expect(paris.inbound.departureTime).toBe("2027-05-13T12:00:00");
     expect(london.outbound.arrivalTime).toBe("2027-05-13T12:00:00");
     expect(london.inbound).toBe(LON_AMS);
-    expect(amsterdam.outbound).toBe(LON_AMS);
+    expect(amsterdam.outbound).toMatchObject({ departureTime: "2027-05-16T12:00:00", arrivalAirport: "AMS" });
     expect(amsterdam.inbound).toBe(OUT_AMS);
     expect(opens(stayEvent(celine, "flight"), paris)).toEqual(["2027-05-11", "2027-05-13"]);
     expect(opens(stayEvent(chelsea, "flight"), london)).toEqual(["2027-05-13", "2027-05-16"]);
@@ -205,7 +238,7 @@ describe("stayFlight - three stays, one move by train", () => {
     const train: ReadonlySet<string> = new Set(["702>810"]);
     const [paris, london, amsterdam] = [0, 1, 2].map((i) => stayFlight(i, flight, route, d, train));
     expect(paris.inbound).toBe(PAR_LON);
-    expect(london.outbound).toBe(PAR_LON);
+    expect(london.outbound).toMatchObject({ departureTime: "2027-05-13T12:00:00", arrivalAirport: "LHR" });
     expect(london.inbound).toMatchObject({ departureTime: "2027-05-16T12:00:00", departureAirport: "LON", arrivalAirport: "AMS" });
     expect(amsterdam.outbound).toEqual(london.inbound);
     expect(opens(stayEvent(chelsea, "flight"), london)).toEqual(["2027-05-13", "2027-05-16"]);
@@ -310,7 +343,8 @@ describe("stayAdapterFields", () => {
     expect(f.flightSkipped).toBe(false);
     expect(f.returnToSummary).toBe(false);
     expect(f.packageLocked).toBe(false);
-    expect(f.readyPackage).toBeUndefined();
+    // The order layout's own "no ready package" (AppContext.readyPackage is `ReadyPackageState | null`).
+    expect(f.readyPackage).toBeNull();
     expect(f.personLink).toBeUndefined();
     // The order layout's own "one hotel, no split" (app/order/layout.tsx starts both at null).
     expect(f.hotelSegments).toBeNull();
@@ -322,5 +356,90 @@ describe("stayAdapterFields", () => {
     const f = stayAdapterFields({ event: celine, city: "event", flight: undefined, hotel: h, pax: 1 });
     expect(f.hotel).toBe(h);
     expect(f.lodgingCity).toBe("event");
+  });
+});
+
+describe("stayRanges", () => {
+  const route = [celine, chelsea];
+  const d = defaultTripDates(route);
+
+  it("one range per stay, in stay order: what each stay's hotel step opens on", () => {
+    expect(stayRanges(route, d, tripFlight([OUT, PAR_LON, RET]), none)).toEqual([
+      ["2027-05-11", "2027-05-13"],
+      ["2027-05-13", "2027-05-16"],
+    ]);
+  });
+
+  it("no flight, no hotel dates", () => {
+    expect(stayRanges(route, d, null, none)).toEqual([]);
+  });
+});
+
+describe("stayHotelReady - the one rule for a stay's ✓, the step's gate and the summary", () => {
+  const range: [string, string] = ["2027-05-11", "2027-05-13"];
+
+  it("a hotel for the stay's nights and the trip's party is ready", () => {
+    expect(hotelGuests(hotel())).toBe(2);
+    expect(stayHotelReady(hotel(), range, 2)).toBe(true);
+  });
+
+  it("no hotel, or no range (no flight), is not ready", () => {
+    expect(stayHotelReady(undefined, range, 2)).toBe(false);
+    expect(stayHotelReady(hotel(), undefined, 2)).toBe(false);
+  });
+
+  it("other nights are not ready (the step's date picker moved them)", () => {
+    expect(stayHotelReady(hotel({ checkout: "2027-05-14" }), range, 2)).toBe(false);
+  });
+
+  it("another party is not ready (the step's rooms popover changed the guests), children count as travellers", () => {
+    expect(stayHotelReady(hotel({ guests: [{ adults: 3, children: [] }] }), range, 2)).toBe(false);
+    expect(stayHotelReady(hotel({ guests: [{ adults: 2, children: [] }, { adults: 1, children: [] }] }), range, 3)).toBe(true);
+    expect(stayHotelReady(hotel({ guests: [{ adults: 2, children: [7] }] }), range, 2)).toBe(false);
+    expect(stayHotelReady(hotel({ guests: undefined } as unknown as Partial<OrderHotel>), range, 2)).toBe(false);
+  });
+});
+
+describe("hotelsForFlight - a new flight keeps only the hotels still on their stay's nights", () => {
+  const route = [celine, chelsea];
+  const d = defaultTripDates(route);
+  const paris = hotel({ id: "p", checkin: "2027-05-11", checkout: "2027-05-13" });
+  const london = hotel({ id: "l", checkin: "2027-05-13", checkout: "2027-05-16" });
+  const hotels = { "618": paris, "702": london };
+
+  it("the same nights under the new flight: both kept, the same object back", () => {
+    const other = tripFlight([seg("TLV", "ORY", "2027-05-11T10:00:00", "2027-05-11T14:00:00"), PAR_LON, RET]);
+    expect(hotelsForFlight(route, d, none, hotels, other)).toBe(hotels);
+  });
+
+  it("an outbound landing at 06:30 moves Paris' check-in to the 10th: Paris goes, London stays", () => {
+    const early = tripFlight([seg("TLV", "CDG", "2027-05-11T01:00:00", "2027-05-11T06:30:00"), PAR_LON, RET]);
+    expect(hotelsForFlight(route, d, none, hotels, early)).toEqual({ "702": london });
+  });
+
+  it("an overnight move landing on the 14th: London goes, Paris stays", () => {
+    const night = tripFlight([OUT, seg("CDG", "LHR", "2027-05-13T23:30:00", "2027-05-14T09:00:00"), RET]);
+    expect(hotelsForFlight(route, d, none, hotels, night)).toEqual({ "618": paris });
+  });
+
+  it("no hotel picked yet: nothing to check", () => {
+    const empty = {};
+    expect(hotelsForFlight(route, d, none, empty, tripFlight([OUT, PAR_LON, RET]))).toBe(empty);
+  });
+});
+
+describe("withStayBase - the hotel step's 'included' line, prorated to the stay's nights", () => {
+  it("the package's nightly base times the nights the step prices", () => {
+    // 600 for the package's 4 nights = 150 a night; the stay prices 3 nights.
+    const e = { ...celine, base_hotel_price: 600, def_date_depart: "2027-05-10", def_date_return: "2027-05-14" } as Event;
+    expect(withStayBase(e, ["2027-05-13", "2027-05-16"]).base_hotel_price).toBe(450);
+    expect(withStayBase(e, ["2027-05-11", "2027-05-12"]).base_hotel_price).toBe(150);
+  });
+
+  it("keeps the rest of the event and leaves the event it was given alone", () => {
+    const e = { ...celine, base_hotel_price: 300, def_date_depart: "2027-05-10", def_date_return: "2027-05-13" } as Event;
+    const out = withStayBase(stayEvent(e, "flight"), ["2027-05-11", "2027-05-13"]);
+    expect(out).toMatchObject({ id: 618, lodging_mode: "flight_city", base_hotel_price: 200 });
+    expect(e.base_hotel_price).toBe(300);
   });
 });

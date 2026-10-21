@@ -3,7 +3,7 @@ import type { Event } from "../app.types";
 import { computePackagePrice } from "../events/price";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
 import { defaultTripDates } from "../itinerary/dates";
-import { estimateItinerary, markupDiscount, tierMarkups } from "../itinerary/price";
+import { estimateItinerary, markupDiscount, nightlyHotelBase, tierMarkups } from "../itinerary/price";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 
@@ -262,5 +262,17 @@ describe("estimateItinerary", () => {
   it("an empty route is all zeros", () => {
     const r = estimateItinerary([], { depart: "", ret: "", moves: {} }, S, null);
     expect(r).toEqual({ perTraveller: 0, separate: 0, saving: null });
+  });
+});
+
+describe("nightlyHotelBase", () => {
+  it("is the package's base hotel price over the nights that package assumes", () => {
+    expect(nightlyHotelBase(ev(9, "2027-05-12", PARIS, { base_hotel_price: 600, def_date_depart: "2027-05-10", def_date_return: "2027-05-14" }))).toBe(150);
+  });
+
+  it("a package without its dates counts one night; a missing or broken price counts 0", () => {
+    expect(nightlyHotelBase(ev(9, "2027-05-12", PARIS, { base_hotel_price: 420 }))).toBe(420);
+    expect(nightlyHotelBase(ev(9, "2027-05-12", PARIS, { base_hotel_price: null }))).toBe(0);
+    expect(nightlyHotelBase(ev(9, "2027-05-12", PARIS, { base_hotel_price: "x" }))).toBe(0);
   });
 });

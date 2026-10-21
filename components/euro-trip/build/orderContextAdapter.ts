@@ -74,8 +74,8 @@ const ignore = (): void => {};
  * hotel's cost) have nothing to reset here; the city and split setters are reachable only
  * from the "איפה ישנים?" line, which a one-city stay event never draws (`stayEvent`).
  *
- * `cb.setHotel` must keep its identity for the pane's life: the step's selected card commits
- * its rate again whenever that callback changes (see `sameHotel`).
+ * `cb.setHotel` keeps its identity for the pane's life, like the order layout's own setter: the
+ * step lists it in its callbacks' dependencies (`handleSelectedRate`, `useSegmentBreakfast`).
  */
 export function adapterForStay(
   i: Parameters<typeof stayAdapterFields>[0],
