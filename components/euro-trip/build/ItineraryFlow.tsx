@@ -14,6 +14,7 @@ import { estimateItinerary } from "@/lib/itinerary/price";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import type { Stay } from "@/lib/itinerary/types";
 import { FlightsStep } from "./FlightsStep";
+import { HotelsStep } from "./HotelsStep";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
@@ -37,7 +38,7 @@ function ComingSoon({ step, stay }: { step: Exclude<ItineraryStep, "build" | "ti
 }
 
 /** The step on screen - one switch, so each step's real component slots in here. */
-function StepBody({ state, stayList }: { state: ItineraryState; stayList: Stay[] }) {
+function StepBody({ state }: { state: ItineraryState }) {
   switch (state.step) {
     case "build":
       return state.mode === "route" ? <RouteStep /> : <SelfBuild />;
@@ -46,15 +47,21 @@ function StepBody({ state, stayList }: { state: ItineraryState; stayList: Stay[]
     case "flights":
       return <FlightsStep />;
     case "hotels":
-      return <ComingSoon step="hotels" stay={stayList[state.activeStay]} />;
+      return <HotelsStep />;
     case "summary":
       return <ComingSoon step="summary" />;
   }
 }
 
-/** The first stay after the open one that has no hotel yet (-1 = none: on to the summary). */
-const nextOpenStay = (state: ItineraryState, list: Stay[]): number =>
-  list.findIndex((s, i) => i > state.activeStay && !state.hotels[s.key]);
+/**
+ * The next stay without a hotel: the first after the open one, else the first before it (a
+ * customer who opened a later city first). -1 = every other stay has one: on to the summary.
+ */
+const nextOpenStay = (state: ItineraryState, list: Stay[]): number => {
+  const open = (s: Stay, i: number) => i !== state.activeStay && !state.hotels[s.key];
+  const after = list.findIndex((s, i) => i > state.activeStay && open(s, i));
+  return after >= 0 ? after : list.findIndex(open);
+};
 
 /**
  * "Build Your Euro Trip" - the flow: the trip header, the step on screen, and the order flow's
@@ -72,8 +79,8 @@ export function ItineraryFlow() {
     [route, dates, settings],
   );
 
-  // A new step or mode opens at the top of the page.
-  const view = `${step}|${state.mode}`;
+  // A new step or mode opens at the top of the page - and so does the next city's hotels.
+  const view = `${step}|${state.mode}|${step === "hotels" ? state.activeStay : ""}`;
   const lastView = useRef(view);
   useEffect(() => {
     if (lastView.current === view) return;
@@ -87,17 +94,23 @@ export function ItineraryFlow() {
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
   // to be picked again for the new party).
   const ticketsReady = allTicketsReady(route, state.tickets, state.pax);
-  // The step on screen still waits for picks (Task A13 gates the hotels). A flight counts once
-  // it is chosen AND priced - the flights step sets it only then.
+  // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
+  // the flights step sets it only then.
   const flightMissing = step === "flights" && !state.flight;
-  const blocked = (step === "tickets" && !ticketsReady) || flightMissing;
+  // The hotels step moves on only from a stay that has its hotel: to the next stay without one,
+  // or - when every stay has one - to the summary. No flight = no hotel dates (the step says so).
+  const openStay = stayList[Math.min(state.activeStay, stayList.length - 1)];
+  const hotelMissing = step === "hotels" && (!state.flight || !openStay || !state.hotels[openStay.key]);
+  const blocked = (step === "tickets" && !ticketsReady) || flightMissing || hotelMissing;
 
   const primaryLabel = !enough
     ? "בחרו לפחות 2 אירועים"
     : blocked
-      ? flightMissing
+      ? flightMissing || (hotelMissing && !state.flight)
         ? "בחרו טיסה לכל המסלול"
-        : "בחרו כרטיסים לכל האירועים"
+        : hotelMissing
+          ? `בחרו מלון ב${openStay ? stayCityName(openStay.events[0]) : "כל עיר"}`
+          : "בחרו כרטיסים לכל האירועים"
       : step === "build"
         ? "בחר והמשך לכרטיסים"
         : step === "tickets"
@@ -108,8 +121,6 @@ export function ItineraryFlow() {
               ? `בחר והמשך למלון ב${stayCityName(stayList[nextStay].events[0])}`
               : "בחר והמשך לסיכום";
 
-  // Task A13 gates the hotels step on its picks; until then the
-  // placeholders let the flow be walked.
   const onPrimary = () => {
     if (!enough || blocked) return;
     if (step === "build") goStep("tickets");
@@ -177,7 +188,7 @@ export function ItineraryFlow() {
             </button>
           </div>
         )}
-        <StepBody state={state} stayList={stayList} />
+        <StepBody state={state} />
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
           Not on an empty builder: there is no trip to price yet (the bar would say $0). */}

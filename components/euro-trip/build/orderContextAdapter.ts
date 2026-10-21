@@ -1,8 +1,9 @@
 import type { ContextType } from "react";
 
 import type { OrderContext } from "@/app/app.context";
-import type { Event, OrderTicket } from "@/lib/app.types";
+import type { Event, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { ticketAdapterFields } from "@/lib/itinerary/adapter";
+import { stayAdapterFields } from "@/lib/itinerary/stayAdapter";
 
 type OrderContextValue = ContextType<typeof OrderContext>;
 
@@ -49,5 +50,47 @@ export function adapterForEvent(
     setHotel: cb.clearTravel,
   };
   // The one cast: a partial context the ticket step reads in full (the fields above).
+  return value as OrderContextValue;
+}
+
+/** What the trip does with the hotel step's writes, for one stay. */
+export type HotelStepCallbacks = {
+  setHotel: (h: OrderHotel | undefined) => void;
+};
+
+/** A write the trip has no use for (one city, no split, no skip, no summary filter echo). */
+const ignore = (): void => {};
+
+/**
+ * The order's context, as the live hotel step (app/order/HotelSelection.tsx) reads it, for one
+ * stay of the trip. The step reads exactly these fields - `setHotel, planeTickets, flight,
+ * event, setSelectedHotelFilters, setSkipHotel, setSkippedHotelPricePerGuest, flightSkipped,
+ * numberOfEventTickets, personLink, returnToSummary, lodgingCity, setLodgingCity,
+ * hotelSegments, setHotelSegments, splitNights, setSplitNights, hotel, packageLocked,
+ * readyPackage` (its `useSegmentBreakfast` hook: `hotelSegments, setHotelSegments, setHotel`)
+ * - and none of the components it draws reads the context. Every other field is left out.
+ *
+ * Only `setHotel` reaches the trip. The step's mount resets (filters, skip, the skipped
+ * hotel's cost) have nothing to reset here; the city and split setters are reachable only
+ * from the "איפה ישנים?" line, which a one-city stay event never draws (`stayEvent`).
+ *
+ * `cb.setHotel` must keep its identity for the pane's life: the step's selected card commits
+ * its rate again whenever that callback changes (see `sameHotel`).
+ */
+export function adapterForStay(
+  i: Parameters<typeof stayAdapterFields>[0],
+  cb: HotelStepCallbacks,
+): OrderContextValue {
+  const value: Partial<OrderContextValue> = {
+    ...stayAdapterFields(i),
+    setHotel: cb.setHotel,
+    setSelectedHotelFilters: ignore,
+    setSkipHotel: ignore,
+    setSkippedHotelPricePerGuest: ignore,
+    setLodgingCity: ignore,
+    setHotelSegments: ignore,
+    setSplitNights: ignore,
+  };
+  // The one cast: a partial context the hotel step reads in full (the fields above).
   return value as OrderContextValue;
 }
