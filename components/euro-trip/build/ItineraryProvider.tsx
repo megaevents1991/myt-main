@@ -45,6 +45,8 @@ export type ItineraryApi = {
   /** A message about the route the link opened (an event that is gone, or does not fit). */
   notice: string | null;
   dismissNotice: () => void;
+  /** Shows a message about the route above the step (e.g. an event the tickets step found gone). */
+  showNotice: (message: string) => void;
   addEvent: (e: Event) => void;
   removeEvent: (id: number) => void;
   setMode: (m: ItineraryMode) => void;
@@ -127,6 +129,7 @@ export function ItineraryProvider({
       applyUrl,
       notice,
       dismissNotice: () => setNotice(null),
+      showNotice: (message) => setNotice(message),
       addEvent: (event) => dispatch({ type: "addEvent", event, settings }),
       removeEvent: (id) => dispatch({ type: "removeEvent", id }),
       setMode: (mode) => dispatch({ type: "setMode", mode }),

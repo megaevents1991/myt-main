@@ -6,6 +6,7 @@ import { Building2, Plane, Ticket, X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { allTicketsReady } from "@/lib/itinerary/adapter";
 import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
 import { dayDiff } from "@/lib/itinerary/geo";
@@ -15,13 +16,13 @@ import type { Stay } from "@/lib/itinerary/types";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
+import { TicketsStep } from "./TicketsStep";
 import { TripHeader } from "./TripHeader";
 import { nightsLabel } from "./parts";
 
-/** A step that is not built yet (tickets / flights / hotels / summary land in later tasks). */
-function ComingSoon({ step, stay }: { step: Exclude<ItineraryStep, "build">; stay?: Stay }) {
+/** A step that is not built yet (flights / hotels / summary land in later tasks). */
+function ComingSoon({ step, stay }: { step: Exclude<ItineraryStep, "build" | "tickets">; stay?: Stay }) {
   const copy = {
-    tickets: { icon: <Ticket className="size-7" aria-hidden />, title: "כרטיסים לכל אירוע - בקרוב" },
     flights: { icon: <Plane className="size-7" aria-hidden />, title: "טיסות לכל המסלול - בקרוב" },
     hotels: {
       icon: <Building2 className="size-7" aria-hidden />,
@@ -40,7 +41,7 @@ function StepBody({ state, stayList }: { state: ItineraryState; stayList: Stay[]
     case "build":
       return state.mode === "route" ? <RouteStep /> : <SelfBuild />;
     case "tickets":
-      return <ComingSoon step="tickets" />;
+      return <TicketsStep />;
     case "flights":
       return <ComingSoon step="flights" />;
     case "hotels":
@@ -82,23 +83,30 @@ export function ItineraryFlow() {
   const enough = route.length >= MIN_TRIP_EVENTS;
   const at = ITINERARY_STEPS.indexOf(step);
   const nextStay = step === "hotels" ? nextOpenStay(state, stayList) : -1;
+  // Every event has its ticket for the party (a quantity changed in one tab leaves the others
+  // to be picked again for the new party).
+  const ticketsReady = allTicketsReady(route, state.tickets, state.pax);
+  // The step on screen still waits for picks (Tasks A12-A13 gate flights / hotels).
+  const blocked = step === "tickets" && !ticketsReady;
 
   const primaryLabel = !enough
     ? "בחרו לפחות 2 אירועים"
-    : step === "build"
-      ? "בחר והמשך לכרטיסים"
-      : step === "tickets"
-        ? "בחר והמשך לטיסות"
-        : step === "flights"
-          ? "בחר והמשך למלונות"
-          : nextStay >= 0
-            ? `בחר והמשך למלון ב${stayCityName(stayList[nextStay].events[0])}`
-            : "בחר והמשך לסיכום";
+    : blocked
+      ? "בחרו כרטיסים לכל האירועים"
+      : step === "build"
+        ? "בחר והמשך לכרטיסים"
+        : step === "tickets"
+          ? "בחר והמשך לטיסות"
+          : step === "flights"
+            ? "בחר והמשך למלונות"
+            : nextStay >= 0
+              ? `בחר והמשך למלון ב${stayCityName(stayList[nextStay].events[0])}`
+              : "בחר והמשך לסיכום";
 
-  // Tasks A11-A13 gate the tickets / flights / hotels steps on their picks; until then
-  // the placeholders let the flow be walked.
+  // Tasks A12-A13 gate the flights / hotels steps on their picks; until then the
+  // placeholders let the flow be walked.
   const onPrimary = () => {
-    if (!enough) return;
+    if (!enough || blocked) return;
     if (step === "build") goStep("tickets");
     else if (step === "tickets") goStep("flights");
     else if (step === "flights") goStep("hotels");
@@ -117,13 +125,12 @@ export function ItineraryFlow() {
     return undefined;
   };
 
-  const allTickets = route.length > 0 && route.every((e) => state.tickets[e.id]);
   const allHotels = stayList.length > 0 && stayList.every((s) => state.hotels[s.key]);
   const slots: ContinueSlot[] = [
     {
       icon: "ticket",
       label: "כרטיסים",
-      filled: allTickets,
+      filled: ticketsReady,
       value: route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`,
       onClick: slotNav("tickets"),
     },
@@ -175,7 +182,7 @@ export function ItineraryFlow() {
             slots={slots}
             total={total}
             primaryLabel={primaryLabel}
-            primaryDisabled={!enough}
+            primaryDisabled={!enough || blocked}
             onPrimary={onPrimary}
             isFinalStep={false}
           />
