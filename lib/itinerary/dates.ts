@@ -171,22 +171,24 @@ export function tripLegs(route: Event[], d: TripDates, train: ReadonlySet<string
 
 /**
  * The moves made by train: the customer's own way, not included. Named after the stays they
- * leave and reach ("City, Country" -> "City"); `km` is the same number the flight leg it replaces
- * shows, so toggling the train never changes the distance on screen.
+ * leave and reach ("City, Country" -> "City") and measured between the same two stay points
+ * (a train runs from city centre to city centre): Paris -> a Manchester match slept in London
+ * is Paris -> London, 343 km - not the Paris -> Manchester of the flight leg it replaces.
  */
 export function trainLegs(route: Event[], d: TripDates, train: ReadonlySet<string>): TrainLeg[] {
   const { runs, moves: ms } = layout(route);
-  return ms.flatMap((m, i) =>
-    train.has(m.key)
-      ? [
-          {
-            key: m.key,
-            fromName: shortPlace(stayPoint(runs[i][0]).point.name),
-            toName: shortPlace(stayPoint(runs[i + 1][0]).point.name),
-            date: moveDay(d, m),
-            km: haversineKm(eventPoint(m.a), eventPoint(m.b)),
-          },
-        ]
-      : [],
-  );
+  return ms.flatMap((m, i) => {
+    if (!train.has(m.key)) return [];
+    const from = stayPoint(runs[i][0]).point;
+    const to = stayPoint(runs[i + 1][0]).point;
+    return [
+      {
+        key: m.key,
+        fromName: shortPlace(from.name),
+        toName: shortPlace(to.name),
+        date: moveDay(d, m),
+        km: haversineKm(from, to),
+      },
+    ];
+  });
 }

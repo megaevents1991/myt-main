@@ -13,6 +13,7 @@ import { dayDiff } from "@/lib/itinerary/geo";
 import { estimateItinerary } from "@/lib/itinerary/price";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import type { Stay } from "@/lib/itinerary/types";
+import { FlightsStep } from "./FlightsStep";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
@@ -43,7 +44,7 @@ function StepBody({ state, stayList }: { state: ItineraryState; stayList: Stay[]
     case "tickets":
       return <TicketsStep />;
     case "flights":
-      return <ComingSoon step="flights" />;
+      return <FlightsStep />;
     case "hotels":
       return <ComingSoon step="hotels" stay={stayList[state.activeStay]} />;
     case "summary":
@@ -86,13 +87,17 @@ export function ItineraryFlow() {
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
   // to be picked again for the new party).
   const ticketsReady = allTicketsReady(route, state.tickets, state.pax);
-  // The step on screen still waits for picks (Tasks A12-A13 gate flights / hotels).
-  const blocked = step === "tickets" && !ticketsReady;
+  // The step on screen still waits for picks (Task A13 gates the hotels). A flight counts once
+  // it is chosen AND priced - the flights step sets it only then.
+  const flightMissing = step === "flights" && !state.flight;
+  const blocked = (step === "tickets" && !ticketsReady) || flightMissing;
 
   const primaryLabel = !enough
     ? "בחרו לפחות 2 אירועים"
     : blocked
-      ? "בחרו כרטיסים לכל האירועים"
+      ? flightMissing
+        ? "בחרו טיסה לכל המסלול"
+        : "בחרו כרטיסים לכל האירועים"
       : step === "build"
         ? "בחר והמשך לכרטיסים"
         : step === "tickets"
@@ -103,7 +108,7 @@ export function ItineraryFlow() {
               ? `בחר והמשך למלון ב${stayCityName(stayList[nextStay].events[0])}`
               : "בחר והמשך לסיכום";
 
-  // Tasks A12-A13 gate the flights / hotels steps on their picks; until then the
+  // Task A13 gates the hotels step on its picks; until then the
   // placeholders let the flow be walked.
   const onPrimary = () => {
     if (!enough || blocked) return;

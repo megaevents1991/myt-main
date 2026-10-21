@@ -368,6 +368,22 @@ describe("tripLegs", () => {
     expect(Math.abs(tl[0].km - 343)).toBeLessThanOrEqual(2);
   });
 
+  it("a train leg is measured between the two stays, where its names come from", () => {
+    // Paris -> a Manchester match sold as a flight to London, slept in London (flight_city).
+    const route = [celine, manchesterMatch(901, "2027-05-15")];
+    const d = defaultTripDates(route);
+    const train: ReadonlySet<string> = new Set(["618>901"]);
+    // The flight leg it replaces is measured between the events: Paris -> Manchester.
+    const mid = tripLegs(route, d, none).find((l) => l.kind === "mid");
+    expect(mid).toMatchObject({ from: "PAR", to: "LON", key: "618>901" });
+    expect(mid?.km ?? 0).toBeGreaterThan(550);
+    const tl = trainLegs(route, d, train);
+    expect(tl).toHaveLength(1);
+    expect(tl[0]).toMatchObject({ key: "618>901", fromName: "פריז", toName: "לונדון", date: "2027-05-13" });
+    // Paris -> London (the stays), not Paris -> Manchester.
+    expect(Math.abs(tl[0].km - 343)).toBeLessThanOrEqual(2);
+  });
+
   it("no train leg while nothing is by train", () => {
     const route = [celine, chelsea];
     expect(trainLegs(route, defaultTripDates(route), none)).toEqual([]);
