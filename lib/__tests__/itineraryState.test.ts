@@ -1,0 +1,253 @@
+import { describe, expect, it } from "vitest";
+import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
+import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
+import {
+  INITIAL_ITINERARY_STATE,
+  MAX_TRAVELLERS,
+  fitRoute,
+  itineraryReducer as reduce,
+  type ItineraryAction,
+  type ItineraryState,
+} from "../itinerary/state";
+
+type City = { latitude: number; longitude: number; name: string; city_iata: string };
+
+const PARIS: City = { latitude: 48.86, longitude: 2.35, name: "פריז, צרפת", city_iata: "PAR" };
+const LONDON: City = { latitude: 51.5, longitude: -0.13, name: "לונדון, בריטניה", city_iata: "LON" };
+const AMSTERDAM: City = { latitude: 52.37, longitude: 4.9, name: "אמסטרדם, הולנד", city_iata: "AMS" };
+const MADRID: City = { latitude: 40.42, longitude: -3.7, name: "מדריד, ספרד", city_iata: "MAD" };
+
+const ev = (id: number, name: string, date: string, city: City, type = "music_event") =>
+  ({
+    id,
+    name,
+    date: `${date}T20:00:00`,
+    type,
+    location: { ...city, country_code: "XX" },
+  }) as unknown as Event;
+
+const celine = ev(618, "סלין דיון", "2027-05-12", PARIS);
+const chelsea = ev(702, "צ'לסי - אברטון", "2027-05-15", LONDON, "sports_event");
+const gracie = ev(896, "גרייסי אברמס", "2027-05-10", AMSTERDAM);
+const arsenal = ev(656, "ארסנל - נוטינגהאם", "2027-05-15", LONDON, "sports_event");
+const madrid = ev(717, "ריאל - ברסה", "2027-05-13", MADRID, "sports_event");
+
+const ticket = (id: string) => ({ id, quantity: 2 }) as unknown as OrderTicket;
+const flight = { id: "f1" } as unknown as ItineraryFlight;
+const hotel = { id: "h1" } as unknown as OrderHotel;
+
+const run = (state: ItineraryState, ...actions: ItineraryAction[]) => actions.reduce(reduce, state);
+const add = (event: Event): ItineraryAction => ({ type: "addEvent", event, settings: S });
+
+/** Paris -> London, with a flight and both hotels picked. */
+const parisLondon = () =>
+  run(
+    INITIAL_ITINERARY_STATE,
+    add(chelsea),
+    add(celine),
+    { type: "setTicket", eventId: 618, ticket: ticket("t618") },
+    { type: "setTicket", eventId: 702, ticket: ticket("t702") },
+    { type: "setFlight", flight },
+    { type: "setHotel", stayKey: "618", hotel },
+    { type: "setHotel", stayKey: "702", hotel },
+  );
+
+describe("initial state", () => {
+  it("is an empty self-build on the build step for two travellers", () => {
+    expect(INITIAL_ITINERARY_STATE).toMatchObject({
+      step: "build",
+      mode: "custom",
+      route: [],
+      pax: 2,
+      flight: null,
+      hotels: {},
+      tickets: {},
+      train: [],
+    });
+  });
+});
+
+describe("addEvent", () => {
+  it("keeps the route in date order with default dates", () => {
+    const s = run(INITIAL_ITINERARY_STATE, add(chelsea), add(celine));
+    expect(s.route.map((e) => e.id)).toEqual([618, 702]);
+    expect(s.dates).toEqual({ depart: "2027-05-11", ret: "2027-05-16", moves: { "618>702": "2027-05-13" } });
+  });
+
+  it("clears the flight and the hotels, keeps the tickets", () => {
+    const s = reduce(parisLondon(), add(gracie));
+    expect(s.flight).toBeNull();
+    expect(s.hotels).toEqual({});
+    expect(s.tickets[618]).toEqual(ticket("t618"));
+  });
+
+  it("refuses an event that cannot join (same day) and a duplicate - the state is untouched", () => {
+    const s = parisLondon();
+    expect(reduce(s, add(arsenal))).toBe(s);
+    expect(reduce(s, add(celine))).toBe(s);
+  });
+
+  it("keeps a departure the customer moved while the first event stays first", () => {
+    const s = run(
+      INITIAL_ITINERARY_STATE,
+      add(celine),
+      { type: "setDates", dates: { depart: "2027-05-09", ret: "2027-05-13", moves: {} } },
+      add(chelsea),
+    );
+    expect(s.dates.depart).toBe("2027-05-09");
+    // A new last event: the return takes its default.
+    expect(s.dates.ret).toBe("2027-05-16");
+  });
+
+  it("an earlier first event resets the departure to its default", () => {
+    const s = run(
+      INITIAL_ITINERARY_STATE,
+      add(celine),
+      { type: "setDates", dates: { depart: "2027-05-12", ret: "2027-05-13", moves: {} } },
+      add(gracie),
+    );
+    expect(s.dates.depart).toBe("2027-05-09");
+  });
+});
+
+describe("removeEvent", () => {
+  it("drops the event's ticket, clamps the dates and clears flight + hotels", () => {
+    const s = reduce(parisLondon(), { type: "removeEvent", id: 702 });
+    expect(s.route.map((e) => e.id)).toEqual([618]);
+    expect(s.tickets).toEqual({ 618: ticket("t618") });
+    expect(s.dates).toEqual({ depart: "2027-05-11", ret: "2027-05-13", moves: {} });
+    expect(s.flight).toBeNull();
+    expect(s.hotels).toEqual({});
+  });
+
+  it("drops the train toggle of a move that is gone", () => {
+    const s = run(parisLondon(), { type: "toggleTrain", key: "618>702" }, { type: "removeEvent", id: 702 });
+    expect(s.train).toEqual([]);
+  });
+
+  it("walks back to the build step below two events", () => {
+    const s = run(parisLondon(), { type: "goStep", step: "flights" }, { type: "removeEvent", id: 618 });
+    expect(s.step).toBe("build");
+  });
+
+  it("an empty route has no dates", () => {
+    const s = run(parisLondon(), { type: "removeEvent", id: 618 }, { type: "removeEvent", id: 702 });
+    expect(s.route).toEqual([]);
+    expect(s.dates).toEqual({ depart: "", ret: "", moves: {} });
+  });
+});
+
+describe("setDates", () => {
+  it("clamps every date into its range and clears flight + hotels", () => {
+    const s = reduce(parisLondon(), {
+      type: "setDates",
+      dates: { depart: "2027-05-01", ret: "2027-06-01", moves: { "618>702": "2027-05-20" } },
+    });
+    expect(s.dates).toEqual({ depart: "2027-05-09", ret: "2027-05-18", moves: { "618>702": "2027-05-15" } });
+    expect(s.flight).toBeNull();
+    expect(s.hotels).toEqual({});
+  });
+
+  it("is a no-op when nothing moves", () => {
+    const s = parisLondon();
+    expect(reduce(s, { type: "setDates", dates: { ...s.dates } })).toBe(s);
+  });
+
+  it("is a no-op on an empty route", () => {
+    expect(
+      reduce(INITIAL_ITINERARY_STATE, { type: "setDates", dates: { depart: "2027-05-01", ret: "2027-05-02", moves: {} } }),
+    ).toBe(INITIAL_ITINERARY_STATE);
+  });
+});
+
+describe("setPax", () => {
+  it("clamps to 1..9 and clears flight + hotels", () => {
+    expect(reduce(parisLondon(), { type: "setPax", pax: 12 })).toMatchObject({ pax: MAX_TRAVELLERS, flight: null, hotels: {} });
+    expect(reduce(parisLondon(), { type: "setPax", pax: 0 }).pax).toBe(1);
+  });
+
+  it("ignores the same count and a non-number", () => {
+    const s = parisLondon();
+    expect(reduce(s, { type: "setPax", pax: 2 })).toBe(s);
+    expect(reduce(s, { type: "setPax", pax: Number.NaN })).toBe(s);
+  });
+});
+
+describe("toggleTrain", () => {
+  it("toggles a move of the route and clears flight + hotels", () => {
+    const on = reduce(parisLondon(), { type: "toggleTrain", key: "618>702" });
+    expect(on.train).toEqual(["618>702"]);
+    expect(on.flight).toBeNull();
+    expect(on.hotels).toEqual({});
+    expect(reduce(on, { type: "toggleTrain", key: "618>702" }).train).toEqual([]);
+  });
+
+  it("ignores a key that is not a move of the route", () => {
+    const s = parisLondon();
+    expect(reduce(s, { type: "toggleTrain", key: "1>2" })).toBe(s);
+  });
+});
+
+describe("tickets, flight, hotels, steps", () => {
+  it("a ticket for an event outside the route is ignored", () => {
+    const s = parisLondon();
+    expect(reduce(s, { type: "setTicket", eventId: 1, ticket: ticket("x") })).toBe(s);
+  });
+
+  it("a hotel for a stay the trip does not have is ignored", () => {
+    const s = parisLondon();
+    expect(reduce(s, { type: "setHotel", stayKey: "999", hotel })).toBe(s);
+  });
+
+  it("the flow leaves the build step only with two events or more", () => {
+    const one = reduce(INITIAL_ITINERARY_STATE, add(celine));
+    expect(reduce(one, { type: "goStep", step: "tickets" })).toBe(one);
+    expect(reduce(parisLondon(), { type: "goStep", step: "tickets" }).step).toBe("tickets");
+  });
+
+  it("active tabs stay inside the route and its stays", () => {
+    const s = parisLondon();
+    expect(reduce(s, { type: "setActiveEvent", index: 5 }).activeEvent).toBe(1);
+    expect(reduce(s, { type: "setActiveStay", index: -3 }).activeStay).toBe(0);
+  });
+
+  it("fresh event data keeps the picks when the event did not move", () => {
+    const s = parisLondon();
+    const fresh = { ...celine, tickets_and_rates: [] } as unknown as Event;
+    const next = reduce(s, { type: "setEventData", event: fresh });
+    expect(next.route[0]).toBe(fresh);
+    expect(next.flight).toBe(flight);
+    expect(next.hotels).toEqual(s.hotels);
+  });
+
+  it("fresh event data on another day re-fits the dates and clears flight + hotels", () => {
+    const moved = { ...celine, date: "2027-05-11T20:00:00" } as unknown as Event;
+    const next = reduce(parisLondon(), { type: "setEventData", event: moved });
+    expect(next.dates.depart).toBe("2027-05-10");
+    expect(next.flight).toBeNull();
+  });
+});
+
+describe("load", () => {
+  it("opens a route from the URL on the build step with default dates", () => {
+    const s = reduce(INITIAL_ITINERARY_STATE, { type: "load", route: [chelsea, celine], mode: "route" });
+    expect(s.mode).toBe("route");
+    expect(s.route.map((e) => e.id)).toEqual([618, 702]);
+    expect(s.dates.depart).toBe("2027-05-11");
+  });
+});
+
+describe("fitRoute", () => {
+  it("adds the events in date order and refuses the ones that cannot join", () => {
+    const { route, refused } = fitRoute([chelsea, arsenal, celine], S);
+    expect(route.map((e) => e.id)).toEqual([618, 656]);
+    expect(refused.map((r) => r.event.id)).toEqual([702]);
+    expect(refused[0].compat.reason.code).toBe("same_day");
+  });
+
+  it("refuses a pair too far apart", () => {
+    const { route, refused } = fitRoute([gracie, madrid], S);
+    expect(route.map((e) => e.id)).toEqual([896]);
+    expect(refused[0].compat.reason.code).toBe("too_far");
+  });
+});
