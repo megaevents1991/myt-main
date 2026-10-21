@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, CircleAlert, Loader2 } from "lucide-react";
 
 import { loadTripEvents } from "@/app/euro-trip/build/actions";
 import { OrderContext } from "@/app/app.context";
@@ -9,7 +9,15 @@ import { TicketSelection } from "@/app/order/TicketSelection";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
-import { asFullRow, isFullRow, ticketFromStep, ticketReady } from "@/lib/itinerary/adapter";
+import {
+  MAX_TRIP_LOAD,
+  asFullRow,
+  categorySwapNotice,
+  goneIds,
+  isFullRow,
+  ticketFromStep,
+  ticketReady,
+} from "@/lib/itinerary/adapter";
 import { dayMonth } from "@/lib/itinerary/builder";
 import { eventDay } from "@/lib/itinerary/geo";
 import { cn } from "@/lib/utils";
@@ -27,16 +35,23 @@ const tabId = (eventId: number) => `trip-tickets-tab-${eventId}`;
  * The route's events still hold the builder's slim catalog rows (lib/itinerary/slim.ts);
  * the ticket step needs them whole. One Server Action call for every slim row, when the step
  * opens (a row loaded before - the customer came back from a later step - is not loaded
- * again). A row that comes back is swapped in (`setEventData`: same trip, so the picks stay);
- * an id that does not come back left the catalog - the route's notice says so and it leaves
- * the route.
+ * again; never more than MAX_TRIP_LOAD per call, the action's own cap). A row that comes back
+ * is swapped in (`setEventData`: same trip, so the picks stay); an asked id that does not
+ * come back left the catalog - the route's notice says so and it leaves the route, unless the
+ * customer already took it out while the answer was on its way.
  */
 function useFullRows(): { failed: boolean; retry: () => void } {
   const { state, setEventData, removeEvent, showNotice } = useItinerary();
   const key = state.route
     .filter((e) => !isFullRow(e))
+    .slice(0, MAX_TRIP_LOAD)
     .map((e) => e.id)
     .join(",");
+  // The route when the answer lands, not when it was asked.
+  const route = useRef(state.route);
+  useLayoutEffect(() => {
+    route.current = state.route;
+  });
   const [attempt, setAttempt] = useState(0);
   const [failedFor, setFailedFor] = useState<string | null>(null);
   // One call per (rows, attempt) - never a second one while it is answered.
@@ -52,7 +67,11 @@ function useFullRows(): { failed: boolean; retry: () => void } {
     loadTripEvents(ids)
       .then((rows) => {
         for (const row of rows) setEventData(asFullRow(row));
-        const gone = ids.filter((id) => !rows.some((r) => r.id === id));
+        const gone = goneIds(
+          ids,
+          rows,
+          route.current.map((e) => e.id),
+        );
         if (!gone.length) return;
         showNotice(GONE);
         for (const id of gone) removeEvent(id);
@@ -73,46 +92,73 @@ function useFullRows(): { failed: boolean; retry: () => void } {
 
 /**
  * One event's ticket step: the order flow's own TicketSelection, unchanged, reading this
- * event's slice of the trip through an OrderContext adapter. Mounted per event (keyed by id),
- * so a tab opens like the order page's step 1 does - on the ticket it held, else the cheapest.
+ * event's slice of the trip through an OrderContext adapter. Mounted per event AND party size
+ * (keyed `id:pax`), so a tab opens like the order page's step 1 does - on the ticket it held,
+ * else the cheapest - and so does the tab whose +/- changed the party: it keeps the category
+ * the customer was on while that category sells the new size.
  */
 function EventTicketPane({ event }: { event: Event }) {
   const api = useItinerary();
   const { pax, tickets } = api.state;
   const ticket = tickets[event.id];
+  const id = event.id;
 
-  // The callbacks must keep their identity for the pane's life (see adapterForEvent), so they
-  // read the provider through a ref; the provider's actions themselves are re-made per render.
+  // The callbacks keep their identity for the pane's life (see adapterForEvent), so they read
+  // the provider through a ref; the provider's actions themselves are re-made per render.
   const latest = useRef(api);
   useLayoutEffect(() => {
     latest.current = api;
   });
   // The pick this tab opened on, read once (ticketAdapterFields' `held`).
-  const [held] = useState(() => ticket?.id);
+  const [held] = useState(() => ticket);
 
-  const id = event.id;
-  const cb = useMemo<TicketStepCallbacks>(
-    () => ({
-      setTicket: (t) => latest.current.setTicket(id, ticketFromStep(t)),
-      setPax: (n) => latest.current.setPax(n),
-      setEvent: (e) => latest.current.setEventData(isFullRow(e) ? e : asFullRow(e)),
-      clearTravel: () => {
-        const { state, setFlight, setHotel } = latest.current;
-        if (state.flight) setFlight(null);
-        for (const [stayKey, hotel] of Object.entries(state.hotels)) if (hotel) setHotel(stayKey, undefined);
-      },
-    }),
-    [id],
-  );
+  // Did the step put another category in place of the held one on its own? A hand pick (a
+  // click or Enter / Space inside the pane, then a ticket) is the customer's: it ends the notice.
+  const touched = useRef(false);
+  const [autoPick, setAutoPick] = useState<string | undefined>(undefined);
+  const [handPicked, setHandPicked] = useState(false);
+  const notice = handPicked ? null : categorySwapNotice(held, autoPick, pax);
+
+  const [cb] = useState<TicketStepCallbacks>(() => ({
+    setTicket: (t) => {
+      const next = ticketFromStep(t);
+      latest.current.setTicket(id, next);
+      if (touched.current) {
+        touched.current = false;
+        setHandPicked(true);
+      } else setAutoPick(next?.id);
+    },
+    setPax: (n) => latest.current.setPax(n),
+    setEvent: (e) => latest.current.setEventData(isFullRow(e) ? e : asFullRow(e)),
+    clearTravel: () => latest.current.clearTravel(),
+  }));
   const value = useMemo(
-    () => adapterForEvent({ event, ticket, pax, held }, cb),
+    () => adapterForEvent({ event, ticket, pax, held: held?.id }, cb),
     [event, ticket, pax, held, cb],
   );
 
   return (
-    <OrderContext.Provider value={value}>
-      <TicketSelection initialEvent={event} />
-    </OrderContext.Provider>
+    <div
+      onClickCapture={() => {
+        touched.current = true;
+      }}
+      onKeyDownCapture={(ev) => {
+        if (ev.key === "Enter" || ev.key === " ") touched.current = true;
+      }}
+    >
+      {notice && (
+        <div
+          role="status"
+          className="mt-3 flex items-start gap-3 rounded-xl border border-badge-vip/60 bg-badge-vip/20 px-4 py-3 text-sm font-semibold text-foreground"
+        >
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span className="flex-1">{notice}</span>
+        </div>
+      )}
+      <OrderContext.Provider value={value}>
+        <TicketSelection initialEvent={event} />
+      </OrderContext.Provider>
+    </div>
   );
 }
 
@@ -150,7 +196,9 @@ function EventTabs({
 }) {
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // The tab pattern's keys. RTL: the next tab is the one to the left.
+  // The tab pattern's keys, manual activation: the arrows (RTL: the next tab is the one to
+  // the left), Home and End move the focus only - opening a tab mounts a whole ticket step
+  // with its supplier calls, so that waits for Enter / Space (the button's own click).
   const onKeyDown = (ev: KeyboardEvent<HTMLButtonElement>, i: number) => {
     const n = route.length;
     const to =
@@ -165,7 +213,6 @@ function EventTabs({
               : -1;
     if (to < 0) return;
     ev.preventDefault();
-    onSelect(to);
     tabs.current[to]?.focus();
   };
 
@@ -252,7 +299,7 @@ export function TicketsStep() {
       <EventTabs route={route} active={active} isDone={isDone} onSelect={setActiveEvent} />
       <div role="tabpanel" id={PANEL_ID} aria-labelledby={tabId(event.id)}>
         {isFullRow(event) ? (
-          <EventTicketPane key={event.id} event={event} />
+          <EventTicketPane key={`${event.id}:${pax}`} event={event} />
         ) : failed ? (
           <OrderIssueState
             variant="error"

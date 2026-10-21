@@ -76,6 +76,8 @@ export type ItineraryAction =
   | { type: "toggleTrain"; key: string }
   | { type: "setFlight"; flight: ItineraryFlight | null }
   | { type: "setHotel"; stayKey: string; hotel: OrderHotel | undefined }
+  /** The flight and every hotel go (the tickets step changed the party) - nothing else. */
+  | { type: "clearTravel" }
   | { type: "goStep"; step: ItineraryStep }
   | { type: "setActiveEvent"; index: number }
   | { type: "setActiveStay"; index: number };
@@ -228,6 +230,9 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
     case "setHotel":
       if (!stays(state.route, state.dates).some((s) => s.key === action.stayKey)) return state;
       return { ...state, hotels: { ...state.hotels, [action.stayKey]: action.hotel } };
+
+    case "clearTravel":
+      return !state.flight && !Object.keys(state.hotels).length ? state : { ...state, ...cleared };
 
     case "goStep":
       if (action.step !== "build" && state.route.length < MIN_TRIP_EVENTS) return state;

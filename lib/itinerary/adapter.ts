@@ -11,7 +11,11 @@ import type { Event, OrderTicket } from "@/lib/app.types";
 import type { OrderResume } from "@/lib/order/draft";
 import { isItineraryEligible } from "./eligibility";
 
-/** A trip holds at most three events: the Server Action never loads more. */
+/**
+ * A trip holds at most three events (settings' `max_events` is 2-3): the Server Action never
+ * loads more in one call, and the tickets step never asks for more in one call - so the
+ * action never cuts an ask short, and an id it did not answer really is gone.
+ */
 export const MAX_TRIP_LOAD = 3;
 
 /**
@@ -96,6 +100,30 @@ export function pickTripEvents(events: Event[], ids: number[], todayIso: string)
     const e = byId.get(id);
     return e && isItineraryEligible(e, todayIso) ? [e] : [];
   });
+}
+
+/**
+ * The ids that left the catalog: asked, not in the answer - and still in the route NOW (the
+ * answer can land after the customer took that event out; then there is nothing to say).
+ */
+export function goneIds(asked: number[], rows: Event[], routeIds: number[]): number[] {
+  return asked.filter((id) => routeIds.includes(id) && !rows.some((r) => r.id === id));
+}
+
+/**
+ * The step re-opens a tab on the ticket it held, but a category that cannot sell the party
+ * (another size was picked meanwhile, or its seats went) falls back to the cheapest that
+ * does: said in words, never swapped in silence. `picked` = the ticket the step put in on
+ * its own (not a hand pick); null = nothing to say.
+ */
+export function categorySwapNotice(
+  held: OrderTicket | undefined,
+  picked: string | undefined,
+  pax: number,
+): string | null {
+  if (!held?.id || !picked || picked === held.id) return null;
+  const size = pax === 1 ? "לכרטיס אחד" : `ל-${pax} כרטיסים`;
+  return `הקטגוריה שבחרתם (${held.zoneLabel || held.category}) לא זמינה ${size} - בחרנו את הזולה ביותר שזמינה. אפשר להחליף.`;
 }
 
 /**

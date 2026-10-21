@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Event, OrderTicket } from "../app.types";
+import { parseItinerarySettings } from "../itinerary/settings";
 import {
   MAX_TRIP_LOAD,
   allTicketsReady,
   asFullRow,
+  categorySwapNotice,
+  goneIds,
   isFullRow,
   pickTripEvents,
   ticketAdapterFields,
@@ -100,6 +103,51 @@ describe("tripEventIds", () => {
     expect(tripEventIds("5,7")).toEqual([]);
     expect(tripEventIds(null)).toEqual([]);
     expect(tripEventIds([Number.NaN, "8", Infinity])).toEqual([]);
+  });
+});
+
+describe("MAX_TRIP_LOAD", () => {
+  it("is never below what staff may set as a trip's size (the action never cuts a route short)", () => {
+    for (let n = 1; n <= 9; n++) {
+      expect(parseItinerarySettings([{ key: "max_events", value: n }]).maxEvents).toBeLessThanOrEqual(MAX_TRIP_LOAD);
+    }
+  });
+});
+
+describe("goneIds", () => {
+  it("an asked id the answer lacks is gone", () => {
+    expect(goneIds([1, 2, 3], [ev(1), ev(3)], [1, 2, 3])).toEqual([2]);
+  });
+
+  it("not when the customer already took it out of the route meanwhile", () => {
+    expect(goneIds([1, 2], [ev(1)], [1])).toEqual([]);
+  });
+
+  it("only what was asked - an id never asked is never gone", () => {
+    expect(goneIds([1], [ev(1)], [1, 2, 3])).toEqual([]);
+  });
+});
+
+describe("categorySwapNotice", () => {
+  const held = { ...ticket("kat1", 2), category: "Kat. 1" } as OrderTicket;
+
+  it("says so when the step put another category in place of the one the tab held", () => {
+    expect(categorySwapNotice(held, "kat2", 3)).toBe(
+      "הקטגוריה שבחרתם (Kat. 1) לא זמינה ל-3 כרטיסים - בחרנו את הזולה ביותר שזמינה. אפשר להחליף.",
+    );
+  });
+
+  it("names the zone when the ticket has one, and a single ticket in words", () => {
+    const zoned = { ...held, zoneLabel: "יציע מזרח" } as OrderTicket;
+    expect(categorySwapNotice(zoned, "kat2", 1)).toBe(
+      "הקטגוריה שבחרתם (יציע מזרח) לא זמינה לכרטיס אחד - בחרנו את הזולה ביותר שזמינה. אפשר להחליף.",
+    );
+  });
+
+  it("nothing when the same category came back, nothing was held, or nothing sells", () => {
+    expect(categorySwapNotice(held, "kat1", 3)).toBeNull();
+    expect(categorySwapNotice(undefined, "kat2", 3)).toBeNull();
+    expect(categorySwapNotice(held, undefined, 3)).toBeNull();
   });
 });
 

@@ -188,6 +188,29 @@ describe("toggleTrain", () => {
   });
 });
 
+describe("clearTravel", () => {
+  it("drops the flight and every hotel, keeps the trip and its tickets", () => {
+    const s = parisLondon();
+    const out = reduce(s, { type: "clearTravel" });
+    expect(out.flight).toBeNull();
+    expect(Object.keys(out.hotels)).toEqual([]);
+    expect(out.route).toBe(s.route);
+    expect(out.tickets).toBe(s.tickets);
+    expect(out.pax).toBe(s.pax);
+    expect(out.dates).toBe(s.dates);
+  });
+
+  it("leaves no empty hotel entry behind", () => {
+    const half = reduce(parisLondon(), { type: "setHotel", stayKey: "618", hotel: undefined });
+    expect(Object.keys(reduce(half, { type: "clearTravel" }).hotels)).toEqual([]);
+  });
+
+  it("changes nothing when there is nothing to clear", () => {
+    const s = reduce(parisLondon(), { type: "clearTravel" });
+    expect(reduce(s, { type: "clearTravel" })).toBe(s);
+  });
+});
+
 describe("tickets, flight, hotels, steps", () => {
   it("a ticket for an event outside the route is ignored", () => {
     const s = parisLondon();

@@ -57,6 +57,8 @@ export type ItineraryApi = {
   toggleTrain: (key: string) => void;
   setFlight: (f: ItineraryFlight | null) => void;
   setHotel: (stayKey: string, h: OrderHotel | undefined) => void;
+  /** Drops the flight and every hotel (searched for another party). */
+  clearTravel: () => void;
   goStep: (step: ItineraryStep) => void;
   setActiveEvent: (i: number) => void;
   setActiveStay: (i: number) => void;
@@ -140,6 +142,7 @@ export function ItineraryProvider({
       toggleTrain: (key) => dispatch({ type: "toggleTrain", key }),
       setFlight: (flight) => dispatch({ type: "setFlight", flight }),
       setHotel: (stayKey, hotel) => dispatch({ type: "setHotel", stayKey, hotel }),
+      clearTravel: () => dispatch({ type: "clearTravel" }),
       goStep: (step) => dispatch({ type: "goStep", step }),
       setActiveEvent: (index) => dispatch({ type: "setActiveEvent", index }),
       setActiveStay: (index) => dispatch({ type: "setActiveStay", index }),
