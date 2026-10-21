@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
-import type { ItineraryFlight } from "@/lib/app.types";
 import {
+  isAmadeusRateLimited,
+  isAmadeusSystemError,
+  itineraryFlightsFromOffers,
   multiCityBody,
-  offerToItineraryFlight,
   validateFlightRequest,
   type AmadeusOffer,
-  type FlightLeg,
 } from "@/lib/itinerary/flightOffers";
 import { amadeus } from "@/app/api/flights/amadeusClient";
 
 export const maxDuration = 30;
+
+/** One retry, not the live route's three: a search takes ~8 s and `maxDuration` is 30. */
+const SYSTEM_ERROR_RETRY_DELAY_MS = 1000;
 
 type AmadeusSearchResult = {
   data?: AmadeusOffer[];
@@ -22,6 +25,9 @@ type AmadeusSearchResult = {
  * stay -> ... -> TLV. Body `{ legs: { from, to, date }[], adults, nonStop? }`; answers
  * `{ flights: ItineraryFlight[] }`, cheapest first. The offer rules are the live flight
  * step's (lib/itinerary/flightOffers.ts).
+ *
+ * 400 bad body, 429 `{ busy: true }` when Amadeus throttles us (retry later), 502 any other
+ * Amadeus failure, 500 anything else.
  */
 export async function POST(request: Request) {
   if (
@@ -44,24 +50,29 @@ export async function POST(request: Request) {
     }
 
     const todayIso = new Date().toISOString().slice(0, 10);
-    const invalid = validateFlightRequest(body, todayIso);
-    if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
-
-    const { legs, adults, nonStop } = body as {
-      legs: FlightLeg[];
-      adults: number;
-      nonStop?: boolean;
-    };
+    const check = validateFlightRequest(body, todayIso);
+    if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+    const { legs, adults, nonStop } = check.request;
 
     // Amadeus per-request client reference (ama-Client-Ref), for support tracing.
     const clientRef = `MYT-IT-${Date.now()}`;
+    const search = () =>
+      amadeus.shopping.flightOffersSearch.post(multiCityBody(legs, adults, nonStop), clientRef);
 
     let result: AmadeusSearchResult;
     try {
-      const response = await amadeus.shopping.flightOffersSearch.post(
-        multiCityBody(legs, adults, nonStop === true),
-        clientRef,
-      );
+      let response;
+      try {
+        response = await search();
+      } catch (error) {
+        if (!isAmadeusSystemError(error)) throw error;
+        // Amadeus' transient "SYSTEM ERROR HAS OCCURRED": once more, then give up.
+        console.warn(
+          `Itinerary flight search: Amadeus system error, retrying in ${SYSTEM_ERROR_RETRY_DELAY_MS}ms.`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, SYSTEM_ERROR_RETRY_DELAY_MS));
+        response = await search();
+      }
       result = response.result;
     } catch (error) {
       const detail = (error as { response?: { result?: { errors?: unknown } } })?.response
@@ -70,18 +81,28 @@ export async function POST(request: Request) {
         "Itinerary flight search failed:",
         detail ? JSON.stringify(detail) : error,
       );
+      if (isAmadeusRateLimited(error)) {
+        return NextResponse.json(
+          { busy: true, error: "Flight search is busy, try again in a moment." },
+          { status: 429 },
+        );
+      }
       return NextResponse.json({ error: "Flight search failed." }, { status: 502 });
     }
 
-    const carriers = result?.dictionaries?.carriers ?? {};
-    const flights: ItineraryFlight[] = [];
-    for (const offer of result?.data ?? []) {
-      // One itinerary per requested leg - anything else is not this trip.
-      if (offer.itineraries?.length !== legs.length) continue;
-      const flight = offerToItineraryFlight(offer, String(flights.length + 1), adults, carriers);
-      if (flight) flights.push(flight);
+    const { flights, failed, firstError } = itineraryFlightsFromOffers(
+      result?.data ?? [],
+      legs.length,
+      adults,
+      result?.dictionaries?.carriers ?? {},
+    );
+    if (failed > 0) {
+      // One line per search, not per offer: a bad batch must not flood the log.
+      console.error(
+        `Itinerary flight search: ${failed} offer(s) skipped, first error:`,
+        firstError,
+      );
     }
-    flights.sort((a, b) => a.price - b.price);
 
     return NextResponse.json({ flights });
   } catch (error) {

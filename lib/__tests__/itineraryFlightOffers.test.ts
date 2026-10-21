@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/amadeus-multicity-offer.json";
 import {
+  isAmadeusRateLimited,
+  isAmadeusSystemError,
+  itineraryFlightsFromOffers,
   MAX_STOP_DURATION_HOURS,
   MAX_STOPS,
   multiCityBody,
@@ -214,6 +217,29 @@ describe("offerToItineraryFlight", () => {
     expect(e.metadata.name).toBe("El Al");
   });
 
+  it("Bluebird because of a LATER itinerary: the disclosure agrees with the brand", () => {
+    const offer = clone();
+    offer.validatingAirlineCodes = ["HR"];
+    offer.itineraries[0].segments[0].operating = { carrierCode: "LY" };
+    offer.itineraries[1].segments[0].operating = { carrierCode: "BZ" };
+    const f = offerToItineraryFlight(offer, "1", 2, CARRIERS)!;
+    expect(f.metadata.name).toBe("Bluebird Airways");
+    expect(f.price).toBe(1234.5 + 90);
+    // BZ is the card's carrier: its own leg needs no disclosure, the LY leg does.
+    expect(f.legs[1].operatedBy).toBeUndefined();
+    expect(f.legs[0].operatedBy).toEqual(expect.stringContaining("El Al"));
+  });
+
+  it("LUFTHANSA gets its logo, any other carrier keeps aircodes'", () => {
+    const lh = clone();
+    lh.validatingAirlineCodes = ["LH"];
+    expect(offerToItineraryFlight(lh, "1", 2, { LH: "LUFTHANSA" })!.metadata.logo).toBe(
+      "https://www.avcodes.co.uk/images/logos/DLH.png",
+    );
+    const other = offerToItineraryFlight(clone(), "1", 2, CARRIERS)!;
+    expect(other.metadata.logo).toBe("https://www.avcodes.co.uk/images/logos/ELY.png");
+  });
+
   it("no extra for the other carriers", () => {
     const offer = clone();
     offer.validatingAirlineCodes = ["AF"];
@@ -251,6 +277,12 @@ describe("offerToItineraryFlight", () => {
 });
 
 describe("validateFlightRequest", () => {
+  /** Why the body is refused, or null when it passes. */
+  const refusal = (body: unknown, today: string): string | null => {
+    const r = validateFlightRequest(body, today);
+    return r.ok ? null : r.error;
+  };
+
   const TODAY = "2027-05-01";
   const leg = (from: string, to: string, date: string) => ({ from, to, date });
   const valid = () => ({
@@ -259,97 +291,195 @@ describe("validateFlightRequest", () => {
   });
 
   it("a valid 3-leg body -> null", () => {
-    expect(validateFlightRequest(valid(), TODAY)).toBeNull();
-    expect(validateFlightRequest({ ...valid(), nonStop: true }, TODAY)).toBeNull();
+    expect(refusal(valid(), TODAY)).toBeNull();
+    expect(refusal({ ...valid(), nonStop: true }, TODAY)).toBeNull();
   });
 
   it("2 and 4 legs are the edges", () => {
-    expect(validateFlightRequest({ ...valid(), legs: valid().legs.slice(0, 2) }, TODAY)).toBeNull();
+    expect(refusal({ ...valid(), legs: valid().legs.slice(0, 2) }, TODAY)).toBeNull();
     const four = [...valid().legs, leg("TLV", "ROM", "2027-05-20")];
-    expect(validateFlightRequest({ ...valid(), legs: four }, TODAY)).toBeNull();
+    expect(refusal({ ...valid(), legs: four }, TODAY)).toBeNull();
   });
 
   it("1 leg -> error", () => {
-    expect(validateFlightRequest({ ...valid(), legs: valid().legs.slice(0, 1) }, TODAY)).toEqual(expect.any(String));
+    expect(refusal({ ...valid(), legs: valid().legs.slice(0, 1) }, TODAY)).toEqual(expect.any(String));
   });
 
   it("5 legs -> error", () => {
     const five = [...valid().legs, leg("TLV", "ROM", "2027-05-20"), leg("ROM", "TLV", "2027-05-21")];
-    expect(validateFlightRequest({ ...valid(), legs: five }, TODAY)).toEqual(expect.any(String));
+    expect(refusal({ ...valid(), legs: five }, TODAY)).toEqual(expect.any(String));
   });
 
   it("adults 0 / 10 / 1.5 / missing -> error; 1 and 9 pass", () => {
     for (const adults of [0, 10, 1.5, "2", undefined]) {
-      expect(validateFlightRequest({ ...valid(), adults }, TODAY)).toEqual(expect.any(String));
+      expect(refusal({ ...valid(), adults }, TODAY)).toEqual(expect.any(String));
     }
-    expect(validateFlightRequest({ ...valid(), adults: 1 }, TODAY)).toBeNull();
-    expect(validateFlightRequest({ ...valid(), adults: 9 }, TODAY)).toBeNull();
+    expect(refusal({ ...valid(), adults: 1 }, TODAY)).toBeNull();
+    expect(refusal({ ...valid(), adults: 9 }, TODAY)).toBeNull();
   });
 
   it("a lowercase / wrong-length code -> error", () => {
     for (const bad of ["tlv", "TL", "TLVX", "T1V", ""]) {
       const body = valid();
       body.legs[0].from = bad;
-      expect(validateFlightRequest(body, TODAY)).toEqual(expect.any(String));
+      expect(refusal(body, TODAY)).toEqual(expect.any(String));
     }
     const body = valid();
     body.legs[1].to = "lon";
-    expect(validateFlightRequest(body, TODAY)).toEqual(expect.any(String));
+    expect(refusal(body, TODAY)).toEqual(expect.any(String));
   });
 
   it("a leg that goes nowhere -> error", () => {
     const body = valid();
     body.legs[1].to = body.legs[1].from;
-    expect(validateFlightRequest(body, TODAY)).toEqual(expect.any(String));
+    expect(refusal(body, TODAY)).toEqual(expect.any(String));
   });
 
   it("a date before tomorrow -> error; tomorrow itself passes", () => {
     const today = valid();
     today.legs[0].date = TODAY;
-    expect(validateFlightRequest(today, TODAY)).toEqual(expect.any(String));
+    expect(refusal(today, TODAY)).toEqual(expect.any(String));
 
     const past = valid();
     past.legs[0].date = "2027-04-01";
-    expect(validateFlightRequest(past, TODAY)).toEqual(expect.any(String));
+    expect(refusal(past, TODAY)).toEqual(expect.any(String));
 
     const tomorrow = valid();
     tomorrow.legs[0].date = "2027-05-02";
-    expect(validateFlightRequest(tomorrow, TODAY)).toBeNull();
+    expect(refusal(tomorrow, TODAY)).toBeNull();
   });
 
   it("tomorrow is counted across a month end", () => {
     const body = valid();
     body.legs[0].date = "2027-05-01";
-    expect(validateFlightRequest(body, "2027-04-30")).toBeNull();
-    expect(validateFlightRequest(body, "2027-05-01")).toEqual(expect.any(String));
+    expect(refusal(body, "2027-04-30")).toBeNull();
+    expect(refusal(body, "2027-05-01")).toEqual(expect.any(String));
   });
 
   it("a malformed or impossible date -> error", () => {
     for (const bad of ["2027-5-11", "11/05/2027", "2027-02-30", "2027-13-01", "", "2027-05-11T10:00"]) {
       const body = valid();
       body.legs[0].date = bad;
-      expect(validateFlightRequest(body, TODAY)).toEqual(expect.any(String));
+      expect(refusal(body, TODAY)).toEqual(expect.any(String));
     }
   });
 
   it("decreasing dates -> error; the same day twice is fine", () => {
     const back = valid();
     back.legs[1].date = "2027-05-10";
-    expect(validateFlightRequest(back, TODAY)).toEqual(expect.any(String));
+    expect(refusal(back, TODAY)).toEqual(expect.any(String));
 
     const sameDay = valid();
     sameDay.legs[1].date = sameDay.legs[0].date;
-    expect(validateFlightRequest(sameDay, TODAY)).toBeNull();
+    expect(refusal(sameDay, TODAY)).toBeNull();
   });
 
   it("not an object / no legs / non-boolean nonStop -> error", () => {
     for (const body of [null, undefined, "x", 5, [], {}, { adults: 2 }, { legs: "TLV", adults: 2 }]) {
-      expect(validateFlightRequest(body, TODAY)).toEqual(expect.any(String));
+      expect(refusal(body, TODAY)).toEqual(expect.any(String));
     }
-    expect(validateFlightRequest({ ...valid(), nonStop: "yes" }, TODAY)).toEqual(expect.any(String));
+    expect(refusal({ ...valid(), nonStop: "yes" }, TODAY)).toEqual(expect.any(String));
   });
 
   it("a leg that is not an object -> error", () => {
-    expect(validateFlightRequest({ ...valid(), legs: [null, "TLV"] }, TODAY)).toEqual(expect.any(String));
+    expect(refusal({ ...valid(), legs: [null, "TLV"] }, TODAY)).toEqual(expect.any(String));
+  });
+
+  it("answers the parsed request: legs cut to from / to / date, nonStop defaulting to false", () => {
+    const body = {
+      legs: [
+        { from: "TLV", to: "PAR", date: "2027-05-11", note: "x" },
+        { from: "PAR", to: "TLV", date: "2027-05-13" },
+      ],
+      adults: 3,
+      extra: true,
+    };
+    expect(validateFlightRequest(body, TODAY)).toEqual({
+      ok: true,
+      request: {
+        legs: [
+          { from: "TLV", to: "PAR", date: "2027-05-11" },
+          { from: "PAR", to: "TLV", date: "2027-05-13" },
+        ],
+        adults: 3,
+        nonStop: false,
+      },
+    });
+    const parsed = validateFlightRequest({ ...body, nonStop: true }, TODAY);
+    expect(parsed.ok && parsed.request.nonStop).toBe(true);
+    expect(JSON.stringify(parsed)).not.toContain("note");
+  });
+
+  it("answers the reason when it refuses", () => {
+    expect(validateFlightRequest({ ...valid(), adults: 0 }, TODAY)).toEqual({
+      ok: false,
+      error: expect.stringContaining("adults"),
+    });
+  });
+});
+
+describe("itineraryFlightsFromOffers", () => {
+  it("keeps good offers cheapest first, with ids over the kept ones", () => {
+    const dear = clone();
+    dear.price.grandTotal = "2000.00";
+    const cheap = clone();
+    cheap.price.grandTotal = "900.00";
+    const r = itineraryFlightsFromOffers([dear, cheap], 3, 2, CARRIERS);
+    expect(r.flights.map((f) => f.price)).toEqual([900, 2000]);
+    expect(r.flights.map((f) => f.id).sort()).toEqual(["1", "2"]);
+    expect(r.failed).toBe(0);
+  });
+
+  it("a malformed offer is skipped and counted, the others survive", () => {
+    const broken = clone();
+    delete (broken.itineraries[1].segments[0] as { arrival?: unknown }).arrival;
+    const broken2 = clone();
+    (broken2.itineraries[0].segments[0] as { departure?: unknown }).departure = undefined;
+    const r = itineraryFlightsFromOffers([broken, clone(), null as unknown as Offer, broken2], 3, 2, CARRIERS);
+    expect(r.flights).toHaveLength(1);
+    expect(r.failed).toBe(3);
+    expect(r.firstError).toBeInstanceOf(Error);
+  });
+
+  it("an offer for another number of legs is skipped quietly; a rule-breaking one too", () => {
+    const twoLegs = clone();
+    twoLegs.itineraries = twoLegs.itineraries.slice(0, 2);
+    const longLayover = connect(clone(), 2, [6]);
+    const r = itineraryFlightsFromOffers([twoLegs, longLayover, clone()], 3, 2, CARRIERS);
+    expect(r.flights).toHaveLength(1);
+    expect(r.failed).toBe(0);
+  });
+
+  it("no offers -> nothing", () => {
+    expect(itineraryFlightsFromOffers([], 3, 2)).toEqual({ flights: [], failed: 0, firstError: undefined });
+  });
+});
+
+describe("Amadeus error tests", () => {
+  const withErrors = (errors: unknown, statusCode?: number) => ({
+    response: { statusCode, result: { errors } },
+  });
+
+  it("system error: 500 / 141 / SYSTEM ERROR HAS OCCURRED only", () => {
+    const sys = { status: 500, code: 141, title: "SYSTEM ERROR HAS OCCURRED" };
+    expect(isAmadeusSystemError(withErrors([sys], 500))).toBe(true);
+    expect(isAmadeusSystemError(withErrors([{ status: 400 }, sys]))).toBe(true);
+    expect(isAmadeusSystemError(withErrors([{ ...sys, code: 38189 }]))).toBe(false);
+    expect(isAmadeusSystemError(withErrors([{ ...sys, status: 400 }]))).toBe(false);
+    expect(isAmadeusSystemError(withErrors([{ ...sys, title: "INVALID DATE" }]))).toBe(false);
+  });
+
+  it("rate limit: HTTP 429, or a 429 inside the errors", () => {
+    expect(isAmadeusRateLimited(withErrors(undefined, 429))).toBe(true);
+    expect(isAmadeusRateLimited(withErrors([{ status: 429, code: 38194 }], 429))).toBe(true);
+    expect(isAmadeusRateLimited(withErrors([{ status: 429 }]))).toBe(true);
+    expect(isAmadeusRateLimited(withErrors([{ status: 500 }], 500))).toBe(false);
+  });
+
+  it("anything that is not an Amadeus error is neither", () => {
+    for (const e of [null, undefined, "boom", new Error("x"), {}, withErrors("nope"), withErrors(null)]) {
+      expect(isAmadeusSystemError(e)).toBe(false);
+      expect(isAmadeusRateLimited(e)).toBe(false);
+    }
   });
 });

@@ -74,49 +74,85 @@ function isRealDay(s: string): boolean {
   return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
 }
 
+/** A POST /api/itinerary/flights body that passed `validateFlightRequest`, as parsed. */
+export type FlightRequest = { legs: FlightLeg[]; adults: number; nonStop: boolean };
+
+export type FlightRequestCheck =
+  | { ok: true; request: FlightRequest }
+  | { ok: false; error: string };
+
+const refuse = (error: string): FlightRequestCheck => ({ ok: false, error });
+
 /**
- * Why a POST /api/itinerary/flights body is refused, or null when it is fine:
- * 2-4 legs, 1-9 adults, 3-letter upper-case codes, days from tomorrow on and never going
- * back. `todayIso` is today as `YYYY-MM-DD` (UTC) - the caller owns the clock.
+ * The parsed request, or why the body is refused: 2-4 legs, 1-9 adults, 3-letter
+ * upper-case codes, days from tomorrow on and never going back. Only `from` / `to` /
+ * `date` survive on a leg and `nonStop` defaults to false. `todayIso` is today as
+ * `YYYY-MM-DD` (UTC) - the caller owns the clock.
  */
-export function validateFlightRequest(body: unknown, todayIso: string): string | null {
+export function validateFlightRequest(body: unknown, todayIso: string): FlightRequestCheck {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return "Body must be a JSON object.";
+    return refuse("Body must be a JSON object.");
   }
   const { legs, adults, nonStop } = body as Record<string, unknown>;
 
   if (!Array.isArray(legs) || legs.length < MIN_LEGS || legs.length > MAX_LEGS) {
-    return `legs must be an array of ${MIN_LEGS} to ${MAX_LEGS} flights.`;
+    return refuse(`legs must be an array of ${MIN_LEGS} to ${MAX_LEGS} flights.`);
   }
   if (typeof adults !== "number" || !Number.isInteger(adults) || adults < 1 || adults > MAX_ADULTS) {
-    return `adults must be a whole number from 1 to ${MAX_ADULTS}.`;
+    return refuse(`adults must be a whole number from 1 to ${MAX_ADULTS}.`);
   }
   if (nonStop !== undefined && typeof nonStop !== "boolean") {
-    return "nonStop must be true or false.";
+    return refuse("nonStop must be true or false.");
   }
 
   const tomorrow = addDays(todayIso, 1);
+  const parsed: FlightLeg[] = [];
   let previous = "";
   for (const [i, raw] of legs.entries()) {
     const n = i + 1;
-    if (typeof raw !== "object" || raw === null) return `Leg ${n} must be an object.`;
+    if (typeof raw !== "object" || raw === null) return refuse(`Leg ${n} must be an object.`);
     const { from, to, date } = raw as Record<string, unknown>;
     if (typeof from !== "string" || !IATA_RE.test(from)) {
-      return `Leg ${n}: from must be a 3-letter upper-case IATA code.`;
+      return refuse(`Leg ${n}: from must be a 3-letter upper-case IATA code.`);
     }
     if (typeof to !== "string" || !IATA_RE.test(to)) {
-      return `Leg ${n}: to must be a 3-letter upper-case IATA code.`;
+      return refuse(`Leg ${n}: to must be a 3-letter upper-case IATA code.`);
     }
-    if (from === to) return `Leg ${n}: from and to are the same place.`;
+    if (from === to) return refuse(`Leg ${n}: from and to are the same place.`);
     if (typeof date !== "string" || !isRealDay(date)) {
-      return `Leg ${n}: date must be a real day as YYYY-MM-DD.`;
+      return refuse(`Leg ${n}: date must be a real day as YYYY-MM-DD.`);
     }
-    if (date < tomorrow) return `Leg ${n}: date must be tomorrow or later.`;
-    if (date < previous) return `Leg ${n}: date is before the previous leg.`;
+    if (date < tomorrow) return refuse(`Leg ${n}: date must be tomorrow or later.`);
+    if (date < previous) return refuse(`Leg ${n}: date is before the previous leg.`);
     previous = date;
+    parsed.push({ from, to, date });
   }
-  return null;
+  return { ok: true, request: { legs: parsed, adults, nonStop: nonStop === true } };
 }
+
+type AmadeusErrorShape = {
+  response?: {
+    statusCode?: number;
+    result?: { errors?: { status?: number; code?: number; title?: string }[] };
+  };
+};
+
+const amadeusErrors = (error: unknown) => {
+  const errors = (error as AmadeusErrorShape)?.response?.result?.errors;
+  return Array.isArray(errors) ? errors : [];
+};
+
+/** Amadeus is throttling us (HTTP 429) - the caller answers "busy", not "failed". */
+export const isAmadeusRateLimited = (error: unknown): boolean =>
+  (error as AmadeusErrorShape)?.response?.statusCode === 429 ||
+  amadeusErrors(error).some((e) => e.status === 429);
+
+/** The transient "SYSTEM ERROR HAS OCCURRED" (500 / 141) the live search route retries
+ *  (app/api/flights/search/route.ts retryAmadeusCall) - same test. */
+export const isAmadeusSystemError = (error: unknown): boolean =>
+  amadeusErrors(error).some(
+    (e) => e.status === 500 && e.code === 141 && e.title === "SYSTEM ERROR HAS OCCURRED",
+  );
 
 // A baggage allowance counts as "included" whether Amadeus expresses it as a piece count
 // or as a weight (route.ts hasBagAllowance). `quantity: 0` means no bag.
@@ -201,6 +237,7 @@ export function offerToItineraryFlight(
     logo: airlineByIata?.logo ?? "",
     name: carriers[validating] ?? airlineByIata?.name ?? validating,
   };
+  let bluebird = false;
   if (metadata.name === "LUFTHANSA") {
     metadata.logo = "https://www.avcodes.co.uk/images/logos/DLH.png";
   } else if (metadata.iata === "HR") {
@@ -208,6 +245,7 @@ export function offerToItineraryFlight(
       metadata.logo =
         "https://upload.wikimedia.org/wikipedia/fr/c/c2/Bluebird_Airways_logo.png";
       metadata.name = "Bluebird Airways";
+      bluebird = true;
     } else if (hrOperator === "LY") {
       metadata.logo = "https://www.avcodes.co.uk/images/logos/ELY.png";
       metadata.name = "El Al";
@@ -225,8 +263,14 @@ export function offerToItineraryFlight(
   if (!Number.isFinite(total)) return null;
 
   // Codeshare disclosure per leg: "operated by X" when the plane is not the card's
-  // carrier's. For HR the card shows the operating carrier (route.ts).
-  const displayedCarrier = metadata.iata === "HR" ? (hrOperator ?? "HR") : validating;
+  // carrier's. For HR the card shows the operating carrier (route.ts) - and when the card
+  // is rebranded Bluebird it is BZ whichever itinerary BZ flies, so the disclosure agrees
+  // with the brand.
+  const displayedCarrier = bluebird
+    ? "BZ"
+    : metadata.iata === "HR"
+      ? (hrOperator ?? "HR")
+      : validating;
   const operatedByLabel = (segment: OfferSegment): string | undefined => {
     // Amadeus omits `operating` when it equals the marketing carrier.
     const operating = segment.operating?.carrierCode ?? segment.carrierCode;
@@ -265,4 +309,41 @@ export function offerToItineraryFlight(
     legs,
     trainLegs: [],
   };
+}
+
+/** What came of a search's offers: the flights, and how many offers were dropped because
+ *  converting them threw (with the first error, for one log line). */
+export type OfferConversion = {
+  flights: ItineraryFlight[];
+  failed: number;
+  firstError?: unknown;
+};
+
+/**
+ * Every offer of a multi-city search as an `ItineraryFlight`, cheapest first. Offers are
+ * converted one by one: a malformed offer is counted in `failed` and skipped, it never
+ * takes the others down. An offer with another number of itineraries than `legCount` is
+ * not this trip and is skipped quietly. Ids are `"1".."n"` over the flights kept.
+ */
+export function itineraryFlightsFromOffers(
+  offers: AmadeusOffer[],
+  legCount: number,
+  adults: number,
+  carriers: Record<string, string> = {},
+): OfferConversion {
+  const flights: ItineraryFlight[] = [];
+  let failed = 0;
+  let firstError: unknown;
+  for (const offer of offers) {
+    try {
+      if (offer.itineraries?.length !== legCount) continue;
+      const flight = offerToItineraryFlight(offer, String(flights.length + 1), adults, carriers);
+      if (flight) flights.push(flight);
+    } catch (error) {
+      if (failed === 0) firstError = error;
+      failed += 1;
+    }
+  }
+  flights.sort((a, b) => a.price - b.price);
+  return { flights, failed, firstError };
 }
