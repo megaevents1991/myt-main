@@ -285,7 +285,12 @@ export function HotelsStep({ shown = true }: { shown?: boolean }) {
   const doneCount = views.filter(isDone).length;
 
   return (
-    <section aria-labelledby="trip-hotels-title" className="flex flex-col gap-3" hidden={!shown}>
+    <section
+      aria-labelledby="trip-hotels-title"
+      // `hidden` alone loses to `.flex` (author CSS beats the [hidden] rule) - the class hides it.
+      className={cn("flex flex-col gap-3", !shown && "hidden")}
+      hidden={!shown}
+    >
       <div className="flex flex-col gap-1">
         <PanelTitle>
           <span id="trip-hotels-title">מלון בכל עיר</span>
