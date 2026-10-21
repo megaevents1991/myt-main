@@ -63,6 +63,15 @@ describe("tierMarkups", () => {
     expect(m.get(3)).toBe(105);
   });
 
+  it("a fractional percentage carries no float error", () => {
+    // 100 x (100 - 12.5) / 100 = 87.5 and 100 x (100 - 37.5) / 100 = 62.5, exactly
+    const x = ev(51, "2027-05-12", PARIS, { markup_ticket: 100 });
+    const y = ev(52, "2027-05-15", LONDON, { markup_ticket: 100 });
+    const z = ev(53, "2027-05-17", WEMBLEY, { markup_ticket: 100 });
+    const m = tierMarkups([x, y, z], { ...S, tier2Pct: 12.5, tier3Pct: 37.5 });
+    expect([m.get(51), m.get(52), m.get(53)]).toEqual([100, 87.5, 62.5]);
+  });
+
   it("rounds each value to cents", () => {
     const x = ev(11, "2027-05-12", PARIS, { markup_ticket: 100.01 });
     const y = ev(12, "2027-05-15", LONDON, { markup_ticket: 100.01 });
@@ -200,6 +209,31 @@ describe("estimateItinerary", () => {
     // One stay: depart 11.5 -> return 13.5 = 2 nights x (300 / 1) = 600
     const r = estimateItinerary([noDates], defaultTripDates([noDates]), S, 0);
     expect(r.perTraveller).toBe(150 + 0 + 600 + 175);
+  });
+
+  it("a non-finite flight quote is no quote: NaN / Infinity price like null", () => {
+    const fallback = estimateItinerary(trip, dates, S, null);
+    expect(estimateItinerary(trip, dates, S, Number.NaN)).toEqual(fallback);
+    expect(estimateItinerary(trip, dates, S, Number.POSITIVE_INFINITY)).toEqual(fallback);
+    expect(estimateItinerary(trip, dates, S, Number.NEGATIVE_INFINITY)).toEqual(fallback);
+    expect(fallback.perTraveller).toBe(1850);
+  });
+
+  it("a single event shows no saving even when separate - perTraveller is $50 or more", () => {
+    const one = ev(41, "2027-05-12", PARIS, {
+      markup_ticket: 175,
+      tickets_and_rates: [{ price: 100, available: true }],
+      base_flight_price: 200,
+      base_hotel_price: 300,
+      def_date_depart: "2027-05-11",
+      def_date_return: "2027-05-13", // 2 nights = the trip's default stay
+    });
+    // 100 + 0.6 x 200 + 300 / 2 x 2 + 175 = 695; separate 200 + 300 + 100 + 175 = 775: a diff of 80
+    const r = estimateItinerary([one], defaultTripDates([one]), S, null);
+    expect(r.perTraveller).toBe(695);
+    expect(r.separate).toBe(775);
+    expect(r.separate - r.perTraveller).toBeGreaterThanOrEqual(50);
+    expect(r.saving).toBeNull();
   });
 
   it("rounds to whole dollars, and a single event never shows a saving", () => {

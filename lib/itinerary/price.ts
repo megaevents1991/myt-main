@@ -36,11 +36,11 @@ const usd = (v: number | null | undefined): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** The share of its markup an event pays, by its rank in the trip (0 = the dearest). */
-function tierFactor(rank: number, s: ItinerarySettings): number {
-  if (rank <= 0) return 1;
+/** An event's markup after its rank's discount (0 = the dearest, full). */
+function tiered(markup: number, rank: number, s: ItinerarySettings): number {
+  if (rank <= 0) return markup;
   const pct = rank === 1 ? s.tier2Pct : s.tier3Pct; // a 4th event would pay the last tier
-  return 1 - pct / 100;
+  return (markup * (100 - pct)) / 100; // not markup * (1 - pct / 100): no float error on a fractional pct
 }
 
 /**
@@ -57,7 +57,7 @@ export function tierMarkups(route: Event[], s: ItinerarySettings): Map<number, n
         eventDay(x.e).localeCompare(eventDay(y.e)) ||
         x.e.id - y.e.id,
     );
-  return new Map(ranked.map(({ e, markup }, rank) => [e.id, cents(markup * tierFactor(rank, s))]));
+  return new Map(ranked.map(({ e, markup }, rank) => [e.id, cents(tiered(markup, rank, s))]));
 }
 
 /** What the trip saves on markups against buying every event on its own: Σ full − Σ tiered. */
@@ -80,12 +80,13 @@ function packageNights(e: Event): number {
  * would cost (`separate`).
  *
  * - tickets: each event's cheapest ticket on sale;
- * - flight: `estFlightUsd` when the page has a quote, else 60% of the events' package flights;
+ * - flight: `estFlightUsd` when the page has a (finite) quote, else 60% of the events' package flights;
  * - hotel: per stay, the nightly rate of the stay's FIRST event's package (its base hotel price
  *   over the nights that package assumes) times the stay's nights in this trip;
  * - markup: tiered (`tierMarkups`).
  *
- * `saving` = separate - perTraveller, only when it is at least $50 (else null: no savings line).
+ * `saving` = separate - perTraveller, only for a trip of two events or more and when it is at
+ * least $50 (else null: no savings line).
  */
 export function estimateItinerary(
   route: Event[],
@@ -95,8 +96,9 @@ export function estimateItinerary(
 ): { perTraveller: number; separate: number; saving: number | null } {
   const tickets = route.reduce((sum, e) => sum + usd(cheapestAvailableTicketPrice(e.tickets_and_rates)), 0);
 
-  const flight =
-    estFlightUsd ?? FLIGHT_FALLBACK_SHARE * route.reduce((sum, e) => sum + usd(e.base_flight_price), 0);
+  // A quote that is not a finite number (NaN / Infinity) is no quote: the fallback prices the flight.
+  const quote = estFlightUsd !== null && Number.isFinite(estFlightUsd) ? estFlightUsd : null;
+  const flight = quote ?? FLIGHT_FALLBACK_SHARE * route.reduce((sum, e) => sum + usd(e.base_flight_price), 0);
 
   const hotel = stays(route, d).reduce((sum, stay) => {
     const first = stay.events[0];
@@ -110,5 +112,7 @@ export function estimateItinerary(
   const perTraveller = Math.round(tickets + flight + hotel + markup);
   const separate = Math.round(route.reduce((sum, e) => sum + usd(computePackagePrice(e)), 0));
   const diff = separate - perTraveller;
-  return { perTraveller, separate, saving: diff >= MIN_SAVING_USD ? diff : null };
+  // Nothing is saved on one event: its "saving" would only be the estimate's own error.
+  const saving = route.length >= 2 && diff >= MIN_SAVING_USD ? diff : null;
+  return { perTraveller, separate, saving };
 }
