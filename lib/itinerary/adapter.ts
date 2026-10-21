@@ -117,7 +117,7 @@ export function goneIds(asked: number[], rows: Event[], routeIds: number[]): num
  * its own (not a hand pick); null = nothing to say.
  */
 export function categorySwapNotice(
-  held: OrderTicket | undefined,
+  held: Pick<OrderTicket, "id" | "category" | "zoneLabel"> | undefined,
   picked: string | undefined,
   pax: number,
 ): string | null {

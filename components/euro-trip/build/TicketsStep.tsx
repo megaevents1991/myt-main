@@ -8,6 +8,7 @@ import { OrderContext } from "@/app/app.context";
 import { TicketSelection } from "@/app/order/TicketSelection";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event } from "@/lib/app.types";
+import type { HeldTicket } from "@/lib/itinerary/draft";
 import { eventCityName } from "@/lib/events/lodging";
 import {
   MAX_TRIP_LOAD,
@@ -109,8 +110,9 @@ function EventTicketPane({ event }: { event: Event }) {
   useLayoutEffect(() => {
     latest.current = api;
   });
-  // The pick this tab opened on, read once (ticketAdapterFields' `held`).
-  const [held] = useState(() => ticket);
+  // The pick this tab opened on, read once (ticketAdapterFields' `held`): the trip's ticket, else
+  // the category a refresh brought back (the draft - no price: the step prices it again).
+  const [held] = useState<HeldTicket | undefined>(() => ticket ?? api.heldTickets[id]);
 
   // Did the step put another category in place of the held one on its own? A hand pick (a
   // click or Enter / Space inside the pane, then a ticket) is the customer's: it ends the notice.

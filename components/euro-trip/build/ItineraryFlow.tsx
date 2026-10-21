@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Ticket, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { allTicketsReady } from "@/lib/itinerary/adapter";
 import { stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
 import { estimateItinerary } from "@/lib/itinerary/price";
+import { canContinue, livePerTraveller } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import { FlightsStep } from "./FlightsStep";
@@ -17,19 +16,9 @@ import { HotelsStep } from "./HotelsStep";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
+import { SummaryStep } from "./SummaryStep";
 import { TicketsStep } from "./TicketsStep";
 import { TripHeader } from "./TripHeader";
-
-/** The summary - not built yet (Task A14). */
-function ComingSoon() {
-  return (
-    <EmptyState
-      icon={<Ticket className="size-7" aria-hidden />}
-      title="סיכום ותשלום - בקרוב"
-      description="השלב הזה עוד בבנייה. אפשר לחזור למסלול ולשנות אותו."
-    />
-  );
-}
 
 /** The step on screen - one switch, so each step's real component slots in here. */
 function StepBody({ state }: { state: ItineraryState }) {
@@ -44,7 +33,7 @@ function StepBody({ state }: { state: ItineraryState }) {
       // Drawn beside the switch (ItineraryFlow): it stays mounted while the trip has its flight.
       return null;
     case "summary":
-      return <ComingSoon />;
+      return <SummaryStep />;
   }
 }
 
@@ -86,11 +75,13 @@ export function ItineraryFlow() {
   if (step === "hotels" && state.flight && !hotelsOpened) setHotelsOpened(true);
   else if (!state.flight && hotelsOpened) setHotelsOpened(false);
   const hotelsMounted = step === "hotels" || (hotelsOpened && !!state.flight);
-  // The estimate until the live steps price the trip (Task A14 switches to the live total).
-  const total = useMemo(
+  // The live price once every piece is picked (the summary's own figure), the estimate until then.
+  const estimate = useMemo(
     () => (route.length ? estimateItinerary(route, dates, settings, null).perTraveller : 0),
     [route, dates, settings],
   );
+  const total = livePerTraveller(state, settings) ?? estimate;
+  const progress = canContinue(state);
 
   // A new step or mode opens at the top of the page - and so does the next city's hotels.
   const view = `${step}|${state.mode}|${step === "hotels" ? state.activeStay : ""}`;
@@ -107,7 +98,7 @@ export function ItineraryFlow() {
   const nextStay = step === "hotels" ? nextOpenStay(openIndex, stayList.length, hotelReady) : -1;
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
   // to be picked again for the new party).
-  const ticketsReady = allTicketsReady(route, state.tickets, state.pax);
+  const ticketsReady = progress.tickets;
   // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
   // the flights step sets it only then.
   const flightMissing = step === "flights" && !state.flight;
@@ -155,7 +146,7 @@ export function ItineraryFlow() {
     return undefined;
   };
 
-  const allHotels = stayList.length > 0 && stayList.every((_, i) => hotelReady(i));
+  const allHotels = progress.hotels;
   const slots: ContinueSlot[] = [
     {
       icon: "ticket",

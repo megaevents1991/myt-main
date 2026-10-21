@@ -14,6 +14,8 @@ import {
 } from "react";
 
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
+import { sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
+import { readItineraryDraft, writeItineraryDraft } from "@/lib/itinerary/draftStorage";
 import { describeCompat } from "@/lib/itinerary/rules";
 import type { ItinerarySettings } from "@/lib/itinerary/settings";
 import {
@@ -24,10 +26,15 @@ import {
   type ItineraryState,
   type ItineraryStep,
 } from "@/lib/itinerary/state";
+import { emptyTravellers, type TravellersInput } from "@/lib/itinerary/travellers";
 import type { TripDates } from "@/lib/itinerary/types";
 import { eventsParamValue, parseEventsParam, reconcileRoute } from "@/lib/itinerary/url";
 
 const EVENTS_PARAM = "events";
+
+/** Said once over the tickets step when a refresh brought back a trip that was past it. */
+const RESTORED_NOTICE =
+  "החזרנו את הטיול שלכם. כדי שהמחירים יהיו עדכניים בודקים שוב את הכרטיסים, ואחריהם בוחרים מחדש טיסה ומלונות.";
 
 /** Runs before the first paint on the client (no flash of the empty builder on a route link). */
 const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -62,6 +69,16 @@ export type ItineraryApi = {
   goStep: (step: ItineraryStep) => void;
   setActiveEvent: (i: number) => void;
   setActiveStay: (i: number) => void;
+  /**
+   * The category each event's tab reopens on after a refresh (the draft, lib/itinerary/draft.ts):
+   * no price - the ticket step prices it again. Read by a tab only while the event has no ticket.
+   */
+  heldTickets: Record<number, HeldTicket>;
+  /** The summary's travellers form - here, so it survives a visit to an earlier step (and a refresh). */
+  travellers: TravellersInput;
+  setTravellers: (t: TravellersInput) => void;
+  termsAccepted: boolean;
+  setTermsAccepted: (v: boolean) => void;
 };
 
 const ItineraryContext = createContext<ItineraryApi | null>(null);
@@ -73,7 +90,9 @@ const ItineraryContext = createContext<ItineraryApi | null>(null);
  * empty self-build (what the server printed). Right after it, the route in `?events=` is read
  * from `window.location`, matched against the catalog and fitted with the rules; from then on
  * every change of the route is written back to `?events=` (replaceState), so a refresh or a
- * shared link reopens the same trip.
+ * shared link reopens the same trip. A refresh in the same tab also brings back the rest of its
+ * shape - dates, party, train moves, the held categories, the travellers' form - from the
+ * tab's draft (sessionStorage, lib/itinerary/draft.ts), read in that same once-per-mount step.
  */
 export function ItineraryProvider({
   catalog,
@@ -87,6 +106,9 @@ export function ItineraryProvider({
   const [state, dispatch] = useReducer(itineraryReducer, INITIAL_ITINERARY_STATE);
   const [urlApplied, setUrlApplied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [heldTickets, setHeldTickets] = useState<Record<number, HeldTicket>>({});
+  const [travellers, setTravellers] = useState<TravellersInput>(() => emptyTravellers(INITIAL_ITINERARY_STATE.pax));
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const byId = useMemo(() => new Map(catalog.map((e) => [e.id, e])), [catalog]);
 
   // Read ?events= once. Called by `useItineraryUrl` from inside the page's Suspense boundary:
@@ -101,9 +123,29 @@ export function ItineraryProvider({
     const { route: found, dropped } = reconcileRoute(ids, byId);
     const { route, refused } = fitRoute(found, settings);
     if (ids.length) dispatch({ type: "load", route, mode: route.length ? "route" : "custom" });
+    // The trip this tab held before a refresh (lib/itinerary/draft.ts) - only for the trip the
+    // URL names: a link to another route wins, and the draft is left alone (the next save
+    // replaces it). It brings back the trip's shape and the travellers' form; prices never - the
+    // flow reopens on the tickets step at most, each tab on the category it held.
+    const draft = route.length ? readItineraryDraft(byId) : null;
+    const restored = draft && sameRouteIds(draft.route, route) ? draft : null;
+    if (restored) {
+      dispatch({ type: "setMode", mode: restored.mode });
+      for (const key of restored.train) dispatch({ type: "toggleTrain", key });
+      dispatch({ type: "setDates", dates: restored.dates });
+      dispatch({ type: "setPax", pax: restored.pax });
+      dispatch({ type: "goStep", step: restored.step });
+      setHeldTickets(restored.held);
+      if (restored.form) {
+        setTravellers(restored.form.travellers);
+        setTermsAccepted(restored.form.termsAccepted);
+      }
+    }
+    const pastTickets = !!restored && ["flights", "hotels", "summary"].includes(restored.savedStep);
     const messages = [
       ...(dropped.length ? ["האירוע כבר לא זמין"] : []),
       ...refused.map((r) => `${r.event.name} לא נכנס למסלול: ${describeCompat(r.compat)}`),
+      ...(pastTickets ? [RESTORED_NOTICE] : []),
     ];
     setNotice(messages.length ? messages.join(" · ") : null);
     setUrlApplied(true);
@@ -120,6 +162,13 @@ export function ItineraryProvider({
     // Commas stay readable (`?events=618,702`, as the hub's links write it).
     window.history.replaceState(null, "", url.pathname + url.search.replace(/%2C/gi, ",") + url.hash);
   }, [urlApplied, value]);
+
+  // Mirror the trip into the tab's draft on every change - only once the URL (and the draft) was
+  // read, so the first renders never overwrite the trip a refresh is about to bring back.
+  useEffect(() => {
+    if (!urlApplied) return;
+    writeItineraryDraft(state, { held: heldTickets, form: { travellers, termsAccepted } });
+  }, [urlApplied, state, heldTickets, travellers, termsAccepted]);
 
   const api = useMemo<ItineraryApi>(
     () => ({
@@ -146,8 +195,13 @@ export function ItineraryProvider({
       goStep: (step) => dispatch({ type: "goStep", step }),
       setActiveEvent: (index) => dispatch({ type: "setActiveEvent", index }),
       setActiveStay: (index) => dispatch({ type: "setActiveStay", index }),
+      heldTickets,
+      travellers,
+      setTravellers,
+      termsAccepted,
+      setTermsAccepted,
     }),
-    [state, catalog, byId, settings, urlApplied, applyUrl, notice],
+    [state, catalog, byId, settings, urlApplied, applyUrl, notice, heldTickets, travellers, termsAccepted],
   );
 
   return <ItineraryContext.Provider value={api}>{children}</ItineraryContext.Provider>;
