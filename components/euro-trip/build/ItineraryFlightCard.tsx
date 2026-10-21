@@ -144,7 +144,8 @@ function Bags({ leg }: { leg: FlightSegment }) {
  * selected border, price pill against the base offer, best / cheapest tags, bags) with a row per
  * leg of the trip. Under a between-cities flight, "אגיע ברכבת"; a move by train shows as a train
  * row in its place. The whole card selects (like the live card); the button says so for keyboards
- * and shows the pricing on its way.
+ * and shows the pricing on its way - its label ("בחירה" / "בודקים מחיר…" / "נבחרה") is the one
+ * signal of the state (no aria-pressed beside it).
  */
 export function ItineraryFlightCard({
   flight,
@@ -170,7 +171,7 @@ export function ItineraryFlightCard({
   selected: boolean;
   /** Its price is being checked. */
   pricing: boolean;
-  /** Its price check failed. */
+  /** The pricing service could not confirm it (it never says the price moved). */
   failed: boolean;
   isBest: boolean;
   isCheapest: boolean;
@@ -242,7 +243,6 @@ export function ItineraryFlightCard({
               e.stopPropagation();
               select();
             }}
-            aria-pressed={selected}
             aria-busy={pricing}
             disabled={pricing}
             className={cn(
@@ -269,7 +269,7 @@ export function ItineraryFlightCard({
           </button>
           {failed && (
             <p role="alert" className="m-0 w-full text-center text-xs font-bold text-destructive">
-              המחיר השתנה / לא זמין - בחרו טיסה אחרת
+              לא הצלחנו לאמת את הטיסה - נסו שוב או בחרו טיסה אחרת
             </p>
           )}
         </div>

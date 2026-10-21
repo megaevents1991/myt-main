@@ -18,6 +18,8 @@ import {
   searchOutcome,
   searchView,
   sortFlights,
+  tabTags,
+  trainBackOffered,
   trainCallout,
   trainHours,
   trainRowText,
@@ -138,23 +140,28 @@ describe("trainCallout", () => {
   });
 });
 
-describe("isIsraeliFlight", () => {
-  it("is true when every carrier, validating and operating, is LY / IZ / 6H", () => {
-    expect(isIsraeliFlight(flight("1", 900, three, { validating: "LY", operating: [["LY"], ["LY"], ["LY"]] }))).toBe(true);
-    expect(isIsraeliFlight(flight("2", 900, three, { validating: "IZ", operating: [["IZ"], ["6H", "6H"], ["IZ"]] }))).toBe(true);
+describe("isIsraeliFlight (the live flight step's ישראלי filter)", () => {
+  it("is true when the ticketing airline is Israeli: LY, 6H, IZ, BZ, U8", () => {
+    for (const code of ["LY", "6H", "IZ", "BZ", "U8"]) {
+      expect(isIsraeliFlight(flight(code, 900, three, { validating: code, operating: [[code], [code], [code]] }))).toBe(true);
+    }
   });
 
-  it("is false when one segment is flown by someone else (a codeshare)", () => {
-    expect(isIsraeliFlight(flight("1", 900, three, { validating: "LY", operating: [["LY"], ["AF"], ["LY"]] }))).toBe(false);
-    expect(isIsraeliFlight(flight("2", 900, three, { validating: "LY", operating: [["LY"], ["LY", "BA"], ["LY"]] }))).toBe(false);
+  it("an El Al ticket stays Israeli on an Air France-operated codeshare leg (the card says El Al)", () => {
+    expect(isIsraeliFlight(flight("1", 900, three, { validating: "LY", operating: [["LY"], ["AF"], ["LY"]] }))).toBe(true);
   });
 
-  it("is false when the ticket is not Israeli even on Israeli metal", () => {
+  it("a foreign ticket on Israeli metal is not Israeli (the card shows the foreign airline)", () => {
     expect(isIsraeliFlight(flight("1", 900, three, { validating: "AF", operating: [["LY"], ["LY"], ["LY"]] }))).toBe(false);
-    expect(isIsraeliFlight(flight("2", 900, three, { validating: "HR", operating: [["BZ"], ["BZ"], ["BZ"]] }))).toBe(false);
   });
 
-  it("falls back to the airline when the offer has no itineraries", () => {
+  it("Hahn Air (HR) speaks for whoever operates the first flight: Blue Bird and El Al count", () => {
+    expect(isIsraeliFlight(flight("1", 900, three, { validating: "HR", operating: [["BZ"], ["BZ"], ["BZ"]] }))).toBe(true);
+    expect(isIsraeliFlight(flight("2", 900, three, { validating: "HR", operating: [["LY"], ["AF"], ["LY"]] }))).toBe(true);
+    expect(isIsraeliFlight(flight("3", 900, three, { validating: "HR", operating: [["TK"], ["BZ"], ["BZ"]] }))).toBe(false);
+  });
+
+  it("an offer with no itineraries goes by the airline", () => {
     const f = { ...flight("1", 900, three, { validating: "LY", operating: [] }), offer: {} } as unknown as ItineraryFlight;
     expect(isIsraeliFlight(f)).toBe(true);
     expect(isIsraeliFlight({ ...f, airline: "AF" })).toBe(false);
@@ -191,6 +198,17 @@ describe("best, cheapest, sort", () => {
     const ly2 = flight("ly2", 1300, three, { validating: "6H", operating: [["6H"], ["6H"], ["6H"]] });
     expect(sortFlights([...list, ly2], "israeli").map((f) => f.id)).toEqual(["ly2", "ly"]);
     expect(sortFlights([cheapStop, direct], "israeli")).toEqual([]);
+  });
+
+  it("the tags are the best / cheapest of the tab on screen, like the live step", () => {
+    expect(tabTags(list, "best")).toEqual({ bestId: "d", cheapestId: "s" });
+    expect(tabTags(list, "cheapest")).toEqual({ bestId: "d", cheapestId: "s" });
+    const ly2 = flight("ly2", 1600, [seg("TLV", "CDG", { stops: oneStop("ATH", "CDG") }), three[1], three[2]], {
+      validating: "6H",
+      operating: [["6H", "6H"], ["6H"], ["6H"]],
+    });
+    expect(tabTags([...list, ly2], "israeli")).toEqual({ bestId: "ly", cheapestId: "ly" });
+    expect(tabTags([cheapStop], "israeli")).toEqual({ bestId: undefined, cheapestId: undefined });
   });
 
   it("never reorders the list it is given", () => {
@@ -335,6 +353,21 @@ describe("searchOutcome / searchView", () => {
     expect(searchView({ kind: "empty" }, false)).toBe("empty");
     expect(searchView({ kind: "invalid" }, false)).toBe("invalid");
     expect(searchView({ kind: "error" }, false)).toBe("error");
+  });
+});
+
+describe("trainBackOffered", () => {
+  it("offers the way back to a flight when a by-train search shows no card", () => {
+    for (const view of ["empty", "busy", "error"] as const) {
+      expect(trainBackOffered(view, ["618>702"])).toBe(true);
+      expect(trainBackOffered(view, [])).toBe(false);
+    }
+  });
+
+  it("not while there are cards, a search is on its way, or the dates are the problem", () => {
+    for (const view of ["ok", "loading", "retrying", "invalid", "unsearchable"] as const) {
+      expect(trainBackOffered(view, ["618>702"])).toBe(false);
+    }
   });
 });
 

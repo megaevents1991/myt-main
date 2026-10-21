@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { DollarSign, ShieldCheck, Star, TrainFront, type LucideIcon } from "lucide-react";
+import { DollarSign, Plane, ShieldCheck, Star, TrainFront, type LucideIcon } from "lucide-react";
 
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
@@ -14,13 +14,13 @@ import {
   basePerTraveller,
   canSearch,
   cardRows,
-  cheapestFlight,
-  pickBestFlight,
   pricedFlight,
   searchKey,
   searchOutcome,
   searchView,
   sortFlights,
+  tabTags,
+  trainBackOffered,
   trainCallout,
   type FlightSort,
   type SearchView,
@@ -45,7 +45,8 @@ const NON_STOP = false;
 /**
  * Search answers by `searchKey`, outside React: the step unmounts when the customer goes back
  * to the tickets, and coming forward again with the same legs and party must not search again.
- * Only an answer for the SAME key is ever reused.
+ * Only an answer for the SAME key is ever reused, and only one with flights (an empty answer is
+ * asked again - a seat may have opened).
  */
 const answers = new Map<string, { flights: ItineraryFlight[]; at: number }>();
 const freshAnswer = (key: string): ItineraryFlight[] | null => {
@@ -78,7 +79,7 @@ function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, on
     if (!key) return;
     const kept = freshAnswer(key);
     if (kept) {
-      setResult({ key, view: kept.length ? "ok" : "empty", flights: kept });
+      setResult({ key, view: "ok", flights: kept });
       return;
     }
     const ctrl = new AbortController();
@@ -108,10 +109,8 @@ function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, on
         return;
       }
       const flights = outcome.kind === "ok" ? outcome.flights : [];
-      if (outcome.kind === "ok" || outcome.kind === "empty") {
-        keepAnswer(key, flights);
-        onFreshRef.current();
-      }
+      if (outcome.kind === "ok") keepAnswer(key, flights);
+      if (outcome.kind === "ok" || outcome.kind === "empty") onFreshRef.current();
       setResult({ key, view, flights });
     };
     timer = setTimeout(() => void run(false), SEARCH_DEBOUNCE_MS);
@@ -134,7 +133,7 @@ function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, on
     // Between a change of key and its effect: a kept answer shows at once.
     const kept = freshAnswer(key);
     if (kept) {
-      view = kept.length ? "ok" : "empty";
+      view = "ok";
       flights = kept;
     }
   }
@@ -153,7 +152,7 @@ function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, on
 const SORT_TABS: { key: FlightSort; title: string; sub: string; Icon: LucideIcon }[] = [
   { key: "best", title: "הטוב ביותר", sub: "ערך מיטבי לכסף", Icon: Star },
   { key: "cheapest", title: "הזול ביותר", sub: "המחיר הנמוך ביותר", Icon: DollarSign },
-  { key: "israeli", title: "ישראלי", sub: "אל על, ישראייר, ארקיע", Icon: ShieldCheck },
+  { key: "israeli", title: "ישראלי", sub: "חברות תעופה ישראליות", Icon: ShieldCheck },
 ];
 
 /** הטוב ביותר / הזול ביותר / ישראלי - the live flight step's tabs (cards on desktop, pills on a phone). */
@@ -279,13 +278,20 @@ export function FlightsStep() {
   const [pick, setPick] = useState<PickState | null>(null);
   const pricing = useRef<AbortController | null>(null);
 
-  // A new search (or leaving the step) drops a price check on its way.
-  useEffect(() => () => pricing.current?.abort(), [search.key]);
+  // A new search (or leaving the step) drops a price check on its way - and what it showed: a
+  // card left spinning would still spin when a kept answer brings the same key back.
+  useEffect(
+    () => () => {
+      pricing.current?.abort();
+      pricing.current = null;
+      setPick(null);
+    },
+    [search.key],
+  );
 
   const flights = search.flights;
   const sorted = useMemo(() => sortFlights(flights, sort), [flights, sort]);
-  const bestId = useMemo(() => pickBestFlight(flights)?.id, [flights]);
-  const cheapestId = useMemo(() => cheapestFlight(flights)?.id, [flights]);
+  const { bestId, cheapestId } = useMemo(() => tabTags(flights, sort), [flights, sort]);
   const base = useMemo(() => basePerTraveller(flights, pax), [flights, pax]);
 
   const callout = useMemo(
@@ -398,7 +404,7 @@ export function FlightsStep() {
           {sorted.length === 0 ? (
             <OrderIssueState
               className="mt-2"
-              title="אין טיסות של אל על, ישראייר או ארקיע לתאריכים האלה"
+              title="אין טיסות של חברות תעופה ישראליות לתאריכים האלה"
               subtitle="בטאב 'הטוב ביותר' מחכות כל שאר הטיסות."
             />
           ) : (
@@ -453,6 +459,19 @@ export function FlightsStep() {
         </div>
       )}
       {body}
+      {trainBackOffered(search.view, train) && (
+        // The "אגיע ברכבת" switch lives on the cards: with none on screen, this is the way back.
+        <button
+          type="button"
+          onClick={() => {
+            for (const key of train) toggleTrain(key);
+          }}
+          className="mx-auto flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow"
+        >
+          <Plane className="size-4" aria-hidden />
+          חזרה לטיסה בין הערים
+        </button>
+      )}
     </section>
   );
 }

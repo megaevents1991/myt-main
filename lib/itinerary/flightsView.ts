@@ -8,6 +8,7 @@
  * so the step never sends a search the route would refuse; a test keeps the two in step.
  */
 import type { FlightSegment, ItineraryFlight } from "@/lib/app.types";
+import { ISRAELI_AIRLINE_CODES, getFlightCarrierCodes } from "@/lib/flightCarriers";
 import { dayMonth } from "./builder";
 import type { FlightLeg } from "./flightOffers";
 import type { TrainLeg, TripLeg } from "./types";
@@ -18,8 +19,6 @@ export const FLIGHTS_PAGE = 20;
 export const TRAIN_HINT_KM = 600;
 /** Within this many USD a traveller of the base, a flight is "included" (the live FlightTicketCard's band). */
 export const INCLUDED_BAND_USD = 4;
-/** The "ישראלי" tab: El Al, Arkia, Israir. */
-export const ISRAELI_CARRIERS: ReadonlySet<string> = new Set(["LY", "IZ", "6H"]);
 
 export type FlightSort = "best" | "cheapest" | "israeli";
 
@@ -64,24 +63,13 @@ export function trainCallout(hops: TrainHop[]): { lead: string; text: string } |
 // Sort tabs
 // ---------------------------------------------------------------------------------------------
 
-type OfferShape = {
-  validatingAirlineCodes?: string[];
-  itineraries?: { segments?: { carrierCode?: string; operating?: { carrierCode?: string } }[] }[];
-};
-
 /**
- * Every carrier on the ticket is Israeli: the validating carrier and whoever operates each
- * segment of every itinerary (Amadeus leaves `operating` out when it is the marketing carrier).
- * An offer with no itineraries to read falls back to the flight's airline.
+ * The "ישראלי" tab - the live flight step's own filter (`lib/flightFilter.ts`): the airline the
+ * card shows is one of `ISRAELI_AIRLINE_CODES` (the ticketing carrier; for Hahn Air, whoever
+ * operates the first flight - `getFlightCarrierCodes`). The tab means the same in both flows.
  */
-export function isIsraeliFlight(f: ItineraryFlight): boolean {
-  const offer = (f.offer ?? {}) as OfferShape;
-  const codes = [offer.validatingAirlineCodes?.[0] ?? f.airline];
-  for (const it of offer.itineraries ?? []) {
-    for (const s of it.segments ?? []) codes.push(s.operating?.carrierCode ?? s.carrierCode ?? "");
-  }
-  return codes.every((c) => ISRAELI_CARRIERS.has(c));
-}
+export const isIsraeliFlight = (f: ItineraryFlight): boolean =>
+  getFlightCarrierCodes(f).some((code) => ISRAELI_AIRLINE_CODES.includes(code));
 
 /** Stops over every leg of the trip. */
 const totalStops = (f: ItineraryFlight): number =>
@@ -128,6 +116,15 @@ export function sortFlights(flights: ItineraryFlight[], sort: FlightSort): Itine
   if (sort === "israeli") return byPrice(flights.filter(isIsraeliFlight));
   const best = pickBestFlight(flights);
   return best ? [best, ...byPrice(flights.filter((f) => f !== best))] : [];
+}
+
+/**
+ * "★ הטוב ביותר" / "↓ הזול ביותר" of the tab on screen (the live step tags the filtered list):
+ * on ישראלי they are the best and the cheapest Israeli flights.
+ */
+export function tabTags(flights: ItineraryFlight[], sort: FlightSort): { bestId?: string; cheapestId?: string } {
+  const list = sort === "israeli" ? flights.filter(isIsraeliFlight) : flights;
+  return { bestId: pickBestFlight(list)?.id, cheapestId: cheapestFlight(list)?.id };
 }
 
 /** What every badge is measured against: the first offer of the default tab, per traveller. */
@@ -235,6 +232,14 @@ export function searchOutcome(status: number, body: unknown): SearchOutcome {
 }
 
 export type SearchView = "ok" | "empty" | "retrying" | "busy" | "invalid" | "error";
+
+/**
+ * A search with a move by train ended with no card on screen (nothing found, still busy, or
+ * failed) - the switch lives on the cards, so the step offers the way back to the flight.
+ * Not for dates the route refuses: the train is not what stands in the way there.
+ */
+export const trainBackOffered = (view: SearchView | "loading" | "unsearchable", train: readonly string[]): boolean =>
+  train.length > 0 && (view === "empty" || view === "busy" || view === "error");
 
 /** What the step shows for an answer: a first "busy" is retried once, a second one is said. */
 export function searchView(outcome: SearchOutcome, retried: boolean): SearchView {
