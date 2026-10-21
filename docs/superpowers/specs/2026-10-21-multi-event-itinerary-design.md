@@ -189,13 +189,16 @@ change `validatePurchasePriceFloor` (shared with `confirm-order`, whose slack as
 - `lib/itinerary/rules.ts`, `dates.ts`, `price.ts`, `recommend.ts` - pure, vitest in `lib/__tests__/itinerary*.test.ts`.
 - `app/api/itinerary/flights/route.ts` - POST `{legs:[{from,to,date}], adults, nonStop?}` → Amadeus
   `flightOffersSearch.post` with `originDestinations[]` (pattern: `lib/flights/elal.ts` `classicSearchBody`,
-  `app/api/flights/bag-pricing`). Returns `ItineraryFlight[]` (§7.3). Same filters/adjustments as `/api/flights/search`,
-  extracted into shared helpers **without changing** that route's output (test on a recorded response).
-- Hotels: the existing `POST /api/hotels` per stay, unchanged (`withinSupplierLimit`, sellable-rate filtering,
-  non-refundable window). Called through `fetchHotels` directly, one stay at a time - not via `HotelFetchProvider`
-  (it holds one result set).
-- Tickets: move `loadLive` from `app/hooks/useReadyTicketLive.ts` to `lib/tickets/liveOffers.ts` (pure move, the hook
-  imports it back, behaviour identical) and use it per event with `priceTicketsForQuantity` / `toOrderTicket`.
+  `app/api/flights/bag-pricing`). Returns `ItineraryFlight[]` (§7.3). Same filters/adjustments as `/api/flights/search`
+  (≤ 1 stop, layover ≤ 4 h, consistent bags, +$45 carriers), **mirrored** in `lib/itinerary/flightOffers.ts` - the
+  live route is not touched (its conversion is inline, no helper to share).
+- **Ticket and hotel steps are reused unchanged** (decided while planning, 2026-10-21): `TicketSelection` and
+  `HotelSelection` read only `OrderContext` (+ `HotelFetchContext`), so the trip renders them inside a per-event /
+  per-stay `OrderContext.Provider` adapter. Same seat maps, categories, live supplier pricing, hotel list, sellable
+  rates and supplier-limit handling as today, with zero edits to those files. Each stay gets its own
+  `HotelFetchProvider` and a synthetic `Flight` (the leg arriving into the city as outbound, the leg leaving it as
+  inbound) so `getDefaultDateRange` yields the stay's dates; a stay's search runs only when its tab opens.
+  No `loadLive` move is needed.
 - `app/api/itinerary/confirm`, `app/api/itinerary/payment`, `app/api/itinerary/confirmation/[group]/[result]` (§7.4-7.5).
 
 ### 7.2 Supplier limits
