@@ -36,7 +36,7 @@
 
 ## Part A - myt-main (branch `feat/multi-event-itinerary`)
 
-### Task A1: Types and settings (pure)
+### Task 1 (A1): Types and settings (pure)
 
 **Files:**
 - Create: `lib/itinerary/types.ts`, `lib/itinerary/settings.ts`
@@ -58,7 +58,7 @@
 - [ ] **Step 4:** run → PASS; `npx tsc --noEmit` → no new errors.
 - [ ] **Step 5: Commit** `feat(itinerary): settings + shared types`
 
-### Task A2: Geography and eligibility
+### Task 2 (A2): Geography and eligibility
 
 **Files:** Create `lib/itinerary/geo.ts`, `lib/itinerary/eligibility.ts`; Test `lib/__tests__/itineraryGeo.test.ts`
 
@@ -77,7 +77,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS.
 - [ ] **Step 5: Commit** `feat(itinerary): geo + eligibility`
 
-### Task A3: Compatibility rules
+### Task 3 (A3): Compatibility rules
 
 **Files:** Create `lib/itinerary/rules.ts`; Test `lib/__tests__/itineraryRules.test.ts`
 
@@ -93,7 +93,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS.
 - [ ] **Step 5: Commit** `feat(itinerary): compatibility rules`
 
-### Task A4: Trip dates, stays, legs
+### Task 4 (A4): Trip dates, stays, legs
 
 **Files:** Create `lib/itinerary/dates.ts`; Test `lib/__tests__/itineraryDates.test.ts`
 
@@ -113,7 +113,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS.
 - [ ] **Step 5: Commit** `feat(itinerary): trip dates, stays and legs`
 
-### Task A5: Pricing
+### Task 5 (A5): Pricing
 
 **Files:** Create `lib/itinerary/price.ts`; Test `lib/__tests__/itineraryPrice.test.ts`
 
@@ -128,7 +128,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS.
 - [ ] **Step 5: Commit** `feat(itinerary): tiered markup and estimates`
 
-### Task A6: Auto recommendations
+### Task 6 (A6): Auto recommendations
 
 **Files:** Create `lib/itinerary/recommend.ts`; Test `lib/__tests__/itineraryRecommend.test.ts`
 
@@ -140,7 +140,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS.
 - [ ] **Step 5: Commit** `feat(itinerary): auto route recommendations`
 
-### Task A7: Settings server read + revalidate endpoint
+### Task 7 (A7): Settings server read + revalidate endpoint
 
 **Files:** Create `lib/itinerary/settings.server.ts`, `app/api/itinerary/revalidate/route.ts`
 
@@ -154,7 +154,7 @@
 - [ ] **Step 2: Verify** with one `yarn dev` in the worktree: `curl -s -X POST localhost:3000/api/itinerary/revalidate` → 401; with the header → `{"ok":true}`.
 - [ ] **Step 3: Commit** `feat(itinerary): settings read + revalidate endpoint`
 
-### Task A8: Multi-city flight API
+### Task 8 (A8): Multi-city flight API
 
 **Files:** Create `lib/itinerary/flightOffers.ts`, `app/api/itinerary/flights/route.ts`, fixture `lib/__tests__/fixtures/amadeus-multicity-offer.json` (hand-made 3-itinerary offer in the Amadeus shape); Test `lib/__tests__/itineraryFlightOffers.test.ts`
 
@@ -170,7 +170,7 @@
 - [ ] **Step 5: Verify** on `yarn dev`: POST TLV→PAR 2027-05-11, PAR→LON 2027-05-13, LON→TLV 2027-05-16, adults 2 → 200, `flights.length > 0`, every `legs.length === 3` (one Amadeus call).
 - [ ] **Step 6: Commit** `feat(itinerary): multi-city flight search`
 
-### Task A9: Hub page `/euro-trip` + route card
+### Task 9 (A9): Hub page `/euro-trip` + route card
 
 **Files:** Create `lib/itinerary/routeCard.ts`, `app/euro-trip/page.tsx`, `components/euro-trip/RouteCard.tsx`, `components/euro-trip/EuroTripHub.tsx`; Test `lib/__tests__/itineraryRouteCard.test.ts`
 
@@ -189,7 +189,7 @@
 - [ ] **Step 4: Verify** (dev, browser pane, desktop + 375px): `/euro-trip` shows cards with the real art of the current catalog; filters/sort/"הצג עוד" work and survive a refresh; no console errors.
 - [ ] **Step 5: Commit** `feat(euro-trip): hub page and route cards`
 
-### Task A10: Builder shell, provider, route step, self-build, day planner
+### Task 10 (A10): Builder shell, provider, route step, self-build, day planner
 
 **Files:** Create `lib/itinerary/url.ts`, `app/euro-trip/build/page.tsx`, `components/euro-trip/build/ItineraryProvider.tsx`, `TripHeader.tsx`, `RouteStep.tsx`, `SelfBuild.tsx`, `DayPlanner.tsx`, `ItineraryFlow.tsx`; Test `lib/__tests__/itineraryUrl.test.ts`
 
@@ -212,7 +212,7 @@
 - [ ] **Step 4: Verify** (dev, browser): `/euro-trip/build?events=<two compatible ids>` shows the timeline; a blocked event cannot be added; removing to one disables the CTA and shows the regular-order link; self-build: two picks → planner, stepper bounds hold; URL updates; refresh keeps the route.
 - [ ] **Step 5: Commit** `feat(euro-trip): builder - route step, self-build, day planner`
 
-### Task A11: Tickets step through an `OrderContext` adapter
+### Task 11 (A11): Tickets step through an `OrderContext` adapter
 
 **Files:** Create `lib/itinerary/adapter.ts`, `components/euro-trip/build/orderContextAdapter.ts`, `components/euro-trip/build/TicketsStep.tsx`; Test `lib/__tests__/itineraryAdapter.test.ts`
 
@@ -228,7 +228,7 @@
 - [ ] **Step 3: Verify** (browser): a route with a tx_event and a static event - each tab shows the real seat map and category cards; a pick marks ✓; quantity changed in one tab shows in the other and clears flight/hotels (continue-bar slots); `git diff --stat origin/main -- app/order app/hooks` empty.
 - [ ] **Step 4: Commit** `feat(euro-trip): tickets step reuses the live ticket step`
 
-### Task A12: Flights step
+### Task 12 (A12): Flights step
 
 **Files:** Create `components/euro-trip/build/FlightsStep.tsx`, `components/euro-trip/build/ItineraryFlightCard.tsx`
 
@@ -243,7 +243,7 @@
 - [ ] **Step 2: Verify** (browser): Paris → London shows 3-leg cards; the train toggle re-searches and shows 2 flown legs + a train row; select + continue → flights slot ✓; no console errors.
 - [ ] **Step 3: Commit** `feat(euro-trip): multi-city flights step with train toggle`
 
-### Task A13: Hotels step through the adapter, one stay at a time
+### Task 13 (A13): Hotels step through the adapter, one stay at a time
 
 **Files:** Create `lib/itinerary/stayAdapter.ts`, `components/euro-trip/build/HotelsStep.tsx`; Test `lib/__tests__/itineraryStayAdapter.test.ts`
 
@@ -259,7 +259,7 @@
 - [ ] **Step 3: Verify** (browser + network): the hotels step fires **one** `/api/hotels` request for the first city; the second tab fires one more; going back fires none; each chosen hotel shows ✓; `git diff --stat origin/main -- app/order app/hooks` empty.
 - [ ] **Step 4: Commit** `feat(euro-trip): hotels step reuses the live hotel step per city`
 
-### Task A14: Summary, travellers form, draft
+### Task 14 (A14): Summary, travellers form, draft
 
 **Files:** Create `lib/itinerary/progress.ts`, `lib/itinerary/travellers.ts`, `lib/itinerary/draft.ts`, `components/euro-trip/build/SummaryStep.tsx`, `components/euro-trip/build/TravellersForm.tsx`; Tests `lib/__tests__/itineraryProgress.test.ts`, `itineraryTravellers.test.ts`, `itineraryDraft.test.ts`
 
@@ -278,7 +278,7 @@
 - [ ] **Step 4: Verify** (browser): full walk to the summary; refresh keeps the trip (flight/hotels asked again); price box = `livePerTraveller` × pax; Hebrew form errors.
 - [ ] **Step 5: Commit** `feat(euro-trip): summary, travellers form, refresh-safe draft`
 
-### Task A15: Confirm (24h hold) - group reservations
+### Task 15 (A15): Confirm (24h hold) - group reservations
 
 **Files:** Create `lib/itinerary/confirm.ts`, `lib/itinerary/priceFloor.ts`, `lib/itinerary/insertGroup.ts`, `lib/itinerary/emails.ts`, `app/api/itinerary/confirm/route.ts`; Test `lib/__tests__/itineraryConfirm.test.ts`
 
@@ -298,7 +298,7 @@
 - [ ] **Step 3: Verify** on dev **after Task B1's migration ran** (before it: expect a clean `{ error }` 500 - check that once): a hold from the browser → two `reservations` rows sharing `itinerary_group`, status `24Save`; double click → still two rows. Report the test group id to Dor (ops ignore it).
 - [ ] **Step 4: Commit** `feat(euro-trip): group confirm with 24h hold`
 
-### Task A16: Guards in live code (the only live edit)
+### Task 16 (A16): Guards in live code (the only live edit)
 
 **Files:** Modify `app/api/find-order/route.ts`; the hold-email builder in `app/api/confirm-order/utils.ts` (around `:1075`, the `/order/{eventId}?orderId=` link)
 
@@ -306,7 +306,7 @@
 - [ ] **Step 2: Verify** - `npx tsc --noEmit` clean; `git diff origin/main -- app/api/find-order app/api/confirm-order` shows only these lines; a regular held order still resumes on dev.
 - [ ] **Step 3: Commit** `fix(order): never resume a Euro Trip row as a single-event order`
 
-### Task A17: Final verification (Part A)
+### Task 17 (A17): Final verification (Part A)
 
 - [ ] `npx vitest run` → all green.
 - [ ] `npx tsc --noEmit` → no new errors vs `origin/main` (compare counts).
@@ -319,14 +319,14 @@
 
 ## Part B - myt-backoffice (`master`)
 
-### Task B1: Migrations
+### Task 18 (B1): Migrations
 
 **Files:** Create `supabase/migrations/20261021120000_itinerary_core.sql`, `supabase/rollback/20261021120000_itinerary_core.sql`
 
 - [ ] **Step 1:** Migration (header comment: spec path, who reads/writes): `create table if not exists public.itinerary_settings (key text primary key, value jsonb not null, updated_at timestamptz not null default now(), updated_by uuid);` + `alter table ... enable row level security;` (no policies - service role only, like `marketing_settings` in `20261008120000_marketing_dashboard.sql:109-115`); `alter table public.reservations add column if not exists itinerary_group uuid, add column if not exists itinerary_seq smallint, add column if not exists itinerary_of smallint;` `create index if not exists reservations_itinerary_group_idx on public.reservations (itinerary_group) where itinerary_group is not null;` `comment on column` for each. Rollback drops the index, the columns and the table.
 - [ ] **Step 2: Commit** `feat(itinerary): settings table + reservation group columns`. **Do not push** - the migration runs on push to master; that waits for Dor and the push-coordinator protocol.
 
-### Task B2: Settings screen
+### Task 19 (B2): Settings screen
 
 **Files:** Create `lib/actions/itinerary-settings-actions.ts`, `app/(dashboard)/templates/euro-trip/settings/page.tsx` + its client form; Modify the Templates navigation to add "Euro Trip"
 
@@ -338,7 +338,7 @@
 - [ ] **Step 2: Verify** after B1 runs: save → rows change; main dev `/euro-trip` follows `enabled` after the revalidate call.
 - [ ] **Step 3: Commit** `feat(itinerary): Euro Trip settings screen`
 
-### Task B3: Reservations - group chip and panel
+### Task 20 (B3): Reservations - group chip and panel
 
 **Files:** Modify `lib/actions/reservation-actions.ts` (`RESERVATION_LIST_COLUMNS` += `itinerary_group, itinerary_seq, itinerary_of`; add `getItineraryGroup(group: string)`), `app/(dashboard)/reservations/reservations-table.tsx`, `app/(dashboard)/reservations/[id]/page.tsx`; Create `app/(dashboard)/reservations/[id]/itinerary-panel.tsx`; Modify `types/app.types.ts` (`ItineraryFlight`, mirror of A1) and `types/reservation.types.ts` (the three columns)
 
