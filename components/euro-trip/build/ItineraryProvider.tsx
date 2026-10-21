@@ -14,6 +14,7 @@ import {
 } from "react";
 
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
+import type { HeldAnswer } from "@/lib/itinerary/confirm";
 import { draftMayRestore, sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
 import {
   forgetItineraryDraft,
@@ -91,6 +92,10 @@ export type ItineraryApi = {
   releaseHold: () => void;
   /** The trip is done (held / paid): its draft is forgotten and never written again on this page. */
   closeDraft: () => void;
+  /** The trip's 24-hour hold went through (POST /api/itinerary/confirm): its group and reference. */
+  held: HeldAnswer | null;
+  /** Records the hold and closes the trip's draft (`closeDraft`). */
+  markHeld: (h: HeldAnswer) => void;
 };
 
 const ItineraryContext = createContext<ItineraryApi | null>(null);
@@ -194,6 +199,14 @@ export function ItineraryProvider({
     draftClosed.current = true;
     forgetItineraryDraft();
   }, []);
+  const [held, setHeld] = useState<HeldAnswer | null>(null);
+  const markHeld = useCallback(
+    (h: HeldAnswer) => {
+      closeDraft();
+      setHeld(h);
+    },
+    [closeDraft],
+  );
 
   const api = useMemo<ItineraryApi>(
     () => ({
@@ -227,8 +240,25 @@ export function ItineraryProvider({
       setTermsAccepted,
       releaseHold,
       closeDraft,
+      held,
+      markHeld,
     }),
-    [state, catalog, byId, settings, urlApplied, applyUrl, notice, heldTickets, travellers, termsAccepted, releaseHold, closeDraft],
+    [
+      state,
+      catalog,
+      byId,
+      settings,
+      urlApplied,
+      applyUrl,
+      notice,
+      heldTickets,
+      travellers,
+      termsAccepted,
+      releaseHold,
+      closeDraft,
+      held,
+      markHeld,
+    ],
   );
 
   return <ItineraryContext.Provider value={api}>{children}</ItineraryContext.Provider>;

@@ -145,3 +145,15 @@ export function asFullRow(e: Event): Event {
 export function isFullRow(e: Event): boolean {
   return (e as Marked)[FULL_ROW] === true;
 }
+
+/**
+ * The same row without the mark, so the tickets step loads it again: the hold's server priced
+ * fresher event data than the trip holds (a markup or a base price changed). The data stays
+ * until the fresh row lands, so nothing on screen breaks meanwhile.
+ */
+export function forgetFullRow(e: Event): Event {
+  if (!isFullRow(e)) return e;
+  const { [FULL_ROW]: mark, ...row } = e as Marked;
+  void mark;
+  return row;
+}

@@ -16,7 +16,7 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
  * art overlapping, the cities as the title, then dates · events · nights.
  */
 export function TripHeader() {
-  const { state, settings, goStep } = useItinerary();
+  const { state, settings, goStep, held } = useItinerary();
   const { route, dates, step } = state;
   const datesValid = route.length > 0 && DAY_RE.test(dates.depart) && DAY_RE.test(dates.ret);
   const count = route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`;
@@ -61,7 +61,8 @@ export function TripHeader() {
               )}
             </span>
           </h1>
-          {step !== "build" ? (
+          {/* Held: the trip is with sales - nothing left to edit on this page. */}
+          {held ? null : step !== "build" ? (
             <button
               type="button"
               onClick={() => goStep("build")}

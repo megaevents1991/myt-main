@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AlarmClockCheck, BedDouble, CircleAlert, Lock, Plane, TrainFront } from "lucide-react";
+import { AlarmClockCheck, BedDouble, Check, CircleAlert, Loader2, Lock, Plane, TrainFront } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { eventCityName } from "@/lib/events/lodging";
 import { roomsLabel } from "@/lib/events/readyPackage";
 import { rateRoomName } from "@/lib/hotels/roomName";
 import { dayMonth, dayMonthYear, stayCityName, tripCities } from "@/lib/itinerary/builder";
+import type { HeldAnswer } from "@/lib/itinerary/confirm";
 import { moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import { cardRows } from "@/lib/itinerary/flightsView";
 import { dayDiff, eventDay } from "@/lib/itinerary/geo";
@@ -34,6 +35,7 @@ import { useItinerary } from "./ItineraryProvider";
 import { TravellersForm, fieldId } from "./TravellersForm";
 import { TripEventArt } from "./TripEventArt";
 import { PANEL, PanelTitle, nightsLabel } from "./parts";
+import { useTripHold } from "./useTripHold";
 
 /** "$2,133" / "$617.50" - whole dollars unless there are cents. */
 const money = (n: number): string => {
@@ -52,8 +54,10 @@ const legStops = (leg: FlightSegment): string => {
 
 /** The words of a hold attempt's terms error - the regular summary's. */
 const TERMS_ERROR = "יש לאשר את פרטי ההזמנה ותנאי השימוש";
-/** Task A15 builds the hold; until then the button says so. */
-const HOLD_PENDING = "שמירה תתווסף בשלב הבא";
+/** Paying on the site is not open yet (no `onPay`): said if the button is reached anyway. */
+const PAY_PENDING = "התשלום באתר ייפתח בקרוב.";
+/** The hold's promise - the confirmation panel and the customer's email say the same. */
+const HELD_TEXT = "קיבלנו את הבקשה. נציג יחזור אליכם תוך 24 שעות.";
 /** The live summary's kill switch for the customer's 24-hour hold (app/order/OrderReview.tsx `isHoldAllowed`). */
 const HOLD_ENABLED = process.env.NEXT_PUBLIC_DISABLE_24H_HOLD !== "true";
 
@@ -337,6 +341,69 @@ function PriceLine({ label, value, tone }: { label: ReactNode; value: string; to
 }
 
 /**
+ * The hold went through: the promise, the request's reference, the trip in one line. Replaces the
+ * summary (its clock is gone with it - nothing is held by the page any more).
+ */
+function HoldConfirmation({ held }: { held: HeldAnswer }) {
+  const { state, settings, travellers } = useItinerary();
+  const { route, dates, pax } = state;
+  const price = livePrice(state, settings);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    titleRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  return (
+    <section
+      className={cn(PANEL, "mx-auto flex w-full max-w-xl flex-col items-center gap-3 py-10 text-center")}
+      aria-labelledby="trip-held-title"
+    >
+      <span className="flex size-16 items-center justify-center rounded-2xl bg-accent text-primary" aria-hidden>
+        <Check className="size-8" />
+      </span>
+      <h2 id="trip-held-title" ref={titleRef} tabIndex={-1} className="m-0 font-display text-2xl font-extrabold outline-none">
+        קיבלנו את הבקשה
+      </h2>
+      <p className="m-0 text-base">{HELD_TEXT}</p>
+      {held.reference && (
+        <p className="m-0 text-sm text-muted-foreground">
+          מספר הבקשה:{" "}
+          <b dir="ltr" className="text-foreground">
+            {held.reference}
+          </b>
+        </p>
+      )}
+      <p className="m-0 text-sm tabular-nums text-muted-foreground">
+        {tripCities(route).join(" ← ")} · {dayMonth(dates.depart)}–{dayMonth(dates.ret)} ·{" "}
+        {pax === 1 ? "נוסע אחד" : `${pax} נוסעים`}
+        {price && (
+          <>
+            {" · "}
+            <span dir="ltr">{money(price.total)}</span>
+          </>
+        )}
+      </p>
+      {travellers.contact.email && (
+        <p className="m-0 text-sm text-muted-foreground">
+          פרטי הבקשה נשלחים גם למייל{" "}
+          <bdi dir="ltr" className="text-foreground">
+            {travellers.contact.email.trim()}
+          </bdi>
+          .
+        </p>
+      )}
+      <Link
+        href="/"
+        className="mt-3 inline-flex h-11 items-center justify-center rounded-md bg-main px-6 text-sm font-bold text-main-foreground transition-colors hover:bg-main/90 dark:bg-glow dark:text-forest"
+      >
+        לדף הבית
+      </Link>
+    </section>
+  );
+}
+
+/**
  * "Build Your Euro Trip" - the summary: the route's events, its flights (a move by train
  * marked as the customer's own), a hotel per stay, the travellers' form and terms, and the
  * price box - the live price per traveller (`livePrice`: tickets, flight, hotels, the full
@@ -344,8 +411,12 @@ function PriceLine({ label, value, tone }: { label: ReactNode; value: string; to
  * shows the estimate, said to be one.
  *
  * "שמרו לי ל-24 שעות" checks the form with the regular summary's hold rules (the main contact)
- * and the terms, then hands the travellers to `onHold` (the hold itself is Task A15); it is not
- * offered while the live kill switch is on (`NEXT_PUBLIC_DISABLE_24H_HOLD`). "לתשלום מאובטח"
+ * and the terms, then sends the trip (`useTripHold` -> POST /api/itinerary/confirm, one group of
+ * reservations): the buttons are off while it is on its way, a double click sends one request
+ * and a retry the same group. Done: the confirmation replaces the summary (`HoldConfirmation`)
+ * and the clock stops. Refused for something an earlier step fixes: that step, with the reason
+ * as the notice. A server error: said here, with "נסו שוב" and the WhatsApp contact. Not offered
+ * while the live kill switch is on (`NEXT_PUBLIC_DISABLE_24H_HOLD`). "לתשלום מאובטח"
  * stays off - "בקרוב" - while payments are off (`settings.paymentsEnabled`) or there is no
  * `onPay` yet. With neither, the order flow's own contact card (WhatsApp) takes their place.
  *
@@ -355,13 +426,12 @@ function PriceLine({ label, value, tone }: { label: ReactNode; value: string; to
  * live "הזמן אזל" message offers "שננסה מחדש?" - back to the tickets.
  */
 export function SummaryStep({
-  onHold,
   onPay,
 }: {
-  onHold?: (travellers: TravellersInput) => void | Promise<void>;
   onPay?: (travellers: TravellersInput) => void | Promise<void>;
 } = {}) {
   const api = useItinerary();
+  const hold = useTripHold();
   const { state, settings, travellers, setTravellers, termsAccepted, setTermsAccepted, goStep, setActiveEvent, setActiveStay } =
     api;
   const { route, dates, pax, flight } = state;
@@ -445,7 +515,7 @@ export function SummaryStep({
       return;
     }
     if (!run) {
-      setStatus(HOLD_PENDING);
+      setStatus(PAY_PENDING);
       return;
     }
     setBusy(true);
@@ -464,6 +534,10 @@ export function SummaryStep({
     setActiveEvent(i);
     goStep("tickets");
   };
+
+  // Held: the request is with sales - the confirmation, no form, no clock.
+  if (api.held) return <HoldConfirmation held={api.held} />;
+  const sending = busy || hold.sending;
 
   return (
     <div className="flex flex-col gap-4">
@@ -641,7 +715,7 @@ export function SummaryStep({
 
             <button
               type="button"
-              disabled={!payOpen || busy || expired}
+              disabled={!payOpen || sending || expired}
               onClick={() => attempt("pay", onPay)}
               className="relative flex h-[52px] w-full items-center justify-center gap-2 rounded-md bg-main text-[17px] font-bold text-main-foreground transition-colors hover:bg-main/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground dark:bg-glow dark:text-forest dark:hover:bg-glow/90 dark:disabled:bg-muted dark:disabled:text-muted-foreground"
             >
@@ -654,11 +728,19 @@ export function SummaryStep({
             {HOLD_ENABLED && (
               <button
                 type="button"
-                disabled={busy || expired}
-                onClick={() => attempt("hold", onHold)}
-                className="flex h-[52px] w-full items-center justify-center rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={sending || expired}
+                aria-busy={hold.sending}
+                onClick={() => attempt("hold", hold.submit)}
+                className="flex h-[52px] w-full items-center justify-center gap-2 rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                שמרו לי ל-24 שעות
+                {hold.sending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    שומרים את הטיול...
+                  </>
+                ) : (
+                  "שמרו לי ל-24 שעות"
+                )}
               </button>
             )}
             {HOLD_ENABLED && (
@@ -679,6 +761,26 @@ export function SummaryStep({
             <p role="status" aria-live="polite" className={cn("m-0 text-center text-sm font-semibold", !status && "sr-only")}>
               {status ?? ""}
             </p>
+            {/* The hold was not saved (the server's error, no answer): try again - the same group - or write to us. */}
+            {hold.failure?.code === "SERVER_ERROR" ? (
+              <OrderIssueState
+                variant="error"
+                className="py-6"
+                title="לא הצלחנו לשמור את הטיול"
+                subtitle="נסו שוב בעוד רגע, או כתבו לנו ונשמור אותו עבורכם."
+                onRetry={sending ? undefined : () => attempt("hold", hold.submit)}
+                whatsAppText={whatsAppText}
+              />
+            ) : (
+              hold.failure && (
+                <p
+                  role="alert"
+                  className="m-0 rounded-xl border border-badge-urgent/40 bg-badge-urgent/10 px-4 py-3 text-sm font-semibold text-foreground"
+                >
+                  {hold.failure.message}
+                </p>
+              )
+            )}
           </section>
         </aside>
       </div>

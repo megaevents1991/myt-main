@@ -6,6 +6,7 @@ import {
   allTicketsReady,
   asFullRow,
   categorySwapNotice,
+  forgetFullRow,
   goneIds,
   isFullRow,
   pickTripEvents,
@@ -193,5 +194,16 @@ describe("asFullRow / isFullRow", () => {
 
   it("is not carried by JSON (a stored draft re-loads its rows)", () => {
     expect(isFullRow(JSON.parse(JSON.stringify(asFullRow(ev(1)))))).toBe(false);
+  });
+
+  it("forgetFullRow: the same data without the mark, so the tickets step loads it again", () => {
+    const full = asFullRow(ev(1));
+    const again = forgetFullRow(full);
+    expect(isFullRow(again)).toBe(false);
+    expect(again).toEqual(ev(1));
+    // The full row itself keeps its mark; a catalog row comes back as it is.
+    expect(isFullRow(full)).toBe(true);
+    const slim = ev(2);
+    expect(forgetFullRow(slim)).toBe(slim);
   });
 });

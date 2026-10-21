@@ -1,0 +1,725 @@
+/**
+ * "Build Your Euro Trip" - the trip's 24-hour hold (POST /api/itinerary/confirm). Pure: no I/O,
+ * no clock (the caller hands in today / now).
+ *
+ * The trip is saved as ONE request that writes one `reservations` row per event, in one bulk
+ * insert, tied by `itinerary_group` - a uuid v4 the browser makes once per hold attempt, which is
+ * also the idempotency key (a double click or a retry sends the same group; the rows already
+ * written are answered). What the server trusts:
+ *  - the events: re-read on the server (`getEvents(id)`), never the browser's copy;
+ *  - the tickets: the submitted ticket, re-checked per event by the live order's own validators
+ *    (LiveTickets offer, own stock - `app/api/confirm-order/utils.ts`), plus the price floor;
+ *  - the flight and the hotels: as submitted (spec §13 call 8, like `confirm-order`: no new
+ *    supplier search at confirm - sales converts the hold by hand);
+ *  - the price: the summary's own `livePrice` (lib/itinerary/progress.ts) on a state rebuilt
+ *    from the above - never a formula of its own. The browser's party total must agree within $1.
+ *
+ * Each row's share of the total (`final_purchase_price_ils`, `user_shown_price`) is its event's
+ * part of that same sum (its tickets and tiered markup for the party, its stay's hotel when the
+ * row carries it, the flight on seq 1), the rounding remainder on seq 1, so the rows add up to the
+ * total exactly.
+ */
+import type { Event, ItineraryFlight, OrderData, OrderHotel, OrderTicket } from "@/lib/app.types";
+import { persistableHotel } from "@/app/order/order-review.utils";
+import { placeLabel } from "@/lib/events/lodging";
+import { orderHotelSellable } from "@/lib/hotelRateTerms";
+import { MAX_TRIP_LOAD, ticketReady } from "./adapter";
+import { stayCityName } from "./builder";
+import { clampTripDates, moves, stays, tripLegs } from "./dates";
+import { isItineraryEligible } from "./eligibility";
+import { tierMarkups } from "./price";
+import { hotelPerTraveller, livePrice, type LivePrice } from "./progress";
+import { compatibility, isAddable, sortRoute } from "./rules";
+import type { ItinerarySettings } from "./settings";
+import { INITIAL_ITINERARY_STATE, MAX_TRAVELLERS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "./state";
+import { stayHotelReady, stayRanges } from "./stayAdapter";
+import {
+  fitTravellers,
+  toOrderContactFields,
+  validateTravellers,
+  type OtherTraveller,
+  type TravellersInput,
+} from "./travellers";
+import type { TripDates } from "./types";
+
+// ---------------------------------------------------------------------------------------------
+// The group id
+// ---------------------------------------------------------------------------------------------
+
+/** A uuid v4 (the `itinerary_group` column is `uuid`; v4 = random, never guessable). */
+export const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * A fresh group id: `crypto.randomUUID()`, or the same v4 layout from `getRandomValues` where
+ * `randomUUID` is missing (a page served over plain http on a LAN address).
+ */
+export function newGroupId(): string {
+  const c = globalThis.crypto;
+  if (typeof c?.randomUUID === "function") return c.randomUUID();
+  const b = new Uint8Array(16);
+  c.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The request
+// ---------------------------------------------------------------------------------------------
+
+/** What the summary sends. */
+export type TripSubmission = {
+  /** Client-made uuid v4 = `itinerary_group` = the idempotency key. */
+  group: string;
+  /** Event ids (the server re-reads them and puts them in date order). */
+  route: number[];
+  dates: TripDates;
+  pax: number;
+  /** Moves made by train (`TripDates.moves` keys). */
+  train: string[];
+  tickets: Record<number, OrderTicket>;
+  flight: ItineraryFlight;
+  /** The hotel of each stay, by `Stay.key`. */
+  hotels: Record<string, OrderHotel>;
+  travellers: TravellersInput;
+  /** The summary's `livePrice(...).total` - the party's charge, USD. */
+  clientTotal: number;
+  /** The summary's `livePrice(...).perTraveller` (logged when the totals disagree). */
+  clientPerTraveller: number;
+  /** The visit's utm_source - `aff_partner_tracking_code` on every row (phase 1: no discount). */
+  utmSource: string;
+  /** Pay now (phase 3). Rows are `Pending` only when the settings allow payments too. */
+  payNow: boolean;
+};
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** Longest text field the request may carry (names, ids, keys). */
+const MAX_TEXT = 200;
+
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const isText = (v: unknown, max = MAX_TEXT): v is string => typeof v === "string" && v.length <= max;
+const isPositive = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v > 0;
+const isDay = (v: unknown): v is string => typeof v === "string" && DAY_RE.test(v);
+
+function parseDates(v: unknown): TripDates | null {
+  if (!isObj(v) || !isDay(v.depart) || !isDay(v.ret) || !isObj(v.moves)) return null;
+  const entries = Object.entries(v.moves);
+  if (entries.length > MAX_TRIP_LOAD) return null;
+  const moves: Record<string, string> = {};
+  for (const [key, day] of entries) {
+    if (!isText(key, 40) || !isDay(day)) return null;
+    moves[key] = day;
+  }
+  return { depart: v.depart, ret: v.ret, moves };
+}
+
+function parseTravellers(v: unknown): TravellersInput | null {
+  if (!isObj(v) || !isObj(v.contact) || !Array.isArray(v.others) || v.others.length >= MAX_TRAVELLERS) return null;
+  const c = v.contact;
+  if (![c.firstName, c.lastName, c.phone, c.email].every((f) => isText(f, 120))) return null;
+  const others: OtherTraveller[] = [];
+  for (const o of v.others) {
+    if (!isObj(o) || !isText(o.firstName, 120) || !isText(o.lastName, 120)) return null;
+    others.push({ firstName: o.firstName, lastName: o.lastName });
+  }
+  return {
+    contact: { firstName: String(c.firstName), lastName: String(c.lastName), phone: String(c.phone), email: String(c.email) },
+    others,
+  };
+}
+
+const isSegment = (v: unknown): boolean =>
+  isObj(v) && isText(v.departureTime) && isText(v.arrivalTime) && isText(v.departureAirport) && isText(v.arrivalAirport);
+
+/** A hotel as the hotels step keeps it: a name, a price, rooms, its nights and its rate. */
+const isHotel = (v: unknown): boolean =>
+  isObj(v) &&
+  isText(v.name, 400) &&
+  (isPositive(v.price) || (typeof v.price === "string" && isPositive(Number(v.price)))) &&
+  Array.isArray(v.guests) &&
+  isText(v.checkin, 40) &&
+  isText(v.checkout, 40) &&
+  isObj(v.rate);
+
+export type ParsedSubmission = { ok: true; sub: TripSubmission } | { ok: false; reason: string };
+
+/**
+ * The request's shape (400 when it fails). Nothing here needs the events: the trip itself is
+ * judged once they are re-read (`checkRoute`, `checkDates`, `checkPieces`). The form is checked
+ * with the summary's own rules (`validateTravellers`, "hold" = the main contact; "pay" = every name).
+ */
+export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmission {
+  const no = (reason: string): ParsedSubmission => ({ ok: false, reason });
+  if (!isObj(raw)) return no("body is not an object");
+
+  const group = typeof raw.group === "string" ? raw.group.trim().toLowerCase() : "";
+  if (!UUID_V4_RE.test(group)) return no("group is not a uuid v4");
+
+  const cap = Math.min(MAX_TRIP_LOAD, Math.max(MIN_TRIP_EVENTS, Math.trunc(maxEvents) || MIN_TRIP_EVENTS));
+  const ids = raw.route;
+  if (!Array.isArray(ids) || ids.length < MIN_TRIP_EVENTS || ids.length > cap) return no(`route must hold 2-${cap} events`);
+  if (!ids.every((id) => typeof id === "number" && Number.isSafeInteger(id) && id > 0)) return no("route ids");
+  const route = ids.map(Number);
+  if (new Set(route).size !== route.length) return no("route repeats an event");
+
+  const pax = raw.pax;
+  if (typeof pax !== "number" || !Number.isInteger(pax) || pax < 1 || pax > MAX_TRAVELLERS) return no("pax");
+
+  const dates = parseDates(raw.dates);
+  if (!dates) return no("dates");
+
+  const trainRaw = raw.train ?? [];
+  if (!Array.isArray(trainRaw) || trainRaw.length > MAX_TRIP_LOAD || !trainRaw.every((k) => isText(k, 40))) return no("train");
+  const train = trainRaw.map(String);
+  if (new Set(train).size !== train.length) return no("train repeats a move");
+
+  if (!isObj(raw.tickets)) return no("tickets");
+  const tickets: Record<number, OrderTicket> = {};
+  for (const id of route) {
+    const t = raw.tickets[String(id)];
+    if (!isObj(t) || !isText(t.id) || !t.id || !isText(t.category) || !t.category || !isPositive(t.price) || t.quantity !== pax) {
+      return no(`ticket of event ${id}`);
+    }
+    // The boundary: the shape the summary sends, checked above.
+    tickets[id] = t as unknown as OrderTicket;
+  }
+
+  const f = raw.flight;
+  if (!isObj(f) || !isPositive(f.price) || f.numOfTravelers !== pax) return no("flight price / party");
+  if (!Array.isArray(f.legs) || f.legs.length < 2 || !f.legs.every(isSegment) || !isSegment(f.outbound) || !isSegment(f.inbound)) {
+    return no("flight legs");
+  }
+  // The trip's flights come from the itinerary's own Amadeus search; our own flight stock is not
+  // sold on a trip (spec §13 call 3).
+  if (f.isOffline === true || f.offlineId != null) return no("own-stock flight");
+  const flight = { ...f, trainLegs: Array.isArray(f.trainLegs) ? f.trainLegs : [] } as unknown as ItineraryFlight;
+
+  if (!isObj(raw.hotels)) return no("hotels");
+  const hotelEntries = Object.entries(raw.hotels);
+  if (hotelEntries.length > MAX_TRIP_LOAD) return no("too many hotels");
+  const hotels: Record<string, OrderHotel> = {};
+  for (const [key, h] of hotelEntries) {
+    if (!isText(key, 40) || !isHotel(h)) return no(`hotel of stay ${key}`);
+    hotels[key] = h as unknown as OrderHotel;
+  }
+
+  const form = parseTravellers(raw.travellers);
+  if (!form) return no("travellers");
+  const payNow = raw.payNow === true;
+  const travellers = fitTravellers(form, pax);
+  if (Object.keys(validateTravellers(travellers, pax, payNow ? "pay" : "hold")).length) return no("travellers form");
+
+  if (!isPositive(raw.clientTotal) || !isPositive(raw.clientPerTraveller)) return no("client total");
+
+  const utmSource = typeof raw.utmSource === "string" ? raw.utmSource.trim().slice(0, 100) : "";
+
+  return {
+    ok: true,
+    sub: {
+      group,
+      route,
+      dates,
+      pax,
+      train,
+      tickets,
+      flight,
+      hotels,
+      travellers,
+      clientTotal: raw.clientTotal,
+      clientPerTraveller: raw.clientPerTraveller,
+      utmSource,
+      payNow,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Refusals: one code each, the HTTP status, the step the customer goes back to, the words
+// ---------------------------------------------------------------------------------------------
+
+export type ConfirmErrorCode =
+  | "NOT_FOUND"
+  | "BAD_REQUEST"
+  | "ROUTE_CHANGED"
+  | "TICKET_CHANGED"
+  | "FLIGHT_CHANGED"
+  | "HOTEL_CHANGED"
+  | "OFFLINE_HOTEL"
+  | "HOTEL_NOT_REFUNDABLE"
+  | "TRIP_INCOMPLETE"
+  | "PRICE_CHANGED"
+  | "PRICE_VALIDATION_FAILED"
+  | "SERVER_ERROR";
+
+const CODES: Record<ConfirmErrorCode, { status: number; step?: ItineraryStep }> = {
+  NOT_FOUND: { status: 404 },
+  BAD_REQUEST: { status: 400 },
+  ROUTE_CHANGED: { status: 400, step: "build" },
+  TICKET_CHANGED: { status: 409, step: "tickets" },
+  FLIGHT_CHANGED: { status: 400, step: "flights" },
+  HOTEL_CHANGED: { status: 400, step: "hotels" },
+  OFFLINE_HOTEL: { status: 400, step: "hotels" },
+  HOTEL_NOT_REFUNDABLE: { status: 400, step: "hotels" },
+  TRIP_INCOMPLETE: { status: 400, step: "tickets" },
+  PRICE_CHANGED: { status: 409, step: "tickets" },
+  PRICE_VALIDATION_FAILED: { status: 400 },
+  SERVER_ERROR: { status: 500 },
+};
+
+const isCode = (v: unknown): v is ConfirmErrorCode => typeof v === "string" && v in CODES;
+
+export type ConfirmFailure = {
+  code: ConfirmErrorCode;
+  status: number;
+  step?: ItineraryStep;
+  /** The event the refusal is about (route / ticket). */
+  eventId?: number;
+  /** The stay the refusal is about (hotel), `Stay.key`. */
+  stayKey?: string;
+};
+
+export function failure(code: ConfirmErrorCode, about: Pick<ConfirmFailure, "eventId" | "stayKey"> = {}): ConfirmFailure {
+  return { code, ...CODES[code], ...about };
+}
+
+/** The words the customer reads, named when the event / the city is known. */
+export function confirmMessage(code: ConfirmErrorCode, names: { event?: string; city?: string } = {}): string {
+  const city = names.city || "אחת הערים";
+  switch (code) {
+    case "NOT_FOUND":
+      return "בניית טיול לא זמינה כרגע.";
+    case "BAD_REQUEST":
+      return "משהו בבקשה לא הסתדר. רעננו את הדף ונסו שוב.";
+    case "ROUTE_CHANGED":
+      return names.event
+        ? `המסלול השתנה: ${names.event} כבר לא זמין במסלול הזה. בדקו את המסלול ונסו שוב.`
+        : "המסלול השתנה. בדקו את המסלול ונסו שוב.";
+    case "TICKET_CHANGED":
+      return names.event
+        ? `הכרטיס ל${names.event} כבר לא זמין במחיר הזה. בחרו שוב ואשרו את הטיול.`
+        : "אחד הכרטיסים כבר לא זמין במחיר הזה. בחרו שוב ואשרו את הטיול.";
+    case "FLIGHT_CHANGED":
+      return "הטיסה כבר לא מתאימה למסלול. בחרו טיסה שוב.";
+    case "HOTEL_CHANGED":
+      return `המלון ב${city} לא מתאים לתאריכי הלינה או למספר הנוסעים. בחרו מלון שוב.`;
+    case "OFFLINE_HOTEL":
+      return `המלון שבחרתם ב${city} לא זמין כרגע בטיול של כמה אירועים. בחרו מלון אחר.`;
+    case "HOTEL_NOT_REFUNDABLE":
+      return `המלון שבחרתם ב${city} כבר לא ניתן לביטול. בחרו מלון אחר.`;
+    case "TRIP_INCOMPLETE":
+      return "חסר רכיב בטיול. השלימו את כל הרכיבים ונסו שוב.";
+    case "PRICE_CHANGED":
+      return "המחיר עודכן. עברו שוב על הכרטיסים, הטיסה והמלונות - המחיר המעודכן יופיע בסיכום.";
+    case "PRICE_VALIDATION_FAILED":
+      return "לא הצלחנו לאשר את המחיר של הטיול. נסו שוב, או כתבו לנו ונשמור אותו עבורכם.";
+    case "SERVER_ERROR":
+      return "לא הצלחנו לשמור את הטיול כרגע. נסו שוב בעוד רגע, או כתבו לנו ונשמור אותו עבורכם.";
+  }
+}
+
+/** The names a refusal is about, from a route (and its dates, for a stay). */
+function namesFor(f: Pick<ConfirmFailure, "eventId" | "stayKey">, route: Event[], dates: TripDates): { event?: string; city?: string } {
+  const event = f.eventId != null ? route.find((e) => e.id === f.eventId)?.name : undefined;
+  const stay = f.stayKey && route.length ? stays(route, dates).find((s) => s.key === f.stayKey) : undefined;
+  return { event, city: stay ? stayCityName(stay.events[0]) : undefined };
+}
+
+/** The JSON body of a refusal: `{ error: code, message, step?, eventId?, stayKey? }`. */
+export function failureBody(f: ConfirmFailure, route: Event[] = [], dates: TripDates = { depart: "", ret: "", moves: {} }) {
+  return {
+    error: f.code,
+    message: confirmMessage(f.code, namesFor(f, route, dates)),
+    ...(f.step ? { step: f.step } : {}),
+    ...(f.eventId != null ? { eventId: f.eventId } : {}),
+    ...(f.stayKey ? { stayKey: f.stayKey } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The trip, judged on the server's events
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The route as it is now: every event still there (`getEvents(id)` - `found[i]` for `ids[i]`),
+ * still eligible today, no more than the settings allow, and each one still fits next to the
+ * others (`compatibility` not blocked - the builder's own rule, on the current settings). In
+ * date order.
+ */
+export function checkRoute(
+  ids: number[],
+  found: (Event | undefined)[],
+  s: ItinerarySettings,
+  todayIso: string,
+): { ok: true; route: Event[] } | { ok: false; failure: ConfirmFailure } {
+  const changed = (eventId?: number) => ({ ok: false as const, failure: failure("ROUTE_CHANGED", eventId != null ? { eventId } : {}) });
+  const events: Event[] = [];
+  for (const [i, id] of ids.entries()) {
+    const e = found[i];
+    if (!e || e.id !== id) return changed(id);
+    events.push(e);
+  }
+  if (events.length < MIN_TRIP_EVENTS || events.length > s.maxEvents) return changed();
+  for (const e of events) if (!isItineraryEligible(e, todayIso)) return changed(e.id);
+  for (const e of events) {
+    const others = events.filter((o) => o !== e);
+    if (!isAddable(compatibility(others, e, s))) return changed(e.id);
+  }
+  return { ok: true, route: sortRoute(events) };
+}
+
+const sameDates = (a: TripDates, b: TripDates): boolean => {
+  if (a.depart !== b.depart || a.ret !== b.ret) return false;
+  const ak = Object.keys(a.moves);
+  return ak.length === Object.keys(b.moves).length && ak.every((k) => a.moves[k] === b.moves[k]);
+};
+
+/**
+ * The dates are the route's own: exactly what `clampTripDates` keeps for this route (the builder
+ * only ever holds clamped dates), and every train move is one of the route's moves.
+ */
+export function checkDates(route: Event[], sub: Pick<TripSubmission, "dates" | "train">): ConfirmFailure | null {
+  if (!sameDates(clampTripDates(route, sub.dates), sub.dates)) return failure("ROUTE_CHANGED");
+  const keys = new Set(moves(route).map((m) => m.key));
+  if (sub.train.some((k) => !keys.has(k))) return failure("ROUTE_CHANGED");
+  return null;
+}
+
+/** The builder's state for this trip, on the server's route (date order) - what `livePrice` reads. */
+export function tripState(sub: TripSubmission, route: Event[]): ItineraryState {
+  return {
+    ...INITIAL_ITINERARY_STATE,
+    step: "summary",
+    route,
+    dates: sub.dates,
+    pax: sub.pax,
+    tickets: Object.fromEntries(route.map((e) => [e.id, sub.tickets[e.id]])),
+    train: [...sub.train],
+    flight: sub.flight,
+    hotels: { ...sub.hotels },
+  };
+}
+
+/** Our own hotel stock (`/api/offline-hotels`): the order keeps the block's ids. */
+const isOwnStockHotel = (h: OrderHotel): boolean =>
+  h.isOffline === true ||
+  h.offlineId != null ||
+  (Array.isArray(h.offlineIds) && h.offlineIds.length > 0) ||
+  String(h.id ?? "").startsWith("offline-");
+
+/**
+ * Every piece is ready for the party - the flow's own rules (`ticketReady`, the flights step's
+ * party, `stayHotelReady` on `stayRanges`) plus:
+ *  - the flight has one leg per FLOWN leg of the trip (`tripLegs` with the train moves) - the
+ *    hotels' dates hang on that alignment (stayAdapter.ts `stayFlight`);
+ *  - no own-stock hotel: `confirm-order` validates a block's dates and holds its rooms inline in
+ *    its route (no helper to call), so a trip refuses it in phase 1 (a ruling may change that);
+ *  - every hotel's rate may be sold for its check-in (`orderHotelSellable`, the live rule).
+ */
+export function checkPieces(state: ItineraryState, now: Date | number): ConfirmFailure | null {
+  const { route, dates, pax, flight } = state;
+  const train = new Set(state.train);
+  for (const e of route) if (!ticketReady(state.tickets[e.id], pax)) return failure("TICKET_CHANGED", { eventId: e.id });
+  if (!flight || flight.numOfTravelers !== pax || (flight.legs?.length ?? 0) !== tripLegs(route, dates, train).length) {
+    return failure("FLIGHT_CHANGED");
+  }
+  const ranges = stayRanges(route, dates, flight, train);
+  for (const [i, stay] of stays(route, dates).entries()) {
+    const h = state.hotels[stay.key];
+    if (h && isOwnStockHotel(h)) return failure("OFFLINE_HOTEL", { stayKey: stay.key });
+    if (!stayHotelReady(h, ranges[i], pax)) return failure("HOTEL_CHANGED", { stayKey: stay.key });
+    if (!orderHotelSellable(h, now)) return failure("HOTEL_NOT_REFUNDABLE", { stayKey: stay.key });
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The price
+// ---------------------------------------------------------------------------------------------
+
+/** The summary's `livePrice`, on the trip rebuilt from the request and the server's events. */
+export function serverPrice(sub: TripSubmission, route: Event[], s: ItinerarySettings): LivePrice | null {
+  return livePrice(tripState(sub, route), s);
+}
+
+/** The price per traveller the summary showed (whole dollars, rounded up), or null when incomplete. */
+export function serverPerTraveller(sub: TripSubmission, route: Event[], s: ItinerarySettings): number | null {
+  return serverPrice(sub, route, s)?.perTraveller ?? null;
+}
+
+/** The party totals agree: within $1 (rounding). */
+export function totalsMatch(server: number, client: number): boolean {
+  return Number.isFinite(server) && Number.isFinite(client) && Math.abs(server - client) <= 1;
+}
+
+const cents = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * Each event's part of the party's charge, USD, in route (date) order - the terms of `livePrice`'s
+ * one sum, grouped by the row that carries them: the event's ticket and tiered markup × the party,
+ * its stay's hotel (`hotelPerTraveller` × the party) on the first event of the stay, the flight's
+ * own price on the first event. Σ parts, rounded up once, is `livePrice(...).total`.
+ */
+export function eventParts(state: ItineraryState, s: ItinerarySettings): number[] {
+  const { route, dates, pax, flight } = state;
+  const tiers = tierMarkups(route, s);
+  const ranges = stayRanges(route, dates, flight, new Set(state.train));
+  const hotelOf = new Map<number, number>();
+  stays(route, dates).forEach((stay, i) => {
+    const h = state.hotels[stay.key];
+    hotelOf.set(stay.events[0].id, h ? hotelPerTraveller(h, stay.events[0], ranges[i]) * pax : Number.NaN);
+  });
+  return route.map((e, i) => {
+    let part = (Number(state.tickets[e.id]?.price) + (tiers.get(e.id) ?? Number.NaN)) * pax;
+    if (hotelOf.has(e.id)) part += hotelOf.get(e.id) ?? Number.NaN;
+    if (i === 0) part += Number(flight?.price);
+    return cents(part);
+  });
+}
+
+/**
+ * The rows' shares of `total` (USD, whole dollars - `livePrice`'s total) and of its ILS charge,
+ * `round(total × rate)`: every row but the first gets its own part, rounded; the first takes
+ * the rest, so each column adds up to its total exactly.
+ */
+export function splitTotal(parts: number[], total: number, rate: number): { usd: number[]; ils: number[]; totalIls: number } {
+  const totalIls = Math.round(total * rate);
+  const usd = parts.map((p, i) => (i === 0 ? 0 : Math.round(p)));
+  const ils = parts.map((p, i) => (i === 0 ? 0 : Math.round(p * rate)));
+  usd[0] = total - usd.reduce((a, b) => a + b, 0);
+  ils[0] = totalIls - ils.reduce((a, b) => a + b, 0);
+  return { usd, ils, totalIls };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The rows
+// ---------------------------------------------------------------------------------------------
+
+type OrderEventInfo = OrderData["event_order_info"];
+
+/**
+ * The event's ticket in the single-event shape the live summary sends (app/order/OrderReview.tsx
+ * `event_order_info`), for the party. `date` is a Date there; a row stores the event's own
+ * string (`buildGroupRows`).
+ */
+export function eventOrderInfo(e: Event, t: OrderTicket, pax: number): OrderEventInfo {
+  return {
+    event_id: e.id,
+    date: new Date(e.date),
+    name: e.name,
+    location_name: placeLabel(e),
+    number_of_ticket: pax,
+    category: t.category,
+    event_type: e.type,
+    event_tags: e.tags || "",
+    event_additional_markup: e.event_additional_markup ?? null,
+    price_per_ticket: t.price,
+    total_tickets_price: t.price * pax,
+    vendor: t.vendor,
+    id: t.id,
+    supplier: t.supplier,
+    supplier_event_id: t.eid,
+    supplier_category: t.supplierCategory,
+    zone_label: t.zoneLabel,
+    non_instant: t.nonInstant || undefined,
+    seating_choice: t.seatingChoice,
+  };
+}
+
+/**
+ * One event of the trip as a single-event `OrderData` - only for the live per-event validators
+ * (`validateLiveTicketsOffer`, `validateOwnStock`), which read `event_id`, `is_agent_booking` and
+ * `event_order_info` (and set its `non_instant` / `own_stock` from the event). The money fields
+ * are not theirs to read and stay 0; a trip is never an agent booking.
+ */
+export function toSingleEventOrderData(sub: TripSubmission, event: Event, info?: OrderEventInfo): OrderData {
+  return {
+    ...toOrderContactFields(fitTravellers(sub.travellers, sub.pax)),
+    event_order_info: info ?? eventOrderInfo(event, sub.tickets[event.id], sub.pax),
+    flight_order_info: {},
+    hotel_order_info: {},
+    hotel_segments: null,
+    user_shown_price: 0,
+    event_id: event.id,
+    aff_partner_tracking_code: sub.utmSource,
+    booking_reference: "",
+    final_purchase_price_ils: 0,
+    exchange_rate_usd_ils_100: 0,
+    is_agent_booking: false,
+    confirmation_email_sent: false,
+  };
+}
+
+/** A row's `event_order_info`: the live shape, the event's own date string. */
+export type RowEventInfo = Omit<OrderEventInfo, "date"> & { date: string };
+
+/** One reservation row of the trip, as inserted. */
+export type GroupRowInsert = ReturnType<typeof toOrderContactFields> & {
+  event_id: number;
+  event_order_info: RowEventInfo;
+  /** The whole trip's flight on seq 1; `{}` ("no flight") on the others. */
+  flight_order_info: ItineraryFlight | Record<string, never>;
+  /** The stay's hotel on the first event of the stay; `{}` on the others. */
+  hotel_order_info: OrderHotel | Record<string, never>;
+  user_shown_price: number;
+  final_purchase_price_ils: number;
+  exchange_rate_usd_ils_100: number;
+  aff_partner_tracking_code: string;
+  /** Always null: a non-null payment_info reads as paid elsewhere. */
+  payment_info: null;
+  status: "24Save" | "Pending";
+  gtmIdnts: string | null;
+  itinerary_group: string;
+  itinerary_seq: number;
+  itinerary_of: number;
+};
+
+export type GroupRowsCtx = {
+  group: string;
+  /** ILS per USD (the travel rate confirm-order's checks use). */
+  rateIls: number;
+  settings: ItinerarySettings;
+  status: "24Save" | "Pending";
+  /** Each event's `event_order_info` after the live validators ran on it (their flags). */
+  infos?: Map<number, OrderEventInfo>;
+  gtmIdnts?: string | null;
+};
+
+/**
+ * One row per event, in date order (`route` = `checkRoute`'s): seq 1..N of N, the flight on seq
+ * 1, each stay's hotel on its first event (`persistableHotel` - no in-session fields), the
+ * contact on every row, the shares of `livePrice`'s total (`splitTotal`). Throws on a trip
+ * `livePrice` cannot price (the caller checked it first).
+ */
+export function buildGroupRows(sub: TripSubmission, route: Event[], ctx: GroupRowsCtx): GroupRowInsert[] {
+  if (!Number.isFinite(ctx.rateIls) || ctx.rateIls <= 0) throw new Error("buildGroupRows: no exchange rate");
+  const state = tripState(sub, route);
+  const price = livePrice(state, ctx.settings);
+  if (!price) throw new Error("buildGroupRows: the trip is not complete");
+  const parts = eventParts(state, ctx.settings);
+  if (!parts.every(Number.isFinite)) throw new Error("buildGroupRows: a part of the price is not a number");
+  const split = splitTotal(parts, price.total, ctx.rateIls);
+  const firstOfStay = new Map(stays(route, sub.dates).map((stay) => [stay.events[0].id, stay.key]));
+  const contact = toOrderContactFields(fitTravellers(sub.travellers, sub.pax));
+
+  return route.map((e, i): GroupRowInsert => {
+    const info = ctx.infos?.get(e.id) ?? eventOrderInfo(e, sub.tickets[e.id], sub.pax);
+    const stayKey = firstOfStay.get(e.id);
+    const hotel = stayKey !== undefined ? sub.hotels[stayKey] : undefined;
+    return {
+      ...contact,
+      event_id: e.id,
+      event_order_info: { ...info, date: e.date },
+      flight_order_info: i === 0 ? sub.flight : {},
+      hotel_order_info: hotel ? persistableHotel(hotel) : {},
+      user_shown_price: split.usd[i],
+      final_purchase_price_ils: split.ils[i],
+      exchange_rate_usd_ils_100: Math.round(ctx.rateIls * 100),
+      aff_partner_tracking_code: sub.utmSource,
+      payment_info: null,
+      status: ctx.status,
+      gtmIdnts: ctx.gtmIdnts ?? null,
+      itinerary_group: ctx.group,
+      itinerary_seq: i + 1,
+      itinerary_of: route.length,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// The browser's side
+// ---------------------------------------------------------------------------------------------
+
+/** What a hold answers: the group, its reservation ids (seq order), seq 1's booking reference. */
+export type HeldAnswer = { group: string; ids: number[]; reference: string | null };
+
+export function isHeldAnswer(v: unknown): v is HeldAnswer {
+  return (
+    isObj(v) &&
+    typeof v.group === "string" &&
+    Array.isArray(v.ids) &&
+    v.ids.length > 0 &&
+    v.ids.every((id) => typeof id === "number") &&
+    (v.reference === null || v.reference === undefined || typeof v.reference === "string")
+  );
+}
+
+/**
+ * The request the summary sends for its trip: the picked pieces as they are, the travellers fitted
+ * to the party, and the summary's own price (`livePrice`). Only the route's tickets and the
+ * route's stays' hotels go (a hotel of a stay the trip no longer has stays home).
+ */
+export function submissionFromState(
+  state: ItineraryState,
+  travellers: TravellersInput,
+  group: string,
+  price: LivePrice,
+  extra: { utmSource?: string; payNow?: boolean } = {},
+): TripSubmission {
+  if (!state.flight) throw new Error("submissionFromState: the trip has no flight");
+  const tickets: Record<number, OrderTicket> = {};
+  for (const e of state.route) {
+    const t = state.tickets[e.id];
+    if (t) tickets[e.id] = t;
+  }
+  const hotels: Record<string, OrderHotel> = {};
+  for (const stay of stays(state.route, state.dates)) {
+    const h = state.hotels[stay.key];
+    if (h) hotels[stay.key] = h;
+  }
+  return {
+    group,
+    route: state.route.map((e) => e.id),
+    dates: state.dates,
+    pax: state.pax,
+    train: state.train,
+    tickets,
+    flight: state.flight,
+    hotels,
+    travellers: fitTravellers(travellers, state.pax),
+    clientTotal: price.total,
+    clientPerTraveller: price.perTraveller,
+    utmSource: extra.utmSource ?? "",
+    payNow: extra.payNow === true,
+  };
+}
+
+/**
+ * What the summary does with a refusal:
+ *  - "go": back to the step that changed, with the message as the route's notice - the event's
+ *    tab (ticket) or the city's tab (hotel) open; `reloadRows` = the route's rows are read again
+ *    on the tickets step (the server priced fresher event data - markups, base hotel prices);
+ *  - "stay": the message on the summary (a server error, the price floor, a broken request).
+ */
+export type HoldAction =
+  | { kind: "stay"; code: ConfirmErrorCode; message: string }
+  | {
+      kind: "go";
+      code: ConfirmErrorCode;
+      step: ItineraryStep;
+      message: string;
+      eventIndex?: number;
+      stayIndex?: number;
+      reloadRows: boolean;
+    };
+
+export function confirmFailureAction(status: number, body: unknown, state: ItineraryState): HoldAction {
+  const b = isObj(body) ? body : {};
+  const code: ConfirmErrorCode = isCode(b.error) ? b.error : status >= 500 || !status ? "SERVER_ERROR" : "BAD_REQUEST";
+  const eventId = typeof b.eventId === "number" ? b.eventId : undefined;
+  const stayKey = typeof b.stayKey === "string" ? b.stayKey : undefined;
+  const message = confirmMessage(code, namesFor({ eventId, stayKey }, state.route, state.dates));
+  const eventIndex = eventId != null ? state.route.findIndex((e) => e.id === eventId) : -1;
+  const stayIndex = stayKey && state.route.length ? stays(state.route, state.dates).findIndex((s) => s.key === stayKey) : -1;
+  const step = CODES[code].step;
+  if (!step) return { kind: "stay", code, message };
+  return {
+    kind: "go",
+    code,
+    step,
+    message,
+    ...(step === "tickets" && eventIndex >= 0 ? { eventIndex } : {}),
+    ...(step === "hotels" && stayIndex >= 0 ? { stayIndex } : {}),
+    reloadRows: code === "PRICE_CHANGED" || code === "TICKET_CHANGED",
+  };
+}
