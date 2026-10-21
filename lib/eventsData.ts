@@ -157,10 +157,12 @@ export const AVAILABILITY_WINDOW_DAYS = 3;
  * because it has no ticket left to sell (`deactivated_reason`, 2026-10-04).
  * Both stay reachable by direct /order/{id}; a deactivated one shows sold out
  * there, its tickets being off sale.
+ * Nor one the tour uploader built that staff have not approved yet
+ * (`is_hidden`): that one is also refused at checkout (lib/events/hidden.ts).
  */
 export const isListedEvent = (
-  event: Pick<Event, "is_test" | "deactivated_reason">,
-): boolean => !event.is_test && !event.deactivated_reason;
+  event: Pick<Event, "is_test" | "deactivated_reason" | "is_hidden">,
+): boolean => !event.is_test && !event.deactivated_reason && !event.is_hidden;
 
 /** `YYYY-MM-DD` for `daysAhead` from now - the DB-comparable availability cutoff. */
 export function futureDateISO(daysAhead: number): string {

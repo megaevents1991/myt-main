@@ -25,6 +25,7 @@ import {
   withDeadline,
 } from "@/lib/ticket-cost";
 import { insertReservation } from "@/lib/reservation-insert";
+import { isHiddenForCheckout } from "@/lib/events/hidden";
 import {
   trackServerSideEvent,
   extractIpFromRequest,
@@ -84,6 +85,33 @@ export async function POST(req: Request) {
         : JSON.stringify(validationError),
     );
     return NextResponse.json({ error: "Invalid order data" }, { status: 400 });
+  }
+
+  // An event the tour uploader built that staff have not approved yet
+  // (events.is_hidden) does not exist for a customer: refuse it before any
+  // price work, even for an id typed into the URL by hand. Read straight from
+  // the row - getEvents() would return nothing inside the 3-day sell window,
+  // which would let an imminent hidden event through. Fails open like the other
+  // guards (a failed read is logged and never blocks a customer; the insert
+  // below needs the same database anyway).
+  const hiddenCheckId = Number(validatedData.event_id);
+  if (Number.isFinite(hiddenCheckId)) {
+    const { data: eventRow, error: eventRowError } = await supabase
+      .from("events")
+      .select("is_hidden")
+      .eq("id", hiddenCheckId)
+      .maybeSingle();
+    if (eventRowError) {
+      console.error(
+        "Hidden-event check failed open:",
+        JSON.stringify(eventRowError),
+      );
+    } else if (eventRow && isHiddenForCheckout(eventRow)) {
+      console.error("Rejected order - hidden event", {
+        eventId: hiddenCheckId,
+      });
+      return NextResponse.json({ error: "EVENT_NOT_OPEN" }, { status: 400 });
+    }
   }
 
   // Attribution cookie - server-set by middleware, server-read here. Fail-open:

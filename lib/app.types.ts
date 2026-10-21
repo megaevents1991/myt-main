@@ -78,6 +78,11 @@ export type Event = {
   // QA-only events: orderable by direct /order/{id} link, excluded from every
   // listing, search, category and feed surface.
   is_test?: boolean;
+  // Built by the backoffice's tour uploader and not yet approved by staff:
+  // absent / false = open. A hidden event is on no listing (`isListedEvent`), not
+  // in the Meta feed, and confirm-order refuses it (`isHiddenForCheckout`,
+  // lib/events/hidden.ts). Synced with backoffice types/app.types.ts.
+  is_hidden?: boolean;
   // Off the site (2026-10-04): null / absent = listed. The backoffice TixStock
   // price sync writes "tx_no_category" / "tx_sold_out" when the event has no
   // ticket left to sell and clears them when tickets return. A deactivated

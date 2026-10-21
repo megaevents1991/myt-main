@@ -132,7 +132,9 @@ async function getFeedEvents(): Promise<{
   // not set the feed's price or keep the event "available" in Meta.
   const enriched = await markOwnStockSoldOut(
     await markLockedPackagesSoldOut(
-      await enrichEventsWithFallbackImages(events.filter((e) => !e.is_test)),
+      await enrichEventsWithFallbackImages(
+        events.filter((e) => !e.is_test && !e.is_hidden),
+      ),
     ),
   );
   return {
