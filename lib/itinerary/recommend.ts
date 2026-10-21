@@ -6,7 +6,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { isItineraryEligible } from "./eligibility";
-import { dayDiff, eventDay, eventKind, eventPoint, haversineKm } from "./geo";
+import { dayDiff, eventDay, eventKind, eventPoint, haversineKm, sameCity } from "./geo";
 import { compatibility, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import type { Compat } from "./types";
@@ -14,7 +14,7 @@ import type { Compat } from "./types";
 export type RecommendedRoute = {
   /** The events in trip order (by day, then id). */
   ids: number[];
-  /** Lower is better. */
+  /** Lower is better. Within the list it ranks routes of one tier only (see `recommendRoutes`). */
   score: number;
 };
 
@@ -35,15 +35,22 @@ const routeScore = (gaps: number, km: number, bothKinds: boolean, size: 2 | 3): 
   gaps + km / KM_PER_SCORE_POINT - (bothKinds ? BOTH_KINDS_BONUS : 0) - (size === 3 ? TRIPLE_BONUS : 0);
 
 /** A way to reach a later event from an earlier one in a clean pair. */
-type Link = { to: number; gap: number; km: number };
+type Link = { to: number; gap: number; km: number; sameCity: boolean };
 
-/** A route as indexes into the pool (a smaller index is an earlier event); `c` is -1 for a pair. */
-type Candidate = { a: number; b: number; c: number; score: number };
+/**
+ * A route as indexes into the pool (a smaller index is an earlier event); `c` is -1 for a pair.
+ * `single`: every link of the route stays in one city - it never moves the traveller between cities.
+ */
+type Candidate = { a: number; b: number; c: number; score: number; single: boolean };
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
- * Up to `limit` suggested routes of two or three events, the best (lowest score) first.
+ * Up to `limit` suggested routes of two or three events, in two tiers: the routes that move between
+ * cities first, the single-city ones (every link between events in the same city) after them - the
+ * trip builder is about travelling, so a night in London after a night in London never leads. Inside a
+ * tier the best (lowest score) comes first. The cap and the limit run over that order, so a single-city
+ * route only takes a slot the multi-city routes leave.
  *  - only eligible events, never two with the same name in one route;
  *  - a pair is `a` then `b` with `compatibility([a], b)` best / same / ok;
  *  - a triple is a pair plus a third event that is best / same / ok against that pair
@@ -51,6 +58,7 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
  *  - an event is in at most 2 routes of each size - pairs and triples count apart, or every
  *    triple would lose to its own cheaper pairs.
  * Ties on the score go to the earlier first day, then to the lower ids (compared as text).
+ * "Same city" is `sameCity` (stay points within 30 km) between consecutive events.
  */
 export function recommendRoutes(
   events: Event[],
@@ -81,8 +89,9 @@ export function recommendRoutes(
       if (!recommendable(compatibility([pool[i]], pool[j], s))) continue;
       const gap = days[j] - days[i];
       const km = haversineKm(eventPoint(pool[i]), eventPoint(pool[j]));
-      links[i].push({ to: j, gap, km });
-      candidates.push({ a: i, b: j, c: -1, score: routeScore(gap, km, kinds[i] !== kinds[j], 2) });
+      const same = sameCity(pool[i], pool[j]);
+      links[i].push({ to: j, gap, km, sameCity: same });
+      candidates.push({ a: i, b: j, c: -1, score: routeScore(gap, km, kinds[i] !== kinds[j], 2), single: same });
     }
   }
 
@@ -102,7 +111,7 @@ export function recommendRoutes(
           if (names[k] === names[i]) continue; // names[k] differs from names[j]: (j, k) is a pair
           const bothKinds = kinds[i] !== kinds[j] || kinds[j] !== kinds[k];
           const score = routeScore(first.gap + second.gap, first.km + second.km, bothKinds, 3);
-          candidates.push({ a: i, b: j, c: k, score });
+          candidates.push({ a: i, b: j, c: k, score, single: first.sameCity && second.sameCity });
         }
       }
     }
@@ -113,7 +122,9 @@ export function recommendRoutes(
     cmp(idText[x.a], idText[y.a]) ||
     cmp(idText[x.b], idText[y.b]) ||
     (x.c < 0 || y.c < 0 ? Number(x.c >= 0) - Number(y.c >= 0) : cmp(idText[x.c], idText[y.c]));
-  candidates.sort((x, y) => x.score - y.score || days[x.a] - days[y.a] || byId(x, y));
+  candidates.sort(
+    (x, y) => Number(x.single) - Number(y.single) || x.score - y.score || days[x.a] - days[y.a] || byId(x, y),
+  );
 
   const used = new Map<string, number>(); // `${size}:${eventId}` -> routes taken so far
   const picked: RecommendedRoute[] = [];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
-import { dayDiff, eventDay, eventKind, eventPoint, haversineKm } from "../itinerary/geo";
+import { dayDiff, eventDay, eventKind, eventPoint, haversineKm, sameCity } from "../itinerary/geo";
 import { isItineraryEligible } from "../itinerary/eligibility";
 import { compatibility, sortRoute } from "../itinerary/rules";
 import { recommendRoutes, type RecommendedRoute } from "../itinerary/recommend";
@@ -87,6 +87,9 @@ function countsBySize(routes: RecommendedRoute[], size: number): Map<number, num
 
 const FIT = ["best", "same", "ok"];
 
+/** A route that never leaves a city: every consecutive link is the same city (stay points within 30 km). */
+const isSingleCity = (route: Event[]): boolean => route.every((e, i) => i === 0 || sameCity(route[i - 1], e));
+
 /**
  * Every route the brief allows, before any cap: a pair is two events with `compatibility([a], b)`
  * best / same / ok; a triple is ANY pair of the three plus the remaining one, best / same / ok
@@ -114,7 +117,10 @@ function validRoutes(events: Event[], s: ItinerarySettings, todayIso: string): M
   return found;
 }
 
-/** The suggested list written out from scratch: all valid routes, best first, then the cap per size. */
+/**
+ * The suggested list written out from scratch: all valid routes, the ones that move between cities
+ * before the single-city ones, best first inside each tier, then the cap per size and the limit.
+ */
 function referenceRoutes(
   events: Event[],
   s: ItinerarySettings,
@@ -122,9 +128,15 @@ function referenceRoutes(
   limit: number,
 ): RecommendedRoute[] {
   const ranked = [...validRoutes(events, s, todayIso).entries()]
-    .map(([key, route]) => ({ key, route, score: expectedScore(events, route.map((e) => e.id)) }))
+    .map(([key, route]) => ({
+      key,
+      route,
+      single: isSingleCity(route),
+      score: expectedScore(events, route.map((e) => e.id)),
+    }))
     .sort(
       (a, b) =>
+        Number(a.single) - Number(b.single) ||
         a.score - b.score ||
         (eventDay(a.route[0]) < eventDay(b.route[0]) ? -1 : eventDay(a.route[0]) > eventDay(b.route[0]) ? 1 : 0) ||
         (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
@@ -219,8 +231,13 @@ describe("recommendRoutes", () => {
     for (const r of all) expect(r.score).toBeCloseTo(expectedScore(MAIN, r.ids), 2);
   });
 
-  it("lists the best (lowest score) first", () => {
-    for (let i = 1; i < all.length; i++) expect(all[i].score).toBeGreaterThanOrEqual(all[i - 1].score);
+  it("lists the best (lowest score) first inside each tier", () => {
+    const tierOf = (r: RecommendedRoute) => Number(isSingleCity(r.ids.map((id) => byId(MAIN).get(id) as Event)));
+    for (let i = 1; i < all.length; i++) {
+      expect([tierOf(all[i - 1]), all[i - 1].score]).toSatisfy(
+        ([tier, score]: number[]) => tierOf(all[i]) > tier || (tierOf(all[i]) === tier && all[i].score >= score),
+      );
+    }
   });
 
   it("with only Gracie, Céline and Chelsea, returns their three pairs and the triple", () => {
@@ -348,6 +365,56 @@ describe("recommendRoutes on a larger catalog", () => {
 
   it("is deterministic", () => {
     expect(recommendRoutes([...events].reverse(), S, TODAY, 48)).toEqual(routes);
+  });
+});
+
+describe("recommendRoutes ranks trips between cities before single-city ones", () => {
+  // Two nights in Paris, then a match in London three days after the first.
+  const paris1 = ev(41, "קונצרט בפריז א", "2027-05-12", PARIS);
+  const paris2 = ev(42, "קונצרט בפריז ב", "2027-05-13", PARIS);
+  const london = ev(43, "משחק בלונדון", "2027-05-15", LONDON, "sports_event");
+
+  it("puts Paris -> London before a Paris + Paris pair that scores lower", () => {
+    const routes = recommendRoutes([paris1, paris2, london], S, TODAY);
+    const sameCityPair = routes.find((r) => r.ids.join() === "41,42") as RecommendedRoute;
+    const parisLondon = routes.find((r) => r.ids.join() === "41,43") as RecommendedRoute;
+    expect(sameCityPair.score).toBeLessThan(parisLondon.score); // 1 against 2.715: the premise
+    expect(routes.indexOf(parisLondon)).toBeLessThan(routes.indexOf(sameCityPair));
+    // The whole order: the multi-city routes by score (a tie goes to the earlier first day), then Paris + Paris.
+    expect(idsOf(routes)).toEqual([
+      [41, 42, 43],
+      [42, 43],
+      [41, 43],
+      [41, 42],
+    ]);
+    // The score itself is untouched by the tiers.
+    for (const r of routes) expect(r.score).toBeCloseTo(expectedScore([paris1, paris2, london], r.ids), 2);
+  });
+
+  it("still lists single-city routes when there are no others", () => {
+    const london1 = ev(51, "משחק בלונדון א", "2027-05-10", LONDON, "sports_event");
+    const london2 = ev(52, "משחק בלונדון ב", "2027-05-12", LONDON, "sports_event");
+    const london3 = ev(53, "משחק בלונדון ג", "2027-05-14", LONDON, "sports_event");
+    const routes = recommendRoutes([london1, london2, london3], S, TODAY);
+    expect(idsOf(routes)).toEqual(
+      expect.arrayContaining([[51, 52], [52, 53], [51, 53], [51, 52, 53]]),
+    );
+    expect(routes).toHaveLength(4);
+  });
+
+  it("lets a single-city route take only the slots the others leave", () => {
+    // A second night in Paris next to Céline (same city, 1 day): the best score there is...
+    const named = [...MAIN, gracieParis];
+    expect(compatibility([gracieParis], celine, S).status).toBe("same");
+    const routes = recommendRoutes(named, S, TODAY, 48);
+    // ...but Céline's two pair slots go to Chelsea and Arsenal (Paris -> London), so Paris + Paris is out.
+    expect(idsOf(routes)).not.toContainEqual([8, 1]);
+    expect(idsOf(routes)).toContainEqual([1, 2]);
+    expect(idsOf(routes)).toContainEqual([1, 5]);
+    expect(routes).toEqual(referenceRoutes(named, S, TODAY, 48));
+    // With a slot to spare, it is listed - after the multi-city routes.
+    const small = recommendRoutes([gracieParis, celine, chelsea], S, TODAY);
+    expect(idsOf(small)).toEqual([[8, 1, 2], [1, 2], [8, 2], [8, 1]]);
   });
 });
 
