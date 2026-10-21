@@ -1,0 +1,140 @@
+{
+  "type": "flight-offer",
+  "id": "1",
+  "source": "GDS",
+  "instantTicketingRequired": false,
+  "nonHomogeneous": false,
+  "oneWay": false,
+  "isUpsellOffer": false,
+  "lastTicketingDate": "2027-04-01",
+  "lastTicketingDateTime": "2027-04-01T23:59:00",
+  "numberOfBookableSeats": 9,
+  "itineraries": [
+    {
+      "duration": "PT5H",
+      "segments": [
+        {
+          "departure": { "iataCode": "TLV", "terminal": "3", "at": "2027-05-11T06:00:00" },
+          "arrival": { "iataCode": "CDG", "terminal": "2E", "at": "2027-05-11T09:50:00" },
+          "carrierCode": "LY",
+          "number": "331",
+          "aircraft": { "code": "789" },
+          "duration": "PT5H",
+          "id": "1",
+          "numberOfStops": 0,
+          "blacklistedInEU": false
+        }
+      ]
+    },
+    {
+      "duration": "PT1H20M",
+      "segments": [
+        {
+          "departure": { "iataCode": "CDG", "terminal": "2E", "at": "2027-05-13T10:00:00" },
+          "arrival": { "iataCode": "LHR", "terminal": "4", "at": "2027-05-13T10:20:00" },
+          "carrierCode": "LY",
+          "number": "5012",
+          "aircraft": { "code": "320" },
+          "duration": "PT1H20M",
+          "id": "2",
+          "numberOfStops": 0,
+          "blacklistedInEU": false
+        }
+      ]
+    },
+    {
+      "duration": "PT4H45M",
+      "segments": [
+        {
+          "departure": { "iataCode": "LHR", "terminal": "3", "at": "2027-05-16T13:00:00" },
+          "arrival": { "iataCode": "TLV", "terminal": "3", "at": "2027-05-16T21:45:00" },
+          "carrierCode": "LY",
+          "number": "316",
+          "aircraft": { "code": "789" },
+          "duration": "PT4H45M",
+          "id": "3",
+          "numberOfStops": 0,
+          "blacklistedInEU": false
+        }
+      ]
+    }
+  ],
+  "price": {
+    "currency": "USD",
+    "total": "1234.50",
+    "base": "980.00",
+    "fees": [{ "amount": "0.00", "type": "SUPPLIER" }],
+    "grandTotal": "1234.50"
+  },
+  "pricingOptions": {
+    "fareType": ["PUBLISHED"],
+    "includedCheckedBagsOnly": false
+  },
+  "validatingAirlineCodes": ["LY"],
+  "travelerPricings": [
+    {
+      "travelerId": "1",
+      "fareOption": "STANDARD",
+      "travelerType": "ADULT",
+      "price": { "currency": "USD", "total": "617.25", "base": "490.00" },
+      "fareDetailsBySegment": [
+        {
+          "segmentId": "1",
+          "cabin": "ECONOMY",
+          "fareBasis": "LLITE",
+          "class": "L",
+          "includedCheckedBags": { "quantity": 1 },
+          "includedCabinBags": { "quantity": 1 }
+        },
+        {
+          "segmentId": "2",
+          "cabin": "ECONOMY",
+          "fareBasis": "LLITE",
+          "class": "L",
+          "includedCheckedBags": { "quantity": 1 },
+          "includedCabinBags": { "quantity": 1 }
+        },
+        {
+          "segmentId": "3",
+          "cabin": "ECONOMY",
+          "fareBasis": "LLITE",
+          "class": "L",
+          "includedCheckedBags": { "quantity": 1 },
+          "includedCabinBags": { "quantity": 1 }
+        }
+      ]
+    },
+    {
+      "travelerId": "2",
+      "fareOption": "STANDARD",
+      "travelerType": "ADULT",
+      "price": { "currency": "USD", "total": "617.25", "base": "490.00" },
+      "fareDetailsBySegment": [
+        {
+          "segmentId": "1",
+          "cabin": "ECONOMY",
+          "fareBasis": "LLITE",
+          "class": "L",
+          "includedCheckedBags": { "quantity": 1 },
+          "includedCabinBags": { "quantity": 1 }
+        },
+        {
+          "segmentId": "2",
+          "cabin": "ECONOMY",
+          "fareBasis": "LLITE",
+          "class": "L",
+          "includedCheckedBags": { "quantity": 1 },
+          "includedCabinBags": { "quantity": 1 }
+        },
+        {
+          "segmentId": "3",
+          "cabin": "ECONOMY",
+          "fareBasis": "LLITE",
+          "class": "L",
+          "includedCheckedBags": { "quantity": 1 },
+          "includedCabinBags": { "quantity": 1 }
+        }
+      ]
+    }
+  ]
+}
