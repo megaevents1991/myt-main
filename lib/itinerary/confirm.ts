@@ -461,6 +461,9 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
   return null;
 }
 
+/** A TixStock ticket may not be priced below this share of its stored price (the live floor's 0.6). */
+export const TIXSTOCK_FLOOR = 0.6;
+
 /**
  * Each ticket is one the event still sells, on the event the server re-read: every supplier's
  * ticket is a row of the event's own `tickets_and_rates` (the live ticket step prices those rows -
@@ -468,9 +471,11 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
  * twin records its real ticket, `orderTicketId`; TixStock's live sync rewrites prices, never ids),
  * so its id must be there and not off sale (`available === false`), and the supplier the order
  * names must be that row's.
- * Our own and static tickets are never live-priced (`ownTicketForQuantity`): the price may not be
- * below the row's. TixStock's live price can sit below its stored price and LiveTickets is checked
- * live (`validateLiveTicketsOffer`) - no stored-price floor for either.
+ * The price, by supplier:
+ *  - our own and static tickets are never live-priced (`ownTicketForQuantity`): not below the row's;
+ *  - TixStock's live price can sit below its stored price, so not below `TIXSTOCK_FLOOR` (0.6, the
+ *    live floor's slack, app/api/confirm-order/utils.ts:248) of the row's;
+ *  - LiveTickets is checked live (`validateLiveTicketsOffer`) - no stored-price floor.
  * 409 TICKET_CHANGED: the customer picks again on fresh rows.
  */
 export function checkTickets(route: Event[], tickets: Record<number, OrderTicket | undefined>): ConfirmFailure | null {
@@ -480,9 +485,57 @@ export function checkTickets(route: Event[], tickets: Record<number, OrderTicket
     if (!t || !row || row.available === false) return failure("TICKET_CHANGED", { eventId: e.id });
     const supplier = ticketSupplier(row, e.type);
     if (ticketSupplier(t, e.type) !== supplier) return failure("TICKET_CHANGED", { eventId: e.id });
-    if (supplier === "static" && !(Number(t.price) >= Number(row.price))) return failure("TICKET_CHANGED", { eventId: e.id });
+    const price = Number(t.price);
+    const stored = Number(row.price);
+    if (supplier === "static" && !(price >= stored)) return failure("TICKET_CHANGED", { eventId: e.id });
+    if (supplier === "tixstock" && !(price >= TIXSTOCK_FLOOR * stored)) return failure("TICKET_CHANGED", { eventId: e.id });
   }
   return null;
+}
+
+/** A date-time that names its zone (`Z` / `±hh:mm`). */
+const ZONED_RE = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+const WALL_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?$/;
+
+const ISRAEL_PARTS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Jerusalem",
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+/** Israel's offset from UTC at an instant, ms (DST-aware - the platform's time-zone data). */
+function israelOffsetMs(ms: number): number {
+  const p = Object.fromEntries(ISRAEL_PARTS.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  const asUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
+  return asUtc - Math.floor(ms / 1000) * 1000;
+}
+
+/**
+ * The event's date as the live summary stores it: the BROWSER turns `event.date` into an instant
+ * (`new Date(event.date)`, app/order/OrderReview.tsx:1636), so a zone-less date is read as Israel
+ * time. On the server (UTC) the same call would put a 20:00 show at 23:00 Israel and a 22:00 one
+ * on the next day - so a zone-less date is read as its wall time in Asia/Jerusalem (summer and
+ * winter time alike); a date that names its zone is read as is. ISO string out; an unreadable
+ * value comes back as it is.
+ */
+export function eventDateIso(value: string): string {
+  const v = String(value ?? "").trim();
+  if (ZONED_RE.test(v)) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? v : d.toISOString();
+  }
+  const m = WALL_RE.exec(v);
+  if (!m) return v;
+  const wall = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0));
+  // The offset at the guessed instant, then once more at the instant it gives (a DST change between).
+  let ms = wall - israelOffsetMs(wall);
+  ms = wall - israelOffsetMs(ms);
+  return new Date(ms).toISOString();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -666,8 +719,8 @@ export function buildGroupRows(sub: TripSubmission, route: Event[], ctx: GroupRo
     return {
       ...contact,
       event_id: e.id,
-      // As the live summary sends it: the event's date as an ISO instant (`new Date(event.date)`).
-      event_order_info: { ...info, date: new Date(e.date).toISOString() },
+      // As the live summary sends it: the instant the customer's (Israeli) browser makes of the date.
+      event_order_info: { ...info, date: eventDateIso(e.date) },
       flight_order_info: i === 0 ? sub.flight : {},
       hotel_order_info: hotel ? persistableHotel(hotel) : {},
       ...offlineHotelColumns(hotel),

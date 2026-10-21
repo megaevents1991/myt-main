@@ -5,6 +5,8 @@ import {
   buildGroupRows,
   checkDates,
   checkTickets,
+  eventDateIso,
+  TIXSTOCK_FLOOR,
   checkPieces,
   checkRoute,
   confirmFailureAction,
@@ -442,7 +444,7 @@ describe("buildGroupRows", () => {
     expect(rows[1].event_order_info).toMatchObject({
       event_id: 702,
       name: "צ'לסי - אברטון",
-      date: new Date("2027-05-15T20:00:00").toISOString(),
+      date: "2027-05-15T17:00:00.000Z",
       number_of_ticket: 2,
       id: "t702",
       category: "cat t702",
@@ -475,7 +477,7 @@ describe("buildGroupRows", () => {
     const sub = parsed(wire(full));
     const info = { ...eventOrderInfo(chelsea, sub.tickets[702], 2), own_stock: true };
     const rows = buildGroupRows(sub, route, { ...ctx, infos: new Map([[702, info]]) });
-    expect(rows[1].event_order_info).toMatchObject({ own_stock: true, date: new Date("2027-05-15T20:00:00").toISOString() });
+    expect(rows[1].event_order_info).toMatchObject({ own_stock: true, date: "2027-05-15T17:00:00.000Z" });
   });
 });
 
@@ -750,6 +752,62 @@ describe("I3 - checkTickets: the ticket is a row the event still sells", () => {
     expect(checkTickets([celine, tx], { ...sub.tickets, 702: txTicket })).toBeNull();
     // The order says "static" for a TixStock row.
     expect(checkTickets([celine, tx], { ...sub.tickets, 702: ticket("t702", 150) })).toMatchObject({ code: "TICKET_CHANGED" });
+  });
+
+  it("TixStock not below 0.6 of its stored price (the live floor's slack): $90 of $150 passes, $89 does not", () => {
+    const tx = { ...chelsea, type: "tx_event" } as Event;
+    const tixstock = (price: number) => ({ ...ticket("t702", price), supplier: "tixstock" }) as unknown as OrderTicket;
+    expect(TIXSTOCK_FLOOR).toBe(0.6);
+    expect(checkTickets([celine, tx], { ...sub.tickets, 702: tixstock(90) })).toBeNull();
+    expect(checkTickets([celine, tx], { ...sub.tickets, 702: tixstock(89.99) })).toMatchObject({
+      code: "TICKET_CHANGED",
+      status: 409,
+      eventId: 702,
+    });
+    expect(checkTickets([celine, tx], { ...sub.tickets, 702: tixstock(1) })).toMatchObject({ code: "TICKET_CHANGED" });
+  });
+
+  it("LiveTickets has no stored-price floor here (its live validator checks it)", () => {
+    const lt = { ...chelsea, tickets_and_rates: [{ id: "t702", category: "A", price: 150, supplier: "livetickets" }] } as unknown as Event;
+    const ltTicket = { ...ticket("t702", 10), supplier: "livetickets" } as unknown as OrderTicket;
+    expect(checkTickets([celine, lt], { ...sub.tickets, 702: ltTicket })).toBeNull();
+  });
+});
+
+describe("eventDateIso - the instant an Israeli browser makes of the event's date", () => {
+  it("a zone-less summer date is Israel summer time (UTC+3)", () => {
+    expect(eventDateIso("2027-05-15T20:00:00")).toBe("2027-05-15T17:00:00.000Z");
+  });
+
+  it("a zone-less winter date is Israel standard time (UTC+2)", () => {
+    expect(eventDateIso("2027-01-10T20:00:00")).toBe("2027-01-10T18:00:00.000Z");
+    expect(eventDateIso("2026-12-01 19:30")).toBe("2026-12-01T17:30:00.000Z");
+  });
+
+  it("a 22:00 show stays on its own day in Israel (read as UTC it would be 01:00 the next day)", () => {
+    const iso = eventDateIso("2027-07-01T22:00:00");
+    expect(iso).toBe("2027-07-01T19:00:00.000Z");
+    const israelDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date(iso));
+    expect(israelDay).toBe("2027-07-01");
+  });
+
+  it("a date alone is Israel's midnight", () => {
+    expect(eventDateIso("2027-05-15")).toBe("2027-05-14T21:00:00.000Z");
+  });
+
+  it("around the DST changes (Israel: last Friday of March, last Sunday of October)", () => {
+    // 26/03/2027 02:00 -> 03:00 (summer time starts): 12:00 that day is already UTC+3.
+    expect(eventDateIso("2027-03-26T12:00:00")).toBe("2027-03-26T09:00:00.000Z");
+    expect(eventDateIso("2027-03-25T12:00:00")).toBe("2027-03-25T10:00:00.000Z");
+    // 31/10/2027 02:00 -> 01:00 (summer time ends): 20:00 that day is UTC+2.
+    expect(eventDateIso("2027-10-31T20:00:00")).toBe("2027-10-31T18:00:00.000Z");
+  });
+
+  it("a date that names its zone is read as is; an unreadable one comes back unchanged", () => {
+    expect(eventDateIso("2027-05-15T20:00:00Z")).toBe("2027-05-15T20:00:00.000Z");
+    expect(eventDateIso("2027-05-15T20:00:00+02:00")).toBe("2027-05-15T18:00:00.000Z");
+    expect(eventDateIso("2027-05-15T20:00:00.000+0300")).toBe("2027-05-15T17:00:00.000Z");
+    expect(eventDateIso("soon")).toBe("soon");
   });
 });
 
