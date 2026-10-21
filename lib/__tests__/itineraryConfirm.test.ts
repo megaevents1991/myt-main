@@ -309,10 +309,10 @@ describe("checkPieces - every piece is ready for the party", () => {
     expect(checkPieces(moved, NOW)).toMatchObject({ code: "HOTEL_CHANGED", stayKey: londonStay.key });
   });
 
-  it("our own hotel stock is not taken on a trip yet", () => {
-    const own = { ...londonHotel, isOffline: true, offlineId: 9 } as OrderHotel;
+  it("our own hotel stock is taken like live (its block is checked and held by the route)", () => {
+    const own = { ...londonHotel, isOffline: true, offlineId: 9, offlineIds: [9, 9], offlineRawPrice: 410 } as OrderHotel;
     const s = tripState({ ...sub, hotels: { ...sub.hotels, [londonStay.key]: own } }, route);
-    expect(checkPieces(s, NOW)).toMatchObject({ code: "OFFLINE_HOTEL", status: 400, step: "hotels", stayKey: londonStay.key });
+    expect(checkPieces(s, NOW)).toBeNull();
   });
 
   it("a non-refundable rate more than a week out is refused (lib/hotelRateTerms.ts)", () => {
@@ -380,19 +380,21 @@ describe("eventParts / splitTotal - each row's share", () => {
     expect(Math.ceil(Math.round(parts.reduce((a, b) => a + b, 0) * 100) / 100)).toBe(total);
   });
 
-  it("Σ ILS shares = round(total x rate) exactly, Σ USD shares = the total; the remainder on seq 1", () => {
+  it("Σ ILS shares = ceil(total x rate) exactly (the live rounding), Σ USD shares = the total; the remainder on seq 1", () => {
     for (const rate of [3.71, 3.0, 3.6543, 2.99, 3.33]) {
       for (const s of [full, oneCityState]) {
         const total = livePrice(s, S)?.total ?? 0;
         const split = splitTotal(eventParts(s, S), total, rate);
-        expect(split.totalIls).toBe(Math.round(total * rate));
+        expect(split.totalIls).toBe(Math.ceil(total * rate));
         expect(split.ils.reduce((a, b) => a + b, 0)).toBe(split.totalIls);
         expect(split.usd.reduce((a, b) => a + b, 0)).toBe(total);
         expect(split.ils.every(Number.isInteger)).toBe(true);
       }
     }
-    // 1400 x 3.71 = 5194 on Chelsea; Céline takes the rest of round(4265 x 3.71) = 15823.
-    expect(splitTotal([2865, 1400], 4265, 3.71)).toEqual({ usd: [2865, 1400], ils: [10629, 5194], totalIls: 15823 });
+    // 1400 x 3.71 = 5194 on Chelsea; Céline takes the rest of ceil(4265 x 3.71 = 15823.15) = 15824.
+    expect(splitTotal([2865, 1400], 4265, 3.71)).toEqual({ usd: [2865, 1400], ils: [10630, 5194], totalIls: 15824 });
+    // The live order's own figure for the same USD total and rate (app/order/hooks.tsx).
+    expect(splitTotal([2865, 1400], 4265, 3.71).totalIls).toBe(Math.ceil(4265 * 3.71));
   });
 });
 
@@ -413,8 +415,10 @@ describe("buildGroupRows", () => {
     expect(rows[1].hotel_order_info).toMatchObject({ id: "l", name: "Hotel l" });
     // The in-session breakfast offer never reaches the reservation (persistableHotel).
     expect(rows[1].hotel_order_info).not.toHaveProperty("breakfast_offer");
-    expect(rows.reduce((a, r) => a + r.final_purchase_price_ils, 0)).toBe(Math.round(4265 * RATE));
+    expect(rows.reduce((a, r) => a + r.final_purchase_price_ils, 0)).toBe(Math.ceil(4265 * RATE));
     expect(rows.reduce((a, r) => a + r.user_shown_price, 0)).toBe(4265);
+    // Live hotels: confirm-order's own-stock columns are null.
+    for (const r of rows) expect(r).toMatchObject({ offline_hotel_id: null, offline_hotel_ids: null, offline_hotel_cost: null });
     for (const r of rows) {
       expect(r).toMatchObject({
         itinerary_group: GROUP,
@@ -451,7 +455,16 @@ describe("buildGroupRows", () => {
     expect(rows.map((r) => Object.keys(r.hotel_order_info).length > 0)).toEqual([true, false]);
     expect(rows.map((r) => Object.keys(r.flight_order_info).length > 0)).toEqual([true, false]);
     const total = livePrice(oneCityState, S)?.total ?? 0;
-    expect(rows.reduce((a, r) => a + r.final_purchase_price_ils, 0)).toBe(Math.round(total * RATE));
+    expect(rows.reduce((a, r) => a + r.final_purchase_price_ils, 0)).toBe(Math.ceil(total * RATE));
+  });
+
+  it("an own-stock hotel puts confirm-order's columns on the row that carries it, and only there", () => {
+    const own = { ...londonHotel, isOffline: true, offlineId: 9, offlineIds: [9, 9, 12], offlineRawPrice: 410 } as OrderHotel;
+    const sub = parsed(wire({ ...full, hotels: { ...full.hotels, [londonStay.key]: own } }));
+    const rows = buildGroupRows(sub, route, ctx);
+    expect(rows[0]).toMatchObject({ offline_hotel_id: null, offline_hotel_ids: null, offline_hotel_cost: null });
+    expect(rows[1]).toMatchObject({ offline_hotel_id: 9, offline_hotel_ids: [9, 9, 12], offline_hotel_cost: 410 });
+    expect(rows[1].hotel_order_info).toMatchObject({ isOffline: true, offlineIds: [9, 9, 12] });
   });
 
   it("uses the validated ticket info when it is handed in (the validators' flags)", () => {
@@ -614,11 +627,24 @@ describe("the emails", () => {
     expect(text).toContain("101");
     expect(text).toContain("102");
     expect(text).toContain("24Save");
-    expect(text).toContain("10629");
+    expect(text).toContain("10630");
+    expect(text).not.toContain("OUR STOCK - no purchase, rooms held");
     expect(text).toContain("5194");
     expect(text).toContain("LYTLV");
     expect(text).toContain("Hotel l");
     expect(text).toMatch(/no payment link/i);
+  });
+});
+
+describe("the ops email - our own hotel stock", () => {
+  it("says the rooms come from our blocks, which ones, at what cost", () => {
+    const own = { ...londonHotel, isOffline: true, offlineId: 9, offlineIds: [9, 12], offlineRawPrice: 410 } as OrderHotel;
+    const sub = parsed(wire({ ...full, hotels: { ...full.hotels, [londonStay.key]: own } }));
+    const rows = buildGroupRows(sub, route, { group: GROUP, rateIls: RATE, settings: S, status: "24Save", gtmIdnts: null });
+    const { text } = tripOpsMail(
+      tripMailInput({ sub, route, rows, ids: [101, 102], references: [null, null], price: priceOf(full), rateIls: RATE }),
+    );
+    expect(text).toContain("OUR STOCK - no purchase, rooms held from offline_hotels block(s) 9, 12 (cost $410)");
   });
 });
 
@@ -642,7 +668,7 @@ describe("confirmFailureAction - what the summary does with a refusal", () => {
       eventIndex: 1,
       reloadRows: true,
     });
-    const h = confirmFailureAction(400, { error: "OFFLINE_HOTEL", stayKey: londonStay.key }, full);
+    const h = confirmFailureAction(400, { error: "OFFLINE_HOTEL_DATE_MISMATCH", stayKey: londonStay.key }, full);
     expect(h).toMatchObject({ kind: "go", step: "hotels", stayIndex: 1 });
     expect(h.message).toContain("לונדון");
   });

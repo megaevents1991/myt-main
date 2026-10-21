@@ -21,6 +21,8 @@ import {
 } from "@/lib/itinerary/confirm";
 import { sendTripEmails, tripMailInput } from "@/lib/itinerary/emails";
 import { findGroup, insertGroup, type DbError, type GroupDb, type GroupRow } from "@/lib/itinerary/insertGroup";
+import { checkOfflineHotel, holdOfflineHotel, type OfflineHotelDb } from "@/lib/itinerary/offlineHold";
+import { stays } from "@/lib/itinerary/dates";
 import { validateItineraryPriceFloor } from "@/lib/itinerary/priceFloor";
 import { livePrice } from "@/lib/itinerary/progress";
 import { itineraryOn } from "@/lib/itinerary/settings";
@@ -41,6 +43,13 @@ const ROW_COLUMNS = "id, itinerary_seq, booking_reference";
 const reservationsDb: GroupDb = {
   insert: (rows) => supabase.from("reservations").insert(rows).select(ROW_COLUMNS),
   find: (group) => supabase.from("reservations").select(ROW_COLUMNS).eq("itinerary_group", group),
+};
+
+/** Our own hotel stock, as confirm-order reads and holds it (lib/itinerary/offlineHold.ts). */
+const offlineHotelsDb: OfflineHotelDb = {
+  readBlocks: (ids) => supabase.from("offline_hotels").select("id, check_in, check_out").in("id", ids),
+  readConsumed: (id) => supabase.from("offline_hotels").select("consumed_rooms").eq("id", id).single(),
+  writeConsumed: (id, consumedRooms) => supabase.from("offline_hotels").update({ consumed_rooms: consumedRooms }).eq("id", id),
 };
 
 /** PostgREST / Postgres "no such column" - the group columns before the backoffice migration. */
@@ -110,11 +119,13 @@ async function finishRows(rows: GroupRowInsert[], ids: number[]): Promise<(strin
  * In order: the switch (404) -> the request's shape (400) -> the group already written? (200,
  * its rows) -> each event re-read (`getEvents(id)`): still there, eligible and fitting the others
  * (400 ROUTE_CHANGED) -> the dates are the route's own (400) -> every piece ready for the party,
- * no own-stock hotel, every hotel rate sellable (400) -> the live per-event ticket validators of
- * confirm-order (409 TICKET_CHANGED) -> the summary's `livePrice` on that trusted state equals
- * the client's total within $1 (409 PRICE_CHANGED) -> the price floor per row (400) -> the
- * insert (a missing column = 500, nothing written; a concurrent duplicate = that group) -> best
- * effort: booking references, ticket costs, the ops + customer emails, one analytics event.
+ * every hotel rate sellable (400) -> an own-stock hotel's block still on the booked nights (400
+ * OFFLINE_HOTEL_DATE_MISMATCH; a failed read 500 - confirm-order's check) -> the live per-event
+ * ticket validators of confirm-order (409 TICKET_CHANGED) -> the summary's `livePrice` on that
+ * trusted state equals the client's total within $1 (409 PRICE_CHANGED) -> the price floor per
+ * row (400) -> the insert (a missing column = 500, nothing written; a concurrent duplicate = that
+ * group) -> the own-stock rooms held (confirm-order's hold) -> best effort: booking references,
+ * ticket costs, the ops + customer emails, one analytics event.
  *
  * No payment: rows are `24Save` (`Pending` only when payments are on AND the request pays now -
  * phase 3), `payment_info` null. No rate limit (confirm-order has none either).
@@ -167,6 +178,24 @@ export async function POST(req: Request) {
     if (pieceFailure) {
       console.warn(`${LOG} group ${sub.group}: ${pieceFailure.code}`, pieceFailure.eventId ?? pieceFailure.stayKey ?? "");
       return refuse(pieceFailure, route, sub.dates);
+    }
+
+    // Our own hotel stock: each stay's block must still be exactly the booked nights (confirm-order
+    // route.ts:115-160, copied in lib/itinerary/offlineHold.ts). A failed read refuses, as live.
+    const stayHotels = stays(route, sub.dates).map((stay) => ({ key: stay.key, hotel: sub.hotels[stay.key] }));
+    for (const { key, hotel } of stayHotels) {
+      const block = await checkOfflineHotel(hotel, offlineHotelsDb);
+      if (block.result === "error") {
+        console.error(`${LOG} group ${sub.group}: Failed to validate offline hotel (stay ${key}):`, JSON.stringify(block.error));
+        return refuse(failure("SERVER_ERROR"));
+      }
+      if (block.result === "mismatch") {
+        console.error(
+          `${LOG} group ${sub.group}: offline hotel date mismatch (stay ${key}) - rejecting.`,
+          JSON.stringify({ checkin: hotel?.checkin, checkout: hotel?.checkout, rows: block.rows }),
+        );
+        return refuse(failure("OFFLINE_HOTEL_DATE_MISMATCH", { stayKey: key }), route, sub.dates);
+      }
     }
 
     // The live order's own per-event ticket checks (confirm-order route.ts order: LiveTickets, then
@@ -234,6 +263,10 @@ export async function POST(req: Request) {
 
     // The group is written: from here on nothing may fail the hold.
     const { ids } = inserted;
+
+    // Hold our own hotel stock right away - released only on cancellation (confirm-order
+    // route.ts:454 -> holdOfflineInventory). Never throws.
+    for (const { hotel } of stayHotels) await holdOfflineHotel(hotel, offlineHotelsDb);
     let references: (string | null)[] = ids.map(() => null);
     try {
       references = await finishRows(rows, ids);

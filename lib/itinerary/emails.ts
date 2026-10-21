@@ -19,6 +19,7 @@ import { dayMonth, dayMonthYear, stayCityName } from "./builder";
 import type { GroupRowInsert, RowEventInfo, TripSubmission } from "./confirm";
 import { stays, trainLegs } from "./dates";
 import { dayDiff, eventDay } from "./geo";
+import { offlineHotelIds } from "./offlineHold";
 import type { LivePrice } from "./progress";
 import { fitTravellers, type ContactInput, type OtherTraveller } from "./travellers";
 import type { TrainLeg } from "./types";
@@ -165,6 +166,15 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
 
   const hotels = i.hotels.flatMap(({ city, hotel, onRow }) => [
     line(`${city} (on reservation #${onRow ?? "?"}): ${hotel.name}`),
+    ...(offlineHotelIds(hotel)
+      ? [
+          line(
+            `OUR STOCK - no purchase, rooms held from offline_hotels block(s) ${offlineHotelIds(hotel)?.join(", ")} (cost $${
+              hotel.offlineRawPrice ?? "N/A"
+            })`,
+          ),
+        ]
+      : []),
     line(`Dates: ${String(hotel.checkin).slice(0, 10)} -> ${String(hotel.checkout).slice(0, 10)} (${nightsOf(hotel)} nights)`),
     line(`Room Type: ${hotelRoom(hotel)}`),
     line(`Rooms: ${roomsLabel(hotel.guests) || "N/A"}`),

@@ -28,6 +28,7 @@ import { stayCityName } from "./builder";
 import { clampTripDates, moves, stays, tripLegs } from "./dates";
 import { isItineraryEligible } from "./eligibility";
 import { tierMarkups } from "./price";
+import { offlineHotelColumns } from "./offlineHold";
 import { hotelPerTraveller, livePrice, type LivePrice } from "./progress";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
@@ -245,7 +246,7 @@ export type ConfirmErrorCode =
   | "TICKET_CHANGED"
   | "FLIGHT_CHANGED"
   | "HOTEL_CHANGED"
-  | "OFFLINE_HOTEL"
+  | "OFFLINE_HOTEL_DATE_MISMATCH"
   | "HOTEL_NOT_REFUNDABLE"
   | "TRIP_INCOMPLETE"
   | "PRICE_CHANGED"
@@ -259,7 +260,8 @@ const CODES: Record<ConfirmErrorCode, { status: number; step?: ItineraryStep }> 
   TICKET_CHANGED: { status: 409, step: "tickets" },
   FLIGHT_CHANGED: { status: 400, step: "flights" },
   HOTEL_CHANGED: { status: 400, step: "hotels" },
-  OFFLINE_HOTEL: { status: 400, step: "hotels" },
+  // The live code (confirm-order answers it with 409); a trip answers 400 like its other hotel refusals.
+  OFFLINE_HOTEL_DATE_MISMATCH: { status: 400, step: "hotels" },
   HOTEL_NOT_REFUNDABLE: { status: 400, step: "hotels" },
   TRIP_INCOMPLETE: { status: 400, step: "tickets" },
   PRICE_CHANGED: { status: 409, step: "tickets" },
@@ -303,8 +305,8 @@ export function confirmMessage(code: ConfirmErrorCode, names: { event?: string; 
       return "הטיסה כבר לא מתאימה למסלול. בחרו טיסה שוב.";
     case "HOTEL_CHANGED":
       return `המלון ב${city} לא מתאים לתאריכי הלינה או למספר הנוסעים. בחרו מלון שוב.`;
-    case "OFFLINE_HOTEL":
-      return `המלון שבחרתם ב${city} לא זמין כרגע בטיול של כמה אירועים. בחרו מלון אחר.`;
+    case "OFFLINE_HOTEL_DATE_MISMATCH":
+      return `המלון שבחרתם ב${city} כבר לא זמין בתאריכים האלה. בחרו מלון שוב.`;
     case "HOTEL_NOT_REFUNDABLE":
       return `המלון שבחרתם ב${city} כבר לא ניתן לביטול. בחרו מלון אחר.`;
     case "TRIP_INCOMPLETE":
@@ -400,21 +402,14 @@ export function tripState(sub: TripSubmission, route: Event[]): ItineraryState {
   };
 }
 
-/** Our own hotel stock (`/api/offline-hotels`): the order keeps the block's ids. */
-const isOwnStockHotel = (h: OrderHotel): boolean =>
-  h.isOffline === true ||
-  h.offlineId != null ||
-  (Array.isArray(h.offlineIds) && h.offlineIds.length > 0) ||
-  String(h.id ?? "").startsWith("offline-");
-
 /**
  * Every piece is ready for the party - the flow's own rules (`ticketReady`, the flights step's
  * party, `stayHotelReady` on `stayRanges`) plus:
  *  - the flight has one leg per FLOWN leg of the trip (`tripLegs` with the train moves) - the
  *    hotels' dates hang on that alignment (stayAdapter.ts `stayFlight`);
- *  - no own-stock hotel: `confirm-order` validates a block's dates and holds its rooms inline in
- *    its route (no helper to call), so a trip refuses it in phase 1 (a ruling may change that);
  *  - every hotel's rate may be sold for its check-in (`orderHotelSellable`, the live rule).
+ * An own-stock hotel is taken like live: its block dates are checked against the database and its
+ * rooms held by the route (lib/itinerary/offlineHold.ts) - nothing here needs the database.
  */
 export function checkPieces(state: ItineraryState, now: Date | number): ConfirmFailure | null {
   const { route, dates, pax, flight } = state;
@@ -426,7 +421,6 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
   const ranges = stayRanges(route, dates, flight, train);
   for (const [i, stay] of stays(route, dates).entries()) {
     const h = state.hotels[stay.key];
-    if (h && isOwnStockHotel(h)) return failure("OFFLINE_HOTEL", { stayKey: stay.key });
     if (!stayHotelReady(h, ranges[i], pax)) return failure("HOTEL_CHANGED", { stayKey: stay.key });
     if (!orderHotelSellable(h, now)) return failure("HOTEL_NOT_REFUNDABLE", { stayKey: stay.key });
   }
@@ -479,11 +473,12 @@ export function eventParts(state: ItineraryState, s: ItinerarySettings): number[
 
 /**
  * The rows' shares of `total` (USD, whole dollars - `livePrice`'s total) and of its ILS charge,
- * `round(total × rate)`: every row but the first gets its own part, rounded; the first takes
- * the rest, so each column adds up to its total exactly.
+ * `ceil(total × rate)` - the live rounding (`finalPurchasePriceILSCalc`, app/order/hooks.tsx:
+ * `Math.ceil(USDprice * travelRate)`): every row but the first gets its own part, rounded; the
+ * first takes the rest, so each column adds up to its total exactly.
  */
 export function splitTotal(parts: number[], total: number, rate: number): { usd: number[]; ils: number[]; totalIls: number } {
-  const totalIls = Math.round(total * rate);
+  const totalIls = Math.ceil(total * rate);
   const usd = parts.map((p, i) => (i === 0 ? 0 : Math.round(p)));
   const ils = parts.map((p, i) => (i === 0 ? 0 : Math.round(p * rate)));
   usd[0] = total - usd.reduce((a, b) => a + b, 0);
@@ -561,6 +556,10 @@ export type GroupRowInsert = ReturnType<typeof toOrderContactFields> & {
   flight_order_info: ItineraryFlight | Record<string, never>;
   /** The stay's hotel on the first event of the stay; `{}` on the others. */
   hotel_order_info: OrderHotel | Record<string, never>;
+  /** Our own hotel stock on the row that carries it (confirm-order's columns); null otherwise. */
+  offline_hotel_id: number | null;
+  offline_hotel_ids: number[] | null;
+  offline_hotel_cost: number | null;
   user_shown_price: number;
   final_purchase_price_ils: number;
   exchange_rate_usd_ils_100: number;
@@ -612,6 +611,7 @@ export function buildGroupRows(sub: TripSubmission, route: Event[], ctx: GroupRo
       event_order_info: { ...info, date: e.date },
       flight_order_info: i === 0 ? sub.flight : {},
       hotel_order_info: hotel ? persistableHotel(hotel) : {},
+      ...offlineHotelColumns(hotel),
       user_shown_price: split.usd[i],
       final_purchase_price_ils: split.ils[i],
       exchange_rate_usd_ils_100: Math.round(ctx.rateIls * 100),
