@@ -6,6 +6,7 @@ import { loadTripEventsFresh } from "@/app/euro-trip/build/actions";
 import { asFullRow, forgetFullRow, goneIds } from "@/lib/itinerary/adapter";
 import {
   confirmFailureAction,
+  escalatePriceChange,
   isHeldAnswer,
   newGroupId,
   submissionFromState,
@@ -100,12 +101,16 @@ export function useTripHold(): {
       const json: unknown = await res.json().catch(() => null);
       if (res.ok && isHeldAnswer(json)) {
         // An earlier refusal's notice ("המחיר עודכן") is over: the trip is held.
+        latest.current.countPriceChange(false);
         latest.current.dismissNotice();
         latest.current.markHeld({ group: json.group, ids: json.ids, reference: json.reference ?? null });
         return;
       }
       const now = latest.current;
-      const action = confirmFailureAction(res.status, json, now.state);
+      const refusal = confirmFailureAction(res.status, json, now.state);
+      // A second "the price changed" in a row (already re-priced on fresh rows): said here, with a
+      // refresh and the WhatsApp contact - no second bounce through the steps.
+      const action = escalatePriceChange(refusal, now.countPriceChange(refusal.code === "PRICE_CHANGED"));
       if (action.kind === "stay") {
         setFailure(action);
         return;

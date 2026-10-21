@@ -11,11 +11,13 @@
  *  3. each event re-read: there, listed, eligible, fitting the others (400 ROUTE_CHANGED);
  *  4. the dates are the route's own (400); every piece ready for the party, the flight on the
  *     trip's legs and days (409 FLIGHT_CHANGED), every hotel rate sellable (400);
- *  5. each ticket a row the event still sells, own / static ones not below their price (409);
+ *  5. each ticket a row the event still sells, own / static ones not below their price, TixStock
+ *     not below 0.6 of it (409); the supplier's event id is taken from the row;
  *  6. each own-stock stay's blocks: dates (400 OFFLINE_HOTEL_DATE_MISMATCH), rooms, event, price
  *     (409 HOTEL_CHANGED), rooms left (400 OFFLINE_HOTEL_SOLD_OUT), refundability (400); a failed
  *     read 500 - the cost kept is the blocks' own;
- *  7. the live order's per-event ticket validators (409 TICKET_CHANGED);
+ *  7. the live order's per-event ticket validators (409 TICKET_CHANGED); a LiveTickets ticket its
+ *     live check could not reach gets TixStock's 0.6 floor;
  *  8. the summary's `livePrice` on that trusted state = the client's total within $1 (409);
  *  9. the travel rate; the rows; the price floor per row (400);
  * 10. ONE insert - an error = 500, nothing written; a concurrent copy (23505) = that group's rows
@@ -29,7 +31,11 @@ import {
   checkDates,
   checkPieces,
   checkRoute,
+  belowUncheckedFloor,
   checkTickets,
+  ticketRow,
+  UNCHECKED_PRICE_FLOOR,
+  withRowEids,
   failure,
   failureBody,
   parseSubmission,
@@ -41,6 +47,7 @@ import {
   type HeldAnswer,
   type TripSubmission,
 } from "./confirm";
+import { ticketSupplier } from "@/lib/suppliers";
 import { stays } from "./dates";
 import { tripMailInput, type TripMailInput } from "./emails";
 import { findGroup, insertGroup, type DbError, type GroupDb, type GroupRow } from "./insertGroup";
@@ -62,6 +69,8 @@ export type ConfirmDeps = {
   getEvent: (id: number) => Promise<Event | undefined>;
   /** The live per-event ticket checks: `validateLiveTicketsOffer(d) ?? validateOwnStock(d)`. */
   validateTicket: (data: OrderData) => Promise<string | null>;
+  /** Could LiveTickets answer for this event id (`getLiveTicketsOffers(eid) !== null`, ~90 s cached)? */
+  liveTicketsReachable: (eid: string) => Promise<boolean>;
   /** The live travel rate (ILS per USD). */
   getRate: () => Promise<number>;
   groupDb: GroupDb;
@@ -166,17 +175,28 @@ export async function confirmTrip(raw: unknown, deps: ConfirmDeps): Promise<Conf
         return refuse(failure("HOTEL_NOT_REFUNDABLE", about), route, sub.dates);
     }
   }
-  const trusted: TripSubmission = { ...sub, hotels: verifiedHotels };
+  // The blocks' own cost on own-stock hotels; the supplier's event id from each ticket's own row.
+  const trusted: TripSubmission = { ...sub, hotels: verifiedHotels, tickets: withRowEids(route, sub.tickets) };
   const state = tripState(trusted, route);
 
   // The live order's own per-event ticket checks; they set the ops flags (non_instant / own_stock)
-  // on the info they read.
+  // on the info they read. A LiveTickets ticket whose live check could not run (no event id on its
+  // row, or LiveTickets unreachable - the validator then answers null) gets the floor TixStock has.
   const infos = new Map<number, OrderData["event_order_info"]>();
   const ticketErrors = await Promise.all(
     route.map(async (e) => {
       const data = toSingleEventOrderData(trusted, e);
-      const reason = await deps.validateTicket(data);
+      let reason = await deps.validateTicket(data);
       infos.set(e.id, data.event_order_info);
+      const t = trusted.tickets[e.id];
+      const row = ticketRow(e, t);
+      if (!reason && t && row && ticketSupplier(row, e.type) === "livetickets") {
+        const eid = row.eid ? String(row.eid) : "";
+        const checked = eid !== "" && (await deps.liveTicketsReachable(eid));
+        if (!checked && belowUncheckedFloor(t, row)) {
+          reason = `LiveTickets could not be checked; $${t.price} is below ${UNCHECKED_PRICE_FLOOR} x the stored $${row.price}`;
+        }
+      }
       return reason ? { eventId: e.id, reason } : null;
     }),
   );

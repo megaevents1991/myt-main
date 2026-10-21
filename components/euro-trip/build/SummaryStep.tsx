@@ -771,6 +771,17 @@ export function SummaryStep({
                 onRetry={sending ? undefined : () => attempt("hold", hold.submit)}
                 whatsAppText={whatsAppText}
               />
+            ) : hold.failure?.code === "PRICE_CHANGED" ? (
+              // The price changed again after a re-price on fresh rows: a refresh (the page's
+              // settings are read at render) or the WhatsApp contact - no second bounce.
+              <OrderIssueState
+                variant="error"
+                className="py-6"
+                title={hold.failure.message}
+                onRetry={() => window.location.reload()}
+                retryLabel="רענון הדף"
+                whatsAppText={whatsAppText}
+              />
             ) : (
               hold.failure && (
                 <p

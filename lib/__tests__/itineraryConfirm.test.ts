@@ -6,7 +6,10 @@ import {
   checkDates,
   checkTickets,
   eventDateIso,
-  TIXSTOCK_FLOOR,
+  UNCHECKED_PRICE_FLOOR,
+  escalatePriceChange,
+  PRICE_STILL_CHANGING,
+  withRowEids,
   checkPieces,
   checkRoute,
   confirmFailureAction,
@@ -757,7 +760,7 @@ describe("I3 - checkTickets: the ticket is a row the event still sells", () => {
   it("TixStock not below 0.6 of its stored price (the live floor's slack): $90 of $150 passes, $89 does not", () => {
     const tx = { ...chelsea, type: "tx_event" } as Event;
     const tixstock = (price: number) => ({ ...ticket("t702", price), supplier: "tixstock" }) as unknown as OrderTicket;
-    expect(TIXSTOCK_FLOOR).toBe(0.6);
+    expect(UNCHECKED_PRICE_FLOOR).toBe(0.6);
     expect(checkTickets([celine, tx], { ...sub.tickets, 702: tixstock(90) })).toBeNull();
     expect(checkTickets([celine, tx], { ...sub.tickets, 702: tixstock(89.99) })).toMatchObject({
       code: "TICKET_CHANGED",
@@ -791,8 +794,14 @@ describe("eventDateIso - the instant an Israeli browser makes of the event's dat
     expect(israelDay).toBe("2027-07-01");
   });
 
-  it("a date alone is Israel's midnight", () => {
-    expect(eventDateIso("2027-05-15")).toBe("2027-05-14T21:00:00.000Z");
+  it("a date alone (production: events.date is a Postgres DATE) is UTC midnight of that day - what the live browser writes", () => {
+    const iso = eventDateIso("2027-05-15");
+    expect(iso).toBe("2027-05-15T00:00:00.000Z");
+    expect(iso).toBe(new Date("2027-05-15").toISOString());
+    expect(new Date(iso).toLocaleDateString("he-IL", { timeZone: "UTC" })).toBe(
+      new Date("2027-05-15T12:00:00Z").toLocaleDateString("he-IL", { timeZone: "UTC" }),
+    );
+    expect(new Date(iso).toLocaleDateString("he-IL", { timeZone: "UTC" })).toBe("15.5.2027");
   });
 
   it("around the DST changes (Israel: last Friday of March, last Sunday of October)", () => {
@@ -878,6 +887,10 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
       getEvent: async (id) => {
         calls.push(`event ${id}`);
         return [celine, chelsea, coldplay].find((e) => e.id === id);
+      },
+      liveTicketsReachable: async () => {
+        calls.push("lt reachable");
+        return true;
       },
       validateTicket: async () => {
         calls.push("validate");
@@ -1016,5 +1029,153 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
     const b = setup({ vercelEnv: "production" });
     expect(await confirmTrip(wire(full), b.deps)).toMatchObject({ status: 404 });
     expect(b.calls).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Fix round 3
+// ---------------------------------------------------------------------------------------------
+
+describe("round 3 - a ticket's long texts never refuse a hold", () => {
+  const raw = wire(full);
+  const withTicket = (over: Record<string, unknown>) => {
+    const tickets = raw.tickets as Record<string, Record<string, unknown>>;
+    return { ...raw, tickets: { ...tickets, "702": { ...tickets["702"], ...over } } };
+  };
+
+  it("description is not checked (never stored or mailed) - a long VIP text passes", () => {
+    expect(parseSubmission(withTicket({ description: "VIP hospitality ".repeat(400) }), 3).ok).toBe(true);
+    expect(parseSubmission(withTicket({ description: { rich: true } }), 3).ok).toBe(true);
+  });
+
+  it("stored / mailed texts take up to 1,000 characters", () => {
+    expect(parseSubmission(withTicket({ zoneLabel: "z".repeat(1000), category: "c".repeat(600) }), 3).ok).toBe(true);
+    expect(parseSubmission(withTicket({ zoneLabel: "z".repeat(1001) }), 3).ok).toBe(false);
+  });
+});
+
+describe("round 3 - LiveTickets: the row's event id, and a floor when the live check cannot run", () => {
+  /** Chelsea sold through LiveTickets: one row, its own LiveTickets event id. */
+  const ltChelsea = (eid?: string) =>
+    ({
+      ...chelsea,
+      tickets_and_rates: [
+        { id: "t702", category: "cat t702", price: 150, available: true, supplier: "livetickets", ...(eid ? { eid } : {}) },
+      ],
+    }) as unknown as Event;
+  const ltTicket = (price: number) =>
+    ({ id: "t702", category: "cat t702", price, quantity: 2, supplier: "livetickets", eid: "CLIENT-SAYS" }) as unknown as OrderTicket;
+  const ltState = (price: number): ItineraryState => ({ ...full, tickets: { ...full.tickets, 702: ltTicket(price) } });
+
+  it("withRowEids takes the supplier's event id from the event's row, never the client's", () => {
+    const out = withRowEids([celine, ltChelsea("LT-77")], { 618: full.tickets[618] as OrderTicket, 702: ltTicket(150) });
+    expect(out[702].eid).toBe("LT-77");
+    // A row without one: no event id at all (not the client's).
+    expect(withRowEids([celine, ltChelsea()], { 702: ltTicket(150) })[702].eid).toBeUndefined();
+  });
+
+  /** The flow with LiveTickets reachable or not; the validator records the event id it was given. */
+  const run = async (event: Event, price: number, reachable: boolean) => {
+    const seen: string[] = [];
+    const calls: string[] = [];
+    const deps: ConfirmDeps = {
+      getSettings: async () => S,
+      vercelEnv: "preview",
+      now: () => NOW,
+      getEvent: async (id) => (id === 702 ? event : celine),
+      validateTicket: async (data) => {
+        if (data.event_order_info.supplier === "livetickets") seen.push(String(data.event_order_info.supplier_event_id));
+        return null;
+      },
+      liveTicketsReachable: async () => {
+        calls.push("reachable");
+        return reachable;
+      },
+      getRate: async () => RATE,
+      groupDb: {
+        insert: async (rows) => {
+          calls.push("insert");
+          return { data: rows.map((_, i) => ({ id: 700 + i, itinerary_seq: i + 1 })), error: null };
+        },
+        find: async () => ({ data: [], error: null }),
+      },
+      offlineDb: {
+        readBlocks: async () => ({ data: [], error: null }),
+        readConsumed: async () => ({ data: null }),
+        writeConsumed: async () => ({}),
+      },
+      finishRows: async (_rows, ids) => ids.map(() => null),
+      sendEmails: async () => ({ ops: true, customer: true }),
+      markEmailed: async () => {},
+      track: async () => {},
+      gtmIdnts: null,
+      log: { warn: () => {}, error: () => {} },
+    };
+    const answer = await confirmTrip(wire(ltState(price)), deps);
+    return { answer, seen, calls };
+  };
+
+  it("the live validator is handed the ROW's event id", async () => {
+    const { answer, seen } = await run(ltChelsea("LT-77"), 150, true);
+    expect(answer.status).toBe(200);
+    expect(seen).toEqual(["LT-77"]);
+  });
+
+  it("LiveTickets checked live: no stored-price floor here (the validator owns the price)", async () => {
+    const { answer, calls } = await run(ltChelsea("LT-77"), 50, true);
+    expect(answer.status).toBe(200);
+    expect(calls).toContain("reachable");
+  });
+
+  it("LiveTickets unreachable: not below 0.6 of the stored price - $50 of $150 is 409, $90 passes", async () => {
+    expect((await run(ltChelsea("LT-77"), 50, false)).answer).toMatchObject({
+      status: 409,
+      body: { error: "TICKET_CHANGED", eventId: 702 },
+    });
+    expect((await run(ltChelsea("LT-77"), 90, false)).answer.status).toBe(200);
+  });
+
+  it("no event id on the row: the live check cannot run - the floor applies, nothing asked of LiveTickets", async () => {
+    const low = await run(ltChelsea(), 50, true);
+    expect(low.answer).toMatchObject({ status: 409, body: { error: "TICKET_CHANGED" } });
+    expect(low.calls).not.toContain("reachable");
+    expect(low.calls).not.toContain("insert");
+  });
+});
+
+describe("round 3 - a second 'the price changed' in a row is said on the summary", () => {
+  it("the first bounces to the tickets; the second stays, with the refresh / WhatsApp words", () => {
+    const first = confirmFailureAction(409, { error: "PRICE_CHANGED" }, full);
+    expect(escalatePriceChange(first, 1)).toBe(first);
+    expect(escalatePriceChange(first, 2)).toEqual({ kind: "stay", code: "PRICE_CHANGED", message: PRICE_STILL_CHANGING });
+    expect(PRICE_STILL_CHANGING).toBe("המחיר עדיין משתנה - רעננו את הדף או דברו איתנו");
+    // Any other answer is left as it is.
+    const route = confirmFailureAction(400, { error: "ROUTE_CHANGED" }, full);
+    expect(escalatePriceChange(route, 5)).toBe(route);
+  });
+});
+
+describe("round 3 - an unreadable body answers the switch first", () => {
+  const deps = (vercelEnv: string): ConfirmDeps => ({
+    getSettings: async () => S,
+    vercelEnv,
+    now: () => NOW,
+    getEvent: async () => undefined,
+    validateTicket: async () => null,
+    liveTicketsReachable: async () => true,
+    getRate: async () => RATE,
+    groupDb: { insert: async () => ({ data: null, error: null }), find: async () => ({ data: [], error: null }) },
+    offlineDb: { readBlocks: async () => ({ data: [], error: null }), readConsumed: async () => ({ data: null }), writeConsumed: async () => ({}) },
+    finishRows: async () => [],
+    sendEmails: async () => ({ ops: false, customer: false }),
+    markEmailed: async () => {},
+    track: async () => {},
+    gtmIdnts: null,
+    log: { warn: () => {}, error: () => {} },
+  });
+
+  it("switch off: 404; on: 400", async () => {
+    expect(await confirmTrip(undefined, deps("production"))).toMatchObject({ status: 404, body: { error: "NOT_FOUND" } });
+    expect(await confirmTrip(undefined, deps("preview"))).toMatchObject({ status: 400, body: { error: "BAD_REQUEST" } });
   });
 });

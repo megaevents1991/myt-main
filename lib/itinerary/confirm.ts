@@ -19,7 +19,7 @@
  * row carries it, the flight on seq 1), the rounding remainder on seq 1, so the rows add up to the
  * total exactly.
  */
-import type { Event, ItineraryFlight, OrderData, OrderHotel, OrderTicket } from "@/lib/app.types";
+import type { Event, EventTicket, ItineraryFlight, OrderData, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { persistableHotel } from "@/app/order/order-review.utils";
 import { placeLabel } from "@/lib/events/lodging";
 import { orderHotelSellable } from "@/lib/hotelRateTerms";
@@ -132,17 +132,24 @@ function parseTravellers(v: unknown): TravellersInput | null {
 }
 
 /**
- * The ticket's text fields as the live order's schema takes them (`validateOrderData`,
- * app/api/confirm-order/utils.ts - yup): each one absent or text (yup's `string()` also casts a
- * number), `nonInstant` a boolean, `seatingChoice` "together" / "split". They go to the
- * reservation's `event_order_info` and to the ops email as they are.
+ * A ticket's text as the backoffice may write it (its editor has no limit; live's yup schema has
+ * none either) - generous, only to keep a hostile body bounded.
  */
-const TICKET_TEXT_FIELDS = ["vendor", "eid", "supplier", "supplierCategory", "zoneLabel", "description"] as const;
+const TICKET_TEXT_MAX = 1000;
+
+/**
+ * The ticket's text fields that go to the reservation's `event_order_info` and to the ops email,
+ * as the live order's schema takes them (`validateOrderData`, app/api/confirm-order/utils.ts -
+ * yup): each one absent or text (yup's `string()` also casts a number), `nonInstant` a boolean,
+ * `seatingChoice` "together" / "split". `description` is neither stored nor mailed - not checked
+ * (a long VIP / hospitality text must never refuse a hold).
+ */
+const TICKET_TEXT_FIELDS = ["vendor", "eid", "supplier", "supplierCategory", "zoneLabel"] as const;
 function ticketTextOk(t: Record<string, unknown>): boolean {
   for (const k of TICKET_TEXT_FIELDS) {
     const v = t[k];
     if (v === undefined) continue;
-    if (!(isText(v) || (typeof v === "number" && Number.isFinite(v)))) return false;
+    if (!(isText(v, TICKET_TEXT_MAX) || (typeof v === "number" && Number.isFinite(v)))) return false;
   }
   if (t.nonInstant !== undefined && typeof t.nonInstant !== "boolean") return false;
   if (t.seatingChoice !== undefined && t.seatingChoice !== "together" && t.seatingChoice !== "split") return false;
@@ -198,7 +205,15 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
   const tickets: Record<number, OrderTicket> = {};
   for (const id of route) {
     const t = raw.tickets[String(id)];
-    if (!isObj(t) || !isText(t.id) || !t.id || !isText(t.category) || !t.category || !isPositive(t.price) || t.quantity !== pax) {
+    if (
+      !isObj(t) ||
+      !isText(t.id, TICKET_TEXT_MAX) ||
+      !t.id ||
+      !isText(t.category, TICKET_TEXT_MAX) ||
+      !t.category ||
+      !isPositive(t.price) ||
+      t.quantity !== pax
+    ) {
       return no(`ticket of event ${id}`);
     }
     if (!ticketTextOk(t)) return no(`ticket fields of event ${id}`);
@@ -461,8 +476,37 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
   return null;
 }
 
-/** A TixStock ticket may not be priced below this share of its stored price (the live floor's 0.6). */
-export const TIXSTOCK_FLOOR = 0.6;
+/**
+ * A ticket priced without a live check - TixStock always (its live price can sit below its stored
+ * one), LiveTickets when its live check could not run - may not go below this share of its stored
+ * price: the live floor's slack (app/api/confirm-order/utils.ts:248).
+ */
+export const UNCHECKED_PRICE_FLOOR = 0.6;
+
+/** The event's own row of the order's ticket (by id), if it still has one. */
+export function ticketRow(e: Event, t: Pick<OrderTicket, "id"> | undefined): EventTicket | undefined {
+  return t?.id ? (e.tickets_and_rates ?? []).find((r) => r?.id === t.id) : undefined;
+}
+
+/** Below `UNCHECKED_PRICE_FLOOR` of the row's stored price (or no price to compare)? */
+export function belowUncheckedFloor(t: Pick<OrderTicket, "price">, row: Pick<EventTicket, "price">): boolean {
+  return !(Number(t.price) >= UNCHECKED_PRICE_FLOOR * Number(row.price));
+}
+
+/**
+ * The tickets with the supplier's event id taken from the event's own row (`eid`), never the
+ * client's: the live LiveTickets check reads it (`supplier_event_id`), ops buy by it, the cost
+ * snapshot looks it up. A ticket without a row is left as it is (`checkTickets` refused it).
+ */
+export function withRowEids(route: Event[], tickets: Record<number, OrderTicket>): Record<number, OrderTicket> {
+  const out: Record<number, OrderTicket> = { ...tickets };
+  for (const e of route) {
+    const t = tickets[e.id];
+    const row = ticketRow(e, t);
+    if (t && row) out[e.id] = { ...t, eid: row.eid };
+  }
+  return out;
+}
 
 /**
  * Each ticket is one the event still sells, on the event the server re-read: every supplier's
@@ -473,22 +517,20 @@ export const TIXSTOCK_FLOOR = 0.6;
  * names must be that row's.
  * The price, by supplier:
  *  - our own and static tickets are never live-priced (`ownTicketForQuantity`): not below the row's;
- *  - TixStock's live price can sit below its stored price, so not below `TIXSTOCK_FLOOR` (0.6, the
- *    live floor's slack, app/api/confirm-order/utils.ts:248) of the row's;
- *  - LiveTickets is checked live (`validateLiveTicketsOffer`) - no stored-price floor.
+ *  - TixStock: not below `UNCHECKED_PRICE_FLOOR` of the row's;
+ *  - LiveTickets is checked live (`validateLiveTicketsOffer`, on the row's `eid`); when that check
+ *    cannot run the flow applies the same floor (lib/itinerary/confirmFlow.ts).
  * 409 TICKET_CHANGED: the customer picks again on fresh rows.
  */
 export function checkTickets(route: Event[], tickets: Record<number, OrderTicket | undefined>): ConfirmFailure | null {
   for (const e of route) {
     const t = tickets[e.id];
-    const row = (e.tickets_and_rates ?? []).find((r) => r?.id === t?.id);
+    const row = ticketRow(e, t);
     if (!t || !row || row.available === false) return failure("TICKET_CHANGED", { eventId: e.id });
     const supplier = ticketSupplier(row, e.type);
     if (ticketSupplier(t, e.type) !== supplier) return failure("TICKET_CHANGED", { eventId: e.id });
-    const price = Number(t.price);
-    const stored = Number(row.price);
-    if (supplier === "static" && !(price >= stored)) return failure("TICKET_CHANGED", { eventId: e.id });
-    if (supplier === "tixstock" && !(price >= TIXSTOCK_FLOOR * stored)) return failure("TICKET_CHANGED", { eventId: e.id });
+    if (supplier === "static" && !(Number(t.price) >= Number(row.price))) return failure("TICKET_CHANGED", { eventId: e.id });
+    if (supplier === "tixstock" && belowUncheckedFloor(t, row)) return failure("TICKET_CHANGED", { eventId: e.id });
   }
   return null;
 }
@@ -517,15 +559,17 @@ function israelOffsetMs(ms: number): number {
 
 /**
  * The event's date as the live summary stores it: the BROWSER turns `event.date` into an instant
- * (`new Date(event.date)`, app/order/OrderReview.tsx:1636), so a zone-less date is read as Israel
- * time. On the server (UTC) the same call would put a 20:00 show at 23:00 Israel and a 22:00 one
- * on the next day - so a zone-less date is read as its wall time in Asia/Jerusalem (summer and
- * winter time alike); a date that names its zone is read as is. ISO string out; an unreadable
- * value comes back as it is.
+ * (`new Date(event.date)`, app/order/OrderReview.tsx:1636). `events.date` is a Postgres DATE, so
+ * production sends "YYYY-MM-DD" - which JavaScript reads as UTC midnight in ANY zone (a date-only
+ * ISO form): kept exactly so, = the live row. A date-TIME without a zone is read by the browser as
+ * Israel time - on the server (UTC) the same call would put a 20:00 show at 23:00 Israel and a
+ * 22:00 one on the next day - so it is read as its wall time in Asia/Jerusalem (summer and winter
+ * time alike). A date that names its zone is read as is. ISO string out; an unreadable value comes
+ * back as it is.
  */
 export function eventDateIso(value: string): string {
   const v = String(value ?? "").trim();
-  if (ZONED_RE.test(v)) {
+  if (ZONED_RE.test(v) || DAY_RE.test(v)) {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? v : d.toISOString();
   }
@@ -834,4 +878,18 @@ export function confirmFailureAction(status: number, body: unknown, state: Itine
     ...(step === "hotels" && stayIndex >= 0 ? { stayIndex } : {}),
     reloadRows: code === "PRICE_CHANGED" || code === "TICKET_CHANGED",
   };
+}
+
+/** Said when the price changed again right after the trip was re-priced on fresh rows. */
+export const PRICE_STILL_CHANGING = "המחיר עדיין משתנה - רעננו את הדף או דברו איתנו";
+
+/**
+ * "The price changed" a second time in a row (the trip was already re-priced on fresh rows): no
+ * second bounce through the steps - the summary says so and offers a refresh and the WhatsApp
+ * contact. (Known cause: the page's settings are read once, at render - a staff save of the tiers
+ * mid-session needs a refresh.) `consecutive` counts this answer.
+ */
+export function escalatePriceChange(action: HoldAction, consecutive: number): HoldAction {
+  if (action.code !== "PRICE_CHANGED" || consecutive < 2) return action;
+  return { kind: "stay", code: "PRICE_CHANGED", message: PRICE_STILL_CHANGING };
 }

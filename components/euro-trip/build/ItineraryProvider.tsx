@@ -96,6 +96,11 @@ export type ItineraryApi = {
   held: HeldAnswer | null;
   /** Records the hold and closes the trip's draft (`closeDraft`). */
   markHeld: (h: HeldAnswer) => void;
+  /**
+   * Counts the hold's consecutive "the price changed" answers (any other answer resets it) and
+   * returns the count - kept here, as the summary unmounts when such an answer sends it back.
+   */
+  countPriceChange: (changed: boolean) => number;
 };
 
 const ItineraryContext = createContext<ItineraryApi | null>(null);
@@ -199,6 +204,11 @@ export function ItineraryProvider({
     draftClosed.current = true;
     forgetItineraryDraft();
   }, []);
+  const priceChanges = useRef(0);
+  const countPriceChange = useCallback((changed: boolean) => {
+    priceChanges.current = changed ? priceChanges.current + 1 : 0;
+    return priceChanges.current;
+  }, []);
   const [held, setHeld] = useState<HeldAnswer | null>(null);
   const markHeld = useCallback(
     (h: HeldAnswer) => {
@@ -242,6 +252,7 @@ export function ItineraryProvider({
       closeDraft,
       held,
       markHeld,
+      countPriceChange,
     }),
     [
       state,
@@ -258,6 +269,7 @@ export function ItineraryProvider({
       closeDraft,
       held,
       markHeld,
+      countPriceChange,
     ],
   );
 
