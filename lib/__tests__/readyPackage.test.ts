@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  hotelPhotoUrl,
   neighbourPax,
   pickPax,
   readyMode,
@@ -158,5 +159,33 @@ describe("party sizes", () => {
     expect(neighbourPax([1, 2, 4], 4, -1)).toBe(2);
     expect(neighbourPax([1, 2, 4], 4, 1)).toBeNull();
     expect(neighbourPax([1, 2, 4], 1, -1)).toBeNull();
+  });
+});
+
+describe("hotelPhotoUrl", () => {
+  const img = (category_slug: string, n: number) => ({
+    category_slug,
+    url: `https://cdn.worldota.net/t/{size}/content/${n}.jpeg`,
+  });
+
+  it("takes the hotel from outside first, sized like a hotel card", () => {
+    expect(hotelPhotoUrl([img("room", 1), img("lobby", 2), img("exterior", 3)])).toBe(
+      "https://cdn.worldota.net/t/x500/content/3.jpeg",
+    );
+    expect(hotelPhotoUrl([img("lobby", 2), img("hotel_front", 4), img("exterior", 3)])).toBe(
+      "https://cdn.worldota.net/t/x500/content/4.jpeg",
+    );
+    expect(hotelPhotoUrl([img("room", 1), img("lobby", 2)])).toBe(
+      "https://cdn.worldota.net/t/x500/content/2.jpeg",
+    );
+  });
+
+  it("falls back to the first photo, and to null when there is none", () => {
+    expect(hotelPhotoUrl([img("room", 1), img("bathroom", 2)])).toBe(
+      "https://cdn.worldota.net/t/x500/content/1.jpeg",
+    );
+    expect(hotelPhotoUrl([])).toBeNull();
+    expect(hotelPhotoUrl(null)).toBeNull();
+    expect(hotelPhotoUrl([{ category_slug: "exterior", url: "" }])).toBeNull();
   });
 });

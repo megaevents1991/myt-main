@@ -5,7 +5,7 @@ import { isEventSoldOut } from "@/lib/events/price";
 import { isMegaEventsFlight } from "@/lib/flights/company";
 import { getPartnerSession } from "@/lib/partner-auth";
 import type { Flight, OrderHotel } from "@/lib/app.types";
-import { pickPax, readyMode, swapOf, variantSizes } from "@/lib/events/readyPackage";
+import { hotelPhotoUrl, pickPax, readyMode, swapOf, variantSizes } from "@/lib/events/readyPackage";
 import { orderHotelSellable } from "@/lib/hotelRateTerms";
 
 /**
@@ -282,7 +282,7 @@ export async function GET(
       } else {
         const { data: hotelRows } = await supabase
           .from("offline_hotels")
-          .select("id, num_rooms, consumed_rooms")
+          .select("id, num_rooms, consumed_rooms, hid")
           .in("id", offlineIds);
         const allHaveRoom = offlineIds.every((rowId) => {
           const r = (hotelRows || []).find((h) => h.id === rowId);
@@ -291,6 +291,20 @@ export async function GET(
         if (!allHaveRoom) {
           hotel = null;
           hotelNeedsRepick = true;
+        } else if (isHouse && !hotelImage) {
+          // A ready package of our own hotel stock is built with no photo (the
+          // backoffice reads none for an offline hotel) - the card stood bare.
+          // The hotel's stored pictures are keyed by its hid, as in /api/offline-hotels.
+          const hid = (hotelRows || []).find((h) => h.hid != null)?.hid;
+          if (hid != null) {
+            const { data: meta, error: metaError } = await supabase
+              .from("hotels")
+              .select("images_ext")
+              .eq("hid", hid)
+              .maybeSingle();
+            if (metaError) console.error(JSON.stringify(metaError));
+            hotelImage = hotelPhotoUrl(meta?.images_ext);
+          }
         }
       }
     }

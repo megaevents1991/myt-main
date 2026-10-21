@@ -130,6 +130,25 @@ export function roomsLabel(
     .join(" + ");
 }
 
+// The hotel from outside first, then its lobby - what a hotel card opens on.
+const HOTEL_PHOTO_FIRST = ["hotel_front", "exterior", "lobby"];
+
+/**
+ * The package's hotel photo from the hotel's stored pictures (`hotels.images_ext`),
+ * sized like a hotel card ("x500"). A package of OUR OWN hotel stock is built
+ * without one (the backoffice reads no picture for an offline hotel), so the
+ * package route finds it here. Null = the hotel has no picture.
+ */
+export function hotelPhotoUrl(
+  images: { category_slug?: string | null; url?: string | null }[] | null | undefined,
+): string | null {
+  const usable = (images ?? []).filter((img) => !!img?.url);
+  const pick =
+    HOTEL_PHOTO_FIRST.map((slug) => usable.find((img) => img.category_slug === slug)).find(Boolean) ??
+    usable[0];
+  return pick?.url ? pick.url.replace("{size}", "x500") : null;
+}
+
 /** Party sizes a house package is priced for: within its max, ascending. */
 export function variantSizes(variants: unknown, maxTravelers: unknown): number[] {
   if (!variants || typeof variants !== "object" || Array.isArray(variants)) return [];
