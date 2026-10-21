@@ -469,6 +469,53 @@ export const ReadyPackageShowcase = ({
   const pending = extras?.pending;
   const settling = !!pending && (pending.bag || pending.trolley || pending.breakfast);
 
+  // What the stay includes - the meal (or the breakfast to add) and the amenities. From
+  // 1536px, three cards in a row, it stands under the hotel's photo: in the text it
+  // made the hotel's the longest text of the row, and the flight card held the
+  // difference as an empty band above its times (Alon, 21.10). Drawn in both places,
+  // one shown per width, like the traveller picker.
+  const hotelIncluded = hotel ? (
+    <>
+      {breakfastAdded ? (
+        <Extra
+          added
+          label="ארוחת בוקר נוספה"
+          cost={breakfastAdded.delta_usd > 0 ? <Money amount={breakfastAdded.delta_usd} /> : "חינם"}
+          onRemove={extras && breakfastAdded.prev_rate ? extras.onRemoveBreakfast : undefined}
+        />
+      ) : hasMeal ? (
+        <Included>{mealPlanLabel(hotel.rate)}</Included>
+      ) : pending?.breakfast ? (
+        <Pending>מעדכן את ארוחת הבוקר</Pending>
+      ) : (
+        <>
+          <p className="text-[15px] text-muted-foreground">{mealPlanLabel(hotel.rate)}</p>
+          {/* The same room's breakfast rate, when the hotel search behind this page has one. */}
+          {extras?.breakfastUpgrade && (
+            <Extra
+              label="הוסף ארוחת בוקר"
+              cost={
+                extras.breakfastUpgrade.deltaUsd > 0 ? (
+                  <>
+                    <Money amount={extras.breakfastUpgrade.deltaUsd} /> לכל השהות
+                  </>
+                ) : (
+                  "חינם"
+                )
+              }
+              onAdd={extras.onAddBreakfast}
+            />
+          )}
+        </>
+      )}
+      {amenities.length > 0 && (
+        <div>
+          <Amenities roomAmenities={[]} hotelAmenities={amenities} />
+        </div>
+      )}
+    </>
+  ) : null;
+
   // The order's ticket carries a name and an id; where it sits is on the event's own ticket.
   const ticket = useMemo(() => {
     const all = event.tickets_and_rates ?? [];
@@ -724,50 +771,17 @@ export const ReadyPackageShowcase = ({
                   </p>
                 )}
               </div>
-              {breakfastAdded ? (
-                <Extra
-                  added
-                  label="ארוחת בוקר נוספה"
-                  cost={breakfastAdded.delta_usd > 0 ? <Money amount={breakfastAdded.delta_usd} /> : "חינם"}
-                  onRemove={extras && breakfastAdded.prev_rate ? extras.onRemoveBreakfast : undefined}
-                />
-              ) : hasMeal ? (
-                <Included>{mealPlanLabel(hotel.rate)}</Included>
-              ) : pending?.breakfast ? (
-                <Pending>מעדכן את ארוחת הבוקר</Pending>
-              ) : (
-                <>
-                  <p className="text-[15px] text-muted-foreground">{mealPlanLabel(hotel.rate)}</p>
-                  {/* The same room's breakfast rate, when the hotel search behind this page has one. */}
-                  {extras?.breakfastUpgrade && (
-                    <Extra
-                      label="הוסף ארוחת בוקר"
-                      cost={
-                        extras.breakfastUpgrade.deltaUsd > 0 ? (
-                          <>
-                            <Money amount={extras.breakfastUpgrade.deltaUsd} /> לכל השהות
-                          </>
-                        ) : (
-                          "חינם"
-                        )
-                      }
-                      onAdd={extras.onAddBreakfast}
-                    />
-                  )}
-                </>
-              )}
-              {amenities.length > 0 && (
-                <div>
-                  <Amenities roomAmenities={[]} hotelAmenities={amenities} />
-                </div>
-              )}
+              <div className={cn("flex flex-col gap-2.5", hotelPhoto && "min-[1536px]:hidden")}>
+                {hotelIncluded}
+              </div>
             </div>
             {hotelPhoto && (
-              <div className={cn(PIECE_SHOW, SHOW_BESIDE, "md:w-[38%]")}>
+              <div className={cn(PIECE_SHOW, SHOW_BESIDE, "md:w-[38%] min-[1536px]:flex min-[1536px]:flex-col")}>
                 {/* The photo fills its part and never sets its height: the text beside it,
                     or the row of pictures, does (a photo that grew with the row made the
-                    cards a screen tall). */}
-                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px] min-[1536px]:min-h-40">
+                    cards a screen tall). In the row of three it is a band of its own
+                    height with what the stay includes under it. */}
+                <div className="relative h-44 overflow-hidden rounded-xl md:h-full md:min-h-[200px] min-[1536px]:h-32 min-[1536px]:min-h-0 min-[1536px]:shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={hotelPhoto}
@@ -776,6 +790,7 @@ export const ReadyPackageShowcase = ({
                     loading="lazy"
                   />
                 </div>
+                <div className="mt-3 hidden flex-col gap-2.5 min-[1536px]:flex">{hotelIncluded}</div>
               </div>
             )}
           </div>
@@ -825,7 +840,7 @@ export const ReadyPackageShowcase = ({
               >
                 {/* Beside the hotel alone (1360-1536px) the map stays under the height
                     the hotel's text and photo need, so it never stretches that card. */}
-                <div className="w-full max-w-[300px] min-[1360px]:max-w-[260px] min-[1536px]:max-w-[300px]">
+                <div className="w-full max-w-[300px] min-[1360px]:max-w-[260px] min-[1536px]:max-w-[220px]">
                   {mapListing ? (
                     <TixstockDynamicMap
                       mapUrl={event.map_image_url}

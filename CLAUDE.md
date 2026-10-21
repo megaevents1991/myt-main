@@ -241,6 +241,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > hotel photo: the backoffice builder stores `hotel_image` only for a live
 > hotel. `/api/package/[id]` now finds it for an offline hotel from
 > `hotels.images_ext` by the stock row's `hid` (`hotelPhotoUrl`, tested).
+> (c) **Row of three, re-balanced (Alon, 21.10).** The flight card still held a
+> 129px empty band above its times from 1536px: the hotel's text (meal, amenities)
+> set the shared text row. From 1536px what the stay includes (`hotelIncluded`)
+> stands UNDER the hotel photo - drawn in both places, one shown per width, like
+> the picker - the photo is a 128px band, the seat map caps at 220px. Measured on
+> 1221: band 172 -> 65, package 762 -> 691px. A flight strip across the top
+> (no band at all) and shrinking every card (band stays: it is a ratio of the
+> texts) were shown to Dor; he picked this.
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future
