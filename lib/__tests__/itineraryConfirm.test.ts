@@ -770,10 +770,12 @@ describe("I3 - checkTickets: the ticket is a row the event still sells", () => {
     expect(checkTickets([celine, tx], { ...sub.tickets, 702: tixstock(1) })).toMatchObject({ code: "TICKET_CHANGED" });
   });
 
-  it("LiveTickets has no stored-price floor here (its live validator checks it)", () => {
+  it("LiveTickets has the same 0.6 floor ALWAYS (its live check answers null when it cannot run)", () => {
     const lt = { ...chelsea, tickets_and_rates: [{ id: "t702", category: "A", price: 150, supplier: "livetickets" }] } as unknown as Event;
-    const ltTicket = { ...ticket("t702", 10), supplier: "livetickets" } as unknown as OrderTicket;
-    expect(checkTickets([celine, lt], { ...sub.tickets, 702: ltTicket })).toBeNull();
+    const ltTicket = (price: number) => ({ ...ticket("t702", price), supplier: "livetickets" }) as unknown as OrderTicket;
+    expect(checkTickets([celine, lt], { ...sub.tickets, 702: ltTicket(10) })).toMatchObject({ code: "TICKET_CHANGED", status: 409, eventId: 702 });
+    expect(checkTickets([celine, lt], { ...sub.tickets, 702: ltTicket(89.99) })).toMatchObject({ code: "TICKET_CHANGED" });
+    expect(checkTickets([celine, lt], { ...sub.tickets, 702: ltTicket(90) })).toBeNull();
   });
 });
 
@@ -887,10 +889,6 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
       getEvent: async (id) => {
         calls.push(`event ${id}`);
         return [celine, chelsea, coldplay].find((e) => e.id === id);
-      },
-      liveTicketsReachable: async () => {
-        calls.push("lt reachable");
-        return true;
       },
       validateTicket: async () => {
         calls.push("validate");
@@ -1054,7 +1052,7 @@ describe("round 3 - a ticket's long texts never refuse a hold", () => {
   });
 });
 
-describe("round 3 - LiveTickets: the row's event id, and a floor when the live check cannot run", () => {
+describe("round 4 - LiveTickets: the row's event id, and the stored-price floor ALWAYS", () => {
   /** Chelsea sold through LiveTickets: one row, its own LiveTickets event id. */
   const ltChelsea = (eid?: string) =>
     ({
@@ -1074,8 +1072,8 @@ describe("round 3 - LiveTickets: the row's event id, and a floor when the live c
     expect(withRowEids([celine, ltChelsea()], { 702: ltTicket(150) })[702].eid).toBeUndefined();
   });
 
-  /** The flow with LiveTickets reachable or not; the validator records the event id it was given. */
-  const run = async (event: Event, price: number, reachable: boolean) => {
+  /** The flow; the live validator answers null ("fine" - or "could not check") and records the event id. */
+  const run = async (event: Event, price: number) => {
     const seen: string[] = [];
     const calls: string[] = [];
     const deps: ConfirmDeps = {
@@ -1086,10 +1084,6 @@ describe("round 3 - LiveTickets: the row's event id, and a floor when the live c
       validateTicket: async (data) => {
         if (data.event_order_info.supplier === "livetickets") seen.push(String(data.event_order_info.supplier_event_id));
         return null;
-      },
-      liveTicketsReachable: async () => {
-        calls.push("reachable");
-        return reachable;
       },
       getRate: async () => RATE,
       groupDb: {
@@ -1116,30 +1110,76 @@ describe("round 3 - LiveTickets: the row's event id, and a floor when the live c
   };
 
   it("the live validator is handed the ROW's event id", async () => {
-    const { answer, seen } = await run(ltChelsea("LT-77"), 150, true);
+    const { answer, seen } = await run(ltChelsea("LT-77"), 150);
     expect(answer.status).toBe(200);
     expect(seen).toEqual(["LT-77"]);
   });
 
-  it("LiveTickets checked live: no stored-price floor here (the validator owns the price)", async () => {
-    const { answer, calls } = await run(ltChelsea("LT-77"), 50, true);
-    expect(answer.status).toBe(200);
-    expect(calls).toContain("reachable");
-  });
-
-  it("LiveTickets unreachable: not below 0.6 of the stored price - $50 of $150 is 409, $90 passes", async () => {
-    expect((await run(ltChelsea("LT-77"), 50, false)).answer).toMatchObject({
-      status: 409,
-      body: { error: "TICKET_CHANGED", eventId: 702 },
-    });
-    expect((await run(ltChelsea("LT-77"), 90, false)).answer.status).toBe(200);
-  });
-
-  it("no event id on the row: the live check cannot run - the floor applies, nothing asked of LiveTickets", async () => {
-    const low = await run(ltChelsea(), 50, true);
-    expect(low.answer).toMatchObject({ status: 409, body: { error: "TICKET_CHANGED" } });
-    expect(low.calls).not.toContain("reachable");
+  it("below 0.6 of the stored price: 409 even though the live validator said nothing - $50 of $150", async () => {
+    const low = await run(ltChelsea("LT-77"), 50);
+    expect(low.answer).toMatchObject({ status: 409, body: { error: "TICKET_CHANGED", eventId: 702 } });
     expect(low.calls).not.toContain("insert");
+    expect(low.seen).toEqual([]); // refused at the ticket check, before the live validators
+  });
+
+  it("at 0.6 of the stored price it passes ($90 of $150), with or without an event id on the row", async () => {
+    expect((await run(ltChelsea("LT-77"), 90)).answer.status).toBe(200);
+    expect((await run(ltChelsea(), 90)).answer.status).toBe(200);
+    expect((await run(ltChelsea(), 50)).answer).toMatchObject({ status: 409, body: { error: "TICKET_CHANGED" } });
+  });
+});
+
+describe("round 4 - the ticket the server keeps is an allowlist of fields", () => {
+  it("a 50 KB description and an unknown key never reach the stored row or the ops email", () => {
+    const raw = wire(full);
+    const tickets = raw.tickets as Record<string, Record<string, unknown>>;
+    const big = "X".repeat(50_000);
+    const body = {
+      ...raw,
+      tickets: { ...tickets, "702": { ...tickets["702"], description: big, evil: "INJECTED-KEY", colorOnTheMap: "#f00" } },
+    };
+    const sub = parsed(body);
+    expect(Object.keys(sub.tickets[702]).sort()).toEqual(
+      ["category", "description", "id", "price", "quantity", "supplier", "zoneLabel"].sort(),
+    );
+    expect(sub.tickets[702].description).toBe("");
+    const rows = buildGroupRows(sub, route, { group: GROUP, rateIls: RATE, settings: S, status: "24Save", gtmIdnts: null });
+    const stored = JSON.stringify(rows[1].event_order_info);
+    expect(stored).not.toContain("INJECTED-KEY");
+    expect(stored).not.toContain("XXXXXXXX");
+    expect(rows[1].event_order_info).not.toHaveProperty("evil");
+    expect(rows[1].event_order_info).not.toHaveProperty("description");
+    const { text } = tripOpsMail(
+      tripMailInput({ sub, route, rows, ids: [1, 2], references: [null, null], price: priceOf(full), rateIls: RATE }),
+    );
+    expect(text).not.toContain("INJECTED-KEY");
+    expect(text).not.toContain("XXXXXXXX");
+  });
+
+  it("keeps every field the reservation, the email and the checks use - a number id of the supplier's event as text", () => {
+    const raw = wire(full);
+    const tickets = raw.tickets as Record<string, Record<string, unknown>>;
+    const sub = parsed({
+      ...raw,
+      tickets: {
+        ...tickets,
+        "702": { ...tickets["702"], vendor: "v", eid: 991, supplierCategory: "Cat 1", nonInstant: true, seatingChoice: "split" },
+      },
+    });
+    expect(sub.tickets[702]).toEqual({
+      id: "t702",
+      category: "cat t702",
+      price: 150,
+      quantity: 2,
+      description: "",
+      vendor: "v",
+      eid: "991",
+      supplier: "static",
+      supplierCategory: "Cat 1",
+      zoneLabel: "zone t702",
+      nonInstant: true,
+      seatingChoice: "split",
+    });
   });
 });
 
@@ -1162,7 +1202,6 @@ describe("round 3 - an unreadable body answers the switch first", () => {
     now: () => NOW,
     getEvent: async () => undefined,
     validateTicket: async () => null,
-    liveTicketsReachable: async () => true,
     getRate: async () => RATE,
     groupDb: { insert: async () => ({ data: null, error: null }), find: async () => ({ data: [], error: null }) },
     offlineDb: { readBlocks: async () => ({ data: [], error: null }), readConsumed: async () => ({ data: null }), writeConsumed: async () => ({}) },

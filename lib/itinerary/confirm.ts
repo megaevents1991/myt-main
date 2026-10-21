@@ -156,6 +156,39 @@ function ticketTextOk(t: Record<string, unknown>): boolean {
   return true;
 }
 
+/** An optional text field as yup takes it (`ticketTextOk` checked it): absent stays absent, a number becomes its text. */
+const optText = (v: unknown): string | undefined => (v === undefined ? undefined : String(v));
+
+/**
+ * The ticket the server keeps: an ALLOWLIST of the fields that are priced, checked, stored on the
+ * reservation (`eventOrderInfo`) or mailed - `id`, `category`, `price`, `quantity`, `vendor`,
+ * `eid`, `supplier`, `supplierCategory`, `zoneLabel`, `nonInstant`, `seatingChoice` (all checked
+ * by `ticketTextOk` / `parseSubmission` first). Anything else the client sent - `description`
+ * (left empty), an unknown key - goes no further than this function.
+ */
+function pickTicket(t: Record<string, unknown>, pax: number): OrderTicket {
+  const ticket: OrderTicket = {
+    id: String(t.id),
+    category: String(t.category),
+    price: Number(t.price),
+    quantity: pax,
+    description: "",
+  };
+  const vendor = optText(t.vendor);
+  const eid = optText(t.eid);
+  const supplier = optText(t.supplier);
+  const supplierCategory = optText(t.supplierCategory);
+  const zoneLabel = optText(t.zoneLabel);
+  if (vendor !== undefined) ticket.vendor = vendor;
+  if (eid !== undefined) ticket.eid = eid;
+  if (supplier !== undefined) ticket.supplier = supplier;
+  if (supplierCategory !== undefined) ticket.supplierCategory = supplierCategory;
+  if (zoneLabel !== undefined) ticket.zoneLabel = zoneLabel;
+  if (t.nonInstant === true || t.nonInstant === false) ticket.nonInstant = t.nonInstant;
+  if (t.seatingChoice === "together" || t.seatingChoice === "split") ticket.seatingChoice = t.seatingChoice;
+  return ticket;
+}
+
 const isSegment = (v: unknown): boolean =>
   isObj(v) && isText(v.departureTime) && isText(v.arrivalTime) && isText(v.departureAirport) && isText(v.arrivalAirport);
 
@@ -217,8 +250,8 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
       return no(`ticket of event ${id}`);
     }
     if (!ticketTextOk(t)) return no(`ticket fields of event ${id}`);
-    // The boundary: the shape the summary sends, checked above.
-    tickets[id] = t as unknown as OrderTicket;
+    // The boundary: only the checked fields go on (an allowlist).
+    tickets[id] = pickTicket(t, pax);
   }
 
   const f = raw.flight;
@@ -477,9 +510,11 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
 }
 
 /**
- * A ticket priced without a live check - TixStock always (its live price can sit below its stored
- * one), LiveTickets when its live check could not run - may not go below this share of its stored
- * price: the live floor's slack (app/api/confirm-order/utils.ts:248).
+ * A live-priced ticket - TixStock and LiveTickets (their live price can sit below the stored one) -
+ * may not go below this share of its stored price: the live floor's slack
+ * (app/api/confirm-order/utils.ts:248). For LiveTickets it holds ALWAYS, beside the live check
+ * (`validateLiveTicketsOffer`): that check answers "fine" both when it passed and when it could
+ * not run, so nothing may rest on it alone.
  */
 export const UNCHECKED_PRICE_FLOOR = 0.6;
 
@@ -517,9 +552,9 @@ export function withRowEids(route: Event[], tickets: Record<number, OrderTicket>
  * names must be that row's.
  * The price, by supplier:
  *  - our own and static tickets are never live-priced (`ownTicketForQuantity`): not below the row's;
- *  - TixStock: not below `UNCHECKED_PRICE_FLOOR` of the row's;
- *  - LiveTickets is checked live (`validateLiveTicketsOffer`, on the row's `eid`); when that check
- *    cannot run the flow applies the same floor (lib/itinerary/confirmFlow.ts).
+ *  - TixStock and LiveTickets: not below `UNCHECKED_PRICE_FLOOR` of the row's - for LiveTickets on
+ *    top of its live check (`validateLiveTicketsOffer`, on the row's `eid`, ≥ 97% of the live offer
+ *    when it runs).
  * 409 TICKET_CHANGED: the customer picks again on fresh rows.
  */
 export function checkTickets(route: Event[], tickets: Record<number, OrderTicket | undefined>): ConfirmFailure | null {
@@ -530,7 +565,9 @@ export function checkTickets(route: Event[], tickets: Record<number, OrderTicket
     const supplier = ticketSupplier(row, e.type);
     if (ticketSupplier(t, e.type) !== supplier) return failure("TICKET_CHANGED", { eventId: e.id });
     if (supplier === "static" && !(Number(t.price) >= Number(row.price))) return failure("TICKET_CHANGED", { eventId: e.id });
-    if (supplier === "tixstock" && belowUncheckedFloor(t, row)) return failure("TICKET_CHANGED", { eventId: e.id });
+    if ((supplier === "tixstock" || supplier === "livetickets") && belowUncheckedFloor(t, row)) {
+      return failure("TICKET_CHANGED", { eventId: e.id });
+    }
   }
   return null;
 }

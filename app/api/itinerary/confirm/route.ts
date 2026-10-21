@@ -10,7 +10,6 @@ import { sendTripEmails } from "@/lib/itinerary/emails";
 import type { GroupDb } from "@/lib/itinerary/insertGroup";
 import { BLOCK_COLUMNS, type OfflineHotelDb } from "@/lib/itinerary/offlineHold";
 import { getItinerarySettings } from "@/lib/itinerary/settings.server";
-import { getLiveTicketsOffers } from "@/lib/livetickets";
 import { supabase } from "@/lib/supabase";
 import { TICKET_COST_DEADLINE_MS, snapshotTicketCost, withDeadline } from "@/lib/ticket-cost";
 
@@ -110,8 +109,6 @@ export async function POST(req: Request) {
       getEvent: async (id) => (await getEvents(id)).events[0],
       // confirm-order route.ts order: LiveTickets, then our own seats.
       validateTicket: async (data: OrderData) => (await validateLiveTicketsOffer(data)) ?? (await validateOwnStock(data)),
-      // null = LiveTickets unreachable / not configured (the validator then could not check).
-      liveTicketsReachable: async (eid) => (await getLiveTicketsOffers(eid)) !== null,
       // The live travel rate (the rate the order page quotes and confirm-order's floor uses).
       getRate: async () => {
         await exchangeRateService.ensureFresh();
