@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מגה איבנטס - מסלולים (אב טיפוס)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="./blobs.js"></script>
+<style>
+/* Tokens copied from app/globals.css (.dark) - the site's live theme */
+:root{
+  --background:158 40% 6%; --foreground:60 33% 97%; --card:158 30% 10%; --muted:158 18% 16%;
+  --muted-foreground:0 0% 70%; --accent:158 25% 18%; --border:158 18% 20%; --primary:141 100% 68%;
+  --surface-inverse:244 60% 6%; --destructive:354 90% 62%;
+  --brand-mint:141 100% 68%; --brand-aqua:189 100% 64%; --brand-violet:257 100% 82%;
+  --brand-coral:354 100% 65%; --brand-gold:48 96% 53%; --brand-orange:27 100% 65%; --brand-forest:158 44% 7%;
+  --radius:.75rem; --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;border-color:hsl(var(--border))}
+html,body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font-family:Assistant,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+img{display:block}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:hsl(var(--muted-foreground))}
+.mint{color:hsl(var(--primary))}
+.wrap{max-width:1140px;margin:0 auto;padding:0 16px}
+.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* prototype switcher (not part of the design) */
+.proto{position:sticky;top:0;z-index:60;background:#000;border-bottom:1px solid #222;display:flex;gap:6px;align-items:center;overflow-x:auto;padding:7px 10px;scrollbar-width:none}
+.proto .tag{background:hsl(var(--brand-gold));color:#111;font-weight:800;font-size:11px;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.proto button{font-size:12.5px;font-weight:700;color:#bbb;border-radius:99px;padding:5px 11px;white-space:nowrap}
+.proto button.on{background:#1d3a2d;color:hsl(var(--primary))}
+
+/* site header */
+.site-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid hsl(var(--border))}
+.logo{direction:ltr;font-family:Rubik;font-weight:900;font-size:21px;letter-spacing:-.02em}
+.logo i{font-style:normal;color:hsl(var(--primary))}
+.burger{width:38px;height:38px;border-radius:50%;background:hsl(var(--surface-inverse));border:1px solid hsl(var(--border));display:grid;place-items:center}
+
+/* ---------- homepage section (replica of ClientSideHomepage) ---------- */
+.sec{padding:26px 0 8px}
+.sec-h{display:flex;align-items:stretch;margin:8px 0 6px}
+.sec-h .cube{background:hsl(var(--primary));margin:0 4px;height:40px;width:23px}
+.sec-h .cube.w{width:46px}
+.sec-h .cube.sm{display:none}
+.sec-h h2{font-family:Rubik;font-weight:800;font-size:26px;letter-spacing:-.02em;margin:0 8px;align-self:center}
+.sec-sub{margin:0 0 16px;font-size:15px}
+.row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 18px;scrollbar-width:none}
+.row>*{scroll-snap-align:start;flex:0 0 78%;max-width:300px}
+@media(min-width:640px){.sec-h .cube.sm{display:block}.sec-h h2{font-size:36px}}
+@media(min-width:900px){.row>*{flex:0 0 calc(25% - 11px);max-width:none}}
+.ev-card{display:flex;flex-direction:column;border-radius:16px;border:1px solid hsl(var(--border));background:hsl(var(--card));overflow:hidden;box-shadow:0 4px 12px -2px rgb(0 0 0/.08);transition:transform .2s,box-shadow .2s;text-align:right;height:100%;width:100%}
+.ev-card:hover{transform:translateY(-4px);box-shadow:0 10px 24px -6px rgb(0 0 0/.5)}
+.ev-card>.art{height:160px}
+.ev-body{display:flex;flex:1;flex-direction:column;padding:16px}
+.ev-body h3{margin:0;font-weight:700;font-size:18px;line-height:1.2;min-height:2.4em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ev-meta{margin:2px 0 0;font-size:14px;color:hsl(var(--muted-foreground))}
+.ev-meta b{color:hsl(var(--foreground))}
+.badge-slot{margin-top:8px;min-height:28px;display:flex;gap:6px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:800}
+.badge.save{background:hsl(var(--primary)/.14);color:hsl(var(--primary));border:1px solid hsl(var(--primary)/.35)}
+.price-row{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-top:1px solid hsl(var(--border));padding-top:12px}
+.price-row .lbl{margin:0;font-size:11px;line-height:1;color:hsl(var(--muted-foreground))}
+.price-row .big{margin-top:4px;font-size:24px;font-weight:800;line-height:1}
+.price-row .sub{margin:4px 0 0;font-size:11px;line-height:1.25;color:hsl(var(--muted-foreground))}
+.pk-icons{display:flex;gap:10px}
+.pk-icons span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:hsl(var(--muted-foreground))}
+.pk-icons span:first-child{color:hsl(var(--brand-gold))}
+.card-cta{margin-top:16px;border-radius:6px;background:hsl(var(--foreground));color:hsl(var(--background));text-align:center;font-weight:600;font-size:12px;padding:12px}
+
+/* EventArt replica */
+.art{position:relative;overflow:hidden;background:hsl(var(--surface-inverse));container-type:inline-size}
+.art svg.blob{position:absolute;inset:0;width:100%;height:100%}
+.art img.cut{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:bottom}
+.art img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.art .vs{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:4%;padding:0 5%;direction:rtl}
+.art .vs img{height:52%;width:34%;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55))}
+.art .vs b{font-family:Rubik;font-style:italic;font-weight:900;color:#FAFAF5;font-size:clamp(8px,9cqw,22px);text-shadow:0 2px 6px rgba(0,0,0,.7)}
+.split{display:flex;height:160px;position:relative}
+.split .art{flex:1}
+.split .art+.art{border-inline-start:2px solid hsl(var(--card))}
+.route-pill{position:absolute;bottom:10px;right:10px;display:flex;align-items:center;gap:6px;background:hsl(var(--surface-inverse)/.88);backdrop-filter:blur(6px);border:1px solid hsl(0 0% 100%/.12);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:800}
+.route-pill .ic{width:13px;height:13px}
+.build-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;border-radius:16px;border:1.5px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.04);padding:24px;min-height:100%}
+.build-card .plus{width:56px;height:56px;border-radius:50%;background:hsl(var(--primary));color:hsl(var(--background));display:grid;place-items:center;font-size:30px;font-weight:800}
+.build-card h3{margin:0;font-family:Rubik;font-weight:800;font-size:20px}
+.build-card p{margin:0;font-size:14px;color:hsl(var(--muted-foreground));line-height:1.45}
+.ctx-note{font-size:12px;color:hsl(var(--muted-foreground));border:1px dashed hsl(var(--border));border-radius:10px;padding:8px 12px;display:inline-block}
+
+/* ---------- order flow (replica of /order/[id]) ---------- */
+.o-head{background:hsl(var(--card));border-bottom:1px solid hsl(var(--border))}
+.o-head .wrap{display:flex;align-items:center;gap:16px;padding-top:18px;padding-bottom:18px}
+.avatars{display:flex;flex:none}
+.avatars .art{width:64px;height:64px;border-radius:50%;border:2px solid #fff;box-shadow:0 4px 10px rgb(0 0 0/.4)}
+.avatars .art+.art{margin-inline-start:-22px}
+.o-head h1{margin:0;display:flex;flex-direction:column;font-weight:400}
+.o-head h1 .t{font-size:26px;font-weight:700;margin-bottom:4px;line-height:1.1}
+.o-head h1 .d{font-size:16px}
+.o-link{margin-top:6px;display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:600;color:hsl(var(--primary));text-decoration:underline;text-decoration-color:hsl(var(--primary)/.4);text-underline-offset:2px}
+.o-main{padding:20px 16px 240px}
+.lead{font-size:19px;line-height:1.45;margin:0 0 16px}
+.lead b{font-weight:800}
+.panel{border-radius:16px;border:1px solid hsl(var(--border));background:hsl(var(--card));padding:16px;margin-bottom:14px}
+.panel h3{margin:0 0 4px;font-family:Rubik;font-weight:800;font-size:19px}
+
+/* stops timeline */
+.leg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:600;color:hsl(var(--muted-foreground));padding:10px 0;margin-inline-start:14px;padding-inline-start:26px;border-inline-start:2px dashed hsl(var(--border));position:relative}
+.leg .dot{position:absolute;right:-15px;width:28px;height:28px;border-radius:50%;background:hsl(var(--muted));border:2px solid hsl(var(--card));display:grid;place-items:center;color:hsl(var(--foreground))}
+.leg .dot .ic{width:14px;height:14px}
+.leg b{color:hsl(var(--foreground))}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;border-radius:99px;padding:2px 9px;background:hsl(var(--muted));color:hsl(var(--foreground))}
+.stop{display:flex;gap:12px;align-items:center;border:1px solid hsl(var(--border));background:hsl(var(--background));border-radius:14px;padding:10px;position:relative;animation:pop .35s var(--ease)}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.stop .art{width:76px;height:76px;border-radius:12px;flex:none}
+.stop .n{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:hsl(var(--primary));color:hsl(var(--background));font-family:Rubik;font-weight:900;font-size:13px;display:grid;place-items:center}
+.stop .t{font-weight:700;font-size:17px;line-height:1.2}
+.stop .m{font-size:13.5px;color:hsl(var(--muted-foreground));margin-top:3px}
+.stop .m b{color:hsl(var(--foreground))}
+.stop .x{margin-inline-start:auto;width:32px;height:32px;border-radius:50%;border:1px solid hsl(var(--border));display:grid;place-items:center;color:hsl(var(--muted-foreground));flex:none}
+.stop .x:hover{color:hsl(var(--destructive));border-color:hsl(var(--destructive))}
+.empty{border:1.5px dashed hsl(var(--border));border-radius:14px;padding:22px;text-align:center}
+
+/* day planner */
+.days{display:grid;gap:4px;margin-top:12px}
+.day{background:hsl(var(--muted));border-radius:10px;padding:7px 2px;text-align:center;font-size:11px;font-weight:700;color:hsl(var(--muted-foreground));position:relative;min-height:54px}
+.day .dn{display:block;font-family:Rubik;font-size:17px;color:hsl(var(--foreground))}
+.day.ev{background:hsl(var(--primary)/.14);box-shadow:inset 0 0 0 1.5px hsl(var(--primary)/.6)}
+.day.ev .dn{color:hsl(var(--primary))}
+.day .evn{position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:hsl(var(--primary));color:hsl(var(--background));font-family:Rubik;font-weight:900;font-size:10.5px;border-radius:99px;padding:0 6px}
+.nights{display:grid;gap:4px;margin-top:6px}
+.seg{border-radius:8px;padding:6px 9px;font-weight:800;font-size:12px;display:flex;justify-content:space-between;gap:6px;white-space:nowrap;overflow:hidden;color:hsl(var(--background))}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ctrl{display:flex;align-items:center;gap:6px;border:1px solid hsl(var(--border));border-radius:99px;padding:3px 10px 3px 4px;font-size:13px;font-weight:700}
+.ctrl button{width:26px;height:26px;border-radius:50%;background:hsl(var(--muted));display:grid;place-items:center;font-weight:800}
+.ctrl button:disabled{opacity:.3;cursor:not-allowed}
+
+/* segmented tabs (replica of the flight/hotel sort tabs) */
+.seg-tabs{display:flex;gap:4px;border:1px solid hsl(var(--border));border-radius:14px;padding:4px;background:hsl(var(--background))}
+.seg-tabs button{flex:1;border-radius:10px;padding:8px 6px;font-size:13px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px}
+.seg-tabs button.on{background:hsl(var(--foreground));color:hsl(var(--background))}
+
+/* candidate rows */
+.cand{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid hsl(var(--border))}
+.cand .art{width:62px;height:62px;border-radius:12px;flex:none}
+.cand .t{font-weight:700;font-size:16px;line-height:1.2}
+.cand .m{font-size:13px;color:hsl(var(--muted-foreground));margin-top:2px}
+.cand .m b{color:hsl(var(--foreground))}
+.why{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12px;font-weight:800;border-radius:99px;padding:2px 9px}
+.why.best{background:hsl(var(--primary)/.15);color:hsl(var(--primary))}
+.why.ok,.why.same{background:hsl(var(--accent));color:hsl(var(--foreground))}
+.why.warn{background:hsl(var(--brand-gold)/.15);color:hsl(var(--brand-gold))}
+.why.no{background:hsl(var(--destructive)/.14);color:hsl(354 100% 76%)}
+.cand.blocked .art,.cand.blocked .t,.cand.blocked .m{opacity:.45}
+.add{margin-inline-start:auto;flex:none;border-radius:6px;background:hsl(var(--foreground));color:hsl(var(--background));font-weight:700;font-size:12.5px;padding:9px 14px;white-space:nowrap}
+.add:disabled{background:hsl(var(--muted));color:hsl(var(--muted-foreground));cursor:not-allowed}
+
+/* tickets (replica of TicketSelection) */
+.ev-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin-bottom:12px;scrollbar-width:none}
+.ev-tab{display:flex;align-items:center;gap:8px;border:1.5px solid hsl(var(--border));border-radius:99px;padding:5px 12px 5px 6px;white-space:nowrap;font-weight:700;font-size:14px;flex:none;text-align:right}
+.ev-tab .art{width:34px;height:34px;border-radius:50%}
+.ev-tab.on{border-color:hsl(var(--primary));background:hsl(var(--primary)/.1)}
+.ev-tab .ok{color:hsl(var(--primary))}
+.map{background:#fff;border-radius:18px;padding:12px;margin-bottom:14px}
+.map svg{width:100%;height:auto;display:block}
+.cat{display:flex;border-radius:16px;overflow:hidden;border:1.5px solid hsl(var(--border));background:hsl(var(--card));margin-bottom:12px;text-align:right;width:100%}
+.cat .strip{width:9px;background:hsl(var(--primary)/.85);flex:none}
+.cat .in{flex:1;padding:14px 16px}
+.cat .top{display:flex;gap:12px;align-items:flex-start}
+.radio{width:22px;height:22px;border-radius:50%;border:2px solid hsl(var(--muted-foreground)/.6);flex:none;margin-top:4px;display:grid;place-items:center}
+.cat.on{border-color:hsl(var(--primary))}
+.cat.on .radio{border-color:hsl(var(--foreground));background:hsl(var(--foreground))}
+.cat.on .radio:after{content:"";width:8px;height:8px;border-radius:50%;background:hsl(var(--background))}
+.cat .nm{font-weight:800;font-size:19px;line-height:1.25}
+.cat .sb{font-size:14px;color:hsl(var(--muted-foreground))}
+.cat .pr{margin-inline-start:auto;text-align:center;font-weight:800;font-size:20px;line-height:1.1;white-space:nowrap}
+.cat .pr small{display:block;font-size:13px;font-weight:700}
+.qty{border-top:1px solid hsl(var(--border));margin-top:14px;padding-top:12px;text-align:center}
+.qty .st{display:flex;align-items:center;justify-content:center;gap:18px;margin:8px 0}
+.qty .st span{cursor:pointer;width:32px;height:32px;border-radius:50%;background:hsl(var(--foreground));color:hsl(var(--background));display:grid;place-items:center;font-size:18px;font-weight:800}
+.qty .st b{font-size:20px;min-width:20px}
+
+/* flights (replica of the FlightCard list) */
+.search-pill{display:flex;gap:8px;margin-bottom:12px}
+.search-pill .q{flex:1;display:flex;align-items:center;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--background));overflow:hidden;min-height:46px}
+.search-pill .q span{flex:1;text-align:center;font-weight:700;font-size:14.5px;padding:0 8px}
+.search-pill .q i{width:48px;align-self:stretch;display:grid;place-items:center;background:hsl(var(--surface-inverse));font-style:normal}
+.f-card{position:relative;width:100%;text-align:right;border-radius:18px;border:1.5px solid hsl(var(--border));background:hsl(var(--card));margin-top:28px;padding:22px 0 6px;display:block}
+.f-card.on{border:2px solid hsl(var(--primary));box-shadow:0 0 0 4px hsl(var(--primary)/.12)}
+.f-badge{position:absolute;top:-15px;right:50%;transform:translateX(50%);white-space:nowrap;background:#fff;color:#0b1612;font-weight:800;font-size:13px;border-radius:99px;padding:5px 12px;box-shadow:0 4px 10px rgb(0 0 0/.35)}
+.f-badge.up{background:hsl(var(--muted));color:hsl(var(--foreground))}
+.f-tag{position:absolute;top:8px;left:10px;font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px;background:#fff;color:#0b1612}
+.f-grid{display:grid;grid-template-columns:1fr 46px}
+.f-legs{padding:0 14px}
+.f-leg{display:grid;grid-template-columns:auto 1fr 1.3fr 1fr;align-items:center;gap:8px;padding:12px 0}
+.f-legs>*+*{border-top:1px solid hsl(var(--border))}
+.al{background:#fff;color:#0b1612;border-radius:99px;font-size:9.5px;font-weight:900;padding:5px 7px;white-space:nowrap;direction:ltr;min-width:50px;text-align:center}
+.tm{font-family:Rubik;font-weight:700;font-size:19px;line-height:1}
+.tm small{display:block;font-family:Assistant;font-size:12.5px;font-weight:700;color:hsl(var(--muted-foreground));margin-top:3px}
+.dur{text-align:center;font-size:12px;font-weight:700;color:hsl(var(--muted-foreground))}
+.dur .line{height:2px;background:hsl(var(--foreground));margin:5px 0;position:relative}
+.dur .line:after{content:"";position:absolute;left:-2px;top:-4px;border:5px solid transparent;border-right:7px solid hsl(var(--foreground))}
+.dur .stop1{color:hsl(var(--destructive))}
+.dur .direct{color:hsl(var(--primary))}
+.f-bags{border-inline-start:1px solid hsl(var(--border));display:flex;flex-direction:column;align-items:center;justify-content:space-around;font-size:11px;font-weight:800;padding:4px 0}
+.f-bags span{display:flex;flex-direction:column;align-items:center;gap:2px}
+.f-bags .ic{width:15px;height:15px}
+.mid-wrap{padding:0 0 10px}
+.train-row{display:flex;align-items:center;gap:10px;padding:12px 0 8px;color:hsl(var(--muted-foreground));font-size:13.5px}
+.train-row .tico{width:30px;height:30px;border-radius:50%;background:hsl(var(--brand-aqua));color:#0b1612;display:grid;place-items:center;flex:none}
+.tgl{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;border:1px solid hsl(var(--border));border-radius:99px;padding:4px 10px 4px 4px;color:hsl(var(--foreground));background:hsl(var(--background))}
+.tgl .sw{width:30px;height:18px;border-radius:99px;background:hsl(var(--muted));position:relative;transition:background .2s}
+.tgl .sw:after{content:"";position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:right .2s var(--ease)}
+.tgl.on .sw{background:hsl(var(--brand-aqua))}
+.tgl.on .sw:after{right:14px}
+.callout{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:12px 14px;background:hsl(var(--brand-aqua)/.1);border:1px solid hsl(var(--brand-aqua)/.35);font-size:14px;line-height:1.45;margin:4px 0 6px}
+.callout .ic{color:hsl(var(--brand-aqua));margin-top:2px}
+
+/* hotels (replica of HotelCard) */
+.city-tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none}
+.city-tab{flex:none;border:1.5px solid hsl(var(--border));border-radius:14px;padding:8px 14px;text-align:right}
+.city-tab .c{font-weight:800;font-size:15px;display:flex;gap:6px;align-items:center}
+.city-tab .c .ok{color:hsl(var(--primary))}
+.city-tab .dd{font-size:12px;color:hsl(var(--muted-foreground));font-weight:700}
+.city-tab.on{border-color:hsl(var(--primary));background:hsl(var(--primary)/.08)}
+.h-card{position:relative;width:100%;text-align:right;border-radius:18px;border:1.5px solid hsl(var(--border));background:hsl(var(--card));margin-top:28px;padding:24px 16px 16px;display:block}
+.h-card.on{border:2px solid hsl(var(--primary));box-shadow:0 0 0 4px hsl(var(--primary)/.12)}
+.h-top{display:flex;justify-content:space-between;gap:10px}
+.h-name{font-weight:800;font-size:19px;line-height:1.3;direction:ltr;text-align:right}
+.stars{color:#fff;letter-spacing:2px;font-size:15px;white-space:nowrap}
+.h-dist{display:flex;align-items:center;gap:4px;font-size:14px;margin-top:4px}
+.h-dist .ic{width:15px;height:15px;color:hsl(var(--brand-aqua))}
+.h-room{font-weight:800;font-size:15px;margin-top:4px;direction:ltr;text-align:right}
+.h-photo{margin-top:12px;border-radius:14px;overflow:hidden;height:170px;position:relative;background:hsl(var(--muted))}
+.h-photo img{width:100%;height:100%;object-fit:cover}
+.h-photo .dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.h-photo .dots i{width:22px;height:4px;border-radius:9px;background:#fff;opacity:.55}
+.h-photo .dots i:first-child{opacity:1}
+.h-perk{margin-top:10px;font-size:13px;font-weight:700;color:hsl(var(--primary))}
+
+/* summary */
+.sum-item{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid hsl(var(--border))}
+.panel h3+.sum-item{border-top:0}
+.sum-item .art{width:52px;height:52px;border-radius:50%;flex:none}
+.pc-row{display:flex;justify-content:space-between;font-size:15px;padding:6px 0}
+.pc-row.save{color:hsl(var(--primary));font-weight:800}
+.pc-tot{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid hsl(var(--border));margin-top:8px;padding-top:12px}
+.pc-tot .p{font-size:30px;font-weight:800;color:hsl(var(--primary))}
+.compare{margin-top:10px;font-size:13px;border-radius:12px;background:hsl(var(--primary)/.08);border:1px solid hsl(var(--primary)/.25);padding:10px 12px;line-height:1.5}
+.inp{border:1px solid hsl(var(--border));border-radius:10px;background:hsl(var(--background));padding:12px;font-size:14px;color:hsl(var(--muted-foreground))}
+@media(min-width:900px){.o-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}.o-side{position:sticky;top:60px}}
+
+/* continue bar (replica of OrderContinueBar) */
+.cbar{position:fixed;bottom:0;left:0;right:0;z-index:50;padding:8px}
+.cbar .box{max-width:1024px;margin:0 auto;border-radius:18px;border:1px solid hsl(var(--border));background:hsl(var(--card));box-shadow:0 18px 44px -12px rgb(0 0 0/.6);overflow:hidden}
+.cbar .slots{display:flex;gap:8px;padding:8px 12px;background:hsl(var(--muted)/.4);border-bottom:1px solid hsl(var(--border))}
+.slot{flex:1;min-width:0;display:flex;align-items:center;gap:8px;border-radius:12px;border:1.5px dashed hsl(var(--border));background:hsl(var(--card));padding:8px 10px;text-align:right}
+.slot.f{border-style:solid;border-color:hsl(var(--primary)/.6);background:hsl(var(--primary)/.13)}
+.slot .si{color:hsl(var(--muted-foreground))}
+.slot.f .si,.slot.f .sv,.slot.f .ck{color:hsl(var(--primary))}
+.slot .sl{font-size:11px;font-weight:600;color:hsl(var(--muted-foreground))}
+.slot.f .sl{font-size:9.5px}
+.slot .sv{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .ck{margin-inline-start:auto}
+.cbar .act{display:flex;flex-direction:column;gap:8px;padding:10px 16px 12px}
+.cbar .pr{display:flex;align-items:baseline;gap:4px;color:hsl(var(--primary))}
+.cbar .pr .c{font-size:15px;font-weight:700}
+.cbar .pr .v{font-size:24px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.cbar .pr .l{font-size:12px;font-weight:600;color:hsl(var(--muted-foreground));margin-inline-start:4px}
+.cbar .pr .was{font-size:12px;color:hsl(var(--muted-foreground));text-decoration:line-through;margin-inline-start:6px}
+.btns{display:flex;gap:8px}
+.btn-main{flex:1.4;border-radius:6px;background:hsl(var(--foreground));color:hsl(var(--background));font-weight:600;font-size:13px;padding:12px 18px;white-space:nowrap}
+.btn-main:disabled{opacity:.4;cursor:not-allowed}
+.btn-out{flex:1;border-radius:12px;border:1.5px solid hsl(var(--primary));color:hsl(var(--primary));font-weight:700;font-size:14px;padding:10px 14px;white-space:nowrap}
+@media(min-width:720px){
+  .cbar .inner{display:flex;align-items:center;gap:12px;padding:8px 12px}
+  .cbar .slots{flex:1;background:none;border:0;padding:0}
+  .cbar .act{flex-direction:row;align-items:center;padding:0}
+  .btn-main{padding:9px 18px}
+}
+/* self-build: route tray + catalog */
+.tray{display:flex;align-items:center;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.tray-slot{flex:1;min-width:150px;display:flex;align-items:center;gap:8px;border:1.5px dashed hsl(var(--border));border-radius:14px;padding:8px;min-height:62px;background:hsl(var(--card));font-size:13px}
+.tray-slot.f{border-style:solid;border-color:hsl(var(--primary)/.6);background:hsl(var(--primary)/.08);animation:pop .35s var(--ease)}
+.tray-slot .art{width:44px;height:44px;border-radius:50%;flex:none;border:2px solid #fff}
+.tray-slot .ts{display:flex;flex-direction:column;min-width:0;font-size:12.5px;line-height:1.25;color:hsl(var(--muted-foreground))}
+.tray-slot .ts b{font-size:13.5px;color:hsl(var(--foreground));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tray-slot .x{margin-inline-start:auto;width:26px;height:26px;border-radius:50%;border:1px solid hsl(var(--border));display:grid;place-items:center;flex:none}
+.tray-slot .x .ic{width:13px;height:13px}
+.tray-slot .tn{width:26px;height:26px;border-radius:50%;background:hsl(var(--muted));display:grid;place-items:center;font-family:Rubik;font-weight:900;font-size:12px;flex:none;color:hsl(var(--foreground))}
+.tray-arrow{color:hsl(var(--primary));font-weight:900;flex:none}
+.months{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;scrollbar-width:none}
+.months button{flex:none;border:1px solid hsl(var(--border));border-radius:99px;padding:6px 12px;font-size:13px;font-weight:700}
+.months button.on{background:hsl(var(--primary));color:hsl(var(--background));border-color:hsl(var(--primary))}
+.search-pill input{flex:1;background:none;border:0;outline:0;color:hsl(var(--foreground));font:inherit;font-size:15px;padding:0 14px;min-width:0;align-self:stretch}
+.search-pill input::placeholder{color:hsl(var(--muted-foreground))}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+@media(min-width:900px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cat-card{display:flex;flex-direction:column;border-radius:16px;border:1px solid hsl(var(--border));background:hsl(var(--card));overflow:hidden;text-align:right}
+.cat-card.in{border-color:hsl(var(--primary));box-shadow:0 0 0 3px hsl(var(--primary)/.15)}
+.cat-card>.art{height:118px}
+.cat-card .cb{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;flex:1}
+.cat-card h4{margin:0;font-size:15px;font-weight:700;line-height:1.2;min-height:2.4em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cat-card .ev-meta{font-size:12.5px;margin:0}
+.cat-card .why{font-size:11px;margin-top:4px;width:fit-content}
+.cat-card .cp{margin-top:auto;padding-top:8px;display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.cat-card .cp span{font-size:11px;color:hsl(var(--muted-foreground))}
+.cat-card .cp b{font-size:18px;font-weight:800}
+.cat-card .add{margin:8px 0 0;width:100%}
+.cat-card .add.on{background:hsl(var(--primary));color:hsl(var(--background))}
+.cat-card.blocked .art,.cat-card.blocked h4,.cat-card.blocked .ev-meta,.cat-card.blocked .cp{opacity:.4}
+.solo{display:block;text-align:center;font-size:13px;font-weight:700;color:hsl(var(--primary));text-decoration:underline;text-underline-offset:2px;margin-top:2px}
+.switch-mode{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:hsl(var(--primary));margin:-6px 0 14px}
+.screen{display:none}
+.screen.on{display:block;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="proto" id="proto"></div>
+<header class="site-h">
+  <span class="burger"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+  <span class="logo">MegaΣvents<i>.</i></span>
+</header>
+
+<section class="screen" id="s-home"></section>
+<section class="screen" id="s-flow">
+  <div class="o-head"><div class="wrap" id="o-head"></div></div>
+  <div class="wrap o-main" id="o-main"></div>
+</section>
+<div class="cbar" id="cbar" hidden></div>
+
+<script>
+/* ===== rules - would live in the backoffice (itinerary settings) ===== */
+const MAX_KM=1000, BEST_KM=600, GAP_OK=5, GAP_MAX=10, SPAN_MAX=21, MAX_STOPS=3;
+const MARKUP=175, TIERS=[0,.30,.50];
+
+/* ===== real catalog rows (www.mega-events.co.il feed, 21.10.2026) ===== */
+const SB='https://fandqafngybfdyslofmr.supabase.co/storage/v1/object/public/';
+const CREST=f=>SB+'football-logos/'+f;
+const CITY={
+  'פריז':{cc:'צרפת',lat:48.86,lon:2.35,code:'CDG'},
+  'לונדון':{cc:'בריטניה',lat:51.50,lon:-0.13,code:'LHR'},
+  'אמסטרדם':{cc:'הולנד',lat:52.37,lon:4.90,code:'AMS'},
+  "מנצ'סטר":{cc:'בריטניה',lat:53.48,lon:-2.24,code:'MAN'},
+  'מדריד':{cc:'ספרד',lat:40.42,lon:-3.70,code:'MAD'},
+  'ברצלונה':{cc:'ספרד',lat:41.39,lon:2.17,code:'BCN'},
+  'מילאנו':{cc:'איטליה',lat:45.46,lon:9.19,code:'MXP'},
+  'ברלין':{cc:'גרמניה',lat:52.52,lon:13.40,code:'BER'},
+  'קרקוב':{cc:'פולין',lat:50.06,lon:19.94,code:'KRK'},
+  'מינכן':{cc:'גרמניה',lat:48.14,lon:11.58,code:'MUC'},
+};
+const EV={
+  618:{n:'סלין דיון',k:'music',city:'פריז',date:'2027-05-12',pkg:1725,img:SB+'templates/celine-dion-art-tight.png'},
+  702:{n:"צ'לסי - אברטון",k:'football',city:'לונדון',date:'2027-05-15',pkg:1689,home:'chelsea-42291d8d.png',away:'everton-76230dbf.png'},
+  896:{n:'גרייסי אברמס',k:'music',city:'אמסטרדם',date:'2027-05-10',pkg:1952,img:SB+'templates/shutterstock_2606542843-cutout-1785239489572.png'},
+  699:{n:"טוטנהאם - צ'לסי",k:'football',city:'לונדון',date:'2027-05-08',pkg:1639,home:'tottenham-hotspur-84cd80eb.png',away:'chelsea-42291d8d.png'},
+  977:{n:"מנצ'סטר סיטי - ליברפול",k:'football',city:"מנצ'סטר",fly:'לונדון',date:'2027-05-08',pkg:1762,home:'manchester-city-ceb8f174.png',away:'liverpool-fc-bf759c32.png'},
+  717:{n:'ריאל מדריד - ברצלונה',k:'football',city:'מדריד',date:'2027-05-09',pkg:2342,home:'real-madrid-7f493d7d.png',away:'fc-barcelona-af2b0545.png'},
+  768:{n:"אינטר מילאן - לצ'ה",k:'football',city:'מילאנו',date:'2027-05-09',pkg:1294,home:'inter-milan-c40dbf23.png'},
+  1097:{n:'גרייסי אברמס',k:'music',city:'ברלין',date:'2027-05-13',pkg:1337,img:SB+'templates/shutterstock_2606542843-cutout-1785239489572.png'},
+  1172:{n:'הילרי דאף',k:'music',city:'ברלין',date:'2027-05-12',pkg:1264,img:SB+'templates/hilary-duff-art-tight.png'},
+  656:{n:'ארסנל - נוטינגהאם פורסט',k:'football',city:'לונדון',date:'2027-05-15',pkg:2397,home:'arsenal-af7aa0f8.png'},
+  751:{n:'אייאקס - רוטרדם',k:'football',city:'אמסטרדם',date:'2027-05-16',pkg:2203,home:'ajax-bf314bf1.png'},
+  718:{n:'ריאל מדריד - ראסינג סנטאנדר',k:'football',city:'מדריד',date:'2027-05-16',pkg:1452,home:'real-madrid-7f493d7d.png'},
+  1198:{n:'אנדרה ריו',k:'music',city:'קרקוב',date:'2027-05-15',pkg:1293,img:SB+'templates/andr-rieu-art-tight.png'},
+  769:{n:'אינטר מילאן - לאציו',k:'football',city:'מילאנו',date:'2027-05-23',pkg:1329,home:'inter-milan-c40dbf23.png'},
+  671:{n:"צ'לסי - ליברפול",k:'football',city:'לונדון',date:'2026-12-05',pkg:2062,home:'chelsea-42291d8d.png',away:'liverpool-fc-bf759c32.png'},
+  917:{n:'בוב דילן',k:'music',city:'לונדון',date:'2026-12-07',pkg:2686,img:SB+'templates/asset-generation-aa19f01c-8dc2-4563-979c-de2398d8c543-0-cutout-1791369016237.png'},
+  1169:{n:'אואזיס',k:'music',city:'מינכן',date:'2027-07-02',pkg:1963,img:SB+'templates/shutterstock_2841971393-cutout-1790028812333.png'},
+  1113:{n:'הארי סטיילס',k:'music',city:'ברלין',date:'2027-07-03',pkg:1496,img:SB+'templates/asset-generation-5c70f5ea-186f-4c94-939d-2087c369aee9-0-cutout-1789550491667.png'},
+  722:{n:'ברצלונה - ריאל מדריד',k:'football',city:'ברצלונה',date:'2026-10-25',pkg:2979,home:'fc-barcelona-af2b0545.png',away:'real-madrid-7f493d7d.png',ctx:1},
+  1168:{n:'אואזיס',k:'music',city:'פריז',date:'2027-07-20',pkg:1520,img:SB+'templates/shutterstock_189635183-cutout-1791368980515.png'},
+};
+Object.entries(EV).forEach(([id,e])=>{e.id=+id;e.lat=CITY[e.city].lat;e.lon=CITY[e.city].lon;e.cc=CITY[e.city].cc;e.fly=e.fly||e.city});
+const ROUTES=[
+  {ids:[618,702]},
+  {ids:[896,618,702]},
+  {ids:[671,917]},
+  {ids:[1169,1113]},
+];
+const HOTEL_IMG=['c2/ed/c2ed28209c973049a2f91e919dce55fa47065ad4.jpeg','15/7c/157c8f22518c56b7841e7671c80f32d1f8e1fd7a.jpeg','49/b1/49b1c702a65abef21382a825e29c4c1b37ae17ab.jpeg','8f/5d/8f5db475db48de18cc74ffd8772434dde9d35a04.jpeg','6b/2c/6b2ca3ac36739cbb5a249e1768e2bfc05a6ae9e5.jpeg','fe/54/fe54c78668da3a2c26c6930faa2f1329bc82ccaa.jpeg'].map(p=>'https://cdn.worldota.net/t/640x400/content/'+p);
+const HOTELS={
+  'פריז':[{n:'ibis Paris Gare de Lyon Diderot',s:3,d:1.9,room:'Standard Double room',p:84,perk:''},{n:'Mercure Paris Centre Tour Eiffel',s:4,d:2.4,room:'Classic Double room',p:121,perk:'ארוחת בוקר כלולה'},{n:'Novotel Paris Les Halles',s:4,d:0.6,room:'Superior Twin room',p:139,perk:'ביטול חינם'}],
+  'לונדון':[{n:'City Sleeper at Royal National Hotel',s:3,d:1.6,room:'Double room City Sleeper',p:96,perk:''},{n:'Citadines Barbican London',s:4,d:1.9,room:'Classic Double room',p:121,perk:'ביטול חינם'},{n:'Point A Hotel London Kings Cross',s:3,d:1.2,room:'Twin room',p:104,perk:''}],
+};
+const hotelsFor=c=>HOTELS[c]||[{n:'ibis '+c+' Centre',s:3,d:1.4,room:'Standard Double room',p:82,perk:''},{n:'NH Collection '+c,s:4,d:0.9,room:'Superior Double room',p:128,perk:'ארוחת בוקר כלולה'},{n:'Motel One '+c,s:3,d:1.1,room:'Double room',p:91,perk:'ביטול חינם'}];
+const cheapest=a=>a.indexOf(a.reduce((x,y)=>y.p<x.p?y:x));
+
+/* ===== helpers ===== */
+const D=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10);
+const add=(s,n)=>{const d=D(s);d.setUTCDate(d.getUTCDate()+n);return iso(d)};
+const gap=(a,b)=>Math.round((D(b)-D(a))/864e5);
+const dmy=s=>{const[y,m,d]=s.split('-');return `${d}/${m}/${y.slice(2)}`};
+const dm=s=>{const[,m,d]=s.split('-');return `${d}/${m}`};
+const wd=s=>new Intl.DateTimeFormat('he-IL',{weekday:'long',timeZone:'UTC'}).format(D(s));
+const wds=s=>new Intl.DateTimeFormat('he-IL',{weekday:'narrow',timeZone:'UTC'}).format(D(s));
+const usd=n=>'$'+Math.round(n).toLocaleString('en-US');
+function km(a,b){const t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lon-a.lon);const h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return Math.round(12742*Math.asin(Math.sqrt(h)))}
+const I={
+  ticket:'<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/>',
+  plane:'<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  hotel:'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  train:'<path d="M8 3.1V7a4 4 0 0 0 8 0V3.1"/><path d="m9 15-1-1M15 15l1-1"/><path d="M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z"/><path d="m8 19-2 3M16 19l2 3"/>',
+  pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  chev:'<path d="m15 18-6-6 6-6"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  star:'<path d="m12 2 3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/>',
+  dollar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  flag:'<path d="M4 22V4a1 1 0 0 1 1-1h11l-2 4 2 4H5"/>',
+  bag:'<rect x="6" y="8" width="12" height="13" rx="2"/><path d="M9 8V5a3 3 0 0 1 6 0v3"/>',
+  troll:'<rect x="6" y="7" width="12" height="13" rx="2"/><path d="M10 7V3h4v4M9 20v2M15 20v2"/>',
+  suit:'<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V4h6v3M8 11v5M16 11v5"/>',
+  stay:'<circle cx="12" cy="12" r="4"/>',
+};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24">${I[n]}</svg>`;
+const BLOB_COLORS=['--brand-mint','--brand-aqua','--brand-violet','--brand-coral','--brand-gold','--brand-orange'];
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h}
+/* EventArt: neon blob + cut-out for artists, crest VS crest on the stadium photo for matches */
+function art(e){
+  if(e.home)return `<div class="art"><img class="bg" src="https://www.mega-events.co.il/art-backgrounds/football.jpg" alt=""><div class="vs"><img src="${CREST(e.home)}" alt="">${e.away?`<b>VS</b><img src="${CREST(e.away)}" alt="">`:''}</div></div>`;
+  const h=hash(String(e.id)),color=BLOB_COLORS[h%6],si=(h>>>3)%6,sh=(window.BLOBS||[])[si%3];
+  const blob=sh?`<svg class="blob" viewBox="0 0 ${sh.w} ${sh.h}" preserveAspectRatio="xMidYMid slice"><path d="${sh.d}" fill="hsl(var(${color}))" ${si>=3?`transform="translate(${sh.w},0) scale(-1,1)"`:''}/></svg>`:'';
+  return `<div class="art">${blob}<img class="cut" src="${e.img}" alt=""></div>`;
+}
+
+/* ===== state ===== */
+const S={screen:'home',step:'build',mode:'route',q:'',month:'all',ids:[618,702],pax:2,filter:'all',dep:null,ret:null,split:{},train:{},cat:{},offer:null,hotel:{},tab:0,city:0,done:{},sort:0};
+const route=()=>S.ids.map(id=>EV[id]).sort((a,b)=>D(a.date)-D(b.date));
+function moves(){const r=route(),o=[];for(let i=0;i<r.length-1;i++)if(r[i].city!==r[i+1].city)o.push({key:r[i].id+'>'+r[i+1].id,a:r[i],b:r[i+1]});return o}
+function resetDates(){const r=route();S.split={};if(!r.length){S.dep=S.ret=null;return}
+  S.dep=add(r[0].date,-1);S.ret=add(r[r.length-1].date,1);moves().forEach(m=>S.split[m.key]=add(m.a.date,1))}
+function stays(){const r=route();if(!r.length)return[];const out=[];let from=S.dep,city=r[0].city;
+  moves().forEach(m=>{out.push({city,from,to:S.split[m.key]});from=S.split[m.key];city=m.b.city});out.push({city,from,to:S.ret});return out}
+function legs(){const r=route();if(!r.length)return[];const L=[{a:'תל אביב',ac:'TLV',b:r[0].fly,bc:CITY[r[0].fly].code,date:S.dep,kind:'out'}];
+  moves().forEach(m=>{if(m.a.fly!==m.b.fly)L.push({a:m.a.fly,ac:CITY[m.a.fly].code,b:m.b.fly,bc:CITY[m.b.fly].code,date:S.split[m.key],kind:'mid',key:m.key,km:km(m.a,m.b)})});
+  const z=r[r.length-1];L.push({a:z.fly,ac:CITY[z.fly].code,b:'תל אביב',bc:'TLV',date:S.ret,kind:'ret'});return L}
+const flownLegs=()=>legs().filter(l=>!(l.kind==='mid'&&S.train[l.key]));
+
+/* the rules: what may join the route, and why not */
+function compat(e){
+  if(S.ids.length>=MAX_STOPS)return{s:'no',t:'המסלול מלא - עד 3 אירועים'};
+  const r=route();if(!r.length)return{s:'ok',t:'אפשר להתחיל מכאן'};
+  const same=r.find(x=>x.date===e.date);if(same)return{s:'no',t:'באותו יום כמו '+same.n};
+  const all=[...r,e].sort((a,b)=>D(a.date)-D(b.date)),span=gap(all[0].date,all[all.length-1].date);
+  if(span>SPAN_MAX)return{s:'no',t:`טיול של ${span} ימים - ארוך מדי`};
+  const i=all.indexOf(e),nb=[all[i-1],all[i+1]].filter(Boolean);let g=0,far=0,near=null;
+  for(const n of nb){const gg=Math.abs(gap(n.date,e.date)),k=n.city===e.city?0:km(n,e);
+    if(k>MAX_KM)return{s:'no',t:`${k.toLocaleString()} ק״מ מ${n.city} - רחוק מדי`};
+    if(gg>GAP_MAX)return{s:'no',t:`${gg} ימים מ${n.n} - פער ארוך מדי`};
+    g=Math.max(g,gg);if(k>=far){far=k;near=n}}
+  if(g>GAP_OK)return{s:'warn',t:`אפשרי - ${g} ימים בין האירועים`,k:far,near};
+  if(nb.every(n=>n.city===e.city))return{s:'same',t:'באותה עיר - בלי טיסה נוספת'};
+  if(far<=BEST_KM&&g<=3)return{s:'best',t:'מומלץ - קרוב וזורם',k:far,near};
+  return{s:'ok',t:'מתאים למסלול',k:far,near};
+}
+function candidates(){
+  const r=route(),names=new Set(r.map(e=>e.n));
+  return Object.values(EV).filter(e=>!e.ctx&&!S.ids.includes(e.id)&&!names.has(e.n))
+    .filter(e=>!r.length||(gap(r[0].date,e.date)>=-GAP_MAX&&gap(r[r.length-1].date,e.date)<=GAP_MAX))
+    .filter(e=>S.filter==='all'||e.k===S.filter);
+}
+
+/* ===== price per traveller (illustrative split of the real package price) ===== */
+const ticketBase=e=>Math.max(150,e.pkg-175-520-330);
+const CATS=e=>e.k==='football'?[{n:'טבעת עליונה',d:0},{n:'לאורך המגרש · טבעת עליונה',d:32},{n:'מאחורי השער · טבעת תחתונה',d:86}]:[{n:'יציע עליון',d:0},{n:'יציע תחתון',d:58},{n:'רחבה · עמידה',d:124}];
+function offers(){const mids=legs().filter(l=>l.kind==='mid'),base=410+115*mids.length,tr=mids.filter(l=>S.train[l.key]).length*95;
+  return[{al:['EL AL','BA','EL AL'],tag:'★ הטוב ביותר',p:base+60-tr,t:[['06:10','09:55'],['13:05','13:25'],['15:40','18:05'],['22:40','05:20']],st:['d','d','d','d'],dur:['4h 45','1h 20','1h 25','4h 40'],bags:[1,1,1]},
+         {al:['wizz','easyJet','wizz'],tag:'↓ הזול ביותר',p:base-35-tr,t:[['04:50','08:15'],['09:20','09:40'],['18:30','20:55'],['16:25','23:15']],st:['d','d','d','d'],dur:['5h 25','1h 20','1h 25','4h 50'],bags:[1,1,0]},
+         {al:['TAP','Air France','TAP'],tag:'',p:base+25-tr,t:[['05:05','14:00'],['11:15','11:35'],['12:10','14:25'],['16:35','04:05']],st:['s','d','d','s'],dur:['10h 55','1h 20','1h 15','9h 30'],bags:[1,1,1]}]}
+const oIdx=()=>S.offer??0;
+const hIdx=c=>S.hotel[c]??cheapest(hotelsFor(c));
+function price(){
+  const r=route();
+  const tickets=r.reduce((s,e)=>s+ticketBase(e)+CATS(e)[S.cat[e.id]??0].d,0);
+  const markup=r.reduce((s,_,i)=>s+MARKUP*(1-TIERS[i]),0);
+  const flight=r.length?offers()[oIdx()].p:0;
+  const hotel=stays().reduce((s,g)=>s+hotelsFor(g.city)[hIdx(g.city)].p*gap(g.from,g.to),0);
+  return{tickets,flight,hotel,markup,save:r.length*MARKUP-markup,pp:tickets+flight+hotel+markup,separate:r.reduce((s,e)=>s+e.pkg,0)};
+}
+
+/* ===== home ===== */
+const pk=()=>`<div class="pk-icons"><span>${ic('plane')}טיסה</span><span>${ic('hotel')}מלון</span><span>${ic('ticket')}כרטיס</span></div>`;
+function evCard(e){return `<article class="ev-card">${art(e)}<div class="ev-body"><h3>${e.n}</h3>
+  <p class="ev-meta"><b>${dmy(e.date)}</b> <span>•</span> ${e.city}, ${e.cc}</p><div class="badge-slot"></div>
+  <div class="price-row"><div><p class="lbl">מחיר ממוצע</p><div class="big num">${usd(e.pkg)}</div><p class="sub">לנוסע · כולל טיסה, מלון וכרטיס</p></div>${pk()}</div>
+  <div class="card-cta">לפרטים והזמנה</div></div></article>`}
+function routeCard(R,ri){
+  const keep=JSON.stringify(S);Object.assign(S,{ids:R.ids,train:{},cat:{},offer:null,hotel:{}});resetDates();
+  const r=route(),p=price(),st=stays(),cities=[...new Set(r.map(e=>e.city))];
+  const html=`<button class="ev-card" onclick="openRoute(${ri})"><div class="split">${r.map(art).join('')}
+     <span class="route-pill">${ic('plane')} ${cities.length>1?cities.join(' ← '):cities[0]+' · '+r.length+' אירועים'}</span></div>
+   <div class="ev-body"><h3>${r.map(e=>e.n).join(' + ')}</h3>
+     <p class="ev-meta num">${r.map(e=>`<b>${dm(e.date)}</b> ${e.city}`).join(' <span>•</span> ')}</p>
+     <div class="badge-slot">${p.separate>p.pp?`<span class="badge save">חוסכים ${usd(p.separate-p.pp)} מול ${r.length} חבילות נפרדות</span>`:''}</div>
+     <div class="price-row"><div><p class="lbl">מחיר ממוצע</p><div class="big num">${usd(p.pp)}</div><p class="sub">לנוסע · ${r.length} כרטיסים, ${st.length>1?st.length+' מלונות':'מלון'} וטיסות</p></div>${pk()}</div>
+     <div class="card-cta">לפרטים והזמנה</div></div></button>`;
+  Object.assign(S,JSON.parse(keep));return html;
+}
+function renderHome(){
+  document.getElementById('s-home').innerHTML=`<div class="wrap">
+    <div class="sec"><div class="sec-h"><span class="cube"></span><span class="cube sm"></span><span class="cube w sm"></span><h2>המבוקשים ביותר</h2></div>
+      <div class="row">${[1168,618,722].map(id=>evCard(EV[id])).join('')}</div>
+      <span class="ctx-note">↑ שורה קיימת בדף הבית - לא משתנה</span></div>
+    <div class="sec"><div class="sec-h"><span class="cube"></span><span class="cube sm"></span><span class="cube w sm"></span><h2>מסלולים מומלצים</h2></div>
+      <p class="sec-sub muted">2-3 אירועים בטיול אחד · טיסה לעיר הראשונה וחזרה מהאחרונה · מלון בכל עיר</p>
+      <div class="row">${ROUTES.map(routeCard).join('')}
+        <button class="build-card" onclick="startCustom()"><span class="plus">+</span><h3>בנו מסלול משלכם</h3><p>בחרו אירוע, ואנחנו נראה מה עוד אפשר לשלב אליו - לפי ימים ומרחק.</p></button></div>
+      <span class="ctx-note">↑ השורה החדשה - ממוקמת ונשלטת מלוח דף הבית בבקאופיס</span></div>
+  </div>`;
+}
+
+/* ===== flow ===== */
+const STEPS=['build','tickets','flights','hotels','summary'];
+function head(){
+  const r=route();if(!r.length)return `<div><h1><span class="t">בונים מסלול</span><span class="d">בחרו את האירוע הראשון</span></h1></div>`;
+  const cities=[...new Set(r.map(e=>e.city))];
+  return `<div class="avatars">${r.map(art).join('')}</div><div><h1><span class="t">${cities.join(' ← ')}</span><span class="d num">${dmy(S.dep)} – ${dmy(S.ret)} | ${r.length===1?'אירוע אחד':r.length+' אירועים'} · ${gap(S.dep,S.ret)} לילות</span></h1>
+    ${S.step!=='build'?`<button class="o-link" onclick="go('build')">עריכת המסלול ${ic('chev')}</button>`:`<span class="o-link" style="text-decoration:none;color:hsl(var(--muted-foreground))">עד ${MAX_STOPS} אירועים · כדורגל והופעות במיקס</span>`}</div>`;
+}
+/* self-build: the whole catalog, every card says whether it fits the route */
+const monthLbl=s=>new Intl.DateTimeFormat('he-IL',{month:'long',year:'numeric',timeZone:'UTC'}).format(D(s));
+function catalog(){
+  const q=S.q.trim();
+  return Object.values(EV).filter(e=>!e.ctx)
+    .filter(e=>!q||e.n.includes(q)||e.city.includes(q)||e.cc.includes(q))
+    .filter(e=>S.month==='all'||e.date.slice(0,7)===S.month)
+    .filter(e=>S.filter==='all'||e.k===S.filter);
+}
+function gridHtml(){
+  const r=route(),rank={in:-1,best:0,same:1,ok:2,warn:3,no:4};
+  const items=catalog().map(e=>({e,c:S.ids.includes(e.id)?{s:'in'}:compat(e)}))
+    .sort((a,b)=>(r.length?rank[a.c.s]-rank[b.c.s]:0)||D(a.e.date)-D(b.e.date));
+  if(!items.length)return `<div class="empty" style="grid-column:1/-1">לא מצאנו אירועים לחיפוש הזה</div>`;
+  return items.map(({e,c})=>{const inR=c.s==='in',no=c.s==='no';
+    return `<article class="cat-card ${inR?'in':''} ${no?'blocked':''}">${art(e)}<div class="cb"><h4>${e.n}</h4><p class="ev-meta"><b class="num">${dmy(e.date)}</b> • ${e.city}, ${e.cc}</p>
+      ${r.length&&!inR?`<span class="why ${c.s}">${no?'✕':c.s==='warn'?'!':'✓'} ${c.t}</span>`:''}
+      <div class="cp"><span>מחיר ממוצע לחבילה</span><b class="num">${usd(e.pkg)}</b></div>
+      ${inR?`<button class="add on" onclick="removeStop(${e.id})">✓ במסלול · הסרה</button>`:`<button class="add" ${no?'disabled':''} onclick="addStop(${e.id})">${no?'לא מתאים למסלול':'+ הוספה למסלול'}</button>`}</div></article>`}).join('');
+}
+function renderGrid(){const g=document.getElementById('grid');if(g)g.innerHTML=gridHtml()}
+function vCatalog(){
+  const r=route(),label=['אירוע ראשון','אירוע שני','אירוע שלישי (לא חובה)'];
+  const tray=[0,1,2].map(i=>{const e=r[i];return e?`<div class="tray-slot f">${art(e)}<div class="ts"><b>${e.n}</b><span class="num">${dm(e.date)} · ${e.city}</span></div><button class="x" onclick="removeStop(${e.id})" aria-label="הסרה">${ic('x')}</button></div>`
+    :`<div class="tray-slot"><span class="tn">${i+1}</span><span class="muted">${label[i]}</span></div>`}).join('<span class="tray-arrow">←</span>');
+  const months=[...new Set(Object.values(EV).filter(e=>!e.ctx).map(e=>e.date.slice(0,7)))].sort();
+  return `<p class="lead">בנו מסלול משלכם: <b>בחרו 2-3 אירועים.</b> אחרי הראשון נסמן כל אירוע - מתאים, או למה לא.</p>
+  <div class="tray">${tray}</div>
+  ${r.length>1?`<div class="panel"><h3>תכנון הימים</h3><div class="muted" style="font-size:13.5px">כל לילה שייך לעיר אחת. הזיזו את יום המעבר, והטיסות והמלונות יתעדכנו לפיו.</div>${planner()}</div>`:''}
+  <div class="search-pill"><label class="q"><input placeholder="לאן טסים? אמן, קבוצה או עיר..." value="${S.q}" oninput="S.q=this.value;renderGrid()"><i>${ic('search')}</i></label></div>
+  <div class="months"><button class="${S.month==='all'?'on':''}" onclick="S.month='all';render()">כל התאריכים</button>${months.map(m=>`<button class="${S.month===m?'on':''}" onclick="S.month='${m}';render()">${monthLbl(m+'-01')}</button>`).join('')}</div>
+  <div class="seg-tabs">${[['all','הכל'],['football','כדורגל'],['music','הופעות']].map(([k,l])=>`<button class="${S.filter===k?'on':''}" onclick="S.filter='${k}';render()">${l}</button>`).join('')}</div>
+  <div class="grid" id="grid">${gridHtml()}</div>`;
+}
+function vBuild(){
+  if(S.mode==='custom')return vCatalog();
+  const r=route();let tl='';
+  if(!r.length)tl=`<div class="empty"><b>מאיפה מתחילים?</b><div class="muted" style="margin-top:4px;font-size:14px">בחרו אירוע מהרשימה. אחריו נראה רק מה שאפשר באמת לשלב.</div></div>`;
+  else{
+    tl+=`<div class="leg"><span class="dot">${ic('plane')}</span>טיסה מ<b>תל אביב</b> ל<b>${r[0].fly}</b><span class="chip num">${dm(S.dep)}</span></div>`;
+    r.forEach((e,i)=>{
+      if(i){const a=r[i-1];
+        if(a.city===e.city)tl+=`<div class="leg"><span class="dot">${ic('stay')}</span>נשארים ב<b>${e.city}</b><span class="chip">${gap(a.date,e.date)} ימים</span></div>`;
+        else{const key=a.id+'>'+e.id;tl+=`<div class="leg"><span class="dot">${ic(S.train[key]?'train':'plane')}</span><b>${a.city}</b> ← <b>${e.city}</b><span class="chip num">${km(a,e).toLocaleString()} ק״מ</span><span class="chip num">מעבר ${dm(S.split[key])}</span></div>`}}
+      tl+=`<div class="stop">${art(e)}<span class="n">${i+1}</span><div><div class="t">${e.n}</div><div class="m"><b class="num">${dmy(e.date)}</b> · ${wd(e.date)}</div><div class="m">${e.city}, ${e.cc}${e.fly!==e.city?' · טיסה ל'+e.fly:''}</div></div><button class="x" onclick="removeStop(${e.id})" aria-label="הסרה מהמסלול">${ic('x')}</button></div>`;
+    });
+    tl+=`<div class="leg" style="border-inline-start-color:transparent"><span class="dot">${ic('plane')}</span>חזרה מ<b>${r[r.length-1].fly}</b> ל<b>תל אביב</b><span class="chip num">${dm(S.ret)}</span></div>`;
+  }
+  const rank={best:0,same:1,ok:2,warn:3,no:4};
+  const cs=candidates().map(e=>({e,c:compat(e)})).sort((a,b)=>rank[a.c.s]-rank[b.c.s]||D(a.e.date)-D(b.e.date));
+  return `<p class="lead">בנו את המסלול: <b>עד 3 אירועים</b>, טיסה לעיר הראשונה וחזרה מהאחרונה, מלון בכל עיר.</p>
+  <button class="switch-mode" onclick="S.mode='custom';S.done={};render()">מעדיפים לבחור לבד מכל האירועים? ${ic('chev')}</button>
+  <div class="panel">${tl}</div>
+  ${r.length?`<div class="panel"><h3>תכנון הימים</h3><div class="muted" style="font-size:13.5px">כל לילה שייך לעיר אחת. הזיזו את יום המעבר, והטיסות והמלונות יתעדכנו לפיו.</div>${planner()}</div>`:''}
+  <div class="panel"><h3>${r.length?'אפשר לשלב גם':'בחרו אירוע ראשון'}</h3><div class="muted" style="font-size:13.5px;margin-bottom:10px">${r.length?`עד ${MAX_KM.toLocaleString()} ק״מ ועד ${GAP_MAX} ימים בין אירועים. מה שלא מתאים - מוצג עם הסיבה.`:'אירועים עם חבילה מלאה באירופה'}</div>
+    <div class="seg-tabs" style="margin-bottom:4px">${[['all','הכל'],['football','כדורגל'],['music','הופעות']].map(([k,l])=>`<button class="${S.filter===k?'on':''}" onclick="S.filter='${k}';render()">${l}</button>`).join('')}</div>
+    ${cs.map(({e,c})=>{const no=c.s==='no';return `<div class="cand ${no?'blocked':''}">${art(e)}<div style="min-width:0"><div class="t">${e.n}</div><div class="m"><b class="num">${dmy(e.date)}</b> • ${e.city}, ${e.cc}${c.k?` · ${c.k.toLocaleString()} ק״מ מ${c.near.city}`:''}</div><span class="why ${c.s}">${no?'✕':c.s==='warn'?'!':'✓'} ${c.t}</span></div><button class="add" ${no?'disabled':''} onclick="addStop(${e.id})">${no?'לא מתאים':'+ הוספה'}</button></div>`}).join('')}
+  </div>`;
+}
+const CITY_SHADE=['--brand-mint','--brand-aqua','--brand-violet'];
+function planner(){
+  const r=route(),st=stays(),mv=moves(),days=gap(S.dep,S.ret)+1;
+  let d='';for(let i=0;i<days;i++){const day=add(S.dep,i),ei=r.findIndex(e=>e.date===day);
+    d+=`<div class="day ${ei>=0?'ev':''}">${ei>=0?`<span class="evn">${ei+1}</span>`:''}<span class="dn num">${+day.slice(8)}</span>${wds(day)}</div>`}
+  const n=st.map((g,i)=>`<div class="seg" style="grid-column:${gap(S.dep,g.from)*2+2}/${gap(S.dep,g.to)*2+2};background:hsl(var(${CITY_SHADE[i%3]}))"><span>${g.city}</span><span class="num">${gap(g.from,g.to)} לילות</span></div>`).join('');
+  const c=(l,v,dec,inc,dd,di)=>`<span class="ctrl"><button onclick="${dec}" ${dd?'disabled':''} aria-label="יום קודם">›</button><button onclick="${inc}" ${di?'disabled':''} aria-label="יום הבא">‹</button>${l} <b class="num">${dm(v)}</b></span>`;
+  const f=r[0].date,z=r[r.length-1].date;
+  return `<div class="days" style="grid-template-columns:repeat(${days},minmax(0,1fr))">${d}</div><div class="nights" style="grid-template-columns:repeat(${days*2},minmax(0,1fr))">${n}</div>
+  <div class="ctrls">${c('טיסה הלוך',S.dep,`shift('dep',-1)`,`shift('dep',1)`,gap(S.dep,f)>=3,S.dep>=f)}
+   ${mv.map(m=>c('מעבר ל'+m.b.city,S.split[m.key],`shiftSplit('${m.key}',-1)`,`shiftSplit('${m.key}',1)`,S.split[m.key]<=add(m.a.date,1),S.split[m.key]>=m.b.date)).join('')}
+   ${c('טיסה חזור',S.ret,`shift('ret',-1)`,`shift('ret',1)`,S.ret<=add(z,1),gap(z,S.ret)>=3)}</div>`;
+}
+function stadium(){return `<svg viewBox="0 0 400 250"><rect x="6" y="6" width="388" height="238" rx="40" fill="#0f2a20"/>
+  ${[0,1,2,3,4,5,6,7,8].map(i=>`<rect x="${52+i*33}" y="16" width="29" height="26" rx="4" fill="#bdf7d0"/><rect x="${52+i*33}" y="208" width="29" height="26" rx="4" fill="#bdf7d0"/>`).join('')}
+  ${[0,1,2,3].map(i=>`<rect x="14" y="${58+i*34}" width="26" height="30" rx="4" fill="#e9ece9"/><rect x="360" y="${58+i*34}" width="26" height="30" rx="4" fill="#e9ece9"/>`).join('')}
+  <rect x="52" y="50" width="296" height="150" rx="4" fill="#2bb24c"/><rect x="52" y="50" width="296" height="150" fill="none" stroke="#e8fff0" stroke-width="2"/><line x1="200" y1="50" x2="200" y2="200" stroke="#e8fff0" stroke-width="2"/><circle cx="200" cy="125" r="24" fill="none" stroke="#e8fff0" stroke-width="2"/></svg>`}
+function arena(){return `<svg viewBox="0 0 400 250"><rect x="150" y="14" width="100" height="34" rx="4" fill="#d9d9d9"/><text x="200" y="36" font-size="12" text-anchor="middle" fill="#333" font-weight="700">STAGE</text>
+  <rect x="120" y="60" width="160" height="80" rx="6" fill="#bdf7d0"/><text x="200" y="104" font-size="12" text-anchor="middle" fill="#0f2a20" font-weight="700">FLOOR</text>
+  ${[0,1,2,3,4,5].map(i=>`<rect x="${44+i*54}" y="154" width="48" height="34" rx="5" fill="#8fe9ad"/><rect x="${44+i*54}" y="196" width="48" height="40" rx="5" fill="#0f2a20"/>`).join('')}
+  <rect x="44" y="60" width="64" height="80" rx="6" fill="#8fe9ad"/><rect x="292" y="60" width="64" height="80" rx="6" fill="#8fe9ad"/></svg>`}
+function vTickets(){
+  const r=route(),e=r[S.tab]||r[0],cats=CATS(e),sel=S.cat[e.id]??0;
+  return `<p class="lead">בחרו קטגוריה לכל אירוע. <b>ישיבה בזוגות/שלשות מובטחת.</b></p>
+  <div class="ev-tabs">${r.map((x,i)=>`<button class="ev-tab ${x===e?'on':''}" onclick="S.tab=${i};render()">${art(x)}<span>${x.n}<span class="muted num" style="font-weight:600;font-size:12px;display:block">${dm(x.date)} · ${x.city}</span></span>${S.cat[x.id]!=null?`<span class="ok">${ic('check')}</span>`:''}</button>`).join('')}</div>
+  <div class="map">${e.k==='football'?stadium():arena()}</div>
+  ${cats.map((c,i)=>`<button class="cat ${sel===i?'on':''}" onclick="S.cat[${e.id}]=${i};render()"><span class="strip"></span><div class="in"><div class="top"><span class="radio"></span><div><div class="nm">${c.n}</div><div class="sb">ישיבה ביחד מובטחת</div></div><div class="pr num">${c.d?`+$${c.d}<small>תוספת לכל<br>כרטיס</small>`:'כלול במחיר'}</div></div>
+    ${sel===i?`<div class="qty"><div>אנחנו רוצים</div><div class="st"><span role="button" onclick="event.stopPropagation();setPax(1)">+</span><b class="num">${S.pax}</b><span role="button" onclick="event.stopPropagation();setPax(-1)">−</span></div><div>כרטיסים לכל אירוע במסלול</div></div>`:''}</div></button>`).join('')}`;
+}
+function vFlights(){
+  const L=legs(),O=offers(),mids=L.filter(l=>l.kind==='mid'),base=O[0].p;
+  const order=[[0,1,2],[1,0,2],[0,2,1]][S.sort];
+  const row=(o,l,j)=>{
+    const ti=l.kind==='out'?0:l.kind==='ret'?3:1+mids.indexOf(l);
+    if(l.kind==='mid'&&S.train[l.key])return `<div class="mid-wrap"><div class="train-row"><span class="tico">${ic('train')}</span><div><b style="color:hsl(var(--foreground))">${l.a} ← ${l.b} ברכבת</b><div class="num">${dm(l.date)} · כ-${(l.km/170+.5).toFixed(1)} שעות · בכוחות עצמכם, לא כלול</div></div></div><span class="tgl on" onclick="event.stopPropagation();toggleTrain('${l.key}')"><span class="sw"></span>אגיע ברכבת</span></div>`;
+    const [dp,ar]=o.t[ti],al=o.al[Math.min(j,2)];
+    const leg=`<div class="f-leg"><span class="al">${al}</span><div class="tm num">${dp}<small>${l.ac}</small></div><div class="dur"><span class="num">${o.dur[ti]}</span><div class="line"></div><span class="${o.st[ti]==='s'?'stop1':'direct'}">${o.st[ti]==='s'?'עצירה אחת':'טיסה ישירה'}</span></div><div class="tm num" style="text-align:left">${ar}<small>${l.bc}</small></div></div>`;
+    return l.kind==='mid'?`<div class="mid-wrap">${leg}<span class="tgl" onclick="event.stopPropagation();toggleTrain('${l.key}')"><span class="sw"></span>אגיע ברכבת (${l.km} ק״מ)</span></div>`:leg;
+  };
+  return `<div class="search-pill"><div class="q"><span class="num">${dmy(S.ret)} – ${dmy(S.dep)} · ${flownLegs().length} טיסות</span><i>${ic('search')}</i></div></div>
+  <div class="seg-tabs" style="margin-bottom:8px">${[['star','הטוב ביותר'],['dollar','הזול ביותר'],['flag','ישראלי']].map(([icn,l],i)=>`<button class="${S.sort===i?'on':''}" onclick="S.sort=${i};render()">${ic(icn)}${l}</button>`).join('')}</div>
+  ${mids.some(m=>m.km<600&&!S.train[m.key])?`<div class="callout">${ic('train')}<div><b>טיסה אחת לכל המסלול.</b> ${mids.filter(m=>m.km<600).map(m=>`${m.a}–${m.b} זה ${m.km} ק״מ - ברכבת כ-${(m.km/170+.5).toFixed(1)} שעות ממרכז העיר למרכז העיר.`).join(' ')} מעדיפים רכבת? כבו את קטע הביניים.</div></div>`:''}
+  ${order.map(i=>{const o=O[i],dlt=o.p-base;return `<button class="f-card ${oIdx()===i?'on':''}" onclick="S.offer=${i};render()">
+    <span class="f-badge ${dlt>0?'up':''}">${dlt<0?`הפחיתו ${usd(-dlt)}- לנוסע ממחיר החבילה`:dlt>0?`+${usd(dlt)} לנוסע`:'כלול במחיר החבילה'}</span>${o.tag?`<span class="f-tag">${o.tag}</span>`:''}
+    <div class="f-grid"><div class="f-legs">${L.map((l,j)=>row(o,l,j)).join('')}</div>
+    <div class="f-bags"><span>${o.bags[0]}${ic('bag')}</span><span>${o.bags[1]}${ic('troll')}</span><span>${o.bags[2]}${ic('suit')}</span></div></div></button>`}).join('')}`;
+}
+function vHotels(){
+  const st=stays(),g=st[S.city]||st[0],H=hotelsFor(g.city),nn=gap(g.from,g.to),base=H[cheapest(H)].p*nn;
+  return `<div class="city-tabs">${st.map((x,i)=>`<button class="city-tab ${x===g?'on':''}" onclick="S.city=${i};render()"><div class="c">${ic('hotel')} מלון ב${x.city} ${S.hotel[x.city]!=null?`<span class="ok">${ic('check')}</span>`:''}</div><div class="dd num">${dm(x.from)}–${dm(x.to)} · ${gap(x.from,x.to)} לילות</div></button>`).join('')}</div>
+  <div class="search-pill"><div class="q" style="flex:none;padding:0 14px;font-weight:700;font-size:14px">${S.pax} אורחים</div><div class="q"><span class="num">${dmy(g.to)} – ${dmy(g.from)}</span><i>${ic('search')}</i></div></div>
+  <div class="seg-tabs">${[['dollar','הזול ביותר'],['star','כוכבים'],['pin','הקרוב ביותר']].map(([icn,l],i)=>`<button class="${i===0?'on':''}">${ic(icn)}${l}</button>`).join('')}</div>
+  ${H.map((h,i)=>{const dlt=h.p*nn-base;return `<button class="h-card ${hIdx(g.city)===i?'on':''}" onclick="S.hotel['${g.city}']=${i};render()">
+    <span class="f-badge ${dlt>0?'up':''}">${dlt>0?`+${usd(dlt)} לאורח`:'כלול במחיר החבילה'}</span>
+    <div class="h-top"><div><div class="h-name">${h.n}</div><div class="h-dist">${ic('pin')}<span class="num">${h.d} ק״מ ממרכז העיר</span></div><div class="h-room">${h.room}</div></div><span class="stars">${'★'.repeat(h.s)}</span></div>
+    <div class="h-photo"><img src="${HOTEL_IMG[(i+S.city*3)%HOTEL_IMG.length]}" alt="" loading="lazy"><div class="dots"><i></i><i></i><i></i><i></i></div></div>
+    ${h.perk?`<div class="h-perk">✓ ${h.perk}</div>`:''}</button>`}).join('')}
+  <p class="muted" style="font-size:12.5px;margin-top:14px">החיפוש לכל עיר רץ רק כשפותחים אותה - הספק מאפשר 10 חיפושים בדקה לכל האתר.</p>`;
+}
+function vSummary(){
+  const r=route(),L=legs(),p=price(),st=stays();
+  return `<p class="lead">כמעט שם. <b>בדקו את המסלול</b> ומלאו את פרטי הנוסעים.</p>
+  <div class="o-layout"><div>
+   <div class="panel"><h3>האירועים</h3>${r.map((e,i)=>`<div class="sum-item">${art(e)}<div><b>${i+1}. ${e.n}</b><div class="muted num" style="font-size:13.5px">${dmy(e.date)} · ${e.city} · ${CATS(e)[S.cat[e.id]??0].n} × ${S.pax}</div></div></div>`).join('')}</div>
+   <div class="panel"><h3>טיסות</h3>${L.map(l=>{const g=l.kind==='mid'&&S.train[l.key];return `<div class="sum-item"><span class="chip">${ic(g?'train':'plane')}</span><div class="num"><b>${l.a} ← ${l.b}</b><div class="muted" style="font-size:13.5px">${dmy(l.date)}${g?' · ברכבת, בכוחות עצמכם':' · '+l.ac+' – '+l.bc}</div></div></div>`}).join('')}</div>
+   <div class="panel"><h3>מלונות</h3>${st.map(g=>{const h=hotelsFor(g.city)[hIdx(g.city)];return `<div class="sum-item"><span class="chip">${ic('hotel')}</span><div><b style="direction:ltr;display:inline-block">${h.n}</b><div class="muted num" style="font-size:13.5px">${g.city} · ${dm(g.from)}–${dm(g.to)} · ${gap(g.from,g.to)} לילות · ${'★'.repeat(h.s)}</div></div></div>`}).join('')}</div>
+   <div class="panel"><h3>פרטי הנוסעים</h3><div style="display:grid;gap:8px;margin-top:10px"><div class="inp">שם פרטי ומשפחה (כמו בדרכון)</div><div class="inp">טלפון</div><div class="inp">אימייל</div></div><div class="muted" style="font-size:12.5px;margin-top:8px">הטופס, התנאים, הקופון והתשלום - אותם רכיבים של הסיכום הרגיל.</div></div>
+  </div><div class="o-side"><div class="panel">
+   <div class="pc-row"><span>כרטיסים · ${r.length} אירועים</span><b class="num">${usd(p.tickets)}</b></div>
+   <div class="pc-row"><span>טיסות · ${flownLegs().length} טיסות</span><b class="num">${usd(p.flight)}</b></div>
+   <div class="pc-row"><span>מלונות · ${gap(S.dep,S.ret)} לילות</span><b class="num">${usd(p.hotel)}</b></div>
+   <div class="pc-row"><span>שירות</span><b class="num">${usd(p.markup+p.save)}</b></div>
+   ${p.save?`<div class="pc-row save"><span>הנחת מסלול</span><span class="num">−${usd(p.save)}</span></div>`:''}
+   <div class="pc-tot"><span>סה״כ לנוסע</span><span class="p num">${usd(p.pp)}</span></div>
+   <div class="pc-row"><span class="muted">סה״כ ל-${S.pax} נוסעים</span><b class="num">${usd(p.pp*S.pax)}</b></div>
+   ${p.separate>p.pp?`<div class="compare">${r.length} חבילות נפרדות לאותם אירועים: <b class="num">${usd(p.separate)}</b> לנוסע.<br>במסלול אחד: <b class="num mint">${usd(p.pp)}</b> - טיסה אחת במקום ${r.length}.</div>`:''}
+  </div></div></div>`;
+}
+
+function bar(){
+  const r=route(),p=price(),i=STEPS.indexOf(S.step),off=offers()[oIdx()],st=stays();
+  const slot=(icn,l,f,v,stp)=>`<button class="slot ${f?'f':''}" onclick="${f||STEPS.indexOf(stp)<=i?`go('${stp}')`:''}"><span class="si">${ic(icn)}</span><span style="display:flex;flex-direction:column;min-width:0;line-height:1.2"><span class="sl">${l}</span>${f?`<span class="sv">${v}</span>`:''}</span>${f?`<span class="ck">${ic('check')}</span>`:''}</button>`;
+  const nextCity=st.findIndex((g,j)=>j>S.city&&S.hotel[g.city]==null);
+  const lbl={build:'בחר והמשך לכרטיסים',tickets:'בחר והמשך לטיסות',flights:'בחר והמשך למלונות',hotels:nextCity>=0?'בחר והמשך למלון ב'+st[nextCity].city:'בחר והמשך לסיכום',summary:'לתשלום מאובטח'}[S.step];
+  return `<div class="box"><div class="inner">
+    <div class="slots">${slot('ticket','כרטיסים',S.done.tickets,r.length+' אירועים','tickets')}${slot('plane','טיסות',S.done.flights,off.al[0]+' · '+flownLegs().length+' טיסות','flights')}${slot('hotel','מלונות',S.done.hotels,st.length+' מלונות','hotels')}</div>
+    <div class="act"><div class="pr">${r.length?`<span class="c">$</span><span class="v num">${Math.round(p.pp).toLocaleString('en-US')}</span><span class="l">סה״כ לנוסע</span>${p.separate>p.pp&&r.length>1?`<span class="was num">${usd(p.separate)}</span>`:''}`:`<span class="l" style="margin:0">המחיר יופיע אחרי שתבחרו אירוע</span>`}</div>
+      <div class="btns">${S.step==='summary'?`<button class="btn-out">שמרו לי ל-24 שעות</button>`:''}<button class="btn-main" ${r.length>1?'':'disabled'} onclick="next()">${r.length>1?lbl:'בחרו לפחות 2 אירועים'}</button></div>
+      ${r.length===1?`<a class="solo" href="https://www.mega-events.co.il/order/${r[0].id}" target="_blank" rel="noopener">או רק ${r[0].n} - להזמנה הרגילה</a>`:''}</div>
+  </div></div>`;
+}
+
+/* ===== actions ===== */
+function render(){
+  const home=S.screen==='home';
+  const custom=!home&&S.step==='build'&&S.mode==='custom';
+  document.getElementById('proto').innerHTML=`<span class="tag">אב טיפוס</span><button class="${home?'on':''}" onclick="S.screen='home';render()">דף הבית</button><button class="${custom?'on':''}" onclick="startCustom()">בנו מסלול לבד</button><button class="${!home&&S.step==='build'&&!custom?'on':''}" onclick="openRoute(0)">מסלול מומלץ</button>`+[['tickets','כרטיסים'],['flights','טיסות'],['hotels','מלונות'],['summary','סיכום']].map(([k,l])=>`<button class="${(home?'home':S.step)===k?'on':''}" onclick="${k==='home'?"S.screen='home';render()":`go('${k}')`}">${l}</button>`).join('');
+  document.getElementById('s-home').classList.toggle('on',home);
+  document.getElementById('s-flow').classList.toggle('on',!home);
+  const cb=document.getElementById('cbar');cb.hidden=home;
+  if(home){renderHome();return}
+  document.getElementById('o-head').innerHTML=head();
+  document.getElementById('o-main').innerHTML={build:vBuild,tickets:vTickets,flights:vFlights,hotels:vHotels,summary:vSummary}[S.step]();
+  cb.innerHTML=bar();
+}
+function go(k){if(!S.ids.length)k='build';S.screen='flow';S.step=k;render();scrollTo({top:0,behavior:'smooth'})}
+function next(){
+  if(S.step==='hotels'){const st=stays(),c=st[S.city].city;S.hotel[c]=hIdx(c);const nx=st.findIndex((g,j)=>j>S.city&&S.hotel[g.city]==null);if(nx>=0){S.city=nx;render();scrollTo({top:0,behavior:'smooth'});return}S.done.hotels=true}
+  if(S.step==='tickets')S.done.tickets=true;
+  if(S.step==='flights')S.done.flights=true;
+  const i=STEPS.indexOf(S.step);if(i<STEPS.length-1)go(STEPS[i+1]);
+}
+function fresh(ids){Object.assign(S,{ids,train:{},cat:{},offer:null,hotel:{},tab:0,city:0,done:{},filter:'all',q:'',month:'all'});resetDates()}
+function openRoute(i){fresh([...ROUTES[i].ids]);S.mode='route';go('build')}
+function startCustom(){fresh([]);S.mode='custom';go('build')}
+function addStop(id){S.ids.push(id);resetDates();S.done={};render()}
+function removeStop(id){S.ids=S.ids.filter(x=>x!==id);resetDates();S.done={};render()}
+function setPax(d){S.pax=Math.min(9,Math.max(1,S.pax+d));render()}
+function shift(k,d){S[k]=add(S[k],d);render()}
+function shiftSplit(k,d){S.split[k]=add(S.split[k],d);render()}
+function toggleTrain(k){S.train[k]=!S.train[k];render()}
+resetDates();render();
+</script>
+</body>
+</html>
