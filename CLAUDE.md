@@ -232,6 +232,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > the suitcases. The wait itself is the supplier's and was not shortened
 > (pre-pricing the neighbouring sizes would cost two more Amadeus calls per
 > customer who adds a bag - not built).
+>
+> **Pictures (2026-10-21, Dor - event 1221, all own stock, read as a bare page).**
+> (a) The header draws the event's art beside its title - the homepage card's
+> `EventArt` (artist cut-out on its blob, crest VS crest for a fixture, else the
+> photo); a photo-less event borrows its artist's / team's through
+> `lib/events/fallbackImage.ts`. (b) A package on OUR OWN hotel stock had no
+> hotel photo: the backoffice builder stores `hotel_image` only for a live
+> hotel. `/api/package/[id]` now finds it for an offline hotel from
+> `hotels.images_ext` by the stock row's `hid` (`hotelPhotoUrl`, tested).
 
 > **✅ PARTNER AUTH OVERHAUL - `/agent` (2026-07-30).** The plaintext-password,
 > React-state-only "auth" is retired. `/agent` (search, and everything future
