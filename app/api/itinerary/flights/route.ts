@@ -27,7 +27,7 @@ type AmadeusSearchResult = {
  * step's (lib/itinerary/flightOffers.ts).
  *
  * 400 bad body, 429 `{ busy: true }` when Amadeus throttles us (retry later), 502 any other
- * Amadeus failure, 500 anything else.
+ * failure of the search call (Amadeus error or the network on the way), 500 anything else.
  */
 export async function POST(request: Request) {
   if (
