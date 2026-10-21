@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
 import {
   UUID_V4_RE,
   buildGroupRows,
   checkDates,
+  checkTickets,
   checkPieces,
   checkRoute,
   confirmFailureAction,
@@ -23,6 +24,9 @@ import {
 import { defaultTripDates, stays } from "../itinerary/dates";
 import { tripHoldMail, tripOpsMail, tripMailInput } from "../itinerary/emails";
 import { findGroup, insertGroup, type GroupDb } from "../itinerary/insertGroup";
+import { pickFreshTripEvents } from "../itinerary/adapter";
+import { confirmTrip, type ConfirmDeps } from "../itinerary/confirmFlow";
+import type { BlockRow } from "../itinerary/offlineHold";
 import { trustedMinTicket, validateItineraryPriceFloor } from "../itinerary/priceFloor";
 import { livePrice } from "../itinerary/progress";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
@@ -438,7 +442,7 @@ describe("buildGroupRows", () => {
     expect(rows[1].event_order_info).toMatchObject({
       event_id: 702,
       name: "צ'לסי - אברטון",
-      date: "2027-05-15T20:00:00",
+      date: new Date("2027-05-15T20:00:00").toISOString(),
       number_of_ticket: 2,
       id: "t702",
       category: "cat t702",
@@ -471,7 +475,7 @@ describe("buildGroupRows", () => {
     const sub = parsed(wire(full));
     const info = { ...eventOrderInfo(chelsea, sub.tickets[702], 2), own_stock: true };
     const rows = buildGroupRows(sub, route, { ...ctx, infos: new Map([[702, info]]) });
-    expect(rows[1].event_order_info).toMatchObject({ own_stock: true, date: "2027-05-15T20:00:00" });
+    expect(rows[1].event_order_info).toMatchObject({ own_stock: true, date: new Date("2027-05-15T20:00:00").toISOString() });
   });
 });
 
@@ -561,9 +565,27 @@ describe("insertGroup / findGroup - one bulk insert, idempotent on the group", (
       GROUP,
     );
     expect(lost).toHaveProperty("error");
-    // Fewer rows back than sent.
-    const short = await insertGroup(rows, db({ insert: async () => ({ data: [{ id: 1, itinerary_seq: 1 }], error: null }) }));
-    expect(short).toHaveProperty("error");
+    // Fewer rows back than sent, WITHOUT an error: the one statement succeeded - the group is
+    // written, read back, never "nothing written".
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const short = await insertGroup(
+      rows,
+      db({
+        insert: async () => ({ data: [{ id: 1, itinerary_seq: 1 }], error: null }),
+        find: async () => ({ data: [{ id: 2, itinerary_seq: 2 }, { id: 1, itinerary_seq: 1 }], error: null }),
+      }),
+      GROUP,
+    );
+    expect(short).toEqual({ ids: [1, 2], duplicate: false });
+    // The read-back failing too: still written - the ids the insert gave.
+    const shortNoFind = await insertGroup(
+      rows,
+      db({ insert: async () => ({ data: [{ id: 1, itinerary_seq: 1 }], error: null }), find: async () => ({ data: null, error: { code: "x" } }) }),
+      GROUP,
+    );
+    expect(shortNoFind).toEqual({ ids: [1], duplicate: false });
+    expect(log).toHaveBeenCalledTimes(2);
+    log.mockRestore();
   });
 
   it("findGroup: the rows of a group, or 'cannot check' when the read fails", async () => {
@@ -677,5 +699,264 @@ describe("confirmFailureAction - what the summary does with a refusal", () => {
     expect(confirmFailureAction(500, { error: "SERVER_ERROR" }, full)).toMatchObject({ kind: "stay" });
     expect(confirmFailureAction(502, null, full)).toMatchObject({ kind: "stay" });
     expect(confirmFailureAction(400, { error: "PRICE_VALIDATION_FAILED" }, full)).toMatchObject({ kind: "stay" });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Review fix round 1
+// ---------------------------------------------------------------------------------------------
+
+describe("I1 - listed events only (a row read by id is not filtered)", () => {
+  it("a QA event, a deactivated one or a hidden one: the route changed", () => {
+    const qa = { ...chelsea, is_test: true } as Event;
+    const off = { ...chelsea, deactivated_reason: "tx_sold_out" } as Event;
+    const hidden = { ...chelsea, is_hidden: true } as unknown as Event;
+    for (const e of [qa, off, hidden]) {
+      expect(checkRoute([618, 702], [celine, e], S, TODAY)).toMatchObject({ ok: false, failure: { code: "ROUTE_CHANGED", eventId: 702 } });
+    }
+    // No field at all (this branch's base has no is_hidden) / a null reason: listed.
+    expect(checkRoute([618, 702], [celine, { ...chelsea, deactivated_reason: null } as Event], S, TODAY).ok).toBe(true);
+  });
+
+  it("I2 - the fresh rows keep only listed, eligible events, in the asked order", () => {
+    const qa = { ...celine, is_test: true } as Event;
+    expect(pickFreshTripEvents([chelsea, celine], [618, 702], TODAY).map((e) => e.id)).toEqual([618, 702]);
+    expect(pickFreshTripEvents([qa, chelsea], [618, 702], TODAY).map((e) => e.id)).toEqual([702]);
+    expect(pickFreshTripEvents([undefined, chelsea], [618, 702], TODAY).map((e) => e.id)).toEqual([702]);
+  });
+});
+
+describe("I3 - checkTickets: the ticket is a row the event still sells", () => {
+  const sub = parsed(wire(full));
+
+  it("the trip's tickets pass", () => {
+    expect(checkTickets(route, sub.tickets)).toBeNull();
+  });
+
+  it("an id the event does not have, or one off sale: 409 TICKET_CHANGED", () => {
+    expect(checkTickets(route, { ...sub.tickets, 702: ticket("nope", 150) })).toMatchObject({ code: "TICKET_CHANGED", status: 409, eventId: 702 });
+    // x702 is on the row but `available: false`.
+    expect(checkTickets(route, { ...sub.tickets, 702: ticket("x702", 150) })).toMatchObject({ code: "TICKET_CHANGED", eventId: 702 });
+  });
+
+  it("a static / own ticket below its stored price is refused; above it passes", () => {
+    expect(checkTickets(route, { ...sub.tickets, 702: ticket("t702", 149.99) })).toMatchObject({ code: "TICKET_CHANGED", eventId: 702 });
+    expect(checkTickets(route, { ...sub.tickets, 702: ticket("t702", 180) })).toBeNull();
+  });
+
+  it("TixStock may sell below its stored price (its live price); the supplier must be the row's", () => {
+    const tx = { ...chelsea, type: "tx_event" } as Event;
+    const txTicket = { ...ticket("t702", 120), supplier: undefined } as unknown as OrderTicket;
+    expect(checkTickets([celine, tx], { ...sub.tickets, 702: txTicket })).toBeNull();
+    // The order says "static" for a TixStock row.
+    expect(checkTickets([celine, tx], { ...sub.tickets, 702: ticket("t702", 150) })).toMatchObject({ code: "TICKET_CHANGED" });
+  });
+});
+
+describe("M1 - the ticket's text fields are typed like the live schema", () => {
+  const raw = wire(full);
+  const withTicket = (over: Record<string, unknown>) => {
+    const tickets = raw.tickets as Record<string, Record<string, unknown>>;
+    return { ...raw, tickets: { ...tickets, "702": { ...tickets["702"], ...over } } };
+  };
+
+  it("refuses a non-text field, a non-boolean nonInstant, an unknown seating choice", () => {
+    expect(parseSubmission(withTicket({ vendor: { x: 1 } }), 3).ok).toBe(false);
+    expect(parseSubmission(withTicket({ zoneLabel: null }), 3).ok).toBe(false);
+    expect(parseSubmission(withTicket({ nonInstant: "yes" }), 3).ok).toBe(false);
+    expect(parseSubmission(withTicket({ seatingChoice: "front" }), 3).ok).toBe(false);
+  });
+
+  it("takes what yup takes: text, a number cast to text, the two seating choices", () => {
+    expect(parseSubmission(withTicket({ eid: 12345, seatingChoice: "split", nonInstant: true }), 3).ok).toBe(true);
+    expect(parseSubmission(withTicket({ seatingChoice: "together" }), 3).ok).toBe(true);
+  });
+});
+
+describe("M5 - each flown leg leaves on the trip's day for it", () => {
+  it("a leg on another day: 409 FLIGHT_CHANGED -> the flights step", () => {
+    const sub = parsed(wire(full));
+    const moved = { ...flight, legs: [legs[0], seg("CDG", "LHR", "2027-05-14T13:05:00", "2027-05-14T13:25:00"), legs[2]] } as ItineraryFlight;
+    expect(checkPieces(tripState({ ...sub, flight: moved }, route), NOW)).toMatchObject({ code: "FLIGHT_CHANGED", status: 409, step: "flights" });
+  });
+});
+
+describe("M6 - the ops email of a pay-now group", () => {
+  it("claims no 24h hold and no 'no payment link'", () => {
+    const sub = parsed(wire(full));
+    const rows = buildGroupRows(sub, route, { group: GROUP, rateIls: RATE, settings: S, status: "Pending", gtmIdnts: null });
+    const { subject, text } = tripOpsMail(
+      tripMailInput({ sub, route, rows, ids: [1, 2], references: [null, null], price: priceOf(full), rateIls: RATE }),
+    );
+    expect(subject).toContain("pay now");
+    expect(text).toContain("PAY NOW (status Pending)");
+    expect(text).not.toMatch(/24h HOLD|No payment link/);
+  });
+});
+
+describe("M7 - confirmTrip: the steps' order, with the database handed in", () => {
+  /** London on our own stock: block 9, a Double at $602 (the hotel's price), 3 rooms, 1 taken. */
+  const ownLondon = { ...londonHotel, isOffline: true, offlineId: 9, offlineIds: [9], offlineRawPrice: 602 } as OrderHotel;
+  const block9: BlockRow = {
+    id: 9,
+    check_in: "2027-05-13",
+    check_out: "2027-05-16",
+    price: 602,
+    room_type: "Double",
+    num_rooms: 3,
+    consumed_rooms: 1,
+    event_ids: [702],
+    is_deleted: false,
+    last_cancellation_date: "2027-05-01",
+  };
+
+  const setup = (over: Partial<ConfirmDeps> = {}, blocks: BlockRow[] = [block9]) => {
+    const calls: string[] = [];
+    const inserted: Record<string, unknown>[][] = [];
+    const deps: ConfirmDeps = {
+      getSettings: async () => S,
+      vercelEnv: "preview",
+      now: () => NOW,
+      getEvent: async (id) => {
+        calls.push(`event ${id}`);
+        return [celine, chelsea, coldplay].find((e) => e.id === id);
+      },
+      validateTicket: async () => {
+        calls.push("validate");
+        return null;
+      },
+      getRate: async () => RATE,
+      groupDb: {
+        insert: async (rows) => {
+          calls.push(`insert ${rows.length}`);
+          inserted.push(rows);
+          return { data: rows.map((_, i) => ({ id: 500 + i, itinerary_seq: i + 1 })), error: null };
+        },
+        find: async () => {
+          calls.push("find");
+          return { data: [], error: null };
+        },
+      },
+      offlineDb: {
+        readBlocks: async (ids) => {
+          calls.push(`blocks ${ids.join(",")}`);
+          return { data: blocks.filter((b) => ids.includes(b.id)), error: null };
+        },
+        readConsumed: async (id) => ({ data: { consumed_rooms: blocks.find((b) => b.id === id)?.consumed_rooms ?? 0 } }),
+        writeConsumed: async (id, value) => {
+          calls.push(`hold ${id}=${value}`);
+          return {};
+        },
+      },
+      finishRows: async (_rows, ids) => {
+        calls.push("finish");
+        return ids.map((id) => `ME21${id}`);
+      },
+      sendEmails: async (_mail, opts) => {
+        calls.push(`mail customer=${opts.customer}`);
+        return { ops: true, customer: opts.customer };
+      },
+      markEmailed: async () => {
+        calls.push("emailed");
+      },
+      track: async () => {
+        calls.push("track");
+      },
+      gtmIdnts: null,
+      log: { warn: () => {}, error: () => {} },
+      ...over,
+    };
+    return { deps, calls, inserted };
+  };
+
+  it("a fresh hold: checks, ONE insert, then references, mails, analytics - in that order", async () => {
+    const { deps, calls, inserted } = setup();
+    const answer = await confirmTrip(wire(full), deps);
+    expect(answer).toEqual({ status: 200, body: { group: GROUP, ids: [500, 501], reference: "ME21500" } });
+    expect(calls).toEqual(["find", "event 618", "event 702", "validate", "validate", "insert 2", "finish", "mail customer=true", "emailed", "track"]);
+    expect(inserted[0].map((r) => r.status)).toEqual(["24Save", "24Save"]);
+  });
+
+  it("the group already written: its rows, and nothing else runs", async () => {
+    const { deps, calls } = setup();
+    deps.groupDb = {
+      insert: async () => {
+        throw new Error("must not insert");
+      },
+      find: async () => {
+        calls.push("find");
+        return { data: [{ id: 8, itinerary_seq: 1, booking_reference: "ME218" }, { id: 9, itinerary_seq: 2 }], error: null };
+      },
+    };
+    const answer = await confirmTrip(wire(full), deps);
+    expect(answer).toEqual({ status: 200, body: { group: GROUP, ids: [8, 9], reference: "ME218" } });
+    expect(calls).toEqual(["find"]);
+  });
+
+  it("a concurrent copy (23505): that group's rows - no hold, no references, no mail, no analytics", async () => {
+    const { deps, calls } = setup();
+    let finds = 0;
+    deps.groupDb = {
+      insert: async () => {
+        calls.push("insert");
+        return { data: null, error: { code: "23505", message: "duplicate key" } };
+      },
+      find: async () => {
+        calls.push("find");
+        finds++;
+        return { data: finds === 1 ? [] : [{ id: 31, itinerary_seq: 1 }, { id: 32, itinerary_seq: 2 }], error: null };
+      },
+    };
+    const own = { ...full, hotels: { ...full.hotels, [londonStay.key]: ownLondon } };
+    const answer = await confirmTrip(wire(own), deps);
+    expect(answer).toMatchObject({ status: 200, body: { ids: [31, 32] } });
+    expect(calls).toContain("insert");
+    expect(calls.filter((c) => /^(hold|finish|mail|emailed|track)/.test(c))).toEqual([]);
+  });
+
+  it("our own hotel stock: checked before the insert, held after it, the blocks' cost stored", async () => {
+    const { deps, calls, inserted } = setup();
+    const own = { ...full, hotels: { ...full.hotels, [londonStay.key]: ownLondon } };
+    const answer = await confirmTrip(wire(own), deps);
+    expect(answer.status).toBe(200);
+    expect(calls.indexOf("blocks 9")).toBeGreaterThanOrEqual(0);
+    expect(calls.indexOf("blocks 9")).toBeLessThan(calls.indexOf("insert 2"));
+    expect(calls.indexOf("insert 2")).toBeLessThan(calls.indexOf("hold 9=2"));
+    expect(inserted[0][1]).toMatchObject({ offline_hotel_id: 9, offline_hotel_ids: [9], offline_hotel_cost: 602 });
+  });
+
+  it("a client cost that is not the blocks': 409 HOTEL_CHANGED to that city, nothing written", async () => {
+    const { deps, calls } = setup();
+    const lying = { ...ownLondon, offlineRawPrice: 1 } as OrderHotel;
+    const answer = await confirmTrip(wire({ ...full, hotels: { ...full.hotels, [londonStay.key]: lying } }), deps);
+    expect(answer).toMatchObject({ status: 409, body: { error: "HOTEL_CHANGED", step: "hotels", stayKey: londonStay.key } });
+    expect(calls.some((c) => c.startsWith("insert"))).toBe(false);
+  });
+
+  it("no rooms left in the block: 400 OFFLINE_HOTEL_SOLD_OUT, nothing written", async () => {
+    const { deps, calls } = setup({}, [{ ...block9, consumed_rooms: 3 }]);
+    const answer = await confirmTrip(wire({ ...full, hotels: { ...full.hotels, [londonStay.key]: ownLondon } }), deps);
+    expect(answer).toMatchObject({ status: 400, body: { error: "OFFLINE_HOTEL_SOLD_OUT", stayKey: londonStay.key } });
+    expect(calls.some((c) => c.startsWith("insert"))).toBe(false);
+  });
+
+  it("a failed insert: 500, nothing held, nothing mailed", async () => {
+    const { deps, calls } = setup();
+    deps.groupDb = {
+      insert: async () => ({ data: null, error: { code: "PGRST204", message: "Could not find the 'itinerary_group' column" } }),
+      find: async () => ({ data: null, error: { code: "42703", message: "column does not exist" } }),
+    };
+    const answer = await confirmTrip(wire({ ...full, hotels: { ...full.hotels, [londonStay.key]: ownLondon } }), deps);
+    expect(answer).toMatchObject({ status: 500, body: { error: "SERVER_ERROR" } });
+    expect(calls.filter((c) => /^(hold|finish|mail|track)/.test(c))).toEqual([]);
+  });
+
+  it("a total that disagrees: 409 before anything is written; the switch off: 404 before anything is read", async () => {
+    const a = setup();
+    expect(await confirmTrip({ ...wire(full), clientTotal: 4300 }, a.deps)).toMatchObject({ status: 409, body: { error: "PRICE_CHANGED" } });
+    expect(a.calls.some((c) => c.startsWith("insert"))).toBe(false);
+    const b = setup({ vercelEnv: "production" });
+    expect(await confirmTrip(wire(full), b.deps)).toMatchObject({ status: 404 });
+    expect(b.calls).toEqual([]);
   });
 });

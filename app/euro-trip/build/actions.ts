@@ -1,8 +1,8 @@
 "use server";
 
 import type { Event } from "@/lib/app.types";
-import { getCachedEvents } from "@/lib/eventsData";
-import { pickTripEvents, tripEventIds } from "@/lib/itinerary/adapter";
+import { getCachedEvents, getEvents } from "@/lib/eventsData";
+import { pickFreshTripEvents, pickTripEvents, tripEventIds } from "@/lib/itinerary/adapter";
 import { itineraryOn } from "@/lib/itinerary/settings";
 import { getItinerarySettings } from "@/lib/itinerary/settings.server";
 
@@ -29,4 +29,25 @@ export async function loadTripEvents(ids: number[]): Promise<Event[]> {
   const { events } = await getCachedEvents();
   if (!events.length) throw new Error("Euro trip: the events catalog is unavailable");
   return pickTripEvents(events, wanted, new Date().toISOString().slice(0, 10));
+}
+
+/**
+ * The same rows, read FRESH from the database (`getEvents(id)` per id, at most MAX_TRIP_LOAD) -
+ * only after the hold's confirm answered that the price or a ticket changed: it prices with these
+ * rows, and the cached catalog can be up to an hour older (a backoffice edit not revalidated yet).
+ * Listed and eligible events only (`pickFreshTripEvents`, the catalog's own filters); an asked id
+ * missing from the answer is gone. The tickets step keeps using `loadTripEvents` (cached).
+ *
+ * Throws when the builder is switched off, or when every read came back empty (`getEvents`
+ * answers a database error with no rows - never "every event is gone" on an outage).
+ */
+export async function loadTripEventsFresh(ids: number[]): Promise<Event[]> {
+  if (!itineraryOn(await getItinerarySettings(), process.env.VERCEL_ENV)) {
+    throw new Error("Euro trip: the trip builder is switched off");
+  }
+  const wanted = tripEventIds(ids);
+  if (!wanted.length) return [];
+  const rows = await Promise.all(wanted.map(async (id) => (await getEvents(id)).events[0]));
+  if (rows.every((r) => !r)) throw new Error("Euro trip: no event row could be read");
+  return pickFreshTripEvents(rows, wanted, new Date().toISOString().slice(0, 10));
 }

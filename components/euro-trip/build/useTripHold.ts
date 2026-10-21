@@ -2,7 +2,8 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
-import { forgetFullRow } from "@/lib/itinerary/adapter";
+import { loadTripEventsFresh } from "@/app/euro-trip/build/actions";
+import { asFullRow, forgetFullRow, goneIds } from "@/lib/itinerary/adapter";
 import {
   confirmFailureAction,
   isHeldAnswer,
@@ -14,6 +15,9 @@ import { livePrice } from "@/lib/itinerary/progress";
 import type { TravellersInput } from "@/lib/itinerary/travellers";
 import { getUTMParams } from "@/lib/mixpanel";
 import { useItinerary } from "./ItineraryProvider";
+
+/** The words the tickets step uses for an event that left the catalog. */
+const GONE = "האירוע כבר לא זמין";
 
 /** The visit's utm_source as the live summary reads it (`getUTMParams`); "" when there is none. */
 function utmSource(): string {
@@ -36,9 +40,13 @@ function utmSource(): string {
  * - Success: `markHeld` (closes the draft; the summary shows the confirmation, its clock stops)
  *   and any earlier notice goes.
  * - A refusal the customer fixes on an earlier step (price changed, route changed, a ticket, a
- *   hotel): the notice says why and the flow goes there - the event's or the city's tab open,
- *   the route's rows read again when the server priced fresher event data. Anything else
- *   (a server error, no answer) stays on the summary as `failure`.
+ *   hotel): the notice says why and the flow goes there - the event's or the city's tab open.
+ *   After "the price / a ticket changed" the route's rows are first read FRESH from the database
+ *   (`loadTripEventsFresh`, the rows the server priced with - not the hour-cached catalog) and put
+ *   in marked whole, so the tickets step does not read the cached catalog over them; an event
+ *   gone meanwhile leaves the route. If that read fails, the rows are un-marked and the tickets
+ *   step reads them again (cached). Anything else (a server error, no answer) stays on the
+ *   summary as `failure`.
  */
 export function useTripHold(): {
   submit: (travellers: TravellersInput) => Promise<void>;
@@ -55,6 +63,23 @@ export function useTripHold(): {
   const inFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<Extract<HoldAction, { kind: "stay" }> | null>(null);
+
+  /** The route's rows as the server priced them; true when an event left the route. */
+  const reloadFresh = useCallback(async (): Promise<boolean> => {
+    const asked = latest.current.state.route;
+    const ids = asked.map((e) => e.id);
+    try {
+      const rows = await loadTripEventsFresh(ids);
+      for (const row of rows) latest.current.setEventData(asFullRow(row));
+      const gone = goneIds(ids, rows, ids);
+      for (const id of gone) latest.current.removeEvent(id);
+      return gone.length > 0;
+    } catch (err) {
+      console.error("[EuroTrip] Fresh rows after the hold's refusal failed - the tickets step reads them again:", err);
+      for (const e of asked) latest.current.setEventData(forgetFullRow(e));
+      return false;
+    }
+  }, []);
 
   const submit = useCallback(async (travellers: TravellersInput) => {
     const a = latest.current;
@@ -86,7 +111,12 @@ export function useTripHold(): {
         return;
       }
       group.current = null;
-      if (action.reloadRows) for (const e of now.state.route) now.setEventData(forgetFullRow(e));
+      if (action.reloadRows && (await reloadFresh())) {
+        // An event left the catalog meanwhile: the route changed - the build step says so.
+        latest.current.showNotice(GONE);
+        latest.current.goStep("build");
+        return;
+      }
       if (action.eventIndex !== undefined) now.setActiveEvent(action.eventIndex);
       if (action.stayIndex !== undefined) now.setActiveStay(action.stayIndex);
       now.showNotice(action.message);
@@ -100,7 +130,7 @@ export function useTripHold(): {
       inFlight.current = false;
       setSending(false);
     }
-  }, []);
+  }, [reloadFresh]);
 
   return { submit, sending, failure };
 }

@@ -52,8 +52,12 @@ export async function findGroup(group: string, db: GroupDb): Promise<{ rows: Gro
 
 /**
  * Inserts the rows in one statement. Answers the new ids in seq order; `duplicate` = the same
- * group was already written (by a concurrent copy of the request) and these are its ids. Any
- * other failure is `{ error }` - nothing was written. `group` defaults to the rows' own.
+ * group was already written (by a concurrent copy of the request) and these are its ids. An error
+ * is `{ error }` - the one statement failed, nothing was written. `group` defaults to the rows' own.
+ *
+ * An insert that answers WITHOUT an error but with fewer rows than it was sent still wrote the
+ * group (one statement: all or nothing): it is logged loudly and the group is read back for its
+ * ids - never reported as "nothing written" (a retry would only find the same rows).
  */
 export async function insertGroup(
   rows: Record<string, unknown>[],
@@ -71,7 +75,14 @@ export async function insertGroup(
       return { error: describe(error), dbError: error };
     }
     const written = bySeq(data ?? []);
-    if (written.length !== rows.length) return { error: `the insert answered ${written.length} rows for ${rows.length}` };
+    if (written.length !== rows.length) {
+      console.error(
+        `[itinerary/confirm] !!! group ${key ?? "?"}: the insert succeeded but answered ${written.length} rows for ${rows.length} - the group IS written; reading it back`,
+      );
+      const again = key ? await findGroup(key, db) : null;
+      const back = again && "rows" in again && again.rows.length ? again.rows : written;
+      return { ids: back.map((r) => r.id), duplicate: false };
+    }
     return { ids: written.map((r) => r.id), duplicate: false };
   } catch (e) {
     const dbError = thrown(e);

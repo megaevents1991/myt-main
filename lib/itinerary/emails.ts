@@ -183,10 +183,15 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
     "",
   ]);
 
+  const hold = i.status === "24Save";
   const text = [
     "",
-    line(`New EURO TRIP request - 24h HOLD (status ${i.status}).`),
-    line("No payment link was sent to the customer - sales converts this hold by phone."),
+    ...(hold
+      ? [
+          line(`New EURO TRIP request - 24h HOLD (status ${i.status}).`),
+          line("No payment link was sent to the customer - sales converts this hold by phone."),
+        ]
+      : [line(`New EURO TRIP order - PAY NOW (status ${i.status}) - the customer was sent to payment.`)]),
     line(`Group: ${i.group}`),
     line(`Reservations: ${i.rows.map((r) => `${ref(r)} = seq ${r.seq}/${i.rows.length}`).join(", ")}`),
     line(`Name: ${i.contact.firstName} ${i.contact.lastName}`),
@@ -209,8 +214,9 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
     "",
   ].join("\n");
 
+  const names = i.rows.map((r) => r.event.name).join(" + ");
   return {
-    subject: `New Euro Trip Hold (24h) - ${i.rows.map((r) => r.event.name).join(" + ")}`,
+    subject: hold ? `New Euro Trip Hold (24h) - ${names}` : `New Euro Trip Order (pay now) - ${names}`,
     text,
   };
 }

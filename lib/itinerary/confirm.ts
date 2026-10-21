@@ -23,10 +23,11 @@ import type { Event, ItineraryFlight, OrderData, OrderHotel, OrderTicket } from 
 import { persistableHotel } from "@/app/order/order-review.utils";
 import { placeLabel } from "@/lib/events/lodging";
 import { orderHotelSellable } from "@/lib/hotelRateTerms";
+import { ticketSupplier } from "@/lib/suppliers";
 import { MAX_TRIP_LOAD, ticketReady } from "./adapter";
 import { stayCityName } from "./builder";
 import { clampTripDates, moves, stays, tripLegs } from "./dates";
-import { isItineraryEligible } from "./eligibility";
+import { isItineraryEligible, isListedForTrip } from "./eligibility";
 import { tierMarkups } from "./price";
 import { offlineHotelColumns } from "./offlineHold";
 import { hotelPerTraveller, livePrice, type LivePrice } from "./progress";
@@ -130,6 +131,24 @@ function parseTravellers(v: unknown): TravellersInput | null {
   };
 }
 
+/**
+ * The ticket's text fields as the live order's schema takes them (`validateOrderData`,
+ * app/api/confirm-order/utils.ts - yup): each one absent or text (yup's `string()` also casts a
+ * number), `nonInstant` a boolean, `seatingChoice` "together" / "split". They go to the
+ * reservation's `event_order_info` and to the ops email as they are.
+ */
+const TICKET_TEXT_FIELDS = ["vendor", "eid", "supplier", "supplierCategory", "zoneLabel", "description"] as const;
+function ticketTextOk(t: Record<string, unknown>): boolean {
+  for (const k of TICKET_TEXT_FIELDS) {
+    const v = t[k];
+    if (v === undefined) continue;
+    if (!(isText(v) || (typeof v === "number" && Number.isFinite(v)))) return false;
+  }
+  if (t.nonInstant !== undefined && typeof t.nonInstant !== "boolean") return false;
+  if (t.seatingChoice !== undefined && t.seatingChoice !== "together" && t.seatingChoice !== "split") return false;
+  return true;
+}
+
 const isSegment = (v: unknown): boolean =>
   isObj(v) && isText(v.departureTime) && isText(v.arrivalTime) && isText(v.departureAirport) && isText(v.arrivalAirport);
 
@@ -182,6 +201,7 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
     if (!isObj(t) || !isText(t.id) || !t.id || !isText(t.category) || !t.category || !isPositive(t.price) || t.quantity !== pax) {
       return no(`ticket of event ${id}`);
     }
+    if (!ticketTextOk(t)) return no(`ticket fields of event ${id}`);
     // The boundary: the shape the summary sends, checked above.
     tickets[id] = t as unknown as OrderTicket;
   }
@@ -247,6 +267,7 @@ export type ConfirmErrorCode =
   | "FLIGHT_CHANGED"
   | "HOTEL_CHANGED"
   | "OFFLINE_HOTEL_DATE_MISMATCH"
+  | "OFFLINE_HOTEL_SOLD_OUT"
   | "HOTEL_NOT_REFUNDABLE"
   | "TRIP_INCOMPLETE"
   | "PRICE_CHANGED"
@@ -258,10 +279,13 @@ const CODES: Record<ConfirmErrorCode, { status: number; step?: ItineraryStep }> 
   BAD_REQUEST: { status: 400 },
   ROUTE_CHANGED: { status: 400, step: "build" },
   TICKET_CHANGED: { status: 409, step: "tickets" },
-  FLIGHT_CHANGED: { status: 400, step: "flights" },
+  // The offer no longer fits the trip's legs (count or departure days): pick a flight again.
+  FLIGHT_CHANGED: { status: 409, step: "flights" },
   HOTEL_CHANGED: { status: 400, step: "hotels" },
   // The live code (confirm-order answers it with 409); a trip answers 400 like its other hotel refusals.
   OFFLINE_HOTEL_DATE_MISMATCH: { status: 400, step: "hotels" },
+  // Our own block has fewer rooms left than the stay takes.
+  OFFLINE_HOTEL_SOLD_OUT: { status: 400, step: "hotels" },
   HOTEL_NOT_REFUNDABLE: { status: 400, step: "hotels" },
   TRIP_INCOMPLETE: { status: 400, step: "tickets" },
   PRICE_CHANGED: { status: 409, step: "tickets" },
@@ -281,8 +305,13 @@ export type ConfirmFailure = {
   stayKey?: string;
 };
 
-export function failure(code: ConfirmErrorCode, about: Pick<ConfirmFailure, "eventId" | "stayKey"> = {}): ConfirmFailure {
-  return { code, ...CODES[code], ...about };
+/** A refusal; `status` overrides the code's own (e.g. HOTEL_CHANGED is 409 for an own-stock price mismatch). */
+export function failure(
+  code: ConfirmErrorCode,
+  about: Pick<ConfirmFailure, "eventId" | "stayKey"> = {},
+  status?: number,
+): ConfirmFailure {
+  return { code, ...CODES[code], ...about, ...(status ? { status } : {}) };
 }
 
 /** The words the customer reads, named when the event / the city is known. */
@@ -307,6 +336,8 @@ export function confirmMessage(code: ConfirmErrorCode, names: { event?: string; 
       return `המלון ב${city} לא מתאים לתאריכי הלינה או למספר הנוסעים. בחרו מלון שוב.`;
     case "OFFLINE_HOTEL_DATE_MISMATCH":
       return `המלון שבחרתם ב${city} כבר לא זמין בתאריכים האלה. בחרו מלון שוב.`;
+    case "OFFLINE_HOTEL_SOLD_OUT":
+      return `החדרים שבחרתם במלון ב${city} כבר נתפסו. בחרו מלון אחר.`;
     case "HOTEL_NOT_REFUNDABLE":
       return `המלון שבחרתם ב${city} כבר לא ניתן לביטול. בחרו מלון אחר.`;
     case "TRIP_INCOMPLETE":
@@ -362,7 +393,8 @@ export function checkRoute(
     events.push(e);
   }
   if (events.length < MIN_TRIP_EVENTS || events.length > s.maxEvents) return changed();
-  for (const e of events) if (!isItineraryEligible(e, todayIso)) return changed(e.id);
+  // Listed (a row read by id is not filtered: a QA, deactivated or hidden event) and eligible today.
+  for (const e of events) if (!isListedForTrip(e) || !isItineraryEligible(e, todayIso)) return changed(e.id);
   for (const e of events) {
     const others = events.filter((o) => o !== e);
     if (!isAddable(compatibility(others, e, s))) return changed(e.id);
@@ -405,24 +437,50 @@ export function tripState(sub: TripSubmission, route: Event[]): ItineraryState {
 /**
  * Every piece is ready for the party - the flow's own rules (`ticketReady`, the flights step's
  * party, `stayHotelReady` on `stayRanges`) plus:
- *  - the flight has one leg per FLOWN leg of the trip (`tripLegs` with the train moves) - the
- *    hotels' dates hang on that alignment (stayAdapter.ts `stayFlight`);
+ *  - the flight has one leg per FLOWN leg of the trip (`tripLegs` with the train moves), each
+ *    leaving on that leg's day (the search asked for those days) - the hotels' dates hang on that
+ *    alignment (stayAdapter.ts `stayFlight`);
  *  - every hotel's rate may be sold for its check-in (`orderHotelSellable`, the live rule).
- * An own-stock hotel is taken like live: its block dates are checked against the database and its
- * rooms held by the route (lib/itinerary/offlineHold.ts) - nothing here needs the database.
+ * An own-stock hotel is taken like live: its block is checked against the database and its rooms
+ * held by the flow (lib/itinerary/offlineHold.ts) - nothing here needs the database.
  */
 export function checkPieces(state: ItineraryState, now: Date | number): ConfirmFailure | null {
   const { route, dates, pax, flight } = state;
   const train = new Set(state.train);
   for (const e of route) if (!ticketReady(state.tickets[e.id], pax)) return failure("TICKET_CHANGED", { eventId: e.id });
-  if (!flight || flight.numOfTravelers !== pax || (flight.legs?.length ?? 0) !== tripLegs(route, dates, train).length) {
-    return failure("FLIGHT_CHANGED");
-  }
+  const flown = tripLegs(route, dates, train);
+  const legs = flight?.legs ?? [];
+  if (!flight || flight.numOfTravelers !== pax || legs.length !== flown.length) return failure("FLIGHT_CHANGED");
+  if (legs.some((leg, i) => String(leg.departureTime).slice(0, 10) !== flown[i].date)) return failure("FLIGHT_CHANGED");
   const ranges = stayRanges(route, dates, flight, train);
   for (const [i, stay] of stays(route, dates).entries()) {
     const h = state.hotels[stay.key];
     if (!stayHotelReady(h, ranges[i], pax)) return failure("HOTEL_CHANGED", { stayKey: stay.key });
     if (!orderHotelSellable(h, now)) return failure("HOTEL_NOT_REFUNDABLE", { stayKey: stay.key });
+  }
+  return null;
+}
+
+/**
+ * Each ticket is one the event still sells, on the event the server re-read: every supplier's
+ * ticket is a row of the event's own `tickets_and_rates` (the live ticket step prices those rows -
+ * lib/supplier-offers.ts `priceTicketsForQuantity` - and the order keeps the row's id; a together
+ * twin records its real ticket, `orderTicketId`; TixStock's live sync rewrites prices, never ids),
+ * so its id must be there and not off sale (`available === false`), and the supplier the order
+ * names must be that row's.
+ * Our own and static tickets are never live-priced (`ownTicketForQuantity`): the price may not be
+ * below the row's. TixStock's live price can sit below its stored price and LiveTickets is checked
+ * live (`validateLiveTicketsOffer`) - no stored-price floor for either.
+ * 409 TICKET_CHANGED: the customer picks again on fresh rows.
+ */
+export function checkTickets(route: Event[], tickets: Record<number, OrderTicket | undefined>): ConfirmFailure | null {
+  for (const e of route) {
+    const t = tickets[e.id];
+    const row = (e.tickets_and_rates ?? []).find((r) => r?.id === t?.id);
+    if (!t || !row || row.available === false) return failure("TICKET_CHANGED", { eventId: e.id });
+    const supplier = ticketSupplier(row, e.type);
+    if (ticketSupplier(t, e.type) !== supplier) return failure("TICKET_CHANGED", { eventId: e.id });
+    if (supplier === "static" && !(Number(t.price) >= Number(row.price))) return failure("TICKET_CHANGED", { eventId: e.id });
   }
   return null;
 }
@@ -494,8 +552,8 @@ type OrderEventInfo = OrderData["event_order_info"];
 
 /**
  * The event's ticket in the single-event shape the live summary sends (app/order/OrderReview.tsx
- * `event_order_info`), for the party. `date` is a Date there; a row stores the event's own
- * string (`buildGroupRows`).
+ * `event_order_info`), for the party. `date` is a Date there; a row stores its ISO string
+ * (`buildGroupRows`), which is what the live request's JSON carries.
  */
 export function eventOrderInfo(e: Event, t: OrderTicket, pax: number): OrderEventInfo {
   return {
@@ -545,7 +603,7 @@ export function toSingleEventOrderData(sub: TripSubmission, event: Event, info?:
   };
 }
 
-/** A row's `event_order_info`: the live shape, the event's own date string. */
+/** A row's `event_order_info`: the live shape, the date as an ISO string (as the live JSON has it). */
 export type RowEventInfo = Omit<OrderEventInfo, "date"> & { date: string };
 
 /** One reservation row of the trip, as inserted. */
@@ -608,7 +666,8 @@ export function buildGroupRows(sub: TripSubmission, route: Event[], ctx: GroupRo
     return {
       ...contact,
       event_id: e.id,
-      event_order_info: { ...info, date: e.date },
+      // As the live summary sends it: the event's date as an ISO instant (`new Date(event.date)`).
+      event_order_info: { ...info, date: new Date(e.date).toISOString() },
       flight_order_info: i === 0 ? sub.flight : {},
       hotel_order_info: hotel ? persistableHotel(hotel) : {},
       ...offlineHotelColumns(hotel),

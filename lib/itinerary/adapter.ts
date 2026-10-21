@@ -9,7 +9,7 @@
  */
 import type { Event, OrderTicket } from "@/lib/app.types";
 import type { OrderResume } from "@/lib/order/draft";
-import { isItineraryEligible } from "./eligibility";
+import { isItineraryEligible, isListedForTrip } from "./eligibility";
 
 /**
  * A trip holds at most three events (settings' `max_events` is 2-3): the Server Action never
@@ -100,6 +100,21 @@ export function pickTripEvents(events: Event[], ids: number[], todayIso: string)
     const e = byId.get(id);
     return e && isItineraryEligible(e, todayIso) ? [e] : [];
   });
+}
+
+/**
+ * Rows read straight from the database by id (`getEvents(id)`, not the cached catalog), as the
+ * catalog would hold them: only LISTED events (a row read by id is not filtered -
+ * `isListedForTrip`), and only ones a trip may hold today (`pickTripEvents`). The hold's confirm
+ * prices with these rows; after it answered "the price changed" the trip reloads them, so the
+ * summary prices with the same markups and bases the server did.
+ */
+export function pickFreshTripEvents(rows: (Event | undefined)[], ids: number[], todayIso: string): Event[] {
+  return pickTripEvents(
+    rows.filter((e): e is Event => !!e && isListedForTrip(e)),
+    ids,
+    todayIso,
+  );
 }
 
 /**

@@ -12,6 +12,18 @@ import { dayDiff, eventDay } from "./geo";
 const AVAILABILITY_WINDOW_DAYS = 3;
 
 /**
+ * Listed on the site - what the catalog the builder reads keeps (`isListedEvent`, lib/eventsData.ts,
+ * repeated: that file loads the database client): not a QA event (`is_test`), not taken off the
+ * site (`deactivated_reason`), and not hidden until approved (`is_hidden`, added on main - read
+ * tolerantly, absent = listed). A row read by id (`getEvents(id)`) is NOT filtered by these, so a
+ * trip checks them itself.
+ */
+export function isListedForTrip(e: Event): boolean {
+  const hidden = (e as Event & { is_hidden?: unknown }).is_hidden === true;
+  return !e.is_test && !e.deactivated_reason && !hidden;
+}
+
+/**
  * A trip is flights + hotels around the tickets, in Europe: so not a ticket-only event,
  * not sold out, not in the US, and at least the sell window (3 days) away.
  * `todayIso` is `YYYY-MM-DD` - the caller owns the clock.
