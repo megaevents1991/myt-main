@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { BedDouble, Check, CircleAlert, Plane } from "lucide-react";
 
 import { OrderContext } from "@/app/app.context";
@@ -64,33 +64,37 @@ function pickIssue(hotel: OrderHotel | undefined, view: StayView, pax: number): 
   return parts.length ? `${parts.join(" ")} החזירו את החיפוש לתאריכים ולמספר הנוסעים של הטיול כדי להמשיך.` : null;
 }
 
+/** The trip's write for one stay's hotel pick; one function for the step's whole life. */
+type OnStayHotel = (stayKey: string, h: OrderHotel | undefined) => void;
+
 /**
  * One stay's hotel step: the order flow's own HotelSelection, unchanged, in its own
  * HotelFetchProvider (one search result per stay) and reading this stay's slice of the trip
  * through an OrderContext adapter. Mounted once per stay visit and kept mounted (hidden) after,
  * so coming back to a city spends no hotel search.
+ *
+ * Memoized, and it does not read the trip's context: every prop is stable while its stay is
+ * unchanged (`view` is the step's memo, `hotel` and `pax` the trip's own values, `onHotel` one
+ * function), so a change elsewhere in the trip - each keystroke in the summary's travellers form,
+ * while this pane sits hidden - re-renders neither the live HotelSelection nor its
+ * HotelFetchProvider (which hands out a new `hotelsData` object on every render). It never
+ * remounts for it either: its key is the stay's `paneKey`, as before.
  */
-function StayHotelPane({ view }: { view: StayView }) {
-  const api = useItinerary();
-  const { pax, hotels } = api.state;
+const StayHotelPane = memo(function StayHotelPane({
+  view,
+  hotel,
+  pax,
+  onHotel,
+}: {
+  view: StayView;
+  hotel: OrderHotel | undefined;
+  pax: number;
+  onHotel: OnStayHotel;
+}) {
   const stayKey = view.stay.key;
-  const hotel = hotels[stayKey];
 
-  // The callback keeps its identity for the pane's life (see adapterForStay), so it reads the
-  // provider through a ref; the provider's actions themselves are re-made per render.
-  const latest = useRef(api);
-  useLayoutEffect(() => {
-    latest.current = api;
-  });
-  const [cb] = useState<HotelStepCallbacks>(() => ({
-    setHotel: (h) => {
-      const now = latest.current;
-      // The step writes its pick from more than one place (the search's auto-pick, then the
-      // selected card's commit), often unchanged: a write that changes nothing is not stored.
-      if (sameHotel(now.state.hotels[stayKey], h)) return;
-      now.setHotel(stayKey, h);
-    },
-  }));
+  // The callback keeps its identity for the pane's life (see adapterForStay); `onHotel` is stable.
+  const [cb] = useState<HotelStepCallbacks>(() => ({ setHotel: (h) => onHotel(stayKey, h) }));
   const value = useMemo(
     () => adapterForStay({ event: view.event, city: view.stay.city, flight: view.flight, hotel, pax }, cb),
     [view.event, view.stay.city, view.flight, hotel, pax, cb],
@@ -115,7 +119,7 @@ function StayHotelPane({ view }: { view: StayView }) {
       </HotelFetchProvider>
     </>
   );
-}
+});
 
 /** The stays as tabs: "מלון ב{city}", "DD/MM–DD/MM · N לילות", and a check once its hotel is ready (`stayHotelReady`). */
 function StayTabs({
@@ -219,8 +223,23 @@ function StayTabs({
  * filters - with no new search. Hidden, nothing new mounts.
  */
 export function HotelsStep({ shown = true }: { shown?: boolean }) {
-  const { state, setActiveStay, goStep } = useItinerary();
+  const api = useItinerary();
+  const { state, setActiveStay, goStep } = api;
   const { route, dates, flight, hotels, pax, train } = state;
+
+  // The panes' one write (stable for the step's life, so the memoized panes keep still): it reads
+  // the trip through a ref - the provider's actions are re-made per render.
+  const latest = useRef(api);
+  useLayoutEffect(() => {
+    latest.current = api;
+  });
+  const onHotel = useCallback<OnStayHotel>((stayKey, h) => {
+    const now = latest.current;
+    // The step writes its pick from more than one place (the search's auto-pick, then the
+    // selected card's commit), often unchanged: a write that changes nothing is not stored.
+    if (sameHotel(now.state.hotels[stayKey], h)) return;
+    now.setHotel(stayKey, h);
+  }, []);
 
   const views = useMemo<StayView[]>(() => {
     if (!flight || !route.length) return [];
@@ -313,7 +332,7 @@ export function HotelsStep({ shown = true }: { shown?: boolean }) {
             aria-labelledby={tabId(v.stay.key)}
             hidden={!open}
           >
-            {mounted && <StayHotelPane key={v.paneKey} view={v} />}
+            {mounted && <StayHotelPane key={v.paneKey} view={v} hotel={hotels[v.stay.key]} pax={pax} onHotel={onHotel} />}
           </div>
         );
       })}
