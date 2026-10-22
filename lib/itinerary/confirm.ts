@@ -27,6 +27,7 @@ import { ticketSupplier } from "@/lib/suppliers";
 import { MAX_TRIP_LOAD, ticketReady } from "./adapter";
 import { stayCityName } from "./builder";
 import { clampTripDates, moves, stays, tripLegs } from "./dates";
+import { ITINERARY_DRAFT_TTL_MS } from "./draft";
 import { isItineraryEligible, isListedForTrip } from "./eligibility";
 import { tierMarkups } from "./price";
 import { offlineHotelColumns } from "./offlineHold";
@@ -924,9 +925,50 @@ export const PRICE_STILL_CHANGING = "המחיר עדיין משתנה - רעננ
  * "The price changed" a second time in a row (the trip was already re-priced on fresh rows): no
  * second bounce through the steps - the summary says so and offers a refresh and the WhatsApp
  * contact. (Known cause: the page's settings are read once, at render - a staff save of the tiers
- * mid-session needs a refresh.) `consecutive` counts this answer.
+ * mid-session needs a refresh.) `consecutive` counts this answer (`notePriceAnswer`).
  */
 export function escalatePriceChange(action: HoldAction, consecutive: number): HoldAction {
   if (action.code !== "PRICE_CHANGED" || consecutive < 2) return action;
   return { kind: "stay", code: "PRICE_CHANGED", message: PRICE_STILL_CHANGING };
+}
+
+/**
+ * Which trip a hold was for: the route (in order), the dates (depart, return, every move), the
+ * party and the train moves. NOT the step, the tickets, the flight, the hotels or the event rows -
+ * a "the price changed" bounce itself changes those (fresh rows, the tickets step, the re-picks),
+ * and the next attempt is still the same trip.
+ */
+export function tripKey(state: Pick<ItineraryState, "route" | "dates" | "pax" | "train">): string {
+  const moveDays = Object.keys(state.dates.moves)
+    .sort()
+    .map((k) => `${k}=${state.dates.moves[k]}`);
+  return JSON.stringify([
+    state.route.map((e) => e.id),
+    state.dates.depart,
+    state.dates.ret,
+    moveDays,
+    state.pax,
+    [...state.train].sort(),
+  ]);
+}
+
+/** The hold's "the price changed" answers in a row, for one trip (`tripKey`). */
+export type PriceChangeMemo = { key: string; count: number; at: number };
+export const NO_PRICE_CHANGES: PriceChangeMemo = { key: "", count: 0, at: 0 };
+
+/**
+ * How long a first "the price changed" waits for the second to count as "in a row": the trip's
+ * draft life (30 minutes) - a customer back an hour later starts over.
+ */
+const PRICE_CHANGE_WINDOW_MS = ITINERARY_DRAFT_TTL_MS;
+
+/**
+ * The memo after the hold's answer: a "the price changed" for the SAME trip within the window
+ * counts on; for another trip (route / dates / party / train changed) or after the window it is
+ * the first again; any other answer - a hold, another refusal, no answer - clears it.
+ */
+export function notePriceAnswer(memo: PriceChangeMemo, key: string, priceChanged: boolean, now: number): PriceChangeMemo {
+  if (!priceChanged) return NO_PRICE_CHANGES;
+  const consecutive = memo.count > 0 && memo.key === key && now - memo.at <= PRICE_CHANGE_WINDOW_MS;
+  return { key, count: consecutive ? memo.count + 1 : 1, at: now };
 }

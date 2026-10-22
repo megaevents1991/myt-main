@@ -10,6 +10,9 @@ import {
   escalatePriceChange,
   PRICE_STILL_CHANGING,
   withRowEids,
+  tripKey,
+  notePriceAnswer,
+  NO_PRICE_CHANGES,
   checkPieces,
   checkRoute,
   confirmFailureAction,
@@ -1216,5 +1219,72 @@ describe("round 3 - an unreadable body answers the switch first", () => {
   it("switch off: 404; on: 400", async () => {
     expect(await confirmTrip(undefined, deps("production"))).toMatchObject({ status: 404, body: { error: "NOT_FOUND" } });
     expect(await confirmTrip(undefined, deps("preview"))).toMatchObject({ status: 400, body: { error: "BAD_REQUEST" } });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Fix round 5 - "the price changed" twice in a row means: for the same trip
+// ---------------------------------------------------------------------------------------------
+
+describe("round 5 - tripKey / notePriceAnswer", () => {
+  const T0 = Date.parse("2026-10-22T10:00:00Z");
+  const MIN = 60_000;
+  const key = tripKey(full);
+  const first = notePriceAnswer(NO_PRICE_CHANGES, key, true, T0);
+
+  it("the same trip twice: the second is 'in a row' - it escalates", () => {
+    expect(first.count).toBe(1);
+    const second = notePriceAnswer(first, tripKey(full), true, T0 + 5 * MIN);
+    expect(second.count).toBe(2);
+    const action = confirmFailureAction(409, { error: "PRICE_CHANGED" }, full);
+    expect(escalatePriceChange(action, second.count)).toMatchObject({ kind: "stay", message: PRICE_STILL_CHANGING });
+  });
+
+  it("the bounce's own changes are the same trip: fresh rows, another step, re-picked tickets / flight / hotels", () => {
+    const bounced: ItineraryState = {
+      ...full,
+      step: "tickets",
+      route: full.route.map((e) => ({ ...e, markup_ticket: 999 }) as Event),
+      tickets: { 618: ticket("t618", 999), 702: ticket("t702", 999) },
+      flight: null,
+      hotels: {},
+      activeEvent: 1,
+    };
+    expect(tripKey(bounced)).toBe(key);
+  });
+
+  it("another party: not in a row - the count starts again at 1 (no escalation)", () => {
+    const next = notePriceAnswer(first, tripKey({ ...full, pax: 3 }), true, T0 + MIN);
+    expect(next.count).toBe(1);
+    expect(escalatePriceChange(confirmFailureAction(409, { error: "PRICE_CHANGED" }, full), next.count)).toMatchObject({
+      kind: "go",
+      step: "tickets",
+    });
+  });
+
+  it("other dates (depart, return or a move day), another route or other train moves: not in a row", () => {
+    const moveKey = Object.keys(full.dates.moves)[0];
+    for (const other of [
+      { ...full, dates: { ...full.dates, depart: "2027-05-10" } },
+      { ...full, dates: { ...full.dates, ret: "2027-05-17" } },
+      { ...full, dates: { ...full.dates, moves: { ...full.dates.moves, [moveKey]: "2027-05-14" } } },
+      { ...full, route: [chelsea, celine] },
+      { ...full, train: [moveKey] },
+    ]) {
+      expect(tripKey(other)).not.toBe(key);
+      expect(notePriceAnswer(first, tripKey(other), true, T0 + MIN).count).toBe(1);
+    }
+    // The train moves' order does not make another trip.
+    expect(tripKey({ ...full, train: ["b", "a"] })).toBe(tripKey({ ...full, train: ["a", "b"] }));
+  });
+
+  it("any other answer, a hold or no answer at all clears it; so does a gone event (the flow passes false)", () => {
+    expect(notePriceAnswer(first, key, false, T0 + MIN)).toEqual(NO_PRICE_CHANGES);
+    expect(notePriceAnswer(notePriceAnswer(first, key, false, T0 + MIN), key, true, T0 + 2 * MIN).count).toBe(1);
+  });
+
+  it("back after the draft's 30 minutes: the first again", () => {
+    expect(notePriceAnswer(first, key, true, T0 + 30 * MIN).count).toBe(2);
+    expect(notePriceAnswer(first, key, true, T0 + 31 * MIN).count).toBe(1);
   });
 });

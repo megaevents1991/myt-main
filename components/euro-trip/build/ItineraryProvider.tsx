@@ -14,7 +14,7 @@ import {
 } from "react";
 
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
-import type { HeldAnswer } from "@/lib/itinerary/confirm";
+import { NO_PRICE_CHANGES, notePriceAnswer, type HeldAnswer, type PriceChangeMemo } from "@/lib/itinerary/confirm";
 import { draftMayRestore, sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
 import {
   forgetItineraryDraft,
@@ -97,10 +97,12 @@ export type ItineraryApi = {
   /** Records the hold and closes the trip's draft (`closeDraft`). */
   markHeld: (h: HeldAnswer) => void;
   /**
-   * Counts the hold's consecutive "the price changed" answers (any other answer resets it) and
-   * returns the count - kept here, as the summary unmounts when such an answer sends it back.
+   * Notes the hold's answer for the trip it was sent for (`tripKey`) and returns how many "the
+   * price changed" answers in a row that trip has had (`notePriceAnswer`: another trip, another
+   * answer or 30 minutes start over; `changed` false clears it) - kept here, as the summary unmounts
+   * when such an answer sends it back.
    */
-  countPriceChange: (changed: boolean) => number;
+  countPriceChange: (changed: boolean, key: string) => number;
 };
 
 const ItineraryContext = createContext<ItineraryApi | null>(null);
@@ -204,10 +206,10 @@ export function ItineraryProvider({
     draftClosed.current = true;
     forgetItineraryDraft();
   }, []);
-  const priceChanges = useRef(0);
-  const countPriceChange = useCallback((changed: boolean) => {
-    priceChanges.current = changed ? priceChanges.current + 1 : 0;
-    return priceChanges.current;
+  const priceChanges = useRef<PriceChangeMemo>(NO_PRICE_CHANGES);
+  const countPriceChange = useCallback((changed: boolean, key: string) => {
+    priceChanges.current = notePriceAnswer(priceChanges.current, key, changed, Date.now());
+    return priceChanges.current.count;
   }, []);
   const [held, setHeld] = useState<HeldAnswer | null>(null);
   const markHeld = useCallback(

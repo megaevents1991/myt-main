@@ -10,6 +10,7 @@ import {
   isHeldAnswer,
   newGroupId,
   submissionFromState,
+  tripKey,
   type HoldAction,
 } from "@/lib/itinerary/confirm";
 import { livePrice } from "@/lib/itinerary/progress";
@@ -91,6 +92,8 @@ export function useTripHold(): {
     setSending(true);
     setFailure(null);
     group.current ??= newGroupId();
+    // The trip this attempt is for: a "the price changed" counts as "again" only for the same one.
+    const key = tripKey(a.state);
     try {
       const body = submissionFromState(a.state, travellers, group.current, price, { utmSource: utmSource() });
       const res = await fetch("/api/itinerary/confirm", {
@@ -101,23 +104,25 @@ export function useTripHold(): {
       const json: unknown = await res.json().catch(() => null);
       if (res.ok && isHeldAnswer(json)) {
         // An earlier refusal's notice ("המחיר עודכן") is over: the trip is held.
-        latest.current.countPriceChange(false);
+        latest.current.countPriceChange(false, key);
         latest.current.dismissNotice();
         latest.current.markHeld({ group: json.group, ids: json.ids, reference: json.reference ?? null });
         return;
       }
       const now = latest.current;
       const refusal = confirmFailureAction(res.status, json, now.state);
-      // A second "the price changed" in a row (already re-priced on fresh rows): said here, with a
-      // refresh and the WhatsApp contact - no second bounce through the steps.
-      const action = escalatePriceChange(refusal, now.countPriceChange(refusal.code === "PRICE_CHANGED"));
+      // A second "the price changed" in a row FOR THE SAME TRIP (already re-priced on fresh rows):
+      // said here, with a refresh and the WhatsApp contact - no second bounce through the steps.
+      const action = escalatePriceChange(refusal, now.countPriceChange(refusal.code === "PRICE_CHANGED", key));
       if (action.kind === "stay") {
         setFailure(action);
         return;
       }
       group.current = null;
       if (action.reloadRows && (await reloadFresh())) {
-        // An event left the catalog meanwhile: the route changed - the build step says so.
+        // An event left the catalog meanwhile: the route changed - the build step says so, and the
+        // trip that comes back from it is another one.
+        latest.current.countPriceChange(false, key);
         latest.current.showNotice(GONE);
         latest.current.goStep("build");
         return;
@@ -128,7 +133,8 @@ export function useTripHold(): {
       now.goStep(action.step);
     } catch (err) {
       console.error("[EuroTrip] The hold request failed:", err);
-      // No answer at all: a server error, said on the summary.
+      // No answer at all: a server error, said on the summary - and no "price changed in a row".
+      latest.current.countPriceChange(false, key);
       const action = confirmFailureAction(0, null, latest.current.state);
       setFailure(action.kind === "stay" ? action : { kind: "stay", code: "SERVER_ERROR", message: action.message });
     } finally {
