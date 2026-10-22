@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { getCachedEvents } from "@/lib/eventsData";
 import { isItineraryEligible } from "@/lib/itinerary/eligibility";
 import { itineraryOn } from "@/lib/itinerary/settings";
-import { getItinerarySettings } from "@/lib/itinerary/settings.server";
+import { getItinerarySettingsForPage } from "@/lib/itinerary/settings.server";
 import { slimTripEvent } from "@/lib/itinerary/slim";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { ItineraryProvider } from "@/components/euro-trip/build/ItineraryProvider";
@@ -23,7 +23,7 @@ export const revalidate = 3600;
 const TITLE = "Build Your Euro Trip";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getItinerarySettings();
+  const settings = await getItinerarySettingsForPage();
   return {
     title: `${TITLE} - בנו את היורו טריפ שלכם | מגה איבנטס`,
     description: "בנו טיול עם 2-3 אירועים: טיסה לעיר הראשונה וחזרה מהאחרונה, מלון בכל עיר.",
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function EuroTripBuildPage() {
-  const settings = await getItinerarySettings();
+  const settings = await getItinerarySettingsForPage();
   if (!itineraryOn(settings, process.env.VERCEL_ENV)) notFound();
 
   const { events } = await getCachedEvents();

@@ -98,6 +98,21 @@ export function parseItinerarySettings(
   return out;
 }
 
+/**
+ * Is this failed read of `itinerary_settings` "the table is not there" (the backoffice migration
+ * not applied yet) - the one failure a PAGE may answer with the defaults? Postgres 42P01 /
+ * PostgREST PGRST205 by code, or by their words when only the message survived the cache
+ * ("relation ... does not exist", "Could not find the table ..."). Anything else - a timeout, a
+ * refused connection, a 5xx - is not: the page throws and ISR keeps its last good version.
+ */
+export function isMissingSettingsTable(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const { code, message } = e as { code?: unknown; message?: unknown };
+  if (code === "42P01" || code === "PGRST205") return true;
+  const text = typeof message === "string" ? message : "";
+  return /relation\s+\S+\s+does not exist/i.test(text) || /could not find the table/i.test(text);
+}
+
 /** The switch: on when staff enabled it, and always outside production (preview / dev). */
 export function itineraryOn(s: ItinerarySettings, vercelEnv: string | undefined): boolean {
   return s.enabled || vercelEnv !== "production";

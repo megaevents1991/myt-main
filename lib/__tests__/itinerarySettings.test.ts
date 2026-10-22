@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ITINERARY_SETTINGS,
+  isMissingSettingsTable,
   itineraryOn,
   parseItinerarySettings,
 } from "@/lib/itinerary/settings";
@@ -120,5 +121,31 @@ describe("itineraryOn", () => {
 
   it("is on in production once enabled", () => {
     expect(itineraryOn({ ...DEFAULT_ITINERARY_SETTINGS, enabled: true }, "production")).toBe(true);
+  });
+});
+
+describe("isMissingSettingsTable - the one failure a page answers with the defaults", () => {
+  it("a missing table, by Postgres / PostgREST code", () => {
+    expect(isMissingSettingsTable({ code: "42P01", message: "x" })).toBe(true);
+    expect(isMissingSettingsTable({ code: "PGRST205", message: "x" })).toBe(true);
+  });
+
+  it("a missing table, by its words when only the message survived (an Error rethrown by the cache)", () => {
+    expect(isMissingSettingsTable(new Error('relation "public.itinerary_settings" does not exist'))).toBe(true);
+    expect(
+      isMissingSettingsTable(new Error("Could not find the table 'public.itinerary_settings' in the schema cache")),
+    ).toBe(true);
+  });
+
+  it("anything else is not: a timeout, a refused connection, a 5xx, a missing column, nothing", () => {
+    expect(isMissingSettingsTable({ code: "57014", message: "canceling statement due to statement timeout" })).toBe(false);
+    expect(isMissingSettingsTable(new Error("fetch failed"))).toBe(false);
+    expect(isMissingSettingsTable(new Error("TypeError: Failed to fetch"))).toBe(false);
+    expect(isMissingSettingsTable({ code: "PGRST301", message: "JWT expired" })).toBe(false);
+    expect(isMissingSettingsTable({ code: "42703", message: 'column "value" does not exist' })).toBe(false);
+    expect(isMissingSettingsTable({ message: "upstream connect error or disconnect/reset before headers. 503" })).toBe(false);
+    expect(isMissingSettingsTable(null)).toBe(false);
+    expect(isMissingSettingsTable(undefined)).toBe(false);
+    expect(isMissingSettingsTable("relation x does not exist")).toBe(false);
   });
 });

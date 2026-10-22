@@ -6,7 +6,7 @@ import { CalendarHeart, Hotel, Plane } from "lucide-react";
 import type { Event } from "@/lib/app.types";
 import { getCachedEvents } from "@/lib/eventsData";
 import { itineraryOn } from "@/lib/itinerary/settings";
-import { getItinerarySettings } from "@/lib/itinerary/settings.server";
+import { getItinerarySettingsForPage } from "@/lib/itinerary/settings.server";
 import { recommendRoutes } from "@/lib/itinerary/recommend";
 import { toRouteCard, type RouteCardData } from "@/lib/itinerary/routeCard";
 import ClientTracker from "@/components/ClientTracker";
@@ -26,7 +26,7 @@ const TITLE = "Build Your Euro Trip";
 const LINE = "2-3 אירועים בטיול אחד · טיסה לעיר הראשונה וחזרה מהאחרונה · מלון בכל עיר";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getItinerarySettings();
+  const settings = await getItinerarySettingsForPage();
   return {
     title: `${TITLE} | מגה איבנטס`,
     description: LINE,
@@ -56,7 +56,7 @@ const STEPS = [
 ];
 
 export default async function EuroTripPage() {
-  const settings = await getItinerarySettings();
+  const settings = await getItinerarySettingsForPage();
   if (!itineraryOn(settings, process.env.VERCEL_ENV)) notFound();
 
   const { events } = await getCachedEvents();
