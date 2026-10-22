@@ -17,7 +17,7 @@ import type { Event, OrderHotel } from "@/lib/app.types";
 import { getTotalMarkup } from "@/lib/events/price";
 import { allTicketsReady, ticketReady } from "./adapter";
 import { stays } from "./dates";
-import { estimateParts, markupDiscount, tierMarkups } from "./price";
+import { estimateParts, markupDiscount, tierMarkups, type EstimateParts } from "./price";
 import type { ItinerarySettings } from "./settings";
 import { MIN_TRIP_EVENTS, type ItineraryState } from "./state";
 import { hotelGuests, stayHotelReady, stayRanges, withStayBase, type StayRange } from "./stayAdapter";
@@ -49,7 +49,7 @@ export function canContinue(state: ItineraryState): ItineraryProgress {
  * Tolerance of the "included in the package" band, per guest - the live summary's
  * `priceOutsidePackBoundaries` (app/order/order-review.utils.ts), same env and default.
  */
-const PACK_BOUNDARY_USD = Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4");
+export const PACK_BOUNDARY_USD = Number(process.env.NEXT_PUBLIC_BOUNDRIES || "4");
 
 const cents = (n: number): number => Math.round(n * 100) / 100;
 
@@ -141,6 +141,15 @@ export function livePerTraveller(state: ItineraryState, s: ItinerarySettings): n
 }
 
 /**
+ * Each piece's estimate, per traveller - what `progressivePrice` counts for a piece the customer
+ * has not picked yet (`estimateParts` with no flight quote). The summary's rows are each picked
+ * piece against its own estimate here (`summaryAdditions`, lib/itinerary/summaryRows.ts).
+ */
+export function pieceEstimates(state: Pick<ItineraryState, "route" | "dates">, s: ItinerarySettings): EstimateParts {
+  return estimateParts(state.route, state.dates, s, null);
+}
+
+/**
  * The trip's price while it is being built - the continue bar's figure and the summary's estimate
  * box until `livePrice` has every piece (then `livePrice` is THE number; on a complete trip this
  * gives exactly the same). Each piece the customer picked counts at its own price, each piece not
@@ -159,7 +168,7 @@ export function progressivePrice(
 ): Pick<LivePrice, "perTraveller" | "total"> {
   const { route, dates, pax, flight } = state;
   if (!route.length || !(pax > 0)) return { perTraveller: 0, total: 0 };
-  const est = estimateParts(route, dates, s, null);
+  const est = pieceEstimates(state, s);
 
   let tickets = 0;
   route.forEach((e, i) => {

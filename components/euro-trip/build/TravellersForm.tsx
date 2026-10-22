@@ -13,7 +13,6 @@ import {
   type TravellersInput,
 } from "@/lib/itinerary/travellers";
 import { cn } from "@/lib/utils";
-import { PanelTitle } from "./parts";
 
 const LABELS: Record<ContactField, string> = {
   firstName: "שם פרטי באנגלית",
@@ -128,13 +127,12 @@ export function TravellersForm({
     onChange({ ...value, others: value.others.map((o, i) => (i === row ? { ...o, [field]: raw } : o)) });
 
   return (
-    <section ref={formRef} aria-labelledby="trip-pax-title" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <PanelTitle>
-          <span id="trip-pax-title">פרטי הנוסעים</span>
-        </PanelTitle>
-        <p className="m-0 text-sm text-muted-foreground">יש להזין שמות כפי שמופיעים בדרכון</p>
-      </div>
+    <section ref={formRef} aria-labelledby="trip-pax-title" className="flex flex-col">
+      {/* The live summary's passengers heading (app/order/OrderReview.tsx). */}
+      <h2 className="mb-4 text-start text-2xl font-bold" id="trip-pax-title">
+        פרטי הנוסעים
+      </h2>
+      <h3 className="mb-4 text-start text-lg">יש להזין שמות כפי שמופיעים בדרכון</h3>
       <form className="flex flex-col gap-5" dir="rtl" noValidate onSubmit={(e) => e.preventDefault()}>
         <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
           <legend className="mb-2 p-0 text-[15px] font-bold">נוסע 1 · איש הקשר</legend>

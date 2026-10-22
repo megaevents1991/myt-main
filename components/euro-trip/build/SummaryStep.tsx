@@ -1,25 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { AlarmClockCheck, BedDouble, Check, CircleAlert, Loader2, Lock, Plane, TrainFront } from "lucide-react";
+import dayjs from "dayjs";
+import { isMobile } from "react-device-detect";
+import { Accordion } from "@mantine/core";
+import { FaHotel, FaPlane, FaTicketAlt } from "react-icons/fa";
+import { Check, CircleAlert, Loader2, Lock, Plane, TrainFront } from "lucide-react";
 
+import { EventSummary } from "@/app/order/OrderSummary/EventSummary";
+import { HotelSummary } from "@/app/order/OrderSummary/HotelSummary";
+import { MobileHeader } from "@/app/order/OrderSummary/MobileHeader";
+import { PriceSummary } from "@/app/order/OrderSummary/PriceSummary";
+import { PaymentLogos } from "@/components/order/PaymentLogos";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { FlightMeta } from "@/components/ui/FlightCard";
 import { Label } from "@/components/ui/label";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import { Timer } from "@/components/ui/Timer";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/app.types";
-import { eventCityName } from "@/lib/events/lodging";
-import { roomsLabel } from "@/lib/events/readyPackage";
-import { rateRoomName } from "@/lib/hotels/roomName";
-import { dayMonth, dayMonthYear, stayCityName, tripCities } from "@/lib/itinerary/builder";
+import { lodgingLocation } from "@/lib/events/lodging";
+import { ticketReady } from "@/lib/itinerary/adapter";
+import { dayMonth, stayCityName, tripCities } from "@/lib/itinerary/builder";
 import type { HeldAnswer } from "@/lib/itinerary/confirm";
-import { moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
-import { cardRows } from "@/lib/itinerary/flightsView";
-import { dayDiff, eventDay } from "@/lib/itinerary/geo";
+import { stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
+import { cardRows, trainRowText } from "@/lib/itinerary/flightsView";
+import { dayDiff } from "@/lib/itinerary/geo";
 import { SUMMARY_HOLD_SECONDS, canContinue, livePrice, progressivePrice } from "@/lib/itinerary/progress";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
+import { summaryAdditions, type SummaryAdditions } from "@/lib/itinerary/summaryRows";
 import {
   contactKey,
   fitTravellers,
@@ -29,11 +41,11 @@ import {
   type TravellersMode,
 } from "@/lib/itinerary/travellers";
 import type { TrainLeg } from "@/lib/itinerary/types";
+import { formatPrice } from "@/lib/price.utils";
 import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
 import { TravellersForm, fieldId } from "./TravellersForm";
-import { TripEventArt } from "./TripEventArt";
-import { PANEL, PanelTitle, nightsLabel } from "./parts";
+import { PANEL, nightsLabel } from "./parts";
 import { useTripHold } from "./useTripHold";
 
 /** "$2,133" / "$617.50" - whole dollars unless there are cents. */
@@ -43,13 +55,8 @@ const money = (n: number): string => {
   return `$${v.toLocaleString("en-US", { minimumFractionDigits: cents, maximumFractionDigits: 2 })}`;
 };
 
-/** "05:40" from a segment's local time. */
-const hhmm = (iso: string): string => iso.slice(11, 16);
-
-const legStops = (leg: FlightSegment): string => {
-  const n = leg.stops?.length ?? 0;
-  return n === 0 ? "ישירה" : n === 1 ? "עצירה אחת" : `${n} עצירות`;
-};
+/** The live summary's dates: `DD/MM/YYYY`. */
+const fullDate = (iso: string): string => dayjs(iso).format("DD/MM/YYYY");
 
 /** The words of a hold attempt's terms error - the regular summary's. */
 const TERMS_ERROR = "יש לאשר את פרטי ההזמנה ותנאי השימוש";
@@ -60,282 +67,402 @@ const HELD_TEXT = "קיבלנו את הבקשה. נציג יחזור אליכם 
 /** The live summary's kill switch for the customer's 24-hour hold (app/order/OrderReview.tsx `isHoldAllowed`). */
 const HOLD_ENABLED = process.env.NEXT_PUBLIC_DISABLE_24H_HOLD !== "true";
 
-/** A quiet "שינוי" that takes the customer back to the step. */
-function EditLink({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="shrink-0 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 dark:text-glow dark:decoration-glow/40"
-    >
-      שינוי
-    </button>
-  );
-}
+/** The live summary's three promises (app/order/OrderReview.tsx `TRUST_ITEMS`, module-private there). */
+const TRUST_ITEMS = [
+  {
+    title: "100% אחריות",
+    description:
+      "מגה תיירות היא אחת מקבוצות התיירות המובילות בישראל, עם מעל ל- 30 שנות ניסיון ואלפי לקוחות מרוצים.",
+  },
+  {
+    title: "כרטיסים מובטחים",
+    description:
+      "הכרטיסים הינם מספקים רשמיים בלבד והם 100% בטוחים - אנחנו מתחייבים שתקבלו את מה ששילמתם עליו, בראש שקט",
+  },
+  {
+    title: "שירות אישי ואנושי",
+    description: "הצוות שלנו זמין עבורכם לפני, בזמן ואחרי החופשה בטל. 03-768-4800 (גם בווטסאפ!)",
+  },
+];
 
-/** A panel's row: an icon (or art), a title and a muted line. */
-function Row({ lead, title, detail, extra }: { lead: ReactNode; title: ReactNode; detail: ReactNode; extra?: ReactNode }) {
-  return (
-    <li className="flex items-center gap-3 border-t border-border py-3 first:border-t-0 first:pt-1">
-      {lead}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="font-bold leading-snug">{title}</span>
-        <span className="text-[13.5px] tabular-nums text-muted-foreground">{detail}</span>
-        {extra}
-      </div>
-    </li>
-  );
-}
+/** The live summary's main button (app/order/OrderReview.tsx "המשך לתשלום מאובטח"). */
+const MAIN_BUTTON =
+  "flex h-[52px] w-full items-center justify-center gap-2 rounded-md bg-main text-[18px] font-bold text-main-foreground transition-colors hover:bg-main/90 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-glow dark:text-forest dark:hover:bg-glow/90";
+/** The live summary's quiet second button ("הבטיחו מחיר ל-24 שעות"). */
+const SECOND_BUTTON =
+  "flex h-[52px] w-full items-center justify-center gap-2 rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-white/5";
 
-function Chip({ children, tone = "plain" }: { children: ReactNode; tone?: "plain" | "train" }) {
-  return (
-    <span
-      className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-full",
-        tone === "train" ? "bg-brand-aqua text-black" : "bg-muted text-foreground",
-      )}
-      aria-hidden
-    >
-      {children}
-    </span>
-  );
-}
+/** The live Review's "עריכה" (a section's way back to its step). */
+const EDIT_BUTTON =
+  "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-bold text-muted-foreground transition-colors hover:border-forest hover:text-forest dark:hover:border-glow dark:hover:text-glow";
 
-function PanelHead({ title, edit }: { title: string; edit?: ReactNode }) {
+/** The event's own place, as the live summary names it ("לונדון, בריטניה"; a two-city event: its match city). */
+const placeOf = (e: Event): string => lodgingLocation(e, "event").name;
+
+/** One section of the summary: what it says, and the way back to its step. */
+type ReviewItem = {
+  id: string;
+  /** The phone's accordion line (the live Review's `primary` / `secondary`). */
+  primary: string;
+  secondary: ReactNode;
+  icon: ReactNode;
+  /** The live piece (EventSummary / the flights / HotelSummary), or what is still missing. */
+  content: ReactNode;
+  onEdit: () => void;
+  editLabel: string;
+};
+
+/** A piece not picked yet: said in the section's place (the live pieces need a picked one). */
+function NotPicked({ title, text }: { title: string; text: string }) {
   return (
-    <div className="mb-1 flex items-center justify-between gap-3">
-      <PanelTitle>{title}</PanelTitle>
-      {edit}
+    <div>
+      <h3 className="hidden text-lg font-bold md:block">{title}</h3>
+      <p className="m-0 text-[14px] text-muted-foreground">{text}</p>
     </div>
   );
 }
 
-/** The route's events: art, "1. name", the day, the city, the category × the party. */
-function EventsPanel({ route, onEdit }: { route: Event[]; onEdit: (i: number) => void }) {
-  const { state } = useItinerary();
+/** A move the customer makes alone: "X ← Y · הגעה עצמאית", its day, "בכוחות עצמכם, לא כלול". */
+function MoveLine({ hop }: { hop: TrainLeg }) {
+  const { title, detail } = trainRowText(hop);
   return (
-    <section className={PANEL} aria-label="האירועים">
-      <PanelHead title="האירועים" />
-      <ol className="m-0 list-none p-0">
-        {route.map((e, i) => {
-          const t = state.tickets[e.id];
-          return (
-            <Row
-              key={e.id}
-              lead={
-                <TripEventArt
-                  event={e}
-                  sizes="48px"
-                  className="size-12 shrink-0 rounded-full border-2 border-white shadow-sm"
-                />
-              }
-              title={`${i + 1}. ${e.name}`}
-              detail={
-                <>
-                  {dayMonthYear(eventDay(e))} · {eventCityName(e)} ·{" "}
-                  {t?.id ? `${t.zoneLabel || t.category} × ${t.quantity}` : "עוד לא נבחר כרטיס"}
-                </>
-              }
-              extra={
-                <span className="mt-0.5">
-                  <EditLink onClick={() => onEdit(i)} label={`שינוי הכרטיסים ל${e.name}`} />
-                </span>
-              }
-            />
-          );
-        })}
-      </ol>
-    </section>
+    <p className="m-0 flex items-center gap-2 py-1 text-[12px] text-muted-foreground">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-aqua text-black" aria-hidden>
+        <TrainFront className="size-3.5" />
+      </span>
+      <span>
+        <b className="text-foreground">{title}</b> · <span className="tabular-nums">{detail}</span>
+      </span>
+    </p>
   );
 }
 
-/** Every leg in trip order: a flight row, or a move by train - the customer's own, not included. */
-function FlightsPanel({ flight, onEdit }: { flight: ItineraryFlight | null; onEdit: () => void }) {
+/** One flown leg: its day (and number, operator), then the live `FlightMeta`. */
+function LegLine({ leg }: { leg: FlightSegment }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-x-1 text-[11px] font-semibold text-muted-foreground">
+        <span className="tabular-nums">{fullDate(leg.departureTime)}</span>
+        {leg.flightNumber && (
+          <>
+            · <span dir="ltr">{leg.flightNumber}</span>
+          </>
+        )}
+      </div>
+      {leg.operatedBy && (
+        <div className="text-[11px] text-forest dark:text-glow">
+          מופעל ע״י <span dir="ltr">{leg.operatedBy}</span>
+        </div>
+      )}
+      <FlightMeta {...leg} />
+    </div>
+  );
+}
+
+/**
+ * The trip's flights in the live `FlightSummary`'s markup (it reads only outbound / inbound, so
+ * it cannot draw a trip): heading, airline, first-to-last dates, the row figure; then every leg
+ * in trip order - a flown one with the live `FlightMeta`, a move the customer makes alone as a line.
+ */
+function TripFlights({ flight, addition }: { flight: ItineraryFlight; addition: number | null }) {
   const { state } = useItinerary();
-  const { route, dates, train } = state;
+  const { route, dates, train, pax } = state;
   const trainSet = useMemo(() => new Set(train), [train]);
   const rows = useMemo(
-    () => (flight ? cardRows(tripLegs(route, dates, new Set()), flight.legs ?? [], trainSet) : []),
+    () => cardRows(tripLegs(route, dates, new Set()), flight.legs ?? [], trainSet),
     [flight, route, dates, trainSet],
   );
   const hops = useMemo(
     () => new Map(trainLegs(route, dates, trainSet).map((t): [string, TrainLeg] => [t.key, t])),
     [route, dates, trainSet],
   );
-  const airline = flight?.metadata?.name || flight?.airline || "";
+  const legs = flight.legs?.length ? flight.legs : [flight.outbound, flight.inbound];
+  const airline = flight.metadata?.name || flight.airline || "";
 
   return (
-    <section className={PANEL} aria-label="טיסות">
-      <PanelHead title="טיסות" edit={<EditLink onClick={onEdit} label="שינוי הטיסה" />} />
-      {!flight ? (
-        <p className="m-0 py-2 text-sm text-muted-foreground">עוד לא נבחרה טיסה.</p>
-      ) : (
-        <ol className="m-0 list-none p-0">
-          {rows.map((row, i) => {
-            if (row.kind === "train") {
-              const hop = hops.get(row.key);
-              if (!hop) return null;
-              return (
-                <Row
-                  key={`train-${row.key}`}
-                  lead={
-                    <Chip tone="train">
-                      <TrainFront className="size-5" />
-                    </Chip>
-                  }
-                  title={`${hop.fromName} ← ${hop.toName}`}
-                  detail={`${dayMonth(hop.date)} · ברכבת - בכוחות עצמכם, לא כלול`}
-                />
-              );
-            }
-            const leg = row.leg;
-            return (
-              <Row
-                key={`leg-${i}`}
-                lead={
-                  <Chip>
-                    <Plane className="size-5" />
-                  </Chip>
-                }
-                title={
-                  <>
-                    {/* Drawn left to right so the arrow points at the destination, as the
-                        Hebrew rows read; said in words to a screen reader. */}
-                    <span dir="ltr" className="inline-block" aria-hidden>
-                      {leg.arrivalAirport} ← {leg.departureAirport}
-                    </span>
-                    <span className="sr-only">
-                      מ-{leg.departureAirport} ל-{leg.arrivalAirport}
-                    </span>
-                  </>
-                }
-                detail={
-                  <>
-                    {dayMonth(leg.departureTime.slice(0, 10))} ·{" "}
-                    <span dir="ltr">
-                      {hhmm(leg.departureTime)}–{hhmm(leg.arrivalTime)}
-                    </span>{" "}
-                    · {legStops(leg)}
-                    {airline ? ` · ${airline}` : ""}
-                    {leg.flightNumber ? (
-                      <>
-                        {" "}
-                        · <span dir="ltr">{leg.flightNumber}</span>
-                      </>
-                    ) : null}
-                  </>
-                }
-              />
-            );
-          })}
-        </ol>
-      )}
-    </section>
+    <div>
+      <h3 className="hidden text-lg font-bold md:block">
+        טיסות <span>({pax} נוסעים)</span>
+      </h3>
+      <div className="flex w-full justify-between" dir="rtl">
+        <div>
+          {airline && (
+            <div className="hidden text-[16px] md:block">
+              <div className="font-bold" dir="ltr">
+                {airline}
+              </div>
+            </div>
+          )}
+          <div className="flex text-[14px]" dir="rtl">
+            <div>מ-</div>
+            <div>{fullDate(legs[0].departureTime)}</div>
+            <div className="w-1" />
+            <div>עד-</div>
+            <div>{fullDate(legs[legs.length - 1].departureTime)}</div>
+          </div>
+        </div>
+        {addition !== null && (
+          <div>{addition ? formatPrice(addition, { factor: pax, applyColor: false, bold: false }) : "כלול במחיר"}</div>
+        )}
+      </div>
+      <div className="mt-2 flex flex-col gap-2 px-2 text-[12px]" dir="rtl">
+        {rows.map((row, i) => {
+          if (row.kind === "train") {
+            const hop = hops.get(row.key);
+            return hop ? <MoveLine key={`move-${row.key}`} hop={hop} /> : null;
+          }
+          return <LegLine key={`leg-${i}`} leg={row.leg} />;
+        })}
+      </div>
+    </div>
   );
 }
 
-/** The room the order bought: an own-stock hotel names it, a live rate carries it. */
-const roomOf = (h: OrderHotel): string =>
-  h.isOffline ? h.hotelInformation?.roomName ?? "" : rateRoomName(h.rate, h.hotelInformation?.roomName ?? "");
-
-/** One hotel per stay: its name, the city, its own dates and nights, stars, its rooms. */
-function HotelsPanel({ onEdit }: { onEdit: (i: number) => void }) {
+/**
+ * The summary's sections in trip order, from the live summary's pieces: per event its name, place
+ * and date, then the live `EventSummary`; the flights; per stay the live `HotelSummary` (its
+ * single-hotel path). Each with its "עריכה". The live Review's two looks: a list with the edit
+ * beside each section, and on a phone an accordion (the pieces hide their headings there).
+ */
+function TripReview({
+  additions,
+  onEditEvent,
+  onEditFlights,
+  onEditStay,
+}: {
+  additions: SummaryAdditions | null;
+  onEditEvent: (i: number) => void;
+  onEditFlights: () => void;
+  onEditStay: (i: number) => void;
+}) {
   const { state } = useItinerary();
-  const { route, dates, flight, pax } = state;
+  const { route, dates, pax, flight } = state;
   const list = useMemo(() => stays(route, dates), [route, dates]);
   const ranges = useMemo(() => stayRanges(route, dates, flight, new Set(state.train)), [route, dates, flight, state.train]);
+  const [opened, setOpened] = useState<string[]>([]);
+  // Until every piece is in there is no row figure: the pieces' own switch hides the column
+  // (`isAgent` - the live pieces show no per-item figure to an agent) instead of a false "כלול במחיר".
+  const hideFigures = additions === null;
 
-  return (
-    <section className={PANEL} aria-label="מלונות">
-      <PanelHead title="מלונות" />
-      <ol className="m-0 list-none p-0">
-        {list.map((stay, i) => {
-          const h = state.hotels[stay.key];
-          const city = stayCityName(stay.events[0]);
-          const ready = stayHotelReady(h, ranges[i], pax);
-          if (!h || !ready) {
-            return (
-              <Row
-                key={stay.key}
-                lead={
-                  <Chip>
-                    <BedDouble className="size-5" />
-                  </Chip>
-                }
-                title={`מלון ב${city}`}
-                detail={
-                  h
-                    ? "המלון שבחרתם לא מתאים לתאריכי הלינה או למספר הנוסעים - בחרו שוב"
-                    : "עוד לא נבחר מלון ללינה הזו"
-                }
-                extra={
-                  <span className="mt-0.5">
-                    <EditLink onClick={() => onEdit(i)} label={`בחירת מלון ב${city}`} />
-                  </span>
-                }
-              />
-            );
+  const ticketItems: ReviewItem[] = route.map((e, i) => {
+    const t = state.tickets[e.id];
+    const ready = !!t && ticketReady(t, pax);
+    return {
+      id: `tickets-${e.id}`,
+      primary: `כרטיסים (${pax})`,
+      secondary: ready ? `קטגוריה: ${t.zoneLabel || t.category}` : "עוד לא נבחר כרטיס",
+      icon: <FaTicketAlt />,
+      content: ready ? (
+        <EventSummary
+          numberOfEventTickets={pax}
+          eventTicket={{ category: t.category, zoneLabel: t.zoneLabel, description: t.description }}
+          agentCommission={0}
+          isAgent={hideFigures}
+          eventTicketPriceAddition={additions?.tickets[e.id] ?? 0}
+        />
+      ) : (
+        <NotPicked title="כרטיסים" text="עוד לא נבחר כרטיס" />
+      ),
+      onEdit: () => onEditEvent(i),
+      editLabel: `עריכת הכרטיסים ל${e.name}`,
+    };
+  });
+
+  const flightItem: ReviewItem = {
+    id: "flights",
+    primary: `טיסות (${pax} נוסעים)`,
+    secondary: flight ? flight.metadata?.name || flight.airline : "עוד לא נבחרה טיסה",
+    icon: <FaPlane />,
+    content: flight ? (
+      <TripFlights flight={flight} addition={additions?.flight ?? null} />
+    ) : (
+      <NotPicked title="טיסות" text="עוד לא נבחרה טיסה" />
+    ),
+    onEdit: onEditFlights,
+    editLabel: "עריכת הטיסות",
+  };
+
+  const hotelItems: ReviewItem[] = list.map((stay, i) => {
+    const h: OrderHotel | undefined = state.hotels[stay.key];
+    const city = stayCityName(stay.events[0]);
+    const ready = !!h && stayHotelReady(h, ranges[i], pax);
+    const nights = h ? dayDiff(h.checkin.slice(0, 10), h.checkout.slice(0, 10)) : Number.NaN;
+    return {
+      id: `hotel-${stay.key}`,
+      primary: `לינה ב${city} (${pax} אורחים)`,
+      secondary: ready ? <bdi dir="ltr">{h.name}</bdi> : "עוד לא נבחר מלון",
+      icon: <FaHotel />,
+      content: ready ? (
+        <div>
+          <p className="m-0 hidden text-[13px] font-bold text-forest md:block dark:text-glow">
+            {city}
+            {Number.isFinite(nights) ? ` · ${nightsLabel(nights)}` : ""}
+          </p>
+          <HotelSummary
+            selectedHotel={h}
+            hotelSegments={null}
+            agentCommission={0}
+            isAgent={hideFigures}
+            hotelPriceAddition={additions?.hotels[stay.key] ?? 0}
+            totalGuests={pax}
+          />
+        </div>
+      ) : (
+        <NotPicked
+          title={`לינה ב${city}`}
+          text={
+            h
+              ? "המלון שבחרתם לא מתאים לתאריכי הלינה או למספר הנוסעים - בחרו שוב"
+              : "עוד לא נבחר מלון ללינה הזו"
           }
-          const nights = dayDiff(h.checkin.slice(0, 10), h.checkout.slice(0, 10));
-          const stars = Math.max(0, Math.min(5, Math.round(Number(h.hotelInformation?.stars) || 0)));
-          const room = roomOf(h);
-          const rooms = roomsLabel(h.guests);
-          return (
-            <Row
-              key={stay.key}
-              lead={
-                <Chip>
-                  <BedDouble className="size-5" />
-                </Chip>
-              }
-              title={
-                <bdi dir="ltr" className="inline-block">
-                  {h.name}
-                </bdi>
-              }
-              detail={
-                <>
-                  {city} · {dayMonth(h.checkin.slice(0, 10))}–{dayMonth(h.checkout.slice(0, 10))} ·{" "}
-                  {Number.isFinite(nights) ? nightsLabel(nights) : ""}
-                  {stars > 0 && (
-                    <>
-                      {" · "}
-                      <span role="img" aria-label={`${stars} כוכבים`}>
-                        {"★".repeat(stars)}
-                      </span>
-                    </>
-                  )}
-                </>
-              }
-              extra={
-                <span className="flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
-                  {(room || rooms) && (
-                    <span>
-                      {room && <bdi dir="ltr">{room}</bdi>}
-                      {room && rooms ? " · " : ""}
-                      {rooms}
-                    </span>
-                  )}
-                  <EditLink onClick={() => onEdit(i)} label={`שינוי המלון ב${city}`} />
-                </span>
-              }
-            />
-          );
-        })}
-      </ol>
-    </section>
+        />
+      ),
+      onEdit: () => onEditStay(i),
+      editLabel: `עריכת המלון ב${city}`,
+    };
+  });
+
+  if (isMobile) {
+    const accordion = (items: ReviewItem[]) => (
+      <Accordion
+        dir="rtl"
+        multiple
+        value={opened}
+        onChange={setOpened}
+        styles={{ item: { borderBottom: "none" }, label: { padding: "0" }, control: { padding: "8px 0" } }}
+      >
+        {items.map((item) => (
+          <Accordion.Item key={item.id} value={item.id}>
+            {/* The edit sits BESIDE the control (Accordion.Control is a <button>). */}
+            <div className="flex items-center gap-1" dir="rtl">
+              <Accordion.Control>
+                <div className="flex w-full items-center gap-3 text-start" dir="rtl">
+                  <div
+                    className="flex shrink-0 items-center justify-center text-[18px] leading-none text-main dark:text-foreground"
+                    aria-hidden
+                  >
+                    {item.icon}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-[2px]">
+                    <div className="text-[18px] font-bold leading-[18px] text-main dark:text-foreground">{item.primary}</div>
+                    <div className="text-[14px] text-[#5A6475] dark:text-muted-foreground">{item.secondary}</div>
+                  </div>
+                </div>
+              </Accordion.Control>
+              <button type="button" onClick={item.onEdit} aria-label={item.editLabel} className={EDIT_BUTTON}>
+                עריכה
+              </button>
+            </div>
+            <Accordion.Panel>
+              <div className="space-y-2 text-[14px] leading-[20px]">{item.content}</div>
+            </Accordion.Panel>
+          </Accordion.Item>
+        ))}
+      </Accordion>
+    );
+    return (
+      <div className="space-y-3 px-4 py-4 text-right">
+        {route.map((e, i) => (
+          <Fragment key={e.id}>
+            <div className="flex w-full flex-row items-center gap-2" dir="rtl">
+              <div className="flex flex-1 justify-center px-1">
+                <h2 className="text-center text-2xl font-bold leading-tight">{e.name}</h2>
+              </div>
+              <div className="shrink-0 text-center">
+                <p className="m-0 text-base font-bold">{placeOf(e)}</p>
+                <p className="m-0 text-sm">{fullDate(e.date)}</p>
+              </div>
+            </div>
+            <div className="h-1 w-full border-b" />
+            {accordion([ticketItems[i]])}
+          </Fragment>
+        ))}
+        <div className="h-1 w-full border-b" />
+        {accordion([flightItem, ...hotelItems])}
+      </div>
+    );
+  }
+
+  const section = (item: ReviewItem) => (
+    <div key={item.id} className="relative">
+      <button type="button" onClick={item.onEdit} aria-label={item.editLabel} className={cn("absolute end-0 top-0", EDIT_BUTTON)}>
+        עריכה
+      </button>
+      {item.content}
+    </div>
+  );
+
+  // `text-right` is the live Review's: its pieces print hotel / airline names left to right and
+  // lean on the inherited right alignment (a logical `text-start` would resolve to left in them).
+  return (
+    <div className="space-y-3 px-6 py-4 text-right">
+      {route.map((e, i) => (
+        <Fragment key={e.id}>
+          <div className={cn("text-center", i > 0 && "border-t border-border pt-3")}>
+            <h2 className="text-2xl font-bold">{e.name}</h2>
+            <p className="m-0 text-lg">
+              {placeOf(e)} | {fullDate(e.date)}
+            </p>
+          </div>
+          {section(ticketItems[i])}
+        </Fragment>
+      ))}
+      <div className="space-y-3 border-t border-border pt-3">
+        {section(flightItem)}
+        {hotelItems.map(section)}
+      </div>
+    </div>
   );
 }
 
-function PriceLine({ label, value, tone }: { label: ReactNode; value: string; tone?: "save" }) {
+/** Where the price strip stands until every piece is picked: the running estimate, said to be one. */
+function EstimateStrip({ total, perTraveller }: { total: number; perTraveller: number }) {
   return (
-    <div className={cn("flex items-baseline justify-between gap-3 py-1.5 text-[15px]", tone === "save" && "font-extrabold text-forest dark:text-glow")}>
-      <span>{label}</span>
-      <span dir="ltr" className="font-bold tabular-nums">
-        {value}
-      </span>
+    <div dir="rtl" className="flex flex-row items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex flex-col items-start font-bold">
+        <span className="text-[22px]">סה&quot;כ</span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">הערכה</span>
+      </div>
+      <div className="text-end">
+        <div className="text-xl font-bold tabular-nums text-muted-foreground" dir="ltr">
+          ${total.toLocaleString("en-US")}
+        </div>
+        <div className="text-lg font-semibold text-muted-foreground">
+          (לאדם{" "}
+          <span className="tabular-nums" dir="ltr">
+            ${perTraveller.toLocaleString("en-US")}
+          </span>
+          )
+        </div>
+        <p className="m-0 text-xs text-muted-foreground">המחיר המדויק יופיע כשכל רכיבי הטיול ייבחרו.</p>
+      </div>
     </div>
+  );
+}
+
+/** The live summary's trust card: three promises, beside the travellers on a wider screen. */
+function TrustCard() {
+  return (
+    <Card className="hidden overflow-hidden bg-card text-card-foreground shadow-lg md:block" dir="rtl">
+      <div className="mx-auto space-y-6 bg-card p-4 text-start md:p-8">
+        {TRUST_ITEMS.map((item) => (
+          <div key={item.title} className="flex">
+            <Image
+              src="/icons/checkmark-wavey-circle.svg"
+              alt=""
+              width={24}
+              height={24}
+              className="mt-1 h-7 w-7"
+              unoptimized
+            />
+            <div className="flex-1 ps-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-foreground">{item.title}</h3>
+              <p className="m-0 text-sm text-gray-500 dark:text-muted-foreground">{item.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -405,11 +532,16 @@ function HoldConfirmation({ held }: { held: HeldAnswer }) {
 }
 
 /**
- * "Build Your Euro Trip" - the summary: the route's events, its flights (a move by train
- * marked as the customer's own), a hotel per stay, the travellers' form and terms, and the
- * price box - the live price per traveller (`livePrice`: tickets, flight, hotels, the full
- * service and the trip's "הנחת מסלול") and for the party. Until every piece is picked the box
- * shows the estimate, said to be one.
+ * "Build Your Euro Trip" - the summary, in the live order summary's structure
+ * (app/order/OrderReview.tsx, Alon: "לשמור על אותו מבנה שלנו"), built from its own pieces: the
+ * summary card - the `bg-main` header "סיכום הזמנה" with the hold's clock, the live
+ * `PriceSummary` (the party's total, per person, the trip's markup discount for the party), then
+ * per event the live `EventSummary`, the flights (every leg with the live `FlightMeta`, a move the
+ * customer makes alone as "הגעה עצמאית"), per stay the live `HotelSummary` - each with its
+ * "עריכה"; the terms, the card logos and the buttons. Beside it the travellers' card and the
+ * trust card. A row's figure is the picked piece against its estimate (`summaryAdditions`), so
+ * the trip's estimate + the rows = the total. Until every piece is picked the strip shows the
+ * running estimate, said to be one, and the rows no figure.
  *
  * "שמרו לי ל-24 שעות" checks the form with the regular summary's hold rules (the main contact)
  * and the terms, then sends the trip (`useTripHold` -> POST /api/itinerary/confirm, one group of
@@ -417,14 +549,15 @@ function HoldConfirmation({ held }: { held: HeldAnswer }) {
  * and a retry the same group. Done: the confirmation replaces the summary (`HoldConfirmation`)
  * and the clock stops. Refused for something an earlier step fixes: that step, with the reason
  * as the notice. A server error: said here, with "נסו שוב" and the WhatsApp contact. Not offered
- * while the live kill switch is on (`NEXT_PUBLIC_DISABLE_24H_HOLD`). "לתשלום מאובטח"
- * stays off - "בקרוב" - while payments are off (`settings.paymentsEnabled`) or there is no
- * `onPay` yet. With neither, the order flow's own contact card (WhatsApp) takes their place.
+ * while the live kill switch is on (`NEXT_PUBLIC_DISABLE_24H_HOLD`). "לתשלום מאובטח" is drawn
+ * only while payments are on (`settings.paymentsEnabled`) and there is an `onPay`. With neither,
+ * the order flow's own contact card (WhatsApp) takes their place.
  *
  * The regular summary's 15-minute hold: the clock starts when the summary opens (not kept over a
- * refresh); when it runs out every priced piece is released (`releaseHold` - tickets, flight,
- * hotels; the trip's shape, the travellers and the terms stay), nothing can be sent, and the
- * live "הזמן אזל" message offers "שננסה מחדש?" - back to the tickets.
+ * refresh) - in the header, on a phone in the live `MobileHeader` band (one clock either way);
+ * when it runs out every priced piece is released (`releaseHold` - tickets, flight, hotels; the
+ * trip's shape, the travellers and the terms stay), nothing can be sent, and the live "הזמן אזל"
+ * message offers "שננסה מחדש?" - back to the tickets.
  */
 export function SummaryStep({
   onPay,
@@ -455,6 +588,7 @@ export function SummaryStep({
   const price = livePrice(state, settings);
   // Until every piece is in: the running price - what is picked at its own price, the rest estimated.
   const estimate = progressivePrice(state, settings);
+  const additions = summaryAdditions(state, settings);
 
   // The live rule for messages: a field's error shows once it was left, or the form was sent.
   // Typing checks the main contact fully and another traveller only where typed (hold); a pay
@@ -470,13 +604,8 @@ export function SummaryStep({
   const touch = (key: string) =>
     setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
 
-  const flown = flight?.legs?.length ?? 0;
-  const hotelNights = stays(route, dates).reduce((sum, stay) => {
-    const h = state.hotels[stay.key];
-    const n = h ? dayDiff(h.checkin.slice(0, 10), h.checkout.slice(0, 10)) : Number.NaN;
-    return sum + (Number.isFinite(n) ? n : 0);
-  }, 0);
-  const trainCount = state.train.filter((k) => moves(route).some((m) => m.key === k)).length;
+  // Moves the customer makes alone (no flight on them): the price leaves them out.
+  const trainCount = useMemo(() => trainLegs(route, dates, new Set(state.train)).length, [route, dates, state.train]);
 
   const missing = [
     !progress.tickets && { label: "כרטיסים לכל האירועים", go: () => goStep("tickets") },
@@ -541,17 +670,136 @@ export function SummaryStep({
   if (api.held) return <HoldConfirmation held={api.held} />;
   const sending = busy || hold.sending;
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* The live summary's hold: a band across a phone (MobileHeader), a line on a wider screen. */}
-      <div className="-mx-4 -mt-4 flex items-center justify-center gap-1 bg-yellow-100 p-2 text-center text-sm font-semibold text-main md:m-0 md:justify-start md:bg-transparent md:p-0 md:text-foreground">
-        <AlarmClockCheck className="size-5 text-yellow-700 md:size-4 md:text-muted-foreground" aria-hidden />
-        ההזמנה שמורה עבורך למשך
-        <span dir="ltr" className="text-success">
-          <Timer onTimeElapsed={onElapsed} duration={SUMMARY_HOLD_SECONDS} />
-        </span>
-        דקות
+  // The trip's first and last flight (the live header prints them on a phone in place of the clock).
+  const firstLeg = flight?.legs?.[0] ?? flight?.outbound;
+  const lastLeg = flight?.legs?.length ? flight.legs[flight.legs.length - 1] : flight?.inbound;
+
+  const holdButton = HOLD_ENABLED && (
+    <button
+      type="button"
+      disabled={sending || expired}
+      aria-busy={hold.sending}
+      onClick={() => attempt("hold", hold.submit)}
+      className={payOpen ? SECOND_BUTTON : MAIN_BUTTON}
+    >
+      {hold.sending ? (
+        <>
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          שומרים את הטיול...
+        </>
+      ) : (
+        "שמרו לי ל-24 שעות"
+      )}
+    </button>
+  );
+
+  // Terms, card logos, the buttons and what they answer. Under the summary on a wider screen; on a
+  // phone after the travellers (the live summary's order: the form is filled before the button).
+  const actions = (
+    <div className="flex flex-col gap-3">
+      <div className="mb-2 ms-2 mt-4 flex flex-col text-start" dir="rtl">
+        <div className="flex items-center justify-center gap-2">
+          <Checkbox
+            id="trip-terms"
+            checked={termsAccepted}
+            aria-invalid={termsTouched && !termsAccepted}
+            aria-describedby={termsTouched && !termsAccepted ? "trip-terms-error" : undefined}
+            onCheckedChange={(checked) => {
+              setTermsAccepted(checked === true);
+              setTermsTouched(true);
+            }}
+          />
+          <div className="flex flex-wrap items-center">
+            <Label htmlFor="trip-terms" className="text-base">
+              אני מאשר/ת שקראתי את
+            </Label>
+            <Link
+              href="/cancellation"
+              target="_blank"
+              rel="noopener"
+              className="ms-1 text-base font-semibold text-foreground underline underline-offset-2 hover:text-primary"
+            >
+              התנאים ומדיניות הביטולים
+            </Link>
+          </div>
+        </div>
+        {termsTouched && !termsAccepted && (
+          <p id="trip-terms-error" role="alert" className="m-0 mt-1 text-center text-sm text-red-500">
+            {TERMS_ERROR}
+          </p>
+        )}
       </div>
+
+      <PaymentLogos className="my-4" />
+
+      {payOpen && (
+        <button type="button" disabled={sending || expired} onClick={() => attempt("pay", onPay)} className={MAIN_BUTTON}>
+          <Lock className="size-4" aria-hidden />
+          לתשלום מאובטח
+        </button>
+      )}
+      {holdButton}
+      {HOLD_ENABLED && (
+        <p className="m-0 text-center text-xs text-muted-foreground">
+          {payOpen
+            ? "שומרים את המחיר ל-24 שעות, נציג יחזור אליכם."
+            : "התשלום באתר ייפתח בקרוב. בינתיים שומרים את הטיול ל-24 שעות ונציג יחזור אליכם."}
+        </p>
+      )}
+      {contactOnly && (
+        <OrderIssueState
+          className="py-6"
+          title="רוצים לסגור את הטיול?"
+          subtitle="התשלום באתר ייפתח בקרוב. כתבו לנו ונציג ישלים איתכם את ההזמנה."
+          whatsAppText={whatsAppText}
+        />
+      )}
+      <p role="status" aria-live="polite" className={cn("m-0 text-center text-sm font-semibold", !status && "sr-only")}>
+        {status ?? ""}
+      </p>
+      {/* The hold was not saved (the server's error, no answer): try again - the same group - or write to us. */}
+      {hold.failure?.code === "SERVER_ERROR" ? (
+        <OrderIssueState
+          variant="error"
+          className="py-6"
+          title="לא הצלחנו לשמור את הטיול"
+          subtitle="נסו שוב בעוד רגע, או כתבו לנו ונשמור אותו עבורכם."
+          onRetry={sending ? undefined : () => attempt("hold", hold.submit)}
+          whatsAppText={whatsAppText}
+        />
+      ) : hold.failure?.code === "PRICE_CHANGED" ? (
+        // The price changed again after a re-price on fresh rows: a refresh (the page's
+        // settings are read at render) or the WhatsApp contact - no second bounce.
+        <OrderIssueState
+          variant="error"
+          className="py-6"
+          title={hold.failure.message}
+          onRetry={() => window.location.reload()}
+          retryLabel="רענון הדף"
+          whatsAppText={whatsAppText}
+        />
+      ) : (
+        hold.failure && (
+          <p
+            role="alert"
+            className="m-0 rounded-xl border border-badge-urgent/40 bg-badge-urgent/10 px-4 py-3 text-sm font-semibold text-foreground"
+          >
+            {hold.failure.message}
+          </p>
+        )
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col">
+      {/* The live phone band (MobileHeader): the hold's clock. One clock on the page - the
+          header's is not drawn on a phone. */}
+      {isMobile && (
+        <div className="-mx-4 -mt-1 lg:-mx-6">
+          <MobileHeader handleTimeout={onElapsed} saving={0} skipHotel={false} />
+        </div>
+      )}
 
       {/* "הזמן אזל" - the live summary's words. Not dismissable: the pieces are already released. */}
       <Dialog open={expired}>
@@ -581,221 +829,96 @@ export function SummaryStep({
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="m-0 text-[15px]">
-          כמעט שם. <b>בדקו את המסלול</b> ומלאו את פרטי הנוסעים.
-        </p>
-        {/* On a phone the price box comes after the form - its figure up here too. */}
-        <p className="m-0 text-sm font-bold lg:hidden">
-          {price ? "סה״כ לנוסע" : "הערכה לנוסע"}{" "}
-          <span dir="ltr" className="tabular-nums text-forest dark:text-glow">
-            {money(price ? price.perTraveller : estimate.perTraveller)}
-          </span>
-        </p>
-      </div>
+      <div className="mx-auto w-full max-w-[1200px] py-3 lg:px-6">
+        {missing.length > 0 && (
+          <div
+            role="status"
+            className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-badge-vip/60 bg-badge-vip/20 px-4 py-3 text-sm font-semibold text-foreground"
+          >
+            <CircleAlert className="size-4 shrink-0" aria-hidden />
+            <span>חסר כדי לסיים:</span>
+            {missing.map((m) => (
+              <button
+                key={m.label}
+                type="button"
+                onClick={m.go}
+                className="text-forest underline decoration-forest/40 underline-offset-2 dark:text-glow dark:decoration-glow/40"
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-      {missing.length > 0 && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-badge-vip/60 bg-badge-vip/20 px-4 py-3 text-sm font-semibold text-foreground"
-        >
-          <CircleAlert className="size-4 shrink-0" aria-hidden />
-          <span>חסר כדי לסיים:</span>
-          {missing.map((m) => (
-            <button
-              key={m.label}
-              type="button"
-              onClick={m.go}
-              className="text-forest underline decoration-forest/40 underline-offset-2 dark:text-glow dark:decoration-glow/40"
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      )}
+        <div className="grid items-start gap-4 md:grid-cols-2">
+          {/* The summary: first on a phone, the left column (RTL) from md. */}
+          <div className="order-1 space-y-4 md:order-2">
+            <Card className="overflow-hidden bg-card text-card-foreground shadow-lg">
+              <div dir="rtl" className="flex flex-row items-center justify-between bg-main px-6 py-4 text-main-foreground">
+                <h2 className="text-start text-2xl font-bold">סיכום הזמנה</h2>
+                {!isMobile ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">ההזמנה שמורה עבורך למשך</span>
+                    <span dir="ltr">
+                      <Timer onTimeElapsed={onElapsed} duration={SUMMARY_HOLD_SECONDS} />
+                    </span>
+                    <span className="text-sm">דקות</span>
+                  </div>
+                ) : (
+                  <div className="mt-[4px] flex items-center gap-1 text-sm" dir="ltr">
+                    <div>{fullDate(firstLeg?.departureTime ?? dates.depart)}</div>
+                    <div>-</div>
+                    <div>{fullDate(lastLeg?.departureTime ?? dates.ret)}</div>
+                  </div>
+                )}
+              </div>
+              {price ? (
+                <PriceSummary
+                  finalPurchasePrice={price.total}
+                  finalPurchasePriceILS={0}
+                  recommendedPriceAllPax={0}
+                  numberOfPersons={pax}
+                  agentCommission={0}
+                  affDiscount={Math.round(price.discount * pax * 100) / 100}
+                  isNumberOfPersonsEqual={false}
+                />
+              ) : (
+                <EstimateStrip total={estimate.total} perTraveller={estimate.perTraveller} />
+              )}
+              {trainCount > 0 && (
+                <p className="m-0 border-b border-border px-6 py-2 text-xs text-muted-foreground">
+                  הגעה עצמאית בין הערים לא כלולה במחיר.
+                </p>
+              )}
+              <TripReview
+                additions={additions}
+                onEditEvent={openEvent}
+                onEditFlights={() => goStep("flights")}
+                onEditStay={openStay}
+              />
+            </Card>
+            {!isMobile && actions}
+          </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-4">
-          <EventsPanel route={route} onEdit={openEvent} />
-          <FlightsPanel flight={flight} onEdit={() => goStep("flights")} />
-          <HotelsPanel onEdit={openStay} />
-          <div className={PANEL}>
-            <TravellersForm
-              value={form}
-              errors={errors}
-              touched={touched}
-              othersRequired={mode === "pay"}
-              onChange={setTravellers}
-              onTouch={touch}
-              formRef={formRef}
-            />
+          {/* The travellers: the right column (RTL) from md, under the summary on a phone. */}
+          <div className="order-2 space-y-6 md:order-1">
+            <Card className="overflow-hidden bg-card text-card-foreground shadow-lg">
+              <div className="px-8 pb-8 pt-6">
+                <TravellersForm
+                  value={form}
+                  errors={errors}
+                  touched={touched}
+                  othersRequired={mode === "pay"}
+                  onChange={setTravellers}
+                  onTouch={touch}
+                  formRef={formRef}
+                />
+              </div>
+            </Card>
+            {isMobile && actions}
+            <TrustCard />
           </div>
         </div>
-
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-24" aria-label="המחיר">
-          <section className={PANEL} aria-labelledby="trip-price-title">
-            <h2 id="trip-price-title" className="sr-only">
-              המחיר
-            </h2>
-            {price ? (
-              <>
-                <PriceLine
-                  label={`כרטיסים · ${route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`}`}
-                  value={money(price.tickets)}
-                />
-                <PriceLine label={`טיסות · ${flown === 1 ? "טיסה אחת" : `${flown} טיסות`}`} value={money(price.flight)} />
-                <PriceLine label={`מלונות · ${nightsLabel(hotelNights)}`} value={money(price.hotels)} />
-                <PriceLine label="שירות" value={money(price.service)} />
-                {price.discount > 0 && <PriceLine label="הנחת מסלול" value={`−${money(price.discount)}`} tone="save" />}
-                <div className="mt-2 flex items-end justify-between gap-3 border-t border-border pt-3">
-                  <span className="text-[15px] font-bold">סה״כ לנוסע</span>
-                  <span dir="ltr" className="text-3xl font-extrabold tabular-nums text-forest dark:text-glow">
-                    {money(price.perTraveller)}
-                  </span>
-                </div>
-                <PriceLine
-                  label={<span className="text-muted-foreground">{pax === 1 ? "סה״כ לנוסע אחד" : `סה״כ ל-${pax} נוסעים`}</span>}
-                  value={money(price.total)}
-                />
-                {trainCount > 0 && (
-                  <p className="m-0 mt-1 text-xs text-muted-foreground">
-                    {trainCount === 1 ? "הרכבת" : "הרכבות"} בין הערים לא {trainCount === 1 ? "כלולה" : "כלולות"} במחיר.
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="flex items-end justify-between gap-3">
-                  <span className="text-[15px] font-bold">
-                    סה״כ לנוסע{" "}
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">הערכה</span>
-                  </span>
-                  <span dir="ltr" className="text-3xl font-extrabold tabular-nums text-muted-foreground">
-                    {money(estimate.perTraveller)}
-                  </span>
-                </div>
-                <PriceLine
-                  label={<span className="text-muted-foreground">{pax === 1 ? "סה״כ לנוסע אחד" : `סה״כ ל-${pax} נוסעים`}</span>}
-                  value={money(estimate.total)}
-                />
-                <p className="m-0 mt-1 text-xs text-muted-foreground">המחיר המדויק יופיע כשכל רכיבי הטיול ייבחרו.</p>
-              </>
-            )}
-          </section>
-
-          <section className={cn(PANEL, "flex flex-col gap-3")} aria-label="אישור ושמירה">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="trip-terms"
-                  checked={termsAccepted}
-                  aria-invalid={termsTouched && !termsAccepted}
-                  aria-describedby={termsTouched && !termsAccepted ? "trip-terms-error" : undefined}
-                  onCheckedChange={(checked) => {
-                    setTermsAccepted(checked === true);
-                    setTermsTouched(true);
-                  }}
-                />
-                <Label htmlFor="trip-terms" className="text-sm leading-snug">
-                  אני מאשר/ת שקראתי את{" "}
-                  <Link
-                    href="/cancellation"
-                    target="_blank"
-                    rel="noopener"
-                    className="font-semibold text-foreground underline underline-offset-2 hover:text-primary"
-                  >
-                    התנאים ומדיניות הביטולים
-                  </Link>
-                </Label>
-              </div>
-              {termsTouched && !termsAccepted && (
-                <p id="trip-terms-error" role="alert" className="m-0 text-sm text-red-500">
-                  {TERMS_ERROR}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="button"
-              disabled={!payOpen || sending || expired}
-              onClick={() => attempt("pay", onPay)}
-              className="relative flex h-[52px] w-full items-center justify-center gap-2 rounded-md bg-main text-[17px] font-bold text-main-foreground transition-colors hover:bg-main/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground dark:bg-glow dark:text-forest dark:hover:bg-glow/90 dark:disabled:bg-muted dark:disabled:text-muted-foreground"
-            >
-              <Lock className="size-4" aria-hidden />
-              לתשלום מאובטח
-              {!payOpen && (
-                <span className="rounded-full bg-background px-2 py-0.5 text-xs font-bold text-foreground">בקרוב</span>
-              )}
-            </button>
-            {HOLD_ENABLED && (
-              <button
-                type="button"
-                disabled={sending || expired}
-                aria-busy={hold.sending}
-                onClick={() => attempt("hold", hold.submit)}
-                className="flex h-[52px] w-full items-center justify-center gap-2 rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {hold.sending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                    שומרים את הטיול...
-                  </>
-                ) : (
-                  "שמרו לי ל-24 שעות"
-                )}
-              </button>
-            )}
-            {HOLD_ENABLED && (
-              <p className="m-0 text-center text-xs text-muted-foreground">
-                {payOpen
-                  ? "שומרים את המחיר ל-24 שעות, נציג יחזור אליכם."
-                  : "התשלום באתר ייפתח בקרוב. בינתיים שומרים את הטיול ל-24 שעות ונציג יחזור אליכם."}
-              </p>
-            )}
-            {contactOnly && (
-              <OrderIssueState
-                className="py-6"
-                title="רוצים לסגור את הטיול?"
-                subtitle="התשלום באתר ייפתח בקרוב. כתבו לנו ונציג ישלים איתכם את ההזמנה."
-                whatsAppText={whatsAppText}
-              />
-            )}
-            <p role="status" aria-live="polite" className={cn("m-0 text-center text-sm font-semibold", !status && "sr-only")}>
-              {status ?? ""}
-            </p>
-            {/* The hold was not saved (the server's error, no answer): try again - the same group - or write to us. */}
-            {hold.failure?.code === "SERVER_ERROR" ? (
-              <OrderIssueState
-                variant="error"
-                className="py-6"
-                title="לא הצלחנו לשמור את הטיול"
-                subtitle="נסו שוב בעוד רגע, או כתבו לנו ונשמור אותו עבורכם."
-                onRetry={sending ? undefined : () => attempt("hold", hold.submit)}
-                whatsAppText={whatsAppText}
-              />
-            ) : hold.failure?.code === "PRICE_CHANGED" ? (
-              // The price changed again after a re-price on fresh rows: a refresh (the page's
-              // settings are read at render) or the WhatsApp contact - no second bounce.
-              <OrderIssueState
-                variant="error"
-                className="py-6"
-                title={hold.failure.message}
-                onRetry={() => window.location.reload()}
-                retryLabel="רענון הדף"
-                whatsAppText={whatsAppText}
-              />
-            ) : (
-              hold.failure && (
-                <p
-                  role="alert"
-                  className="m-0 rounded-xl border border-badge-urgent/40 bg-badge-urgent/10 px-4 py-3 text-sm font-semibold text-foreground"
-                >
-                  {hold.failure.message}
-                </p>
-              )
-            )}
-          </section>
-        </aside>
       </div>
     </div>
   );
