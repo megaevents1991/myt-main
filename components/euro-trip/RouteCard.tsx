@@ -74,7 +74,7 @@ export function RouteCard({
           {/* Body */}
           <div className="flex flex-1 flex-col p-4 text-start" dir="rtl">
             <h3 className="line-clamp-2 min-h-[2lh] text-lg font-bold leading-tight" title={names}>
-              {names}
+              {data.staffTitle ?? names}
             </h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {data.events.map((e, i) => (

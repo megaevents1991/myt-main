@@ -99,6 +99,15 @@ describe("hubCards", () => {
     expect(hubCards(all, { ...DEFAULT_HUB_VIEW, query: "טוקיו" })).toEqual([]);
   });
 
+  it("search matches a staff title", () => {
+    const staff = card({ ids: [7, 8], staffTitle: "דון טוליבר והקלאסיקר" });
+    const list = [staff, ...all];
+    expect(ids(hubCards(list, { ...DEFAULT_HUB_VIEW, query: "קלאסיקר" }))).toEqual([7]);
+    expect(ids(hubCards(list, { ...DEFAULT_HUB_VIEW, query: "  דון טוליבר " }))).toEqual([7]);
+    // A card without a staff title is not found by a word it does not hold.
+    expect(ids(hubCards(all, { ...DEFAULT_HUB_VIEW, query: "קלאסיקר" }))).toEqual([]);
+  });
+
   it("a Manchester match sold as a London flight is found by both cities", () => {
     const list = [...all, manchesterTrip];
     expect(ids(hubCards(list, { ...DEFAULT_HUB_VIEW, query: "מנצ'סטר" }))).toEqual([618]);

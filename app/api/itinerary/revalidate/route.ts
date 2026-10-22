@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { ITINERARY_ROUTES_TAG } from "@/lib/itinerary/routes.server";
 import { ITINERARY_SETTINGS_TAG } from "@/lib/itinerary/settings.server";
 
 /**
  * POST /api/itinerary/revalidate - the backoffice calls it after saving the
- * "Build Your Euro Trip" settings, so the switch and the rules reach the site now
- * instead of within the hour.
+ * "Build Your Euro Trip" settings or its staff trips (`itinerary_routes`), so the switch,
+ * the rules and the trips reach the site now instead of within the hour.
  *
  * Server-to-server with the shared secret in `x-hotel-secret`
  * (NEXT_SECRET_REVALIDATION_SECRET), like /api/homepage-pools.
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
 
   try {
     revalidateTag(ITINERARY_SETTINGS_TAG);
+    revalidateTag(ITINERARY_ROUTES_TAG);
     revalidatePath("/euro-trip");
     revalidatePath("/euro-trip/build");
     return NextResponse.json({ ok: true });

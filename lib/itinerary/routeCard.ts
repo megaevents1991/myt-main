@@ -44,6 +44,8 @@ export type RouteCardData = {
   kinds: ("music" | "football")[];
   /** The first event's day, `YYYY-MM-DD`. */
   firstDay: string;
+  /** The title staff gave a hand-built trip (`itinerary_routes`); absent on the automatic cards. */
+  staffTitle?: string;
 };
 
 /** The card art exactly as the homepage card picks it (components/ClientSideHomepage.tsx). */

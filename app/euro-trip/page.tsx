@@ -7,8 +7,10 @@ import type { Event } from "@/lib/app.types";
 import { getCachedEvents } from "@/lib/eventsData";
 import { itineraryOn } from "@/lib/itinerary/settings";
 import { getItinerarySettingsForPage } from "@/lib/itinerary/settings.server";
+import { getStaffRoutesForPage } from "@/lib/itinerary/routes.server";
 import { recommendRoutes } from "@/lib/itinerary/recommend";
 import { toRouteCard, type RouteCardData } from "@/lib/itinerary/routeCard";
+import { mergeRouteCards, staffRouteCards } from "@/lib/itinerary/staffRoutes";
 import ClientTracker from "@/components/ClientTracker";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { TrustBadges } from "@/components/ui/TrustBadges";
@@ -59,7 +61,7 @@ export default async function EuroTripPage() {
   const settings = await getItinerarySettingsForPage();
   if (!itineraryOn(settings, process.env.VERCEL_ENV)) notFound();
 
-  const { events } = await getCachedEvents();
+  const [{ events }, staffRows] = await Promise.all([getCachedEvents(), getStaffRoutesForPage()]);
   // Never publish a hub with zero routes because the catalog failed to load - a transient DB
   // failure during ISR regeneration would bake an empty page in for an hour. Throwing makes
   // the regeneration fail, so Next keeps serving the last good page instead.
@@ -68,7 +70,7 @@ export default async function EuroTripPage() {
   }
   const todayIso = new Date().toISOString().slice(0, 10);
   const byId = new Map(events.map((e) => [e.id, e]));
-  const cards: RouteCardData[] = recommendRoutes(events, settings, todayIso).flatMap((r) => {
+  const autoCards: RouteCardData[] = recommendRoutes(events, settings, todayIso).flatMap((r) => {
     const route = r.ids.flatMap((id): Event[] => {
       const e = byId.get(id);
       return e ? [e] : [];
@@ -76,6 +78,9 @@ export default async function EuroTripPage() {
     // An id the catalog no longer has: the route is skipped, never shown short.
     return route.length === r.ids.length ? [toRouteCard(route, settings)] : [];
   });
+  // Staff trips lead, under their own title; an automatic card on the same events gives way.
+  // `maxAutoRoutes` limited only the automatic list above - a staff trip shows even at 0.
+  const cards = mergeRouteCards(staffRouteCards(staffRows, events, settings, todayIso), autoCards);
 
   return (
     <>

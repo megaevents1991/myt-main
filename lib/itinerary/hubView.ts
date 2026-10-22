@@ -64,8 +64,9 @@ const kindMatches = (c: RouteCardData, kind: HubKind): boolean => {
 
 /**
  * The cards the view shows, in its order (a new array; the input keeps the recommender's order).
- * Search: any event name or city. Month: any event of the route in it. Sort: as recommended, by
- * price (cheapest first) or by the first event's day - a tie keeps the recommended order.
+ * Search: any event name or city, or a staff trip's own title. Month: any event of the route in it.
+ * Sort: as recommended, by price (cheapest first) or by the first event's day - a tie keeps the
+ * recommended order.
  */
 export function hubCards(cards: RouteCardData[], view: HubView): RouteCardData[] {
   const q = view.query.trim().toLowerCase();
@@ -75,7 +76,8 @@ export function hubCards(cards: RouteCardData[], view: HubView): RouteCardData[]
     if (!q) return true;
     return (
       c.events.some((e) => e.name.toLowerCase().includes(q) || e.cityName.toLowerCase().includes(q)) ||
-      c.cities.some((city) => city.toLowerCase().includes(q))
+      c.cities.some((city) => city.toLowerCase().includes(q)) ||
+      (c.staffTitle?.toLowerCase().includes(q) ?? false)
     );
   });
   if (view.sort === "price") return [...out].sort((a, b) => a.perTraveller - b.perTraveller);
