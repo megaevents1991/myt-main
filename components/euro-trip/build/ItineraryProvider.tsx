@@ -14,7 +14,15 @@ import {
 } from "react";
 
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
-import { NO_PRICE_CHANGES, notePriceAnswer, tripKey, type HeldAnswer, type PriceChangeMemo } from "@/lib/itinerary/confirm";
+import {
+  NO_PRICE_CHANGES,
+  holdAttempt,
+  notePriceAnswer,
+  tripKey,
+  type HeldAnswer,
+  type HoldAttempt,
+  type PriceChangeMemo,
+} from "@/lib/itinerary/confirm";
 import { draftMayRestore, sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
 import {
   forgetItineraryDraft,
@@ -116,6 +124,23 @@ export type ItineraryApi = {
    * when such an answer sends it back.
    */
   countPriceChange: (changed: boolean, key: string) => number;
+  /**
+   * A hold request (`useTripHold`) is on its way: the hold writes real reservations and emails, so
+   * until it answers the flow keeps the customer on the summary - the stepper, "עריכת המסלול" and
+   * the summary's "עריכה" do nothing.
+   */
+  holdSending: boolean;
+  /**
+   * Starts a hold request for the trip `signature` describes (`holdSignature`): the attempt to
+   * send - the last attempt's group ONLY for the identical trip (`holdAttempt`), else a new one -
+   * or null while another request is on its way (one at a time). Kept here, not in the summary: an
+   * answer that never came leaves its group for the next try even after the summary unmounted.
+   */
+  startHold: (signature: string) => HoldAttempt | null;
+  /** The request answered (or failed): another may start. The attempt stays for a retry. */
+  endHold: () => void;
+  /** A refusal that sends the customer back to change the trip: the next attempt gets a new group. */
+  forgetHoldAttempt: () => void;
 };
 
 const ItineraryContext = createContext<ItineraryApi | null>(null);
@@ -251,6 +276,28 @@ export function ItineraryProvider({
   );
   const priorHold = held ? null : priorHoldFor(heldMarker, tripKey(state));
 
+  // The hold's request, outside the summary (it unmounts on any visit to an earlier step): its
+  // group survives a remount, so a retry of the identical trip after a lost answer sends the SAME
+  // group and the server answers the rows it may already have written - never a second group.
+  const holdAttemptRef = useRef<HoldAttempt | null>(null);
+  // A ref, so even two clicks in one frame start one request; the state redraws the flow.
+  const holdInFlight = useRef(false);
+  const [holdSending, setHoldSending] = useState(false);
+  const startHold = useCallback((signature: string): HoldAttempt | null => {
+    if (holdInFlight.current) return null;
+    holdInFlight.current = true;
+    setHoldSending(true);
+    holdAttemptRef.current = holdAttempt(holdAttemptRef.current, signature);
+    return holdAttemptRef.current;
+  }, []);
+  const endHold = useCallback(() => {
+    holdInFlight.current = false;
+    setHoldSending(false);
+  }, []);
+  const forgetHoldAttempt = useCallback(() => {
+    holdAttemptRef.current = null;
+  }, []);
+
   const api = useMemo<ItineraryApi>(
     () => ({
       state,
@@ -287,6 +334,10 @@ export function ItineraryProvider({
       markHeld,
       priorHold,
       countPriceChange,
+      holdSending,
+      startHold,
+      endHold,
+      forgetHoldAttempt,
     }),
     [
       state,
@@ -305,6 +356,10 @@ export function ItineraryProvider({
       markHeld,
       priorHold,
       countPriceChange,
+      holdSending,
+      startHold,
+      endHold,
+      forgetHoldAttempt,
     ],
   );
 

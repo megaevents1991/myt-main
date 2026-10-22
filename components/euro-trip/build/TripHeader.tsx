@@ -14,20 +14,24 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * "עריכת המסלול" - a quiet link back to the planner with the same events: the trip leaves the
  * ready-trip flow for good (mode `custom`), its picks stay. Nothing once the trip is held (it is
- * with sales - nothing left to edit on this page).
+ * with sales - nothing left to edit on this page); off while the hold is on its way
+ * (`holdSending` - its answer is read on the summary).
  */
 export function EditRouteLink({ className }: { className?: string }) {
-  const { setMode, goStep, held } = useItinerary();
+  const { setMode, goStep, held, holdSending } = useItinerary();
   if (held) return null;
   return (
     <button
       type="button"
+      disabled={holdSending}
+      aria-disabled={holdSending}
       onClick={() => {
+        if (holdSending) return;
         setMode("custom");
         goStep("build");
       }}
       className={cn(
-        "inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 dark:text-glow dark:decoration-glow/40",
+        "inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 dark:text-glow dark:decoration-glow/40",
         className,
       )}
     >

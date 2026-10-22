@@ -92,9 +92,9 @@ const MAIN_BUTTON =
 const SECOND_BUTTON =
   "flex h-[52px] w-full items-center justify-center gap-2 rounded-md border border-primary text-[15px] font-bold text-success transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-white/5";
 
-/** The live Review's "עריכה" (a section's way back to its step). */
+/** The live Review's "עריכה" (a section's way back to its step); off while the hold is on its way. */
 const EDIT_BUTTON =
-  "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-bold text-muted-foreground transition-colors hover:border-forest hover:text-forest dark:hover:border-glow dark:hover:text-glow";
+  "shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-bold text-muted-foreground transition-colors hover:border-forest hover:text-forest disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground dark:hover:border-glow dark:hover:text-glow";
 
 /** The event's own place, as the live summary names it ("לונדון, בריטניה"; a two-city event: its match city). */
 const placeOf = (e: Event): string => lodgingLocation(e, "event").name;
@@ -223,14 +223,17 @@ function TripFlights({ flight, addition }: { flight: ItineraryFlight; addition: 
  * and date, then the live `EventSummary`; the flights; per stay the live `HotelSummary` (its
  * single-hotel path). Each with its "עריכה". The live Review's two looks: a list with the edit
  * beside each section, and on a phone an accordion (the pieces hide their headings there).
+ * `locked`: a hold is on its way - every "עריכה" is off until it answers.
  */
 function TripReview({
   additions,
+  locked,
   onEditEvent,
   onEditFlights,
   onEditStay,
 }: {
   additions: SummaryAdditions | null;
+  locked: boolean;
   onEditEvent: (i: number) => void;
   onEditFlights: () => void;
   onEditStay: (i: number) => void;
@@ -349,7 +352,14 @@ function TripReview({
                   </div>
                 </div>
               </Accordion.Control>
-              <button type="button" onClick={item.onEdit} aria-label={item.editLabel} className={EDIT_BUTTON}>
+              <button
+                type="button"
+                onClick={item.onEdit}
+                disabled={locked}
+                aria-disabled={locked}
+                aria-label={item.editLabel}
+                className={EDIT_BUTTON}
+              >
                 עריכה
               </button>
             </div>
@@ -385,7 +395,14 @@ function TripReview({
 
   const section = (item: ReviewItem) => (
     <div key={item.id} className="relative">
-      <button type="button" onClick={item.onEdit} aria-label={item.editLabel} className={cn("absolute end-0 top-0", EDIT_BUTTON)}>
+      <button
+        type="button"
+        onClick={item.onEdit}
+        disabled={locked}
+        aria-disabled={locked}
+        aria-label={item.editLabel}
+        className={cn("absolute end-0 top-0", EDIT_BUTTON)}
+      >
         עריכה
       </button>
       {item.content}
@@ -545,9 +562,10 @@ function HoldConfirmation({ held }: { held: HeldAnswer }) {
  *
  * "שמרו לי ל-24 שעות" checks the form with the regular summary's hold rules (the main contact)
  * and the terms, then sends the trip (`useTripHold` -> POST /api/itinerary/confirm, one group of
- * reservations): the buttons are off while it is on its way, a double click sends one request
- * and a retry the same group. Done: the confirmation replaces the summary (`HoldConfirmation`)
- * and the clock stops. Refused for something an earlier step fixes: that step, with the reason
+ * reservations): the buttons are off while it is on its way - and so is every way off the
+ * summary (its "עריכה", the stepper, "עריכת המסלול") - a double click sends one request and a
+ * retry the same group, even after the summary was left and opened again. Done: the
+ * confirmation replaces the summary (`HoldConfirmation`) and the clock stops. Refused for something an earlier step fixes: that step, with the reason
  * as the notice. A server error: said here, with "נסו שוב" and the WhatsApp contact. Not offered
  * while the live kill switch is on (`NEXT_PUBLIC_DISABLE_24H_HOLD`). "לתשלום מאובטח" is drawn
  * only while payments are on (`settings.paymentsEnabled`) and there is an `onPay`. With neither,
@@ -557,7 +575,7 @@ function HoldConfirmation({ held }: { held: HeldAnswer }) {
  * refresh) - in the header, on a phone in the live `MobileHeader` band (one clock either way);
  * when it runs out every priced piece is released (`releaseHold` - tickets, flight, hotels; the
  * trip's shape, the travellers and the terms stay), nothing can be sent, and the live "הזמן אזל"
- * message offers "שננסה מחדש?" - back to the tickets.
+ * message offers "שננסה מחדש?" - back to the tickets, from event 1.
  */
 export function SummaryStep({
   onPay,
@@ -600,6 +618,10 @@ export function SummaryStep({
   const [busy, setBusy] = useState(false);
   const errors = useMemo(() => validateTravellers(form, pax, mode), [form, pax, mode]);
   const formRef = useRef<HTMLElement>(null);
+  // A request is on its way: the buttons are off, and so is every way off the summary (its
+  // "עריכה", "חסר כדי לסיים", "שננסה מחדש?" - the stepper and "עריכת המסלול" read the provider's
+  // `holdSending`). The hold writes real reservations; its answer is read here.
+  const sending = busy || hold.sending;
 
   const touch = (key: string) =>
     setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
@@ -658,17 +680,21 @@ export function SummaryStep({
   };
 
   const openStay = (i: number) => {
+    if (sending) return;
     setActiveStay(i);
     goStep("hotels");
   };
   const openEvent = (i: number) => {
+    if (sending) return;
     setActiveEvent(i);
     goStep("tickets");
+  };
+  const openFlights = () => {
+    if (!sending) goStep("flights");
   };
 
   // Held: the request is with sales - the confirmation, no form, no clock.
   if (api.held) return <HoldConfirmation held={api.held} />;
-  const sending = busy || hold.sending;
 
   // The trip's first and last flight (the live header prints them on a phone in place of the clock).
   const firstLeg = flight?.legs?.[0] ?? flight?.outbound;
@@ -820,8 +846,15 @@ export function SummaryStep({
           <div>
             <button
               type="button"
-              onClick={() => goStep("tickets")}
-              className="h-11 w-full rounded-md bg-secondary text-sm font-bold text-secondary-foreground transition-colors hover:bg-secondary/80"
+              disabled={sending}
+              aria-disabled={sending}
+              onClick={() => {
+                if (sending) return;
+                // From event 1 (the release already opened it - said here too, whatever came after).
+                setActiveEvent(0);
+                goStep("tickets");
+              }}
+              className="h-11 w-full rounded-md bg-secondary text-sm font-bold text-secondary-foreground transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-60"
             >
               שננסה מחדש?
             </button>
@@ -841,8 +874,10 @@ export function SummaryStep({
               <button
                 key={m.label}
                 type="button"
+                disabled={sending}
+                aria-disabled={sending}
                 onClick={m.go}
-                className="text-forest underline decoration-forest/40 underline-offset-2 dark:text-glow dark:decoration-glow/40"
+                className="text-forest underline decoration-forest/40 underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:text-glow dark:decoration-glow/40"
               >
                 {m.label}
               </button>
@@ -892,8 +927,9 @@ export function SummaryStep({
               )}
               <TripReview
                 additions={additions}
+                locked={sending}
                 onEditEvent={openEvent}
-                onEditFlights={() => goStep("flights")}
+                onEditFlights={openFlights}
                 onEditStay={openStay}
               />
             </Card>

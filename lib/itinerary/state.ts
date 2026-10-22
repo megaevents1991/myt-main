@@ -82,7 +82,8 @@ export type ItineraryAction =
   | { type: "clearTravel" }
   /**
    * The summary's 15-minute hold ran out: every priced piece is released - the tickets, the
-   * flight, the hotels. The trip's shape (route, dates, party, train moves) stays.
+   * flight, the hotels. The trip's shape (route, dates, party, train moves) stays. The tickets
+   * step's open event goes back to the first: "שננסה מחדש?" walks the tickets from event 1.
    */
   | { type: "releaseHold" }
   | { type: "goStep"; step: ItineraryStep }
@@ -253,9 +254,12 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
       return !state.flight && !Object.keys(state.hotels).length ? state : { ...state, ...cleared };
 
     case "releaseHold":
-      return !state.flight && !Object.keys(state.hotels).length && !Object.keys(state.tickets).length
+      return !state.flight &&
+        !Object.keys(state.hotels).length &&
+        !Object.keys(state.tickets).length &&
+        state.activeEvent === 0
         ? state
-        : { ...state, ...cleared, tickets: {} };
+        : { ...state, ...cleared, tickets: {}, activeEvent: 0 };
 
     case "goStep":
       if (action.step !== "build" && state.route.length < MIN_TRIP_EVENTS) return state;

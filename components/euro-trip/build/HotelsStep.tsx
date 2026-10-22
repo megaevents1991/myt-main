@@ -10,7 +10,7 @@ import { SegmentHotelModal, SegmentsList } from "@/components/order/SegmentsList
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event, OrderHotel } from "@/lib/app.types";
-import { lodgingLocation, type StaySegment } from "@/lib/events/lodging";
+import { cityName, lodgingLocation, type StaySegment } from "@/lib/events/lodging";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { moves, stays, tripLegs } from "@/lib/itinerary/dates";
@@ -37,8 +37,12 @@ type StayView = {
   rooms: FetchHotelsParams["guests"];
   /** What one search answers for: the stay, its nights and its rooms. */
   searchKey: string;
-  /** The move into this stay (none for the first): its day, and whether a flight of the trip makes it. */
-  arrival: { day: string; flown: boolean } | null;
+  /**
+   * The move into this stay (none for the first): its day, whether a flight of the trip makes it,
+   * and the city a flight lands in (the airport's - `cityName(.., "flight")`, the trip's one label
+   * rule; a Manchester stay flown to London reads "טיסה ללונדון").
+   */
+  arrival: { day: string; flown: boolean; airport: string } | null;
 };
 
 /** How a stay's search ended without a hotel: the search failed, or the city has none for these nights. */
@@ -171,7 +175,9 @@ export function HotelsStep({
         segment: { city: stay.city, checkin: range[0], checkout: range[1], nights: dayDiff(range[0], range[1]) },
         rooms,
         searchKey: `${stay.key}|${range[0]}|${range[1]}|${roomsKey(rooms)}`,
-        arrival: move ? { day: stay.from, flown: flown.has(move.key) } : null,
+        arrival: move
+          ? { day: stay.from, flown: flown.has(move.key), airport: cityName(stay.events[0], "flight") }
+          : null,
       };
     });
   }, [flight, route, dates, train, pax]);
@@ -360,7 +366,9 @@ export function HotelsStep({
                 ) : (
                   <MapPin className="size-3.5 shrink-0" aria-hidden />
                 )}
-                {`${dayMonth(v.arrival.day)} · ${v.arrival.flown ? "טיסה" : "הגעה עצמאית"} ל${v.city}`}
+                {`${dayMonth(v.arrival.day)} · ${
+                  v.arrival.flown ? `טיסה ל${v.arrival.airport}` : `הגעה עצמאית ל${v.city}`
+                }`}
               </p>
             )}
             <div id={stayCardId(v.stay.key)} className="scroll-mt-28">

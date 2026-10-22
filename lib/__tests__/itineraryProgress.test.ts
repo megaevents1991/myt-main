@@ -362,4 +362,13 @@ describe("the summary's 15-minute hold", () => {
   it("nothing left to release: the same state back", () => {
     expect(itineraryReducer(base, { type: "releaseHold" })).toBe(base);
   });
+
+  it("the retry starts on event 1, not on the event last open", () => {
+    const lastOpen = { ...full, step: "summary" as const, train: [], activeEvent: 1 };
+    const out = itineraryReducer(lastOpen, { type: "releaseHold" });
+    expect(out.activeEvent).toBe(0);
+    expect(itineraryReducer(out, { type: "goStep", step: "tickets" })).toMatchObject({ step: "tickets", activeEvent: 0 });
+    // Nothing priced but a later event open: still back to the first.
+    expect(itineraryReducer({ ...base, activeEvent: 1 }, { type: "releaseHold" }).activeEvent).toBe(0);
+  });
 });

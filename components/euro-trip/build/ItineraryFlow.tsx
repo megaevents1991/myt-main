@@ -104,7 +104,7 @@ function StepBody({ state }: { state: ItineraryState }) {
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, priorHold, held } = useItinerary();
+  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, priorHold, held, holdSending } = useItinerary();
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
@@ -268,11 +268,12 @@ export function ItineraryFlow() {
   // "כרטיסים" reopens the tickets step on the event the customer last had open (activeEvent is
   // kept); the events themselves are its sub-steps (TicketSubSteps). Nothing a step holds is
   // cleared by the visit (goStep moves the view only). A held trip is with sales: nothing to walk
-  // back to.
+  // back to. Nor while the hold is on its way (`holdSending`): it writes real reservations, and
+  // its answer is read on the summary.
   const current = stepperIndex(state);
   const onStepperClick = (index0: number) => {
     const target = stepForIndex(index0);
-    if (!target || held || index0 + 1 >= current) return;
+    if (!target || held || holdSending || index0 + 1 >= current) return;
     goStep(target);
   };
 

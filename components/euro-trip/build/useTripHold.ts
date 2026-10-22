@@ -7,13 +7,11 @@ import { asFullRow, forgetFullRow, goneIds } from "@/lib/itinerary/adapter";
 import {
   confirmFailureAction,
   escalatePriceChange,
-  holdAttempt,
   holdSignature,
   isHeldAnswer,
   submissionFromState,
   tripKey,
   type HoldAction,
-  type HoldAttempt,
 } from "@/lib/itinerary/confirm";
 import { livePrice } from "@/lib/itinerary/progress";
 import type { TravellersInput } from "@/lib/itinerary/travellers";
@@ -41,8 +39,12 @@ function utmSource(): string {
  *   double click, a retry after an error or a lost answer sends the SAME group, and the server
  *   answers the rows it already wrote. Any change - the customer went back and edited the trip
  *   after a lost answer - gets a new group: the old one would be answered with the old trip's
- *   rows. A refusal that sends the customer back to change the trip also drops it.
- * - One request at a time (a ref, so even two clicks in one frame send one).
+ *   rows. A refusal that sends the customer back to change the trip also drops it. The attempt
+ *   and the in-flight flag live in the provider (`startHold` / `endHold` / `forgetHoldAttempt`),
+ *   not in this hook: the summary unmounts on a visit to an earlier step, and a fresh group per
+ *   mount would hold the same trip twice when the first answer was lost.
+ * - One request at a time (the provider's ref, so even two clicks in one frame send one). While
+ *   it is on its way (`holdSending`) the flow keeps the customer on the summary.
  * - Success: `markHeld` (closes the draft and leaves the tab's held-trip marker - a refresh that
  *   reopens the same trip says it was held; the summary shows the confirmation, its clock stops)
  *   and any earlier notice goes.
@@ -66,9 +68,6 @@ export function useTripHold(): {
   useLayoutEffect(() => {
     latest.current = api;
   });
-  const attempt = useRef<HoldAttempt | null>(null);
-  const inFlight = useRef(false);
-  const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<Extract<HoldAction, { kind: "stay" }> | null>(null);
 
   /** The route's rows as the server priced them; true when an event left the route. */
@@ -90,18 +89,18 @@ export function useTripHold(): {
 
   const submit = useCallback(async (travellers: TravellersInput) => {
     const a = latest.current;
-    if (inFlight.current || a.held || !a.state.flight) return;
+    if (a.held || !a.state.flight) return;
     const price = livePrice(a.state, a.settings);
     if (!price) return;
-    inFlight.current = true;
-    setSending(true);
+    // The same group only for a retry of the identical trip (picks and price included); null while
+    // another request is on its way.
+    const attempt = a.startHold(holdSignature(a.state, price.total));
+    if (!attempt) return;
     setFailure(null);
-    // The same group only for a retry of the identical trip (picks and price included).
-    attempt.current = holdAttempt(attempt.current, holdSignature(a.state, price.total));
     // The trip this attempt is for: a "the price changed" counts as "again" only for the same one.
     const key = tripKey(a.state);
     try {
-      const body = submissionFromState(a.state, travellers, attempt.current.group, price, { utmSource: utmSource() });
+      const body = submissionFromState(a.state, travellers, attempt.group, price, { utmSource: utmSource() });
       const res = await fetch("/api/itinerary/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,7 +131,7 @@ export function useTripHold(): {
         setFailure(action);
         return;
       }
-      attempt.current = null;
+      now.forgetHoldAttempt();
       if (action.reloadRows && (await reloadFresh())) {
         // An event left the catalog meanwhile: the route changed - the build step says so, and the
         // trip that comes back from it is another one.
@@ -152,10 +151,9 @@ export function useTripHold(): {
       const action = confirmFailureAction(0, null, latest.current.state);
       setFailure(action.kind === "stay" ? action : { kind: "stay", code: "SERVER_ERROR", message: action.message });
     } finally {
-      inFlight.current = false;
-      setSending(false);
+      latest.current.endHold();
     }
   }, [reloadFresh]);
 
-  return { submit, sending, failure };
+  return { submit, sending: api.holdSending, failure };
 }
