@@ -5,10 +5,10 @@ import Link from "next/link";
 import { X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
+import { ticketReady } from "@/lib/itinerary/adapter";
 import { stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
-import { estimateItinerary } from "@/lib/itinerary/price";
-import { canContinue, livePerTraveller } from "@/lib/itinerary/progress";
+import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import { FlightsStep } from "./FlightsStep";
@@ -55,7 +55,7 @@ const nextOpenStay = (active: number, count: number, ready: (i: number) => boole
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveStay } = useItinerary();
+  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveStay } = useItinerary();
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
@@ -75,17 +75,15 @@ export function ItineraryFlow() {
   if (step === "hotels" && state.flight && !hotelsOpened) setHotelsOpened(true);
   else if (!state.flight && hotelsOpened) setHotelsOpened(false);
   const hotelsMounted = step === "hotels" || (hotelsOpened && !!state.flight);
-  // The live price once every piece is picked (the summary's own figure), the estimate until then.
-  const estimate = useMemo(
-    () => (route.length ? estimateItinerary(route, dates, settings, null).perTraveller : 0),
-    [route, dates, settings],
-  );
+  // The live price once every piece is picked (the summary's own figure); until then the running
+  // price - each piece picked at its own price, the rest at the estimate's (`progressivePrice`).
   const live = livePerTraveller(state, settings);
-  const total = live ?? estimate;
+  const total = live ?? progressivePrice(state, settings).perTraveller;
   const progress = canContinue(state);
 
-  // A new step or mode opens at the top of the page - and so does the next city's hotels.
-  const view = `${step}|${state.mode}|${step === "hotels" ? state.activeStay : ""}`;
+  // A new step or mode opens at the top of the page - and so does the next event's tickets and
+  // the next city's hotels.
+  const view = `${step}|${state.mode}|${step === "hotels" ? state.activeStay : step === "tickets" ? state.activeEvent : ""}`;
   const lastView = useRef(view);
   useEffect(() => {
     if (lastView.current === view) return;
@@ -100,6 +98,12 @@ export function ItineraryFlow() {
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
   // to be picked again for the new party).
   const ticketsReady = progress.tickets;
+  // The tickets step walks the events like the hotels step walks the cities: it moves on from an
+  // event whose ticket is ready - to the next event without one, or, when every event has one, to
+  // the flights.
+  const openEvent = route[Math.min(state.activeEvent, route.length - 1)];
+  const ticketMissing = step === "tickets" && (!openEvent || !ticketReady(state.tickets[openEvent.id], state.pax));
+  const nextEvent = step === "tickets" ? nextOpenEvent(state) : -1;
   // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
   // the flights step sets it only then.
   const flightMissing = step === "flights" && !progress.flights;
@@ -107,7 +111,7 @@ export function ItineraryFlow() {
   // or - when every stay has one - to the summary. No flight = no hotel dates (the step says so).
   const openStay = stayList[openIndex];
   const hotelMissing = step === "hotels" && (!progress.flights || !openStay || !hotelReady(openIndex));
-  const blocked = (step === "tickets" && !ticketsReady) || flightMissing || hotelMissing;
+  const blocked = ticketMissing || flightMissing || hotelMissing;
 
   const primaryLabel = !enough
     ? "בחרו לפחות 2 אירועים"
@@ -116,11 +120,15 @@ export function ItineraryFlow() {
         ? "בחרו טיסה לכל המסלול"
         : hotelMissing
           ? `בחרו מלון ב${openStay ? stayCityName(openStay.events[0]) : "כל עיר"}`
-          : "בחרו כרטיסים לכל האירועים"
+          : openEvent
+            ? `בחרו כרטיסים ל${openEvent.name}`
+            : "בחרו כרטיסים לכל האירועים"
       : step === "build"
         ? "בחר והמשך לכרטיסים"
         : step === "tickets"
-          ? "בחר והמשך לטיסות"
+          ? nextEvent >= 0
+            ? `המשך לכרטיסים ל${route[nextEvent].name}`
+            : "בחר והמשך לטיסות"
           : step === "flights"
             ? "בחר והמשך למלונות"
             : nextStay >= 0
@@ -130,7 +138,10 @@ export function ItineraryFlow() {
   const onPrimary = () => {
     if (!enough || blocked) return;
     if (step === "build") goStep("tickets");
-    else if (step === "tickets") goStep("flights");
+    else if (step === "tickets") {
+      if (nextEvent >= 0) setActiveEvent(nextEvent);
+      else if (ticketsReady) goStep("flights");
+    }
     else if (step === "flights") goStep("hotels");
     else if (step === "hotels") {
       if (nextStay >= 0) setActiveStay(nextStay);

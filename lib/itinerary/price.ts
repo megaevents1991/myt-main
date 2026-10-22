@@ -85,6 +85,35 @@ export function nightlyHotelBase(e: Event): number {
 }
 
 /**
+ * The estimate's pieces, per traveller, USD - what `estimateItinerary` sums, and what the
+ * builder's running price (`progressivePrice`, lib/itinerary/progress.ts) falls back to for a
+ * piece the customer has not picked yet:
+ * - tickets: each event's cheapest ticket on sale, in route order;
+ * - flight: `estFlightUsd` when the page has a (finite) quote, else 60% of the events' package flights;
+ * - stays: per stay (`stays(route, d)` order), the nightly rate of its FIRST event's package (its
+ *   base hotel price over the nights that package assumes) times the stay's nights in this trip;
+ * - markup: Σ tiered markups (`tierMarkups`).
+ */
+export type EstimateParts = { tickets: number[]; flight: number; stays: number[]; markup: number };
+
+export function estimateParts(route: Event[], d: TripDates, s: ItinerarySettings, estFlightUsd: number | null): EstimateParts {
+  const tickets = route.map((e) => usd(cheapestAvailableTicketPrice(e.tickets_and_rates)));
+
+  // A quote that is not a finite number (NaN / Infinity) is no quote: the fallback prices the flight.
+  const quote = estFlightUsd !== null && Number.isFinite(estFlightUsd) ? estFlightUsd : null;
+  const flight = quote ?? FLIGHT_FALLBACK_SHARE * route.reduce((sum, e) => sum + usd(e.base_flight_price), 0);
+
+  const stayPrices = stays(route, d).map((stay) => {
+    const nightly = nightlyHotelBase(stay.events[0]);
+    const nights = dayDiff(stay.from, stay.to); // NaN for a draft without dates: no hotel yet
+    return Number.isFinite(nights) ? nightly * Math.max(0, nights) : 0;
+  });
+
+  const markup = [...tierMarkups(route, s).values()].reduce((sum, m) => sum + m, 0);
+  return { tickets, flight, stays: stayPrices, markup };
+}
+
+/**
  * The trip's price per traveller, in whole dollars, and what buying the same events one by one
  * would cost (`separate`).
  *
@@ -103,19 +132,10 @@ export function estimateItinerary(
   s: ItinerarySettings,
   estFlightUsd: number | null,
 ): { perTraveller: number; separate: number; saving: number | null } {
-  const tickets = route.reduce((sum, e) => sum + usd(cheapestAvailableTicketPrice(e.tickets_and_rates)), 0);
-
-  // A quote that is not a finite number (NaN / Infinity) is no quote: the fallback prices the flight.
-  const quote = estFlightUsd !== null && Number.isFinite(estFlightUsd) ? estFlightUsd : null;
-  const flight = quote ?? FLIGHT_FALLBACK_SHARE * route.reduce((sum, e) => sum + usd(e.base_flight_price), 0);
-
-  const hotel = stays(route, d).reduce((sum, stay) => {
-    const nightly = nightlyHotelBase(stay.events[0]);
-    const nights = dayDiff(stay.from, stay.to); // NaN for a draft without dates: no hotel yet
-    return sum + (Number.isFinite(nights) ? nightly * Math.max(0, nights) : 0);
-  }, 0);
-
-  const markup = [...tierMarkups(route, s).values()].reduce((sum, m) => sum + m, 0);
+  const parts = estimateParts(route, d, s, estFlightUsd);
+  const tickets = parts.tickets.reduce((sum, t) => sum + t, 0);
+  const { flight, markup } = parts;
+  const hotel = parts.stays.reduce((sum, h) => sum + h, 0);
 
   const perTraveller = Math.round(tickets + flight + hotel + markup);
   const separate = Math.round(route.reduce((sum, e) => sum + usd(computePackagePrice(e)), 0));

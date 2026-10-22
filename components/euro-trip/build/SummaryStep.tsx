@@ -18,8 +18,7 @@ import type { HeldAnswer } from "@/lib/itinerary/confirm";
 import { moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import { cardRows } from "@/lib/itinerary/flightsView";
 import { dayDiff, eventDay } from "@/lib/itinerary/geo";
-import { estimateItinerary } from "@/lib/itinerary/price";
-import { SUMMARY_HOLD_SECONDS, canContinue, livePrice } from "@/lib/itinerary/progress";
+import { SUMMARY_HOLD_SECONDS, canContinue, livePrice, progressivePrice } from "@/lib/itinerary/progress";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import {
   contactKey,
@@ -452,7 +451,8 @@ export function SummaryStep({
   const form = useMemo(() => fitTravellers(travellers, pax), [travellers, pax]);
   const progress = canContinue(state);
   const price = livePrice(state, settings);
-  const estimate = useMemo(() => estimateItinerary(route, dates, settings, null), [route, dates, settings]);
+  // Until every piece is in: the running price - what is picked at its own price, the rest estimated.
+  const estimate = progressivePrice(state, settings);
 
   // The live rule for messages: a field's error shows once it was left, or the form was sent.
   // Typing checks the main contact fully and another traveller only where typed (hold); a pay
@@ -674,7 +674,7 @@ export function SummaryStep({
                 </div>
                 <PriceLine
                   label={<span className="text-muted-foreground">{pax === 1 ? "סה״כ לנוסע אחד" : `סה״כ ל-${pax} נוסעים`}</span>}
-                  value={money(estimate.perTraveller * pax)}
+                  value={money(estimate.total)}
                 />
                 <p className="m-0 mt-1 text-xs text-muted-foreground">המחיר המדויק יופיע כשכל רכיבי הטיול ייבחרו.</p>
               </>

@@ -15,9 +15,9 @@
  */
 import type { Event, OrderHotel } from "@/lib/app.types";
 import { getTotalMarkup } from "@/lib/events/price";
-import { allTicketsReady } from "./adapter";
+import { allTicketsReady, ticketReady } from "./adapter";
 import { stays } from "./dates";
-import { markupDiscount, tierMarkups } from "./price";
+import { estimateParts, markupDiscount, tierMarkups } from "./price";
 import type { ItinerarySettings } from "./settings";
 import { MIN_TRIP_EVENTS, type ItineraryState } from "./state";
 import { hotelGuests, stayHotelReady, stayRanges, withStayBase, type StayRange } from "./stayAdapter";
@@ -138,4 +138,63 @@ export function livePrice(state: ItineraryState, s: ItinerarySettings): LivePric
 /** The trip's price per traveller, whole dollars - null until every piece is picked. */
 export function livePerTraveller(state: ItineraryState, s: ItinerarySettings): number | null {
   return livePrice(state, s)?.perTraveller ?? null;
+}
+
+/**
+ * The trip's price while it is being built - the continue bar's figure and the summary's estimate
+ * box until `livePrice` has every piece (then `livePrice` is THE number; on a complete trip this
+ * gives exactly the same). Each piece the customer picked counts at its own price, each piece not
+ * picked yet at the estimate's (`estimateParts`):
+ * - a ticket picked for the party (`ticketReady`): its price, else the event's cheapest on sale;
+ * - the flight, once picked for the party: its price for the whole party, else the estimate's
+ *   flight per traveller × the party;
+ * - a stay whose hotel is ready (`stayHotelReady`): `hotelPerTraveller`, else the stay's estimate;
+ * - the tiered markups (`tierMarkups`).
+ * The live rounding: the party's sum rounded UP once, the price per traveller = that total over
+ * the party, rounded UP. A piece whose price is not a number counts at the estimate.
+ */
+export function progressivePrice(
+  state: ItineraryState,
+  s: ItinerarySettings,
+): Pick<LivePrice, "perTraveller" | "total"> {
+  const { route, dates, pax, flight } = state;
+  if (!route.length || !(pax > 0)) return { perTraveller: 0, total: 0 };
+  const est = estimateParts(route, dates, s, null);
+
+  let tickets = 0;
+  route.forEach((e, i) => {
+    const t = state.tickets[e.id];
+    const picked = ticketReady(t, pax) ? Number(t?.price) : Number.NaN;
+    tickets += Number.isFinite(picked) ? picked : est.tickets[i];
+  });
+
+  // The party's flight as charged: the offer's own price (not its share × pax), like livePrice.
+  const pickedFlight = flight && flight.numOfTravelers === pax ? Number(flight.price) : Number.NaN;
+  const flightParty = Number.isFinite(pickedFlight) ? pickedFlight : est.flight * pax;
+
+  const ranges = stayRanges(route, dates, flight, new Set(state.train));
+  let hotels = 0;
+  stays(route, dates).forEach((stay, i) => {
+    const h = state.hotels[stay.key];
+    const per = h && stayHotelReady(h, ranges[i], pax) ? hotelPerTraveller(h, stay.events[0], ranges[i]) : Number.NaN;
+    hotels += Number.isFinite(per) ? per : (est.stays[i] ?? 0);
+  });
+
+  const total = Math.ceil(cents((tickets + hotels + est.markup) * pax + flightParty));
+  return { perTraveller: Math.ceil(total / pax), total };
+}
+
+/**
+ * The tickets step's next tab: the first event after the open one whose ticket is not ready for
+ * the party (`ticketReady`), else the first before it - the hotels step's walk through its cities.
+ * -1 = every other event has its ticket (on to the flights). The open tab is not counted: its
+ * own ticket is what the step's button waits for.
+ */
+export function nextOpenEvent(state: Pick<ItineraryState, "route" | "tickets" | "pax" | "activeEvent">): number {
+  const { route, tickets, pax } = state;
+  if (!route.length) return -1;
+  const active = Math.min(Math.max(0, state.activeEvent), route.length - 1);
+  const open = (i: number) => i !== active && !ticketReady(tickets[route[i].id], pax);
+  const all = route.map((_, i) => i);
+  return all.find((i) => i > active && open(i)) ?? all.find(open) ?? -1;
 }

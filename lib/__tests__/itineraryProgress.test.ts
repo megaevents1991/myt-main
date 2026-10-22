@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
 import { defaultTripDates, stays } from "../itinerary/dates";
-import { markupDiscount, tierMarkups } from "../itinerary/price";
+import { estimateItinerary, estimateParts, markupDiscount, tierMarkups } from "../itinerary/price";
 import {
   SUMMARY_HOLD_SECONDS,
   canContinue,
   hotelPerTraveller,
   livePerTraveller,
   livePrice,
+  nextOpenEvent,
+  progressivePrice,
 } from "../itinerary/progress";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
 import { INITIAL_ITINERARY_STATE, itineraryReducer, type ItineraryState } from "../itinerary/state";
@@ -227,6 +229,117 @@ describe("livePerTraveller", () => {
     expect(livePerTraveller(broken, S)).toBeNull();
     const noPrice = { ...full, hotels: { ...full.hotels, [parisStay.key]: { ...parisHotel, price: "" } } };
     expect(livePerTraveller(noPrice as ItineraryState, S)).toBeNull();
+  });
+});
+
+describe("I1 - progressivePrice: the running price while the trip is built", () => {
+  // The same trip with a cheapest ticket on sale for each event: Céline from $120, Chelsea from $90.
+  const onSale = (e: Event, price: number) =>
+    ({ ...e, tickets_and_rates: [{ id: `c${e.id}`, category: "A", price, available: true }] }) as unknown as Event;
+  const sale = [onSale(celine, 120), onSale(chelsea, 90)];
+  const at = (s: ItineraryState): ItineraryState => ({ ...s, route: sale });
+  const empty = at(base);
+
+  it("nothing picked: the estimate's pieces, with the live rounding (party up once, per traveller up)", () => {
+    // tickets 120 + 90; flight 0.6 x (500 + 500) = 600; stays $100 x 2 nights + $100 x 3 nights;
+    // markups 372.5. (210 + 500 + 372.5) x 2 + 600 x 2 = 3365 -> per traveller ceil(1682.5) = 1683.
+    expect(estimateParts(sale, dates, S, null)).toEqual({ tickets: [120, 90], flight: 600, stays: [200, 300], markup: 372.5 });
+    expect(progressivePrice(empty, S)).toEqual({ total: 3365, perTraveller: 1683 });
+    // The estimate's own figure is the same sum, rounded once per traveller.
+    expect(estimateItinerary(sale, dates, S, null).perTraveller).toBe(1683);
+  });
+
+  it("picking a ticket - a VIP one - moves the number by its price", () => {
+    const cheap = progressivePrice(at({ ...base, tickets: { 618: ticket("t618", 210) } }), S);
+    const vip = progressivePrice(at({ ...base, tickets: { 618: ticket("vip", 900) } }), S);
+    // 618 at 210 instead of 120: (300 + 500 + 372.5) x 2 + 1200 = 3545.
+    expect(cheap).toEqual({ total: 3545, perTraveller: 1773 });
+    expect(vip.total - cheap.total).toBe(690 * 2);
+    expect(vip.perTraveller - cheap.perTraveller).toBe(690);
+    expect(vip.perTraveller).toBeGreaterThan(progressivePrice(empty, S).perTraveller);
+  });
+
+  it("a ticket bought for another party counts at the event's cheapest, as if not picked", () => {
+    expect(progressivePrice(at({ ...base, tickets: { 618: ticket("vip", 900, 3) } }), S)).toEqual(progressivePrice(empty, S));
+    expect(progressivePrice(at({ ...base, tickets: { 618: ticket("", 900) } }), S)).toEqual(progressivePrice(empty, S));
+  });
+
+  it("picking the flight moves it: the offer's price for the party instead of the estimate's", () => {
+    const before = progressivePrice(at(withTickets), S);
+    // (360 + 500 + 372.5) x 2 + 1200 (the estimate's flight for two) = 3665.
+    expect(before).toEqual({ total: 3665, perTraveller: 1833 });
+    // The $1,300 offer: 3765.
+    expect(progressivePrice(at(withFlight), S)).toEqual({ total: 3765, perTraveller: 1883 });
+    const dear = { ...flight, price: 2500 } as ItineraryFlight;
+    expect(progressivePrice(at({ ...withFlight, flight: dear }), S).total - before.total).toBe(2500 - 1200);
+    // An offer priced for another party is not this party's price: the estimate's.
+    const forThree = { ...flight, numOfTravelers: 3 } as ItineraryFlight;
+    expect(progressivePrice(at({ ...withFlight, flight: forThree }), S)).toEqual(before);
+  });
+
+  it("each READY hotel counts at its own price per traveller, the others at their stay's estimate", () => {
+    const paris = progressivePrice(at({ ...withFlight, hotels: { [parisStay.key]: parisHotel } }), S);
+    // Paris $450 a guest instead of the estimate's $200: +250 a traveller = +500 for two.
+    expect(paris.total - progressivePrice(at(withFlight), S).total).toBe(500);
+    // A hotel moved to other nights is not ready: the stay's estimate.
+    const moved = hotel("p", "900", "2027-05-11", "2027-05-12");
+    expect(progressivePrice(at({ ...withFlight, hotels: { [parisStay.key]: moved } }), S)).toEqual(progressivePrice(at(withFlight), S));
+  });
+
+  it("a complete trip gives exactly livePrice - the final number", () => {
+    const live = livePrice(full, S);
+    expect(live).not.toBeNull();
+    expect(progressivePrice(full, S)).toEqual({ total: live?.total, perTraveller: live?.perTraveller });
+    expect(progressivePrice(at(full), S)).toEqual({ total: 4265, perTraveller: 2133 });
+    // The uneven party of three and other tiers, too.
+    const three: ItineraryState = {
+      ...full,
+      pax: 3,
+      tickets: { 618: ticket("t618", 100, 3), 702: ticket("t702", 100, 3) },
+      flight: { ...flight, price: 1000.01, numOfTravelers: 3 } as ItineraryFlight,
+      hotels: {
+        [parisStay.key]: hotel("p", "900", "2027-05-11", "2027-05-13", 3),
+        [londonStay.key]: hotel("l", "1200", "2027-05-13", "2027-05-16", 3),
+      },
+    };
+    for (const [state, s] of [
+      [three, S],
+      [full, { ...S, tier2Pct: 50 }],
+    ] as const) {
+      const p = livePrice(state, s);
+      expect(progressivePrice(state, s)).toEqual({ total: p?.total, perTraveller: p?.perTraveller });
+    }
+  });
+
+  it("an empty builder is $0", () => {
+    expect(progressivePrice(INITIAL_ITINERARY_STATE, S)).toEqual({ total: 0, perTraveller: 0 });
+  });
+});
+
+describe("I2 - nextOpenEvent: the tickets step walks the events like the hotels step walks the cities", () => {
+  const third = ev(703, "ארסנל - ליברפול", "2027-05-18", LONDON, 100);
+  const three = [celine, chelsea, third];
+
+  it("the next event after the open tab without a ticket for the party, else the first before it", () => {
+    expect(nextOpenEvent({ route, tickets: {}, pax: 2, activeEvent: 0 })).toBe(1);
+    expect(nextOpenEvent({ route, tickets: {}, pax: 2, activeEvent: 1 })).toBe(0);
+    expect(nextOpenEvent({ route: three, tickets: {}, pax: 2, activeEvent: 1 })).toBe(2);
+    expect(nextOpenEvent({ route: three, tickets: { 703: ticket("t703", 80) }, pax: 2, activeEvent: 1 })).toBe(0);
+  });
+
+  it("-1 once every other event has its ticket (the open tab is the button's own wait)", () => {
+    expect(nextOpenEvent({ route, tickets: { 702: ticket("t702", 150) }, pax: 2, activeEvent: 0 })).toBe(-1);
+    expect(nextOpenEvent(withTickets)).toBe(-1);
+    expect(nextOpenEvent({ route: [], tickets: {}, pax: 2, activeEvent: 0 })).toBe(-1);
+  });
+
+  it("a ticket for another party, or a blank one, still needs picking", () => {
+    expect(nextOpenEvent({ route, tickets: { 702: ticket("t702", 150, 3) }, pax: 2, activeEvent: 0 })).toBe(1);
+    expect(nextOpenEvent({ route, tickets: { 702: ticket("", 150) }, pax: 2, activeEvent: 0 })).toBe(1);
+  });
+
+  it("an open tab past the route's end is its last event (the tickets step's own clamp)", () => {
+    expect(nextOpenEvent({ route, tickets: {}, pax: 2, activeEvent: 7 })).toBe(0);
   });
 });
 
