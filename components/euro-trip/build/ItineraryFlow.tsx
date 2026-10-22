@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AlarmClockCheck, X } from "lucide-react";
@@ -16,6 +16,7 @@ import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
+import { stayCardId } from "./parts";
 import { SelfBuild } from "./SelfBuild";
 import { StepSkeleton } from "./StepSkeleton";
 import { EditRouteLink, TripHeader } from "./TripHeader";
@@ -47,12 +48,13 @@ const SummaryStep = dynamic(() => import("./SummaryStep").then((m) => m.SummaryS
 /**
  * The hotels step, kept alive (see ItineraryFlow). Its wrapper also hides the step's skeleton:
  * the dynamic `loading` cannot see `shown`, and a customer who steps back before the chunk
- * arrives must not keep a skeleton under the earlier step.
+ * arrives must not keep a skeleton under the earlier step. `onNoHotel`: the stays whose search
+ * ended without a hotel (the continue bar's "searching" vs "pick a hotel").
  */
-function HotelsPane({ shown }: { shown: boolean }) {
+function HotelsPane({ shown, onNoHotel }: { shown: boolean; onNoHotel: (stayKeys: string[]) => void }) {
   return (
     <div hidden={!shown}>
-      <HotelsStep shown={shown} />
+      <HotelsStep shown={shown} onNoHotel={onNoHotel} />
     </div>
   );
 }
@@ -91,18 +93,6 @@ function StepBody({ state }: { state: ItineraryState }) {
 }
 
 /**
- * The next stay whose hotel is not ready (`stayHotelReady`): the first after the open one, else
- * the first before it (a customer who opened a later city first). -1 = every other stay is
- * ready: on to the summary.
- */
-const nextOpenStay = (active: number, count: number, ready: (i: number) => boolean): number => {
-  const open = (i: number) => i !== active && !ready(i);
-  const all = Array.from({ length: count }, (_, i) => i);
-  const after = all.find((i) => i > active && open(i));
-  return after ?? all.find(open) ?? -1;
-};
-
-/**
  * "Build Your Euro Trip" - the flow, shaped as the order flow: the live Stepper on top (the page's
  * top bar - the global header hides here), one ticket step per event, then flights, hotels and
  * the summary; under it the trip's header (on a ticket step only the way back to the planner -
@@ -111,8 +101,7 @@ const nextOpenStay = (active: number, count: number, ready: (i: number) => boole
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveStay, priorHold, held } =
-    useItinerary();
+  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, priorHold, held } = useItinerary();
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
@@ -132,21 +121,30 @@ export function ItineraryFlow() {
   if (step === "hotels" && state.flight && !hotelsOpened) setHotelsOpened(true);
   else if (!state.flight && hotelsOpened) setHotelsOpened(false);
   const hotelsMounted = step === "hotels" || (hotelsOpened && !!state.flight);
+  // The stays whose hotel search ended without a hotel (the hotels step says so on their card).
+  const [noHotel, setNoHotel] = useState<string[]>([]);
+  const onNoHotel = useCallback(
+    (keys: string[]) => setNoHotel((prev) => (prev.join("|") === keys.join("|") ? prev : keys)),
+    [],
+  );
   // The live price once every piece is picked (the summary's own figure); until then the running
   // price - each piece picked at its own price, the rest at the estimate's (`progressivePrice`).
   const live = livePerTraveller(state, settings);
   const total = live ?? progressivePrice(state, settings).perTraveller;
   const progress = canContinue(state);
 
-  // A new step or mode opens at the top of the page - and so does the next event's tickets and
-  // the next city's hotels.
+  // A new step or mode opens at the top of the page - and so does the next event's tickets. The
+  // hotels step opened on a later stay (the summary's "שינוי" on its hotel) opens on its card.
   const view = `${step}|${state.mode}|${step === "hotels" ? state.activeStay : step === "tickets" ? state.activeEvent : ""}`;
   const lastView = useRef(view);
+  const openStayKey = step === "hotels" && state.activeStay > 0 ? stayList[state.activeStay]?.key : undefined;
   useEffect(() => {
     if (lastView.current === view) return;
     lastView.current = view;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [view]);
+    const card = openStayKey ? document.getElementById(stayCardId(openStayKey)) : null;
+    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [view, openStayKey]);
 
   const enough = route.length >= MIN_TRIP_EVENTS;
   const at = ITINERARY_STEPS.indexOf(step);
@@ -176,8 +174,6 @@ export function ItineraryFlow() {
       window.clearTimeout(timer);
     };
   }, [enough, upNext]);
-  const openIndex = Math.min(state.activeStay, stayList.length - 1);
-  const nextStay = step === "hotels" ? nextOpenStay(openIndex, stayList.length, hotelReady) : -1;
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
   // to be picked again for the new party).
   const ticketsReady = progress.tickets;
@@ -190,10 +186,12 @@ export function ItineraryFlow() {
   // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
   // the flights step sets it only then.
   const flightMissing = step === "flights" && !progress.flights;
-  // The hotels step moves on only from a stay whose hotel is ready: to the next stay without one,
-  // or - when every stay has one - to the summary. No flight = no hotel dates (the step says so).
-  const openStay = stayList[openIndex];
-  const hotelMissing = step === "hotels" && (!progress.flights || !openStay || !hotelReady(openIndex));
+  // The hotels step moves on once every stay has its hotel (they arrive picked, one search after
+  // another) - to the summary. No flight = no hotel dates (the step says so).
+  const hotelMissing = step === "hotels" && (!progress.flights || !progress.hotels);
+  const missingStay = stayList.findIndex((_, i) => !hotelReady(i));
+  // A stay without its hotel is still being searched, unless its search ended without one.
+  const hotelsSearching = stayList.some((s, i) => !hotelReady(i) && !noHotel.includes(s.key));
   const blocked = ticketMissing || flightMissing || hotelMissing;
 
   const primaryLabel = !enough
@@ -202,7 +200,9 @@ export function ItineraryFlow() {
       ? flightMissing || (hotelMissing && !progress.flights)
         ? "בחרו טיסה לכל המסלול"
         : hotelMissing
-          ? `בחרו מלון ב${openStay ? stayCityName(openStay.events[0]) : "כל עיר"}`
+          ? hotelsSearching
+            ? "מחפשים מלונות..."
+            : `בחרו מלון ב${missingStay >= 0 ? stayCityName(stayList[missingStay].events[0]) : "כל עיר"}`
           : openEvent
             ? `בחרו כרטיסים ל${openEvent.name}`
             : "בחרו כרטיסים לכל האירועים"
@@ -214,9 +214,7 @@ export function ItineraryFlow() {
             : "בחר והמשך לטיסות"
           : step === "flights"
             ? "בחר והמשך למלונות"
-            : nextStay >= 0
-              ? `בחר והמשך למלון ב${stayCityName(stayList[nextStay].events[0])}`
-              : "בחר והמשך לסיכום";
+            : "בחר והמשך לסיכום";
 
   const onPrimary = () => {
     if (!enough || blocked) return;
@@ -225,10 +223,7 @@ export function ItineraryFlow() {
       if (nextEvent >= 0) setActiveEvent(nextEvent);
       else if (ticketsReady) goStep("flights");
     } else if (step === "flights") goStep("hotels");
-    else if (step === "hotels") {
-      if (nextStay >= 0) setActiveStay(nextStay);
-      else goStep("summary");
-    }
+    else if (step === "hotels") goStep("summary");
   };
 
   /** A slot taps back to its step once the flow is past it, and forward to the next step only. */
@@ -335,7 +330,7 @@ export function ItineraryFlow() {
           </div>
         )}
         <StepBody state={state} />
-        {hotelsMounted && <HotelsPane shown={step === "hotels"} />}
+        {hotelsMounted && <HotelsPane shown={step === "hotels"} onNoHotel={onNoHotel} />}
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
           Not on an empty builder: there is no trip to price yet (the bar would say $0). */}

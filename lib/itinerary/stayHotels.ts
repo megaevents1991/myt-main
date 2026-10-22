@@ -29,6 +29,7 @@ import type { OrderHotel, SegmentCardInfo } from "@/lib/app.types";
 import type { LodgingCity } from "@/lib/events/lodging";
 import { applyFiltersAndSorting } from "@/lib/hotelFilter";
 import type { Hotel, Rate } from "@/lib/hotel.type";
+import { rateRoomName } from "@/lib/hotels/roomName";
 
 /** How many photos a stay card draws (the live split stay's cap). */
 const CARD_IMAGES = 12;
@@ -72,13 +73,6 @@ export function pickDefaultHotel(search: HotelsData): Hotel | null {
   return [...preferred, ...all].find((h) => hotelsInfo[h.id] && h.rates?.length) ?? null;
 }
 
-/** The room key the hotel info files its photos under: `main_name` + `bedding_type`. */
-const roomKey = (rate: Rate | undefined): string => {
-  const room = rate?.room_data_trans;
-  if (!room) return "";
-  return `${room.main_name}${room.bedding_type ? " " + room.bedding_type : ""}`;
-};
-
 /**
  * The in-session fields a stay's card needs, from the search the hotel came from: the same
  * room's breakfast rate (`breakfast_offer`, null when there is none - or when the search is not
@@ -97,7 +91,9 @@ export function withStayHotelExtras(h: OrderHotel, search: HotelsData): OrderHot
   if (!info?.metadata) return { ...withOffer, segment_card: null };
 
   const card: SegmentCardInfo = {
-    images: [...(info.rooms?.[roomKey(h.rate)]?.images ?? []), ...(info.general?.images ?? [])]
+    // The hotel info files a room's photos under `main_name` + `bedding_type` - the order's
+    // room name (`rateRoomName`).
+    images: [...(info.rooms?.[rateRoomName(h.rate)]?.images ?? []), ...(info.general?.images ?? [])]
       .filter(Boolean)
       .slice(0, CARD_IMAGES),
     distance: Math.ceil(info.metadata.distanceFromCenter ?? 0),
@@ -131,7 +127,8 @@ export function buildStayHotel(a: {
     name: info?.metadata?.hotelName,
     hotelInformation: {
       hotelName: info?.metadata?.hotelName,
-      roomName: rate?.room_data_trans?.main_name || Object.values(info?.rooms ?? {})[0]?.name || "",
+      // The rate's own room, never another room of the hotel (reservation 2233 - lib/hotels/roomName.ts).
+      roomName: rate?.room_data_trans?.main_name || "",
       stars: info?.metadata?.rating,
       amenities: info?.general?.amenities,
       distance: info?.metadata?.distanceFromCenter,

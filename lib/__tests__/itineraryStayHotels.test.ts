@@ -210,6 +210,13 @@ describe("buildStayHotel", () => {
     expect(built.city).toBe("flight");
   });
 
+  it("names no room when the rate names none - never another room of the hotel", () => {
+    const r = rate(90, { main: "" });
+    const s2 = searchOf([hotel("h1", [r])], { h1: info("h1", { rooms: { "Single Room": ["x"] } }) });
+    const built = buildStayHotel({ city: "flight", cityLabel: "לונדון", search: s2, hotel: s2.data.data.hotels[0] });
+    expect(built.hotelInformation.roomName).toBe("");
+  });
+
   it("carries the card info and the breakfast offer, like the live split stay", () => {
     const built = buildStayHotel({ city: "event", cityLabel: "פראג", search: s, hotel: h1 });
     expect(built.segment_card).not.toBeUndefined();
