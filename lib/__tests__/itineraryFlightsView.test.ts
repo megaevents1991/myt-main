@@ -97,8 +97,9 @@ describe("train copy", () => {
   });
 
   it("the toggle names the distance", () => {
-    expect(trainToggleLabel(343)).toBe("אגיע ברכבת (343 ק״מ)");
-    expect(trainToggleLabel(1000)).toBe("אגיע ברכבת (1,000 ק״מ)");
+    expect(trainToggleLabel(343)).toBe("אגיע עצמאית (343 ק״מ)");
+    expect(trainToggleLabel(1000)).toBe("אגיע עצמאית (1,000 ק״מ)");
+    expect(trainToggleLabel(312)).toBe("אגיע עצמאית (312 ק״מ)");
   });
 
   it("the train row: A ← B ברכבת, then day, hours and that it is not included", () => {

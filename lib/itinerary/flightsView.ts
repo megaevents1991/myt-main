@@ -31,8 +31,8 @@ export const trainHours = (km: number): string => (km / 170 + 0.5).toFixed(1);
 
 const kmText = (km: number): string => km.toLocaleString("en-US");
 
-/** "אגיע ברכבת (343 ק״מ)" - the switch under a between-cities flight. */
-export const trainToggleLabel = (km: number): string => `אגיע ברכבת (${kmText(km)} ק״מ)`;
+/** "אגיע עצמאית (343 ק״מ)" - the switch under a between-cities flight. */
+export const trainToggleLabel = (km: number): string => `אגיע עצמאית (${kmText(km)} ק״מ)`;
 
 /** The row a move by train shows in place of its flight. */
 export function trainRowText(t: TrainLeg): { title: string; detail: string } {
