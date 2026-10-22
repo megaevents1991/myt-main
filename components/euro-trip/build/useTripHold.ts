@@ -7,11 +7,13 @@ import { asFullRow, forgetFullRow, goneIds } from "@/lib/itinerary/adapter";
 import {
   confirmFailureAction,
   escalatePriceChange,
+  holdAttempt,
+  holdSignature,
   isHeldAnswer,
-  newGroupId,
   submissionFromState,
   tripKey,
   type HoldAction,
+  type HoldAttempt,
 } from "@/lib/itinerary/confirm";
 import { livePrice } from "@/lib/itinerary/progress";
 import type { TravellersInput } from "@/lib/itinerary/travellers";
@@ -34,10 +36,12 @@ function utmSource(): string {
 /**
  * The summary's "שמרו לי ל-24 שעות": POST /api/itinerary/confirm with the whole trip.
  *
- * - The group id (`itinerary_group`, the idempotency key) is made ONCE per hold attempt and kept
- *   until it goes through: a double click, a retry after an error or a lost answer sends the SAME
- *   group, and the server answers the rows it already wrote. Only a refusal that sends the
- *   customer back to change the trip starts a new one - what is sent next is another trip.
+ * - The group id (`itinerary_group`, the idempotency key) is kept only for a retry of the
+ *   IDENTICAL trip (`holdAttempt` over `holdSignature`: the trip, its picks and its price): a
+ *   double click, a retry after an error or a lost answer sends the SAME group, and the server
+ *   answers the rows it already wrote. Any change - the customer went back and edited the trip
+ *   after a lost answer - gets a new group: the old one would be answered with the old trip's
+ *   rows. A refusal that sends the customer back to change the trip also drops it.
  * - One request at a time (a ref, so even two clicks in one frame send one).
  * - Success: `markHeld` (closes the draft; the summary shows the confirmation, its clock stops)
  *   and any earlier notice goes.
@@ -61,7 +65,7 @@ export function useTripHold(): {
   useLayoutEffect(() => {
     latest.current = api;
   });
-  const group = useRef<string | null>(null);
+  const attempt = useRef<HoldAttempt | null>(null);
   const inFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<Extract<HoldAction, { kind: "stay" }> | null>(null);
@@ -91,11 +95,12 @@ export function useTripHold(): {
     inFlight.current = true;
     setSending(true);
     setFailure(null);
-    group.current ??= newGroupId();
+    // The same group only for a retry of the identical trip (picks and price included).
+    attempt.current = holdAttempt(attempt.current, holdSignature(a.state, price.total));
     // The trip this attempt is for: a "the price changed" counts as "again" only for the same one.
     const key = tripKey(a.state);
     try {
-      const body = submissionFromState(a.state, travellers, group.current, price, { utmSource: utmSource() });
+      const body = submissionFromState(a.state, travellers, attempt.current.group, price, { utmSource: utmSource() });
       const res = await fetch("/api/itinerary/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,7 +123,7 @@ export function useTripHold(): {
         setFailure(action);
         return;
       }
-      group.current = null;
+      attempt.current = null;
       if (action.reloadRows && (await reloadFresh())) {
         // An event left the catalog meanwhile: the route changed - the build step says so, and the
         // trip that comes back from it is another one.

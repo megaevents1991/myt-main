@@ -965,6 +965,45 @@ export function tripKey(state: Pick<ItineraryState, "route" | "dates" | "pax" | 
   ]);
 }
 
+/**
+ * What one hold attempt was for: the trip (`tripKey`), its picks - each event's ticket, the flight
+ * (an offer id repeats across searches, so its price and legs too), each stay's hotel and rate -
+ * and the price it sent. Two attempts with the same signature are the same request.
+ */
+export function holdSignature(state: ItineraryState, total: number): string {
+  const tickets = state.route.map((e) => state.tickets[e.id]?.id ?? "");
+  const f = state.flight;
+  const flight = f
+    ? [
+        f.id,
+        f.price,
+        f.numOfTravelers,
+        (f.legs ?? []).map((l) => `${l.departureAirport}>${l.arrivalAirport}@${l.departureTime}#${l.flightNumber ?? ""}`),
+      ]
+    : null;
+  const hotels = state.route.length
+    ? stays(state.route, state.dates).map((s) => {
+        const h = state.hotels[s.key];
+        return h ? [h.id, h.rate?.match_hash ?? "", h.checkin, h.checkout, h.offlineIds ?? []] : null;
+      })
+    : [];
+  return JSON.stringify([tripKey(state), tickets, flight, hotels, total]);
+}
+
+/** A hold attempt's group id (`itinerary_group`, the idempotency key) and what it was sent for. */
+export type HoldAttempt = { group: string; signature: string };
+
+/**
+ * The group id an attempt sends: the previous attempt's ONLY for a retry of the identical trip (a
+ * double click, a retry after an error or a lost answer - the server then answers the rows it may
+ * already have written); anything else - another trip, another pick, another price - gets a new
+ * one. An edited trip sent with the old group would be answered with the OLD trip's rows, as if
+ * the new one were held.
+ */
+export function holdAttempt(prev: HoldAttempt | null, signature: string, makeId: () => string = newGroupId): HoldAttempt {
+  return prev && prev.signature === signature ? prev : { group: makeId(), signature };
+}
+
 /** The hold's "the price changed" answers in a row, for one trip (`tripKey`). */
 export type PriceChangeMemo = { key: string; count: number; at: number };
 export const NO_PRICE_CHANGES: PriceChangeMemo = { key: "", count: 0, at: 0 };

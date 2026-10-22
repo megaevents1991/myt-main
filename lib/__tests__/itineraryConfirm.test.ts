@@ -9,6 +9,8 @@ import {
   eventDateIso,
   UNCHECKED_PRICE_FLOOR,
   escalatePriceChange,
+  holdAttempt,
+  holdSignature,
   PRICE_STILL_CHANGING,
   withRowEids,
   tripKey,
@@ -1301,5 +1303,56 @@ describe("round 5 - tripKey / notePriceAnswer", () => {
   it("back after the draft's 30 minutes: the first again", () => {
     expect(notePriceAnswer(first, key, true, T0 + 30 * MIN).count).toBe(2);
     expect(notePriceAnswer(first, key, true, T0 + 31 * MIN).count).toBe(1);
+  });
+});
+
+describe("m6 - the hold's group id is reused only for a retry of the identical trip", () => {
+  const total = priceOf(full).total;
+  const sig = holdSignature(full, total);
+  let n = 0;
+  const makeId = () => `group-${++n}`;
+
+  it("the first attempt gets a new group; the identical retry (double click, lost answer) the same one", () => {
+    const a = holdAttempt(null, sig, makeId);
+    expect(a.group).toMatch(/^group-/);
+    // A copy of the same trip (another render, same picks) is the same request.
+    const again = holdAttempt(a, holdSignature(JSON.parse(JSON.stringify(full)) as ItineraryState, total), makeId);
+    expect(again).toBe(a);
+  });
+
+  it("an edited trip after a lost answer gets a NEW group - never the old trip's rows", () => {
+    const a = holdAttempt(null, sig, makeId);
+    const moveKey = Object.keys(full.dates.moves)[0];
+    const edits: [string, ItineraryState, number][] = [
+      ["party", { ...full, pax: 3 }, total],
+      ["dates", { ...full, dates: { ...full.dates, ret: "2027-05-17" } }, total],
+      ["train", { ...full, train: [moveKey] }, total],
+      ["route", { ...full, route: [celine, coldplay] }, total],
+      ["ticket", { ...full, tickets: { ...full.tickets, 702: ticket("vip702", 150) } }, total],
+      // An offer id repeats across searches: the same id with another price or other legs is another flight.
+      ["flight price", { ...full, flight: { ...flight, price: 1400 } as ItineraryFlight }, total],
+      [
+        "flight legs",
+        { ...full, flight: { ...flight, legs: [legs[0], { ...legs[1], departureTime: "2027-05-13T18:05:00" }, legs[2]] } as ItineraryFlight },
+        total,
+      ],
+      ["hotel", { ...full, hotels: { ...full.hotels, [londonStay.key]: hotel("l2", "602", "2027-05-13", "2027-05-16") } }, total],
+      [
+        "hotel rate",
+        { ...full, hotels: { ...full.hotels, [londonStay.key]: hotel("l", "602", "2027-05-13", "2027-05-16", 2, { ...REFUNDABLE, match_hash: "bb" }) } },
+        total,
+      ],
+      ["price", full, total + 40],
+    ];
+    for (const [what, state, t] of edits) {
+      const next = holdAttempt(a, holdSignature(state, t), makeId);
+      expect(next.group, what).not.toBe(a.group);
+    }
+  });
+
+  it("what is not a pick stays the same request: the step, the open tab, the event rows' other fields", () => {
+    const a = holdAttempt(null, sig, makeId);
+    const same = { ...full, step: "tickets" as const, activeEvent: 1, activeStay: 1 };
+    expect(holdAttempt(a, holdSignature(same, total), makeId)).toBe(a);
   });
 });
