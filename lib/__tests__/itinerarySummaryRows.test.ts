@@ -4,6 +4,7 @@ import { defaultTripDates, stays } from "../itinerary/dates";
 import { livePrice, progressivePrice } from "../itinerary/progress";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
 import { INITIAL_ITINERARY_STATE, type ItineraryState } from "../itinerary/state";
+import { stayRanges, withStayBase } from "../itinerary/stayAdapter";
 import { summaryAdditions } from "../itinerary/summaryRows";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
@@ -138,15 +139,62 @@ describe("summaryAdditions - the summary's rows: the picked piece against its es
   it("the estimate plus the rows is the live price (outside the band's rounding)", () => {
     // No piece inside the band here, so the identity is exact.
     const exact: ItineraryState = { ...full, tickets: { ...full.tickets, 702: ticket("t702", 150) } };
-    const rows = summaryAdditions(exact, S);
-    const live = livePrice(exact, S);
-    const estimate = progressivePrice({ ...exact, tickets: {}, flight: null, hotels: {} }, S);
-    expect(rows && live).toBeTruthy();
-    if (!rows || !live) return;
-    const perTraveller =
-      Object.values(rows.tickets).reduce((a, b) => a + b, 0) +
-      rows.flight +
-      Object.values(rows.hotels).reduce((a, b) => a + b, 0);
-    expect(estimate.total + perTraveller * exact.pax).toBe(live.total);
+    expectIdentity(exact);
+  });
+});
+
+/** Estimate (nothing picked) + Σ rows × the party = the live total. */
+function expectIdentity(state: ItineraryState) {
+  const rows = summaryAdditions(state, S);
+  const live = livePrice(state, S);
+  const estimate = progressivePrice({ ...state, tickets: {}, flight: null, hotels: {} }, S);
+  expect(rows && live).toBeTruthy();
+  if (!rows || !live) return;
+  const perTraveller =
+    Object.values(rows.tickets).reduce((a, b) => a + b, 0) +
+    rows.flight +
+    Object.values(rows.hotels).reduce((a, b) => a + b, 0);
+  expect(estimate.total + perTraveller * state.pax).toBe(live.total);
+}
+
+describe("summaryAdditions - the hotel row reads like the hotels step; the night shift sits on the flight row", () => {
+  // The outbound lands at 05:20 (before 08:00): the Paris hotel checks in the evening before -
+  // 10/05-13/05, 3 nights under the flight, against the trip's 2-night stay (the estimate's $200).
+  const early = [seg("TLV", "CDG", "2027-05-11T01:00:00", "2027-05-11T05:20:00"), legs[1], legs[2]];
+  const earlyFlight = { ...flight, outbound: early[0], legs: early } as unknown as ItineraryFlight;
+  const parisRange = stayRanges(route, dates, earlyFlight, new Set())[0];
+  const withParis = (price: string): ItineraryState => ({
+    ...full,
+    tickets: { ...full.tickets, 702: ticket("t702", 150) },
+    flight: earlyFlight,
+    hotels: { ...full.hotels, [parisStay.key]: hotel("p", price, parisRange[0], parisRange[1]) },
+  });
+
+  it("the stay under the flight is a night longer than the trip's stay", () => {
+    expect(parisRange).toEqual(["2027-05-10", "2027-05-13"]);
+    expect(withStayBase(celine, parisRange).base_hotel_price).toBe(300);
+  });
+
+  it("the hotel row is the hotels step's figure: price per guest against the stay's base under the flight", () => {
+    const state = withParis("900");
+    const rows = summaryAdditions(state, S);
+    // The hotels step (SegmentsList): +hotel.price / persons - minPrice = 450 - 300 = +150.
+    expect(rows?.hotels[parisStay.key]).toBe(900 / 2 - 300);
+    // The extra night ($100) is the flight's doing: 650 - 600 + (300 - 200) = +150.
+    expect(rows?.flight).toBe(150);
+    expectIdentity(state);
+  });
+
+  it("a hotel within $4 of the estimate's stay but outside its own base's band is not 'included'", () => {
+    // $203 a guest: $3 over the trip's 2-night estimate, $97 under the 3 nights it books.
+    const state = withParis("406");
+    expect(summaryAdditions(state, S)?.hotels[parisStay.key]).toBe(-97);
+    expectIdentity(state);
+  });
+
+  it("a hotel within $4 of its base under the flight shows 0 there too", () => {
+    const state = withParis("604");
+    expect(summaryAdditions(state, S)?.hotels[parisStay.key]).toBe(0);
+    expectIdentity(state);
   });
 });

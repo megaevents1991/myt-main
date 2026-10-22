@@ -3,16 +3,21 @@
  * summary's `eventTicketPriceAddition` / `flightPriceAddition` / `hotelPriceAddition` for a trip.
  * Pure: no I/O, no clock.
  *
- * Each row is the picked piece per traveller minus THAT piece's estimate in `progressivePrice`
- * (`pieceEstimates`): the trip's estimate + the rows = the live price. Inside the live band
- * (`PACK_BOUNDARY_USD`, ±$4 a traveller) a row is 0 - "כלול במחיר". A hotel is counted by the
- * live price's own rule (`hotelPerTraveller`: within the band of its stay's base, the base).
+ * The trip's estimate + the rows = the live price. Each row is per traveller, 0 inside the live
+ * band (`PACK_BOUNDARY_USD`, ±$4 a traveller) - "כלול במחיר":
+ * - a ticket: its price against its estimate in `progressivePrice` (`pieceEstimates`);
+ * - a hotel: the hotels step's own figure - the hotel per guest (`hotelPerTraveller`) against its
+ *   stay's base for the nights it books under the flight (`withStayBase` over `stayRanges`), so
+ *   the summary and the hotels step (SegmentsList) never disagree on the same hotel;
+ * - the flight: its price per traveller against its estimate, plus the night shift the flight's
+ *   times make - each stay's base under the flight against the estimate's stay (an outbound that
+ *   lands before 08:00 books the evening before: a night more than the trip's stay).
  */
 import { stays } from "./dates";
 import { PACK_BOUNDARY_USD, hotelPerTraveller, livePrice, pieceEstimates } from "./progress";
 import type { ItinerarySettings } from "./settings";
 import type { ItineraryState } from "./state";
-import { stayRanges } from "./stayAdapter";
+import { stayRanges, withStayBase } from "./stayAdapter";
 
 /** Per traveller, USD: by event id, the flight, by `Stay.key`. */
 export type SummaryAdditions = {
@@ -42,10 +47,18 @@ export function summaryAdditions(state: ItineraryState, s: ItinerarySettings): S
 
   const ranges = stayRanges(route, dates, flight, new Set(state.train));
   const hotels: Record<string, number> = {};
+  let nightShift = 0;
   stays(route, dates).forEach((stay, i) => {
     const h = state.hotels[stay.key];
-    hotels[stay.key] = h ? outsideBand(hotelPerTraveller(h, stay.events[0], ranges[i]) - (est.stays[i] ?? 0)) : 0;
+    const range = ranges[i];
+    if (!h || !range) {
+      hotels[stay.key] = 0;
+      return;
+    }
+    const base = Number(withStayBase(stay.events[0], range).base_hotel_price) || 0;
+    hotels[stay.key] = outsideBand(hotelPerTraveller(h, stay.events[0], range) - base);
+    nightShift += base - (est.stays[i] ?? 0);
   });
 
-  return { tickets, flight: outsideBand(Number(flight.price) / pax - est.flight), hotels };
+  return { tickets, flight: outsideBand(Number(flight.price) / pax - est.flight + nightShift), hotels };
 }

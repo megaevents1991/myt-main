@@ -879,7 +879,7 @@ export function SummaryStep({
                   recommendedPriceAllPax={0}
                   numberOfPersons={pax}
                   agentCommission={0}
-                  affDiscount={Math.round(price.discount * pax * 100) / 100}
+                  affDiscount={Math.round(price.discount * pax)}
                   isNumberOfPersonsEqual={false}
                 />
               ) : (
