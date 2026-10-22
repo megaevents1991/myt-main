@@ -87,8 +87,9 @@ async function finishRows(rows: GroupRowInsert[], ids: number[]): Promise<(strin
  * (lib/itinerary/confirm.ts). The steps and their order: lib/itinerary/confirmFlow.ts - this
  * file only wires the database, the suppliers, the mail and the analytics into them.
  *
- * No payment: rows are `24Save` (`Pending` only when payments are on AND the request pays now -
- * phase 3), `payment_info` null. No rate limit (confirm-order has none either).
+ * No payment: rows are always `24Save` until phase 3 (`PAYMENTS_LIVE` in lib/itinerary/confirm.ts;
+ * then `Pending` when payments are on AND the request pays now), `payment_info` null. No rate
+ * limit (confirm-order has none either).
  */
 export async function POST(req: Request) {
   try {

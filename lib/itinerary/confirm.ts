@@ -67,6 +67,15 @@ export function newGroupId(): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
+/**
+ * Paying for a trip on the site is phase 3. Until then a trip is ALWAYS a 24-hour hold: the
+ * request's `payNow` is ignored (parsed as a hold - the hold's travellers rules - and its rows
+ * are `24Save`) whatever `payments_enabled` says, so a crafted request can never write `Pending`
+ * rows that no payment follows. The pay-now path stays in the code; phase 3 turns this on with
+ * the payment flow.
+ */
+export const PAYMENTS_LIVE: boolean = false;
+
 // ---------------------------------------------------------------------------------------------
 // The request
 // ---------------------------------------------------------------------------------------------
@@ -92,7 +101,10 @@ export type TripSubmission = {
   clientPerTraveller: number;
   /** The visit's utm_source - `aff_partner_tracking_code` on every row (phase 1: no discount). */
   utmSource: string;
-  /** Pay now (phase 3). Rows are `Pending` only when the settings allow payments too. */
+  /**
+   * Pay now (phase 3). Always false while `PAYMENTS_LIVE` is off; rows are `Pending` only when it
+   * is on AND the settings allow payments too.
+   */
   payNow: boolean;
 };
 
@@ -276,7 +288,8 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
 
   const form = parseTravellers(raw.travellers);
   if (!form) return no("travellers");
-  const payNow = raw.payNow === true;
+  // Phase 3: until payments are live a request that asks to pay is a hold (`PAYMENTS_LIVE`).
+  const payNow = PAYMENTS_LIVE && raw.payNow === true;
   const travellers = fitTravellers(form, pax);
   if (Object.keys(validateTravellers(travellers, pax, payNow ? "pay" : "hold")).length) return no("travellers form");
 

@@ -26,6 +26,7 @@
  */
 import type { Event, OrderData } from "@/lib/app.types";
 import {
+  PAYMENTS_LIVE,
   buildGroupRows,
   checkDates,
   checkPieces,
@@ -205,7 +206,8 @@ export async function confirmTrip(raw: unknown, deps: ConfirmDeps): Promise<Conf
     return refuse(failure("SERVER_ERROR"));
   }
 
-  const status: GroupStatus = settings.paymentsEnabled && sub.payNow ? "Pending" : "24Save";
+  // Phase 3 (`PAYMENTS_LIVE` off): always a hold - a crafted `payNow` never writes `Pending`.
+  const status: GroupStatus = PAYMENTS_LIVE && settings.paymentsEnabled && sub.payNow ? "Pending" : "24Save";
   const rows = buildGroupRows(trusted, route, {
     group: sub.group,
     rateIls,

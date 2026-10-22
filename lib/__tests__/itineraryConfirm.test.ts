@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
 import {
+  PAYMENTS_LIVE,
   UUID_V4_RE,
   buildGroupRows,
   checkDates,
@@ -255,8 +256,14 @@ describe("parseSubmission - the request's shape", () => {
     const raw = wire(full);
     const noPhone = { ...travellers, contact: { ...travellers.contact, phone: "" } };
     expect(parseSubmission({ ...raw, travellers: noPhone }, 3).ok).toBe(false);
-    // To pay, every traveller's name is required.
-    expect(parseSubmission({ ...raw, payNow: true }, 3).ok).toBe(false);
+  });
+
+  it("m1 - until payments are live (phase 3) a request that asks to pay is parsed as a hold", () => {
+    expect(PAYMENTS_LIVE).toBe(false);
+    // To pay every traveller's name would be required; while paying is not live the request is a
+    // hold - the hold's rules (the main contact) - and never carries payNow on.
+    const sub = parsed({ ...wire(full), payNow: true });
+    expect(sub.payNow).toBe(false);
   });
 
   it("refuses a missing or broken client total, bad dates, a body that is not an object", () => {
@@ -1030,6 +1037,14 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
     const b = setup({ vercelEnv: "production" });
     expect(await confirmTrip(wire(full), b.deps)).toMatchObject({ status: 404 });
     expect(b.calls).toEqual([]);
+  });
+
+  it("m1 - a crafted payNow with payments switched on still writes 24Save rows and sends the hold email", async () => {
+    const { deps, calls, inserted } = setup({ getSettings: async () => ({ ...S, paymentsEnabled: true }) });
+    const answer = await confirmTrip({ ...wire(full), payNow: true }, deps);
+    expect(answer.status).toBe(200);
+    expect(inserted[0].map((r) => r.status)).toEqual(["24Save", "24Save"]);
+    expect(calls).toContain("mail customer=true");
   });
 });
 
