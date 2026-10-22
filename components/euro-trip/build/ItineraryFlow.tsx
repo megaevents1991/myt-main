@@ -19,7 +19,8 @@ import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { stayCardId } from "./parts";
 import { SelfBuild } from "./SelfBuild";
 import { StepSkeleton } from "./StepSkeleton";
-import { EditRouteLink, TripHeader } from "./TripHeader";
+import { TicketSubSteps } from "./TicketSubSteps";
+import { TripHeader } from "./TripHeader";
 
 // The builder lands on the planner (a ready trip: on its first event's tickets), and most planner
 // visits end there: the later steps bring the order flow's live ticket step (seat maps), the
@@ -94,10 +95,11 @@ function StepBody({ state }: { state: ItineraryState }) {
 
 /**
  * "Build Your Euro Trip" - the flow, shaped as the order flow: the live Stepper on top (the page's
- * top bar - the global header hides here), one ticket step per event, then flights, hotels and
- * the summary; under it the trip's header (on a ticket step only the way back to the planner -
- * the live step draws the event's own band), the step on screen, and the order flow's own continue bar (OrderContinueBar) with the
- * trip's slots and its price per traveller.
+ * top bar - the global header hides here) with its four steps - tickets, flights, hotels, the
+ * summary; under it the trip's header (on the tickets step the events as its sub-steps and the
+ * way back to the planner - the live step draws the event's own band), the step on screen, and
+ * the order flow's own continue bar (OrderContinueBar) with the trip's slots and its price per
+ * traveller.
  */
 export function ItineraryFlow() {
   useItineraryUrl();
@@ -263,31 +265,26 @@ export function ItineraryFlow() {
   const solo = route.length === 1 ? route[0] : null;
 
   // The stepper goes BACK only (the live rule): a click on a step past the open one does nothing.
-  // "אירוע k" reopens that event's tickets; nothing a step holds is cleared by the visit (goStep
-  // and setActiveEvent move the view only). A held trip is with sales: nothing to walk back to.
+  // "כרטיסים" reopens the tickets step on the event the customer last had open (activeEvent is
+  // kept); the events themselves are its sub-steps (TicketSubSteps). Nothing a step holds is
+  // cleared by the visit (goStep moves the view only). A held trip is with sales: nothing to walk
+  // back to.
   const current = stepperIndex(state);
   const onStepperClick = (index0: number) => {
-    const target = stepForIndex(index0, route);
+    const target = stepForIndex(index0);
     if (!target || held || index0 + 1 >= current) return;
-    if (target.step === "tickets") setActiveEvent(target.activeEvent);
-    goStep(target.step);
+    goStep(target);
   };
 
   return (
     <>
-      <Stepper
-        currentStep={current}
-        steps={flowSteps(route)}
-        hideSteps={step === "build"}
-        onStepperClick={onStepperClick}
-      />
+      <Stepper currentStep={current} steps={flowSteps()} hideSteps={step === "build"} onStepperClick={onStepperClick} />
       {step === "tickets" ? (
         // The live ticket step draws the open event's band itself (EventDataHeader, from the
-        // adapter's event), exactly as on /order - so no trip header here, only a quiet way back to
-        // the planner in a row of its own: a ready trip opens here, this is its first screen.
-        <div dir="rtl" className="mx-auto flex w-full max-w-7xl justify-end px-4 pt-3 lg:px-6">
-          <EditRouteLink />
-        </div>
+        // adapter's event), exactly as on /order - so no trip header here: the trip's events as the
+        // tickets step's sub-steps, and a quiet way back to the planner at the row's end (a ready
+        // trip opens here, this is its first screen).
+        <TicketSubSteps />
       ) : (
         <TripHeader />
       )}

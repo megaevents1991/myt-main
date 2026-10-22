@@ -1,49 +1,83 @@
 /**
  * "Build Your Euro Trip" - the stepper's steps. Pure: no I/O, no clock.
- * The flow is the order flow's: one ticket step PER EVENT of the route, then flights, hotels and
- * the summary. The planner (`build`) is before the stepper, so it has no index.
+ * The stepper is the order flow's four steps: ONE tickets step for the whole trip, then flights,
+ * hotels and the summary. The trip's events are sub-steps INSIDE the tickets step
+ * (`ticketSubSteps`, drawn by TicketSubSteps under the stepper) - Dor, 22.10: six steps on the
+ * stepper ("אירוע 1 | אירוע 2 | ...") wrapped on a phone and read as six separate stages.
+ * The planner (`build`) is before the stepper, so it has no index.
  *
  * Mantine's `Stepper` counts from 0 (`onStepClick(index)`), the live `Stepper` wrapper's
  * `currentStep` from 1: `stepperIndex` answers the 1-based one, `stepForIndex` takes the 0-based
  * one the click hands back.
  */
-import type { Event } from "@/lib/app.types";
+import { ticketReady } from "./adapter";
 import type { ItineraryState, ItineraryStep } from "./state";
 
-/** `["אירוע 1", ..., "אירוע N", "טיסות", "מלונות", "סיום"]`. */
-export function flowSteps(route: Event[]): string[] {
-  return [...route.map((_, i) => `אירוע ${i + 1}`), "טיסות", "מלונות", "סיום"];
+const FLOW_STEPS = ["כרטיסים", "טיסות", "מלונות", "סיום"];
+
+/** The stepper's labels: `["כרטיסים", "טיסות", "מלונות", "סיום"]`. */
+export function flowSteps(): string[] {
+  return [...FLOW_STEPS];
 }
 
+/** The steps on the stepper, in its order (the planner is not one). */
+type FlowStep = Exclude<ItineraryStep, "build">;
+const ON_STEPPER: FlowStep[] = ["tickets", "flights", "hotels", "summary"];
+
 /**
- * Where the flow stands on the stepper, 1-based: tickets of event `i` = `i + 1`, then flights
- * N + 1, hotels N + 2, summary N + 3. The planner is 0 (not on the stepper). A `activeEvent`
- * past the route stays on the last ticket step.
+ * Where the flow stands on the stepper, 1-based: tickets 1, flights 2, hotels 3, summary 4 -
+ * whichever event the tickets step has open. The planner is 0 (not on the stepper).
  */
-export function stepperIndex(s: Pick<ItineraryState, "step" | "activeEvent" | "route">): number {
-  const n = s.route.length;
-  switch (s.step) {
-    case "build":
-      return 0;
-    case "tickets":
-      return Math.max(0, Math.min(s.activeEvent, n - 1)) + 1;
-    case "flights":
-      return n + 1;
-    case "hotels":
-      return n + 2;
-    case "summary":
-      return n + 3;
-  }
+export function stepperIndex(s: Pick<ItineraryState, "step">): number {
+  return s.step === "build" ? 0 : ON_STEPPER.indexOf(s.step) + 1;
 }
 
 /**
  * The step a click on the stepper's `index0` (0-based) opens; `null` when there is no such step.
- * Only a ticket step has an event of its own: every other step answers `activeEvent: 0`.
+ * A bare step: "כרטיסים" reopens the tickets step on the event the customer last had open
+ * (`state.activeEvent` is the caller's to keep).
  */
-export function stepForIndex(index0: number, route: Event[]): { step: ItineraryStep; activeEvent: number } | null {
-  const n = route.length;
-  if (!Number.isInteger(index0) || index0 < 0 || index0 >= n + 3) return null;
-  if (index0 < n) return { step: "tickets", activeEvent: index0 };
-  const after: ItineraryStep[] = ["flights", "hotels", "summary"];
-  return { step: after[index0 - n], activeEvent: 0 };
+export function stepForIndex(index0: number): FlowStep | null {
+  if (!Number.isInteger(index0) || index0 < 0 || index0 >= ON_STEPPER.length) return null;
+  return ON_STEPPER[index0];
+}
+
+/** One event of the trip as a sub-step of the tickets step. */
+export type TicketSubStep = {
+  /** The event's place in the route (0-based) - `setActiveEvent`'s argument. */
+  index: number;
+  /** `"אירוע <n>"`, 1-based. */
+  label: string;
+  /** The event's name. */
+  name: string;
+  /** Its ticket is picked for the whole party. */
+  done: boolean;
+  /** The event the tickets step has open (`activeEvent`, clamped to the route). */
+  current: boolean;
+  /**
+   * May be opened: a done event, or any up to the first event without a ready ticket - going
+   * back to a done one is fine, skipping ahead past an open one is not (the continue bar walks
+   * the events in order).
+   */
+  enabled: boolean;
+};
+
+/** The tickets step's sub-steps: one per event of the route, in trip order. */
+export function ticketSubSteps(
+  s: Pick<ItineraryState, "route" | "tickets" | "pax" | "activeEvent">,
+): TicketSubStep[] {
+  const { route, tickets, pax } = s;
+  if (!route.length) return [];
+  const done = route.map((e) => ticketReady(tickets[e.id], pax));
+  const firstOpen = done.indexOf(false);
+  const reach = firstOpen < 0 ? route.length - 1 : firstOpen;
+  const current = Math.max(0, Math.min(s.activeEvent, route.length - 1));
+  return route.map((e, index) => ({
+    index,
+    label: `אירוע ${index + 1}`,
+    name: e.name,
+    done: done[index],
+    current: index === current,
+    enabled: done[index] || index <= reach,
+  }));
 }
