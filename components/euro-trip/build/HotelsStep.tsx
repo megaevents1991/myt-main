@@ -75,6 +75,8 @@ async function findStayHotel(
   signal: AbortSignal,
   cache: Map<string, HotelsData>,
 ): Promise<StayResult> {
+  // Stopped while it waited its turn in the queue: no search.
+  if (signal.aborted) return { kind: "aborted" };
   let search = cache.get(v.searchKey);
   if (!search) {
     try {
@@ -98,6 +100,20 @@ async function findStayHotel(
   return { kind: "failed" };
 }
 
+/**
+ * Runs `task` once every task queued before it has settled: RateHawk takes 10 searches a minute
+ * for the whole account (shared with the live site), so the step never runs two at once.
+ */
+function enqueue<T>(queue: { current: Promise<unknown> }, task: () => Promise<T>): Promise<T> {
+  const next = queue.current.then(task);
+  queue.current = next.catch(() => undefined);
+  return next;
+}
+
+/** An answer is still for the stay's nights and rooms now (its `searchKey`): else it is dropped. */
+const stillFor = (views: StayView[], stayKey: string, searchKey: string): boolean =>
+  views.find((v) => v.stay.key === stayKey)?.searchKey === searchKey;
+
 /** The open "החלפת מלון": which stay, and its search (null while it is fetched). */
 type SwapState = { stayKey: string; searchKey: string; search: HotelsData | null };
 
@@ -112,7 +128,10 @@ type SwapState = { stayKey: string; searchKey: string; search: HotelsData | null
  * takes 10 searches a minute for the whole account, shared with the live site, so the stays are
  * searched ONE AFTER ANOTHER, only while the step is on screen, once per stay, nights and rooms
  * (the answers are cached for the step's life); a stay that has its hotel is neither searched nor
- * replaced. "החלפת מלון" opens the live `SegmentHotelModal` on the stay's own cached answer.
+ * replaced. "החלפת מלון" opens the live `SegmentHotelModal` on the stay's own cached answer; with
+ * none in hand its search waits its turn in the same queue (never two searches at once). An
+ * answer - automatic or a swap's - is committed only while it is still for the stay's nights and
+ * rooms (`searchKey`).
  *
  * `shown` = the hotels step is the step on screen. The flow keeps this step mounted (hidden)
  * while the trip has its flight (ItineraryFlow), so a visit to the summary or an earlier step and
@@ -166,6 +185,9 @@ export function HotelsStep({
   useLayoutEffect(() => {
     latest.current = { views, pax, setHotel };
   });
+  // Every search of the step - the automatic run and a swap's - goes through ONE queue
+  // (`enqueue`): never two RateHawk searches at once.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const ready = (v: StayView) => stayHotelReady(hotels[v.stay.key], v.range, pax);
   // The stays still waiting for their search, in trip order: the first is searched next.
@@ -191,9 +213,12 @@ export function HotelsStep({
     if (!view) return;
     const mine = { key: view.searchKey, ctrl: new AbortController() };
     run.current = mine;
-    void findStayHotel(view, now.pax, mine.ctrl.signal, cache.current).then((result) => {
+    void enqueue(queue, () => findStayHotel(view, now.pax, mine.ctrl.signal, cache.current)).then((result) => {
       if (run.current !== mine || result.kind === "aborted") return;
       run.current = null;
+      // The stay's nights or rooms moved while it was searched: the answer is for the old ones.
+      // Nothing is written; the stay's new key is due and the effect searches it.
+      if (!stillFor(latest.current.views, view.stay.key, view.searchKey)) return;
       // Either write takes the stay off `due`, and the next stay's search starts.
       if (result.kind === "picked") latest.current.setHotel(view.stay.key, result.hotel);
       else setOutcomes((prev) => ({ ...prev, [view.searchKey]: result.kind }));
@@ -233,16 +258,20 @@ export function HotelsStep({
     const cached = cache.current.get(v.searchKey) ?? null;
     setSwap({ stayKey: v.stay.key, searchKey: v.searchKey, search: cached });
     setSwapOpen(true);
-    // No answer in hand: ONE search for it (none when it is already running).
+    // No answer in hand: ONE search for it (none when it is already running), queued behind the
+    // automatic run - which may answer for this very stay first (the cache is read again).
     if (cached || swapRun.current?.key === v.searchKey) return;
     swapRun.current?.ctrl.abort();
     const mine = { key: v.searchKey, ctrl: new AbortController() };
     swapRun.current = mine;
-    searchStayHotels(searchParams(v), mine.ctrl.signal)
-      .then((res) => {
-        if (res.data.data.hotels.length) cache.current.set(v.searchKey, res);
-        return res;
-      })
+    enqueue(queue, async () => {
+      if (mine.ctrl.signal.aborted) return null;
+      const kept = cache.current.get(v.searchKey);
+      if (kept) return kept;
+      const res = await searchStayHotels(searchParams(v), mine.ctrl.signal);
+      if (res.data.data.hotels.length) cache.current.set(v.searchKey, res);
+      return res;
+    })
       .catch(() => (mine.ctrl.signal.aborted ? null : FAILED_SEARCH))
       .then((res) => {
         if (swapRun.current !== mine) return;
@@ -254,6 +283,8 @@ export function HotelsStep({
   const onSwapPick = (picked: Omit<OrderHotel, "guests" | "checkin" | "checkout">) => {
     const request = swap?.search?.data?.debug?.request;
     if (!swap?.search || !swapView || !request) return;
+    // The list was searched for nights or rooms the stay no longer has: never committed.
+    if (!stillFor(latest.current.views, swap.stayKey, swap.searchKey)) return;
     setHotel(
       swapView.stay.key,
       withStayHotelExtras(

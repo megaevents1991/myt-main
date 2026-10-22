@@ -1,14 +1,12 @@
 /**
- * "Build Your Euro Trip" - the hotels step's side of the live hotel step. Pure: no I/O, no clock.
+ * "Build Your Euro Trip" - each stay's hotel under the live hotel rules. Pure: no I/O, no clock.
  *
- * The trip renders the order flow's own `HotelSelection` (app/order/HotelSelection.tsx,
- * unchanged) once per stay, inside its own `HotelFetchProvider` and an `OrderContext.Provider`
- * whose value the trip builds (components/euro-trip/build/orderContextAdapter.ts). The step
- * takes its dates from the order's flight with the live rule (`getDefaultDateRange`: check-in =
- * the day the outbound lands, the evening before when it lands before 08:00; check-out = the
- * day the inbound leaves) - so each stay hands it a Flight whose outbound is the way INTO that
- * city and whose inbound is the way OUT of it. These are those values, and the one rule for
- * "this stay has its hotel" (`stayHotelReady`) that the step, the flow and the summary share.
+ * A stay's nights come from the trip's flight with the live rule (`getDefaultDateRange`:
+ * check-in = the day the outbound lands, the evening before when it lands before 08:00;
+ * check-out = the day the inbound leaves) - so each stay is read through a Flight whose
+ * outbound is the way INTO that city and whose inbound is the way OUT of it (`stayFlight`).
+ * These are those values, and the one rule for "this stay has its hotel" (`stayHotelReady`)
+ * that the hotels step, the flow and the summary share.
  */
 import dayjs from "dayjs";
 import type { Event, Flight, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/app.types";
@@ -224,49 +222,4 @@ export function sameHotel(a: OrderHotel | undefined, b: OrderHotel | undefined):
   if (a === b) return true;
   if (!a || !b) return false;
   return JSON.stringify(a) === JSON.stringify(b);
-}
-
-/**
- * What the hotel step reads from the order's context for one stay: the stay's event, its
- * flight, its hotel, the trip's party - and a plain one-hotel visit in every other respect
- * (no split, no skipped flight, no summary edit, no ready or locked package, no person-page
- * link). `hotelSegments` / `splitNights` / `readyPackage` are the order layout's own "none" (null).
- */
-export function stayAdapterFields(i: {
-  event: Event;
-  city: LodgingCity;
-  flight: Flight | undefined;
-  hotel: OrderHotel | undefined;
-  pax: number;
-}): {
-  event: Event;
-  flight: Flight | undefined;
-  hotel: OrderHotel | undefined;
-  numberOfEventTickets: number;
-  planeTickets: { adults: number; children: number };
-  lodgingCity: LodgingCity;
-  flightSkipped: false;
-  returnToSummary: false;
-  packageLocked: false;
-  readyPackage: null;
-  personLink: undefined;
-  hotelSegments: null;
-  splitNights: null;
-} {
-  return {
-    event: i.event,
-    flight: i.flight,
-    hotel: i.hotel,
-    numberOfEventTickets: i.pax,
-    // The step rooms the party by the flight's travellers (getRoomParams) - the trip's party.
-    planeTickets: { adults: i.pax, children: 0 },
-    lodgingCity: i.city,
-    flightSkipped: false,
-    returnToSummary: false,
-    packageLocked: false,
-    readyPackage: null,
-    personLink: undefined,
-    hotelSegments: null,
-    splitNights: null,
-  };
 }

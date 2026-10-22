@@ -9,7 +9,6 @@ import {
   hotelOnStayDates,
   hotelsForFlight,
   sameHotel,
-  stayAdapterFields,
   stayEvent,
   stayFlight,
   stayHotelRange,
@@ -324,38 +323,6 @@ describe("sameHotel", () => {
     expect(sameHotel(hotel(), hotel({ price: "410" }))).toBe(false);
     expect(sameHotel(hotel(), hotel({ checkout: "2027-05-14" }))).toBe(false);
     expect(sameHotel(hotel(), undefined)).toBe(false);
-  });
-});
-
-describe("stayAdapterFields", () => {
-  it("hands the live hotel step a plain one-city visit sized for the trip: no split, no skip, no package", () => {
-    const route = [celine, chelsea];
-    const d = defaultTripDates(route);
-    const flight = stayFlight(0, tripFlight([OUT, PAR_LON, RET]), route, d, none);
-    const event = stayEvent(celine, "flight");
-    const f = stayAdapterFields({ event, city: "flight", flight, hotel: undefined, pax: 3 });
-    expect(f.event).toBe(event);
-    expect(f.flight).toBe(flight);
-    expect(f.hotel).toBeUndefined();
-    expect(f.numberOfEventTickets).toBe(3);
-    expect(f.planeTickets).toEqual({ adults: 3, children: 0 });
-    expect(f.lodgingCity).toBe("flight");
-    expect(f.flightSkipped).toBe(false);
-    expect(f.returnToSummary).toBe(false);
-    expect(f.packageLocked).toBe(false);
-    // The order layout's own "no ready package" (AppContext.readyPackage is `ReadyPackageState | null`).
-    expect(f.readyPackage).toBeNull();
-    expect(f.personLink).toBeUndefined();
-    // The order layout's own "one hotel, no split" (app/order/layout.tsx starts both at null).
-    expect(f.hotelSegments).toBeNull();
-    expect(f.splitNights).toBeNull();
-  });
-
-  it("passes the stay's hotel through", () => {
-    const h = hotel();
-    const f = stayAdapterFields({ event: celine, city: "event", flight: undefined, hotel: h, pax: 1 });
-    expect(f.hotel).toBe(h);
-    expect(f.lodgingCity).toBe("event");
   });
 });
 

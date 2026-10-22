@@ -234,6 +234,18 @@ describe("tickets, flight, hotels, steps", () => {
     expect(reduce(s, { type: "setActiveStay", index: -3 }).activeStay).toBe(0);
   });
 
+  it("leaving the hotels step opens it on its first city next time", () => {
+    const atHotels = run(parisLondon(), { type: "goStep", step: "hotels" }, { type: "setActiveStay", index: 1 });
+    expect(atHotels.activeStay).toBe(1);
+    expect(reduce(atHotels, { type: "goStep", step: "summary" }).activeStay).toBe(0);
+    expect(reduce(atHotels, { type: "goStep", step: "flights" }).activeStay).toBe(0);
+    // The summary's "שינוי המלון ב..." still opens the step on its city.
+    const summary = reduce(atHotels, { type: "goStep", step: "summary" });
+    const back = run(summary, { type: "setActiveStay", index: 1 }, { type: "goStep", step: "hotels" });
+    expect(back.step).toBe("hotels");
+    expect(back.activeStay).toBe(1);
+  });
+
   it("fresh event data keeps the picks when the event did not move", () => {
     const s = parisLondon();
     const fresh = { ...celine, tickets_and_rates: [] } as unknown as Event;

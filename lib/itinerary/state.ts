@@ -47,7 +47,7 @@ export type ItineraryState = {
   hotels: Record<string, OrderHotel | undefined>;
   /** Index of the open event: the tickets step's sub-step (TicketSubSteps). */
   activeEvent: number;
-  /** Index of the open stay tab (hotels step). */
+  /** Index of the stay the hotels step opens on (scrolled to its card); 0 once the step is left. */
   activeStay: number;
 };
 
@@ -259,7 +259,12 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
 
     case "goStep":
       if (action.step !== "build" && state.route.length < MIN_TRIP_EVENTS) return state;
-      return state.step === action.step ? state : { ...state, step: action.step };
+      if (state.step === action.step) return state;
+      // Leaving the hotels step: the next visit opens on its first city (the top of the page), not
+      // on the last one edited - the summary's "שינוי המלון ב..." sets the city on its way in.
+      return state.step === "hotels" && state.activeStay !== 0
+        ? { ...state, step: action.step, activeStay: 0 }
+        : { ...state, step: action.step };
 
     case "setActiveEvent": {
       const activeEvent = clampIndex(action.index, state.route.length);

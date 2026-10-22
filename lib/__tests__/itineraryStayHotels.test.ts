@@ -195,7 +195,8 @@ describe("buildStayHotel", () => {
     expect(built.address).toBe("h1 Main St");
     expect(built.hotelInformation).toEqual({
       hotelName: "Hotel Lux",
-      roomName: "Double Room",
+      // `rateRoomName`: the room and its bedding - what a swap through the live HotelCard stores.
+      roomName: "Double Room double bed",
       stars: 4,
       amenities: ["wifi"],
       distance: 850,
@@ -206,7 +207,7 @@ describe("buildStayHotel", () => {
     const built = buildStayHotel({ city: "flight", cityLabel: "לונדון", search: s, hotel: h1, rate: h1.rates[1] });
     expect(built.price).toBe("150");
     expect(built.rate.match_hash).toBe("suite");
-    expect(built.hotelInformation.roomName).toBe("Suite");
+    expect(built.hotelInformation.roomName).toBe("Suite king bed");
     expect(built.city).toBe("flight");
   });
 

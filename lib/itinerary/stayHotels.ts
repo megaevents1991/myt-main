@@ -127,8 +127,9 @@ export function buildStayHotel(a: {
     name: info?.metadata?.hotelName,
     hotelInformation: {
       hotelName: info?.metadata?.hotelName,
-      // The rate's own room, never another room of the hotel (reservation 2233 - lib/hotels/roomName.ts).
-      roomName: rate?.room_data_trans?.main_name || "",
+      // The rate's own room and bedding, never another room of the hotel (reservation 2233 -
+      // lib/hotels/roomName.ts): what a swap through the live HotelCard stores.
+      roomName: rateRoomName(rate),
       stars: info?.metadata?.rating,
       amenities: info?.general?.amenities,
       distance: info?.metadata?.distanceFromCenter,
