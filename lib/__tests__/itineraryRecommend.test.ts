@@ -296,6 +296,19 @@ describe("recommendRoutes", () => {
     for (const id of [20, 21, 22]) expect(routes.some((r) => r.ids.includes(id))).toBe(false);
   });
 
+  it("m2 - leaves out an event that is not listed: hidden until approved, QA, deactivated", () => {
+    // Céline's twin nights in Paris - each would pair with Gracie and Chelsea if it were listed.
+    const hidden = ev(23, "מוסתר בפריז", "2027-05-11", PARIS, "music_event", { is_hidden: true });
+    const qa = ev(24, "בדיקה בפריז", "2027-05-11", PARIS, "music_event", { is_test: true });
+    const off = ev(25, "כבוי בפריז", "2027-05-11", PARIS, "music_event", { deactivated_reason: "tx_sold_out" });
+    const routes = recommendRoutes([...MAIN, hidden, qa, off], S, TODAY, 48);
+    expect(routes).toEqual(all);
+    for (const id of [23, 24, 25]) expect(routes.some((r) => r.ids.includes(id))).toBe(false);
+    // The same event listed (no flag, a null reason) does make routes.
+    const listed = ev(26, "גלוי בפריז", "2027-05-11", PARIS, "music_event", { is_hidden: false, deactivated_reason: null });
+    expect(recommendRoutes([...MAIN, listed], S, TODAY, 48).some((r) => r.ids.includes(26))).toBe(true);
+  });
+
   it("leaves out events closer than the 3-day sell window to `todayIso`", () => {
     // Today 2027-05-09: Madrid (05-09) and Gracie (05-10) are too soon; Céline (05-12) is exactly 3 days off.
     const routes = recommendRoutes(MAIN, S, "2027-05-09", 48);

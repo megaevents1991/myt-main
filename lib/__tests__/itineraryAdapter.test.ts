@@ -172,6 +172,11 @@ describe("pickTripEvents", () => {
     const ticketOnly = ev(7, { package_mode: "ticket_only" });
     expect(pickTripEvents([us, ticketOnly], [6, 7], TODAY)).toEqual([]);
   });
+
+  it("m2 - leaves out events that are not listed (hidden until approved, QA, deactivated), whatever the catalog let through", () => {
+    const rows = [ev(8, { is_hidden: true }), ev(9, { is_test: true }), ev(10, { deactivated_reason: "tx_no_category" }), ev(11)];
+    expect(pickTripEvents(rows, [8, 9, 10, 11], TODAY).map((e) => e.id)).toEqual([11]);
+  });
 });
 
 describe("asFullRow / isFullRow", () => {

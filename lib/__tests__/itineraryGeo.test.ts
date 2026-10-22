@@ -218,4 +218,12 @@ describe("isItineraryEligible", () => {
   it("is false for a past event", () => {
     expect(isItineraryEligible(ev({ date: "2026-10-01T19:00:00" }), today)).toBe(false);
   });
+
+  it("m2 - is false for an event that is not listed: hidden until approved, QA, deactivated", () => {
+    expect(isItineraryEligible(ev({ is_hidden: true }), today)).toBe(false);
+    expect(isItineraryEligible(ev({ is_test: true }), today)).toBe(false);
+    expect(isItineraryEligible(ev({ deactivated_reason: "tx_sold_out" }), today)).toBe(false);
+    // Absent / false / null = listed (this branch's base has no is_hidden column yet).
+    expect(isItineraryEligible(ev({ is_hidden: false, is_test: false, deactivated_reason: null }), today)).toBe(true);
+  });
 });

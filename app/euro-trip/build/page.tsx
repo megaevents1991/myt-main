@@ -45,6 +45,8 @@ export default async function EuroTripBuildPage() {
 
   const todayIso = new Date().toISOString().slice(0, 10);
   // Only what the builder reads goes to the browser (1.6 MB -> a fraction): lib/itinerary/slim.ts.
+  // `isItineraryEligible` also re-checks the event is listed (`isListedForTrip`: never a hidden,
+  // QA or deactivated event, whatever the catalog let through).
   const catalog = events.filter((e) => isItineraryEligible(e, todayIso)).map(slimTripEvent);
 
   return (

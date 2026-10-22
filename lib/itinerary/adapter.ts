@@ -92,7 +92,8 @@ export function tripEventIds(raw: unknown): number[] {
 
 /**
  * The catalog's full rows for `ids`, in that order - only events a trip may hold today
- * (`isItineraryEligible`, the builder page's own filter). An id it leaves out is gone.
+ * (`isItineraryEligible`, the builder page's own filter: listed - `isListedForTrip` - and
+ * eligible). An id it leaves out is gone.
  */
 export function pickTripEvents(events: Event[], ids: number[], todayIso: string): Event[] {
   const byId = new Map(events.map((e) => [e.id, e]));

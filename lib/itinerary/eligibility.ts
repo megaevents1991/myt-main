@@ -1,6 +1,7 @@
 /**
  * "Build Your Euro Trip" - which events may go into a trip (spec §4).
- * `getCachedEvents()` already lists only what the site lists; this is the rest.
+ * `getCachedEvents()` already lists only what the site lists; this repeats that (a second guard)
+ * and adds the rest.
  */
 import type { Event } from "@/lib/app.types";
 import { isEventSoldOut, isTicketOnlyEvent } from "@/lib/events/price";
@@ -24,11 +25,16 @@ export function isListedForTrip(e: Event): boolean {
 }
 
 /**
- * A trip is flights + hotels around the tickets, in Europe: so not a ticket-only event,
- * not sold out, not in the US, and at least the sell window (3 days) away.
+ * A trip is flights + hotels around the tickets, in Europe: so a LISTED event (`isListedForTrip` -
+ * a second guard behind the catalog's own filter, which on this branch's base does not know
+ * `is_hidden` yet), not a ticket-only event, not sold out, not in the US, and at least the sell
+ * window (3 days) away. Every list of trip events reads it - the hub's routes (`recommendRoutes`),
+ * the builder's catalog, the tickets step's rows (`pickTripEvents`) and the hold's re-read - so a
+ * hidden, QA or deactivated event never shows on the hub or in the builder.
  * `todayIso` is `YYYY-MM-DD` - the caller owns the clock.
  */
 export function isItineraryEligible(e: Event, todayIso: string): boolean {
+  if (!isListedForTrip(e)) return false;
   if (isTicketOnlyEvent(e)) return false;
   if (isEventSoldOut(e)) return false;
   if (e.location?.country_code?.toUpperCase() === "US") return false;
