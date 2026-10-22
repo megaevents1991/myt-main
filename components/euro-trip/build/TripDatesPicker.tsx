@@ -30,9 +30,18 @@ const CALENDAR_TONE = cn(
   "dark:[--mantine-primary-color-contrast:hsl(var(--background))]",
   "dark:[--mantine-primary-color-light:hsl(var(--foreground)/0.2)]",
   "dark:[--mantine-primary-color-light-hover:hsl(var(--foreground)/0.12)]",
+  "[--picking-ring:hsl(var(--foreground))]",
+  "dark:[--picking-ring:hsl(var(--primary))]",
 );
 
-const PICKING: CSSProperties = { outline: "2px solid hsl(var(--primary))", outlineOffset: 1 };
+/**
+ * The date being picked wears a ring (`--picking-ring`, set in CALENDAR_TONE: the page's ink on
+ * the light page, mint in dark mode). A box-shadow, not an outline: the day's own focus-visible
+ * outline stays Mantine's.
+ */
+const PICKING: CSSProperties = {
+  boxShadow: "0 0 0 1px hsl(var(--background)), 0 0 0 3px var(--picking-ring)",
+};
 const OFF_STAGED: CSSProperties = {
   backgroundColor: "var(--mantine-primary-color-filled)",
   color: "var(--mantine-primary-color-contrast)",
@@ -74,6 +83,16 @@ export function TripDatesPicker({
   const steps = datePickSteps(route, opened ? draft : dates, train);
   const last = steps.length - 1;
   const current = Math.min(at, last);
+
+  // The route or the trip's dates changed under an open calendar (an event removed, a commit
+  // elsewhere): the draft was staged on the old trip - it is dropped and the calendar closes.
+  const tripKey = `${route.map((e) => e.id).join(",")}|${dates.depart}|${dates.ret}|${Object.entries(dates.moves)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join(",")}`;
+  useEffect(() => {
+    setOpened(false);
+  }, [tripKey]);
 
   // Every step change puts the keyboard on the day now being picked (the old button may be gone
   // with the month that just changed).
@@ -178,7 +197,7 @@ export function TripDatesPicker({
                     <button
                       type="button"
                       onClick={() => goTo(i, draft)}
-                      aria-label={`${s.label}, ${dayMonth(s.value)}`}
+                      aria-label={`${i + 1}. ${s.label}, ${dayMonth(s.value)}`}
                       aria-current={active ? "step" : undefined}
                       className={cn(
                         "flex items-center gap-1.5 rounded-full border py-1 ps-1 pe-2.5 text-xs font-bold tabular-nums transition-colors",
@@ -217,6 +236,7 @@ export function TripDatesPicker({
               firstDayOfWeek={0}
               weekendDays={[6]}
               getDayProps={getDayProps}
+              ariaLabels={{ previousMonth: "החודש הקודם", nextMonth: "החודש הבא" }}
             />
             <button type="button" onClick={commit} disabled={!touched} className={cn(ADD_BUTTON, "w-full py-2.5 text-sm")}>
               עדכון הטיסות

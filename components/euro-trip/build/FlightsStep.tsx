@@ -41,6 +41,8 @@ const ANSWER_TTL_MS = 15 * 60_000;
 const ANSWERS_KEPT = 6;
 /** No direct-only filter in phase 1. */
 const NON_STOP = false;
+/** Where the trip's dates change: the field over the list (TripDatesPicker). */
+const DATES_FIELD_HINT = 'שנו את התאריכים בשדה "ובאיזה תאריכים?" למעלה';
 
 /**
  * Search answers by `searchKey`, outside React: the step unmounts when the customer goes back
@@ -360,7 +362,7 @@ export function FlightsStep() {
       body = (
         <OrderIssueState
           title="אי אפשר לחפש טיסות לתאריכים האלה"
-          subtitle="שנו את ימי הטיול בתכנון הימים, ונחפש שוב."
+          subtitle={DATES_FIELD_HINT}
           onRetry={toPlanner}
           retryLabel="לתכנון הימים"
         />
@@ -370,7 +372,7 @@ export function FlightsStep() {
       body = (
         <OrderIssueState
           title="לא מצאנו טיסות לתאריכים האלה - נסו להזיז יום"
-          subtitle="אפשר להזיז את ימי הטיסה בתכנון הימים."
+          subtitle={DATES_FIELD_HINT}
           onRetry={toPlanner}
           retryLabel="לתכנון הימים"
         />

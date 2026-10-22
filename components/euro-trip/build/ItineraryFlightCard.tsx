@@ -143,9 +143,9 @@ function Bags({ leg }: { leg: FlightSegment }) {
  * "Build Your Euro Trip" - one multi-city offer: the live FlightTicketCard's chrome (CardWrapper,
  * selected border, price pill against the base offer, best / cheapest tags, bags) with a row per
  * leg of the trip. Under a between-cities flight, "אגיע עצמאית"; a move the customer makes on
- * their own shows as a "הגעה עצמאית" row in its place. The whole card selects (like the live card); the button says so for keyboards
- * and shows the pricing on its way - its label ("בחירה" / "בודקים מחיר…" / "נבחרה") is the one
- * signal of the state (no aria-pressed beside it).
+ * their own shows as a "הגעה עצמאית" row in its place. The whole card selects (like the live
+ * card); the button says so for keyboards and shows the pricing on its way - its label
+ * ("בחירה" / "בודקים מחיר…" / "נבחרה") is the one signal of the state (no aria-pressed beside it).
  */
 export function ItineraryFlightCard({
   flight,
