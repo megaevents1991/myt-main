@@ -7,6 +7,8 @@ import {
   validateFlightRequest,
   type AmadeusOffer,
 } from "@/lib/itinerary/flightOffers";
+import { itineraryOn } from "@/lib/itinerary/settings";
+import { getItinerarySettings } from "@/lib/itinerary/settings.server";
 import { amadeus } from "@/app/api/flights/amadeusClient";
 
 export const maxDuration = 30;
@@ -26,8 +28,10 @@ type AmadeusSearchResult = {
  * `{ flights: ItineraryFlight[] }`, cheapest first. The offer rules are the live flight
  * step's (lib/itinerary/flightOffers.ts).
  *
- * 400 bad body, 429 `{ busy: true }` when Amadeus throttles us (retry later), 502 any other
- * failure of the search call (Amadeus error or the network on the way), 500 anything else.
+ * 404 while the feature is switched off (the pages', actions' and confirm's own switch - no
+ * supplier call is spent then), 400 bad body, 429 `{ busy: true }` when Amadeus throttles us
+ * (retry later), 502 any other failure of the search call (Amadeus error or the network on the
+ * way), 500 anything else.
  */
 export async function POST(request: Request) {
   if (
@@ -39,6 +43,11 @@ export async function POST(request: Request) {
       { error: "Flight search is not configured." },
       { status: 500 },
     );
+  }
+
+  // Never throws (a failed settings read = the defaults = off in production).
+  if (!itineraryOn(await getItinerarySettings(), process.env.VERCEL_ENV)) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
   try {
