@@ -45,7 +45,7 @@ export type ItineraryState = {
   flight: ItineraryFlight | null;
   /** The hotel picked for each stay, by `Stay.key`. */
   hotels: Record<string, OrderHotel | undefined>;
-  /** Index of the open event tab (tickets step). */
+  /** Index of the open event: the tickets step's sub-step (TicketSubSteps). */
   activeEvent: number;
   /** Index of the open stay tab (hotels step). */
   activeStay: number;

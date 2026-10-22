@@ -1,11 +1,11 @@
 /**
- * "Build Your Euro Trip" - what the builder's route step and self-build list show. Pure: no I/O,
+ * "Build Your Euro Trip" - what the builder's planner and its event picker show. Pure: no I/O,
  * no clock. The components render these lists; every rule comes from `rules.ts`.
  */
 import type { Event } from "@/lib/app.types";
 import { cityName, defaultCity, eventCityName } from "@/lib/events/lodging";
 import { stays } from "./dates";
-import { dayDiff, eventDay, eventKind } from "./geo";
+import { eventDay, eventKind } from "./geo";
 import { compatibility, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import type { Compat, CompatStatus } from "./types";
@@ -37,28 +37,6 @@ export const COMPAT_RANK: Record<CompatStatus, number> = { best: 0, same: 1, ok:
 export type Candidate = { event: Event; compat: Compat };
 
 const byDay = (a: Event, b: Event): number => eventDay(a).localeCompare(eventDay(b)) || a.id - b.id;
-
-/**
- * "אפשר לשלב גם": the events that could sit next to the route - within `maxGapDays` of its first
- * and last event, not in it, not another date of an event already in it (same name) - each with
- * its compatibility, best first, then by date. An empty route lists the whole catalog by date.
- */
-export function routeCandidates(route: Event[], catalog: Event[], s: ItinerarySettings): Candidate[] {
-  const trip = sortRoute(route);
-  const ids = new Set(trip.map((e) => e.id));
-  const names = new Set(trip.map((e) => e.name.trim()));
-  const first = trip[0];
-  const last = trip[trip.length - 1];
-  return catalog
-    .filter((e) => !ids.has(e.id) && !names.has(e.name.trim()))
-    .filter(
-      (e) =>
-        !first ||
-        (dayDiff(eventDay(first), eventDay(e)) >= -s.maxGapDays && dayDiff(eventDay(last), eventDay(e)) <= s.maxGapDays),
-    )
-    .map((event) => ({ event, compat: compatibility(trip, event, s) }))
-    .sort((a, b) => COMPAT_RANK[a.compat.status] - COMPAT_RANK[b.compat.status] || byDay(a.event, b.event));
-}
 
 export type CatalogKind = "all" | "football" | "music";
 /** `city` = an `eventCityName` from `catalogCities`; `""` = every city (like `month`). */

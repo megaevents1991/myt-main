@@ -8,7 +8,6 @@ import {
   dayMonth,
   dayMonthYear,
   filterCatalog,
-  routeCandidates,
   tripCities,
 } from "../itinerary/builder";
 
@@ -52,29 +51,6 @@ describe("tripCities", () => {
     expect(tripCities([chelsea, celine])).toEqual(["פריז", "לונדון"]);
     expect(tripCities([chelsea, tottenham])).toEqual(["לונדון"]);
     expect(tripCities([])).toEqual([]);
-  });
-});
-
-describe("routeCandidates", () => {
-  it("lists the catalog by date while the route is empty", () => {
-    const list = routeCandidates([], catalog, S);
-    expect(list.map((c) => c.event.id)).toEqual([699, 896, 618, 717, 1097, 656, 702, 769]);
-    expect(list.every((c) => c.compat.reason.code === "first")).toBe(true);
-  });
-
-  it("keeps the date window, hides the route and other dates of its events, best first", () => {
-    const list = routeCandidates([gracieAms, celine], catalog, S);
-    const ids = list.map((c) => c.event.id);
-    expect(ids).not.toContain(896);
-    expect(ids).not.toContain(618);
-    expect(ids).not.toContain(1097); // another date of גרייסי אברמס
-    expect(ids).not.toContain(769); // more than max_gap_days after the last event
-    // מומלץ first (London is close to both ends), by date; Madrid is too far from Paris.
-    expect(ids).toEqual([699, 656, 702, 717]);
-    expect(list.slice(0, 3).every((c) => c.compat.status === "best")).toBe(true);
-    expect(list.find((c) => c.event.id === 717)?.compat.status).toBe("blocked");
-    const statuses = list.map((c) => c.compat.status);
-    expect(statuses.indexOf("blocked")).toBeGreaterThan(statuses.lastIndexOf("best"));
   });
 });
 

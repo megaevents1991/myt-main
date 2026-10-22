@@ -61,31 +61,37 @@ function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) 
         </span>
       </span>
       {item.done && <span className="sr-only">כרטיסים נבחרו</span>}
+      {!item.enabled && !item.current && <span className="sr-only">זמין אחרי בחירת כרטיסים לאירוע הקודם</span>}
     </>
   );
   const box = "flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1";
+  const focus =
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow";
 
-  // The open event is where the customer stands - not a button. A later event past one still
-  // without its ticket cannot be skipped to: not a button either (the continue bar walks them).
-  if (item.enabled && !item.current) {
+  // The open event is where the customer stands: a button that does nothing, so the keyboard
+  // focus stays on it when the event a customer opened (or the continue bar moved to) becomes
+  // the open one - a plain span there would drop the focus to the page.
+  if (item.current) {
+    return (
+      <button type="button" aria-current="step" className={cn(box, "cursor-default", focus)}>
+        {body}
+      </button>
+    );
+  }
+  if (item.enabled) {
     return (
       <button
         type="button"
         onClick={onOpen}
-        className={cn(
-          box,
-          "transition-colors hover:bg-foreground/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow",
-        )}
+        className={cn(box, "transition-colors hover:bg-foreground/[0.04]", focus)}
       >
         {body}
       </button>
     );
   }
-  return (
-    <span aria-current={item.current ? "step" : undefined} className={box}>
-      {body}
-    </span>
-  );
+  // A later event past one still without its ticket cannot be skipped to: not a button (the
+  // continue bar walks the events in order); the sr-only line above says why.
+  return <span className={box}>{body}</span>;
 }
 
 /**
@@ -124,7 +130,12 @@ export function TicketSubSteps() {
       <nav aria-label="האירועים בטיול" className="min-w-0 sm:flex-1">
         {/* A scroller clips both ways: `p-1` keeps the focus outline and the open event's ring
             (4px out) inside it, `-mx-1` keeps the items on the page's edge. */}
-        <ol ref={strip} className="-mx-1 flex items-center overflow-x-auto p-1 [scrollbar-width:none]">
+        <ol
+          ref={strip}
+          // `role="list"`: Safari drops the list role of a list styled without its markers.
+          role="list"
+          className="-mx-1 flex items-center overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {items.map((item) => (
             <li key={item.index} className="flex shrink-0 items-center sm:min-w-0 sm:shrink">
               {item.index > 0 && (

@@ -24,14 +24,14 @@ import { TripHeader } from "./TripHeader";
 
 // The builder lands on the planner (a ready trip: on its first event's tickets), and most planner
 // visits end there: the later steps bring the order flow's live ticket step (seat maps), the
-// flight cards, the live hotel step (Mantine date pickers, the hotel search) and the summary -
-// ~350 kB the first load does not need. Each loads on demand (and is warmed one step ahead:
+// flight cards with the trip's date picker (Mantine), the split stay's hotel cards and their
+// search, and the summary - ~350 kB the first load does not need. Each loads on demand (and is warmed one step ahead:
 // `prefetchStep`). `ssr: false`: the server draws the build step only. Defined HERE, at module
 // level - a dynamic made inside a component would be a new component type on every render and
 // remount the step each time.
 const TicketsStep = dynamic(() => import("./TicketsStep").then((m) => m.TicketsStep), {
   ssr: false,
-  loading: () => <StepSkeleton label="טוענים את הכרטיסים..." side />,
+  loading: () => <StepSkeleton label="טוענים את הכרטיסים..." side tabs={false} />,
 });
 const FlightsStep = dynamic(() => import("./FlightsStep").then((m) => m.FlightsStep), {
   ssr: false,
@@ -115,10 +115,10 @@ export function ItineraryFlow() {
   const hotelReady = (i: number) => stayHotelReady(state.hotels[stayList[i]?.key ?? ""], ranges[i], state.pax);
 
   // The hotels step stays mounted (hidden) once opened, for as long as the trip has a flight: a
-  // visit to the summary or an earlier step and back spends no hotel search and finds every
-  // opened city as the customer left it (pick, rate, filters). No flight = no hotel dates: it
-  // goes (the reducer drops the flight on any change of route, dates, party or train). Another
-  // flight keeps it: a city whose nights moved gets a new pane, the others keep theirs.
+  // visit to the summary or an earlier step and back spends no hotel search (the step keeps its
+  // answers for its life) and finds every city as the customer left it. No flight = no hotel
+  // dates: it goes (the reducer drops the flight on any change of route, dates, party or train).
+  // Another flight keeps it: a city whose nights moved is searched again, the others keep theirs.
   const [hotelsOpened, setHotelsOpened] = useState(false);
   if (step === "hotels" && state.flight && !hotelsOpened) setHotelsOpened(true);
   else if (!state.flight && hotelsOpened) setHotelsOpened(false);
@@ -153,7 +153,7 @@ export function ItineraryFlow() {
 
   // The next step's code arrives while the customer is still on this one (idle time, never on a
   // data-saver connection), so the switch is instant. Not before the route holds enough events
-  // to go on: most visitors leave from the route step and never need it.
+  // to go on: most visitors leave from the planner and never need it.
   const upNext = ITINERARY_STEPS[at + 1];
   useEffect(() => {
     if (!enough || !upNext) return;
@@ -176,12 +176,11 @@ export function ItineraryFlow() {
       window.clearTimeout(timer);
     };
   }, [enough, upNext]);
-  // Every event has its ticket for the party (a quantity changed in one tab leaves the others
-  // to be picked again for the new party).
+  // Every event has its ticket for the party (a quantity changed on one event's step leaves the
+  // others to be picked again for the new party).
   const ticketsReady = progress.tickets;
-  // The tickets step walks the events like the hotels step walks the cities: it moves on from an
-  // event whose ticket is ready - to the next event without one, or, when every event has one, to
-  // the flights.
+  // The tickets step walks the events in order (its sub-steps): it moves on from an event whose
+  // ticket is ready - to the next event without one, or, when every event has one, to the flights.
   const openEvent = route[Math.min(state.activeEvent, route.length - 1)];
   const ticketMissing = step === "tickets" && (!openEvent || !ticketReady(state.tickets[openEvent.id], state.pax));
   const nextEvent = step === "tickets" ? nextOpenEvent(state) : -1;

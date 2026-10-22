@@ -178,9 +178,9 @@ function PaneSkeleton() {
 }
 
 /**
- * "Build Your Euro Trip" - the tickets step: the open event's (`state.activeEvent` - the stepper's
- * "אירוע k" and the continue bar move it) live order flow ticket step (seat map, categories, live
- * supplier prices). One quantity for the whole trip: the counter on any card is the trip's
+ * "Build Your Euro Trip" - the tickets step: the open event's (`state.activeEvent` - the sub-steps
+ * under the stepper, TicketSubSteps, and the continue bar move it) live order flow ticket step
+ * (seat map, categories, live supplier prices). One quantity for the whole trip: the counter on any card is the trip's
  * travellers (`setPax`, which also clears a flight and hotels searched for the old party).
  */
 export function TicketsStep() {
@@ -206,21 +206,19 @@ export function TicketsStep() {
           · {doneCount} מתוך {route.length} מוכנים
         </p>
       </div>
-      <div>
-        {isFullRow(event) ? (
-          <EventTicketPane key={`${event.id}:${pax}`} event={event} />
-        ) : failed ? (
-          <OrderIssueState
-            variant="error"
-            className="mt-4"
-            title="לא הצלחנו לטעון את הכרטיסים"
-            subtitle="משהו השתבש אצלנו. נסו שוב בעוד רגע."
-            onRetry={retry}
-          />
-        ) : (
-          <PaneSkeleton />
-        )}
-      </div>
+      {isFullRow(event) ? (
+        <EventTicketPane key={`${event.id}:${pax}`} event={event} />
+      ) : failed ? (
+        <OrderIssueState
+          variant="error"
+          className="mt-4"
+          title="לא הצלחנו לטעון את הכרטיסים"
+          subtitle="משהו השתבש אצלנו. נסו שוב בעוד רגע."
+          onRetry={retry}
+        />
+      ) : (
+        <PaneSkeleton />
+      )}
     </section>
   );
 }

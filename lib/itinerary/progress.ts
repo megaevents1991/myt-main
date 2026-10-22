@@ -194,10 +194,10 @@ export function progressivePrice(
 }
 
 /**
- * The tickets step's next tab: the first event after the open one whose ticket is not ready for
- * the party (`ticketReady`), else the first before it - the hotels step's walk through its cities.
- * -1 = every other event has its ticket (on to the flights). The open tab is not counted: its
- * own ticket is what the step's button waits for.
+ * The tickets step's next sub-step: the first event after the open one whose ticket is not ready
+ * for the party (`ticketReady`), else the first before it. -1 = every other event has its ticket
+ * (on to the flights). The open event is not counted: its own ticket is what the step's button
+ * waits for.
  */
 export function nextOpenEvent(state: Pick<ItineraryState, "route" | "tickets" | "pax" | "activeEvent">): number {
   const { route, tickets, pax } = state;

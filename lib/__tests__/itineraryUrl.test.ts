@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
-import { eventsParamValue, parseEventsParam, reconcileRoute } from "../itinerary/url";
+import { eventsParamValue, parseEventsParam, readEventsParam, reconcileRoute } from "../itinerary/url";
 
 const ev = (id: number, name: string, date: string) =>
   ({
@@ -36,6 +36,25 @@ describe("parseEventsParam", () => {
   it("takes its cap from the caller", () => {
     expect(parseEventsParam("1,2,3", 2)).toEqual([1, 2]);
     expect(parseEventsParam("1,2,3", 0)).toEqual([]);
+  });
+});
+
+describe("readEventsParam", () => {
+  it("names the ids past the cap as overflow - a longer link is not whole", () => {
+    expect(readEventsParam("1,2,3,4", 3)).toEqual({ ids: [1, 2, 3], overflow: [4] });
+  });
+
+  it("overflow skips junk and repeats, as the ids do", () => {
+    expect(readEventsParam("1,2,1,x,3,2,5,5", 2)).toEqual({ ids: [1, 2], overflow: [3, 5] });
+  });
+
+  it("has no overflow when the link fits", () => {
+    expect(readEventsParam("618,702", 3)).toEqual({ ids: [618, 702], overflow: [] });
+    expect(readEventsParam(null, 3)).toEqual({ ids: [], overflow: [] });
+  });
+
+  it("parseEventsParam is its ids", () => {
+    expect(parseEventsParam("1,2,3,4", 3)).toEqual(readEventsParam("1,2,3,4", 3).ids);
   });
 });
 

@@ -37,8 +37,8 @@ import {
   type ItineraryStep,
 } from "@/lib/itinerary/state";
 import { emptyTravellers, type TravellersInput } from "@/lib/itinerary/travellers";
-import type { TripDates } from "@/lib/itinerary/types";
-import { eventsParamValue, parseEventsParam, reconcileRoute } from "@/lib/itinerary/url";
+import type { Compat, TripDates } from "@/lib/itinerary/types";
+import { eventsParamValue, readEventsParam, reconcileRoute } from "@/lib/itinerary/url";
 
 const EVENTS_PARAM = "events";
 
@@ -80,8 +80,9 @@ export type ItineraryApi = {
   setActiveEvent: (i: number) => void;
   setActiveStay: (i: number) => void;
   /**
-   * The category each event's tab reopens on after a refresh (the draft, lib/itinerary/draft.ts):
-   * no price - the ticket step prices it again. Read by a tab only while the event has no ticket.
+   * The category each event's ticket step reopens on after a refresh (the draft,
+   * lib/itinerary/draft.ts): no price - the step prices it again. Read by an event's step only
+   * while the event has no ticket.
    */
   heldTickets: Record<number, HeldTicket>;
   /** The summary's travellers form - here, so it survives a visit to an earlier step (and a refresh). */
@@ -157,19 +158,26 @@ export function ItineraryProvider({
   const applyUrl = useCallback(() => {
     if (urlRead.current) return;
     urlRead.current = true;
-    const ids = parseEventsParam(new URLSearchParams(window.location.search).get(EVENTS_PARAM), settings.maxEvents);
+    const { ids, overflow } = readEventsParam(
+      new URLSearchParams(window.location.search).get(EVENTS_PARAM),
+      settings.maxEvents,
+    );
     const { route: found, dropped } = reconcileRoute(ids, byId);
     const { route, refused } = fitRoute(found, settings);
+    // Ids past `maxEvents` were cut by the parser: the ones the catalog holds are named as not
+    // fitting (the route is full), the rest count as gone.
+    const { route: cut, dropped: cutGone } = reconcileRoute(overflow, byId);
+    const full: Compat = { status: "blocked", reason: { code: "full", max: settings.maxEvents } };
     // A ready trip opens on event 1's tickets only when the link loads WHOLE: every event still
-    // in the catalog, none refused by the rules, two or more. Anything less opens the planner
-    // (custom) with what fits, and the notice below names what was dropped.
-    const whole = !dropped.length && !refused.length && route.length >= MIN_TRIP_EVENTS;
+    // in the catalog, none refused by the rules, none past the cap, two or more. Anything less
+    // opens the planner (custom) with what fits, and the notice below names what was dropped.
+    const whole = !dropped.length && !refused.length && !overflow.length && route.length >= MIN_TRIP_EVENTS;
     if (ids.length) dispatch({ type: "load", route, mode: whole ? "route" : "custom" });
     // The trip this tab held before a refresh (lib/itinerary/draft.ts) - only when this page was
     // reloaded or reached by back / forward (a fresh visit starts clean), and only for the trip
     // the URL names: a link to another route wins. Either way the next save replaces the old
     // draft. It brings back the trip's shape and the travellers' form; prices never - the flow
-    // reopens on the tickets step at most, each tab on the category it held.
+    // reopens on the tickets step at most, each event on the category it held.
     const mayRestore = route.length > 0 && draftMayRestore(pageNavigation(), window.location.pathname);
     const draft = mayRestore ? readItineraryDraft(byId) : null;
     const restored = draft && sameRouteIds(draft.route, route) ? draft : null;
@@ -189,8 +197,9 @@ export function ItineraryProvider({
     setHeldMarker(readHeldMarker());
     const pastTickets = !!restored && ["flights", "hotels", "summary"].includes(restored.savedStep);
     const messages = [
-      ...(dropped.length ? ["האירוע כבר לא זמין"] : []),
+      ...(dropped.length || cutGone.length ? ["האירוע כבר לא זמין"] : []),
       ...refused.map((r) => `${r.event.name} לא נכנס למסלול: ${describeCompat(r.compat)}`),
+      ...cut.map((e) => `${e.name} לא נכנס למסלול: ${describeCompat(full)}`),
       ...(pastTickets ? [RESTORED_NOTICE] : []),
     ];
     setNotice(messages.length ? messages.join(" · ") : null);
