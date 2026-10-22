@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AlarmClockCheck, X } from "lucide-react";
 
@@ -12,14 +13,63 @@ import { PRIOR_HOLD_NOTICE } from "@/lib/itinerary/heldMarker";
 import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
-import { FlightsStep } from "./FlightsStep";
-import { HotelsStep } from "./HotelsStep";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
-import { SummaryStep } from "./SummaryStep";
-import { TicketsStep } from "./TicketsStep";
+import { StepSkeleton } from "./StepSkeleton";
 import { TripHeader } from "./TripHeader";
+
+// The builder lands on the route / self-build step, and most visits end there: the later steps
+// bring the order flow's live ticket step (seat maps), the flight cards, the live hotel step
+// (Mantine date pickers, the hotel search) and the summary - ~350 kB the first load does not
+// need. Each loads on demand (and is warmed one step ahead: `prefetchStep`). `ssr: false`: the
+// server draws the build step only. Defined HERE, at module level - a dynamic made inside a
+// component would be a new component type on every render and remount the step each time.
+const TicketsStep = dynamic(() => import("./TicketsStep").then((m) => m.TicketsStep), {
+  ssr: false,
+  loading: () => <StepSkeleton label="טוענים את הכרטיסים..." side />,
+});
+const FlightsStep = dynamic(() => import("./FlightsStep").then((m) => m.FlightsStep), {
+  ssr: false,
+  loading: () => <StepSkeleton label="טוענים את הטיסות..." tabs={false} />,
+});
+const HotelsStep = dynamic(() => import("./HotelsStep").then((m) => m.HotelsStep), {
+  ssr: false,
+  loading: () => <StepSkeleton label="טוענים את המלונות..." />,
+});
+const SummaryStep = dynamic(() => import("./SummaryStep").then((m) => m.SummaryStep), {
+  ssr: false,
+  loading: () => <StepSkeleton label="טוענים את הסיכום..." side tabs={false} />,
+});
+
+/**
+ * The hotels step, kept alive (see ItineraryFlow). Its wrapper also hides the step's skeleton:
+ * the dynamic `loading` cannot see `shown`, and a customer who steps back before the chunk
+ * arrives must not keep a skeleton under the earlier step.
+ */
+function HotelsPane({ shown }: { shown: boolean }) {
+  return (
+    <div hidden={!shown}>
+      <HotelsStep shown={shown} />
+    </div>
+  );
+}
+
+/** Warm the code of a step the customer is about to reach (the same module the dynamic loads). */
+function prefetchStep(step: ItineraryStep): Promise<unknown> {
+  switch (step) {
+    case "tickets":
+      return import("./TicketsStep");
+    case "flights":
+      return import("./FlightsStep");
+    case "hotels":
+      return import("./HotelsStep");
+    case "summary":
+      return import("./SummaryStep");
+    default:
+      return Promise.resolve();
+  }
+}
 
 /** The step on screen - one switch, so each step's real component slots in here. */
 function StepBody({ state }: { state: ItineraryState }) {
@@ -94,6 +144,32 @@ export function ItineraryFlow() {
 
   const enough = route.length >= MIN_TRIP_EVENTS;
   const at = ITINERARY_STEPS.indexOf(step);
+
+  // The next step's code arrives while the customer is still on this one (idle time, never on a
+  // data-saver connection), so the switch is instant. Not before the route holds enough events
+  // to go on: most visitors leave from the route step and never need it.
+  const upNext = ITINERARY_STEPS[at + 1];
+  useEffect(() => {
+    if (!enough || !upNext) return;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (connection?.saveData) return;
+    let live = true;
+    const warm = () => {
+      if (live) prefetchStep(upNext).catch(() => undefined); // the real load retries and reports
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(warm, { timeout: 3000 });
+      return () => {
+        live = false;
+        window.cancelIdleCallback(handle);
+      };
+    }
+    const timer = window.setTimeout(warm, 800);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+  }, [enough, upNext]);
   const openIndex = Math.min(state.activeStay, stayList.length - 1);
   const nextStay = step === "hotels" ? nextOpenStay(openIndex, stayList.length, hotelReady) : -1;
   // Every event has its ticket for the party (a quantity changed in one tab leaves the others
@@ -227,7 +303,7 @@ export function ItineraryFlow() {
           </div>
         )}
         <StepBody state={state} />
-        {hotelsMounted && <HotelsStep shown={step === "hotels"} />}
+        {hotelsMounted && <HotelsPane shown={step === "hotels"} />}
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
           Not on an empty builder: there is no trip to price yet (the bar would say $0). */}
