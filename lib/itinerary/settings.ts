@@ -101,14 +101,18 @@ export function parseItinerarySettings(
 /**
  * Is this failed read of `itinerary_settings` "the table is not there" (the backoffice migration
  * not applied yet) - the one failure a PAGE may answer with the defaults? Postgres 42P01 /
- * PostgREST PGRST205 by code, or by their words when only the message survived the cache
- * ("relation ... does not exist", "Could not find the table ..."). Anything else - a timeout, a
- * refused connection, a 5xx - is not: the page throws and ISR keeps its last good version.
+ * PostgREST PGRST205 by code; the words ("relation ... does not exist", "Could not find the
+ * table ...") count only when the error has NO code (only the message survived the cache).
+ * Anything else - a timeout, a refused connection, a 5xx - is not: the page throws and ISR
+ * keeps its last good version.
  */
 export function isMissingSettingsTable(e: unknown): boolean {
   if (!e || typeof e !== "object") return false;
   const { code, message } = e as { code?: unknown; message?: unknown };
-  if (code === "42P01" || code === "PGRST205") return true;
+  // A code names the failure: only the two "no such table" codes count, whatever the words say
+  // (42703, a missing COLUMN, reads "... of relation "itinerary_settings" does not exist" too).
+  if (code !== undefined && code !== null && code !== "") return code === "42P01" || code === "PGRST205";
+  // No code (an Error rethrown by the cache kept only its message): the words decide.
   const text = typeof message === "string" ? message : "";
   return /relation\s+\S+\s+does not exist/i.test(text) || /could not find the table/i.test(text);
 }

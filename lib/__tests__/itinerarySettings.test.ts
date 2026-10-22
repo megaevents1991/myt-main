@@ -148,4 +148,16 @@ describe("isMissingSettingsTable - the one failure a page answers with the defau
     expect(isMissingSettingsTable(undefined)).toBe(false);
     expect(isMissingSettingsTable("relation x does not exist")).toBe(false);
   });
+
+  it("a code decides alone: a missing COLUMN whose message names the relation is not a missing table", () => {
+    expect(
+      isMissingSettingsTable({ code: "42703", message: 'column "x" of relation "itinerary_settings" does not exist' }),
+    ).toBe(false);
+    // ... and the table's own codes still count with any message, or none.
+    expect(isMissingSettingsTable({ code: "42P01" })).toBe(true);
+    expect(isMissingSettingsTable({ code: "PGRST205", message: "anything" })).toBe(true);
+    // ... while the words count when there is no code (or an empty one).
+    expect(isMissingSettingsTable({ message: 'relation "itinerary_settings" does not exist' })).toBe(true);
+    expect(isMissingSettingsTable({ code: "", message: 'relation "itinerary_settings" does not exist' })).toBe(true);
+  });
 });
