@@ -6,7 +6,6 @@ import { DollarSign, Plane, ShieldCheck, Star, TrainFront, type LucideIcon } fro
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { ItineraryFlight } from "@/lib/app.types";
-import { dayMonth } from "@/lib/itinerary/builder";
 import { moves, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import type { FlightLeg } from "@/lib/itinerary/flightOffers";
 import {
@@ -30,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { ItineraryFlightCard } from "./ItineraryFlightCard";
 import { useItinerary } from "./ItineraryProvider";
 import { PanelTitle, ShowMore } from "./parts";
+import { TripDatesPicker } from "./TripDatesPicker";
 
 /** A change of legs / party waits this long before it searches (the previous search is aborted). */
 const SEARCH_DEBOUNCE_MS = 400;
@@ -247,7 +247,7 @@ type PickState = { key: string; id: string; status: "pricing" | "failed" };
  */
 export function FlightsStep() {
   const api = useItinerary();
-  const { state, toggleTrain, goStep } = api;
+  const { state, toggleTrain, goStep, setDates } = api;
   const { route, dates, pax, train } = state;
 
   // Callbacks that run after a fetch read the provider through a ref (its actions are re-made per render).
@@ -444,12 +444,11 @@ export function FlightsStep() {
           <span id="trip-flights-title">טיסות לכל המסלול</span>
         </PanelTitle>
         <p className="m-0 text-sm text-muted-foreground">
-          <span className="tabular-nums">
-            {legs.length} טיסות · {dayMonth(dates.depart)}–{dayMonth(dates.ret)}
-          </span>{" "}
-          · {pax === 1 ? "נוסע אחד" : `${pax} נוסעים`} · המחירים לנוסע
+          {legs.length} טיסות · {pax === 1 ? "נוסע אחד" : `${pax} נוסעים`} · המחירים לנוסע
         </p>
       </div>
+      {/* The trip's dates are set HERE, in trip order: a new set clears the flight and searches again. */}
+      <TripDatesPicker route={route} dates={dates} train={trainSet} onCommit={setDates} />
       {callout && (
         <div className="flex items-start gap-2.5 rounded-xl border border-brand-aqua/40 bg-brand-aqua/10 px-3.5 py-3 text-sm leading-relaxed text-foreground">
           <TrainFront className="mt-0.5 size-4 shrink-0 text-forest dark:text-brand-aqua" aria-hidden />
@@ -460,7 +459,7 @@ export function FlightsStep() {
       )}
       {body}
       {trainBackOffered(search.view, train) && (
-        // The "אגיע ברכבת" switch lives on the cards: with none on screen, this is the way back.
+        // The "אגיע עצמאית" switch lives on the cards: with none on screen, this is the way back.
         <button
           type="button"
           onClick={() => {

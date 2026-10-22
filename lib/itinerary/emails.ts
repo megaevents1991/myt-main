@@ -261,7 +261,7 @@ export function tripHoldMail(i: TripMailInput): { subject: string; html: string 
         }${airline ? ` · ${esc(airline)}` : ""}`,
     ),
     ...i.trainLegs.map(
-      (t) => `ברכבת: ${esc(t.fromName)} ← ${esc(t.toName)} · ${esc(dayMonth(t.date))} · בכוחות עצמכם, לא כלול במחיר`,
+      (t) => `הגעה עצמאית: ${esc(t.fromName)} ← ${esc(t.toName)} · ${esc(dayMonth(t.date))} · בכוחות עצמכם, לא כלול במחיר`,
     ),
   ];
 

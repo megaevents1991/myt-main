@@ -102,10 +102,10 @@ describe("train copy", () => {
     expect(trainToggleLabel(312)).toBe("אגיע עצמאית (312 ק״מ)");
   });
 
-  it("the train row: A ← B ברכבת, then day, hours and that it is not included", () => {
+  it("the train row: A ← B · הגעה עצמאית, then day, hours and that it is not included", () => {
     const t: TrainLeg = { key: "618>702", fromName: "פריז", toName: "לונדון", date: "2027-05-13", km: 343 };
     expect(trainRowText(t)).toEqual({
-      title: "פריז ← לונדון ברכבת",
+      title: "פריז ← לונדון · הגעה עצמאית",
       detail: "13/05 · כ-2.5 שעות · בכוחות עצמכם, לא כלול",
     });
   });
@@ -117,7 +117,7 @@ describe("trainCallout", () => {
   it("suggests the train on a hop under 600 km, verbatim", () => {
     expect(trainCallout([paris])).toEqual({
       lead: "טיסה אחת לכל המסלול.",
-      text: "פריז–לונדון זה 343 ק״מ - ברכבת כ-2.5 שעות ממרכז העיר למרכז העיר. מעדיפים רכבת? כבו את קטע הביניים.",
+      text: 'פריז–לונדון זה 343 ק״מ - ברכבת כ-2.5 שעות ממרכז העיר למרכז העיר. מעדיפים להגיע בעצמכם? סמנו "אגיע עצמאית".',
     });
   });
 
@@ -136,7 +136,7 @@ describe("trainCallout", () => {
     expect(callout?.text).toBe(
       "פריז–לונדון זה 343 ק״מ - ברכבת כ-2.5 שעות ממרכז העיר למרכז העיר. " +
         "מדריד–ברצלונה זה 505 ק״מ - ברכבת כ-3.5 שעות ממרכז העיר למרכז העיר. " +
-        "מעדיפים רכבת? כבו את קטע הביניים.",
+        'מעדיפים להגיע בעצמכם? סמנו "אגיע עצמאית".',
     );
   });
 });

@@ -37,7 +37,7 @@ export const trainToggleLabel = (km: number): string => `אגיע עצמאית (
 /** The row a move by train shows in place of its flight. */
 export function trainRowText(t: TrainLeg): { title: string; detail: string } {
   return {
-    title: `${t.fromName} ← ${t.toName} ברכבת`,
+    title: `${t.fromName} ← ${t.toName} · הגעה עצמאית`,
     detail: `${dayMonth(t.date)} · כ-${trainHours(t.km)} שעות · בכוחות עצמכם, לא כלול`,
   };
 }
@@ -56,7 +56,7 @@ export function trainCallout(hops: TrainHop[]): { lead: string; text: string } |
     (h) =>
       `${h.fromName}–${h.toName} זה ${kmText(h.km)} ק״מ - ברכבת כ-${trainHours(h.km)} שעות ממרכז העיר למרכז העיר.`,
   );
-  return { lead: "טיסה אחת לכל המסלול.", text: [...lines, "מעדיפים רכבת? כבו את קטע הביניים."].join(" ") };
+  return { lead: "טיסה אחת לכל המסלול.", text: [...lines, `מעדיפים להגיע בעצמכם? סמנו "אגיע עצמאית".`].join(" ") };
 }
 
 // ---------------------------------------------------------------------------------------------

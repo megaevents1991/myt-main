@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
 import { clampTripDates, defaultTripDates, moves, tripDateBounds } from "../itinerary/dates";
-import { applyDatePick, datePickSteps } from "../itinerary/datePick";
+import { applyDatePick, datePickSteps, isoDay, localDay, sameTripDates } from "../itinerary/datePick";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 
@@ -144,5 +144,41 @@ describe("applyDatePick", () => {
     const before = JSON.stringify(d);
     applyDatePick(route, d, key, "2027-05-14");
     expect(JSON.stringify(d)).toBe(before);
+  });
+});
+
+describe("sameTripDates", () => {
+  const route = [celine, chelsea];
+  const d = defaultTripDates(route);
+  const key = "618>702";
+
+  it("equal days are the same, whatever object they sit in", () => {
+    expect(sameTripDates(d, { ...d, moves: { ...d.moves } })).toBe(true);
+  });
+
+  it("a different departure, return or move day is not", () => {
+    expect(sameTripDates(d, { ...d, depart: "2027-05-10" })).toBe(false);
+    expect(sameTripDates(d, { ...d, ret: "2027-05-18" })).toBe(false);
+    expect(sameTripDates(d, { ...d, moves: { [key]: "2027-05-14" } })).toBe(false);
+  });
+
+  it("a move one side has and the other lacks is not the same", () => {
+    expect(sameTripDates(d, { ...d, moves: {} })).toBe(false);
+    expect(sameTripDates({ ...d, moves: {} }, d)).toBe(false);
+  });
+});
+
+describe("localDay / isoDay", () => {
+  it("a day goes to local midnight and back, month ends and leap day included", () => {
+    for (const day of ["2027-05-12", "2027-01-01", "2027-12-31", "2028-02-29", "2027-03-28", "2027-10-31"]) {
+      const date = localDay(day);
+      expect([date.getHours(), date.getMinutes()]).toEqual([0, 0]);
+      expect(isoDay(date)).toBe(day);
+    }
+  });
+
+  it("reads the parts as local ones - the day number is the day written", () => {
+    const date = localDay("2027-05-09");
+    expect([date.getFullYear(), date.getMonth(), date.getDate()]).toEqual([2027, 4, 9]);
   });
 });

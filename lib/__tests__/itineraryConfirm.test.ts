@@ -645,6 +645,13 @@ describe("the emails", () => {
     expect(html).not.toMatch(/href="https?:/);
   });
 
+  it("a move the customer makes alone reads הגעה עצמאית, with the day and that it is not included", () => {
+    const own = { key: "618>702", fromName: "פריז", toName: "לונדון", date: "2027-05-13", km: 343 };
+    const { html } = tripHoldMail({ ...input, trainLegs: [own] });
+    expect(html).toContain("הגעה עצמאית: פריז ← לונדון · 13/05 · בכוחות עצמכם, לא כלול במחיר");
+    expect(html).not.toContain("ברכבת");
+  });
+
   it("escapes what comes from outside (event names, hotels, the customer)", () => {
     const evil = tripMailInput({
       sub: { ...sub, travellers: { ...sub.travellers, contact: { ...sub.travellers.contact, firstName: "<script>" } } },

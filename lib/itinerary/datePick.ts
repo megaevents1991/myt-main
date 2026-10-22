@@ -79,3 +79,25 @@ export function applyDatePick(route: Event[], dates: TripDates, key: string, day
   }
   return clampTripDates(route, dates);
 }
+
+/** Both are the same trip days: the departure, the return and every move's day. */
+export function sameTripDates(a: TripDates, b: TripDates): boolean {
+  if (a.depart !== b.depart || a.ret !== b.ret) return false;
+  const keys = new Set([...Object.keys(a.moves), ...Object.keys(b.moves)]);
+  return [...keys].every((k) => a.moves[k] === b.moves[k]);
+}
+
+/**
+ * `YYYY-MM-DD` as that day at local midnight - what a calendar widget takes. Never
+ * `new Date("YYYY-MM-DD")`: that one is UTC midnight, and a day behind west of Greenwich.
+ */
+export function localDay(day: string): Date {
+  const [y, m, d] = day.slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** A calendar widget's day (local) back to `YYYY-MM-DD`; the inverse of `localDay`. */
+export function isoDay(date: Date): string {
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
