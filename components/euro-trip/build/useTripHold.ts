@@ -43,7 +43,8 @@ function utmSource(): string {
  *   after a lost answer - gets a new group: the old one would be answered with the old trip's
  *   rows. A refusal that sends the customer back to change the trip also drops it.
  * - One request at a time (a ref, so even two clicks in one frame send one).
- * - Success: `markHeld` (closes the draft; the summary shows the confirmation, its clock stops)
+ * - Success: `markHeld` (closes the draft and leaves the tab's held-trip marker - a refresh that
+ *   reopens the same trip says it was held; the summary shows the confirmation, its clock stops)
  *   and any earlier notice goes.
  * - A refusal the customer fixes on an earlier step (price changed, route changed, a ticket, a
  *   hotel): the notice says why and the flow goes there - the event's or the city's tab open.
@@ -111,12 +112,15 @@ export function useTripHold(): {
         // An earlier refusal's notice ("המחיר עודכן") is over: the trip is held.
         latest.current.countPriceChange(false, key);
         latest.current.dismissNotice();
-        latest.current.markHeld({
-          group: json.group,
-          ids: json.ids,
-          reference: json.reference ?? null,
-          ...(typeof json.emailed === "boolean" ? { emailed: json.emailed } : {}),
-        });
+        latest.current.markHeld(
+          {
+            group: json.group,
+            ids: json.ids,
+            reference: json.reference ?? null,
+            ...(typeof json.emailed === "boolean" ? { emailed: json.emailed } : {}),
+          },
+          key,
+        );
         return;
       }
       const now = latest.current;

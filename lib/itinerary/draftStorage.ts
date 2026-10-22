@@ -15,6 +15,7 @@ import {
   type PageNavigation,
   type RestoredDraft,
 } from "./draft";
+import { HELD_MARKER_KEY, parseHeldMarker, serializeHeldMarker, type HeldMarker } from "./heldMarker";
 import type { ItineraryState } from "./state";
 
 const storage = (): Storage | null => {
@@ -62,6 +63,31 @@ export function writeItineraryDraft(
     else store.setItem(ITINERARY_DRAFT_KEY, serializeDraft(state, Date.now(), extra));
   } catch (error) {
     console.error("[EuroTrip] Trip draft could not be saved:", error);
+  }
+}
+
+/** The trip this tab held in the last 24 hours (./heldMarker.ts), or null; a stale or broken one is removed. */
+export function readHeldMarker(): HeldMarker | null {
+  const store = storage();
+  if (!store) return null;
+  try {
+    const raw = store.getItem(HELD_MARKER_KEY);
+    const marker = parseHeldMarker(raw, Date.now());
+    if (raw && !marker) store.removeItem(HELD_MARKER_KEY);
+    return marker;
+  } catch {
+    return null;
+  }
+}
+
+/** Remembers a hold that went through (one per tab: the latest). */
+export function writeHeldMarker(m: Omit<HeldMarker, "at">) {
+  const store = storage();
+  if (!store) return;
+  try {
+    store.setItem(HELD_MARKER_KEY, serializeHeldMarker(m, Date.now()));
+  } catch (error) {
+    console.error("[EuroTrip] Held-trip marker could not be saved:", error);
   }
 }
 

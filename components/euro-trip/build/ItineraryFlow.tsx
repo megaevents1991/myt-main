@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { AlarmClockCheck, X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
 import { ticketReady } from "@/lib/itinerary/adapter";
 import { stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
+import { PRIOR_HOLD_NOTICE } from "@/lib/itinerary/heldMarker";
 import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
@@ -55,7 +56,7 @@ const nextOpenStay = (active: number, count: number, ready: (i: number) => boole
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveStay } = useItinerary();
+  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveStay, priorHold } = useItinerary();
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
@@ -189,6 +190,27 @@ export function ItineraryFlow() {
     <>
       <TripHeader />
       <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-4 lg:px-6" dir="rtl">
+        {/* This tab held this very trip in the last 24 hours (a refresh after the hold reopened the
+            route): said quietly - the customer may still go on. */}
+        {priorHold && (
+          <div
+            role="status"
+            className="mb-4 flex items-start gap-3 rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground"
+          >
+            <AlarmClockCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="flex-1">
+              {PRIOR_HOLD_NOTICE}
+              {priorHold.reference && (
+                <>
+                  {" · "}מספר הבקשה:{" "}
+                  <b dir="ltr" className="font-bold">
+                    {priorHold.reference}
+                  </b>
+                </>
+              )}
+            </span>
+          </div>
+        )}
         {notice && (
           <div
             role="status"

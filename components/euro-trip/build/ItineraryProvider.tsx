@@ -14,14 +14,17 @@ import {
 } from "react";
 
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
-import { NO_PRICE_CHANGES, notePriceAnswer, type HeldAnswer, type PriceChangeMemo } from "@/lib/itinerary/confirm";
+import { NO_PRICE_CHANGES, notePriceAnswer, tripKey, type HeldAnswer, type PriceChangeMemo } from "@/lib/itinerary/confirm";
 import { draftMayRestore, sameRouteIds, type HeldTicket } from "@/lib/itinerary/draft";
 import {
   forgetItineraryDraft,
   pageNavigation,
+  readHeldMarker,
   readItineraryDraft,
+  writeHeldMarker,
   writeItineraryDraft,
 } from "@/lib/itinerary/draftStorage";
+import { priorHoldFor, type HeldMarker } from "@/lib/itinerary/heldMarker";
 import { describeCompat } from "@/lib/itinerary/rules";
 import type { ItinerarySettings } from "@/lib/itinerary/settings";
 import {
@@ -94,8 +97,16 @@ export type ItineraryApi = {
   closeDraft: () => void;
   /** The trip's 24-hour hold went through (POST /api/itinerary/confirm): its group and reference. */
   held: HeldAnswer | null;
-  /** Records the hold and closes the trip's draft (`closeDraft`). */
-  markHeld: (h: HeldAnswer) => void;
+  /**
+   * Records the hold for the trip it was sent for (`tripKey`), closes the trip's draft
+   * (`closeDraft`) and leaves the tab's held-trip marker (lib/itinerary/heldMarker.ts).
+   */
+  markHeld: (h: HeldAnswer, tripKey: string) => void;
+  /**
+   * This tab held THIS trip (same `tripKey`) within the last 24 hours - read once per page load: a
+   * refresh after a hold reopens the route, so the builder says so (no block).
+   */
+  priorHold: HeldMarker | null;
   /**
    * Notes the hold's answer for the trip it was sent for (`tripKey`) and returns how many "the
    * price changed" answers in a row that trip has had (`notePriceAnswer`: another trip, another
@@ -133,6 +144,8 @@ export function ItineraryProvider({
   const [heldTickets, setHeldTickets] = useState<Record<number, HeldTicket>>({});
   const [travellers, setTravellers] = useState<TravellersInput>(() => emptyTravellers(INITIAL_ITINERARY_STATE.pax));
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // The trip this tab held in the last 24 hours (lib/itinerary/heldMarker.ts) - read with the URL.
+  const [heldMarker, setHeldMarker] = useState<HeldMarker | null>(null);
   const byId = useMemo(() => new Map(catalog.map((e) => [e.id, e])), [catalog]);
 
   // Read ?events= once. Called by `useItineraryUrl` from inside the page's Suspense boundary:
@@ -167,6 +180,8 @@ export function ItineraryProvider({
         setTermsAccepted(restored.form.termsAccepted);
       }
     }
+    // A trip this tab held (a refresh after the hold reopens the route): said at the top, no block.
+    setHeldMarker(readHeldMarker());
     const pastTickets = !!restored && ["flights", "hotels", "summary"].includes(restored.savedStep);
     const messages = [
       ...(dropped.length ? ["האירוע כבר לא זמין"] : []),
@@ -213,12 +228,14 @@ export function ItineraryProvider({
   }, []);
   const [held, setHeld] = useState<HeldAnswer | null>(null);
   const markHeld = useCallback(
-    (h: HeldAnswer) => {
+    (h: HeldAnswer, key: string) => {
       closeDraft();
+      writeHeldMarker({ group: h.group, tripKey: key, reference: h.reference });
       setHeld(h);
     },
     [closeDraft],
   );
+  const priorHold = held ? null : priorHoldFor(heldMarker, tripKey(state));
 
   const api = useMemo<ItineraryApi>(
     () => ({
@@ -254,6 +271,7 @@ export function ItineraryProvider({
       closeDraft,
       held,
       markHeld,
+      priorHold,
       countPriceChange,
     }),
     [
@@ -271,6 +289,7 @@ export function ItineraryProvider({
       closeDraft,
       held,
       markHeld,
+      priorHold,
       countPriceChange,
     ],
   );
