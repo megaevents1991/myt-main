@@ -1,10 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check, CircleAlert, X } from "lucide-react";
+import dayjs from "dayjs";
+import "dayjs/locale/he";
+import { Check, CircleAlert, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { CatalogKind } from "@/lib/itinerary/builder";
+import type { CatalogFilter, CatalogKind } from "@/lib/itinerary/builder";
 import { describeCompat } from "@/lib/itinerary/rules";
 import type { Compat } from "@/lib/itinerary/types";
 
@@ -73,6 +75,132 @@ export function KindTabs({ value, onChange }: { value: CatalogKind; onChange: (k
           {k.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** The category hubs' filter chip (components/CategoryEventsBrowser.tsx). */
+const chip = (on: boolean) =>
+  cn(
+    "flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-colors",
+    on
+      ? "border-primary bg-primary text-primary-foreground"
+      : "border-border bg-card text-foreground hover:bg-foreground/[0.03]",
+  );
+
+const monthLabel = (month: string) => dayjs(`${month}-01`).locale("he").format("MMMM YYYY");
+
+/**
+ * One row of filter chips: "all" first, then one chip per value; pressing the picked chip again
+ * clears it. `wrap` = a scrolling row on a phone that wraps from 640px; otherwise it always
+ * scrolls (a narrow popup, a long list of cities).
+ */
+function ChipRow({
+  label,
+  allLabel,
+  values,
+  value,
+  onChange,
+  name = (v) => v,
+  wrap = false,
+}: {
+  label: string;
+  allLabel: string;
+  values: string[];
+  value: string;
+  onChange: (v: string) => void;
+  name?: (v: string) => string;
+  wrap?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "-mx-1 flex gap-2 overflow-x-auto px-1 pb-1.5",
+        wrap ? "[scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0" : "myt-scroll",
+      )}
+      role="group"
+      aria-label={label}
+    >
+      <button type="button" onClick={() => onChange("")} aria-pressed={value === ""} className={chip(value === "")}>
+        {allLabel}
+      </button>
+      {values.map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(value === v ? "" : v)}
+          aria-pressed={value === v}
+          className={chip(value === v)}
+        >
+          {name(v)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The catalog's search and filters - the planner's grid and the "הוסף אירוע" popup draw the same
+ * block: the search box, the months, הכל / כדורגל / הופעות and the cities (`catalogMonths`,
+ * `catalogCities`; a row with a single value is not drawn). `autoFocus` = the popup's search
+ * takes the focus when it opens (Mantine's focus trap reads `data-autofocus`).
+ */
+export function CatalogFilters({
+  filter,
+  onChange,
+  months,
+  cities,
+  autoFocus = false,
+  wrapMonths = false,
+}: {
+  filter: CatalogFilter;
+  onChange: (patch: Partial<CatalogFilter>) => void;
+  months: string[];
+  cities: string[];
+  autoFocus?: boolean;
+  wrapMonths?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
+        <input
+          type="search"
+          value={filter.query}
+          onChange={(e) => onChange({ query: e.target.value })}
+          placeholder="לאן טסים? אמן, קבוצה או עיר..."
+          aria-label="חיפוש אירוע - אמן, קבוצה או עיר"
+          autoComplete="off"
+          data-autofocus={autoFocus || undefined}
+          className="min-w-0 flex-1 bg-transparent px-2 text-base text-foreground placeholder:text-[15px] placeholder:font-medium placeholder:text-muted-foreground focus:outline-none"
+        />
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" aria-hidden>
+          <Search className="size-5" />
+        </span>
+      </div>
+
+      {months.length > 1 && (
+        <ChipRow
+          label="חודש"
+          allLabel="כל התאריכים"
+          values={months}
+          value={filter.month}
+          onChange={(month) => onChange({ month })}
+          name={monthLabel}
+          wrap={wrapMonths}
+        />
+      )}
+
+      <KindTabs value={filter.kind} onChange={(kind) => onChange({ kind })} />
+
+      {cities.length > 1 && (
+        <ChipRow
+          label="עיר"
+          allLabel="כל הערים"
+          values={cities}
+          value={filter.city}
+          onChange={(city) => onChange({ city })}
+        />
+      )}
     </div>
   );
 }

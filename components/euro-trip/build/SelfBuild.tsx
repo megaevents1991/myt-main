@@ -1,18 +1,15 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
-import dayjs from "dayjs";
-import "dayjs/locale/he";
-import { Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { computePackagePrice } from "@/lib/events/price";
-import { eventCityName, placeLabel } from "@/lib/events/lodging";
+import { placeLabel } from "@/lib/events/lodging";
 import {
+  catalogCities,
   catalogItems,
   catalogMonths,
-  dayMonth,
   dayMonthYear,
   filterCatalog,
   type CatalogFilter,
@@ -22,83 +19,11 @@ import { eventDay } from "@/lib/itinerary/geo";
 import { isAddable } from "@/lib/itinerary/rules";
 import { MIN_TRIP_EVENTS } from "@/lib/itinerary/state";
 import { TripEventArt } from "./TripEventArt";
-import { DayPlanner } from "./DayPlanner";
 import { useItinerary } from "./ItineraryProvider";
-import { ADD_BUTTON, CompatChip, KindTabs, LIST_PAGE, ShowMore } from "./parts";
+import { ADD_BUTTON, CatalogFilters, CompatChip, LIST_PAGE, ShowMore } from "./parts";
+import { TripPanel } from "./TripPanel";
 
-const SLOT_LABELS = ["אירוע ראשון", "אירוע שני", "אירוע שלישי (לא חובה)"];
-
-/** A slot's label; past the named three (a wider `max_events`) it is numbered, and optional. */
-const slotLabel = (i: number): string => SLOT_LABELS[i] ?? `אירוע ${i + 1} (לא חובה)`;
-
-const NO_FILTER: CatalogFilter = { query: "", month: "", kind: "all" };
-
-/** The category hubs' filter chip (components/CategoryEventsBrowser.tsx). */
-const chip = (on: boolean) =>
-  cn(
-    "flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-colors",
-    on
-      ? "border-primary bg-primary text-primary-foreground"
-      : "border-border bg-card text-foreground hover:bg-foreground/[0.03]",
-  );
-
-const monthLabel = (month: string) => dayjs(`${month}-01`).locale("he").format("MMMM YYYY");
-
-/** The picked events, one slot each (1 ← 2 ← 3, the third optional). */
-function Tray() {
-  const { state, settings, removeEvent } = useItinerary();
-  const slots = Array.from({ length: settings.maxEvents }, (_, i) => i);
-  return (
-    // A column on a phone (a slot keeps a readable width), a row from 640px.
-    <ol className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1.5" aria-label="המסלול שלכם">
-      {slots.map((i) => {
-        const e = state.route[i];
-        return (
-          <Fragment key={i}>
-            {i > 0 && (
-              <li aria-hidden className="hidden shrink-0 font-black text-forest dark:text-primary sm:block">
-                ←
-              </li>
-            )}
-            <li
-              className={cn(
-                "flex min-h-[62px] min-w-0 items-center gap-2 rounded-2xl border-[1.5px] p-2 text-[13px] sm:flex-1",
-                e ? "border-primary/60 bg-primary/[0.08]" : "border-dashed border-border bg-card",
-              )}
-            >
-              {e ? (
-                <>
-                  <TripEventArt event={e} sizes="44px" className="size-11 shrink-0 rounded-full border-2 border-white" />
-                  <div className="flex min-w-0 flex-col leading-tight">
-                    <b className="truncate text-[13.5px]">{e.name}</b>
-                    <span className="text-[12.5px] text-muted-foreground">
-                      <span className="tabular-nums">{dayMonth(eventDay(e))}</span> · {eventCityName(e)}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeEvent(e.id)}
-                    aria-label={`הסרת ${e.name} מהמסלול`}
-                    className="ms-auto flex size-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
-                  >
-                    <X className="size-3.5" aria-hidden />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted font-display text-xs font-black text-foreground">
-                    {i + 1}
-                  </span>
-                  <span className="text-muted-foreground">{slotLabel(i)}</span>
-                </>
-              )}
-            </li>
-          </Fragment>
-        );
-      })}
-    </ol>
-  );
-}
+const NO_FILTER: CatalogFilter = { query: "", month: "", kind: "all", city: "" };
 
 /**
  * A compact catalog card: the homepage card's art and body, with the route's add / remove.
@@ -173,15 +98,17 @@ function EventPick({
 }
 
 /**
- * Self-build mode: a tray of 2-3 slots, the day planner once two are picked, and the whole
- * eligible catalog - search, month, הכל / כדורגל / הופעות - where every card says whether it
- * fits the route (compatible ones first).
+ * Self-build mode (the planner): from 1024px two columns - the whole eligible catalog (search,
+ * month, הכל / כדורגל / הופעות, city, the grid where every card says whether it fits the route,
+ * compatible ones first) and, on the inline-end side, the trip's panel (`TripPanel`, sticky).
+ * Below 1024px only the panel, full width: events are picked through its "הוסף אירוע" popup.
  */
 export function SelfBuild() {
   const { state, catalog, settings } = useItinerary();
   const [filter, setFilter] = useState<CatalogFilter>(NO_FILTER);
   const [visible, setVisible] = useState(LIST_PAGE);
   const months = useMemo(() => catalogMonths(catalog), [catalog]);
+  const cities = useMemo(() => catalogCities(catalog), [catalog]);
   const items = useMemo(
     () => catalogItems(state.route, filterCatalog(catalog, filter), settings),
     [state.route, catalog, filter, settings],
@@ -196,87 +123,49 @@ export function SelfBuild() {
   const full = state.route.length >= settings.maxEvents;
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="m-0 text-lg leading-snug md:text-[19px]">
-        בנו מסלול משלכם: <b>בחרו {range} אירועים.</b> אחרי הראשון נסמן כל אירוע - מתאים, או למה לא.
-      </p>
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+      <div className="hidden min-w-0 flex-col gap-4 lg:flex">
+        <p className="m-0 text-lg leading-snug md:text-[19px]">
+          בנו מסלול משלכם: <b>בחרו {range} אירועים.</b> אחרי הראשון נסמן כל אירוע - מתאים, או למה לא.
+        </p>
 
-      <Tray />
-      <DayPlanner />
+        <CatalogFilters filter={filter} onChange={update} months={months} cities={cities} wrapMonths />
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
-          <input
-            type="search"
-            value={filter.query}
-            onChange={(e) => update({ query: e.target.value })}
-            placeholder="לאן טסים? אמן, קבוצה או עיר..."
-            aria-label="חיפוש אירוע - אמן, קבוצה או עיר"
-            autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent px-2 text-base text-foreground placeholder:text-[15px] placeholder:font-medium placeholder:text-muted-foreground focus:outline-none"
-          />
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" aria-hidden>
-            <Search className="size-5" />
-          </span>
-        </div>
-
-        {months.length > 1 && (
-          <div
-            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0"
-            role="group"
-            aria-label="חודש"
-          >
-            <button type="button" onClick={() => update({ month: "" })} aria-pressed={filter.month === ""} className={chip(filter.month === "")}>
-              כל התאריכים
-            </button>
-            {months.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => update({ month: filter.month === m ? "" : m })}
-                aria-pressed={filter.month === m}
-                className={chip(filter.month === m)}
-              >
-                {monthLabel(m)}
-              </button>
-            ))}
-          </div>
+        {full && (
+          // Said once here, not on every card.
+          <p role="status" className="m-0 rounded-2xl border-[1.5px] border-dashed border-border p-4 text-center text-sm font-semibold text-muted-foreground">
+            המסלול מלא - הסירו אירוע כדי להחליף
+          </p>
         )}
 
-        <KindTabs value={filter.kind} onChange={(kind) => update({ kind })} />
+        {items.length ? (
+          <div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              {items.slice(0, visible).map((item) => (
+                <EventPick key={item.event.id} item={item} labelled={state.route.length > 0} full={full} />
+              ))}
+            </div>
+            <ShowMore hidden={items.length - visible} onClick={() => setVisible((v) => v + LIST_PAGE)} />
+          </div>
+        ) : (
+          <EmptyState
+            title="לא מצאנו אירועים לחיפוש הזה"
+            description="נסו שם אחר, חודש אחר, עיר אחרת או את כל האירועים."
+            action={
+              <button
+                type="button"
+                onClick={() => update(NO_FILTER)}
+                className="h-11 rounded-xl border border-border bg-card px-5 text-sm font-bold text-foreground"
+              >
+                נקה סינון
+              </button>
+            }
+          />
+        )}
       </div>
 
-      {full && (
-        // Said once here, not on every card.
-        <p role="status" className="m-0 rounded-2xl border-[1.5px] border-dashed border-border p-4 text-center text-sm font-semibold text-muted-foreground">
-          המסלול מלא - הסירו אירוע כדי להחליף
-        </p>
-      )}
-
-      {items.length ? (
-        <div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {items.slice(0, visible).map((item) => (
-              <EventPick key={item.event.id} item={item} labelled={state.route.length > 0} full={full} />
-            ))}
-          </div>
-          <ShowMore hidden={items.length - visible} onClick={() => setVisible((v) => v + LIST_PAGE)} />
-        </div>
-      ) : (
-        <EmptyState
-          title="לא מצאנו אירועים לחיפוש הזה"
-          description="נסו שם אחר, חודש אחר או את כל האירועים."
-          action={
-            <button
-              type="button"
-              onClick={() => update(NO_FILTER)}
-              className="h-11 rounded-xl border border-border bg-card px-5 text-sm font-bold text-foreground"
-            >
-              נקה סינון
-            </button>
-          }
-        />
-      )}
+      {/* The trip: first on a phone (the only thing there), the inline-end column from 1024px. */}
+      <TripPanel className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto myt-scroll" />
     </div>
   );
 }

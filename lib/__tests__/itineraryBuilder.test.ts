@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
 import {
+  catalogCities,
   catalogItems,
   catalogMonths,
   dayMonth,
@@ -83,22 +84,45 @@ describe("the self-build catalog", () => {
   });
 
   it("filters by text (name or city), month and kind", () => {
-    expect(filterCatalog(catalog, { query: "לונדון", month: "", kind: "all" }).map((e) => e.id)).toEqual([702, 656, 699]);
-    expect(filterCatalog(catalog, { query: "", month: "2027-06", kind: "all" }).map((e) => e.id)).toEqual([769]);
-    expect(filterCatalog(catalog, { query: "", month: "", kind: "music" }).map((e) => e.id)).toEqual([618, 896, 1097]);
-    expect(filterCatalog(catalog, { query: "  גרייסי ", month: "", kind: "all" }).map((e) => e.id)).toEqual([896, 1097]);
+    expect(filterCatalog(catalog, { query: "לונדון", month: "", kind: "all", city: "" }).map((e) => e.id)).toEqual([702, 656, 699]);
+    expect(filterCatalog(catalog, { query: "", month: "2027-06", kind: "all", city: "" }).map((e) => e.id)).toEqual([769]);
+    expect(filterCatalog(catalog, { query: "", month: "", kind: "music", city: "" }).map((e) => e.id)).toEqual([618, 896, 1097]);
+    expect(filterCatalog(catalog, { query: "  גרייסי ", month: "", kind: "all", city: "" }).map((e) => e.id)).toEqual([896, 1097]);
   });
 
   it("every word of a query must match - each in any field, English names too", () => {
     const badParis = { ...ev(1500, "באד באני", "2027-05-20", PARIS), name_english: "Bad Bunny" } as unknown as Event;
     const badLondon = { ...ev(1501, "באד באני", "2027-05-22", LONDON), name_english: "Bad Bunny" } as unknown as Event;
     const list = [...catalog, badParis, badLondon];
-    const ids = (query: string) => filterCatalog(list, { query, month: "", kind: "all" }).map((e) => e.id);
+    const ids = (query: string) => filterCatalog(list, { query, month: "", kind: "all", city: "" }).map((e) => e.id);
     expect(ids("באד באני פריז")).toEqual([1500]);
     expect(ids("באד באני")).toEqual([1500, 1501]);
     expect(ids("bad bunny london")).toEqual([]); // the city is stored in Hebrew
     expect(ids("BAD   bunny")).toEqual([1500, 1501]);
     expect(ids("סלין לונדון")).toEqual([]);
+  });
+
+  it("catalogCities lists each city once", () => {
+    // Hebrew order; London has three events, Paris two.
+    expect(catalogCities(catalog)).toEqual(["אמסטרדם", "ברלין", "לונדון", "מדריד", "פריז"]);
+    expect(catalogCities([])).toEqual([]);
+  });
+
+  it("filterCatalog keeps only the chosen city", () => {
+    expect(filterCatalog(catalog, { query: "", month: "", kind: "all", city: "לונדון" }).map((e) => e.id)).toEqual([
+      702, 656, 699,
+    ]);
+    // The other filters still apply: Paris has football only in June.
+    expect(
+      filterCatalog(catalog, { query: "", month: "2027-05", kind: "football", city: "פריז" }).map((e) => e.id),
+    ).toEqual([]);
+    expect(filterCatalog(catalog, { query: "", month: "", kind: "music", city: "פריז" }).map((e) => e.id)).toEqual([618]);
+  });
+
+  it("an empty city keeps every event", () => {
+    expect(filterCatalog(catalog, { query: "", month: "", kind: "all", city: "" }).map((e) => e.id)).toEqual(
+      catalog.map((e) => e.id),
+    );
   });
 
   it("an empty route sorts by date and labels nothing", () => {
