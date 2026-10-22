@@ -111,7 +111,12 @@ export function useTripHold(): {
         // An earlier refusal's notice ("המחיר עודכן") is over: the trip is held.
         latest.current.countPriceChange(false, key);
         latest.current.dismissNotice();
-        latest.current.markHeld({ group: json.group, ids: json.ids, reference: json.reference ?? null });
+        latest.current.markHeld({
+          group: json.group,
+          ids: json.ids,
+          reference: json.reference ?? null,
+          ...(typeof json.emailed === "boolean" ? { emailed: json.emailed } : {}),
+        });
         return;
       }
       const now = latest.current;

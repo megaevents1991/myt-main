@@ -837,8 +837,13 @@ export function buildGroupRows(sub: TripSubmission, route: Event[], ctx: GroupRo
 // The browser's side
 // ---------------------------------------------------------------------------------------------
 
-/** What a hold answers: the group, its reservation ids (seq order), seq 1's booking reference. */
-export type HeldAnswer = { group: string; ids: number[]; reference: string | null };
+/**
+ * What a hold answers: the group, its reservation ids (seq order), seq 1's booking reference, and
+ * whether THIS answer sent the customer's email (`emailed`: true = sent, false = not sent or it
+ * failed; absent = unknown - the group was written by an earlier request, a retry's answer). The
+ * confirmation says "sent to your email" only on true.
+ */
+export type HeldAnswer = { group: string; ids: number[]; reference: string | null; emailed?: boolean };
 
 export function isHeldAnswer(v: unknown): v is HeldAnswer {
   return (
@@ -847,7 +852,8 @@ export function isHeldAnswer(v: unknown): v is HeldAnswer {
     Array.isArray(v.ids) &&
     v.ids.length > 0 &&
     v.ids.every((id) => typeof id === "number") &&
-    (v.reference === null || v.reference === undefined || typeof v.reference === "string")
+    (v.reference === null || v.reference === undefined || typeof v.reference === "string") &&
+    (v.emailed === undefined || typeof v.emailed === "boolean")
   );
 }
 

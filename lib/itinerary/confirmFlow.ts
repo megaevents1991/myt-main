@@ -259,10 +259,13 @@ export async function confirmTrip(raw: unknown, deps: ConfirmDeps): Promise<Conf
     }
   }
 
+  // Whether the customer's email went out - the confirmation claims it only then.
+  let emailed = false;
   try {
     const mail = tripMailInput({ sub: trusted, route, rows, ids, references, price, rateIls });
     // The hold email promises a call back; a pay-now group gets its email from the payment (phase 3).
     const sent = await deps.sendEmails(mail, { customer: status === "24Save" });
+    emailed = sent.customer === true;
     if (sent.customer) await deps.markEmailed(ids);
   } catch (e) {
     log.error(`${LOG} group ${sub.group}: emails failed (non-fatal):`, e);
@@ -280,5 +283,5 @@ export async function confirmTrip(raw: unknown, deps: ConfirmDeps): Promise<Conf
     log.warn(`${LOG} group ${sub.group}: analytics failed (non-fatal):`, e);
   }
 
-  return { status: 200, body: { group: sub.group, ids, reference: references[0] ?? null } };
+  return { status: 200, body: { group: sub.group, ids, reference: references[0] ?? null, emailed } };
 }

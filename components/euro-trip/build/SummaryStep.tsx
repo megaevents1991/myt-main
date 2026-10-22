@@ -383,9 +383,11 @@ function HoldConfirmation({ held }: { held: HeldAnswer }) {
           </>
         )}
       </p>
-      {travellers.contact.email && (
+      {/* Only when the server says the customer's email went out (`emailed`); otherwise - not sent,
+          failed, or a retry's answer that cannot tell - the promise above is all that is said. */}
+      {held.emailed === true && travellers.contact.email && (
         <p className="m-0 text-sm text-muted-foreground">
-          פרטי הבקשה נשלחים גם למייל{" "}
+          פרטי הבקשה נשלחו גם למייל{" "}
           <bdi dir="ltr" className="text-foreground">
             {travellers.contact.email.trim()}
           </bdi>

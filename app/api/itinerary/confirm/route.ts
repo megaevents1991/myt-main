@@ -83,7 +83,7 @@ async function finishRows(rows: GroupRowInsert[], ids: number[]): Promise<(strin
  * POST /api/itinerary/confirm - "Build Your Euro Trip": the trip's 24-hour hold. ONE request
  * writes one `reservations` row per event in ONE bulk insert, tied by the client's
  * `itinerary_group` (a uuid v4 that is also the idempotency key). Answers `{ group, ids,
- * reference }`; a refusal is `{ error: <code>, message, step?, eventId?, stayKey? }`
+ * reference, emailed? }` (`emailed`: did this answer send the customer's email); a refusal is `{ error: <code>, message, step?, eventId?, stayKey? }`
  * (lib/itinerary/confirm.ts). The steps and their order: lib/itinerary/confirmFlow.ts - this
  * file only wires the database, the suppliers, the mail and the analytics into them.
  *

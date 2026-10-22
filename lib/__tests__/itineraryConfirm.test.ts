@@ -11,6 +11,7 @@ import {
   escalatePriceChange,
   holdAttempt,
   holdSignature,
+  isHeldAnswer,
   PRICE_STILL_CHANGING,
   withRowEids,
   tripKey,
@@ -953,7 +954,7 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
   it("a fresh hold: checks, ONE insert, then references, mails, analytics - in that order", async () => {
     const { deps, calls, inserted } = setup();
     const answer = await confirmTrip(wire(full), deps);
-    expect(answer).toEqual({ status: 200, body: { group: GROUP, ids: [500, 501], reference: "ME21500" } });
+    expect(answer).toEqual({ status: 200, body: { group: GROUP, ids: [500, 501], reference: "ME21500", emailed: true } });
     expect(calls).toEqual(["find", "event 618", "event 702", "validate", "validate", "insert 2", "finish", "mail customer=true", "emailed", "track"]);
     expect(inserted[0].map((r) => r.status)).toEqual(["24Save", "24Save"]);
   });
@@ -1039,6 +1040,31 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
     const b = setup({ vercelEnv: "production" });
     expect(await confirmTrip(wire(full), b.deps)).toMatchObject({ status: 404 });
     expect(b.calls).toEqual([]);
+  });
+
+  it("m9 - the answer says whether the customer's email went out: not sent or failed = false", async () => {
+    const notSent = setup({ sendEmails: async () => ({ ops: true, customer: false }) });
+    expect(await confirmTrip(wire(full), notSent.deps)).toMatchObject({ status: 200, body: { emailed: false } });
+    expect(notSent.calls).not.toContain("emailed");
+    const failed = setup({
+      sendEmails: async () => {
+        throw new Error("smtp down");
+      },
+    });
+    expect(await confirmTrip(wire(full), failed.deps)).toMatchObject({ status: 200, body: { emailed: false } });
+  });
+
+  it("m9 - a retry's answer (the group already written) cannot tell: no emailed field", async () => {
+    const { deps } = setup();
+    deps.groupDb = {
+      insert: async () => {
+        throw new Error("must not insert");
+      },
+      find: async () => ({ data: [{ id: 8, itinerary_seq: 1, booking_reference: "ME218" }], error: null }),
+    };
+    const answer = await confirmTrip(wire(full), deps);
+    expect(answer.status).toBe(200);
+    expect("emailed" in answer.body).toBe(false);
   });
 
   it("m1 - a crafted payNow with payments switched on still writes 24Save rows and sends the hold email", async () => {
@@ -1303,6 +1329,17 @@ describe("round 5 - tripKey / notePriceAnswer", () => {
   it("back after the draft's 30 minutes: the first again", () => {
     expect(notePriceAnswer(first, key, true, T0 + 30 * MIN).count).toBe(2);
     expect(notePriceAnswer(first, key, true, T0 + 31 * MIN).count).toBe(1);
+  });
+});
+
+describe("m9 - isHeldAnswer reads the email status", () => {
+  it("takes emailed true / false / absent, refuses anything else", () => {
+    const base = { group: GROUP, ids: [1, 2], reference: "ME211" };
+    expect(isHeldAnswer(base)).toBe(true);
+    expect(isHeldAnswer({ ...base, emailed: true })).toBe(true);
+    expect(isHeldAnswer({ ...base, emailed: false })).toBe(true);
+    expect(isHeldAnswer({ ...base, emailed: "yes" })).toBe(false);
+    expect(isHeldAnswer({ ...base, emailed: 1 })).toBe(false);
   });
 });
 
