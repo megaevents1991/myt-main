@@ -93,6 +93,3 @@ export function ShowMore({ hidden, onClick }: { hidden: number; onClick: () => v
 
 /** "לילה אחד" / "N לילות". */
 export const nightsLabel = (n: number): string => (n === 1 ? "לילה אחד" : `${n} לילות`);
-
-/** "יום אחד" / "N ימים". */
-export const daysLabel = (n: number): string => (n === 1 ? "יום אחד" : `${n} ימים`);

@@ -179,8 +179,13 @@ const shapeOf = (e: Event): string => {
 
 export function itineraryReducer(state: ItineraryState, action: ItineraryAction): ItineraryState {
   switch (action.type) {
-    case "load":
-      return { ...withRoute({ ...state, route: [], step: "build" }, action.route), mode: action.mode };
+    case "load": {
+      // A ready trip (every event fitted, two or more) opens straight on event 1's tickets, the
+      // order flow's first step; the planner (custom) and anything shorter open on build.
+      const ready = action.mode === "route" && action.route.length >= MIN_TRIP_EVENTS;
+      const step: ItineraryStep = ready ? "tickets" : "build";
+      return { ...withRoute({ ...state, route: [], step }, action.route), mode: action.mode };
+    }
 
     case "addEvent": {
       if (state.route.some((e) => e.id === action.event.id)) return state;

@@ -141,7 +141,7 @@ export const Header = ({ categories = [] }: { categories?: NavLink[] }) => {
   const headerRef = useRef<HTMLElement>(null);
   // Inside the order flow the Stepper is the only chrome - hide the global
   // header so users can't bounce back to the homepage mid-booking.
-  const hidden = pathname?.startsWith("/order");
+  const hidden = pathname?.startsWith("/order") || pathname?.startsWith("/euro-trip/build");
 
   const isActive = (href: string) =>
     pathname === href || (pathname?.startsWith(href + "/") ?? false);

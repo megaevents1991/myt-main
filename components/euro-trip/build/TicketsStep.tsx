@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Check, CircleAlert, Loader2 } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { CircleAlert, Loader2 } from "lucide-react";
 
 import { loadTripEvents } from "@/app/euro-trip/build/actions";
 import { OrderContext } from "@/app/app.context";
@@ -9,7 +9,6 @@ import { TicketSelection } from "@/app/order/TicketSelection";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event } from "@/lib/app.types";
 import type { HeldTicket } from "@/lib/itinerary/draft";
-import { eventCityName } from "@/lib/events/lodging";
 import {
   MAX_TRIP_LOAD,
   asFullRow,
@@ -19,18 +18,12 @@ import {
   ticketFromStep,
   ticketReady,
 } from "@/lib/itinerary/adapter";
-import { dayMonth } from "@/lib/itinerary/builder";
-import { eventDay } from "@/lib/itinerary/geo";
-import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
 import { adapterForEvent, type TicketStepCallbacks } from "./orderContextAdapter";
-import { TripEventArt } from "./TripEventArt";
 import { PanelTitle } from "./parts";
 
 /** The same words the route link uses for an event that left the catalog. */
 const GONE = "האירוע כבר לא זמין";
-const PANEL_ID = "trip-tickets-panel";
-const tabId = (eventId: number) => `trip-tickets-tab-${eventId}`;
 
 /**
  * The route's events still hold the builder's slim catalog rows (lib/itinerary/slim.ts);
@@ -94,8 +87,8 @@ function useFullRows(): { failed: boolean; retry: () => void } {
 /**
  * One event's ticket step: the order flow's own TicketSelection, unchanged, reading this
  * event's slice of the trip through an OrderContext adapter. Mounted per event AND party size
- * (keyed `id:pax`), so a tab opens like the order page's step 1 does - on the ticket it held,
- * else the cheapest - and so does the tab whose +/- changed the party: it keeps the category
+ * (keyed `id:pax`), so an event's step opens like the order page's step 1 does - on the ticket it held,
+ * else the cheapest - and so does the step whose +/- changed the party: it keeps the category
  * the customer was on while that category sells the new size.
  */
 function EventTicketPane({ event }: { event: Event }) {
@@ -110,7 +103,7 @@ function EventTicketPane({ event }: { event: Event }) {
   useLayoutEffect(() => {
     latest.current = api;
   });
-  // The pick this tab opened on, read once (ticketAdapterFields' `held`): the trip's ticket, else
+  // The pick this step opened on, read once (ticketAdapterFields' `held`): the trip's ticket, else
   // the category a refresh brought back (the draft - no price: the step prices it again).
   const [held] = useState<HeldTicket | undefined>(() => ticket ?? api.heldTickets[id]);
 
@@ -140,7 +133,12 @@ function EventTicketPane({ event }: { event: Event }) {
   );
 
   return (
+    // The live step draws the event's band (EventDataHeader) at its top; the flow already draws
+    // that band right under the Stepper (ItineraryFlow, with the way back to the planner), so the
+    // copy in here is hidden - one event header (and one <h1>) per screen. CSS only: the live
+    // component is untouched.
     <div
+      className="[&_.w-screen.bg-muted]:hidden"
       onClickCapture={() => {
         touched.current = true;
       }}
@@ -184,99 +182,14 @@ function PaneSkeleton() {
   );
 }
 
-/** The route's events as tabs: art, name, "DD/MM · city", and a check once its ticket is picked. */
-function EventTabs({
-  route,
-  active,
-  isDone,
-  onSelect,
-}: {
-  route: Event[];
-  active: number;
-  isDone: (e: Event) => boolean;
-  onSelect: (i: number) => void;
-}) {
-  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  // The tab pattern's keys, manual activation: the arrows (RTL: the next tab is the one to
-  // the left), Home and End move the focus only - opening a tab mounts a whole ticket step
-  // with its supplier calls, so that waits for Enter / Space (the button's own click).
-  const onKeyDown = (ev: KeyboardEvent<HTMLButtonElement>, i: number) => {
-    const n = route.length;
-    const to =
-      ev.key === "ArrowLeft"
-        ? (i + 1) % n
-        : ev.key === "ArrowRight"
-          ? (i - 1 + n) % n
-          : ev.key === "Home"
-            ? 0
-            : ev.key === "End"
-              ? n - 1
-              : -1;
-    if (to < 0) return;
-    ev.preventDefault();
-    tabs.current[to]?.focus();
-  };
-
-  return (
-    <div role="tablist" aria-label="האירועים בטיול" className="flex gap-2">
-      {route.map((e, i) => {
-        const selected = i === active;
-        const done = isDone(e);
-        return (
-          <button
-            key={e.id}
-            ref={(el) => {
-              tabs.current[i] = el;
-            }}
-            type="button"
-            role="tab"
-            id={tabId(e.id)}
-            aria-selected={selected}
-            aria-controls={PANEL_ID}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onSelect(i)}
-            onKeyDown={(ev) => onKeyDown(ev, i)}
-            className={cn(
-              "relative flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-xl border bg-card px-2 py-2.5 text-center shadow-sm transition-colors sm:flex-row sm:gap-3 sm:px-3 sm:text-start",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow",
-              selected
-                ? "border-forest ring-1 ring-forest dark:border-glow dark:ring-glow"
-                : "border-border hover:bg-foreground/[0.03]",
-            )}
-          >
-            <TripEventArt
-              event={e}
-              sizes="48px"
-              className="size-10 shrink-0 rounded-full border-2 border-white shadow-sm md:size-12"
-            />
-            <span className="flex w-full min-w-0 flex-col">
-              <span className="truncate text-sm font-bold leading-tight">{e.name}</span>
-              <span className="truncate text-xs tabular-nums text-muted-foreground">
-                {dayMonth(eventDay(e))} · {eventCityName(e)}
-              </span>
-            </span>
-            {done && (
-              <span className="absolute end-1.5 top-1.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-forest text-white sm:static sm:size-6 dark:bg-glow dark:text-black">
-                <Check className="size-3.5 sm:size-4" aria-hidden />
-                <span className="sr-only">כרטיסים נבחרו</span>
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
- * "Build Your Euro Trip" - the tickets step: one tab per event, each the live order flow's
- * ticket step (seat map, categories, live supplier prices) for that event. One quantity for
- * the whole trip: the counter on any card is the trip's travellers (`setPax`, which also
- * clears a flight and hotels searched for the old party).
+ * "Build Your Euro Trip" - the tickets step: the open event's (`state.activeEvent` - the stepper's
+ * "אירוע k" and the continue bar move it) live order flow ticket step (seat map, categories, live
+ * supplier prices). One quantity for the whole trip: the counter on any card is the trip's
+ * travellers (`setPax`, which also clears a flight and hotels searched for the old party).
  */
 export function TicketsStep() {
-  const { state, setActiveEvent } = useItinerary();
+  const { state } = useItinerary();
   const { route, pax, tickets } = state;
   const { failed, retry } = useFullRows();
 
@@ -298,8 +211,7 @@ export function TicketsStep() {
           · {doneCount} מתוך {route.length} מוכנים
         </p>
       </div>
-      <EventTabs route={route} active={active} isDone={isDone} onSelect={setActiveEvent} />
-      <div role="tabpanel" id={PANEL_ID} aria-labelledby={tabId(event.id)}>
+      <div>
         {isFullRow(event) ? (
           <EventTicketPane key={`${event.id}:${pax}`} event={event} />
         ) : failed ? (

@@ -29,6 +29,7 @@ import { describeCompat } from "@/lib/itinerary/rules";
 import type { ItinerarySettings } from "@/lib/itinerary/settings";
 import {
   INITIAL_ITINERARY_STATE,
+  MIN_TRIP_EVENTS,
   fitRoute,
   itineraryReducer,
   type ItineraryMode,
@@ -151,7 +152,7 @@ export function ItineraryProvider({
   // Read ?events= once. Called by `useItineraryUrl` from inside the page's Suspense boundary:
   // run from here (outside it) the update reached the flow before it hydrated - a mismatch.
   // Exactly once per mount: the layout effect runs again on a Suspense re-reveal or a Fast
-  // Refresh, and a second `load` would send a customer mid-trip back to the build step.
+  // Refresh, and a second `load` would send a customer mid-trip back to the start.
   const urlRead = useRef(false);
   const applyUrl = useCallback(() => {
     if (urlRead.current) return;
@@ -159,7 +160,11 @@ export function ItineraryProvider({
     const ids = parseEventsParam(new URLSearchParams(window.location.search).get(EVENTS_PARAM), settings.maxEvents);
     const { route: found, dropped } = reconcileRoute(ids, byId);
     const { route, refused } = fitRoute(found, settings);
-    if (ids.length) dispatch({ type: "load", route, mode: route.length ? "route" : "custom" });
+    // A ready trip opens on event 1's tickets only when the link loads WHOLE: every event still
+    // in the catalog, none refused by the rules, two or more. Anything less opens the planner
+    // (custom) with what fits, and the notice below names what was dropped.
+    const whole = !dropped.length && !refused.length && route.length >= MIN_TRIP_EVENTS;
+    if (ids.length) dispatch({ type: "load", route, mode: whole ? "route" : "custom" });
     // The trip this tab held before a refresh (lib/itinerary/draft.ts) - only when this page was
     // reloaded or reached by back / forward (a fresh visit starts clean), and only for the trip
     // the URL names: a link to another route wins. Either way the next save replaces the old

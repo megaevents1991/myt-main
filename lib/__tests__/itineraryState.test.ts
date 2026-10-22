@@ -262,11 +262,39 @@ describe("tickets, flight, hotels, steps", () => {
 });
 
 describe("load", () => {
-  it("opens a route from the URL on the build step with default dates", () => {
+  it("opens a route from the URL with default dates", () => {
     const s = reduce(INITIAL_ITINERARY_STATE, { type: "load", route: [chelsea, celine], mode: "route" });
     expect(s.mode).toBe("route");
     expect(s.route.map((e) => e.id)).toEqual([618, 702]);
     expect(s.dates.depart).toBe("2027-05-11");
+  });
+
+  it("load in route mode with two events opens the tickets of event 1", () => {
+    const s = reduce(INITIAL_ITINERARY_STATE, { type: "load", route: [chelsea, celine], mode: "route" });
+    expect(s.step).toBe("tickets");
+    expect(s.activeEvent).toBe(0);
+  });
+
+  it("load in custom mode stays on build", () => {
+    const s = reduce(INITIAL_ITINERARY_STATE, { type: "load", route: [chelsea, celine], mode: "custom" });
+    expect(s.mode).toBe("custom");
+    expect(s.step).toBe("build");
+    expect(s.route.map((e) => e.id)).toEqual([618, 702]);
+  });
+
+  it("load in route mode with one event stays on build", () => {
+    const s = reduce(INITIAL_ITINERARY_STATE, { type: "load", route: [celine], mode: "route" });
+    expect(s.step).toBe("build");
+    expect(s.route.map((e) => e.id)).toEqual([618]);
+  });
+
+  it("a load over a trip already in the flow starts its tickets again from event 1", () => {
+    const deep = reduce(parisLondon(), { type: "goStep", step: "hotels" });
+    const s = reduce(deep, { type: "load", route: [chelsea, celine], mode: "custom" });
+    expect(s.step).toBe("build");
+    const r = reduce({ ...deep, activeEvent: 1 }, { type: "load", route: [chelsea, celine], mode: "route" });
+    expect(r.step).toBe("tickets");
+    expect(r.activeEvent).toBe(0);
   });
 });
 

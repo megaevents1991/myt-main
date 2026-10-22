@@ -12,11 +12,37 @@ import { nightsLabel } from "./parts";
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
+ * "עריכת המסלול" - a quiet link back to the planner with the same events: the trip leaves the
+ * ready-trip flow for good (mode `custom`), its picks stay. Nothing once the trip is held (it is
+ * with sales - nothing left to edit on this page).
+ */
+export function EditRouteLink({ className }: { className?: string }) {
+  const { setMode, goStep, held } = useItinerary();
+  if (held) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setMode("custom");
+        goStep("build");
+      }}
+      className={cn(
+        "inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 dark:text-glow dark:decoration-glow/40",
+        className,
+      )}
+    >
+      עריכת המסלול
+      <ChevronLeft className="size-4" aria-hidden />
+    </button>
+  );
+}
+
+/**
  * The trip's header, in the order steps' header band (EventDataHeader): the events' round
  * art overlapping, the cities as the title, then dates · events · nights.
  */
 export function TripHeader() {
-  const { state, settings, goStep, held } = useItinerary();
+  const { state, settings, held } = useItinerary();
   const { route, dates, step } = state;
   const datesValid = route.length > 0 && DAY_RE.test(dates.depart) && DAY_RE.test(dates.ret);
   const count = route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`;
@@ -63,14 +89,7 @@ export function TripHeader() {
           </h1>
           {/* Held: the trip is with sales - nothing left to edit on this page. */}
           {held ? null : step !== "build" ? (
-            <button
-              type="button"
-              onClick={() => goStep("build")}
-              className="mt-1 inline-flex w-fit items-center gap-0.5 text-sm font-semibold text-forest underline decoration-forest/40 underline-offset-2 transition-opacity hover:opacity-80 dark:text-glow dark:decoration-glow/40"
-            >
-              עריכת המסלול
-              <ChevronLeft className="size-4" aria-hidden />
-            </button>
+            <EditRouteLink className="mt-1" />
           ) : (
             <span className="mt-1 text-sm font-semibold text-muted-foreground">
               עד {settings.maxEvents} אירועים · כדורגל והופעות במיקס

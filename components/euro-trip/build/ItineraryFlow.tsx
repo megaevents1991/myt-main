@@ -6,25 +6,28 @@ import Link from "next/link";
 import { AlarmClockCheck, X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
+import { EventDataHeader } from "@/components/ui/EventDataHeader";
+import { Stepper } from "@/components/ui/Stepper";
 import { ticketReady } from "@/lib/itinerary/adapter";
 import { stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
+import { flowSteps, stepForIndex, stepperIndex } from "@/lib/itinerary/flowSteps";
 import { PRIOR_HOLD_NOTICE } from "@/lib/itinerary/heldMarker";
 import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
-import { RouteStep } from "./RouteStep";
 import { SelfBuild } from "./SelfBuild";
 import { StepSkeleton } from "./StepSkeleton";
-import { TripHeader } from "./TripHeader";
+import { EditRouteLink, TripHeader } from "./TripHeader";
 
-// The builder lands on the route / self-build step, and most visits end there: the later steps
-// bring the order flow's live ticket step (seat maps), the flight cards, the live hotel step
-// (Mantine date pickers, the hotel search) and the summary - ~350 kB the first load does not
-// need. Each loads on demand (and is warmed one step ahead: `prefetchStep`). `ssr: false`: the
-// server draws the build step only. Defined HERE, at module level - a dynamic made inside a
-// component would be a new component type on every render and remount the step each time.
+// The builder lands on the planner (a ready trip: on its first event's tickets), and most planner
+// visits end there: the later steps bring the order flow's live ticket step (seat maps), the
+// flight cards, the live hotel step (Mantine date pickers, the hotel search) and the summary -
+// ~350 kB the first load does not need. Each loads on demand (and is warmed one step ahead:
+// `prefetchStep`). `ssr: false`: the server draws the build step only. Defined HERE, at module
+// level - a dynamic made inside a component would be a new component type on every render and
+// remount the step each time.
 const TicketsStep = dynamic(() => import("./TicketsStep").then((m) => m.TicketsStep), {
   ssr: false,
   loading: () => <StepSkeleton label="טוענים את הכרטיסים..." side />,
@@ -75,7 +78,7 @@ function prefetchStep(step: ItineraryStep): Promise<unknown> {
 function StepBody({ state }: { state: ItineraryState }) {
   switch (state.step) {
     case "build":
-      return state.mode === "route" ? <RouteStep /> : <SelfBuild />;
+      return <SelfBuild />;
     case "tickets":
       return <TicketsStep />;
     case "flights":
@@ -101,12 +104,16 @@ const nextOpenStay = (active: number, count: number, ready: (i: number) => boole
 };
 
 /**
- * "Build Your Euro Trip" - the flow: the trip header, the step on screen, and the order flow's
- * own continue bar (OrderContinueBar) with the trip's slots and its price per traveller.
+ * "Build Your Euro Trip" - the flow, shaped as the order flow: the live Stepper on top (the page's
+ * top bar - the global header hides here), one ticket step per event, then flights, hotels and
+ * the summary; under it the header (the open event's band on a ticket step, the trip's on the
+ * others), the step on screen, and the order flow's own continue bar (OrderContinueBar) with the
+ * trip's slots and its price per traveller.
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveStay, priorHold } = useItinerary();
+  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveStay, priorHold, held } =
+    useItinerary();
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
@@ -261,9 +268,39 @@ export function ItineraryFlow() {
 
   const solo = route.length === 1 ? route[0] : null;
 
+  // The stepper goes BACK only (the live rule): a click on a step past the open one does nothing.
+  // "אירוע k" reopens that event's tickets; nothing a step holds is cleared by the visit (goStep
+  // and setActiveEvent move the view only). A held trip is with sales: nothing to walk back to.
+  const current = stepperIndex(state);
+  const onStepperClick = (index0: number) => {
+    const target = stepForIndex(index0, route);
+    if (!target || held || index0 + 1 >= current) return;
+    if (target.step === "tickets") setActiveEvent(target.activeEvent);
+    goStep(target.step);
+  };
+
   return (
     <>
-      <TripHeader />
+      <Stepper
+        currentStep={current}
+        steps={flowSteps(route)}
+        hideSteps={step === "build"}
+        onStepperClick={onStepperClick}
+      />
+      {step === "tickets" && openEvent ? (
+        // The order flow's event band (TicketSelection's own markup), for the open event - with a
+        // quiet way back to the planner: a ready trip opens here, so this is its first screen.
+        <div className="flex flex-col items-center">
+          <div dir="rtl" className="w-full bg-muted px-4 py-2 lg:p-4">
+            <div className="mx-auto flex w-full max-w-7xl flex-col justify-between gap-2 px-2 lg:flex-row lg:gap-2 lg:px-6">
+              <EventDataHeader event={openEvent} />
+              <EditRouteLink className="self-end lg:self-center" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <TripHeader />
+      )}
       <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-4 lg:px-6" dir="rtl">
         {/* This tab held this very trip in the last 24 hours (a refresh after the hold reopened the
             route): said quietly - the customer may still go on. */}
