@@ -15,6 +15,7 @@ import { PRIOR_HOLD_NOTICE } from "@/lib/itinerary/heldMarker";
 import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
+import { cn } from "@/lib/utils";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { stayCardId } from "./parts";
 import { SelfBuild } from "./SelfBuild";
@@ -329,9 +330,15 @@ export function ItineraryFlow() {
         {hotelsMounted && <HotelsPane shown={step === "hotels"} onNoHotel={onNoHotel} />}
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
-          Not on an empty builder: there is no trip to price yet (the bar would say $0). */}
+          Not on an empty builder: there is no trip to price yet (the bar would say $0). On the
+          planner it is the phone's: from lg the side panel (TripPanel) carries the trip's CTA. */}
       {step !== "summary" && route.length > 0 && (
-        <div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur">
+        <div
+          className={cn(
+            "sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur",
+            step === "build" && "lg:hidden",
+          )}
+        >
           <OrderContinueBar
             slots={slots}
             total={total}
