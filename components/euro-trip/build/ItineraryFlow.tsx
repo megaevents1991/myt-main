@@ -6,7 +6,6 @@ import Link from "next/link";
 import { AlarmClockCheck, X } from "lucide-react";
 
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
-import { EventDataHeader } from "@/components/ui/EventDataHeader";
 import { Stepper } from "@/components/ui/Stepper";
 import { ticketReady } from "@/lib/itinerary/adapter";
 import { stayCityName } from "@/lib/itinerary/builder";
@@ -106,8 +105,8 @@ const nextOpenStay = (active: number, count: number, ready: (i: number) => boole
 /**
  * "Build Your Euro Trip" - the flow, shaped as the order flow: the live Stepper on top (the page's
  * top bar - the global header hides here), one ticket step per event, then flights, hotels and
- * the summary; under it the header (the open event's band on a ticket step, the trip's on the
- * others), the step on screen, and the order flow's own continue bar (OrderContinueBar) with the
+ * the summary; under it the trip's header (on a ticket step only the way back to the planner -
+ * the live step draws the event's own band), the step on screen, and the order flow's own continue bar (OrderContinueBar) with the
  * trip's slots and its price per traveller.
  */
 export function ItineraryFlow() {
@@ -287,16 +286,12 @@ export function ItineraryFlow() {
         hideSteps={step === "build"}
         onStepperClick={onStepperClick}
       />
-      {step === "tickets" && openEvent ? (
-        // The order flow's event band (TicketSelection's own markup), for the open event - with a
-        // quiet way back to the planner: a ready trip opens here, so this is its first screen.
-        <div className="flex flex-col items-center">
-          <div dir="rtl" className="w-full bg-muted px-4 py-2 lg:p-4">
-            <div className="mx-auto flex w-full max-w-7xl flex-col justify-between gap-2 px-2 lg:flex-row lg:gap-2 lg:px-6">
-              <EventDataHeader event={openEvent} />
-              <EditRouteLink className="self-end lg:self-center" />
-            </div>
-          </div>
+      {step === "tickets" ? (
+        // The live ticket step draws the open event's band itself (EventDataHeader, from the
+        // adapter's event), exactly as on /order - so no trip header here, only a quiet way back to
+        // the planner in a row of its own: a ready trip opens here, this is its first screen.
+        <div dir="rtl" className="mx-auto flex w-full max-w-7xl justify-end px-4 pt-3 lg:px-6">
+          <EditRouteLink />
         </div>
       ) : (
         <TripHeader />

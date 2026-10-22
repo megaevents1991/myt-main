@@ -133,12 +133,7 @@ function EventTicketPane({ event }: { event: Event }) {
   );
 
   return (
-    // The live step draws the event's band (EventDataHeader) at its top; the flow already draws
-    // that band right under the Stepper (ItineraryFlow, with the way back to the planner), so the
-    // copy in here is hidden - one event header (and one <h1>) per screen. CSS only: the live
-    // component is untouched.
     <div
-      className="[&_.w-screen.bg-muted]:hidden"
       onClickCapture={() => {
         touched.current = true;
       }}
