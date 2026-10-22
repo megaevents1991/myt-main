@@ -152,6 +152,8 @@ export function CatalogFilters({
   cities,
   autoFocus = false,
   wrapMonths = false,
+  className,
+  searchClassName,
 }: {
   filter: CatalogFilter;
   onChange: (patch: Partial<CatalogFilter>) => void;
@@ -159,23 +161,29 @@ export function CatalogFilters({
   cities: string[];
   autoFocus?: boolean;
   wrapMonths?: boolean;
+  /** Merged onto the block's root (`flex flex-col gap-3`). */
+  className?: string;
+  /** Wraps the search box alone (the popup makes it sticky on a phone). */
+  searchClassName?: string;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
-        <input
-          type="search"
-          value={filter.query}
-          onChange={(e) => onChange({ query: e.target.value })}
-          placeholder="לאן טסים? אמן, קבוצה או עיר..."
-          aria-label="חיפוש אירוע - אמן, קבוצה או עיר"
-          autoComplete="off"
-          data-autofocus={autoFocus || undefined}
-          className="min-w-0 flex-1 bg-transparent px-2 text-base text-foreground placeholder:text-[15px] placeholder:font-medium placeholder:text-muted-foreground focus:outline-none"
-        />
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" aria-hidden>
-          <Search className="size-5" />
-        </span>
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className={searchClassName}>
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
+          <input
+            type="search"
+            value={filter.query}
+            onChange={(e) => onChange({ query: e.target.value })}
+            placeholder="לאן טסים? אמן, קבוצה או עיר..."
+            aria-label="חיפוש אירוע - אמן, קבוצה או עיר"
+            autoComplete="off"
+            data-autofocus={autoFocus || undefined}
+            className="min-w-0 flex-1 bg-transparent px-2 text-base text-foreground placeholder:text-[15px] placeholder:font-medium placeholder:text-muted-foreground focus:outline-none"
+          />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" aria-hidden>
+            <Search className="size-5" />
+          </span>
+        </div>
       </div>
 
       {months.length > 1 && (

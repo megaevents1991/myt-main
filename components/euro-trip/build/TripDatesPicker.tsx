@@ -2,7 +2,7 @@
 
 import "@mantine/dates/styles.css";
 import "dayjs/locale/he";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type Ref } from "react";
 import { Popover } from "@mantine/core";
 import { DatePicker } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
@@ -49,6 +49,9 @@ const OFF_STAGED: CSSProperties = {
 };
 const OFF_BAND: CSSProperties = { backgroundColor: "var(--mantine-primary-color-light)", borderRadius: 0 };
 
+/** What the flights step may ask of the field: open its calendar (from an empty state's button). */
+export type TripDatesPickerHandle = { open: () => void };
+
 /**
  * "Build Your Euro Trip" - the trip's dates, picked in the flights step: a field in the live
  * flight search bar's look ("ובאיזה תאריכים?" and the dates as DD/MM) that opens ONE calendar
@@ -56,18 +59,21 @@ const OFF_BAND: CSSProperties = { backgroundColor: "var(--mantine-primary-color-
  * flight home. A click sets that date on a LOCAL draft and moves on to the next; a chip jumps
  * to any one of them. "עדכון הטיסות" hands the draft to `onCommit` once (and does nothing when
  * it equals `dates`); closing any other way throws the draft away, so the trip - and the
- * flight search behind it - stays as it was.
+ * flight search behind it - stays as it was. `ref.open()` opens it from elsewhere (the flights
+ * step's "no flights for these dates" states).
  */
 export function TripDatesPicker({
   route,
   dates,
   train,
   onCommit,
+  ref,
 }: {
   route: Event[];
   dates: TripDates;
   train: ReadonlySet<string>;
   onCommit: (d: TripDates) => void;
+  ref?: Ref<TripDatesPickerHandle>;
 }) {
   const [opened, setOpened] = useState(false);
   // The dates being picked, from the moment the calendar opens; nothing outside sees them.
@@ -77,6 +83,7 @@ export function TripDatesPicker({
   const [touched, setTouched] = useState(false);
   const committed = useRef(false);
   const body = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLButtonElement>(null);
   // A phone fits 7 columns of the small day size in its narrowest width.
   const roomy = useMediaQuery("(min-width: 400px)");
 
@@ -103,10 +110,8 @@ export function TripDatesPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [at]);
 
-  if (steps.length === 0) return null;
-  const step = steps[current];
-
   const open = () => {
+    if (!steps.length) return;
     committed.current = false;
     setDraft(dates);
     setTouched(false);
@@ -114,6 +119,17 @@ export function TripDatesPicker({
     setMonth(localDay(steps[0].value));
     setOpened(true);
   };
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      if (opened) return;
+      // The calendar hangs under the field: bring the field on screen first.
+      field.current?.scrollIntoView({ block: "nearest" });
+      open();
+    },
+  }));
+
+  if (steps.length === 0) return null;
+  const step = steps[current];
 
   const goTo = (i: number, from: TripDates) => {
     const next = datePickSteps(route, from, train)[i];
@@ -175,6 +191,7 @@ export function TripDatesPicker({
       >
         <Popover.Target>
           <button
+            ref={field}
             type="button"
             onClick={() => (opened ? setOpened(false) : open())}
             aria-label={`ובאיזה תאריכים? ${shown}`}

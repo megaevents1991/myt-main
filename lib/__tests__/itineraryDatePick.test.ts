@@ -26,6 +26,20 @@ const ajax = ev(810, "אייאקס - פיינורד", "2027-05-20", AMSTERDAM, "
 
 const none: ReadonlySet<string> = new Set();
 
+/**
+ * A two-city event: sold as a flight to London (`location`), played - and slept - in Manchester
+ * (`event_location`, `event_city_only`).
+ */
+const manchester = {
+  id: 901,
+  name: "מנצ'סטר יונייטד - ליברפול",
+  date: "2027-05-15T17:30:00",
+  type: "sports_event",
+  location: { ...LONDON, country_code: "GB" },
+  event_location: { latitude: 53.48, longitude: -2.24, name: "מנצ'סטר", city_iata: "MAN", country_code: "GB" },
+  lodging_mode: "event_city_only",
+} as unknown as Event;
+
 describe("datePickSteps", () => {
   it("two cities: depart, the move, return - in trip order, named after the city flown to / moved to / left", () => {
     const route = [celine, chelsea];
@@ -103,6 +117,16 @@ describe("datePickSteps", () => {
     const steps = datePickSteps(route, { depart: "", ret: "", moves: {} }, none);
     expect(steps.map((s) => s.value)).toEqual([def.depart, def.moves["618>702"], def.ret]);
     for (const s of steps) expect(s.value >= s.min && s.value <= s.max).toBe(true);
+  });
+
+  it("a flight lands at the airport: depart / return name the FLIGHT city, a move the city slept in", () => {
+    // Manchester last: the move goes to where the traveller sleeps, the flight home leaves London.
+    const out = datePickSteps([celine, manchester], defaultTripDates([celine, manchester]), none);
+    expect(out.map((s) => s.label)).toEqual(["טיסה הלוך לפריז", "מעבר למנצ'סטר", "חזרה מלונדון"]);
+    // Manchester first: the flight out lands in London.
+    const first = ev(620, "סלין דיון", "2027-05-18", PARIS);
+    const back = datePickSteps([manchester, first], defaultTripDates([manchester, first]), none);
+    expect(back.map((s) => s.label)).toEqual(["טיסה הלוך ללונדון", "מעבר לפריז", "חזרה מפריז"]);
   });
 
   it("an empty route has nothing to pick", () => {

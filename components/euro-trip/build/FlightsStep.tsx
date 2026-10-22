@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { ItineraryFlightCard } from "./ItineraryFlightCard";
 import { useItinerary } from "./ItineraryProvider";
 import { PanelTitle, ShowMore } from "./parts";
-import { TripDatesPicker } from "./TripDatesPicker";
+import { TripDatesPicker, type TripDatesPickerHandle } from "./TripDatesPicker";
 
 /** A change of legs / party waits this long before it searches (the previous search is aborted). */
 const SEARCH_DEBOUNCE_MS = 400;
@@ -249,7 +249,7 @@ type PickState = { key: string; id: string; status: "pricing" | "failed" };
  */
 export function FlightsStep() {
   const api = useItinerary();
-  const { state, toggleTrain, goStep, setDates } = api;
+  const { state, toggleTrain, setDates } = api;
   const { route, dates, pax, train } = state;
 
   // Callbacks that run after a fetch read the provider through a ref (its actions are re-made per render).
@@ -343,7 +343,9 @@ export function FlightsStep() {
   const selectedAt = selectedId ? sorted.findIndex((f) => f.id === selectedId) : -1;
   const visible = sorted.slice(0, Math.max(count, selectedAt + 1));
 
-  const toPlanner = () => goStep("build");
+  // The dates are changed in the field over the list: the empty states' button opens it.
+  const datesField = useRef<TripDatesPickerHandle>(null);
+  const toDates = () => datesField.current?.open();
 
   let body: ReactNode;
   switch (search.view) {
@@ -363,8 +365,8 @@ export function FlightsStep() {
         <OrderIssueState
           title="אי אפשר לחפש טיסות לתאריכים האלה"
           subtitle={DATES_FIELD_HINT}
-          onRetry={toPlanner}
-          retryLabel="לתכנון הימים"
+          onRetry={toDates}
+          retryLabel="לשינוי התאריכים"
         />
       );
       break;
@@ -373,8 +375,8 @@ export function FlightsStep() {
         <OrderIssueState
           title="לא מצאנו טיסות לתאריכים האלה - נסו להזיז יום"
           subtitle={DATES_FIELD_HINT}
-          onRetry={toPlanner}
-          retryLabel="לתכנון הימים"
+          onRetry={toDates}
+          retryLabel="לשינוי התאריכים"
         />
       );
       break;
@@ -450,7 +452,7 @@ export function FlightsStep() {
         </p>
       </div>
       {/* The trip's dates are set HERE, in trip order: a new set clears the flight and searches again. */}
-      <TripDatesPicker route={route} dates={dates} train={trainSet} onCommit={setDates} />
+      <TripDatesPicker ref={datesField} route={route} dates={dates} train={trainSet} onCommit={setDates} />
       {callout && (
         <div className="flex items-start gap-2.5 rounded-xl border border-brand-aqua/40 bg-brand-aqua/10 px-3.5 py-3 text-sm leading-relaxed text-foreground">
           <TrainFront className="mt-0.5 size-4 shrink-0 text-forest dark:text-brand-aqua" aria-hidden />

@@ -39,6 +39,12 @@ const tottenham = ev(699, "טוטנהאם - צ'לסי", "2027-05-08", LONDON, "s
 
 const catalog = [celine, chelsea, arsenal, gracieAms, gracieBer, madrid, later, tottenham];
 
+/** A two-city event: sold as a flight to London (`location`), played in Manchester (`event_location`). */
+const manchester = {
+  ...ev(901, "מנצ'סטר יונייטד - ליברפול", "2027-05-16", LONDON, "sports_event"),
+  event_location: { latitude: 53.48, longitude: -2.24, name: "מנצ'סטר", city_iata: "MAN", country_code: "GB" },
+} as unknown as Event;
+
 describe("dates on screen", () => {
   it("prints DD/MM/YY and DD/MM from a day", () => {
     expect(dayMonthYear("2027-05-12")).toBe("12/05/27");
@@ -93,6 +99,20 @@ describe("the self-build catalog", () => {
       filterCatalog(catalog, { query: "", month: "2027-05", kind: "football", city: "פריז" }).map((e) => e.id),
     ).toEqual([]);
     expect(filterCatalog(catalog, { query: "", month: "", kind: "music", city: "פריז" }).map((e) => e.id)).toEqual([618]);
+  });
+
+  it("a city chip is the event's own city, not its flight city", () => {
+    // The Manchester match brings its own city, never a second London.
+    expect(catalogCities([manchester])).toEqual(["מנצ'סטר"]);
+    expect(catalogCities([...catalog, manchester])).toEqual(["אמסטרדם", "ברלין", "לונדון", "מדריד", "מנצ'סטר", "פריז"]);
+    const city = (c: string) =>
+      filterCatalog([...catalog, manchester], { query: "", month: "", kind: "all", city: c }).map((e) => e.id);
+    expect(city("מנצ'סטר")).toEqual([901]);
+    expect(city("לונדון")).not.toContain(901);
+    // The free-text search still reads the flight city: "לונדון" finds the match sold as a flight there.
+    expect(
+      filterCatalog([...catalog, manchester], { query: "לונדון", month: "", kind: "all", city: "" }).map((e) => e.id),
+    ).toContain(901);
   });
 
   it("an empty city keeps every event", () => {

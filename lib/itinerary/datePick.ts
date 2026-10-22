@@ -5,6 +5,7 @@
  * boundary - and says so in its label.
  */
 import type { Event } from "@/lib/app.types";
+import { cityName } from "@/lib/events/lodging";
 import { clampTripDates, moves, stays, tripDateBounds } from "./dates";
 import { stayCityName } from "./builder";
 import type { TripDates } from "./types";
@@ -24,14 +25,18 @@ export type DatePickStep = {
 
 /**
  * The dates to pick, in trip order: `טיסה הלוך ל<city>`, then `מעבר ל<city>` per move (plus
- * ` (עצמאית)` when `train` has it), then `חזרה מ<city>`. `<city>` is the stay flown to, moved to
- * and left, named like the hotels step names it. Values come from the dates clamped for this
- * route, so each one sits inside its own range.
+ * ` (עצמאית)` when `train` has it), then `חזרה מ<city>`. THE one source of the trip's date labels
+ * (the flights step's calendar and the planner's panel). A flight lands where the airport is: the
+ * departure and the return name the FLIGHT city of the first / last stay's first event (a
+ * Manchester match sold as a flight to London reads `טיסה הלוך ללונדון` / `חזרה מלונדון`); a move
+ * names the stay it moves to, like the hotels step (`stayCityName`). Values come from the dates
+ * clamped for this route, so each one sits inside its own range.
  */
 export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlySet<string>): DatePickStep[] {
   const list = stays(route, dates);
   if (list.length === 0) return [];
   const city = (i: number): string => stayCityName(list[i].events[0]);
+  const airport = (i: number): string => cityName(list[i].events[0], "flight");
   const bounds = tripDateBounds(route, dates);
   const value = clampTripDates(route, dates);
 
@@ -39,7 +44,7 @@ export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlyS
     {
       key: "depart",
       kind: "depart",
-      label: `טיסה הלוך ל${city(0)}`,
+      label: `טיסה הלוך ל${airport(0)}`,
       value: value.depart,
       min: bounds.depart[0],
       max: bounds.depart[1],
@@ -59,7 +64,7 @@ export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlyS
   steps.push({
     key: "ret",
     kind: "ret",
-    label: `חזרה מ${city(list.length - 1)}`,
+    label: `חזרה מ${airport(list.length - 1)}`,
     value: value.ret,
     min: bounds.ret[0],
     max: bounds.ret[1],
