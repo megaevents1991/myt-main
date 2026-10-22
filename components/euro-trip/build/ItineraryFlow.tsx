@@ -142,8 +142,7 @@ export function ItineraryFlow() {
     else if (step === "tickets") {
       if (nextEvent >= 0) setActiveEvent(nextEvent);
       else if (ticketsReady) goStep("flights");
-    }
-    else if (step === "flights") goStep("hotels");
+    } else if (step === "flights") goStep("hotels");
     else if (step === "hotels") {
       if (nextStay >= 0) setActiveStay(nextStay);
       else goStep("summary");
