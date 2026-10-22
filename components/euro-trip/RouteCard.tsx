@@ -31,13 +31,16 @@ export function RouteCard({
   const hotels = data.stays > 1 ? `${data.stays} מלונות` : "מלון";
   // One city: the pill says how many events it holds (as the approved mock) - "לונדון · 2 אירועים".
   const pill = data.cities.length > 1 ? data.title : `${data.title} · ${tickets} אירועים`;
+  // The link's name starts with the visible heading (WCAG 2.5.3 label-in-name): a staff title
+  // leads, the events follow as before.
+  const label = `${data.staffTitle ? `${data.staffTitle} - ` : ""}${names} - ${data.title}, ${data.nights} לילות`;
 
   return (
     <div className="flex h-full w-full flex-col">
       <Link
         href={`/euro-trip/build?events=${data.ids.join(",")}`}
         className="flex flex-1 cursor-pointer flex-col"
-        aria-label={`${names} - ${data.title}, ${data.nights} לילות`}
+        aria-label={label}
       >
         <article className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover">
           {/* Split art: one EventArt per event, 2px card-coloured seams between them. */}
