@@ -43,6 +43,7 @@ import { trustedMinTicket, validateItineraryPriceFloor } from "../itinerary/pric
 import { livePrice } from "../itinerary/progress";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
 import { INITIAL_ITINERARY_STATE, type ItineraryState } from "../itinerary/state";
+import type { SuggestionRow } from "../itinerary/suggestion";
 import type { TravellersInput } from "../itinerary/travellers";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
@@ -1080,6 +1081,67 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
     expect(answer.status).toBe(200);
     expect(inserted[0].map((r) => r.status)).toEqual(["24Save", "24Save"]);
     expect(calls).toContain("mail customer=true");
+  });
+
+  it("suggest - the customer's offer is written after the mails, in trip order, linked to the first row", async () => {
+    const saved: SuggestionRow[] = [];
+    const { deps, calls } = setup({
+      saveSuggestion: async (row) => {
+        calls.push("suggest");
+        saved.push(row);
+      },
+    });
+    // The browser's order is not the trip's: the server's re-read route (date order) is what is saved.
+    const answer = await confirmTrip({ ...wire(full), route: [702, 618], suggest: { title: "  פריז   ולונדון " } }, deps);
+    expect(answer.status).toBe(200);
+    expect(calls.slice(-3)).toEqual(["emailed", "suggest", "track"]);
+    expect(saved).toEqual([
+      expect.objectContaining({ title: "פריז ולונדון", event_ids: [618, 702], itinerary_group: GROUP, reservation_id: 500, pax: full.pax }),
+    ]);
+  });
+
+  it("suggest - no opt-in writes nothing; a failing write never fails the hold; a retry writes nothing", async () => {
+    const none = setup({
+      saveSuggestion: async () => {
+        none.calls.push("suggest");
+      },
+    });
+    await confirmTrip(wire(full), none.deps);
+    expect(none.calls).not.toContain("suggest");
+
+    const broken = setup({
+      saveSuggestion: async () => {
+        throw new Error("db down");
+      },
+    });
+    const answer = await confirmTrip({ ...wire(full), suggest: {} }, broken.deps);
+    expect(answer).toMatchObject({ status: 200, body: { ids: [500, 501] } });
+    expect(broken.calls).toContain("track");
+
+    const retry = setup({
+      saveSuggestion: async () => {
+        retry.calls.push("suggest");
+      },
+    });
+    retry.deps.groupDb = {
+      insert: async () => {
+        throw new Error("must not insert");
+      },
+      find: async () => ({ data: [{ id: 8, itinerary_seq: 1 }], error: null }),
+    };
+    await confirmTrip({ ...wire(full), suggest: { title: "x" } }, retry.deps);
+    expect(retry.calls).not.toContain("suggest");
+  });
+
+  it("suggest - a value the server cannot read is no suggestion, never a refusal", async () => {
+    const { deps, calls } = setup({
+      saveSuggestion: async () => {
+        calls.push("suggest");
+      },
+    });
+    const answer = await confirmTrip({ ...wire(full), suggest: "yes please" }, deps);
+    expect(answer.status).toBe(200);
+    expect(calls).not.toContain("suggest");
   });
 });
 

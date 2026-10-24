@@ -31,6 +31,7 @@ import { cardRows, trainRowText } from "@/lib/itinerary/flightsView";
 import { dayDiff } from "@/lib/itinerary/geo";
 import { SUMMARY_HOLD_SECONDS, canContinue, livePrice, progressivePrice } from "@/lib/itinerary/progress";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
+import { cleanSuggestTitle, type TripSuggestion } from "@/lib/itinerary/suggestion";
 import { summaryAdditions, type SummaryAdditions } from "@/lib/itinerary/summaryRows";
 import {
   contactKey,
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
 import { TravellersForm, fieldId } from "./TravellersForm";
 import { PANEL, nightsLabel } from "./parts";
+import { SuggestTripCard } from "./SuggestTripCard";
 import { useTripHold } from "./useTripHold";
 
 /** "$2,133" / "$617.50" - whole dollars unless there are cents. */
@@ -623,6 +625,14 @@ export function SummaryStep({
   // `holdSending`). The hold writes real reservations; its answer is read here.
   const sending = busy || hold.sending;
 
+  // "Offer my trip to others" - only on a trip the customer built; it rides on the hold.
+  const canSuggest = HOLD_ENABLED && state.mode === "custom";
+  const [suggestOn, setSuggestOn] = useState(false);
+  const [suggestTitle, setSuggestTitle] = useState("");
+  const suggestion: TripSuggestion | null =
+    canSuggest && suggestOn ? { title: cleanSuggestTitle(suggestTitle) || null } : null;
+  const sendHold = (t: TravellersInput) => hold.submit(t, suggestion);
+
   const touch = (key: string) =>
     setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
 
@@ -705,7 +715,7 @@ export function SummaryStep({
       type="button"
       disabled={sending || expired}
       aria-busy={hold.sending}
-      onClick={() => attempt("hold", hold.submit)}
+      onClick={() => attempt("hold", sendHold)}
       className={payOpen ? SECOND_BUTTON : MAIN_BUTTON}
     >
       {hold.sending ? (
@@ -790,7 +800,7 @@ export function SummaryStep({
           className="py-6"
           title="לא הצלחנו לשמור את הטיול"
           subtitle="נסו שוב בעוד רגע, או כתבו לנו ונשמור אותו עבורכם."
-          onRetry={sending ? undefined : () => attempt("hold", hold.submit)}
+          onRetry={sending ? undefined : () => attempt("hold", sendHold)}
           whatsAppText={whatsAppText}
         />
       ) : hold.failure?.code === "PRICE_CHANGED" ? (
@@ -951,6 +961,15 @@ export function SummaryStep({
                 />
               </div>
             </Card>
+            {canSuggest && (
+              <SuggestTripCard
+                on={suggestOn}
+                title={suggestTitle}
+                disabled={sending || expired}
+                onToggle={setSuggestOn}
+                onTitle={setSuggestTitle}
+              />
+            )}
             {isMobile && actions}
             <TrustCard />
           </div>

@@ -14,6 +14,7 @@ import {
   type HoldAction,
 } from "@/lib/itinerary/confirm";
 import { livePrice } from "@/lib/itinerary/progress";
+import type { TripSuggestion } from "@/lib/itinerary/suggestion";
 import type { TravellersInput } from "@/lib/itinerary/travellers";
 import { getUTMParams } from "@/lib/mixpanel";
 import { useItinerary } from "./ItineraryProvider";
@@ -58,7 +59,7 @@ function utmSource(): string {
  *   summary as `failure`.
  */
 export function useTripHold(): {
-  submit: (travellers: TravellersInput) => Promise<void>;
+  submit: (travellers: TravellersInput, suggest?: TripSuggestion | null) => Promise<void>;
   sending: boolean;
   failure: Extract<HoldAction, { kind: "stay" }> | null;
 } {
@@ -87,7 +88,7 @@ export function useTripHold(): {
     }
   }, []);
 
-  const submit = useCallback(async (travellers: TravellersInput) => {
+  const submit = useCallback(async (travellers: TravellersInput, suggest: TripSuggestion | null = null) => {
     const a = latest.current;
     if (a.held || !a.state.flight) return;
     const price = livePrice(a.state, a.settings);
@@ -100,7 +101,8 @@ export function useTripHold(): {
     // The trip this attempt is for: a "the price changed" counts as "again" only for the same one.
     const key = tripKey(a.state);
     try {
-      const body = submissionFromState(a.state, travellers, attempt.group, price, { utmSource: utmSource() });
+      // The customer's "offer my trip to others" rides on the hold; the server writes it after the rows.
+      const body = submissionFromState(a.state, travellers, attempt.group, price, { utmSource: utmSource(), suggest });
       const res = await fetch("/api/itinerary/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

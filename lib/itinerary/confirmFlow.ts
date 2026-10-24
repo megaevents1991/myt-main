@@ -22,7 +22,8 @@
  * 10. ONE insert - an error = 500, nothing written; a concurrent copy (23505) = that group's rows
  *     and nothing else (its own request holds and mails);
  * 11. after a FRESH insert only: own-stock rooms held, booking references + ticket costs, the ops +
- *     customer emails, one analytics event - none of them can fail the hold.
+ *     customer emails, the customer's "offer my trip to others" request (./suggestion), one analytics
+ *     event - none of them can fail the hold.
  */
 import type { Event, OrderData } from "@/lib/app.types";
 import {
@@ -51,6 +52,7 @@ import { checkOfflineHotel, holdOfflineHotel, type OfflineHotelDb } from "./offl
 import { validateItineraryPriceFloor } from "./priceFloor";
 import { livePrice } from "./progress";
 import { itineraryOn, type ItinerarySettings } from "./settings";
+import { suggestionRow, type SuggestionRow } from "./suggestion";
 import type { TripDates } from "./types";
 
 const LOG = "[itinerary/confirm]";
@@ -75,6 +77,8 @@ export type ConfirmDeps = {
   /** `confirmation_email_sent = true` on the rows. */
   markEmailed: (ids: number[]) => Promise<void>;
   track: (e: { eventId: number; name: string; value: number; quantity: number; status: GroupStatus }) => Promise<void>;
+  /** Writes the customer's "offer my trip to others" request (`itinerary_route_requests`). Optional: no dep, no write. */
+  saveSuggestion?: (row: SuggestionRow) => Promise<void>;
   gtmIdnts: string | null;
   log: Pick<Console, "warn" | "error">;
 };
@@ -269,6 +273,16 @@ export async function confirmTrip(raw: unknown, deps: ConfirmDeps): Promise<Conf
     if (sent.customer) await deps.markEmailed(ids);
   } catch (e) {
     log.error(`${LOG} group ${sub.group}: emails failed (non-fatal):`, e);
+  }
+
+  // The trip as the server re-read it (date order), never the browser's list.
+  const suggestion = suggestionRow(sub, route.map((e) => e.id), ids);
+  if (suggestion && deps.saveSuggestion) {
+    try {
+      await deps.saveSuggestion(suggestion);
+    } catch (e) {
+      log.error(`${LOG} group ${sub.group}: trip suggestion not saved (non-fatal):`, e);
+    }
   }
 
   try {

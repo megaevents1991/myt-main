@@ -36,6 +36,7 @@ import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import { INITIAL_ITINERARY_STATE, MAX_TRAVELLERS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "./state";
 import { stayHotelReady, stayRanges } from "./stayAdapter";
+import { parseSuggestion, type TripSuggestion } from "./suggestion";
 import {
   fitTravellers,
   toOrderContactFields,
@@ -106,6 +107,11 @@ export type TripSubmission = {
    * is on AND the settings allow payments too.
    */
   payNow: boolean;
+  /**
+   * "Offer my trip to others" (./suggestion): the name the customer gave it, or null when they did not
+   * opt in. Written after the hold's rows, best effort - an unreadable value is no suggestion, never a refusal.
+   */
+  suggest: TripSuggestion | null;
 };
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -313,6 +319,7 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
       clientPerTraveller: raw.clientPerTraveller,
       utmSource,
       payNow,
+      suggest: parseSuggestion(raw.suggest),
     },
   };
 }
@@ -867,7 +874,7 @@ export function submissionFromState(
   travellers: TravellersInput,
   group: string,
   price: LivePrice,
-  extra: { utmSource?: string; payNow?: boolean } = {},
+  extra: { utmSource?: string; payNow?: boolean; suggest?: TripSuggestion | null } = {},
 ): TripSubmission {
   if (!state.flight) throw new Error("submissionFromState: the trip has no flight");
   const tickets: Record<number, OrderTicket> = {};
@@ -894,6 +901,7 @@ export function submissionFromState(
     clientPerTraveller: price.perTraveller,
     utmSource: extra.utmSource ?? "",
     payNow: extra.payNow === true,
+    suggest: extra.suggest ?? null,
   };
 }
 

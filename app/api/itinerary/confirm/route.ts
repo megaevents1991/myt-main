@@ -10,6 +10,7 @@ import { sendTripEmails } from "@/lib/itinerary/emails";
 import type { GroupDb } from "@/lib/itinerary/insertGroup";
 import { BLOCK_COLUMNS, type OfflineHotelDb } from "@/lib/itinerary/offlineHold";
 import { getItinerarySettings } from "@/lib/itinerary/settings.server";
+import { isMissingRequestsTable, type SuggestionRow } from "@/lib/itinerary/suggestion";
 import { supabase } from "@/lib/supabase";
 import { TICKET_COST_DEADLINE_MS, snapshotTicketCost, withDeadline } from "@/lib/ticket-cost";
 
@@ -33,6 +34,21 @@ const offlineHotelsDb: OfflineHotelDb = {
   readConsumed: (id) => supabase.from("offline_hotels").select("consumed_rooms").eq("id", id).single(),
   writeConsumed: (id, consumedRooms) => supabase.from("offline_hotels").update({ consumed_rooms: consumedRooms }).eq("id", id),
 };
+
+/**
+ * The customer's "offer my trip to others" (backoffice migration 20261024084720). Never throws past the
+ * flow's own try: a missing table (migration not applied) is a warning, the same group again (23505 on
+ * the unique `itinerary_group`) is already saved, anything else is logged.
+ */
+async function saveSuggestion(row: SuggestionRow): Promise<void> {
+  const { error } = await supabase.from("itinerary_route_requests").insert(row);
+  if (!error || error.code === "23505") return;
+  if (isMissingRequestsTable(error)) {
+    console.warn(`${LOG} itinerary_route_requests missing - suggestion skipped`);
+    return;
+  }
+  console.error(`${LOG} group ${row.itinerary_group}: suggestion not saved:`, JSON.stringify(error));
+}
 
 /** One cookie's raw value (the client-side order flow sends `gtmIdnts` the same way, undecoded). */
 function cookieValue(header: string | null, name: string): string | null {
@@ -141,6 +157,7 @@ export async function POST(req: Request) {
           ip: extractIpFromRequest(req),
         });
       },
+      saveSuggestion,
       gtmIdnts,
       log: console,
     };
