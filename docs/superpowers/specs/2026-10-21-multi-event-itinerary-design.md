@@ -161,7 +161,7 @@ All numbers live in `itinerary_settings` (§8.1); defaults below.
 ### 6.2 Card / "from" price
 Before any live search (homepage card, route step): cheapest ticket category per event + an **estimated** flight +
 base hotel price per stay + tiered markup. `est_flight` = the route's cached daily multi-city quote (§8.2), falling
-back to `0.6 × Σ base_flight_price` when missing; hotels = each event's `base_hotel_price` scaled to the stay's nights.
+back to `0.6 × Σ base_flight_price` when missing (checked 24.10.2026 against 13 Amadeus multi-city searches: the flights step's first flight is a median 0.62 of Σ base); hotels = each event's `base_hotel_price` scaled to the stay's nights.
 The card says "מחיר ממוצע ... לנוסע" like today's cards; the flow shows the live price. One pure estimator module,
 so the backoffice route editor shows the same number.
 

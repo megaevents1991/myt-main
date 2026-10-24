@@ -20,6 +20,13 @@ import type { TripDates } from "./types";
 /**
  * Without a flight quote the trip's flight is estimated as this share of the events' own
  * package flights (each package prices its own flight).
+ *
+ * Measured 24.10.2026: 13 hub trips searched on Amadeus as the flights step searches them
+ * (multi-city, default dates, 2 adults). The flight the step puts first ("הטוב ביותר",
+ * `pickBestFlight`) cost a median 0.62 of Σ base_flight_price per traveller (12 of 13 between
+ * 0.29 and 0.84; one 1.93, the only all-nonstop offer); the cheapest, a median 0.50. Pairs ran
+ * higher than triples (~0.71 vs ~0.55: a triple's two same-city events add a base, not a leg).
+ * The hub card says "מחיר ממוצע", so the share follows the first flight, not the cheapest.
  */
 const FLIGHT_FALLBACK_SHARE = 0.6;
 
