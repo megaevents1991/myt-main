@@ -7,7 +7,11 @@
  */
 
 export type ItinerarySettings = {
-  /** Master switch: the pages are public in production only while this is true. */
+  /**
+   * Master switch: the pages are public in production only while this is true. NOT a row of
+   * `itinerary_settings` since 2026-10-28 - it is the "euro_trip" row of the backoffice /homepage board
+   * (`euroTripSwitchOn`), filled in by the server reader (settings.server.ts).
+   */
   enabled: boolean;
   /** A multi-event itinerary may be paid for (off = quote / request only). */
   paymentsEnabled: boolean;
@@ -27,7 +31,7 @@ export type ItinerarySettings = {
   maxGapDays: number;
   /** Longest whole trip, first event to last, in days. */
   maxSpanDays: number;
-  /** How many routes the page builds on its own before leaving it to the customer. */
+  /** How many routes the page builds on its own before leaving it to the customer (0 = staff trips only). */
   maxAutoRoutes: number;
 };
 
@@ -42,7 +46,8 @@ export const DEFAULT_ITINERARY_SETTINGS: ItinerarySettings = {
   okGapDays: 5,
   maxGapDays: 10,
   maxSpanDays: 21,
-  maxAutoRoutes: 12,
+  // 0 (Dor 28.10): the hub shows only the trips staff switched on, never routes it made up itself.
+  maxAutoRoutes: 0,
 };
 
 type BoolField = "enabled" | "paymentsEnabled";
@@ -61,9 +66,9 @@ const num = (key: string, field: NumField, min: number, max: number, int: boolea
   int,
 });
 
-// DB key (snake_case) -> field + what it may hold. Ranges are inclusive.
+// DB key (snake_case) -> field + what it may hold. Ranges are inclusive. No "enabled" row: a stale one
+// left in the table must never open the pages (the switch is the homepage row, below).
 const SPECS: Spec[] = [
-  { key: "enabled", field: "enabled", kind: "bool" },
   { key: "payments_enabled", field: "paymentsEnabled", kind: "bool" },
   num("tier_2_pct", "tier2Pct", 0, 90, false),
   num("tier_3_pct", "tier3Pct", 0, 90, false),
@@ -117,7 +122,34 @@ export function isMissingSettingsTable(e: unknown): boolean {
   return /relation\s+\S+\s+does not exist/i.test(text) || /could not find the table/i.test(text);
 }
 
-/** The switch: on when staff enabled it, and always outside production (preview / dev). */
+/**
+ * The /homepage board row that IS the feature's switch (backoffice `EURO_TRIP_SECTION_KEY`, Dor 28.10:
+ * "רק אם אנחנו מפעילים את זה בבק אופיס - דרך ניהול ה-homepage"). Shown = the homepage gets its entry
+ * and the pages open; hidden or no row = off.
+ */
+export const EURO_TRIP_SECTION_KEY = "euro_trip";
+
+export type HomepageSwitchRow = {
+  key: string;
+  page?: string | null;
+  is_visible?: boolean | null;
+  position?: number | null;
+};
+
+/**
+ * Is the Euro Trip switched on, from the `homepage_sections` rows? The homepage page's row of that key
+ * decides - the first by position, the way lib/homepageLayout.ts reads the board. No row (the board was
+ * never saved since the row existed), or anything but a real `true`, is off.
+ */
+export function euroTripSwitchOn(rows: readonly HomepageSwitchRow[] | null | undefined): boolean {
+  if (!Array.isArray(rows)) return false;
+  const row = rows
+    .filter((r) => r?.key === EURO_TRIP_SECTION_KEY && (r.page ?? "home") === "home")
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
+  return row?.is_visible === true;
+}
+
+/** The switch: on when staff showed the homepage row, and always outside production (preview / dev). */
 export function itineraryOn(s: ItinerarySettings, vercelEnv: string | undefined): boolean {
   return s.enabled || vercelEnv !== "production";
 }

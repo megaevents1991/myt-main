@@ -4,7 +4,11 @@ import { dayDiff, eventDay, eventKind, eventPoint, haversineKm, sameCity } from 
 import { isItineraryEligible } from "../itinerary/eligibility";
 import { compatibility, sortRoute } from "../itinerary/rules";
 import { recommendRoutes, type RecommendedRoute } from "../itinerary/recommend";
-import { DEFAULT_ITINERARY_SETTINGS as S, type ItinerarySettings } from "../itinerary/settings";
+import { DEFAULT_ITINERARY_SETTINGS, type ItinerarySettings } from "../itinerary/settings";
+
+// The site default builds NO automatic routes since 28.10 (staff trips only); these tests are about how
+// routes are built, so they ask for the twelve the default used to be.
+const S: ItinerarySettings = { ...DEFAULT_ITINERARY_SETTINGS, maxAutoRoutes: 12 };
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 

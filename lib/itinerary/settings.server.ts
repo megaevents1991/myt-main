@@ -4,6 +4,8 @@ import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import {
   DEFAULT_ITINERARY_SETTINGS,
+  EURO_TRIP_SECTION_KEY,
+  euroTripSwitchOn,
   isMissingSettingsTable,
   parseItinerarySettings,
   type ItinerarySettings,
@@ -11,10 +13,12 @@ import {
 
 /**
  * "Build Your Euro Trip" - the staff settings, read from the `itinerary_settings` table
- * (key / value rows the backoffice writes).
+ * (key / value rows the backoffice writes), and the feature's switch, which is the "euro_trip"
+ * row of the backoffice /homepage board (`homepage_sections`, 2026-10-28).
  *
  * Cached for an hour under ITINERARY_SETTINGS_TAG; the backoffice drops it right after a
- * save through POST /api/itinerary/revalidate. The cached read throws, and unstable_cache
+ * settings save AND after a homepage save that flips the switch, through POST
+ * /api/itinerary/revalidate. The cached read throws, and unstable_cache
  * keeps the last good value when its function throws (lib/eventsData.ts learned this the
  * hard way): a blip at an hourly refresh cannot switch a live feature off for an hour. A bad
  * row is a different matter - the parser skips it and the rest of the table still counts.
@@ -32,13 +36,22 @@ import {
 export const ITINERARY_SETTINGS_TAG = "itinerary-settings";
 
 async function readOrThrow(): Promise<ItinerarySettings> {
-  const { data, error } = await supabase.from("itinerary_settings").select("key, value");
+  const [settings, homepage] = await Promise.all([
+    supabase.from("itinerary_settings").select("key, value"),
+    supabase
+      .from("homepage_sections")
+      .select("key, page, is_visible, position")
+      .eq("key", EURO_TRIP_SECTION_KEY),
+  ]);
   // Keep the code: the page reader tells a missing table from any other failure by it.
-  if (error) throw Object.assign(new Error(error.message), { code: error.code });
-  return parseItinerarySettings(data);
+  if (settings.error) throw Object.assign(new Error(settings.error.message), { code: settings.error.code });
+  // A failed switch read is a failure like any other (never "off" cached for an hour, never "on").
+  if (homepage.error) throw Object.assign(new Error(homepage.error.message), { code: homepage.error.code });
+  return { ...parseItinerarySettings(settings.data), enabled: euroTripSwitchOn(homepage.data) };
 }
 
-const cachedRead = unstable_cache(readOrThrow, ["itinerary-settings"], {
+// "-v2" since the switch moved to the homepage row: never answer from a value cached before it.
+const cachedRead = unstable_cache(readOrThrow, ["itinerary-settings-v2"], {
   revalidate: 3600,
   tags: [ITINERARY_SETTINGS_TAG],
 });

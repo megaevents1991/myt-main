@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ITINERARY_SETTINGS,
+  euroTripSwitchOn,
   isMissingSettingsTable,
   itineraryOn,
   parseItinerarySettings,
@@ -25,24 +26,23 @@ describe("parseItinerarySettings", () => {
       okGapDays: 5,
       maxGapDays: 10,
       maxSpanDays: 21,
-      maxAutoRoutes: 12,
+      maxAutoRoutes: 0,
     });
   });
 
   it("reads snake_case keys into the camelCase settings", () => {
     const s = parseItinerarySettings([
       { key: "tier_2_pct", value: 25 },
-      { key: "enabled", value: true },
+      { key: "payments_enabled", value: true },
     ]);
     expect(s.tier2Pct).toBe(25);
-    expect(s.enabled).toBe(true);
+    expect(s.paymentsEnabled).toBe(true);
     expect(s.tier3Pct).toBe(50);
-    expect(s.paymentsEnabled).toBe(false);
+    expect(s.maxKm).toBe(1000);
   });
 
   it("reads every key", () => {
     const s = parseItinerarySettings([
-      { key: "enabled", value: true },
       { key: "payments_enabled", value: true },
       { key: "tier_2_pct", value: 10 },
       { key: "tier_3_pct", value: 20 },
@@ -55,7 +55,7 @@ describe("parseItinerarySettings", () => {
       { key: "max_auto_routes", value: 6 },
     ]);
     expect(s).toEqual({
-      enabled: true,
+      enabled: false,
       paymentsEnabled: true,
       tier2Pct: 10,
       tier3Pct: 20,
@@ -79,8 +79,7 @@ describe("parseItinerarySettings", () => {
     expect(parseItinerarySettings([{ key: "max_events", value: 4 }]).maxEvents).toBe(3);
     expect(parseItinerarySettings([{ key: "ok_gap_days", value: 0 }]).okGapDays).toBe(5);
     expect(parseItinerarySettings([{ key: "max_span_days", value: 31 }]).maxSpanDays).toBe(21);
-    expect(parseItinerarySettings([{ key: "max_auto_routes", value: 49 }]).maxAutoRoutes).toBe(12);
-    expect(parseItinerarySettings([{ key: "enabled", value: "true" }]).enabled).toBe(false);
+    expect(parseItinerarySettings([{ key: "max_auto_routes", value: 49 }]).maxAutoRoutes).toBe(0);
     expect(parseItinerarySettings([{ key: "payments_enabled", value: 1 }]).paymentsEnabled).toBe(false);
     expect(parseItinerarySettings([{ key: "tier_3_pct", value: Number.NaN }]).tier3Pct).toBe(50);
     expect(parseItinerarySettings([{ key: "max_km", value: null }]).maxKm).toBe(1000);
@@ -105,6 +104,43 @@ describe("parseItinerarySettings", () => {
       { key: "tier2Pct", value: 5 },
     ]);
     expect(s).toEqual(DEFAULT_ITINERARY_SETTINGS);
+  });
+});
+
+describe("the retired `enabled` row (the switch is the homepage row since 28.10)", () => {
+  it("never opens the pages, whatever it holds", () => {
+    expect(parseItinerarySettings([{ key: "enabled", value: true }]).enabled).toBe(false);
+    expect(parseItinerarySettings([{ key: "enabled", value: "true" }]).enabled).toBe(false);
+  });
+});
+
+describe("euroTripSwitchOn - the /homepage board's euro_trip row", () => {
+  it("is off with no rows, or no euro_trip row", () => {
+    expect(euroTripSwitchOn(null)).toBe(false);
+    expect(euroTripSwitchOn(undefined)).toBe(false);
+    expect(euroTripSwitchOn([])).toBe(false);
+    expect(euroTripSwitchOn([{ key: "newest", page: "home", is_visible: true }])).toBe(false);
+  });
+
+  it("follows the row's visibility, and only a real true is on", () => {
+    expect(euroTripSwitchOn([{ key: "euro_trip", page: "home", is_visible: true }])).toBe(true);
+    expect(euroTripSwitchOn([{ key: "euro_trip", page: "home", is_visible: false }])).toBe(false);
+    expect(euroTripSwitchOn([{ key: "euro_trip", page: "home", is_visible: null }])).toBe(false);
+    expect(euroTripSwitchOn([{ key: "euro_trip", page: "home" }])).toBe(false);
+  });
+
+  it("reads the homepage page only (a row without a page is the homepage's)", () => {
+    expect(euroTripSwitchOn([{ key: "euro_trip", page: "landing", is_visible: true }])).toBe(false);
+    expect(euroTripSwitchOn([{ key: "euro_trip", page: null, is_visible: true }])).toBe(true);
+  });
+
+  it("the first row by position decides, as the homepage reads the board", () => {
+    expect(
+      euroTripSwitchOn([
+        { key: "euro_trip", page: "home", is_visible: true, position: 9 },
+        { key: "euro_trip", page: "home", is_visible: false, position: 2 },
+      ]),
+    ).toBe(false);
   });
 });
 

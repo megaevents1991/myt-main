@@ -1717,6 +1717,43 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   </section>
                 ) : null;
 
+              case "euro_trip":
+                // The way into "Build Your Euro Trip" - shown only while staff show this row on the
+                // backoffice /homepage board, which is also what opens the /euro-trip pages
+                // (lib/itinerary/settings.server.ts). The hub's look, one band.
+                return (
+                  <section key={key} aria-labelledby="euro-trip-heading" className="mb-8" dir="rtl">
+                    <Link
+                      href="/euro-trip"
+                      className="group relative isolate flex flex-col items-start gap-4 overflow-hidden rounded-2xl bg-main px-6 py-7 text-main-foreground shadow-card transition-shadow hover:shadow-xl sm:flex-row sm:items-center sm:justify-between md:px-10 md:py-9"
+                    >
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 -z-10"
+                        style={{
+                          background:
+                            "radial-gradient(55% 80% at 12% -20%, hsl(150 60% 62% / 0.28), transparent 70%)," +
+                            "radial-gradient(60% 70% at 95% 120%, hsl(160 55% 24% / 0.55), transparent 72%)",
+                        }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold tracking-wide text-secondary" dir="ltr">
+                          Build Your Euro Trip
+                        </span>
+                        <span id="euro-trip-heading" className="mt-1 block font-display text-2xl font-extrabold leading-tight md:text-3xl">
+                          {section.title ?? "בנו את היורו טריפ שלכם"}
+                        </span>
+                        <span className="mt-2 block text-sm leading-relaxed text-main-foreground/80 md:text-base">
+                          2-3 אירועים בטיול אחד · טיסה לעיר הראשונה וחזרה מהאחרונה · מלון בכל עיר
+                        </span>
+                      </span>
+                      <span className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-primary px-6 text-base font-bold text-primary-foreground transition-colors group-hover:bg-primary/90">
+                        לטריפים ולבנייה
+                      </span>
+                    </Link>
+                  </section>
+                );
+
               default:
                 return null;
             }

@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { getAllCategories, getEventIdsByCategories } from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
 import { ROW_MAX_LIMIT, toRef, type RowLayout, type RowRef } from "@/lib/homepage/merge";
+import { EURO_TRIP_SECTION_KEY } from "@/lib/itinerary/settings";
 
 /**
  * Homepage layout - which sections the homepage shows, in what order, under
@@ -18,7 +19,11 @@ import { ROW_MAX_LIMIT, toRef, type RowLayout, type RowRef } from "@/lib/homepag
  * that does not parse) is skipped, never rendered half-way.
  */
 
-/** The sections coded here ("builtin"). */
+/**
+ * The sections coded here ("builtin"). `euro_trip` (2026-10-28) is the way into "Build Your Euro
+ * Trip" AND the feature's switch: lib/itinerary/settings.server.ts opens the /euro-trip pages only
+ * while this row is shown. It carries no cards.
+ */
 export const HOMEPAGE_SECTION_KEYS = [
   "hero",
   "most_wanted",
@@ -27,6 +32,7 @@ export const HOMEPAGE_SECTION_KEYS = [
   "artists",
   "reviews",
   "more_events",
+  "euro_trip",
 ] as const;
 export type HomepageSectionKey = (typeof HOMEPAGE_SECTION_KEYS)[number];
 export type HomepageItemKind = "event" | "artist" | "team" | "review";
@@ -109,9 +115,20 @@ const emptyPins = (): HomepageLayout["pins"] => ({
   artists: [],
   reviews: [],
   more_events: [],
+  euro_trip: [],
 });
 
-const builtin = (key: HomepageSectionKey, visible = true, title: string | null = null): HomepageSection => ({
+/**
+ * Is a builtin the table has no row for shown? Every one is, except the Euro Trip: a missing row is
+ * "off" (the same rule as euroTripSwitchOn), or the entry would appear before anyone switched it on.
+ */
+const visibleByDefault = (key: HomepageSectionKey): boolean => key !== EURO_TRIP_SECTION_KEY;
+
+const builtin = (
+  key: HomepageSectionKey,
+  visible = visibleByDefault(key),
+  title: string | null = null,
+): HomepageSection => ({
   key,
   type: "builtin",
   title,
@@ -280,7 +297,7 @@ export async function getHomepageLayout(): Promise<HomepageLayout> {
       sections.push(section);
     }
     // Keys the table lacks (a section added in code before staff saved the
-    // board) are appended in the default order, visible.
+    // board) are appended in the default order - visible, except the Euro Trip.
     for (const key of HOMEPAGE_SECTION_KEYS) {
       if (!seen.has(key)) sections.push(builtin(key));
     }
