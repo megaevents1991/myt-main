@@ -11,6 +11,7 @@ import {
   cardRows,
   cheapestFlight,
   isIsraeliFlight,
+  legTitle,
   pickBestFlight,
   priceBadge,
   pricedFlight,
@@ -396,5 +397,17 @@ describe("pricedFlight", () => {
     expect(pricedFlight(f, 500, { error: "x" }, [])).toBeNull();
     expect(pricedFlight(f, 200, null, [])).toBeNull();
     expect(pricedFlight(f, 0, null, [])).toBeNull();
+  });
+});
+
+describe("legTitle", () => {
+  const leg = (kind: TripLeg["kind"]): TripLeg => ({ kind, from: "TLV", to: "BCN", date: "2026-10-24" });
+  it("names the flight out, a flight between two cities and the flight home in Alon's words", () => {
+    expect(legTitle(leg("out"))).toBe("טיסה הלוך");
+    expect(legTitle(leg("mid"))).toBe("טיסת פנים");
+    expect(legTitle(leg("ret"))).toBe("טיסה חזור");
+  });
+  it("has no title for a row the card could not tie to a leg of the trip", () => {
+    expect(legTitle(undefined)).toBeNull();
   });
 });

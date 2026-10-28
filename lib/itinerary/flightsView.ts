@@ -155,6 +155,17 @@ export function priceBadge(price: number, pax: number, base: number): PriceBadge
 
 export type CardRow = { kind: "flight"; leg: FlightSegment; trip?: TripLeg } | { kind: "train"; key: string };
 
+const LEG_TITLES: Record<TripLeg["kind"], string> = { out: "טיסה הלוך", mid: "טיסת פנים", ret: "טיסה חזור" };
+
+/**
+ * What a flight row of the card is, in Alon's words (28.10: "טיסה הלוך, טיסה חזור, טיסת פנים"):
+ * the flight out, a flight between two cities of the trip, the flight home. A row the card could
+ * not tie to a leg of the trip (`trip` absent) has no title.
+ */
+export function legTitle(trip: TripLeg | undefined): string | null {
+  return trip ? LEG_TITLES[trip.kind] : null;
+}
+
 /**
  * A card's rows in trip order: every leg of the trip (`all` = `tripLegs` with nothing by train),
  * a move by train as a train row, every other leg as the flight's next leg. A flight whose legs

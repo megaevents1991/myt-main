@@ -337,6 +337,21 @@ export function FlightsStep() {
   const pickNow = pick && pick.key === search.key ? pick : null;
   const selectedId = state.flight?.id;
 
+  // Alon 28.10: the recommended flight ("★ הטוב ביותר", the default tab's first) arrives picked -
+  // once per search, only while nothing is picked; a customer's own pick or a failed check is
+  // never overridden (the card says so, and the next choice is theirs).
+  const chooseRef = useRef(choose);
+  chooseRef.current = choose;
+  const autoPicked = useRef("");
+  useEffect(() => {
+    const key = search.key;
+    if (search.view !== "ok" || !key || autoPicked.current === key || state.flight || pick) return;
+    const best = sortFlights(flights, "best")[0];
+    if (!best) return;
+    autoPicked.current = key;
+    void chooseRef.current(best);
+  }, [search.view, search.key, flights, state.flight, pick]);
+
   // "הצג עוד" counts per (search, tab), and never hides the flight already chosen.
   const pageAt = `${search.key}|${sort}`;
   const count = page.at === pageAt ? page.count : FLIGHTS_PAGE;

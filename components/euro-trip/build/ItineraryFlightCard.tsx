@@ -8,7 +8,7 @@ import { CardWrapper } from "@/components/ui/cardWrapper";
 import { FlightMeta } from "@/components/ui/FlightCard";
 import type { FlightSegment, ItineraryFlight } from "@/lib/app.types";
 import { dayMonth } from "@/lib/itinerary/builder";
-import { priceBadge, trainRowText, trainToggleLabel, type CardRow, type PriceBadge } from "@/lib/itinerary/flightsView";
+import { legTitle, priceBadge, trainRowText, trainToggleLabel, type CardRow, type PriceBadge } from "@/lib/itinerary/flightsView";
 import type { TrainLeg } from "@/lib/itinerary/types";
 import { cn } from "@/lib/utils";
 import { ADD_BUTTON } from "./parts";
@@ -65,38 +65,48 @@ function TrainToggle({ on, km, onToggle }: { on: boolean; km: number; onToggle: 
   );
 }
 
-/** One flight of the trip: the live card's leg row (airline, day, flight number) around `FlightMeta`. */
-function LegRow({ leg, flight }: { leg: FlightSegment; flight: ItineraryFlight }) {
+/**
+ * One flight of the trip: what it is ("טיסה הלוך" / "טיסת פנים" / "טיסה חזור", `legTitle`), then the
+ * live card's leg row (airline, day, flight number) around `FlightMeta`.
+ */
+function LegRow({ leg, flight, title }: { leg: FlightSegment; flight: ItineraryFlight; title: string | null }) {
   const { metadata } = flight;
   return (
-    <div className="flex w-full flex-row items-center justify-between gap-2 py-3 lg:gap-1">
-      <div className="flex w-[22%] shrink-0 flex-col items-center gap-0.5 text-center lg:w-[18%]">
-        {/* Airline logos are dark-ink PNGs - on the dark card they sit on a white chip. */}
-        <div className="rounded-md dark:bg-white/95 dark:p-1">
-          {metadata.logo ? (
-            <Image
-              src={metadata.logo}
-              alt={`${metadata.name} logo`}
-              width={100}
-              height={100}
-              className="h-auto w-full max-w-[88px] object-contain"
-            />
-          ) : (
-            <Plane size={28} className="text-muted-foreground" aria-hidden />
+    <div className="flex w-full flex-col">
+      {title && (
+        <span className="-mb-1 mt-3 self-start rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-foreground">
+          {title}
+        </span>
+      )}
+      <div className="flex w-full flex-row items-center justify-between gap-2 py-3 lg:gap-1">
+        <div className="flex w-[22%] shrink-0 flex-col items-center gap-0.5 text-center lg:w-[18%]">
+          {/* Airline logos are dark-ink PNGs - on the dark card they sit on a white chip. */}
+          <div className="rounded-md dark:bg-white/95 dark:p-1">
+            {metadata.logo ? (
+              <Image
+                src={metadata.logo}
+                alt={`${metadata.name} logo`}
+                width={100}
+                height={100}
+                className="h-auto w-full max-w-[88px] object-contain"
+              />
+            ) : (
+              <Plane size={28} className="text-muted-foreground" aria-hidden />
+            )}
+          </div>
+          <div className="text-xs font-bold tabular-nums text-muted-foreground">{dayMonth(leg.departureTime.slice(0, 10))}</div>
+          {leg.flightNumber && <div className="hidden text-xs lg:block">{leg.flightNumber}</div>}
+          {leg.operatedBy && (
+            // Registry names run long ("KLM Royal Dutch Airlines (Koninklijke ...)"): the bracket
+            // goes and two lines at most - the full name stays in the title.
+            <div className="line-clamp-2 text-[10px] leading-tight text-forest dark:text-glow" dir="rtl" title={leg.operatedBy}>
+              מופעל ע״י <span dir="ltr">{leg.operatedBy.replace(/\s*\(.*\)\s*$/, "")}</span>
+            </div>
           )}
         </div>
-        <div className="text-xs font-bold tabular-nums text-muted-foreground">{dayMonth(leg.departureTime.slice(0, 10))}</div>
-        {leg.flightNumber && <div className="hidden text-xs lg:block">{leg.flightNumber}</div>}
-        {leg.operatedBy && (
-          // Registry names run long ("KLM Royal Dutch Airlines (Koninklijke ...)"): the bracket
-          // goes and two lines at most - the full name stays in the title.
-          <div className="line-clamp-2 text-[10px] leading-tight text-forest dark:text-glow" dir="rtl" title={leg.operatedBy}>
-            מופעל ע״י <span dir="ltr">{leg.operatedBy.replace(/\s*\(.*\)\s*$/, "")}</span>
-          </div>
-        )}
-      </div>
-      <div className="flex w-full justify-center">
-        <FlightMeta {...leg} />
+        <div className="flex w-full justify-center">
+          <FlightMeta {...leg} />
+        </div>
       </div>
     </div>
   );
@@ -226,7 +236,7 @@ export function ItineraryFlightCard({
             const hop = key ? hops.get(key) : undefined;
             return (
               <div key={`leg-${i}`} className={cn("flex flex-col", hop && "pb-3")}>
-                <LegRow leg={row.leg} flight={flight} />
+                <LegRow leg={row.leg} flight={flight} title={legTitle(row.trip)} />
                 {key && hop && <TrainToggle on={false} km={hop.km} onToggle={() => onToggleTrain(key)} />}
               </div>
             );
