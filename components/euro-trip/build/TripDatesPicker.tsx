@@ -10,6 +10,7 @@ import { CalendarDays } from "lucide-react";
 
 import type { Event } from "@/lib/app.types";
 import { dayMonth } from "@/lib/itinerary/builder";
+import { eventDay } from "@/lib/itinerary/geo";
 import { applyDatePick, datePickSteps, isoDay, localDay, sameTripDates } from "@/lib/itinerary/datePick";
 import type { TripDates } from "@/lib/itinerary/types";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,13 @@ const OFF_STAGED: CSSProperties = {
 };
 const OFF_BAND: CSSProperties = { backgroundColor: "var(--mantine-primary-color-light)", borderRadius: 0 };
 
+/** The dot under an event's day (Alon 28.10: "סמן את האירועים"): the stepper's mint, ringed in ink to read on white. */
+const EVENT_DOT =
+  "pointer-events-none absolute bottom-0.5 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[color:var(--mantine-color-myColor-4)] ring-1 ring-forest dark:ring-0";
+
+/** A date with one possible day (its range is a single day): shown, never picked. */
+const isFixed = (s: { min: string; max: string }) => s.min >= s.max;
+
 /** What the flights step may ask of the field: open its calendar (from an empty state's button). */
 export type TripDatesPickerHandle = { open: () => void };
 
@@ -57,7 +65,8 @@ export type TripDatesPickerHandle = { open: () => void };
  * flight search bar's look ("ובאיזה תאריכים?" and the dates as DD/MM) that opens ONE calendar
  * walking them in trip order (`datePickSteps`): the flight out, each move between stays, the
  * flight home. A click sets that date on a LOCAL draft and moves on to the next; a chip jumps
- * to any one of them. "עדכון הטיסות" hands the draft to `onCommit` once (and does nothing when
+ * to any one of them; a date with no other possible day is shown but cannot be opened, and the walk
+ * skips it (Alon 28.10). The events' own days carry a dot. "עדכון הטיסות" hands the draft to `onCommit` once (and does nothing when
  * it equals `dates`); closing any other way throws the draft away, so the trip - and the
  * flight search behind it - stays as it was. `ref.open()` opens it from elsewhere (the flights
  * step's "no flights for these dates" states).
@@ -115,8 +124,10 @@ export function TripDatesPicker({
     committed.current = false;
     setDraft(dates);
     setTouched(false);
-    setAt(0);
-    setMonth(localDay(steps[0].value));
+    // The walk starts on the first date that can move (all fixed = the first, shown only).
+    const start = Math.max(0, steps.findIndex((s) => !isFixed(s)));
+    setAt(start);
+    setMonth(localDay(steps[start].value));
     setOpened(true);
   };
   useImperativeHandle(ref, () => ({
@@ -143,7 +154,9 @@ export function TripDatesPicker({
     const next = applyDatePick(route, draft, step.key, isoDay(day));
     setDraft(next);
     setTouched(true);
-    if (current < last) goTo(current + 1, next);
+    // On to the next date that can still move on the new draft (a pick can pin a later one).
+    const ahead = datePickSteps(route, next, train).findIndex((s, i) => i > current && !isFixed(s));
+    if (ahead >= 0) goTo(ahead, next);
   };
 
   const commit = () => {
@@ -156,17 +169,32 @@ export function TripDatesPicker({
   const first = steps[0].value;
   const end = steps[last].value;
   const stepAt = new Map(steps.map((s, i) => [s.value, i]));
+  // Every event's day -> its name(s): the dot and the day's tooltip.
+  const eventDays = new Map<string, string>();
+  for (const e of route) {
+    const d = eventDay(e);
+    eventDays.set(d, eventDays.has(d) ? `${eventDays.get(d)} · ${e.name}` : e.name);
+  }
+  const renderDay = (date: Date) => (
+    <span className="relative flex size-full items-center justify-center">
+      {date.getDate()}
+      {eventDays.has(isoDay(date)) && <span aria-hidden className={EVENT_DOT} />}
+    </span>
+  );
   const getDayProps = (date: Date) => {
     const day = isoDay(date);
     const index = stepAt.get(day);
+    const named = eventDays.get(day);
+    const tip = named ? { title: named } : {};
     // Mantine draws neither "selected" nor "in range" on a day this step cannot take, so the
     // trip's other dates would vanish from the calendar - the same look is set by hand there.
     const closed = day < step.min || day > step.max;
     if (index === undefined) {
       const between = day > first && day < end;
-      return between ? { inRange: true, style: closed ? OFF_BAND : undefined } : {};
+      return between ? { ...tip, inRange: true, style: closed ? OFF_BAND : undefined } : tip;
     }
     return {
+      ...tip,
       selected: true,
       // The date being picked wears a ring, so the eye finds it among the staged ones.
       style: closed ? OFF_STAGED : index === current ? PICKING : undefined,
@@ -209,19 +237,24 @@ export function TripDatesPicker({
             <ol className="m-0 flex list-none flex-wrap gap-1.5 p-0">
               {steps.map((s, i) => {
                 const active = i === current;
+                const fixed = isFixed(s);
                 return (
                   <li key={s.key}>
                     <button
                       type="button"
                       onClick={() => goTo(i, draft)}
-                      aria-label={`${i + 1}. ${s.label}, ${dayMonth(s.value)}`}
+                      disabled={fixed}
+                      title={fixed ? "אין תאריך אחר אפשרי כאן" : undefined}
+                      aria-label={`${i + 1}. ${s.label}, ${dayMonth(s.value)}${fixed ? " - תאריך קבוע" : ""}`}
                       aria-current={active ? "step" : undefined}
                       className={cn(
                         "flex items-center gap-1.5 rounded-full border py-1 ps-1 pe-2.5 text-xs font-bold tabular-nums transition-colors",
                         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow",
-                        active
-                          ? "border-main bg-main text-main-foreground dark:border-foreground dark:bg-foreground dark:text-background"
-                          : "border-border bg-card text-foreground hover:border-main",
+                        fixed
+                          ? "cursor-not-allowed border-dashed border-border bg-transparent text-muted-foreground"
+                          : active
+                            ? "border-main bg-main text-main-foreground dark:border-foreground dark:bg-foreground dark:text-background"
+                            : "border-border bg-card text-foreground hover:border-main",
                       )}
                     >
                       <span
@@ -253,8 +286,18 @@ export function TripDatesPicker({
               firstDayOfWeek={0}
               weekendDays={[6]}
               getDayProps={getDayProps}
+              renderDay={renderDay}
               ariaLabels={{ previousMonth: "החודש הקודם", nextMonth: "החודש הבא" }}
             />
+            {eventDays.size > 0 && (
+              <p className="m-0 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span
+                  aria-hidden
+                  className="inline-block size-1.5 rounded-full bg-[color:var(--mantine-color-myColor-4)] ring-1 ring-forest dark:ring-0"
+                />
+                יום של אירוע בטיול
+              </p>
+            )}
             <button type="button" onClick={commit} disabled={!touched} className={cn(ADD_BUTTON, "w-full py-2.5 text-sm")}>
               עדכון הטיסות
             </button>
