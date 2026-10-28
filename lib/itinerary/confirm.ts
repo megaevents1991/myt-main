@@ -112,6 +112,11 @@ export type TripSubmission = {
    * opt in. Written after the hold's rows, best effort - an unreadable value is no suggestion, never a refusal.
    */
   suggest: TripSuggestion | null;
+  /**
+   * "רוצים לפצל תשלום? דברו עם נציג" (Dor 28.10 - the regular summary's button, Alon's "פיצול הזמנה"):
+   * the same hold, and the sales mail says the customer wants to split the payment. Nothing else changes.
+   */
+  splitPay: boolean;
 };
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -320,6 +325,7 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
       utmSource,
       payNow,
       suggest: parseSuggestion(raw.suggest),
+      splitPay: raw.splitPay === true,
     },
   };
 }
@@ -874,7 +880,7 @@ export function submissionFromState(
   travellers: TravellersInput,
   group: string,
   price: LivePrice,
-  extra: { utmSource?: string; payNow?: boolean; suggest?: TripSuggestion | null } = {},
+  extra: { utmSource?: string; payNow?: boolean; suggest?: TripSuggestion | null; splitPay?: boolean } = {},
 ): TripSubmission {
   if (!state.flight) throw new Error("submissionFromState: the trip has no flight");
   const tickets: Record<number, OrderTicket> = {};
@@ -902,6 +908,7 @@ export function submissionFromState(
     utmSource: extra.utmSource ?? "",
     payNow: extra.payNow === true,
     suggest: extra.suggest ?? null,
+    splitPay: extra.splitPay === true,
   };
 }
 

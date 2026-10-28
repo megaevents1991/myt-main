@@ -1462,3 +1462,35 @@ describe("m6 - the hold's group id is reused only for a retry of the identical t
     expect(holdAttempt(a, holdSignature(same, total), makeId)).toBe(a);
   });
 });
+
+describe("split payment (Dor 28.10: the regular summary's \"רוצים לפצל תשלום? דברו עם נציג\")", () => {
+  const mailOf = (sub: TripSubmission) =>
+    tripMailInput({
+      sub,
+      route,
+      rows: buildGroupRows(sub, route, { group: GROUP, rateIls: RATE, settings: S, status: "24Save", gtmIdnts: null }),
+      ids: [1, 2],
+      references: [null, null],
+      price: priceOf(full),
+      rateIls: RATE,
+    });
+
+  it("is read only from a real true - anything else is a plain hold", () => {
+    expect(parsed(wire(full)).splitPay).toBe(false);
+    expect(parsed({ ...wire(full), splitPay: "yes" }).splitPay).toBe(false);
+    expect(parsed(wire(full, { splitPay: true })).splitPay).toBe(true);
+  });
+
+  it("the sales mail says it in the subject and at the top; the customer's mail says the rep arranges it", () => {
+    const split = mailOf(parsed(wire(full, { splitPay: true })));
+    const ops = tripOpsMail(split);
+    expect(ops.subject.startsWith("[SPLIT PAYMENT] New Euro Trip Hold (24h)")).toBe(true);
+    expect(ops.text).toContain("SPLIT PAYMENT: the customer asked to split the payment");
+    expect(tripHoldMail(split).html).toContain("ביקשתם לפצל את התשלום");
+
+    const plain = mailOf(parsed(wire(full)));
+    expect(tripOpsMail(plain).subject).not.toContain("SPLIT");
+    expect(tripOpsMail(plain).text).not.toContain("SPLIT");
+    expect(tripHoldMail(plain).html).not.toContain("לפצל");
+  });
+});

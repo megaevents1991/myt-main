@@ -54,6 +54,8 @@ export type TripMailInput = {
   totalIls: number;
   rateIls: number;
   affiliate: string;
+  /** The customer pressed "רוצים לפצל תשלום? דברו עם נציג" (`TripSubmission.splitPay`). */
+  splitPay: boolean;
 };
 
 /** The mails' input from what the route has in hand after the insert. */
@@ -98,6 +100,7 @@ export function tripMailInput(i: {
     totalIls: rows.reduce((sum, r) => sum + r.final_purchase_price_ils, 0),
     rateIls: i.rateIls,
     affiliate: sub.utmSource,
+    splitPay: sub.splitPay === true,
   };
 }
 
@@ -192,6 +195,7 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
           line("No payment link was sent to the customer - sales converts this hold by phone."),
         ]
       : [line(`New EURO TRIP order - PAY NOW (status ${i.status}) - the customer was sent to payment.`)]),
+    ...(i.splitPay ? [line("*** SPLIT PAYMENT: the customer asked to split the payment - arrange it on the call. ***")] : []),
     line(`Group: ${i.group}`),
     line(`Reservations: ${i.rows.map((r) => `${ref(r)} = seq ${r.seq}/${i.rows.length}`).join(", ")}`),
     line(`Name: ${i.contact.firstName} ${i.contact.lastName}`),
@@ -216,7 +220,7 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
 
   const names = i.rows.map((r) => r.event.name).join(" + ");
   return {
-    subject: hold ? `New Euro Trip Hold (24h) - ${names}` : `New Euro Trip Order (pay now) - ${names}`,
+    subject: `${i.splitPay ? "[SPLIT PAYMENT] " : ""}${hold ? `New Euro Trip Hold (24h) - ${names}` : `New Euro Trip Order (pay now) - ${names}`}`,
     text,
   };
 }
@@ -291,6 +295,11 @@ export function tripHoldMail(i: TripMailInput): { subject: string; html: string 
 <h1 style="color: #0A1A14; font-size: 24px; margin: 0 0 12px 0; text-align: center; direction: rtl;" dir="rtl">קיבלנו את הבקשה</h1>
 <p style="color: #333333; font-size: 16px; margin: 0 0 8px 0; text-align: center; direction: rtl;" dir="rtl">שלום ${esc(i.contact.firstName)},</p>
 <p style="color: #333333; font-size: 16px; margin: 0 0 8px 0; text-align: center; direction: rtl;" dir="rtl">קיבלנו את הבקשה. נציג יחזור אליכם תוך 24 שעות.</p>
+${
+  i.splitPay
+    ? `<p style="color: #333333; font-size: 16px; margin: 0 0 8px 0; text-align: center; direction: rtl;" dir="rtl">ביקשתם לפצל את התשלום - הנציג יתאם זאת איתכם בשיחה.</p>`
+    : ""
+}
 ${
   i.reference
     ? `<p style="color: #666666; font-size: 15px; margin: 0 0 8px 0; text-align: center; direction: rtl;" dir="rtl">מספר הבקשה: <strong style="color: #0A1A14; unicode-bidi: embed;" dir="ltr">${esc(i.reference)}</strong></p>`

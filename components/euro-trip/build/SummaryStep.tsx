@@ -626,6 +626,9 @@ export function SummaryStep({
   const suggestion: TripSuggestion | null =
     canSuggest && suggestOn ? { title: cleanSuggestTitle(suggestTitle) || null } : null;
   const sendHold = (t: TravellersInput) => hold.submit(t, suggestion);
+  // The regular summary's "רוצים לפצל תשלום? דברו עם נציג" (Alon's "פיצול הזמנה", Dor 28.10): the same
+  // 24-hour hold, flagged so the rep arranges the split on the call.
+  const sendSplitHold = (t: TravellersInput) => hold.submit(t, suggestion, true);
 
   const touch = (key: string) =>
     setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
@@ -723,6 +726,20 @@ export function SummaryStep({
     </button>
   );
 
+  // The live summary's outline look (app/order/OrderReview.tsx): two short lines, the question first.
+  const splitButton = HOLD_ENABLED && (
+    <button
+      type="button"
+      disabled={sending || expired}
+      onClick={() => attempt("hold", sendSplitHold)}
+      aria-label="רוצים לפצל תשלום? דברו עם נציג - שמירת הטיול ל-24 שעות ונציג יחזור אליכם"
+      className="flex min-h-[52px] w-full flex-col items-center justify-center rounded-md border border-primary px-3 py-1.5 text-[14px] font-semibold leading-tight text-success transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-white/5"
+    >
+      <span>רוצים לפצל תשלום?</span>
+      <span>דברו עם נציג</span>
+    </button>
+  );
+
   // Terms, card logos, the buttons and what they answer. Under the summary on a wider screen; on a
   // phone after the travellers (the live summary's order: the form is filled before the button).
   const actions = (
@@ -769,6 +786,7 @@ export function SummaryStep({
         </button>
       )}
       {holdButton}
+      {splitButton}
       {HOLD_ENABLED && (
         <p className="m-0 text-center text-xs text-muted-foreground">
           {payOpen
