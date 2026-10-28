@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
 import {
+  activeFilterCount,
   catalogCities,
   catalogItems,
   catalogMonths,
   dayMonth,
   dayMonthYear,
   filterCatalog,
+  fittingItems,
+  isBrowsing,
+  starterEvents,
+  topCities,
   tripCities,
 } from "../itinerary/builder";
 
@@ -132,5 +137,48 @@ describe("the self-build catalog", () => {
     expect(items.map((i) => i.event.id)).toEqual([618, 656, 702, 717]);
     expect(items[0].inRoute).toBe(true);
     expect(items[3].compat.status).toBe("blocked");
+  });
+});
+
+describe("search first", () => {
+  const none = { query: "", month: "", kind: "all" as const, city: "" };
+
+  it("browses until a word, a month, a kind or a city is set; the filter button counts the three filters", () => {
+    expect(isBrowsing(none)).toBe(true);
+    expect(isBrowsing({ ...none, query: "   " })).toBe(true);
+    expect(isBrowsing({ ...none, query: "סלין" })).toBe(false);
+    expect(isBrowsing({ ...none, month: "2027-05" })).toBe(false);
+    expect(isBrowsing({ ...none, kind: "football" })).toBe(false);
+    expect(isBrowsing({ ...none, city: "לונדון" })).toBe(false);
+    expect(activeFilterCount(none)).toBe(0);
+    expect(activeFilterCount({ ...none, query: "x" })).toBe(0);
+    expect(activeFilterCount({ query: "", month: "2027-05", kind: "music", city: "פריז" })).toBe(3);
+  });
+
+  it("top cities: the most events first, a tie in Hebrew order, at most n", () => {
+    const top = topCities(catalog, 3);
+    expect(top[0]).toEqual({ city: "לונדון", count: 3 });
+    expect(top[1]).toEqual({ city: "פריז", count: 2 });
+    expect(top).toHaveLength(3);
+    expect(topCities(catalog, 0)).toEqual([]);
+  });
+
+  it("starters: the most wanted first, then the soonest, one show per name", () => {
+    const wanted = { ...later, is_prioritized: true } as Event;
+    const list = starterEvents([celine, chelsea, gracieAms, gracieBer, wanted, tottenham], 4);
+    expect(list[0].id).toBe(later.id);
+    // The rest by day; the second "גרייסי אברמס" (Berlin) never shows beside the first.
+    expect(list.slice(1).map((e) => e.id)).toEqual([tottenham.id, gracieAms.id, celine.id]);
+    expect(starterEvents(catalog, 0)).toEqual([]);
+  });
+
+  it("what fits: never the route's own event, never a blocked one, best fit first", () => {
+    const items = catalogItems([chelsea], catalog, S);
+    const fits = fittingItems(items);
+    expect(fits.some((i) => i.event.id === chelsea.id)).toBe(false);
+    expect(fits.every((i) => i.compat.status !== "blocked")).toBe(true);
+    expect(fits.map((i) => i.event.id)).toEqual(
+      items.filter((i) => !i.inRoute && i.compat.status !== "blocked").map((i) => i.event.id),
+    );
   });
 });

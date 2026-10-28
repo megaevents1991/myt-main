@@ -44,7 +44,6 @@ const heavy = {
   tx_excluded_sections: ["101", "102", "103"],
   created_at: "2026-01-01T00:00:00Z",
   usual_price: 999,
-  is_prioritized: false,
   is_deleted: null,
   light_package: "green",
 };

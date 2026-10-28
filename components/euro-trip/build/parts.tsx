@@ -1,12 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/he";
-import { Check, CircleAlert, Search, X } from "lucide-react";
+import { Check, CircleAlert, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { CatalogFilter, CatalogKind } from "@/lib/itinerary/builder";
+import { activeFilterCount, type CatalogFilter, type CatalogKind } from "@/lib/itinerary/builder";
 import { describeCompat } from "@/lib/itinerary/rules";
 import type { Compat } from "@/lib/itinerary/types";
 
@@ -140,18 +140,19 @@ function ChipRow({
 }
 
 /**
- * The catalog's search and filters - the planner's grid and the "הוסף אירוע" popup draw the same
- * block: the search box, the months, הכל / כדורגל / הופעות and the cities (`catalogMonths`,
- * `catalogCities`; a row with a single value is not drawn). `autoFocus` = the popup's search
- * takes the focus when it opens (Mantine's focus trap reads `data-autofocus`).
+ * The catalog's search - the planner and the "הוסף אירוע" popup draw the same bar (Alon + Dor
+ * 28.10: a search engine first, every filter behind ONE "סינון" button - "חיפוש מתקדם"). The
+ * button opens the months, הכל / כדורגל / הופעות and the cities (`catalogMonths`,
+ * `catalogCities`; a row with a single value is not drawn) and counts the ones set; while it is
+ * closed, the set filters stay in view as chips that remove themselves. `autoFocus` = the
+ * popup's search takes the focus when it opens (Mantine's focus trap reads `data-autofocus`).
  */
-export function CatalogFilters({
+export function EventSearchBar({
   filter,
   onChange,
   months,
   cities,
   autoFocus = false,
-  wrapMonths = false,
   className,
   searchClassName,
 }: {
@@ -160,54 +161,119 @@ export function CatalogFilters({
   months: string[];
   cities: string[];
   autoFocus?: boolean;
-  wrapMonths?: boolean;
-  /** Merged onto the block's root (`flex flex-col gap-3`). */
+  /** Merged onto the bar's root (`flex flex-col gap-2`) - the popup passes `contents`. */
   className?: string;
-  /** Wraps the search box alone (the popup makes it sticky on a phone). */
+  /** Wraps the search row alone (the popup makes it sticky). */
   searchClassName?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const count = activeFilterCount(filter);
+  const kindLabel = KINDS.find((k) => k.value === filter.kind)?.label ?? "";
+  const set: { key: string; label: string; clear: Partial<CatalogFilter> }[] = [
+    ...(filter.month ? [{ key: "month", label: monthLabel(filter.month), clear: { month: "" } }] : []),
+    ...(filter.kind !== "all" ? [{ key: "kind", label: kindLabel, clear: { kind: "all" as CatalogKind } }] : []),
+    ...(filter.city ? [{ key: "city", label: filter.city, clear: { city: "" } }] : []),
+  ];
+
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn("flex flex-col gap-2", className)}>
       <div className={searchClassName}>
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
-          <input
-            type="search"
-            value={filter.query}
-            onChange={(e) => onChange({ query: e.target.value })}
-            placeholder="לאן טסים? אמן, קבוצה או עיר..."
-            aria-label="חיפוש אירוע - אמן, קבוצה או עיר"
-            autoComplete="off"
-            data-autofocus={autoFocus || undefined}
-            className="min-w-0 flex-1 bg-transparent px-2 text-base text-foreground placeholder:text-[15px] placeholder:font-medium placeholder:text-muted-foreground focus:outline-none"
-          />
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" aria-hidden>
-            <Search className="size-5" />
-          </span>
+        <div className="flex items-stretch gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/30">
+            <input
+              type="search"
+              value={filter.query}
+              onChange={(e) => onChange({ query: e.target.value })}
+              placeholder="לאן טסים? אמן, קבוצה או עיר..."
+              aria-label="חיפוש אירוע - אמן, קבוצה או עיר"
+              autoComplete="off"
+              data-autofocus={autoFocus || undefined}
+              className="min-w-0 flex-1 bg-transparent px-2 text-base text-foreground placeholder:text-[15px] placeholder:font-medium placeholder:text-muted-foreground focus:outline-none"
+            />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" aria-hidden>
+              <Search className="size-5" />
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls={panelId}
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-2xl border px-3.5 text-sm font-bold shadow-sm transition-colors sm:px-4",
+              open || count > 0
+                ? "border-main bg-main text-main-foreground dark:border-foreground dark:bg-foreground dark:text-background"
+                : "border-border bg-card text-foreground hover:bg-foreground/[0.03]",
+            )}
+          >
+            <SlidersHorizontal className="size-4" aria-hidden />
+            סינון
+            {count > 0 && (
+              <span className="grid size-5 place-items-center rounded-full bg-primary text-[11px] font-extrabold text-primary-foreground">
+                {count}
+                <span className="sr-only"> מסננים פעילים</span>
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      {months.length > 1 && (
-        <ChipRow
-          label="חודש"
-          allLabel="כל התאריכים"
-          values={months}
-          value={filter.month}
-          onChange={(month) => onChange({ month })}
-          name={monthLabel}
-          wrap={wrapMonths}
-        />
-      )}
-
-      <KindTabs value={filter.kind} onChange={(kind) => onChange({ kind })} />
-
-      {cities.length > 1 && (
-        <ChipRow
-          label="עיר"
-          allLabel="כל הערים"
-          values={cities}
-          value={filter.city}
-          onChange={(city) => onChange({ city })}
-        />
+      {open ? (
+        <div id={panelId} role="group" aria-label="חיפוש מתקדם" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
+          {months.length > 1 && (
+            <ChipRow
+              label="חודש"
+              allLabel="כל התאריכים"
+              values={months}
+              value={filter.month}
+              onChange={(month) => onChange({ month })}
+              name={monthLabel}
+              wrap
+            />
+          )}
+          <KindTabs value={filter.kind} onChange={(kind) => onChange({ kind })} />
+          {cities.length > 1 && (
+            <ChipRow
+              label="עיר"
+              allLabel="כל הערים"
+              values={cities}
+              value={filter.city}
+              onChange={(city) => onChange({ city })}
+            />
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => onChange({ month: "", kind: "all", city: "" })}
+              disabled={count === 0}
+              className="text-sm font-bold text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:no-underline disabled:opacity-40"
+            >
+              ניקוי הסינון
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className={ADD_BUTTON}>
+              הצגת התוצאות
+            </button>
+          </div>
+        </div>
+      ) : (
+        set.length > 0 && (
+          <ul className="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="מסננים פעילים">
+            {set.map((f) => (
+              <li key={f.key}>
+                <button
+                  type="button"
+                  onClick={() => onChange(f.clear)}
+                  aria-label={`הסרת הסינון: ${f.label}`}
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-primary bg-primary/15 px-3 text-xs font-bold text-forest transition-colors hover:bg-primary/25 dark:text-primary"
+                >
+                  {f.label}
+                  <X className="size-3.5" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
       )}
     </div>
   );

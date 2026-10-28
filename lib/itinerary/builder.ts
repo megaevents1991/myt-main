@@ -91,3 +91,54 @@ export function catalogItems(route: Event[], list: Event[], s: ItinerarySettings
   }));
   return items.sort((a, b) => (trip.length ? rank(a) - rank(b) : 0) || byDay(a.event, b.event));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Search first (Alon + Dor 28.10: "לזרוק עליו את כל האירועים זה מבלבל" - a search engine, the
+// filters behind one "סינון" button, and suggestions instead of the whole catalog)
+// ---------------------------------------------------------------------------------------------
+
+/** No search words and no month, kind or city: the planner suggests instead of listing the catalog. */
+export function isBrowsing(f: CatalogFilter): boolean {
+  return !f.query.trim() && activeFilterCount(f) === 0;
+}
+
+/** How many of month / kind / city are set - the "סינון" button's count. */
+export function activeFilterCount(f: CatalogFilter): number {
+  return (f.month ? 1 : 0) + (f.kind !== "all" ? 1 : 0) + (f.city ? 1 : 0);
+}
+
+/** The cities with the most events, most first (a tie in Hebrew order): where a trip can start. */
+export function topCities(catalog: Event[], n: number): { city: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const e of catalog) {
+    const city = eventCityName(e);
+    if (city) counts.set(city, (counts.get(city) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, "he"))
+    .slice(0, Math.max(0, n));
+}
+
+/**
+ * A first event to start from: the site's most wanted (`is_prioritized`) first, then the soonest -
+ * one show per name, so an artist with five dates does not fill the row.
+ */
+export function starterEvents(catalog: Event[], n: number): Event[] {
+  const seen = new Set<string>();
+  const out: Event[] = [];
+  const ordered = [...catalog].sort((a, b) => Number(!!b.is_prioritized) - Number(!!a.is_prioritized) || byDay(a, b));
+  for (const e of ordered) {
+    if (out.length >= n) break;
+    const name = e.name.trim();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    out.push(e);
+  }
+  return out;
+}
+
+/** What can still join the route, best fit first (`catalogItems`' order): not the route's own, not the blocked. */
+export function fittingItems(items: CatalogItem[]): CatalogItem[] {
+  return items.filter((i) => !i.inRoute && i.compat.status !== "blocked");
+}

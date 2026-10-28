@@ -20,6 +20,8 @@ const KEEP = [
   "type",
   "date",
   "tags",
+  // the planner's "המבוקשים ביותר" start (starterEvents, lib/itinerary/builder.ts)
+  "is_prioritized",
   // geography + lodging (lib/itinerary/geo.ts, lib/events/lodging.ts)
   "location",
   "event_location",
