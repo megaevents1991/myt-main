@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import dayjs from "dayjs";
@@ -48,6 +48,7 @@ import { useItinerary } from "./ItineraryProvider";
 import { TravellersForm, fieldId } from "./TravellersForm";
 import { PANEL, nightsLabel } from "./parts";
 import { SuggestTripCard } from "./SuggestTripCard";
+import { TripRoute } from "./TripRoute";
 import { useTripHold } from "./useTripHold";
 
 /** "$2,133" / "$617.50" - whole dollars unless there are cents. */
@@ -255,16 +256,28 @@ function TripReview({
     return {
       id: `tickets-${e.id}`,
       primary: `כרטיסים (${pax})`,
-      secondary: ready ? `קטגוריה: ${t.zoneLabel || t.category}` : "עוד לא נבחר כרטיס",
+      // The event's own name under "כרטיסים (n)" (Alon 28.10 - the red box): the row says which event.
+      secondary: (
+        <>
+          <span className="block font-semibold text-main dark:text-foreground">{e.name}</span>
+          {ready ? `קטגוריה: ${t.zoneLabel || t.category}` : "עוד לא נבחר כרטיס"}
+        </>
+      ),
       icon: <FaTicketAlt />,
       content: ready ? (
-        <EventSummary
-          numberOfEventTickets={pax}
-          eventTicket={{ category: t.category, zoneLabel: t.zoneLabel, description: t.description }}
-          agentCommission={0}
-          isAgent={hideFigures}
-          eventTicketPriceAddition={additions?.tickets[e.id] ?? 0}
-        />
+        <div>
+          {/* Desktop: the event in the hotel row's small line (place | date), not a big heading. */}
+          <p className="m-0 hidden text-[13px] font-bold text-forest md:block dark:text-glow">
+            {e.name} · {placeOf(e)} | {fullDate(e.date)}
+          </p>
+          <EventSummary
+            numberOfEventTickets={pax}
+            eventTicket={{ category: t.category, zoneLabel: t.zoneLabel, description: t.description }}
+            agentCommission={0}
+            isAgent={hideFigures}
+            eventTicketPriceAddition={additions?.tickets[e.id] ?? 0}
+          />
+        </div>
       ) : (
         <NotPicked title="כרטיסים" text="עוד לא נבחר כרטיס" />
       ),
@@ -374,21 +387,8 @@ function TripReview({
     );
     return (
       <div className="space-y-3 px-4 py-4 text-right">
-        {route.map((e, i) => (
-          <Fragment key={e.id}>
-            <div className="flex w-full flex-row items-center gap-2" dir="rtl">
-              <div className="flex flex-1 justify-center px-1">
-                <h2 className="text-center text-2xl font-bold leading-tight">{e.name}</h2>
-              </div>
-              <div className="shrink-0 text-center">
-                <p className="m-0 text-base font-bold">{placeOf(e)}</p>
-                <p className="m-0 text-sm">{fullDate(e.date)}</p>
-              </div>
-            </div>
-            <div className="h-1 w-full border-b" />
-            {accordion([ticketItems[i]])}
-          </Fragment>
-        ))}
+        {/* Alon 28.10: no big title per event ("גדולה מדי ועושה בלאגן") - each tickets row names its event. */}
+        {accordion(ticketItems)}
         <div className="h-1 w-full border-b" />
         {accordion([flightItem, ...hotelItems])}
       </div>
@@ -415,16 +415,10 @@ function TripReview({
   // lean on the inherited right alignment (a logical `text-start` would resolve to left in them).
   return (
     <div className="space-y-3 px-6 py-4 text-right">
-      {route.map((e, i) => (
-        <Fragment key={e.id}>
-          <div className={cn("text-center", i > 0 && "border-t border-border pt-3")}>
-            <h2 className="text-2xl font-bold">{e.name}</h2>
-            <p className="m-0 text-lg">
-              {placeOf(e)} | {fullDate(e.date)}
-            </p>
-          </div>
-          {section(ticketItems[i])}
-        </Fragment>
+      {ticketItems.map((item, i) => (
+        <div key={item.id} className={cn(i > 0 && "border-t border-border pt-3")}>
+          {section(item)}
+        </div>
       ))}
       <div className="space-y-3 border-t border-border pt-3">
         {section(flightItem)}
@@ -935,6 +929,8 @@ export function SummaryStep({
                   הגעה עצמאית בין הערים לא כלולה במחיר.
                 </p>
               )}
+              {/* Alon 28.10: the route first, every edit under it. */}
+              <TripRoute />
               <TripReview
                 additions={additions}
                 locked={sending}
