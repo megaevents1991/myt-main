@@ -18,13 +18,18 @@ const MINT_FILL = "bg-[color:var(--mantine-color-myColor-4)]";
 /** The stepper's grey (Mantine gray-2 / dark-5): a tint of the text, so it reads in both themes. */
 const GREY = "bg-foreground/[0.08]";
 
-/** One event: the numbered circle, "אירוע n" and the event's name (cut to fit, full in `title`). */
+/**
+ * One event. The open one is BIG - a large circle, "אירוע n" and the event's name; every other
+ * event is a small circle alone (number or check), its name in `title` and for screen readers
+ * (Alon 28.10: "עיגולים של אירוע אחד אירוע שתיים - הנוכחי בגדול והשאר עיגול קטן").
+ */
 function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) {
   const body = (
     <>
       <span
         className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-[13px] font-bold tabular-nums",
+          "flex shrink-0 items-center justify-center rounded-full border-2 font-bold tabular-nums",
+          item.current ? "size-10 text-base" : "size-6 text-[11px]",
           item.done
             ? cn(
                 MINT_RING,
@@ -39,27 +44,20 @@ function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) 
         )}
         aria-hidden
       >
-        {item.done ? <Check className="size-4" strokeWidth={3} /> : item.index + 1}
+        {item.done ? <Check className={item.current ? "size-5" : "size-3.5"} strokeWidth={3} /> : item.index + 1}
       </span>
-      <span className="flex min-w-0 flex-col text-start">
-        <span
-          className={cn(
-            "whitespace-nowrap text-[13px] font-bold leading-tight",
-            !item.enabled && !item.current && "text-muted-foreground",
-          )}
-        >
-          {item.label}
+      {item.current ? (
+        <span className="flex min-w-0 flex-col text-start">
+          <span className="whitespace-nowrap text-xs font-semibold leading-tight text-muted-foreground">{item.label}</span>
+          <span title={item.name} className="max-w-[13rem] truncate text-base font-bold leading-tight sm:max-w-[26rem]">
+            {item.name}
+          </span>
         </span>
-        <span
-          title={item.name}
-          className={cn(
-            "max-w-[7.5rem] truncate text-xs leading-tight sm:max-w-[15rem]",
-            item.current ? "font-semibold text-foreground" : "text-muted-foreground",
-          )}
-        >
-          {item.name}
+      ) : (
+        <span className="sr-only">
+          {item.label}: {item.name}
         </span>
-      </span>
+      )}
       {item.done && <span className="sr-only">כרטיסים נבחרו</span>}
       {!item.enabled && !item.current && <span className="sr-only">זמין אחרי בחירת כרטיסים לאירוע הקודם</span>}
     </>
@@ -83,6 +81,7 @@ function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) 
       <button
         type="button"
         onClick={onOpen}
+        title={`${item.label}: ${item.name}`}
         className={cn(box, "transition-colors hover:bg-foreground/[0.04]", focus)}
       >
         {body}
@@ -91,7 +90,11 @@ function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) 
   }
   // A later event past one still without its ticket cannot be skipped to: not a button (the
   // continue bar walks the events in order); the sr-only line above says why.
-  return <span className={box}>{body}</span>;
+  return (
+    <span className={box} title={`${item.label}: ${item.name}`}>
+      {body}
+    </span>
+  );
 }
 
 /**

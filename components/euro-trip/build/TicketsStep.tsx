@@ -20,7 +20,6 @@ import {
 } from "@/lib/itinerary/adapter";
 import { useItinerary } from "./ItineraryProvider";
 import { adapterForEvent, type TicketStepCallbacks } from "./orderContextAdapter";
-import { PanelTitle } from "./parts";
 
 /** The same words the route link uses for an event that left the catalog. */
 const GONE = "האירוע כבר לא זמין";
@@ -197,15 +196,11 @@ export function TicketsStep() {
 
   return (
     <section aria-labelledby="trip-tickets-title" className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <PanelTitle>
-          <span id="trip-tickets-title">כרטיסים לכל אירוע</span>
-        </PanelTitle>
-        <p className="m-0 text-sm text-muted-foreground">
-          {pax === 1 ? "כרטיס אחד" : `${pax} כרטיסים`} לכל אירוע - כמספר הנוסעים. שינוי הכמות חל על כל האירועים
-          · {doneCount} מתוך {route.length} מוכנים
-        </p>
-      </div>
+      {/* Alon 28.10: no visible heading here - the event circles above and the event's own header
+          say where the customer stands. Screen readers keep the section's name and the count. */}
+      <h2 id="trip-tickets-title" className="sr-only">
+        כרטיסים לכל אירוע · {doneCount} מתוך {route.length} מוכנים
+      </h2>
       {isFullRow(event) ? (
         <EventTicketPane key={`${event.id}:${pax}`} event={event} />
       ) : failed ? (
