@@ -18,8 +18,24 @@ import {
   ticketFromStep,
   ticketReady,
 } from "@/lib/itinerary/adapter";
+import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
 import { adapterForEvent, type TicketStepCallbacks } from "./orderContextAdapter";
+
+/**
+ * The live ticket step's event band (EventDataHeader inside its full-width `bg-muted` strip), made
+ * small in a trip - Dor 28.10: "the row grows, the big event title band shrinks"; the event circles
+ * above already name the event. Scoped to this step's own wrapper, so /order is untouched: the
+ * name drops from 3xl to lg / xl, the date line to sm, the round photo to 44-48px, the description
+ * goes and the strip's padding shrinks.
+ */
+const COMPACT_EVENT_BAND = cn(
+  "lg:[&_.w-screen.bg-muted]:py-2",
+  "[&_.w-screen.bg-muted_h1>span:first-child]:mb-0 [&_.w-screen.bg-muted_h1>span:first-child]:text-lg md:[&_.w-screen.bg-muted_h1>span:first-child]:text-xl",
+  "[&_.w-screen.bg-muted_h1>span:nth-child(2)]:text-sm",
+  "[&_.w-screen.bg-muted_h1~span]:hidden",
+  "[&_.w-screen.bg-muted_.size-16.rounded-full]:size-11 md:[&_.w-screen.bg-muted_.size-16.rounded-full]:size-12",
+);
 
 /** The same words the route link uses for an event that left the catalog. */
 const GONE = "האירוע כבר לא זמין";
@@ -195,7 +211,7 @@ export function TicketsStep() {
   const doneCount = route.filter(isDone).length;
 
   return (
-    <section aria-labelledby="trip-tickets-title" className="flex flex-col gap-3">
+    <section aria-labelledby="trip-tickets-title" className={cn("flex flex-col gap-3", COMPACT_EVENT_BAND)}>
       {/* Alon 28.10: no visible heading here - the event circles above and the event's own header
           say where the customer stands. Screen readers keep the section's name and the count. */}
       <h2 id="trip-tickets-title" className="sr-only">
