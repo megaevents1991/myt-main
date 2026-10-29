@@ -593,7 +593,7 @@ filters in the route, `categoryMatchesMapId`) and change it there**, or the two 
 - `components/` - Shared React components; `components/ui/` for design-system primitives
 - `lib/` - Shared types (`app.types.ts`), utilities, and service modules
   - `lib/eventsData.ts` - Supabase event queries with ISR caching
-  - `lib/exchangeRateService.ts` - USD/ILS and EUR/USD exchange rates
+  - `lib/exchangeRateService.ts` - USD/ILS and EUR/USD exchange rates (both currency-api mirrors read at once, the newer `date` wins - `lib/currencyApi.ts`, byte-identical in the backoffice `lib/currency-api.ts` and mega-family `lib/server/currency-api.ts`; 2026-10-29 a stale jsDelivr CDN priced the site with yesterday's dollar)
   - `lib/tixstock-map.ts` - Tixstock seat map data
 
 ### External Ticket Vendors

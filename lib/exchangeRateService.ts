@@ -3,6 +3,7 @@ import {
   USD_ILS_FALLBACK_RATE,
   TRAVEL_RATE_MULTIPLIER,
 } from "./exchangeRate.constants";
+import { rateOf, readNewestFile } from "./currencyApi";
 
 interface ExchangeRateData {
   rate: number;
@@ -54,10 +55,6 @@ const CURRENCY_CONFIG: Record<
     fallback: 1.36,
   },
 };
-
-const JSDELIVR_BASE =
-  "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
-const CLOUDFLARE_BASE = "https://latest.currency-api.pages.dev/v1/currencies";
 
 const makeHardcoded = (key: RateKey): ExchangeRateData => ({
   rate: CURRENCY_CONFIG[key].fallback,
@@ -130,38 +127,30 @@ class ExchangeRateService {
 
   // --- Fetch strategy ---
 
+  /**
+   * Both mirrors of the currency API at once, the file with the newer date wins
+   * (lib/currencyApi.ts): one jsDelivr CDN kept yesterday's file until noon on
+   * 2026-10-29 and the site quoted 3.14 instead of 3.17.
+   */
   private async fetchFromCurrencyApi(key: RateKey): Promise<number | null> {
     const { pair, base, target } = CURRENCY_CONFIG[key];
-    const urls = [
-      `${JSDELIVR_BASE}/${base}.json`,
-      `${CLOUDFLARE_BASE}/${base}.json`,
-    ];
-
-    for (const url of urls) {
-      try {
-        const data = (await this.fetchJson(url)) as Record<
-          string,
-          Record<string, number>
-        >;
-        const rawRate = data?.[base]?.[target];
-        if (typeof rawRate !== "number")
-          throw new Error(`Missing "${target}" in "${base}" entry`);
-
-        const rate = this.validateRate(rawRate, key);
-        if (rate !== null) {
-          logger.info(`jsDelivr ${pair}: ${rate}`);
-          return rate;
-        }
-        throw new Error("Rate outside valid range");
-      } catch (err) {
-        logger.warn(
-          `Currency API (${url}) ${pair} failed: ${this.errMsg(err)}`,
-        );
-      }
+    const file = await readNewestFile(base, {
+      fetchJson: (url) => this.fetchJson(url),
+      accept: (f) => {
+        const raw = rateOf(f, target);
+        return raw !== null && this.validateRate(raw, key) !== null;
+      },
+      onError: (source, err) =>
+        logger.warn(`Currency API (${source}) ${pair} failed: ${this.errMsg(err)}`),
+    });
+    const raw = file ? rateOf(file, target) : null;
+    const rate = raw === null ? null : this.validateRate(raw, key);
+    if (!file || rate === null) {
+      logger.error(`Currency API ${pair}: all endpoints failed`);
+      return null;
     }
-
-    logger.error(`Currency API ${pair}: all endpoints failed`);
-    return null;
+    logger.info(`Currency API ${pair}: ${rate} (${file.source}, ${file.date ?? "no date"})`);
+    return rate;
   }
 
   // --- Update logic ---
