@@ -20,7 +20,7 @@ import { stays } from "./dates";
 import { estimateParts, markupDiscount, tierMarkups, type EstimateParts } from "./price";
 import type { ItinerarySettings } from "./settings";
 import { MIN_TRIP_EVENTS, type ItineraryState } from "./state";
-import { hotelGuests, stayHotelReady, stayRanges, withStayBase, type StayRange } from "./stayAdapter";
+import { hotelGuests, skippedStayPerTraveller, stayHotelReady, stayRanges, withStayBase, type StayRange } from "./stayAdapter";
 
 export type ItineraryProgress = { build: boolean; tickets: boolean; flights: boolean; hotels: boolean };
 
@@ -31,7 +31,8 @@ export type ItineraryProgress = { build: boolean; tickets: boolean; flights: boo
  * - flights: a flight is set (the flights step sets it only once priced), searched for the
  *   trip's party (`numOfTravelers === pax` - the offer's price is for that many);
  * - hotels: every stay passes `stayHotelReady` - the hotels step's own rule (its nights under
- *   the trip's flight, booked for the party). No flight = no hotel dates = not ready.
+ *   the trip's flight, booked for the party) - or needs no hotel ("לא צריך מלון"). No flight = no
+ *   hotel dates = not ready.
  */
 export function canContinue(state: ItineraryState): ItineraryProgress {
   const { route, dates, pax, flight } = state;
@@ -41,7 +42,10 @@ export function canContinue(state: ItineraryState): ItineraryProgress {
     build: route.length >= MIN_TRIP_EVENTS,
     tickets: allTicketsReady(route, state.tickets, pax),
     flights: !!flight && flight.numOfTravelers === pax,
-    hotels: list.length > 0 && list.every((stay, i) => stayHotelReady(state.hotels[stay.key], ranges[i], pax)),
+    hotels:
+      !!flight &&
+      list.length > 0 &&
+      list.every((stay, i) => state.skippedStays.includes(stay.key) || stayHotelReady(state.hotels[stay.key], ranges[i], pax)),
   };
 }
 
@@ -114,6 +118,10 @@ export function livePrice(state: ItineraryState, s: ItinerarySettings): LivePric
   const ranges = stayRanges(route, dates, state.flight, new Set(state.train));
   let hotels = 0;
   stays(route, dates).forEach((stay, i) => {
+    if (state.skippedStays.includes(stay.key)) {
+      hotels += skippedStayPerTraveller(stay.events[0], ranges[i]);
+      return;
+    }
     const h = state.hotels[stay.key];
     hotels += h ? hotelPerTraveller(h, stay.events[0], ranges[i]) : Number.NaN;
   });
@@ -184,6 +192,10 @@ export function progressivePrice(
   const ranges = stayRanges(route, dates, flight, new Set(state.train));
   let hotels = 0;
   stays(route, dates).forEach((stay, i) => {
+    if (state.skippedStays.includes(stay.key)) {
+      hotels += skippedStayPerTraveller(stay.events[0], ranges[i]);
+      return;
+    }
     const h = state.hotels[stay.key];
     const per = h && stayHotelReady(h, ranges[i], pax) ? hotelPerTraveller(h, stay.events[0], ranges[i]) : Number.NaN;
     hotels += Number.isFinite(per) ? per : (est.stays[i] ?? 0);

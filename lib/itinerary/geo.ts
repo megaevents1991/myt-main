@@ -48,6 +48,15 @@ export function sameCity(a: Event, b: Event): boolean {
   return haversineKm(stayPoint(a).point, stayPoint(b).point) <= SAME_CITY_KM;
 }
 
+/**
+ * One flight city (`location.city_iata`): a Manchester or Liverpool match sold as a flight to
+ * London is a sub-location of London - a train away, no flight and no change of country between.
+ */
+export function sameHub(a: Event, b: Event): boolean {
+  const hub = a.location?.city_iata;
+  return !!hub && hub === b.location?.city_iata;
+}
+
 /** The event's calendar day, `YYYY-MM-DD`. */
 export function eventDay(e: Event): string {
   return e.date.slice(0, 10);

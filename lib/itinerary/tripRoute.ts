@@ -10,9 +10,10 @@
  */
 import type { Event } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
-import { stayCityName } from "./builder";
+import { groundLink, stayCityName } from "./builder";
 import { datePickSteps } from "./datePick";
-import { dayDiff, eventDay } from "./geo";
+import { trainHours } from "./flightsView";
+import { dayDiff, eventDay, sameHub } from "./geo";
 import { moves } from "./dates";
 import type { TripDates } from "./types";
 
@@ -23,6 +24,8 @@ export type TripStop =
   | { kind: "depart" | "move" | "ret"; title: string; day: string }
   /** Two events in one city back to back: no move, the stay goes on. */
   | { kind: "stay"; title: string }
+  /** A sub-location: the train from the flight city to the event's (Manchester, from London). */
+  | { kind: "ground"; title: string; detail: string }
   | { kind: "event"; title: string; day: string; city: string; eventId: number };
 
 /** The route's stops in trip order. Undated trip dates = the events and the stays alone. */
@@ -43,6 +46,15 @@ export function tripStops(route: Event[], dates: TripDates, train: ReadonlySet<s
       const move = byKey.get(key);
       if (!moveKeys.has(key)) out.push({ kind: "stay", title: `נשארים ב${stayCityName(e)}` });
       else if (move) out.push({ kind: "move", title: move.label, day: move.value });
+    }
+    // Reached by a move of its own under one flight city, the train is already said.
+    const ground = groundLink(e);
+    if (ground && !(prev && moveKeys.has(`${prev.id}>${e.id}`) && sameHub(prev, e))) {
+      out.push({
+        kind: "ground",
+        title: `רכבת מ${ground.from} ל${ground.to}`,
+        detail: `כ-${trainHours(ground.km)} שעות · בכוחות עצמכם, לא כלול`,
+      });
     }
     out.push({ kind: "event", title: e.name, day: eventDay(e), city: eventCityName(e), eventId: e.id });
   });

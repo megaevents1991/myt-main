@@ -57,10 +57,10 @@ const gracie = ev(3, "גרייסי אברמס", "2027-05-10", AMSTERDAM);
 const realBarca = ev(4, "ריאל - ברסה", "2027-05-09", MADRID, "sports_event");
 const arsenal = ev(5, "ארסנל - ליברפול", "2027-05-15", LONDON, "sports_event");
 const interLazio = ev(6, "אינטר - לאציו", "2027-05-23", MILAN, "sports_event");
-const berlin = ev(7, "קונצרט בברלין", "2027-05-13", BERLIN);
+const berlin = ev(7, "קונצרט בברלין", "2027-05-14", BERLIN);
 // The same artist on a second night in Paris (trailing space: names are compared trimmed). Next to
-// Gracie (1 day, 430 km) and Céline (same city) it would be the best pairing there is - but never twice.
-const gracieParis = ev(8, "גרייסי אברמס ", "2027-05-11", PARIS);
+// Gracie (3 days, 430 km) and Céline (same city) it would be the best pairing there is - but never twice.
+const gracieParis = ev(8, "גרייסי אברמס ", "2027-05-13", PARIS);
 
 const MAIN = [celine, chelsea, gracie, realBarca, arsenal, interLazio, berlin];
 
@@ -175,7 +175,7 @@ describe("recommendRoutes", () => {
       const names = r.ids.map((id) => (byId(named).get(id) as Event).name.trim());
       expect(new Set(names).size).toBe(names.length);
     }
-    // The rule is what refuses it: next to Gracie, her second night (1 day, 430 km) is a perfect pair.
+    // The rule is what refuses it: next to Gracie, her second night (3 days, 430 km) is a perfect pair.
     expect(compatibility([gracie], gracieParis, S).status).toBe("best");
     expect(
       routes.filter((r) => r.ids.includes(3) && r.ids.includes(8)),
@@ -425,13 +425,13 @@ describe("recommendRoutes ranks trips between cities before single-city ones", (
     expect(compatibility([gracieParis], celine, S).status).toBe("same");
     const routes = recommendRoutes(named, S, TODAY, 48);
     // ...but Céline's two pair slots go to Chelsea and Arsenal (Paris -> London), so Paris + Paris is out.
-    expect(idsOf(routes)).not.toContainEqual([8, 1]);
+    expect(idsOf(routes)).not.toContainEqual([1, 8]);
     expect(idsOf(routes)).toContainEqual([1, 2]);
     expect(idsOf(routes)).toContainEqual([1, 5]);
     expect(routes).toEqual(referenceRoutes(named, S, TODAY, 48));
     // With a slot to spare, it is listed - after the multi-city routes.
     const small = recommendRoutes([gracieParis, celine, chelsea], S, TODAY);
-    expect(idsOf(small)).toEqual([[8, 1, 2], [1, 2], [8, 2], [8, 1]]);
+    expect(idsOf(small)).toEqual([[1, 8, 2], [8, 2], [1, 2], [1, 8]]);
   });
 });
 

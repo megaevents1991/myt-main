@@ -15,8 +15,6 @@ import type { TrainLeg, TripLeg } from "./types";
 
 /** Cards rendered before "הצג עוד" (a search can bring ~250 offers). */
 export const FLIGHTS_PAGE = 20;
-/** Under this many km between two stays the step suggests the train. */
-export const TRAIN_HINT_KM = 600;
 /** Within this many USD a traveller of the base, a flight is "included" (the live FlightTicketCard's band). */
 export const INCLUDED_BAND_USD = 4;
 
@@ -42,22 +40,16 @@ export function trainRowText(t: TrainLeg): { title: string; detail: string } {
   };
 }
 
-/** A move between two stays: their names and the km between them. */
-export type TrainHop = Pick<TrainLeg, "fromName" | "toName" | "km">;
+/** The note in a move's pane: how far it is and how long a train takes. */
+export const trainNote = (h: Pick<TrainLeg, "fromName" | "toName" | "km">): string =>
+  `${h.fromName}–${h.toName} זה ${kmText(h.km)} ק״מ - ברכבת כ-${trainHours(h.km)} שעות ממרכז העיר למרכז העיר.`;
 
 /**
- * The callout over the list when a flown move is short enough for a train (under
- * `TRAIN_HINT_KM`): every such hop named, null when there is none.
+ * A sub-location's way there: "האירוע במנצ'סטר - רכבת מלונדון, כ-2.0 שעות, בכוחות עצמכם (לא כלול)."
+ * Dor 31.10: Manchester is a train from London, and the trip has to say so.
  */
-export function trainCallout(hops: TrainHop[]): { lead: string; text: string } | null {
-  const short = hops.filter((h) => h.km < TRAIN_HINT_KM);
-  if (!short.length) return null;
-  const lines = short.map(
-    (h) =>
-      `${h.fromName}–${h.toName} זה ${kmText(h.km)} ק״מ - ברכבת כ-${trainHours(h.km)} שעות ממרכז העיר למרכז העיר.`,
-  );
-  return { lead: "טיסה אחת לכל המסלול.", text: [...lines, `מעדיפים להגיע בעצמכם? סמנו "אגיע עצמאית".`].join(" ") };
-}
+export const groundNote = (g: { from: string; to: string; km: number }): string =>
+  `האירוע ב${g.to} - רכבת מ${g.from}, כ-${trainHours(g.km)} שעות, בכוחות עצמכם (לא כלול).`;
 
 // ---------------------------------------------------------------------------------------------
 // Sort tabs
@@ -198,12 +190,12 @@ const tomorrowOf = (todayIso: string): string => {
 };
 
 /**
- * POST /api/itinerary/flights would take these legs (`validateFlightRequest`'s rules): 2-4
+ * POST /api/itinerary/flights would take these legs (`validateFlightRequest`'s rules): 1-4
  * legs, 1-9 travellers, IATA codes, never a leg to itself, real days from tomorrow on, never
  * going back. `todayIso` = today, `YYYY-MM-DD` (UTC, as the route reads it).
  */
 export function canSearch(legs: FlightLeg[], adults: number, todayIso: string): boolean {
-  if (legs.length < 2 || legs.length > 4) return false;
+  if (legs.length < 1 || legs.length > 4) return false;
   if (!Number.isInteger(adults) || adults < 1 || adults > 9) return false;
   const tomorrow = tomorrowOf(todayIso);
   let previous = "";

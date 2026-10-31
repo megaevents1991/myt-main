@@ -10,7 +10,7 @@ import { MIN_TRIP_EVENTS } from "@/lib/itinerary/state";
 import { EventFinder } from "./EventFinder";
 import { TripEventArt } from "./TripEventArt";
 import { useItinerary } from "./ItineraryProvider";
-import { ADD_BUTTON, CompatChip } from "./parts";
+import { ADD_BUTTON, CompatChip, LonelyChip } from "./parts";
 import { TripPanel } from "./TripPanel";
 
 /**
@@ -19,7 +19,7 @@ import { TripPanel } from "./TripPanel";
  * no chip, no dimming, a neutral "המסלול מלא".
  */
 function EventPick({
-  item: { event: e, compat, inRoute },
+  item: { event: e, compat, inRoute, lonely },
   labelled,
   full,
 }: {
@@ -50,6 +50,7 @@ function EventPick({
           <b className="tabular-nums text-foreground">{dayMonthYear(eventDay(e))}</b> • {placeLabel(e)}
         </p>
         {labelled && !inRoute && !full && <CompatChip compat={compat} className="mt-1" />}
+        {lonely && <LonelyChip className="mt-1" />}
         {price !== null && (
           <div className={cn("mt-auto flex items-baseline justify-between gap-1.5 pt-2", blocked && "opacity-40")}>
             <span className="text-[11px] text-muted-foreground">מחיר ממוצע לחבילה</span>

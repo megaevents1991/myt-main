@@ -1,10 +1,12 @@
 "use client";
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { MapPin, Plane } from "lucide-react";
+import { BedDouble, MapPin, Plane, TrainFront } from "lucide-react";
 
-import type { HotelsData } from "@/app/hooks/HotelFetch.provider";
+import { OrderContext } from "@/app/app.context";
+import { HotelFetchProvider, type HotelsData } from "@/app/hooks/HotelFetch.provider";
 import type { FetchHotelsParams } from "@/app/order/fetchHotels";
+import { HotelSelection } from "@/app/order/HotelSelection";
 import { segmentBreakfastOffer, withBreakfast, withoutBreakfast } from "@/app/order/order-review.utils";
 import { SegmentHotelModal, SegmentsList } from "@/components/order/SegmentsList";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -12,14 +14,24 @@ import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event, OrderHotel } from "@/lib/app.types";
 import { cityName, lodgingLocation, type StaySegment } from "@/lib/events/lodging";
 import { getRoomParams } from "@/lib/getRoomParams";
-import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
+import { dayMonth, groundLink, stayCityName } from "@/lib/itinerary/builder";
 import { moves, stays, tripLegs } from "@/lib/itinerary/dates";
-import { dayDiff } from "@/lib/itinerary/geo";
-import { stayEvent, stayHotelReady, stayRanges, withStayBase, type StayRange } from "@/lib/itinerary/stayAdapter";
+import { trainHours } from "@/lib/itinerary/flightsView";
+import { dayDiff, haversineKm, sameHub } from "@/lib/itinerary/geo";
+import {
+  sameHotel,
+  stayEvent,
+  stayFlight,
+  stayHotelReady,
+  stayRanges,
+  withStayBase,
+  type StayRange,
+} from "@/lib/itinerary/stayAdapter";
 import { buildStayHotel, pickDefaultHotel, searchStayHotels, withStayHotelExtras } from "@/lib/itinerary/stayHotels";
 import type { Stay } from "@/lib/itinerary/types";
 import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
+import { adapterForStay } from "./orderContextAdapter";
 import { ADD_BUTTON, PanelTitle, nightsLabel, stayCardId } from "./parts";
 
 /** One stay as the step shows and searches it. */
@@ -42,7 +54,7 @@ type StayView = {
    * and the city a flight lands in (the airport's - `cityName(.., "flight")`, the trip's one label
    * rule; a Manchester stay flown to London reads "טיסה ללונדון").
    */
-  arrival: { day: string; flown: boolean; airport: string } | null;
+  arrival: { day: string; flown: boolean; airport: string; train: boolean } | null;
 };
 
 /** How a stay's search ended without a hotel: the search failed, or the city has none for these nights. */
@@ -65,6 +77,53 @@ const searchParams = (v: StayView): FetchHotelsParams => ({
 
 /** A swap search that failed: the modal's own "no hotels" state (what the live split stay passes). */
 const FAILED_SEARCH: HotelsData = { data: {} as HotelsData["data"], hotelsInfo: {} };
+
+/**
+ * A trip that sleeps in ONE city: the regular hotel step (Dor 31.10: "מלון בצורה הרגילה שלו") - the
+ * list, its filters, its rooms - through the order's context. The hotel the flow already picked
+ * opens selected on its own rate (the step's package-swap path, `adapterForStay`), so the price the
+ * customer has been shown does not jump. The nights come from the flight and cannot move here (the
+ * trip's rule for a hotel, `stayHotelReady`): the date field shows them, shut (`datesFixed`). The
+ * trip's own header stands above it, so the step's band of one event draws only its search row.
+ * Spends one RateHawk search of its own when it opens - once: it stays mounted.
+ */
+function RegularHotelStep({ view }: { view: StayView }) {
+  const api = useItinerary();
+  const { state, setHotel } = api;
+  const key = view.stay.key;
+  const flight = state.flight;
+  const latest = useRef({ setHotel, hotel: state.hotels[key] });
+  useLayoutEffect(() => {
+    latest.current = { setHotel, hotel: state.hotels[key] };
+  });
+  // The step's setter keeps its identity (its callbacks list it); an empty write (a filter with no
+  // match) leaves the hotel in place - the trip is never left without its price by a filter.
+  const [cb] = useState(() => ({
+    setHotel: (h: OrderHotel | undefined) => {
+      if (!h) return;
+      const next: OrderHotel = { ...h, city: view.stay.city, cityName: view.city };
+      if (!sameHotel(latest.current.hotel, next)) latest.current.setHotel(key, next);
+    },
+  }));
+  const [opened] = useState(() => state.hotels[key]);
+  const stay = useMemo(
+    () => (flight ? stayFlight(0, flight, state.route, state.dates, new Set(state.train)) : undefined),
+    [flight, state.route, state.dates, state.train],
+  );
+  const value = useMemo(
+    () => adapterForStay({ event: view.event, city: view.stay.city, flight: stay, hotel: state.hotels[key], held: opened, pax: state.pax }, cb),
+    [view.event, view.stay.city, stay, state.hotels, key, opened, state.pax, cb],
+  );
+  return (
+    <div className="[&_.w-screen.bg-muted_.max-w-7xl>*:first-child]:hidden">
+      <HotelFetchProvider>
+        <OrderContext.Provider value={value}>
+          <HotelSelection datesFixed />
+        </OrderContext.Provider>
+      </HotelFetchProvider>
+    </div>
+  );
+}
 
 /**
  * One stay's hotel: its search (the step's cache first - a search is spent once per stay, nights
@@ -104,6 +163,31 @@ async function findStayHotel(
   return { kind: "failed" };
 }
 
+/** A stay the customer needs no hotel for: said in the card's place, with the way back. */
+function SkippedStay({ view, onBack }: { view: StayView; onBack: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-[1.5px] border-dashed border-border bg-card p-4">
+      <span className="flex items-center gap-2 text-sm font-bold">
+        <BedDouble className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+        ללא מלון ב{view.city}
+        <span className="font-normal text-muted-foreground">
+          {`${dayMonth(view.range[0])}–${dayMonth(view.range[1])} · ${nightsLabel(view.segment.nights)}`}
+        </span>
+      </span>
+      <button type="button" onClick={onBack} className={ADD_BUTTON}>
+        הוספת מלון
+      </button>
+    </div>
+  );
+}
+
+/** Km between the stay before this one and this one: the train under one flight city. */
+const groundBetween = (v: StayView, views: StayView[]): number | null => {
+  const at = views.indexOf(v);
+  const prev = views[at - 1];
+  return prev ? haversineKm(prev.stay.point, v.stay.point) : null;
+};
+
 /**
  * Runs `task` once every task queued before it has settled: RateHawk takes 10 searches a minute
  * for the whole account (shared with the live site), so the step never runs two at once.
@@ -137,10 +221,13 @@ type SwapState = { stayKey: string; searchKey: string; search: HotelsData | null
  * answer - automatic or a swap's - is committed only while it is still for the stay's nights and
  * rooms (`searchKey`).
  *
- * `shown` = the hotels step is the step on screen. The flow keeps this step mounted (hidden)
- * while the trip has its flight (ItineraryFlow), so a visit to the summary or an earlier step and
- * back spends no search. A search running when the customer steps away runs to its end (it is
- * spent either way); the next stay waits for the step to be on screen again.
+ * `shown` = the hotels step is the step on screen. The flow mounts this step (hidden) as soon as the
+ * trip has its flight (ItineraryFlow): the hotels it picks are the price the customer sees from the
+ * first ticket on, and a visit to the summary or an earlier step and back spends no search.
+ *
+ * A trip that sleeps in one city gets the regular hotel step instead (`RegularHotelStep`) once it is
+ * on screen; the pick behind the price is still made here. "לא צריך מלון" takes a stay out of the
+ * search and of the price's hotels (`skippedStayPerTraveller`); its hotel is kept for the way back.
  *
  * `onNoHotel` hands the flow the stays whose search ended without a hotel (failed, or none in the
  * city), so its continue bar tells "searching" from "pick a hotel".
@@ -153,8 +240,8 @@ export function HotelsStep({
   onNoHotel?: (stayKeys: string[]) => void;
 }) {
   const api = useItinerary();
-  const { state, setHotel, goStep } = api;
-  const { route, dates, flight, hotels, pax, train } = state;
+  const { state, setHotel, skipStay, goStep } = api;
+  const { route, dates, flight, hotels, pax, train, skippedStays } = state;
 
   const views = useMemo<StayView[]>(() => {
     if (!flight || !route.length) return [];
@@ -176,7 +263,12 @@ export function HotelsStep({
         rooms,
         searchKey: `${stay.key}|${range[0]}|${range[1]}|${roomsKey(rooms)}`,
         arrival: move
-          ? { day: stay.from, flown: flown.has(move.key), airport: cityName(stay.events[0], "flight") }
+          ? {
+              day: stay.from,
+              flown: flown.has(move.key),
+              airport: cityName(stay.events[0], "flight"),
+              train: sameHub(move.a, move.b),
+            }
           : null,
       };
     });
@@ -196,8 +288,9 @@ export function HotelsStep({
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const ready = (v: StayView) => stayHotelReady(hotels[v.stay.key], v.range, pax);
+  const skipped = (v: StayView) => skippedStays.includes(v.stay.key);
   // The stays still waiting for their search, in trip order: the first is searched next.
-  const due = views.filter((v) => !ready(v) && !outcomes[v.searchKey]);
+  const due = views.filter((v) => !ready(v) && !skipped(v) && !outcomes[v.searchKey]);
   const dueSig = due.map((v) => v.searchKey).join("\n");
   const noHotelSig = views
     .filter((v) => !ready(v) && outcomes[v.searchKey])
@@ -213,7 +306,7 @@ export function HotelsStep({
       run.current.ctrl.abort();
       run.current = null;
     }
-    if (!shown || run.current || !keys.length) return;
+    if (run.current || !keys.length) return;
     const now = latest.current;
     const view = now.views.find((v) => v.searchKey === keys[0]);
     if (!view) return;
@@ -229,7 +322,7 @@ export function HotelsStep({
       if (result.kind === "picked") latest.current.setHotel(view.stay.key, result.hotel);
       else setOutcomes((prev) => ({ ...prev, [view.searchKey]: result.kind }));
     });
-  }, [shown, dueSig]);
+  }, [dueSig]);
 
   // The open swap's search, when the stay had no cached answer (the step was mounted again).
   const swapRun = useRef<{ key: string; ctrl: AbortController } | null>(null);
@@ -258,6 +351,7 @@ export function HotelsStep({
       return next;
     });
 
+  const [regularOpened, setRegularOpened] = useState(false);
   const [swap, setSwap] = useState<SwapState | null>(null);
   const [swapOpen, setSwapOpen] = useState(false);
   const openSwap = (v: StayView) => {
@@ -335,7 +429,20 @@ export function HotelsStep({
   }
   if (!views.length) return null;
 
-  const doneCount = views.filter(ready).length;
+  const doneCount = views.filter((v) => ready(v) || skipped(v)).length;
+  const firstGround = route[0] ? groundLink(route[0]) : null;
+  const onlyView = views[0];
+  // One city, on screen: the regular step. Kept mounted once opened (it spends a search to open).
+  if (shown && views.length === 1 && !skipped(onlyView) && !regularOpened) setRegularOpened(true);
+  if (views.length !== 1 && regularOpened) setRegularOpened(false);
+
+  if (views.length === 1 && regularOpened) {
+    return (
+      <section aria-label="מלון" className={cn(!shown && "hidden")} hidden={!shown}>
+        {skipped(onlyView) ? <SkippedStay view={onlyView} onBack={() => skipStay(onlyView.stay.key, false)} /> : <RegularHotelStep view={onlyView} />}
+      </section>
+    );
+  }
 
   return (
     <section
@@ -353,26 +460,41 @@ export function HotelsStep({
           מתוך {views.length} נבחרו
         </p>
       </div>
+      {firstGround && views[0].stay.city === "event" && (
+        <p className="m-0 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+          <TrainFront className="size-3.5 shrink-0" aria-hidden />
+          {`נוחתים ב${firstGround.from} וממשיכים ברכבת ל${firstGround.to}, כ-${trainHours(firstGround.km)} שעות, בכוחות עצמכם`}
+        </p>
+      )}
       {views.map((v) => {
         const hotel = hotels[v.stay.key];
         const isReady = ready(v);
         const outcome = isReady ? undefined : outcomes[v.searchKey];
+        const moveGround = v.arrival?.train ? groundBetween(v, views) : null;
         return (
           <Fragment key={v.stay.key}>
             {v.arrival && (
               <p className="m-0 flex items-center gap-1.5 text-[13px] text-muted-foreground">
                 {v.arrival.flown ? (
                   <Plane className="size-3.5 shrink-0" aria-hidden />
+                ) : v.arrival.train ? (
+                  <TrainFront className="size-3.5 shrink-0" aria-hidden />
                 ) : (
                   <MapPin className="size-3.5 shrink-0" aria-hidden />
                 )}
                 {`${dayMonth(v.arrival.day)} · ${
-                  v.arrival.flown ? `טיסה ל${v.arrival.airport}` : `הגעה עצמאית ל${v.city}`
+                  v.arrival.flown
+                    ? `טיסה ל${v.arrival.airport}`
+                    : v.arrival.train
+                      ? `רכבת ל${v.city}${moveGround ? `, כ-${trainHours(moveGround)} שעות` : ""}, בכוחות עצמכם`
+                      : `הגעה עצמאית ל${v.city}`
                 }`}
               </p>
             )}
             <div id={stayCardId(v.stay.key)} className="scroll-mt-28">
-              {outcome ? (
+              {skipped(v) ? (
+                <SkippedStay view={v} onBack={() => skipStay(v.stay.key, false)} />
+              ) : outcome ? (
                 <OrderIssueState
                   className="min-h-40"
                   variant={outcome === "failed" ? "error" : "empty"}
@@ -394,6 +516,15 @@ export function HotelsStep({
                   onAddBreakfast={() => addBreakfast(v)}
                   onRemoveBreakfast={() => removeBreakfast(v)}
                 />
+              )}
+              {!skipped(v) && (
+                <button
+                  type="button"
+                  onClick={() => skipStay(v.stay.key, true)}
+                  className="mt-2 text-sm font-bold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  לא צריך מלון ב{v.city}
+                </button>
               )}
             </div>
           </Fragment>

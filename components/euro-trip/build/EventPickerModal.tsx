@@ -11,7 +11,7 @@ import { eventDay } from "@/lib/itinerary/geo";
 import { describeCompat, isAddable } from "@/lib/itinerary/rules";
 import { EventFinder } from "./EventFinder";
 import { useItinerary } from "./ItineraryProvider";
-import { CompatChip } from "./parts";
+import { CompatChip, LonelyChip } from "./parts";
 import { TripEventArt } from "./TripEventArt";
 
 /**
@@ -22,7 +22,7 @@ import { TripEventArt } from "./TripEventArt";
  * sr-only "הוספה למסלול:", a blocked one always carries its reason (`describeCompat`); the art is
  * hidden from screen readers (its alt would repeat the name).
  */
-function PickRow({ item: { event: e, compat }, labelled, onPick }: { item: CatalogItem; labelled: boolean; onPick: () => void }) {
+function PickRow({ item: { event: e, compat, lonely }, labelled, onPick }: { item: CatalogItem; labelled: boolean; onPick: () => void }) {
   const blocked = !isAddable(compat);
   return (
     <li>
@@ -52,6 +52,7 @@ function PickRow({ item: { event: e, compat }, labelled, onPick }: { item: Catal
           ) : (
             blocked && <span className="sr-only">{describeCompat(compat)}</span>
           )}
+          {lonely && <LonelyChip />}
         </span>
         {!blocked && (
           <span
@@ -68,8 +69,9 @@ function PickRow({ item: { event: e, compat }, labelled, onPick }: { item: Catal
 
 /**
  * The popup's content - mounted while it is open (Mantine unmounts a closed modal's body), so
- * every visit starts on a clean search: the search-first finder (`EventFinder`) as rows. The
- * route's own events are not listed - the panel holds them. Only the search row sticks under the
+ * every visit starts on a clean search: the finder (`EventFinder`) as rows. The route's own events
+ * head the popup, so the customer remembers what they took (Dor 31.10), and are not listed among
+ * the results. Only the search row sticks under the
  * modal's own sticky header (title + close, 60px); the filter panel and its chips scroll away
  * with the results - the bar's root is `display: contents`, so the search sticks along this
  * whole column.

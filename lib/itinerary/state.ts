@@ -5,15 +5,18 @@
  *  - `route` is in trip order (`sortRoute`) and every event in it was addable when it joined;
  *  - `dates` is always `clampTripDates` output for the route (never raw input), so `stays`,
  *    `tripLegs` and `trainLegs` can read it as is; an empty route has `EMPTY_DATES`;
- *  - a change of route, dates, travellers or train toggles clears `flight` and `hotels`
- *    (both were searched for the old trip); another flight keeps only the hotels still on
- *    their stay's nights under it (`hotelsForFlight`); a route change drops the tickets of events
- *    that left it and the train toggles of moves that no longer exist;
+ *  - `flight` is the parts' one flight (`flightParts`, composed by `composeFlight`): a change of
+ *    route or travellers clears the parts and the hotels (all searched for the old trip); a change
+ *    of dates or train toggles keeps every part that still answers, and the flight is composed
+ *    again; another flight keeps only the hotels still on their stay's nights under it
+ *    (`hotelsForFlight`); a route change drops the tickets of events that left it and the train
+ *    toggles of moves that no longer exist;
  *  - the flow leaves the build step only with two events or more.
  * An action that changes nothing returns the same state object.
  */
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { clampTripDates, defaultTripDates, moves, stays } from "./dates";
+import { composeFlight, fittingPicks, flightPartsOf } from "./flightParts";
 import { eventDay, eventPoint, stayPoint } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
@@ -43,10 +46,16 @@ export type ItineraryState = {
   /** Keys of the moves made by train (`TripDates.moves` keys). */
   train: string[];
   flight: ItineraryFlight | null;
+  /** The flight picked for each part of the trip (`FlightPart.key`). */
+  flightParts: Record<string, ItineraryFlight | undefined>;
   /** The hotel picked for each stay, by `Stay.key`. */
   hotels: Record<string, OrderHotel | undefined>;
+  /** Stays the customer needs no hotel for ("לא צריך מלון"), by `Stay.key`. */
+  skippedStays: string[];
   /** Index of the open event: the tickets step's sub-step (TicketSubSteps). */
   activeEvent: number;
+  /** Index of the open flight part: the flights step's sub-step. */
+  activeFlightPart: number;
   /** Index of the stay the hotels step opens on (scrolled to its card); 0 once the step is left. */
   activeStay: number;
 };
@@ -60,8 +69,11 @@ export const INITIAL_ITINERARY_STATE: ItineraryState = {
   tickets: {},
   train: [],
   flight: null,
+  flightParts: {},
   hotels: {},
+  skippedStays: [],
   activeEvent: 0,
+  activeFlightPart: 0,
   activeStay: 0,
 };
 
@@ -77,7 +89,11 @@ export type ItineraryAction =
   | { type: "setEventData"; event: Event }
   | { type: "toggleTrain"; key: string }
   | { type: "setFlight"; flight: ItineraryFlight | null }
+  /** One part's pick (null = none any more); the trip's flight is composed from the parts. */
+  | { type: "setFlightPart"; key: string; flight: ItineraryFlight | null }
   | { type: "setHotel"; stayKey: string; hotel: OrderHotel | undefined }
+  /** "לא צריך מלון" and back: the stay's hotel is kept, so taking it back spends no search. */
+  | { type: "skipStay"; stayKey: string; skipped: boolean }
   /** The flight and every hotel go (the tickets step changed the party) - nothing else. */
   | { type: "clearTravel" }
   /**
@@ -88,6 +104,7 @@ export type ItineraryAction =
   | { type: "releaseHold" }
   | { type: "goStep"; step: ItineraryStep }
   | { type: "setActiveEvent"; index: number }
+  | { type: "setActiveFlightPart"; index: number }
   | { type: "setActiveStay"; index: number };
 
 /**
@@ -123,7 +140,18 @@ const sameAnchor = (a: Event | undefined, b: Event | undefined): boolean =>
   !!a && !!b && a.id === b.id && eventDay(a) === eventDay(b);
 
 /** Everything searched for the old trip goes. */
-const cleared = { flight: null, hotels: {} } satisfies Pick<ItineraryState, "flight" | "hotels">;
+const cleared = { flight: null, flightParts: {}, hotels: {} } satisfies Pick<
+  ItineraryState,
+  "flight" | "flightParts" | "hotels"
+>;
+
+/** The trip's flight from its parts; a new one keeps only the hotels still on their nights under it. */
+function recomposed(state: ItineraryState): ItineraryState {
+  const train = new Set(state.train);
+  const flight = composeFlight(state.route, state.dates, train, state.pax, state.flightParts);
+  if (!flight) return { ...state, flight: null };
+  return { ...state, flight, hotels: hotelsForFlight(state.route, state.dates, train, state.hotels, flight) };
+}
 
 /**
  * The state with a new route. Dates the customer set are kept while their anchor stays:
@@ -154,7 +182,9 @@ function withRoute(state: ItineraryState, next: Event[]): ItineraryState {
     dates,
     tickets: Object.fromEntries(Object.entries(state.tickets).filter(([id]) => ids.has(Number(id)))),
     train: state.train.filter((k) => moveKeys.has(k)),
+    skippedStays: [],
     activeEvent: 0,
+    activeFlightPart: 0,
     activeStay: 0,
     step: route.length < MIN_TRIP_EVENTS ? "build" : state.step,
   };
@@ -207,7 +237,9 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
     case "setDates": {
       if (!state.route.length) return state;
       const dates = clampTripDates(state.route, action.dates);
-      return sameDates(dates, state.dates) ? state : { ...state, ...cleared, dates };
+      if (sameDates(dates, state.dates)) return state;
+      const parts = flightPartsOf(state.route, dates, new Set(state.train));
+      return recomposed({ ...state, dates, flightParts: fittingPicks(parts, state.flightParts, state.pax) });
     }
 
     case "setPax": {
@@ -234,7 +266,7 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
       const train = state.train.includes(action.key)
         ? state.train.filter((k) => k !== action.key)
         : [...state.train, action.key];
-      return { ...state, ...cleared, train, dates: clampTripDates(state.route, state.dates) };
+      return recomposed({ ...state, train, dates: clampTripDates(state.route, state.dates) });
     }
 
     case "setFlight": {
@@ -246,15 +278,31 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
       return { ...state, flight: action.flight, hotels };
     }
 
+    case "setFlightPart":
+      if ((state.flightParts[action.key] ?? null) === action.flight) return state;
+      return recomposed({ ...state, flightParts: { ...state.flightParts, [action.key]: action.flight ?? undefined } });
+
     case "setHotel":
       if (!stays(state.route, state.dates).some((s) => s.key === action.stayKey)) return state;
       return { ...state, hotels: { ...state.hotels, [action.stayKey]: action.hotel } };
 
+    case "skipStay": {
+      if (!stays(state.route, state.dates).some((s) => s.key === action.stayKey)) return state;
+      if (state.skippedStays.includes(action.stayKey) === action.skipped) return state;
+      const skippedStays = action.skipped
+        ? [...state.skippedStays, action.stayKey]
+        : state.skippedStays.filter((k) => k !== action.stayKey);
+      return { ...state, skippedStays };
+    }
+
     case "clearTravel":
-      return !state.flight && !Object.keys(state.hotels).length ? state : { ...state, ...cleared };
+      return !state.flight && !Object.keys(state.flightParts).length && !Object.keys(state.hotels).length
+        ? state
+        : { ...state, ...cleared };
 
     case "releaseHold":
       return !state.flight &&
+        !Object.keys(state.flightParts).length &&
         !Object.keys(state.hotels).length &&
         !Object.keys(state.tickets).length &&
         state.activeEvent === 0
@@ -273,6 +321,12 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
     case "setActiveEvent": {
       const activeEvent = clampIndex(action.index, state.route.length);
       return activeEvent === state.activeEvent ? state : { ...state, activeEvent };
+    }
+
+    case "setActiveFlightPart": {
+      const parts = flightPartsOf(state.route, state.dates, new Set(state.train));
+      const activeFlightPart = clampIndex(action.index, parts.length);
+      return activeFlightPart === state.activeFlightPart ? state : { ...state, activeFlightPart };
     }
 
     case "setActiveStay": {

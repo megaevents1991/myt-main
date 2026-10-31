@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CircleAlert, Loader2 } from "lucide-react";
 
 import { loadTripEvents } from "@/app/euro-trip/build/actions";
@@ -36,6 +36,9 @@ const COMPACT_EVENT_BAND = cn(
   "[&_.w-screen.bg-muted_h1~span]:hidden",
   "[&_.w-screen.bg-muted_.size-16.rounded-full]:size-11 md:[&_.w-screen.bg-muted_.size-16.rounded-full]:size-12",
 );
+
+/** Right after the live step's own scroll (TicketSelection: 1 s after it mounts). */
+const MOBILE_SCROLL_AFTER_MS = 1050;
 
 /** The same words the route link uses for an event that left the catalog. */
 const GONE = "האירוע כבר לא זמין";
@@ -106,7 +109,7 @@ function useFullRows(): { failed: boolean; retry: () => void } {
  * else the cheapest - and so does the step whose +/- changed the party: it keeps the category
  * the customer was on while that category sells the new size.
  */
-function EventTicketPane({ event }: { event: Event }) {
+function EventTicketPane({ event, lastPane }: { event: Event; lastPane: RefObject<number | null> }) {
   const api = useItinerary();
   const { pax, tickets } = api.state;
   const ticket = tickets[event.id];
@@ -147,8 +150,30 @@ function EventTicketPane({ event }: { event: Event }) {
     [event, ticket, pax, held, cb],
   );
 
+  // Dor 31.10: on a phone the page opens scrolled to the event's band, the logo and the steps above
+  // it out of the way and the seat map on screen. The live step scrolls to its own 90px a second
+  // after it mounts (TicketSelection), which this one follows straight away - and which is undone
+  // when the pane mounted only because +/- changed the party (the same event again: the customer
+  // stays where they were).
+  const root = useRef<HTMLDivElement>(null);
+  const [keepScroll] = useState(() => lastPane.current === event.id);
+  useEffect(() => {
+    lastPane.current = event.id;
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    const from = window.scrollY;
+    const timer = window.setTimeout(() => {
+      const band = root.current?.querySelector<HTMLElement>(".w-screen.bg-muted");
+      const top = band ? band.getBoundingClientRect().top + window.scrollY : 90;
+      window.scrollTo({ top: keepScroll ? from : top, behavior: "smooth" });
+    }, MOBILE_SCROLL_AFTER_MS);
+    return () => window.clearTimeout(timer);
+    // Once, when the pane opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
+      ref={root}
       onClickCapture={() => {
         touched.current = true;
       }}
@@ -205,6 +230,8 @@ export function TicketsStep() {
 
   const active = Math.min(state.activeEvent, route.length - 1);
   const event = route[active];
+  // The event the last pane was for: the pane mounts anew per party size, see EventTicketPane.
+  const lastPane = useRef<number | null>(null);
   if (!event) return null;
 
   const isDone = (e: Event) => ticketReady(tickets[e.id], pax);
@@ -218,7 +245,7 @@ export function TicketsStep() {
         כרטיסים לכל אירוע · {doneCount} מתוך {route.length} מוכנים
       </h2>
       {isFullRow(event) ? (
-        <EventTicketPane key={`${event.id}:${pax}`} event={event} />
+        <EventTicketPane key={`${event.id}:${pax}`} event={event} lastPane={lastPane} />
       ) : failed ? (
         <OrderIssueState
           variant="error"

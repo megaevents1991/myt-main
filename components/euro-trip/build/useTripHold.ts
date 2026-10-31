@@ -14,7 +14,6 @@ import {
   type HoldAction,
 } from "@/lib/itinerary/confirm";
 import { livePrice } from "@/lib/itinerary/progress";
-import type { TripSuggestion } from "@/lib/itinerary/suggestion";
 import type { TravellersInput } from "@/lib/itinerary/travellers";
 import { getUTMParams } from "@/lib/mixpanel";
 import { useItinerary } from "./ItineraryProvider";
@@ -59,7 +58,7 @@ function utmSource(): string {
  *   summary as `failure`.
  */
 export function useTripHold(): {
-  submit: (travellers: TravellersInput, suggest?: TripSuggestion | null, splitPay?: boolean) => Promise<void>;
+  submit: (travellers: TravellersInput, splitPay?: boolean) => Promise<void>;
   sending: boolean;
   failure: Extract<HoldAction, { kind: "stay" }> | null;
 } {
@@ -88,7 +87,7 @@ export function useTripHold(): {
     }
   }, []);
 
-  const submit = useCallback(async (travellers: TravellersInput, suggest: TripSuggestion | null = null, splitPay = false) => {
+  const submit = useCallback(async (travellers: TravellersInput, splitPay = false) => {
     const a = latest.current;
     if (a.held || !a.state.flight) return;
     const price = livePrice(a.state, a.settings);
@@ -103,7 +102,7 @@ export function useTripHold(): {
     try {
       // The customer's "offer my trip to others" rides on the hold; the server writes it after the rows.
       // "רוצים לפצל תשלום?" is the same hold, flagged for the rep (the sales mail says so).
-      const body = submissionFromState(a.state, travellers, attempt.group, price, { utmSource: utmSource(), suggest, splitPay });
+      const body = submissionFromState(a.state, travellers, attempt.group, price, { utmSource: utmSource(), splitPay });
       const res = await fetch("/api/itinerary/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

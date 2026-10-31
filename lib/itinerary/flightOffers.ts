@@ -31,7 +31,7 @@ export const MAX_STOP_DURATION_HOURS = 4;
 const LOW_COST_SURCHARGE_USD = 45;
 const LOW_COST_CARRIERS: ReadonlySet<string> = new Set(["6H", "IZ", "U8"]);
 
-const MIN_LEGS = 2;
+const MIN_LEGS = 1; // a move between two cities is searched alone (./flightParts)
 const MAX_LEGS = 4;
 const MAX_ADULTS = 9; // = MAX_TICKETS of the ticket step
 
@@ -84,7 +84,7 @@ export type FlightRequestCheck =
 const refuse = (error: string): FlightRequestCheck => ({ ok: false, error });
 
 /**
- * The parsed request, or why the body is refused: 2-4 legs, 1-9 adults, 3-letter
+ * The parsed request, or why the body is refused: 1-4 legs, 1-9 adults, 3-letter
  * upper-case codes, days from tomorrow on and never going back. Only `from` / `to` /
  * `date` survive on a leg and `nonStop` defaults to false. `todayIso` is today as
  * `YYYY-MM-DD` (UTC) - the caller owns the clock.

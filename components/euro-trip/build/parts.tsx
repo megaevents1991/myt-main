@@ -45,6 +45,21 @@ export function CompatChip({ compat, className }: { compat: Compat; className?: 
   );
 }
 
+/** No event can join this one (`hasTripPartner`): it sells, but it will not make a trip. A note, not a block. */
+export function LonelyChip({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center gap-1 rounded-full border border-badge-vip/60 bg-badge-vip/20 px-2.5 py-0.5 text-xs font-bold leading-snug text-foreground",
+        className,
+      )}
+    >
+      <CircleAlert className="size-3.5 shrink-0" aria-hidden />
+      אין אירוע קרוב בתאריכים לשלב איתו
+    </span>
+  );
+}
+
 const KINDS: { value: CatalogKind; label: string }[] = [
   { value: "all", label: "הכל" },
   { value: "football", label: "כדורגל" },
@@ -80,7 +95,7 @@ export function KindTabs({ value, onChange }: { value: CatalogKind; onChange: (k
 }
 
 /** The category hubs' filter chip (components/CategoryEventsBrowser.tsx). */
-const chip = (on: boolean) =>
+export const chip = (on: boolean) =>
   cn(
     "flex h-10 shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-colors",
     on

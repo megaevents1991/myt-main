@@ -10,7 +10,7 @@ import { useItinerary } from "./ItineraryProvider";
 
 /** A stop's second line: the day (and the city, for an event); a stay has none. */
 const stopDetail = (s: TripStop): string | null =>
-  s.kind === "stay" ? null : s.kind === "event" ? `${dayMonth(s.day)} · ${s.city}` : dayMonth(s.day);
+  s.kind === "stay" ? null : s.kind === "ground" ? s.detail : s.kind === "event" ? `${dayMonth(s.day)} · ${s.city}` : dayMonth(s.day);
 
 /**
  * The summary's "מסלול (N ימים)" - the whole trip, stop by stop, above the rows that edit it

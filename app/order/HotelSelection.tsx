@@ -102,7 +102,11 @@ const packageRate = (rates: Rate[], ref: Rate | undefined): Rate | null => {
   return closestRate(sameBoard.length ? sameBoard : rates, ref);
 };
 
-export const HotelSelection = () => {
+/**
+ * `datesFixed`: the nights are not the customer's to move here (the trip builder - they come from
+ * its flight): the date field shows them, shut, with no invitation to change them.
+ */
+export const HotelSelection = ({ datesFixed = false }: { datesFixed?: boolean }) => {
   const { addBreakfast, removeBreakfast } = useSegmentBreakfast();
   const {
     setHotel,
@@ -1564,14 +1568,14 @@ export const HotelSelection = () => {
 
               <div className="flex flex-row w-min items-center">
                 <DateRange
-                  disabled={isFetching}
+                  disabled={isFetching || datesFixed}
                   onPopoverClose={handleDatePopoverClose}
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   eventDay={event?.date}
                   // Not over the full-screen "החלפת מלון" modal (the tooltip
                   // layer sits above modals).
-                  showTooltip={swapIndex == null}
+                  showTooltip={swapIndex == null && !datesFixed}
                   tooltipText="רוצים תאריכים אחרים? בחרו כאן"
                 />
                 <button

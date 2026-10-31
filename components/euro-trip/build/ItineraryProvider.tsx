@@ -52,7 +52,7 @@ const EVENTS_PARAM = "events";
 
 /** Said once over the tickets step when a refresh brought back a trip that was past it. */
 const RESTORED_NOTICE =
-  "החזרנו את הטיול שלכם. כדי שהמחירים יהיו עדכניים בודקים שוב את הכרטיסים, ואחריהם בוחרים מחדש טיסה ומלונות.";
+  "החזרנו את הטיול שלכם. כדי שהמחירים יהיו עדכניים בודקים שוב את הכרטיסים, הטיסות והמלונות.";
 
 /** Runs before the first paint on the client (no flash of the empty builder on a route link). */
 const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -80,8 +80,12 @@ export type ItineraryApi = {
   setTicket: (eventId: number, t: OrderTicket | undefined) => void;
   setEventData: (e: Event) => void;
   toggleTrain: (key: string) => void;
-  setFlight: (f: ItineraryFlight | null) => void;
+  /** One part of the trip's flights (`lib/itinerary/flightParts.ts`). */
+  setFlightPart: (key: string, f: ItineraryFlight | null) => void;
+  setActiveFlightPart: (i: number) => void;
   setHotel: (stayKey: string, h: OrderHotel | undefined) => void;
+  /** "לא צריך מלון" on a stay, or back. */
+  skipStay: (stayKey: string, skipped: boolean) => void;
   /** Drops the flight and every hotel (searched for another party). */
   clearTravel: () => void;
   goStep: (step: ItineraryStep) => void;
@@ -317,8 +321,10 @@ export function ItineraryProvider({
       setTicket: (eventId, ticket) => dispatch({ type: "setTicket", eventId, ticket }),
       setEventData: (event) => dispatch({ type: "setEventData", event }),
       toggleTrain: (key) => dispatch({ type: "toggleTrain", key }),
-      setFlight: (flight) => dispatch({ type: "setFlight", flight }),
+      setFlightPart: (key, flight) => dispatch({ type: "setFlightPart", key, flight }),
+      setActiveFlightPart: (index) => dispatch({ type: "setActiveFlightPart", index }),
       setHotel: (stayKey, hotel) => dispatch({ type: "setHotel", stayKey, hotel }),
+      skipStay: (stayKey, skipped) => dispatch({ type: "skipStay", stayKey, skipped }),
       clearTravel: () => dispatch({ type: "clearTravel" }),
       goStep: (step) => dispatch({ type: "goStep", step }),
       setActiveEvent: (index) => dispatch({ type: "setActiveEvent", index }),

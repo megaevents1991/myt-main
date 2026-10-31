@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import { isMobile } from "react-device-detect";
 import { Accordion } from "@mantine/core";
 import { FaHotel, FaPlane, FaTicketAlt } from "react-icons/fa";
-import { Check, CircleAlert, Loader2, Lock, Plane, TrainFront } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, Loader2, Lock, Plane, TrainFront } from "lucide-react";
 
 import { EventSummary } from "@/app/order/OrderSummary/EventSummary";
 import { HotelSummary } from "@/app/order/OrderSummary/HotelSummary";
@@ -24,14 +24,14 @@ import { Timer } from "@/components/ui/Timer";
 import type { Event, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/app.types";
 import { lodgingLocation } from "@/lib/events/lodging";
 import { ticketReady } from "@/lib/itinerary/adapter";
-import { dayMonth, stayCityName, tripCities } from "@/lib/itinerary/builder";
+import { sendTripSuggestion } from "@/app/euro-trip/build/actions";
+import { dayMonth, groundLink, stayCityName, tripCities } from "@/lib/itinerary/builder";
 import type { HeldAnswer } from "@/lib/itinerary/confirm";
-import { stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
-import { cardRows, trainRowText } from "@/lib/itinerary/flightsView";
-import { dayDiff } from "@/lib/itinerary/geo";
+import { moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
+import { cardRows, groundNote, trainRowText } from "@/lib/itinerary/flightsView";
+import { dayDiff, sameHub } from "@/lib/itinerary/geo";
 import { SUMMARY_HOLD_SECONDS, canContinue, livePrice, progressivePrice } from "@/lib/itinerary/progress";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
-import { cleanSuggestTitle, type TripSuggestion } from "@/lib/itinerary/suggestion";
 import { summaryAdditions, type SummaryAdditions } from "@/lib/itinerary/summaryRows";
 import {
   contactKey,
@@ -179,8 +179,27 @@ function TripFlights({ flight, addition }: { flight: ItineraryFlight; addition: 
     () => new Map(trainLegs(route, dates, trainSet).map((t): [string, TrainLeg] => [t.key, t])),
     [route, dates, trainSet],
   );
+  // A sub-location has no flight of its own (Dor 31.10: "זה רכבת מלונדון הרי"): the train between
+  // two stays under one flight city, and the way to an event the flight does not land next to.
+  const groundHops = useMemo(() => {
+    const keys = moves(route).filter((m) => sameHub(m.a, m.b)).map((m) => m.key);
+    return trainLegs(route, dates, new Set(keys));
+  }, [route, dates]);
+  const groundLines = useMemo(() => {
+    const said = new Set(groundHops.map((t) => t.toName));
+    return [
+      ...new Set(
+        route.flatMap((e) => {
+          const g = groundLink(e);
+          return g && !said.has(g.to) ? [groundNote(g)] : [];
+        }),
+      ),
+    ];
+  }, [route, groundHops]);
   const legs = flight.legs?.length ? flight.legs : [flight.outbound, flight.inbound];
-  const airline = flight.metadata?.name || flight.airline || "";
+  const airline = [
+    ...new Set([flight, ...(flight.moveFlights ?? [])].map((f) => f.metadata?.name || f.airline || "").filter(Boolean)),
+  ].join(" · ");
 
   return (
     <div>
@@ -216,8 +235,64 @@ function TripFlights({ flight, addition }: { flight: ItineraryFlight; addition: 
           }
           return <LegLine key={`leg-${i}`} leg={row.leg} />;
         })}
+        {groundHops.map((hop) => (
+          <MoveLine key={`ground-${hop.key}`} hop={hop} />
+        ))}
+        {groundLines.map((line) => (
+          <p key={line} className="m-0 flex items-center gap-2 py-1 text-[12px] text-muted-foreground">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-aqua text-black" aria-hidden>
+              <TrainFront className="size-3.5" />
+            </span>
+            {line}
+          </p>
+        ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * One group of the summary, closed until it is opened (Dor 31.10: "כרטיסים (6) אירועים (3) בקולאפס,
+ * ואם לוחצים אז רואים את זה כמו שנראה עכשיו"): what it holds in one line, its rows under it.
+ */
+function ReviewGroup({
+  id,
+  icon,
+  title,
+  count,
+  children,
+}: {
+  id: string;
+  icon: ReactNode;
+  title: string;
+  count: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section dir="rtl" className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={id}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-start focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-forest md:px-6 dark:focus-visible:outline-glow"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-[16px] text-primary" aria-hidden>
+          {icon}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+          <span className="text-lg font-bold">{title}</span>
+          <span className="text-sm text-muted-foreground">{count}</span>
+        </span>
+        <ChevronDown className={cn("size-5 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && (
+        <div id={id} className="border-t border-border">
+          {children}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -225,7 +300,8 @@ function TripFlights({ flight, addition }: { flight: ItineraryFlight; addition: 
  * The summary's sections in trip order, from the live summary's pieces: per event its name, place
  * and date, then the live `EventSummary`; the flights; per stay the live `HotelSummary` (its
  * single-hotel path). Each with its "עריכה". The live Review's two looks: a list with the edit
- * beside each section, and on a phone an accordion (the pieces hide their headings there).
+ * beside each section, and on a phone an accordion (the pieces hide their headings there). All of it
+ * in three groups that open on a tap (`ReviewGroup`): tickets, flights and moves, lodging.
  * `locked`: a hold is on its way - every "עריכה" is off until it answers.
  */
 function TripReview({
@@ -305,12 +381,15 @@ function TripReview({
     const city = stayCityName(stay.events[0]);
     const ready = !!h && stayHotelReady(h, ranges[i], pax);
     const nights = h ? dayDiff(h.checkin.slice(0, 10), h.checkout.slice(0, 10)) : Number.NaN;
+    const noHotel = state.skippedStays.includes(stay.key);
     return {
       id: `hotel-${stay.key}`,
       primary: `לינה ב${city} (${pax} אורחים)`,
-      secondary: ready ? <bdi dir="ltr">{h.name}</bdi> : "עוד לא נבחר מלון",
+      secondary: noHotel ? "ללא מלון" : ready ? <bdi dir="ltr">{h.name}</bdi> : "עוד לא נבחר מלון",
       icon: <FaHotel />,
-      content: ready ? (
+      content: noHotel ? (
+        <NotPicked title={`לינה ב${city}`} text="ללא מלון" />
+      ) : ready ? (
         <div>
           <p className="m-0 hidden text-[13px] font-bold text-forest md:block dark:text-glow">
             {city}
@@ -339,6 +418,33 @@ function TripReview({
       editLabel: `עריכת המלון ב${city}`,
     };
   });
+
+  const legCount = flight?.legs?.length ?? tripLegs(route, dates, new Set(state.train)).length;
+  const moveCount = moves(route).length;
+  const nightsOfTrip = ranges.reduce((sum, r) => sum + Math.max(0, dayDiff(r[0], r[1]) || 0), 0);
+  const groups = (tickets: ReactNode, travel: ReactNode, lodging: ReactNode) => (
+    <div>
+      <ReviewGroup id="review-tickets" icon={<FaTicketAlt />} title={`כרטיסים (${pax * route.length})`} count={`אירועים (${route.length})`}>
+        {tickets}
+      </ReviewGroup>
+      <ReviewGroup
+        id="review-flights"
+        icon={<FaPlane />}
+        title={moveCount ? "טיסות ומעברים" : "טיסות"}
+        count={moveCount ? `טיסות (${legCount}) · ${moveCount === 1 ? "מעבר אחד" : `${moveCount} מעברים`}` : `(${pax} נוסעים)`}
+      >
+        {travel}
+      </ReviewGroup>
+      <ReviewGroup
+        id="review-hotels"
+        icon={<FaHotel />}
+        title="לינה"
+        count={`${list.length === 1 ? "עיר אחת" : `${list.length} ערים`}${nightsOfTrip ? ` · ${nightsLabel(nightsOfTrip)}` : ""}`}
+      >
+        {lodging}
+      </ReviewGroup>
+    </div>
+  );
 
   if (isMobile) {
     const accordion = (items: ReviewItem[]) => (
@@ -385,14 +491,9 @@ function TripReview({
         ))}
       </Accordion>
     );
-    return (
-      <div className="space-y-3 px-4 py-4 text-right">
-        {/* Alon 28.10: no big title per event ("גדולה מדי ועושה בלאגן") - each tickets row names its event. */}
-        {accordion(ticketItems)}
-        <div className="h-1 w-full border-b" />
-        {accordion([flightItem, ...hotelItems])}
-      </div>
-    );
+    const rows = (items: ReviewItem[]) => <div className="px-4 py-2 text-right">{accordion(items)}</div>;
+    // Alon 28.10: no big title per event ("גדולה מדי ועושה בלאגן") - each tickets row names its event.
+    return groups(rows(ticketItems), rows([flightItem]), rows(hotelItems));
   }
 
   const section = (item: ReviewItem) => (
@@ -413,19 +514,16 @@ function TripReview({
 
   // `text-right` is the live Review's: its pieces print hotel / airline names left to right and
   // lean on the inherited right alignment (a logical `text-start` would resolve to left in them).
-  return (
+  const rows = (items: ReviewItem[]) => (
     <div className="space-y-3 px-6 py-4 text-right">
-      {ticketItems.map((item, i) => (
+      {items.map((item, i) => (
         <div key={item.id} className={cn(i > 0 && "border-t border-border pt-3")}>
           {section(item)}
         </div>
       ))}
-      <div className="space-y-3 border-t border-border pt-3">
-        {section(flightItem)}
-        {hotelItems.map(section)}
-      </div>
     </div>
   );
+  return groups(rows(ticketItems), rows([flightItem]), rows(hotelItems));
 }
 
 /** Where the price strip stands until every piece is picked: the running estimate, said to be one. */
@@ -619,16 +717,21 @@ export function SummaryStep({
   // `holdSending`). The hold writes real reservations; its answer is read here.
   const sending = busy || hold.sending;
 
-  // "Offer my trip to others" - only on a trip the customer built; it rides on the hold.
-  const canSuggest = HOLD_ENABLED && state.mode === "custom";
-  const [suggestOn, setSuggestOn] = useState(false);
-  const [suggestTitle, setSuggestTitle] = useState("");
-  const suggestion: TripSuggestion | null =
-    canSuggest && suggestOn ? { title: cleanSuggestTitle(suggestTitle) || null } : null;
-  const sendHold = (t: TravellersInput) => hold.submit(t, suggestion);
+  // "Offer my trip to others" - only on a trip the customer built; its own button, for the team's review.
+  const canSuggest = state.mode === "custom";
+  const sendSuggestion = (title: string) => {
+    const { firstName, lastName, email, phone } = form.contact;
+    return sendTripSuggestion({
+      eventIds: route.map((e) => e.id),
+      title,
+      pax,
+      contact: { name: `${firstName} ${lastName}`.trim(), email, phone },
+    });
+  };
+  const sendHold = (t: TravellersInput) => hold.submit(t);
   // The regular summary's "רוצים לפצל תשלום? דברו עם נציג" (Alon's "פיצול הזמנה", Dor 28.10): the same
   // 24-hour hold, flagged so the rep arranges the split on the call.
-  const sendSplitHold = (t: TravellersInput) => hold.submit(t, suggestion, true);
+  const sendSplitHold = (t: TravellersInput) => hold.submit(t, true);
 
   const touch = (key: string) =>
     setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
@@ -976,13 +1079,7 @@ export function SummaryStep({
               </div>
             </Card>
             {canSuggest && (
-              <SuggestTripCard
-                on={suggestOn}
-                title={suggestTitle}
-                disabled={sending || expired}
-                onToggle={setSuggestOn}
-                onTitle={setSuggestTitle}
-              />
+              <SuggestTripCard disabled={sending || expired} onSend={sendSuggestion} />
             )}
             {isMobile && actions}
             <TrustCard />

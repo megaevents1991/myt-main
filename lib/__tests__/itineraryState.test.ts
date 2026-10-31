@@ -138,14 +138,13 @@ describe("removeEvent", () => {
 });
 
 describe("setDates", () => {
-  it("clamps every date into its range and clears flight + hotels", () => {
+  it("clamps every date into its range; a flight with no part for the new dates goes", () => {
     const s = reduce(parisLondon(), {
       type: "setDates",
       dates: { depart: "2027-05-01", ret: "2027-06-01", moves: { "618>702": "2027-05-20" } },
     });
-    expect(s.dates).toEqual({ depart: "2027-05-09", ret: "2027-05-18", moves: { "618>702": "2027-05-15" } });
+    expect(s.dates).toEqual({ depart: "2027-05-09", ret: "2027-05-18", moves: { "618>702": "2027-05-14" } });
     expect(s.flight).toBeNull();
-    expect(s.hotels).toEqual({});
   });
 
   it("is a no-op when nothing moves", () => {
@@ -174,11 +173,10 @@ describe("setPax", () => {
 });
 
 describe("toggleTrain", () => {
-  it("toggles a move of the route and clears flight + hotels", () => {
+  it("toggles a move of the route; a flight with no part for it goes", () => {
     const on = reduce(parisLondon(), { type: "toggleTrain", key: "618>702" });
     expect(on.train).toEqual(["618>702"]);
     expect(on.flight).toBeNull();
-    expect(on.hotels).toEqual({});
     expect(reduce(on, { type: "toggleTrain", key: "618>702" }).train).toEqual([]);
   });
 

@@ -5,7 +5,6 @@ import { validateFlightRequest, type FlightLeg } from "../itinerary/flightOffers
 import {
   FLIGHTS_PAGE,
   INCLUDED_BAND_USD,
-  TRAIN_HINT_KM,
   basePerTraveller,
   canSearch,
   cardRows,
@@ -21,7 +20,8 @@ import {
   sortFlights,
   tabTags,
   trainBackOffered,
-  trainCallout,
+  groundNote,
+  trainNote,
   trainHours,
   trainRowText,
   trainToggleLabel,
@@ -85,7 +85,6 @@ const three = [seg("TLV", "CDG"), seg("CDG", "LHR"), seg("LHR", "TLV")];
 describe("constants", () => {
   it("are the brief's numbers", () => {
     expect(FLIGHTS_PAGE).toBe(20);
-    expect(TRAIN_HINT_KM).toBe(600);
     expect(INCLUDED_BAND_USD).toBe(4);
   });
 });
@@ -112,32 +111,16 @@ describe("train copy", () => {
   });
 });
 
-describe("trainCallout", () => {
-  const paris = { fromName: "פריז", toName: "לונדון", km: 343 };
-
-  it("suggests the train on a hop under 600 km, verbatim", () => {
-    expect(trainCallout([paris])).toEqual({
-      lead: "טיסה אחת לכל המסלול.",
-      text: 'פריז–לונדון זה 343 ק״מ - ברכבת כ-2.5 שעות ממרכז העיר למרכז העיר. מעדיפים להגיע בעצמכם? סמנו "אגיע עצמאית".',
-    });
+describe("the train's words", () => {
+  it("a move's note: how far and how long", () => {
+    expect(trainNote({ fromName: "פריז", toName: "לונדון", km: 343 })).toBe(
+      "פריז–לונדון זה 343 ק״מ - ברכבת כ-2.5 שעות ממרכז העיר למרכז העיר.",
+    );
   });
 
-  it("says nothing at 600 km or more, or with no hop", () => {
-    expect(trainCallout([{ ...paris, km: 600 }])).toBeNull();
-    expect(trainCallout([{ ...paris, km: 950 }])).toBeNull();
-    expect(trainCallout([])).toBeNull();
-  });
-
-  it("names every short hop, and only those", () => {
-    const callout = trainCallout([
-      paris,
-      { fromName: "לונדון", toName: "מדריד", km: 1260 },
-      { fromName: "מדריד", toName: "ברצלונה", km: 505 },
-    ]);
-    expect(callout?.text).toBe(
-      "פריז–לונדון זה 343 ק״מ - ברכבת כ-2.5 שעות ממרכז העיר למרכז העיר. " +
-        "מדריד–ברצלונה זה 505 ק״מ - ברכבת כ-3.5 שעות ממרכז העיר למרכז העיר. " +
-        'מעדיפים להגיע בעצמכם? סמנו "אגיע עצמאית".',
+  it("a sub-location's: the event's city, from the flight's", () => {
+    expect(groundNote({ from: "לונדון", to: "מנצ'סטר", km: 262 })).toBe(
+      "האירוע במנצ'סטר - רכבת מלונדון, כ-2.0 שעות, בכוחות עצמכם (לא כלול).",
     );
   });
 });

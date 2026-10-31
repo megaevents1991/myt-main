@@ -301,8 +301,9 @@ describe("validateFlightRequest", () => {
     expect(refusal({ ...valid(), legs: four }, TODAY)).toBeNull();
   });
 
-  it("1 leg -> error", () => {
-    expect(refusal({ ...valid(), legs: valid().legs.slice(0, 1) }, TODAY)).toEqual(expect.any(String));
+  it("1 leg is a move searched alone; none -> error", () => {
+    expect(validateFlightRequest({ ...valid(), legs: valid().legs.slice(0, 1) }, TODAY).ok).toBe(true);
+    expect(refusal({ ...valid(), legs: [] }, TODAY)).toEqual(expect.any(String));
   });
 
   it("5 legs -> error", () => {

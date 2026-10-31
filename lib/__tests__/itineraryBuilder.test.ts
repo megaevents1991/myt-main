@@ -10,11 +10,14 @@ import {
   dayMonthYear,
   filterCatalog,
   fittingItems,
+  hasTripPartner,
   isBrowsing,
+  quickFiltered,
   starterEvents,
   topCities,
   tripCities,
 } from "../itinerary/builder";
+import { eventKind, sameCity } from "../itinerary/geo";
 
 type City = { latitude: number; longitude: number; name: string; city_iata: string };
 
@@ -172,9 +175,32 @@ describe("search first", () => {
     expect(starterEvents(catalog, 0)).toEqual([]);
   });
 
+  it("what fits leaves out another date of a show already in the trip", () => {
+    const again = { ...celine, id: 9001, date: "2027-05-13T20:00:00" };
+    const items = catalogItems([celine], [...catalog, again], S);
+    expect(items.some((i) => i.event.id === again.id && i.compat.status !== "blocked")).toBe(true);
+    expect(fittingItems(items, [celine]).some((i) => i.event.id === again.id)).toBe(false);
+  });
+
+  it("an event with no other show near it has no partner; another date of itself does not count", () => {
+    const alone = { ...celine, id: 9002, date: "2029-01-10T20:00:00" };
+    const again = { ...celine, id: 9003, date: "2029-01-12T20:00:00" };
+    expect(hasTripPartner(alone, [alone, again], S)).toBe(false);
+    const other = { ...celine, id: 9004, name: "אחר", date: "2029-01-13T20:00:00" };
+    expect(hasTripPartner(alone, [alone, again, other], S)).toBe(true);
+  });
+
+  it("the quick filter: by kind, and only the cities in the trip", () => {
+    const items = catalogItems([chelsea], catalog, S);
+    const music = quickFiltered(items, [chelsea], { kind: "music", sameCity: false });
+    expect(music.every((i) => eventKind(i.event) === "music")).toBe(true);
+    const here = quickFiltered(items, [chelsea], { kind: "all", sameCity: true });
+    expect(here.every((i) => sameCity(chelsea, i.event))).toBe(true);
+  });
+
   it("what fits: never the route's own event, never a blocked one, best fit first", () => {
     const items = catalogItems([chelsea], catalog, S);
-    const fits = fittingItems(items);
+    const fits = fittingItems(items, [chelsea]);
     expect(fits.some((i) => i.event.id === chelsea.id)).toBe(false);
     expect(fits.every((i) => i.compat.status !== "blocked")).toBe(true);
     expect(fits.map((i) => i.event.id)).toEqual(

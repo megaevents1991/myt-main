@@ -265,6 +265,8 @@ export type FlightSegment = {
 export type ItineraryFlight = Flight & {
   legs: FlightSegment[];
   trainLegs: { from: string; to: string; date: string }[];
+  /** The between-cities flights, each its own offer (the trip's `offer` is the way out and home). */
+  moveFlights?: Flight[];
 };
 
 /**

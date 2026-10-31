@@ -10,6 +10,7 @@
  */
 import dayjs from "dayjs";
 import type { Event, Flight, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/app.types";
+import { getComponentMarkups, hasComponentMarkups } from "@/lib/events/price";
 import type { LodgingCity } from "@/lib/events/lodging";
 import { getDefaultDateRange, trustedArrival } from "@/lib/getDefaultDateRange";
 import type { Guest } from "@/lib/hotel.type";
@@ -17,6 +18,9 @@ import { moves, stays, tripLegs } from "./dates";
 import { dayDiff } from "./geo";
 import { nightlyHotelBase } from "./price";
 import type { TripDates } from "./types";
+
+/** The regular flow's line between the low and the high hotel-skip fee (app/order/hooks.tsx). */
+const HOTEL_SKIP_FLIGHT_THRESHOLD = 550;
 
 /** Check-in / check-out of one stay, `YYYY-MM-DD`. */
 export type StayRange = [string, string];
@@ -185,6 +189,26 @@ export function hotelGuests(hotel: OrderHotel | undefined): number {
  */
 export function stayHotelReady(hotel: OrderHotel | undefined, range: StayRange | undefined, pax: number): boolean {
   return !!hotel && !!range && hotelOnStayDates(hotel, range) && hotelGuests(hotel) === pax;
+}
+
+/**
+ * What skipping a stay's hotel costs a traveller - the regular flow's skip fee (app/order/hooks.tsx,
+ * Dor 23.8): composed pricing swaps the event's hotel markup for its `skip_hotel_markup`, legacy adds
+ * the env fee by the event's flight base. The fee recovers the hotel's margin, so a stay whose
+ * package hotel for these nights (`withStayBase`, known to the server too) costs no more than the
+ * fee has none to recover: it is waived.
+ */
+export function skippedStayPerTraveller(event: Event, range: StayRange | undefined): number {
+  const composed = hasComponentMarkups(event);
+  const m = getComponentMarkups(event);
+  const fee = composed
+    ? m.skipHotel
+    : Number(event.base_flight_price) < HOTEL_SKIP_FLIGHT_THRESHOLD
+      ? Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_LOW) || 100
+      : Number(process.env.NEXT_PUBLIC_HOTEL_SKIP_MARKUP_HIGH) || 150;
+  const base = range ? Number(withStayBase(event, range).base_hotel_price) || 0 : 0;
+  const charged = base <= fee ? 0 : fee;
+  return composed ? charged - m.hotel : charged;
 }
 
 /**

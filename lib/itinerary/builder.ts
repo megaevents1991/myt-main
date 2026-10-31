@@ -3,10 +3,10 @@
  * no clock. The components render these lists; every rule comes from `rules.ts`.
  */
 import type { Event } from "@/lib/app.types";
-import { cityName, defaultCity, eventCityName } from "@/lib/events/lodging";
+import { cityName, defaultCity, eventCityName, hasEventCity } from "@/lib/events/lodging";
 import { stays } from "./dates";
-import { eventDay, eventKind } from "./geo";
-import { compatibility, sortRoute } from "./rules";
+import { dayDiff, eventDay, eventKind, haversineKm, sameCity } from "./geo";
+import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import type { Compat, CompatStatus } from "./types";
 
@@ -18,6 +18,15 @@ export const dayMonth = (day: string): string => `${day.slice(8, 10)}/${day.slic
 
 /** The city the traveller sleeps in for this event, as the hotel step names it ("לונדון"). */
 export const stayCityName = (e: Event): string => cityName(e, defaultCity(e));
+
+/**
+ * A sub-location's way there: the flight lands in one city and the event is in another (Manchester,
+ * sold as a flight to London). Null for an event in its flight city.
+ */
+export function groundLink(e: Event): { from: string; to: string; km: number } | null {
+  if (!hasEventCity(e) || !e.event_location) return null;
+  return { from: cityName(e, "flight"), to: cityName(e, "event"), km: haversineKm(e.location, e.event_location) };
+}
 
 /**
  * The trip's stay cities in order ("פריז", "לונדון"), each named once while the trip stays
@@ -73,7 +82,11 @@ export function filterCatalog(catalog: Event[], f: CatalogFilter): Event[] {
   });
 }
 
-export type CatalogItem = Candidate & { inRoute: boolean };
+export type CatalogItem = Candidate & {
+  inRoute: boolean;
+  /** Nothing can join this event (`hasTripPartner`), said on its row while the trip is empty. */
+  lonely?: boolean;
+};
 
 /**
  * The self-build grid: each event with its compatibility against the route. While the route is
@@ -138,7 +151,38 @@ export function starterEvents(catalog: Event[], n: number): Event[] {
   return out;
 }
 
-/** What can still join the route, best fit first (`catalogItems`' order): not the route's own, not the blocked. */
-export function fittingItems(items: CatalogItem[]): CatalogItem[] {
-  return items.filter((i) => !i.inRoute && i.compat.status !== "blocked");
+/**
+ * What can still join the route, best fit first (`catalogItems`' order): not the route's own, not
+ * the blocked, and not another date of a show already in it - nobody flies to see one show twice
+ * (Dor 31.10; a search still finds it).
+ */
+export function fittingItems(items: CatalogItem[], route: Event[]): CatalogItem[] {
+  const names = new Set(route.map((e) => e.name.trim()));
+  return items.filter((i) => !i.inRoute && i.compat.status !== "blocked" && !names.has(i.event.name.trim()));
+}
+
+/**
+ * Could this event open a trip? Some OTHER event - never another date of the same show - fits it
+ * cleanly: close in distance and in date (`okGapDays`; a long gap is only a `warn`). An event with
+ * none is still sold, and can still be picked; the finder says so on its row (Dor 31.10).
+ */
+export function hasTripPartner(e: Event, catalog: Event[], s: ItinerarySettings): boolean {
+  const name = e.name.trim();
+  const day = eventDay(e);
+  return catalog.some((other) => {
+    if (other.id === e.id || other.name.trim() === name) return false;
+    if (Math.abs(dayDiff(day, eventDay(other))) > s.okGapDays) return false;
+    const c = compatibility([e], other, s);
+    return isAddable(c) && c.status !== "warn";
+  });
+}
+
+/** The "רוצה לשלב עם" row over the suggestions: a kind, and / or only the cities already in the trip. */
+export type QuickFilter = { kind: CatalogKind; sameCity: boolean };
+
+export function quickFiltered(items: CatalogItem[], route: Event[], q: QuickFilter): CatalogItem[] {
+  return items.filter(
+    ({ event }) =>
+      (q.kind === "all" || eventKind(event) === q.kind) && (!q.sameCity || route.some((r) => sameCity(r, event))),
+  );
 }

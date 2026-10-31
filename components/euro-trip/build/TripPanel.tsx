@@ -1,15 +1,15 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { BedDouble, PlaneLanding, PlaneTakeoff, Plus, Route, X } from "lucide-react";
+import { BedDouble, PlaneLanding, PlaneTakeoff, Plus, Route, TrainFront, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { eventCityName } from "@/lib/events/lodging";
-import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
+import { dayMonth, groundLink, stayCityName } from "@/lib/itinerary/builder";
 import { applyDatePick, datePickSteps, type DatePickStep } from "@/lib/itinerary/datePick";
 import { moves } from "@/lib/itinerary/dates";
-import { eventDay } from "@/lib/itinerary/geo";
-import { progressivePrice } from "@/lib/itinerary/progress";
+import { trainHours } from "@/lib/itinerary/flightsView";
+import { eventDay, sameHub } from "@/lib/itinerary/geo";
 import { MIN_TRIP_EVENTS } from "@/lib/itinerary/state";
 import { DateStepper } from "./DateStepper";
 import { EventPickerModal } from "./EventPickerModal";
@@ -58,7 +58,6 @@ export function TripPanel({ className }: { className?: string }) {
   const retStep = stepByKey.get("ret");
   const moveKeys = new Set(moves(route).map((m) => m.key));
   const enough = route.length >= MIN_TRIP_EVENTS;
-  const estimate = enough ? progressivePrice(state, settings).perTraveller : 0;
   const open = Array.from({ length: Math.max(0, settings.maxEvents - route.length) }, (_, k) => route.length + k);
 
   useEffect(() => {
@@ -102,11 +101,12 @@ export function TripPanel({ className }: { className?: string }) {
           const prev = route[i - 1];
           const moveKey = prev ? `${prev.id}>${e.id}` : "";
           const moveStep = stepByKey.get(moveKey);
+          const ground = groundLink(e);
           return (
             <Fragment key={e.id}>
               {prev &&
                 (moveKeys.has(moveKey) ? (
-                  moveStep && dateRow(moveStep, <Route className="size-4" />)
+                  moveStep && dateRow(moveStep, sameHub(prev, e) ? <TrainFront className="size-4" /> : <Route className="size-4" />)
                 ) : (
                   <li className="flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-border px-3 py-1 text-[13px] font-bold text-muted-foreground">
                     {rowIcon(<BedDouble className="size-4" />)}
@@ -122,6 +122,12 @@ export function TripPanel({ className }: { className?: string }) {
                   <span className="text-[12.5px] text-muted-foreground">
                     <span className="tabular-nums">{dayMonth(eventDay(e))}</span> · {eventCityName(e)}
                   </span>
+                  {ground && (
+                    <span className="mt-0.5 flex items-center gap-1 text-[12px] text-muted-foreground">
+                      <TrainFront className="size-3.5 shrink-0" aria-hidden />
+                      רכבת מ{ground.from}, כ-{trainHours(ground.km)} שעות
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -165,11 +171,6 @@ export function TripPanel({ className }: { className?: string }) {
       >
         {enough ? "המשיכו לבחירת כרטיסים" : "בחרו עוד אירוע כדי להמשיך"}
       </button>
-      {enough && estimate > 0 && (
-        <p className="m-0 text-center text-[13px] text-muted-foreground">
-          הערכה: <b className="tabular-nums text-foreground">${estimate.toLocaleString("en-US")}</b> לנוסע
-        </p>
-      )}
 
       <p className="sr-only" aria-live="polite">
         {said}

@@ -133,20 +133,26 @@ describe("defaultTripDates", () => {
 });
 
 describe("tripDateBounds", () => {
-  it("depart [first - 3, first], return [last + 1, last + 3], move [a + 1, b]", () => {
+  it("depart [first - 3, first], return [last + 1, last + 3], move [a + 1, b - 1]", () => {
     const route = [celine, chelsea];
     expect(tripDateBounds(route, defaultTripDates(route))).toEqual({
       depart: ["2027-05-09", "2027-05-12"],
       ret: ["2027-05-16", "2027-05-18"],
-      moves: { "618>702": ["2027-05-13", "2027-05-15"] },
+      moves: { "618>702": ["2027-05-13", "2027-05-14"] },
     });
+  });
+
+  it("nobody changes city on the day of a show - but a train under one flight city may be that morning's", () => {
+    const manchester = manchesterMatch(704, "2027-05-16", { lodging_mode: "event_city_only" });
+    const route = [chelsea, manchester];
+    expect(tripDateBounds(route, defaultTripDates(route)).moves).toEqual({ "702>704": ["2027-05-16", "2027-05-16"] });
   });
 
   it("has a range per move of a three-event trip and none for a same-city pair", () => {
     const three = [celine, chelsea, ajax];
     expect(tripDateBounds(three, defaultTripDates(three)).moves).toEqual({
-      "618>702": ["2027-05-13", "2027-05-15"],
-      "702>810": ["2027-05-16", "2027-05-20"],
+      "618>702": ["2027-05-13", "2027-05-14"],
+      "702>810": ["2027-05-16", "2027-05-19"],
     });
     const pair = [chelsea, wembley];
     expect(tripDateBounds(pair, defaultTripDates(pair)).moves).toEqual({});
@@ -171,7 +177,7 @@ describe("clampTripDates", () => {
     expect(clamped).toEqual({
       depart: "2027-05-12",
       ret: "2027-05-16",
-      moves: { "618>702": "2027-05-15" },
+      moves: { "618>702": "2027-05-14" },
     });
   });
 
@@ -189,7 +195,7 @@ describe("clampTripDates", () => {
   });
 
   it("keeps the edges of every range (they are valid)", () => {
-    const edges: TripDates = { depart: "2027-05-12", ret: "2027-05-16", moves: { "618>702": "2027-05-15" } };
+    const edges: TripDates = { depart: "2027-05-12", ret: "2027-05-16", moves: { "618>702": "2027-05-14" } };
     expect(clampTripDates(route, edges)).toEqual(edges);
   });
 

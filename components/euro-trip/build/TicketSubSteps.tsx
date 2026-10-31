@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 
-import { ticketSubSteps, type TicketSubStep } from "@/lib/itinerary/flowSteps";
+import { ticketSubSteps } from "@/lib/itinerary/flowSteps";
 import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
 import { EditRouteLink } from "./TripHeader";
@@ -18,12 +18,19 @@ const MINT_FILL = "bg-[color:var(--mantine-color-myColor-4)]";
 /** The stepper's grey (Mantine gray-2 / dark-5): a tint of the text, so it reads in both themes. */
 const GREY = "bg-foreground/[0.08]";
 
+/** One sub-step of a row: an event of the tickets step, a part of the flights step. */
+export type SubStepItem = { index: number; label: string; name: string; done: boolean; current: boolean; enabled: boolean };
+
+/** What a done sub-step says to a screen reader, and why a later one is shut. */
+type SubStepWords = { done: string; shut: string };
+const TICKET_WORDS: SubStepWords = { done: "כרטיסים נבחרו", shut: "זמין אחרי בחירת כרטיסים לאירוע הקודם" };
+
 /**
  * One event. The open one is BIG - a large circle, "אירוע n" and the event's name; every other
  * event is a small circle alone (number or check), its name in `title` and for screen readers
  * (Alon 28.10: "עיגולים של אירוע אחד אירוע שתיים - הנוכחי בגדול והשאר עיגול קטן").
  */
-function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) {
+function SubStep({ item, words, onOpen }: { item: SubStepItem; words: SubStepWords; onOpen: () => void }) {
   const body = (
     <>
       <span
@@ -58,8 +65,8 @@ function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) 
           {item.label}: {item.name}
         </span>
       )}
-      {item.done && <span className="sr-only">כרטיסים נבחרו</span>}
-      {!item.enabled && !item.current && <span className="sr-only">זמין אחרי בחירת כרטיסים לאירוע הקודם</span>}
+      {item.done && <span className="sr-only">{words.done}</span>}
+      {!item.enabled && !item.current && <span className="sr-only">{words.shut}</span>}
     </>
   );
   const box = "flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1";
@@ -98,15 +105,20 @@ function SubStep({ item, onOpen }: { item: TicketSubStep; onOpen: () => void }) 
 }
 
 /**
- * The tickets step's sub-steps - one per event of the trip - in a slim row under the stepper,
- * with "עריכת המסלול" at its inline end (Dor, 22.10: the events are sub-steps of "כרטיסים", not
- * steps of their own). A done event or the first one still open may be opened; nothing an event
- * holds is cleared by the visit (`setActiveEvent` moves the view only).
- * Phone: the events scroll sideways in their own strip, the edit link on its own line under it.
+ * A row of sub-steps: the open one big, the others small circles, sideways on a phone. The tickets
+ * step's events and the flights step's parts.
  */
-export function TicketSubSteps() {
-  const { state, setActiveEvent } = useItinerary();
-  const items = ticketSubSteps(state);
+export function SubStepsRow({
+  items,
+  label,
+  words = TICKET_WORDS,
+  onOpen,
+}: {
+  items: SubStepItem[];
+  label: string;
+  words?: SubStepWords;
+  onOpen: (index: number) => void;
+}) {
   const strip = useRef<HTMLOListElement>(null);
   const currentIndex = items.find((s) => s.current)?.index ?? 0;
 
@@ -123,6 +135,46 @@ export function TicketSubSteps() {
     else if (at.right > view.right) ol.scrollBy({ left: at.right - view.right + pad });
   }, [currentIndex]);
 
+  return (
+    <nav aria-label={label} className="min-w-0 sm:flex-1">
+      {/* A scroller clips both ways: `p-1` keeps the focus outline and the open event's ring
+          (4px out) inside it, `-mx-1` keeps the items on the page's edge. */}
+      <ol
+        ref={strip}
+        // `role="list"`: Safari drops the list role of a list styled without its markers.
+        role="list"
+        className="-mx-1 flex items-center overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {items.map((item) => (
+          <li key={item.index} className="flex shrink-0 items-center sm:min-w-0 sm:shrink">
+            {item.index > 0 && (
+              // The live Stepper's separator: mint once the event before it is done.
+              <span
+                aria-hidden
+                className={cn(
+                  "mx-1.5 h-0.5 w-5 shrink-0 rounded-full sm:mx-3 sm:w-8",
+                  items[item.index - 1].done ? MINT_FILL : GREY,
+                )}
+              />
+            )}
+            <SubStep item={item} words={words} onOpen={() => onOpen(item.index)} />
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+/**
+ * The tickets step's sub-steps - one per event of the trip - in a slim row under the stepper,
+ * with "עריכת המסלול" at its inline end (Dor, 22.10: the events are sub-steps of "כרטיסים", not
+ * steps of their own). A done event or the first one still open may be opened; nothing an event
+ * holds is cleared by the visit (`setActiveEvent` moves the view only).
+ * Phone: the events scroll sideways in their own strip, the edit link on its own line under it.
+ */
+export function TicketSubSteps() {
+  const { state, setActiveEvent } = useItinerary();
+  const items = ticketSubSteps(state);
   if (!items.length) return null;
 
   return (
@@ -130,32 +182,7 @@ export function TicketSubSteps() {
       dir="rtl"
       className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 pt-3 sm:flex-row sm:items-center sm:gap-6 lg:px-6"
     >
-      <nav aria-label="האירועים בטיול" className="min-w-0 sm:flex-1">
-        {/* A scroller clips both ways: `p-1` keeps the focus outline and the open event's ring
-            (4px out) inside it, `-mx-1` keeps the items on the page's edge. */}
-        <ol
-          ref={strip}
-          // `role="list"`: Safari drops the list role of a list styled without its markers.
-          role="list"
-          className="-mx-1 flex items-center overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {items.map((item) => (
-            <li key={item.index} className="flex shrink-0 items-center sm:min-w-0 sm:shrink">
-              {item.index > 0 && (
-                // The live Stepper's separator: mint once the event before it is done.
-                <span
-                  aria-hidden
-                  className={cn(
-                    "mx-1.5 h-0.5 w-5 shrink-0 rounded-full sm:mx-3 sm:w-8",
-                    items[item.index - 1].done ? MINT_FILL : GREY,
-                  )}
-                />
-              )}
-              <SubStep item={item} onOpen={() => setActiveEvent(item.index)} />
-            </li>
-          ))}
-        </ol>
-      </nav>
+      <SubStepsRow items={items} label="האירועים בטיול" onOpen={setActiveEvent} />
       <EditRouteLink className="shrink-0 self-end whitespace-nowrap sm:self-auto" />
     </div>
   );

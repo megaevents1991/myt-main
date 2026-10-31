@@ -49,6 +49,8 @@ export type TripMailInput = {
   trainLegs: TrainLeg[];
   /** One hotel per stay, with the city and the reservation it is on. */
   hotels: { city: string; hotel: OrderHotel; onRow: number | null }[];
+  /** The cities the customer needs no hotel in ("לא צריך מלון"). */
+  noHotelCities: string[];
   totalUsd: number;
   perTravellerUsd: number;
   totalIls: number;
@@ -95,6 +97,9 @@ export function tripMailInput(i: {
     flight: sub.flight,
     trainLegs: trainLegs(route, sub.dates, new Set(sub.train)),
     hotels,
+    noHotelCities: stays(route, sub.dates)
+      .filter((stay) => sub.skippedStays.includes(stay.key))
+      .map((stay) => stayCityName(stay.events[0])),
     totalUsd: i.price.total,
     perTravellerUsd: i.price.perTraveller,
     totalIls: rows.reduce((sum, r) => sum + r.final_purchase_price_ils, 0),
@@ -211,6 +216,7 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
     "",
     line("******** Hotels ********"),
     ...hotels,
+    ...i.noHotelCities.map((city) => line(`${city}: NO HOTEL - the customer does not need one`)),
     line("******************"),
     line(`Total Price USD: ${i.totalUsd} (per traveller ${i.perTravellerUsd})`),
     line(`Total Price ILS: ${i.totalIls}`),
@@ -269,14 +275,17 @@ export function tripHoldMail(i: TripMailInput): { subject: string; html: string 
     ),
   ];
 
-  const hotels = i.hotels.map(({ city, hotel }) => {
-    const nights = nightsOf(hotel);
-    return `<strong style="color: #0A1A14;">${esc(city)}:</strong> <span dir="ltr" style="unicode-bidi: embed;">${esc(hotel.name)}</span><br>${esc(
-      dayMonth(String(hotel.checkin).slice(0, 10)),
-    )}–${esc(dayMonth(String(hotel.checkout).slice(0, 10)))}${Number.isFinite(nights) ? ` · ${nights === 1 ? "לילה אחד" : `${nights} לילות`}` : ""}${
-      roomsLabel(hotel.guests) ? ` · ${esc(roomsLabel(hotel.guests))}` : ""
-    }`;
-  });
+  const hotels = [
+    ...i.hotels.map(({ city, hotel }) => {
+      const nights = nightsOf(hotel);
+      return `<strong style="color: #0A1A14;">${esc(city)}:</strong> <span dir="ltr" style="unicode-bidi: embed;">${esc(hotel.name)}</span><br>${esc(
+        dayMonth(String(hotel.checkin).slice(0, 10)),
+      )}–${esc(dayMonth(String(hotel.checkout).slice(0, 10)))}${Number.isFinite(nights) ? ` · ${nights === 1 ? "לילה אחד" : `${nights} לילות`}` : ""}${
+        roomsLabel(hotel.guests) ? ` · ${esc(roomsLabel(hotel.guests))}` : ""
+      }`;
+    }),
+    ...i.noHotelCities.map((city) => `<strong style="color: #0A1A14;">${esc(city)}:</strong> ללא מלון`),
+  ];
 
   const party = i.pax === 1 ? "לנוסע אחד" : `ל-${i.pax} נוסעים`;
 

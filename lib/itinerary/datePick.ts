@@ -8,6 +8,7 @@ import type { Event } from "@/lib/app.types";
 import { cityName } from "@/lib/events/lodging";
 import { clampTripDates, moves, stays, tripDateBounds } from "./dates";
 import { stayCityName } from "./builder";
+import { sameHub } from "./geo";
 import type { TripDates } from "./types";
 
 export type DatePickStep = {
@@ -25,7 +26,8 @@ export type DatePickStep = {
 
 /**
  * The dates to pick, in trip order: `טיסה הלוך ל<city>`, then `מעבר ל<city>` per move (plus
- * ` (עצמאית)` when `train` has it), then `חזרה מ<city>`. THE one source of the trip's date labels
+ * ` (עצמאית)` when `train` has it; `רכבת ל<city>` under one flight city - Manchester from London has
+ * no flight), then `חזרה מ<city>`. THE one source of the trip's date labels
  * (the flights step's calendar and the planner's panel). A flight lands where the airport is: the
  * departure and the return name the FLIGHT city of the first / last stay's first event (a
  * Manchester match sold as a flight to London reads `טיסה הלוך ללונדון` / `חזרה מלונדון`); a move
@@ -55,7 +57,9 @@ export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlyS
     steps.push({
       key: m.key,
       kind: "move",
-      label: `מעבר ל${city(i + 1)}${train.has(m.key) ? " (עצמאית)" : ""}`,
+      label: sameHub(m.a, m.b)
+        ? `רכבת ל${city(i + 1)}`
+        : `מעבר ל${city(i + 1)}${train.has(m.key) ? " (עצמאית)" : ""}`,
       value: value.moves[m.key],
       min,
       max,

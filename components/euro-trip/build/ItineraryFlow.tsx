@@ -10,6 +10,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { ticketReady } from "@/lib/itinerary/adapter";
 import { stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
+import { flightPartsOf, partDone } from "@/lib/itinerary/flightParts";
 import { flowSteps, stepForIndex, stepperIndex } from "@/lib/itinerary/flowSteps";
 import { PRIOR_HOLD_NOTICE } from "@/lib/itinerary/heldMarker";
 import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
@@ -46,6 +47,18 @@ const SummaryStep = dynamic(() => import("./SummaryStep").then((m) => m.SummaryS
   ssr: false,
   loading: () => <StepSkeleton label="טוענים את הסיכום..." side tabs={false} />,
 });
+
+/**
+ * The flights step, alive from the moment the planner is left (see ItineraryFlow). Its wrapper also
+ * hides the step's skeleton (the dynamic `loading` cannot see `shown`).
+ */
+function FlightsPane({ shown, onSearching }: { shown: boolean; onSearching: (searching: boolean) => void }) {
+  return (
+    <div hidden={!shown}>
+      <FlightsStep shown={shown} onSearching={onSearching} />
+    </div>
+  );
+}
 
 /**
  * The hotels step, kept alive (see ItineraryFlow). Its wrapper also hides the step's skeleton:
@@ -85,9 +98,8 @@ function StepBody({ state }: { state: ItineraryState }) {
     case "tickets":
       return <TicketsStep />;
     case "flights":
-      return <FlightsStep />;
     case "hotels":
-      // Drawn beside the switch (ItineraryFlow): it stays mounted while the trip has its flight.
+      // Drawn beside the switch (ItineraryFlow): they stay mounted, the trip's price hangs on them.
       return null;
     case "summary":
       return <SummaryStep />;
@@ -104,7 +116,8 @@ function StepBody({ state }: { state: ItineraryState }) {
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, priorHold, held, holdSending } = useItinerary();
+  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveFlightPart, skipStay, priorHold, held, holdSending } =
+    useItinerary();
   const { route, dates, step } = state;
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
@@ -113,17 +126,19 @@ export function ItineraryFlow() {
     () => stayRanges(route, dates, state.flight, new Set(state.train)),
     [route, dates, state.flight, state.train],
   );
-  const hotelReady = (i: number) => stayHotelReady(state.hotels[stayList[i]?.key ?? ""], ranges[i], state.pax);
+  const hotelReady = (i: number) =>
+    state.skippedStays.includes(stayList[i]?.key ?? "") || stayHotelReady(state.hotels[stayList[i]?.key ?? ""], ranges[i], state.pax);
 
-  // The hotels step stays mounted (hidden) once opened, for as long as the trip has a flight: a
-  // visit to the summary or an earlier step and back spends no hotel search (the step keeps its
-  // answers for its life) and finds every city as the customer left it. No flight = no hotel
-  // dates: it goes (the reducer drops the flight on any change of route, dates, party or train).
-  // Another flight keeps it: a city whose nights moved is searched again, the others keep theirs.
-  const [hotelsOpened, setHotelsOpened] = useState(false);
-  if (step === "hotels" && state.flight && !hotelsOpened) setHotelsOpened(true);
-  else if (!state.flight && hotelsOpened) setHotelsOpened(false);
-  const hotelsMounted = step === "hotels" || (hotelsOpened && !!state.flight);
+  // Dor 31.10: "מחיר מדויק כבר בשלב של בחירת כרטיס 1, שיביא תוצאות אחרי שלקוח לחץ על אישור במסך
+  // הבנייה". From the moment the customer leaves the planner the flights step runs hidden - each
+  // part searched, its recommended flight picked and priced - and, once the trip has its flight,
+  // so does the hotels step, one city after another. That is what the bar's price is made of. Never
+  // on the planner: RateHawk takes 10 searches a minute for the whole account, and most visitors
+  // never leave it. They stay mounted, so a visit to another step and back spends no search and
+  // finds everything as the customer left it; no flight = no hotel dates, the hotels step goes.
+  const quoting = step !== "build" && route.length >= MIN_TRIP_EVENTS;
+  const hotelsMounted = step === "hotels" || (quoting && !!state.flight);
+  const [flightsSearching, setFlightsSearching] = useState(true);
   // The stays whose hotel search ended without a hotel (the hotels step says so on their card).
   const [noHotel, setNoHotel] = useState<string[]>([]);
   const onNoHotel = useCallback(
@@ -138,7 +153,9 @@ export function ItineraryFlow() {
 
   // A new step or mode opens at the top of the page - and so does the next event's tickets. The
   // hotels step opened on a later stay (the summary's "שינוי" on its hotel) opens on its card.
-  const view = `${step}|${state.mode}|${step === "hotels" ? state.activeStay : step === "tickets" ? state.activeEvent : ""}`;
+  const view = `${step}|${state.mode}|${
+    step === "hotels" ? state.activeStay : step === "tickets" ? state.activeEvent : step === "flights" ? state.activeFlightPart : ""
+  }`;
   const lastView = useRef(view);
   const openStayKey = step === "hotels" && state.activeStay > 0 ? stayList[state.activeStay]?.key : undefined;
   useEffect(() => {
@@ -185,9 +202,15 @@ export function ItineraryFlow() {
   const openEvent = route[Math.min(state.activeEvent, route.length - 1)];
   const ticketMissing = step === "tickets" && (!openEvent || !ticketReady(state.tickets[openEvent.id], state.pax));
   const nextEvent = step === "tickets" ? nextOpenEvent(state) : -1;
-  // The step on screen still waits for picks. A flight counts once it is chosen AND priced -
-  // the flights step sets it only then.
-  const flightMissing = step === "flights" && !progress.flights;
+  // The flights step walks its parts in order (its sub-steps), as the tickets step walks the events:
+  // it moves on from a part that is settled - to the next one, or, on the last, to the hotels. A
+  // flight counts once it is chosen AND priced - the part's pane sets it only then.
+  const trainSet = useMemo(() => new Set(state.train), [state.train]);
+  const flightParts = useMemo(() => flightPartsOf(route, dates, trainSet), [route, dates, trainSet]);
+  const openPart = flightParts[Math.min(state.activeFlightPart, Math.max(0, flightParts.length - 1))];
+  const partOpen = !!openPart && !partDone(openPart, state.flightParts, state.pax);
+  const lastPart = state.activeFlightPart >= flightParts.length - 1;
+  const flightMissing = step === "flights" && (partOpen || (lastPart && !progress.flights));
   // The hotels step moves on once every stay has its hotel (they arrive picked, one search after
   // another) - to the summary. No flight = no hotel dates (the step says so).
   const hotelMissing = step === "hotels" && (!progress.flights || !progress.hotels);
@@ -200,7 +223,9 @@ export function ItineraryFlow() {
     ? "בחרו לפחות 2 אירועים"
     : blocked
       ? flightMissing || (hotelMissing && !progress.flights)
-        ? "בחרו טיסה לכל המסלול"
+        ? partOpen && flightsSearching
+          ? "מחפשים טיסות..."
+          : "בחרו טיסה"
         : hotelMissing
           ? hotelsSearching
             ? "מחפשים מלונות..."
@@ -215,7 +240,9 @@ export function ItineraryFlow() {
             ? `המשך לכרטיסים ל${route[nextEvent].name}`
             : "בחר והמשך לטיסות"
           : step === "flights"
-            ? "בחר והמשך למלונות"
+            ? lastPart
+              ? "בחר והמשך למלונות"
+              : `המשך למעבר ${state.activeFlightPart + 1}`
             : "בחר והמשך לסיכום";
 
   const onPrimary = () => {
@@ -224,7 +251,10 @@ export function ItineraryFlow() {
     else if (step === "tickets") {
       if (nextEvent >= 0) setActiveEvent(nextEvent);
       else if (ticketsReady) goStep("flights");
-    } else if (step === "flights") goStep("hotels");
+    } else if (step === "flights") {
+      if (lastPart) goStep("hotels");
+      else setActiveFlightPart(state.activeFlightPart + 1);
+    }
     else if (step === "hotels") goStep("summary");
   };
 
@@ -237,32 +267,51 @@ export function ItineraryFlow() {
     return undefined;
   };
 
-  const allHotels = progress.hotels;
-  const slots: ContinueSlot[] = [
-    {
-      icon: "ticket",
-      label: "כרטיסים",
-      filled: ticketsReady,
-      value: route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`,
-      onClick: slotNav("tickets"),
-    },
-    {
-      icon: "flight",
-      label: "טיסות",
-      filled: progress.flights,
-      value: state.flight ? `${state.flight.airline} · ${state.flight.legs.length} טיסות` : "",
-      onClick: slotNav("flights"),
-    },
-    {
-      icon: "hotel",
-      label: "מלונות",
-      filled: allHotels,
-      value: stayList.length === 1 ? "מלון אחד" : `${stayList.length} מלונות`,
-      onClick: slotNav("hotels"),
-    },
-  ];
+  // A flight or a hotel the flow picked on its way (the price) is not yet the customer's: its slot
+  // fills when the customer reaches its step. On the planner the bar is the CTA alone (Dor 31.10:
+  // no slots and no price - there is no real one yet).
+  const reached = (target: ItineraryStep) => at >= ITINERARY_STEPS.indexOf(target);
+  const slots: ContinueSlot[] =
+    step === "build"
+      ? []
+      : [
+          {
+            icon: "ticket",
+            label: "כרטיסים",
+            filled: ticketsReady,
+            value: route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`,
+            onClick: slotNav("tickets"),
+          },
+          {
+            icon: "flight",
+            label: "טיסות",
+            filled: progress.flights && reached("flights"),
+            value: state.flight ? `${state.flight.airline} · ${state.flight.legs.length} טיסות` : "",
+            onClick: slotNav("flights"),
+          },
+          {
+            icon: "hotel",
+            label: "מלונות",
+            filled: progress.hotels && reached("hotels"),
+            value: stayList.length === 1 ? "מלון אחד" : `${stayList.length} מלונות`,
+            onClick: slotNav("hotels"),
+          },
+        ];
 
   const solo = route.length === 1 ? route[0] : null;
+
+  // The bar shows a price only once it is real: every flight and hotel is priced (the tickets not
+  // opened yet count at their cheapest on sale). While they are still being searched, it says so;
+  // when a search ended with nothing, the running estimate, said to be one.
+  const quoted = progress.flights && progress.hotels;
+  const quotePending = !quoted && (flightsSearching || (progress.flights && hotelsSearching));
+  const priceText = step === "build" ? "" : quotePending ? "מחשבים מחיר מדויק…" : undefined;
+  // One city: the regular step's own "לא צריך מלון", beside the continue button (the cards say it per city).
+  const onlyStay = stayList.length === 1 ? stayList[0] : null;
+  const skip =
+    step === "hotels" && onlyStay && !state.skippedStays.includes(onlyStay.key)
+      ? { label: "לא צריך מלון", onSkip: () => skipStay(onlyStay.key, true) }
+      : undefined;
 
   // The stepper goes BACK only (the live rule): a click on a step past the open one does nothing.
   // "כרטיסים" reopens the tickets step on the event the customer last had open (activeEvent is
@@ -328,6 +377,7 @@ export function ItineraryFlow() {
           </div>
         )}
         <StepBody state={state} />
+        {quoting && <FlightsPane shown={step === "flights"} onSearching={setFlightsSearching} />}
         {hotelsMounted && <HotelsPane shown={step === "hotels"} onNoHotel={onNoHotel} />}
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
@@ -347,10 +397,11 @@ export function ItineraryFlow() {
             primaryDisabled={!enough || blocked}
             onPrimary={onPrimary}
             isFinalStep={false}
+            priceText={priceText}
+            skip={skip}
           />
-          {/* The bar's figure is the live price only once every piece is picked; until then it is
-              the trip's estimate - said so (the bar itself is the order flow's, unchanged). */}
-          {live === null && (
+          {/* A search that ended with nothing: the figure is the trip's estimate - said so. */}
+          {step !== "build" && !quoted && !quotePending && (
             <p className="-mt-1 pb-1.5 text-center text-xs font-semibold text-muted-foreground">
               הערכה - המחיר המדויק לנוסע יופיע אחרי בחירת הטיסה והמלונות
             </p>

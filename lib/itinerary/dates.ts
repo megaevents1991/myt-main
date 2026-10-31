@@ -11,7 +11,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { shortPlace } from "@/lib/events/lodging";
-import { eventDay, eventPoint, haversineKm, sameCity, stayPoint } from "./geo";
+import { eventDay, eventPoint, haversineKm, sameCity, sameHub, stayPoint } from "./geo";
 import { sortRoute } from "./rules";
 import type { Stay, TrainLeg, TripDates, TripLeg } from "./types";
 
@@ -78,9 +78,11 @@ export function defaultTripDates(route: Event[]): TripDates {
 }
 
 /**
- * The range each date may take: depart [first - 3, first], return [last + 1, last + 3],
- * a move [A + 1, B]. They depend on the route alone (`_d` is accepted so the call reads like
- * `clampTripDates`). Inside these ranges every stay has at least one night.
+ * The range each date may take: depart [first - 3, first], return [last + 1, last + 3], a move
+ * [A + 1, B - 1] - nobody changes city on the day of a show (Dor 31.10) - or [A + 1, B] within one
+ * flight city (`sameHub`: the train from London to a Manchester match may be that morning's). They
+ * depend on the route alone (`_d` is accepted so the call reads like `clampTripDates`). Inside these
+ * ranges every stay has at least one night.
  */
 export function tripDateBounds(
   route: Event[],
@@ -97,8 +99,8 @@ export function tripDateBounds(
     moves: Object.fromEntries(
       ms.map((m): [string, [string, string]] => {
         const lo = addDays(eventDay(m.a), 1);
-        const hi = eventDay(m.b);
-        // Two events on one day cannot join a route (compatibility), but a range must never invert.
+        const hi = sameHub(m.a, m.b) ? eventDay(m.b) : addDays(eventDay(m.b), -1);
+        // Events too close for this cannot join a route (compatibility), but a range must never invert.
         return [m.key, [lo, hi < lo ? lo : hi]];
       }),
     ),

@@ -15,6 +15,7 @@ export type CompatReason =
   | { code: "same_day"; with: string }
   | { code: "span"; days: number }
   | { code: "too_far"; km: number; from: string }
+  | { code: "no_move_day"; from: string }
   | { code: "gap_too_long"; days: number; from: string }
   | { code: "long_gap"; days: number }
   | { code: "same_city" }

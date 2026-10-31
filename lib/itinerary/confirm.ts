@@ -35,7 +35,7 @@ import { hotelPerTraveller, livePrice, type LivePrice } from "./progress";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import { INITIAL_ITINERARY_STATE, MAX_TRAVELLERS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "./state";
-import { stayHotelReady, stayRanges } from "./stayAdapter";
+import { skippedStayPerTraveller, stayHotelReady, stayRanges } from "./stayAdapter";
 import { parseSuggestion, type TripSuggestion } from "./suggestion";
 import {
   fitTravellers,
@@ -95,6 +95,8 @@ export type TripSubmission = {
   flight: ItineraryFlight;
   /** The hotel of each stay, by `Stay.key`. */
   hotels: Record<string, OrderHotel>;
+  /** The stays the customer needs no hotel for ("לא צריך מלון"), by `Stay.key`. */
+  skippedStays: string[];
   travellers: TravellersInput;
   /** The summary's `livePrice(...).total` - the party's charge, USD. */
   clientTotal: number;
@@ -297,6 +299,10 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
     hotels[key] = h as unknown as OrderHotel;
   }
 
+  const skipRaw = raw.skippedStays ?? [];
+  if (!Array.isArray(skipRaw) || skipRaw.length > MAX_TRIP_LOAD || !skipRaw.every((k) => isText(k, 40))) return no("skipped stays");
+  const skippedStays = [...new Set(skipRaw.map(String))];
+
   const form = parseTravellers(raw.travellers);
   if (!form) return no("travellers");
   // Phase 3: until payments are live a request that asks to pay is a hold (`PAYMENTS_LIVE`).
@@ -319,6 +325,7 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
       tickets,
       flight,
       hotels,
+      skippedStays,
       travellers,
       clientTotal: raw.clientTotal,
       clientPerTraveller: raw.clientPerTraveller,
@@ -506,6 +513,7 @@ export function tripState(sub: TripSubmission, route: Event[]): ItineraryState {
     train: [...sub.train],
     flight: sub.flight,
     hotels: { ...sub.hotels },
+    skippedStays: [...sub.skippedStays],
   };
 }
 
@@ -529,6 +537,7 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
   if (legs.some((leg, i) => String(leg.departureTime).slice(0, 10) !== flown[i].date)) return failure("FLIGHT_CHANGED");
   const ranges = stayRanges(route, dates, flight, train);
   for (const [i, stay] of stays(route, dates).entries()) {
+    if (state.skippedStays.includes(stay.key)) continue;
     const h = state.hotels[stay.key];
     if (!stayHotelReady(h, ranges[i], pax)) return failure("HOTEL_CHANGED", { stayKey: stay.key });
     if (!orderHotelSellable(h, now)) return failure("HOTEL_NOT_REFUNDABLE", { stayKey: stay.key });
@@ -679,6 +688,10 @@ export function eventParts(state: ItineraryState, s: ItinerarySettings): number[
   const ranges = stayRanges(route, dates, flight, new Set(state.train));
   const hotelOf = new Map<number, number>();
   stays(route, dates).forEach((stay, i) => {
+    if (state.skippedStays.includes(stay.key)) {
+      hotelOf.set(stay.events[0].id, skippedStayPerTraveller(stay.events[0], ranges[i]) * pax);
+      return;
+    }
     const h = state.hotels[stay.key];
     hotelOf.set(stay.events[0].id, h ? hotelPerTraveller(h, stay.events[0], ranges[i]) * pax : Number.NaN);
   });
@@ -891,7 +904,7 @@ export function submissionFromState(
   const hotels: Record<string, OrderHotel> = {};
   for (const stay of stays(state.route, state.dates)) {
     const h = state.hotels[stay.key];
-    if (h) hotels[stay.key] = h;
+    if (h && !state.skippedStays.includes(stay.key)) hotels[stay.key] = h;
   }
   return {
     group,
@@ -902,6 +915,7 @@ export function submissionFromState(
     tickets,
     flight: state.flight,
     hotels,
+    skippedStays: state.skippedStays,
     travellers: fitTravellers(travellers, state.pax),
     clientTotal: price.total,
     clientPerTraveller: price.perTraveller,
@@ -1004,7 +1018,7 @@ export function holdSignature(state: ItineraryState, total: number): string {
     : null;
   const hotels = state.route.length
     ? stays(state.route, state.dates).map((s) => {
-        const h = state.hotels[s.key];
+        const h = state.skippedStays.includes(s.key) ? undefined : state.hotels[s.key];
         return h ? [h.id, h.rate?.match_hash ?? "", h.checkin, h.checkout, h.offlineIds ?? []] : null;
       })
     : [];

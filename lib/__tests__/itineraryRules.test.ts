@@ -47,6 +47,34 @@ const arsenal = ev(5, "ארסנל - ליברפול", "2027-05-15", LONDON, "spor
 const interLazio = ev(6, "אינטר - לאציו", "2027-05-23", MILAN, "sports_event");
 const berlin = ev(7, "קונצרט בברלין", "2027-05-13", BERLIN);
 
+describe("no change of city on the day of a show (Dor 31.10)", () => {
+  const amsterdam7 = ev(31, "גרייסי אברמס", "2027-05-07", AMSTERDAM);
+  const london8 = ev(32, "טוטנהאם - צ'לסי", "2027-05-08", LONDON, "sports_event");
+
+  it("blocks another city the day before or after, either way round", () => {
+    expect(compatibility([amsterdam7], london8, S).reason).toEqual({ code: "no_move_day", from: "אמסטרדם" });
+    expect(compatibility([london8], amsterdam7, S).reason).toEqual({ code: "no_move_day", from: "לונדון" });
+    expect(isAddable(compatibility([amsterdam7], london8, S))).toBe(false);
+  });
+
+  it("takes a free day between them", () => {
+    expect(isAddable(compatibility([amsterdam7], ev(33, "ארסנל - ליברפול", "2027-05-09", LONDON, "sports_event"), S))).toBe(true);
+  });
+
+  it("does not ask it of one city", () => {
+    expect(compatibility([london8], ev(34, "קונצרט בלונדון", "2027-05-09", LONDON), S).status).toBe("same");
+  });
+
+  it("does not ask it of a sub-location: one flight city, a train away", () => {
+    // Slept in Manchester: two stays, no flight between them.
+    const slept = twoCity(35, "מנצ'סטר יונייטד - ליברפול", "2027-05-09", { lodging_mode: "event_city_only" });
+    expect(isAddable(compatibility([london8], slept, S))).toBe(true);
+    // Slept in London: the same stay.
+    const dayTrip = twoCity(36, "מנצ'סטר סיטי - אברטון", "2027-05-07");
+    expect(isAddable(compatibility([london8], dayTrip, S))).toBe(true);
+  });
+});
+
 describe("sortRoute", () => {
   it("sorts by day, then id, without touching the input", () => {
     const input = [chelsea, celine, gracie];
@@ -86,7 +114,7 @@ describe("compatibility", () => {
     expect(c.reason).toEqual({ code: "full", max: 2 });
     expect(describeCompat(c)).toBe("המסלול מלא - עד 2 אירועים");
     // ...and with the default 3 the same two-event route still has room.
-    expect(compatibility([celine, chelsea], berlin, S).status).toBe("ok");
+    expect(compatibility([celine, chelsea], berlin, S).reason.code).not.toBe("full");
   });
 
   it("blocks a second event on the same day and names the one it clashes with", () => {
@@ -180,8 +208,9 @@ describe("compatibility", () => {
   });
 
   it("checks an event inserted between two against BOTH neighbours", () => {
-    // Berlin 05-13 between Paris 05-12 and London 05-15: 878 km / 1 day, 932 km / 2 days.
-    const c = compatibility([celine, chelsea], berlin, S);
+    // Berlin 05-15 between Paris 05-12 and London 05-17: 878 km / 3 days, 932 km / 2 days.
+    const later = ev(21, "צ'לסי - טוטנהאם", "2027-05-17", LONDON, "sports_event");
+    const c = compatibility([celine, later], ev(22, "קונצרט בברלין", "2027-05-15", BERLIN), S);
     expect(c.status).toBe("ok");
     expect(c.reason).toEqual({ code: "fits" });
     expect(c.km).toBe(932); // Berlin - London; Paris is 877
@@ -333,6 +362,6 @@ describe("describeCompat", () => {
       "אפשרי - 8 ימים בין האירועים",
     );
     expect(describeCompat(compatibility([celine, chelsea], gracie, S))).toBe("מומלץ - קרוב וזורם");
-    expect(describeCompat(compatibility([celine, chelsea], berlin, S))).toBe("מתאים למסלול");
+    expect(describeCompat(compatibility([celine, chelsea], berlin, S))).toBe("אין יום למעבר מפריז");
   });
 });

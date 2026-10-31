@@ -38,6 +38,11 @@ type Props = {
   skip?: { label: string; onSkip: () => void };
   /** This step's actions lead into the summary - play the build animation. */
   isFinalStep: boolean;
+  /**
+   * In place of the figure (the trip builder, while its price is not a real one yet); "" = nothing
+   * at all. Absent = the figure, as every order page has it.
+   */
+  priceText?: string;
 };
 
 /* Brand icon set - lucide-react, same faces the search bar uses
@@ -57,7 +62,11 @@ function useCountUp(target: number, dur = 520) {
   const prev = useRef(target);
   useEffect(() => {
     const start = prev.current;
-    if (start === target) return;
+    // Back on the last settled figure mid-animation: the figure must land on it, not stay where it stopped.
+    if (start === target) {
+      setVal(target);
+      return;
+    }
     let raf = 0;
     let t0: number | null = null;
     const tick = (now: number) => {
@@ -81,6 +90,7 @@ export const OrderContinueBar = ({
   onPrimary,
   skip,
   isFinalStep,
+  priceText,
 }: Props) => {
   const price = useCountUp(total);
   const [building, setBuilding] = useState(false);
@@ -170,13 +180,21 @@ export const OrderContinueBar = ({
 
         {/* Price + actions - `sm:contents` folds them into the desktop row. */}
         <div className="flex flex-col gap-2 px-4 py-2.5 sm:contents">
-          <div className={cn("flex items-baseline gap-1 sm:shrink-0", ACCENT_FG)}>
-            <span className="text-[15px] font-bold">$</span>
-            <span className="text-[23px] font-extrabold leading-none tabular-nums tracking-tight">
-              {price.toLocaleString("en-US")}
-            </span>
-            <span className="mr-1 text-xs font-semibold text-muted-foreground">סה״כ לנוסע</span>
-          </div>
+          {priceText === undefined ? (
+            <div className={cn("flex items-baseline gap-1 sm:shrink-0", ACCENT_FG)}>
+              <span className="text-[15px] font-bold">$</span>
+              <span className="text-[23px] font-extrabold leading-none tabular-nums tracking-tight">
+                {price.toLocaleString("en-US")}
+              </span>
+              <span className="mr-1 text-xs font-semibold text-muted-foreground">סה״כ לנוסע</span>
+            </div>
+          ) : (
+            priceText && (
+              <div role="status" className="text-[13px] font-bold text-muted-foreground sm:shrink-0">
+                {priceText}
+              </div>
+            )
+          )}
 
           {building ? (
             <div className="flex w-full flex-col gap-1.5 sm:w-64 sm:shrink-0">

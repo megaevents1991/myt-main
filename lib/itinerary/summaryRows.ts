@@ -51,7 +51,7 @@ export function summaryAdditions(state: ItineraryState, s: ItinerarySettings): S
   stays(route, dates).forEach((stay, i) => {
     const h = state.hotels[stay.key];
     const range = ranges[i];
-    if (!h || !range) {
+    if (!h || !range || state.skippedStays.includes(stay.key)) {
       hotels[stay.key] = 0;
       return;
     }

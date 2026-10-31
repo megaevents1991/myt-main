@@ -7,12 +7,19 @@
  */
 import type { Event } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
-import { dayDiff, eventDay, eventPoint, haversineKm, sameCity } from "./geo";
+import { dayDiff, eventDay, eventPoint, haversineKm, sameCity, sameHub } from "./geo";
 import type { ItinerarySettings } from "./settings";
 import type { Compat } from "./types";
 
 /** A gap this short (days) between two events, close enough in km, is a "best" pairing. */
 const BEST_MAX_GAP_DAYS = 3;
+
+/**
+ * Days between two events in different cities (Dor 31.10): nobody changes city on the day of a
+ * show, so a free day lies between them - a show on the 8th has no event on the 7th or the 9th
+ * elsewhere. Within one city or one flight city (`sameHub`: London - Manchester - Liverpool) none is needed.
+ */
+export const MIN_MOVE_GAP_DAYS = 2;
 
 /** The route in trip order: by calendar day, then id. Never mutates its input. */
 export function sortRoute(route: Event[]): Event[] {
@@ -27,6 +34,8 @@ type Neighbour = {
   /** Whole days between the two events, always >= 0. */
   days: number;
   sameCity: boolean;
+  /** One flight city: a sub-location, a train away. */
+  sameHub: boolean;
 };
 
 const measure = (candidate: Event, n: Event): Neighbour => {
@@ -36,6 +45,7 @@ const measure = (candidate: Event, n: Event): Neighbour => {
     km: same ? 0 : haversineKm(eventPoint(candidate), eventPoint(n)),
     days: Math.abs(dayDiff(eventDay(candidate), eventDay(n))),
     sameCity: same,
+    sameHub: sameHub(candidate, n),
   };
 };
 
@@ -51,11 +61,12 @@ const maxBy = (list: Neighbour[], key: (n: Neighbour) => number): Neighbour =>
  *  4. first-to-last event would exceed `maxSpanDays`     -> blocked `span`
  *  then, against the neighbour(s) the candidate would sit next to once inserted by date:
  *  5. farther than `maxKm` (0 within one city)           -> blocked `too_far`
- *  6. more than `maxGapDays` apart                       -> blocked `gap_too_long`
- *  7. more than `okGapDays` apart                        -> warn `long_gap`
- *  8. every neighbour in the same city                   -> same `same_city`
- *  9. farthest <= `bestKm` and every gap <= 3 days       -> best `best`
- * 10. otherwise                                          -> ok `fits`
+ *  6. another city with no free day in between           -> blocked `no_move_day`
+ *  7. more than `maxGapDays` apart                       -> blocked `gap_too_long`
+ *  8. more than `okGapDays` apart                        -> warn `long_gap`
+ *  9. every neighbour in the same city                   -> same `same_city`
+ * 10. farthest <= `bestKm` and every gap <= 3 days       -> best `best`
+ * 11. otherwise                                          -> ok `fits`
  * `km` / `nearCity` on an addable answer describe the farthest neighbour. Distances are measured
  * between the events' own cities (`eventPoint`) and named by them (`eventCityName`), so a match
  * played in Manchester and sold as a flight to London is "מנצ'סטר", 605 km from Paris (not London's 343).
@@ -85,6 +96,9 @@ export function compatibility(route: Event[], candidate: Event, s: ItinerarySett
       reason: { code: "too_far", km: farthest.km, from: farthest.city },
     };
   }
+
+  const tight = neighbours.find((n) => !n.sameCity && !n.sameHub && n.days < MIN_MOVE_GAP_DAYS);
+  if (tight) return { status: "blocked", reason: { code: "no_move_day", from: tight.city } };
 
   const longest = maxBy(neighbours, (n) => n.days);
   if (longest.days > s.maxGapDays) {
@@ -122,6 +136,8 @@ export function describeCompat(c: Compat): string {
     case "too_far":
       // Explicit locale: the same text on the server and in the browser.
       return `${r.km.toLocaleString("he-IL")} ק״מ מ${r.from} - רחוק מדי`;
+    case "no_move_day":
+      return `אין יום למעבר מ${r.from}`;
     case "gap_too_long":
       return `${r.days} ימים מ${r.from} - פער ארוך מדי`;
     case "long_gap":
