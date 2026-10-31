@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 
 // Archived version of /cancellation - the terms in force for orders placed
 // up to 7.9.26. Frozen: do not edit the text below. Current terms live in
-// app/cancellation/terms-content.ts.
+// app/cancellation/terms-content.ts. One exception (Dor, 31.10.2026): the
+// WhatsApp number's typo, 2272 -> 2722, so a customer does not reach a stranger.
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
@@ -157,7 +158,7 @@ export default function ArchivedCancelPage() {
       <ul>
         <li>באמצעות טופס זה: לחצו כאן</li>
         {/*TODO: Add link to cancel form*/}
-        <li>ווטסאפ &quot;מגה איבנטס&quot; - 054-200-2272</li>
+        <li>ווטסאפ &quot;מגה איבנטס&quot; - 054-200-2722</li>
         <li>בדואר אלקטרוני לכתובת: support@mega-events.co.il</li>
       </ul>
       <p>
