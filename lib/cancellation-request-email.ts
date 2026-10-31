@@ -61,7 +61,7 @@ export function customerEmailHtml(v: CancellationEmailValues, requestId: number 
     emailNote(
       `נציג מגה איבנטס יבדוק את הבקשה מול תנאי ההזמנה וישלח אליך אישור ביטול ופירוט דמי הביטול, ככל שחלים, בהתאם לתנאי ההזמנה ולחוק הגנת הצרכן.<br><br>` +
         `פניות מטופלות בימי עסקים א'–ה' בין השעות 09:00–16:00. פנייה שהתקבלה מחוץ לשעות אלה תטופל ביום העסקים העוקב.<br><br>` +
-        `לשאלות: וואטסאפ <span style="unicode-bidi: embed;">054-200-2272</span> או במענה למייל זה.`,
+        `לשאלות: וואטסאפ <span style="unicode-bidi: embed;">054-200-2722</span> או במענה למייל זה.`,
     );
 
   return megaEmailShell({

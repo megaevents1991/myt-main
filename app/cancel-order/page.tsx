@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const OPS_EMAIL = "opsfit1@megatr.co.il";
-const WHATSAPP = "054-200-2272";
+const WHATSAPP = "054-200-2722";
 
 export default function CancelOrderPage() {
   return (

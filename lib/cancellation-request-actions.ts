@@ -166,7 +166,7 @@ export async function submitCancellationRequest(
       status: "error",
       values,
       message:
-        "לא הצלחנו לקלוט את הבקשה. נסו שוב בעוד מספר דקות, או שלחו אותה במייל ל-opsfit1@megatr.co.il או בוואטסאפ 054-200-2272.",
+        "לא הצלחנו לקלוט את הבקשה. נסו שוב בעוד מספר דקות, או שלחו אותה במייל ל-opsfit1@megatr.co.il או בוואטסאפ 054-200-2722.",
     };
   }
 
