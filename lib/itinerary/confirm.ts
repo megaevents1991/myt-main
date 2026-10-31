@@ -302,6 +302,9 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
   const skipRaw = raw.skippedStays ?? [];
   if (!Array.isArray(skipRaw) || skipRaw.length > MAX_TRIP_LOAD || !skipRaw.every((k) => isText(k, 40))) return no("skipped stays");
   const skippedStays = [...new Set(skipRaw.map(String))];
+  // The price leaves a skipped stay's hotel out while its row, the mails and the room hold would take
+  // it: a hotel at no charge. The summary never sends both (`submissionFromState`).
+  if (skippedStays.some((k) => Object.hasOwn(hotels, k))) return no("a skipped stay with a hotel");
 
   const form = parseTravellers(raw.travellers);
   if (!form) return no("travellers");
@@ -536,7 +539,9 @@ export function checkPieces(state: ItineraryState, now: Date | number): ConfirmF
   if (!flight || flight.numOfTravelers !== pax || legs.length !== flown.length) return failure("FLIGHT_CHANGED");
   if (legs.some((leg, i) => String(leg.departureTime).slice(0, 10) !== flown[i].date)) return failure("FLIGHT_CHANGED");
   const ranges = stayRanges(route, dates, flight, train);
-  for (const [i, stay] of stays(route, dates).entries()) {
+  const list = stays(route, dates);
+  if (state.skippedStays.some((k) => !list.some((stay) => stay.key === k))) return failure("ROUTE_CHANGED");
+  for (const [i, stay] of list.entries()) {
     if (state.skippedStays.includes(stay.key)) continue;
     const h = state.hotels[stay.key];
     if (!stayHotelReady(h, ranges[i], pax)) return failure("HOTEL_CHANGED", { stayKey: stay.key });

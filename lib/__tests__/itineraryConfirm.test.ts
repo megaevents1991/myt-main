@@ -278,6 +278,16 @@ describe("parseSubmission - the request's shape", () => {
     expect(parseSubmission("x", 3).ok).toBe(false);
   });
 
+  it("refuses a stay said to need no hotel that still carries one: the price leaves it out, the row would hold it", () => {
+    const raw = wire(full);
+    expect(parseSubmission({ ...raw, skippedStays: [londonStay.key] }, 3).ok).toBe(false);
+    const { [londonStay.key]: _london, ...hotels } = raw.hotels as Record<string, unknown>;
+    expect(parsed({ ...raw, hotels, skippedStays: [londonStay.key] }).skippedStays).toEqual([londonStay.key]);
+    expect(parsed(raw).skippedStays).toEqual([]);
+    expect(parseSubmission({ ...raw, hotels, skippedStays: "all" }, 3).ok).toBe(false);
+    expect(parseSubmission({ ...raw, hotels, skippedStays: [7] }, 3).ok).toBe(false);
+  });
+
   it("keeps a long utm source short and drops one that is not text", () => {
     expect(parsed({ ...wire(full), utmSource: "a".repeat(300) }).utmSource).toHaveLength(100);
     expect(parsed({ ...wire(full), utmSource: { x: 1 } }).utmSource).toBe("");
@@ -323,6 +333,14 @@ describe("checkPieces - every piece is ready for the party", () => {
 
   it("a complete trip passes", () => {
     expect(checkPieces(tripState(sub, route), NOW)).toBeNull();
+  });
+
+  it("a stay that needs no hotel passes; a skipped key that is no stay of this trip does not", () => {
+    const noLondon = { ...sub, hotels: { [parisStay.key]: parisHotel } };
+    expect(checkPieces(tripState({ ...noLondon, skippedStays: [londonStay.key] }, route), NOW)).toBeNull();
+    expect(checkPieces(tripState({ ...noLondon, skippedStays: [londonStay.key, "999"] }, route), NOW)).toMatchObject({
+      code: "ROUTE_CHANGED",
+    });
   });
 
   it("a stay without its hotel, or one booked for other nights or another party: back to that city", () => {
