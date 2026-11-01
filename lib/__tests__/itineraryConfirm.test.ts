@@ -42,7 +42,8 @@ import type { BlockRow } from "../itinerary/offlineHold";
 import { trustedMinTicket, validateItineraryPriceFloor } from "../itinerary/priceFloor";
 import { livePrice } from "../itinerary/progress";
 import { DEFAULT_ITINERARY_SETTINGS as S } from "../itinerary/settings";
-import { INITIAL_ITINERARY_STATE, type ItineraryState } from "../itinerary/state";
+import { INITIAL_ITINERARY_STATE,
+  itineraryReducer, type ItineraryState } from "../itinerary/state";
 import type { SuggestionRow } from "../itinerary/suggestion";
 import type { TravellersInput } from "../itinerary/travellers";
 
@@ -990,6 +991,56 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
     expect(answer).toEqual({ status: 200, body: { group: GROUP, ids: [500, 501], reference: "ME21500", emailed: true } });
     expect(calls).toEqual(["find", "event 618", "event 702", "validate", "validate", "insert 2", "finish", "mail customer=true", "emailed", "track"]);
     expect(inserted[0].map((r) => r.status)).toEqual(["24Save", "24Save"]);
+  });
+
+  describe("a trip flown straight to Manchester", () => {
+    const manchester = {
+      ...ev(800, "מנצ'סטר סיטי - צ'לסי", "2027-05-15", LONDON, 250, 150),
+      event_location: { name: "מנצ'סטר", latitude: 53.48, longitude: -2.24 },
+      lodging_mode: "choice_split",
+      lodging_default: "flight",
+    } as unknown as Event;
+    const getEvent = async (id: number) => [celine, chelsea, manchester].find((e) => e.id === id);
+    const flownLegs = [
+      seg("TLV", "CDG", "2027-05-11T05:40:00", "2027-05-11T09:55:00"),
+      seg("CDG", "MAN", "2027-05-13T13:05:00", "2027-05-13T13:45:00"),
+      seg("MAN", "TLV", "2027-05-16T22:40:00", "2027-05-17T05:20:00"),
+    ];
+    const asSold: ItineraryState = {
+      ...full,
+      route: [celine, manchester],
+      dates: defaultTripDates([celine, manchester]),
+      tickets: { 618: ticket("t618", 210), 800: ticket("t800", 150) },
+    };
+    const flown = itineraryReducer(asSold, { type: "setDirect", id: 800, on: true });
+    const trip: ItineraryState = {
+      ...flown,
+      flight: { ...flight, outbound: flownLegs[0], inbound: flownLegs[2], legs: flownLegs } as ItineraryFlight,
+      hotels: { 618: parisHotel, 800: londonHotel },
+    };
+
+    it("holds it on the server's own rows, with the landing the customer chose", async () => {
+      const { deps, inserted } = setup({ getEvent });
+      expect(trip.route[1].location.city_iata).toBe("MAN");
+      const answer = await confirmTrip(wire(trip), deps);
+      expect(answer.status).toBe(200);
+      expect(inserted[0]).toHaveLength(2);
+    });
+
+    it("refuses a direct flight the route does not allow, before anything is written", async () => {
+      const { deps, inserted } = setup({ getEvent });
+      // Beside a London concert the way to Manchester is the train.
+      const beside: ItineraryState = {
+        ...full,
+        route: [manchester, coldplay],
+        dates: defaultTripDates([manchester, coldplay]),
+        tickets: { 800: ticket("t800", 150), 703: ticket("t703", 150) },
+        hotels: { 800: londonHotel },
+      };
+      const answer = await confirmTrip(wire(beside, { direct: [800] }), deps);
+      expect(answer.body).toMatchObject({ error: "ROUTE_CHANGED" });
+      expect(inserted).toHaveLength(0);
+    });
   });
 
   it("the group already written: its rows, and nothing else runs", async () => {

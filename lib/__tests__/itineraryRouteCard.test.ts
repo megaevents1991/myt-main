@@ -166,5 +166,6 @@ describe("toRouteCard", () => {
     const card = toRouteCard([celine, manchesterMatch], S);
     expect(card.events[1].cityName).toBe("מנצ'סטר");
     expect(card.cities).toEqual(["פריז", "לונדון"]);
+    expect(card.title).toBe("פריז ← מנצ'סטר");
   });
 });

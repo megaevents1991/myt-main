@@ -69,6 +69,11 @@ describe("tripCities", () => {
     expect(tripCities([chelsea, tottenham])).toEqual(["לונדון"]);
     expect(tripCities([])).toEqual([]);
   });
+
+  it("names a sub-location by the city the event is played in, not the one it is flown to", () => {
+    const match = { ...chelsea, id: 900, event_location: { name: "מנצ'סטר", latitude: 53.48, longitude: -2.24 } } as Event;
+    expect(tripCities([celine, match])).toEqual(["פריז", "מנצ'סטר"]);
+  });
 });
 
 describe("the self-build catalog", () => {

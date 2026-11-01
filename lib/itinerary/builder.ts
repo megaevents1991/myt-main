@@ -4,7 +4,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { cityName, defaultCity, eventCityName, hasEventCity } from "@/lib/events/lodging";
-import { moves, stays } from "./dates";
+import { moves } from "./dates";
 import { dayDiff, eventDay, eventKind, haversineKm, sameEventCity } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
@@ -29,14 +29,13 @@ export function groundLink(e: Event): { from: string; to: string; km: number } |
 }
 
 /**
- * The trip's stay cities in order ("פריז", "לונדון"), each named once while the trip stays
- * in it - the builder header's title. Same rule as the hub's route card.
+ * Where the trip's events are, in order ("פריז", "לונדון"), each city named once while the trip
+ * stays in it - the builder header's title and the hub's route card. A Manchester match sold as a
+ * flight to London is "מנצ'סטר", wherever the customer sleeps for it (Alon 01.11).
  */
 export function tripCities(route: Event[]): string[] {
-  if (!route.length) return [];
-  const list = stays(route, { depart: "", ret: "", moves: {} });
-  return list
-    .map((stay) => stayCityName(stay.events[0]))
+  return sortRoute(route)
+    .map(eventCityName)
     .filter((name, i, all) => i === 0 || name !== all[i - 1]);
 }
 

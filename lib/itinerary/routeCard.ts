@@ -6,6 +6,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { cityName, defaultCity, eventCityName } from "@/lib/events/lodging";
+import { tripCities } from "./builder";
 import { defaultTripDates, stays } from "./dates";
 import { dayDiff, eventDay, eventKind } from "./geo";
 import { estimateItinerary } from "./price";
@@ -27,7 +28,7 @@ export type RouteCardArt = {
 export type RouteCardData = {
   /** The events' ids in trip order - what `/euro-trip/build?events=` opens. */
   ids: number[];
-  /** The stay cities joined " ← " ("פריז ← לונדון"). */
+  /** The events' cities joined " ← " ("פריז ← לונדון"). */
   title: string;
   events: { id: number; name: string; day: string; cityName: string; art: RouteCardArt }[];
   /** The stays' city names in trip order (a city named once while the trip stays in it). */
@@ -68,8 +69,9 @@ export function toRouteCard(route: Event[], s: ItinerarySettings): RouteCardData
   const trip = sortRoute(route);
   const d = defaultTripDates(trip);
   const list = stays(trip, d);
-  // A stay's city as the hotel step names it. Neighbouring stays always differ by place, but two
-  // places may carry one name - the title then names the city once, not "לונדון ← לונדון".
+  // A stay's city as the hotel step names it (the hub's city filter: a Manchester match slept in
+  // London is found by both). Neighbouring stays always differ by place, but two places may carry
+  // one name - it is named once, not "לונדון ← לונדון".
   const cities = list
     .map((stay) => cityName(stay.events[0], defaultCity(stay.events[0])))
     .filter((name, i, all) => i === 0 || name !== all[i - 1]);
@@ -78,7 +80,7 @@ export function toRouteCard(route: Event[], s: ItinerarySettings): RouteCardData
 
   return {
     ids: trip.map((e) => e.id),
-    title: cities.join(" ← "),
+    title: tripCities(trip).join(" ← "),
     events: trip.map((e) => ({
       id: e.id,
       name: e.name,

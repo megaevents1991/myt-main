@@ -16,6 +16,7 @@ import { PRIOR_HOLD_NOTICE } from "@/lib/itinerary/heldMarker";
 import { canContinue, livePerTraveller, nextOpenEvent, progressivePrice } from "@/lib/itinerary/progress";
 import { ITINERARY_STEPS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "@/lib/itinerary/state";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
+import { ROUTE_WAIT_STYLE_ID, TRIP_BODY_CLASS } from "@/lib/itinerary/url";
 import { cn } from "@/lib/utils";
 import { useItinerary, useItineraryUrl } from "./ItineraryProvider";
 import { stayCardId } from "./parts";
@@ -122,9 +123,26 @@ function StepBody({ state }: { state: ItineraryState }) {
  */
 export function ItineraryFlow() {
   useItineraryUrl();
-  const { state, settings, notice, dismissNotice, goStep, setActiveEvent, setActiveFlightPart, skipStay, priorHold, held, holdSending } =
-    useItinerary();
+  const {
+    state,
+    settings,
+    urlApplied,
+    notice,
+    dismissNotice,
+    goStep,
+    setActiveEvent,
+    setActiveFlightPart,
+    skipStay,
+    priorHold,
+    held,
+    holdSending,
+  } = useItinerary();
   const { route, dates, step } = state;
+
+  // The route of a link is read: the flow may show (HIDE_UNTIL_ROUTE_SCRIPT hid the printed planner).
+  useEffect(() => {
+    if (urlApplied) document.getElementById(ROUTE_WAIT_STYLE_ID)?.remove();
+  }, [urlApplied]);
 
   const stayList = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
   // Each stay's nights under the trip's flight - with `stayHotelReady`, THE rule for a stay's hotel.
@@ -361,6 +379,7 @@ export function ItineraryFlow() {
   return (
     <>
       <Stepper currentStep={current} steps={flowSteps()} hideSteps={step === "build"} onStepperClick={onStepperClick} />
+      <div className={TRIP_BODY_CLASS}>
       {step === "tickets" && !waiting ? (
         // No trip header here: the open event's band with the trip's events as its sub-steps and a
         // quiet way back to the planner (a ready trip opens here, this is its first screen).
@@ -448,6 +467,7 @@ export function ItineraryFlow() {
           )}
         </div>
       )}
+      </div>
     </>
   );
 }

@@ -7,6 +7,7 @@ import { isItineraryEligible } from "@/lib/itinerary/eligibility";
 import { itineraryOn } from "@/lib/itinerary/settings";
 import { getItinerarySettingsForPage } from "@/lib/itinerary/settings.server";
 import { slimTripEvent } from "@/lib/itinerary/slim";
+import { HIDE_UNTIL_ROUTE_SCRIPT } from "@/lib/itinerary/url";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { ItineraryProvider } from "@/components/euro-trip/build/ItineraryProvider";
 import { ItineraryFlow } from "@/components/euro-trip/build/ItineraryFlow";
@@ -51,6 +52,7 @@ export default async function EuroTripBuildPage() {
 
   return (
     <>
+      <script dangerouslySetInnerHTML={{ __html: HIDE_UNTIL_ROUTE_SCRIPT }} />
       <HeaderTitle name={TITLE} />
       <ItineraryProvider catalog={catalog} settings={settings}>
         <Suspense>

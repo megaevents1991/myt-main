@@ -38,9 +38,13 @@ export function TripQuoteWait() {
       label: `מלון ב${stayCityName(stay.events[0])}`,
       done: skippedStays.includes(stay.key) || stayHotelReady(hotels[stay.key], ranges[i], pax),
     }));
-    return [...flights, ...nights];
+    // Every open flight is being searched; the hotels start once the flights give them their nights.
+    const flightsIn = flights.every((l) => l.done);
+    return [
+      ...flights.map((l) => ({ ...l, working: !l.done })),
+      ...nights.map((l) => ({ ...l, working: !l.done && flightsIn })),
+    ];
   }, [route, dates, trainSet, flightParts, pax, flight, hotels, skippedStays]);
-  const firstOpen = lines.findIndex((l) => !l.done);
 
   return (
     <section role="status" aria-live="polite" className="mx-auto flex w-full max-w-md flex-col gap-5 py-8">
@@ -49,13 +53,13 @@ export function TripQuoteWait() {
         <p className="m-0 text-sm text-muted-foreground">בודקים טיסות ומלונות לכל המסלול, כדי שתראו מחיר אמיתי מהרגע הראשון.</p>
       </div>
       <ol className="m-0 flex list-none flex-col gap-2 p-0">
-        {lines.map((l, i) => (
+        {lines.map((l) => (
           <li
             key={l.key}
             className={cn(
               "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors",
               l.done ? "border-primary/60 bg-primary/[0.08]" : "border-border bg-card",
-              !l.done && i !== firstOpen && "text-muted-foreground",
+              !l.done && !l.working && "text-muted-foreground",
             )}
           >
             <span
@@ -67,7 +71,7 @@ export function TripQuoteWait() {
             >
               {l.done ? (
                 <Check className="size-3.5" strokeWidth={3} />
-              ) : i === firstOpen ? (
+              ) : l.working ? (
                 <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
               ) : null}
             </span>

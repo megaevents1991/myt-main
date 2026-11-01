@@ -9,6 +9,20 @@ import type { Event } from "@/lib/app.types";
 
 const ID_RE = /^\d+$/;
 
+/** What `HIDE_UNTIL_ROUTE_SCRIPT` adds to the page, and what it hides. */
+export const ROUTE_WAIT_STYLE_ID = "trip-route-wait";
+export const TRIP_BODY_CLASS = "trip-flow-body";
+/** Never hidden for longer than this, whatever happens to the page's code. */
+const ROUTE_WAIT_MAX_MS = 8000;
+
+/**
+ * The page is cached, so the server always prints the empty planner. A link that names a trip would
+ * show it until the browser has read the route (a second on a phone), then jump: this runs in the
+ * printed page, before the first paint, and hides the flow until `ItineraryFlow` takes the style off.
+ * A style in the head, not an attribute on an element React hydrates.
+ */
+export const HIDE_UNTIL_ROUTE_SCRIPT = `if(/[?&]events=/.test(location.search)){var s=document.createElement("style");s.id="${ROUTE_WAIT_STYLE_ID}";s.textContent=".${TRIP_BODY_CLASS}{visibility:hidden}";document.head.appendChild(s);setTimeout(function(){s.remove()},${ROUTE_WAIT_MAX_MS})}`;
+
 /**
  * `?events=618,702` -> `{ ids: [618, 702], overflow: [] }`: positive integers only, each once,
  * in their order, at most `max` of them in `ids`. The valid ids past the cap come back in

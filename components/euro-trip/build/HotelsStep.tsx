@@ -189,8 +189,8 @@ const groundBetween = (v: StayView, views: StayView[]): number | null => {
 };
 
 /**
- * Runs `task` once every task queued before it has settled: RateHawk takes 10 searches a minute
- * for the whole account (shared with the live site), so the step never runs two at once.
+ * Runs `task` once every task queued before it has settled: a customer opening several swaps spends
+ * one search at a time.
  */
 function enqueue<T>(queue: { current: Promise<unknown> }, task: () => Promise<T>): Promise<T> {
   const next = queue.current.then(task);
@@ -213,13 +213,14 @@ type SwapState = { stayKey: string; searchKey: string; search: HotelsData | null
  *
  * Every hotel arrives picked: on opening, each stay without a ready hotel (`stayHotelReady`) is
  * searched and gets the live split stay's default pick (`lib/itinerary/stayHotels.ts`). RateHawk
- * takes 10 searches a minute for the whole account, shared with the live site, so the stays are
- * searched ONE AFTER ANOTHER, only while the step is on screen, once per stay, nights and rooms
- * (the answers are cached for the step's life); a stay that has its hotel is neither searched nor
- * replaced. "החלפת מלון" opens the live `SegmentHotelModal` on the stay's own cached answer; with
- * none in hand its search waits its turn in the same queue (never two searches at once). An
- * answer - automatic or a swap's - is committed only while it is still for the stay's nights and
- * rooms (`searchKey`).
+ * takes 10 searches a minute for the whole account, shared with the live site: that is a count, so
+ * the stays are searched TOGETHER (one after another kept the customer on the wait screen 8 s a
+ * city, for the same searches), once per stay, nights and rooms (the answers are cached for the
+ * step's life), and a search the limit refuses waits on the server (`withinSupplierLimit`). A stay
+ * that has its hotel is neither searched nor replaced. "החלפת מלון" opens the live
+ * `SegmentHotelModal` on the stay's own cached answer; with none in hand its search takes its turn
+ * in the swaps' queue. An answer - automatic or a swap's - is committed only while it is still for
+ * the stay's nights and rooms (`searchKey`).
  *
  * `shown` = the hotels step is the step on screen. The flow mounts this step (hidden) as soon as the
  * trip has its flight (ItineraryFlow): the hotels it picks are the price the customer sees from the
@@ -283,13 +284,12 @@ export function HotelsStep({
   useLayoutEffect(() => {
     latest.current = { views, pax, setHotel };
   });
-  // Every search of the step - the automatic run and a swap's - goes through ONE queue
-  // (`enqueue`): never two RateHawk searches at once.
+  // The swaps' searches, one at a time (`enqueue`).
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const ready = (v: StayView) => stayHotelReady(hotels[v.stay.key], v.range, pax);
   const skipped = (v: StayView) => skippedStays.includes(v.stay.key);
-  // The stays still waiting for their search, in trip order: the first is searched next.
+  // The stays still waiting for their search.
   const due = views.filter((v) => !ready(v) && !skipped(v) && !outcomes[v.searchKey]);
   const dueSig = due.map((v) => v.searchKey).join("\n");
   const noHotelSig = views
@@ -297,31 +297,34 @@ export function HotelsStep({
     .map((v) => v.stay.key)
     .join("|");
 
-  // The one search running: its stay's key and how to stop it.
-  const run = useRef<{ key: string; ctrl: AbortController } | null>(null);
+  // The searches running, by `searchKey`, and how to stop each.
+  const runs = useRef(new Map<string, AbortController>());
   useEffect(() => {
     const keys = dueSig ? dueSig.split("\n") : [];
     // A stay whose nights or rooms changed is not searched to the end.
-    if (run.current && !keys.includes(run.current.key)) {
-      run.current.ctrl.abort();
-      run.current = null;
+    for (const [key, ctrl] of runs.current) {
+      if (keys.includes(key)) continue;
+      ctrl.abort();
+      runs.current.delete(key);
     }
-    if (run.current || !keys.length) return;
     const now = latest.current;
-    const view = now.views.find((v) => v.searchKey === keys[0]);
-    if (!view) return;
-    const mine = { key: view.searchKey, ctrl: new AbortController() };
-    run.current = mine;
-    void enqueue(queue, () => findStayHotel(view, now.pax, mine.ctrl.signal, cache.current)).then((result) => {
-      if (run.current !== mine || result.kind === "aborted") return;
-      run.current = null;
-      // The stay's nights or rooms moved while it was searched: the answer is for the old ones.
-      // Nothing is written; the stay's new key is due and the effect searches it.
-      if (!stillFor(latest.current.views, view.stay.key, view.searchKey)) return;
-      // Either write takes the stay off `due`, and the next stay's search starts.
-      if (result.kind === "picked") latest.current.setHotel(view.stay.key, result.hotel);
-      else setOutcomes((prev) => ({ ...prev, [view.searchKey]: result.kind }));
-    });
+    for (const key of keys) {
+      if (runs.current.has(key)) continue;
+      const view = now.views.find((v) => v.searchKey === key);
+      if (!view) continue;
+      const ctrl = new AbortController();
+      runs.current.set(key, ctrl);
+      void findStayHotel(view, now.pax, ctrl.signal, cache.current).then((result) => {
+        if (runs.current.get(key) !== ctrl || result.kind === "aborted") return;
+        runs.current.delete(key);
+        // The stay's nights or rooms moved while it was searched: the answer is for the old ones.
+        // Nothing is written; the stay's new key is due and the effect searches it.
+        if (!stillFor(latest.current.views, view.stay.key, view.searchKey)) return;
+        // Either write takes the stay off `due`.
+        if (result.kind === "picked") latest.current.setHotel(view.stay.key, result.hotel);
+        else setOutcomes((prev) => ({ ...prev, [view.searchKey]: result.kind }));
+      });
+    }
   }, [dueSig]);
 
   // The open swap's search, when the stay had no cached answer (the step was mounted again).
@@ -329,11 +332,11 @@ export function HotelsStep({
   // Leaving for good (no flight any more, another party): nothing keeps searching. Cleared too,
   // so a mount that runs its effects again (React's dev double run) starts its search afresh.
   useEffect(() => {
-    const runs = run;
+    const running = runs.current;
     const swaps = swapRun;
     return () => {
-      runs.current?.ctrl.abort();
-      runs.current = null;
+      for (const ctrl of running.values()) ctrl.abort();
+      running.clear();
       swaps.current?.ctrl.abort();
       swaps.current = null;
     };
