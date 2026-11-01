@@ -55,11 +55,11 @@ export function TripDateRange({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-muted px-3 py-2.5 lg:px-4">
-      <span className="text-sm font-bold lg:text-xl">ובאיזה תאריכים?</span>
+    <div className="flex items-center gap-x-3 rounded-xl bg-muted px-3 py-1.5 lg:px-4 lg:py-2.5">
+      <span className="shrink-0 text-[13px] font-bold lg:text-xl">ובאיזה תאריכים?</span>
       <DatePickerInput
-        className="min-w-44 flex-1 sm:max-w-64"
-        size="md"
+        className="min-w-0 flex-1 sm:max-w-64"
+        size="sm"
         type="range"
         locale="he"
         minDate={localDay(bounds.depart[0])}

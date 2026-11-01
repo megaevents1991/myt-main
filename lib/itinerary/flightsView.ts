@@ -51,6 +51,10 @@ export const trainNote = (h: Pick<TrainLeg, "fromName" | "toName" | "km">): stri
 export const groundNote = (g: { from: string; to: string; km: number }): string =>
   `האירוע ב${g.to} - רכבת מ${g.from}, כ-${trainHours(g.km)} שעות, בכוחות עצמכם (לא כלול).`;
 
+/** The same way there in one small line over a flights list (Alon 01.11: "ההערה כאן גדולה מדי"). */
+export const groundNoteShort = (g: { from: string; to: string; km: number }): string =>
+  `ל${g.to} ברכבת מ${g.from}, כ-${trainHours(g.km)} שעות, הגעה עצמאית`;
+
 // ---------------------------------------------------------------------------------------------
 // Sort tabs
 // ---------------------------------------------------------------------------------------------
@@ -75,6 +79,15 @@ const minutesOf = (iso: string): number => {
 
 /** Time in the air (and layovers) over every leg. */
 const totalMinutes = (f: ItineraryFlight): number => f.legs.reduce((n, leg) => n + minutesOf(leg.duration), 0);
+
+/**
+ * What a move between two cities offers (Alon 01.11: "הייתי מראה רק ישירות כאופציה למעבר בין ערים"):
+ * the non-stop flights, however many; every flight only when there is no non-stop that day.
+ */
+export function moveOptions(flights: ItineraryFlight[]): ItineraryFlight[] {
+  const direct = flights.filter((f) => totalStops(f) === 0);
+  return direct.length ? direct : flights;
+}
 
 /**
  * The "★ הטוב ביותר" flight - the live step's rule (FlightSelection `pickBestFlight`, no offline

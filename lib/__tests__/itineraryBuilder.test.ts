@@ -6,12 +6,15 @@ import {
   catalogCities,
   catalogItems,
   catalogMonths,
+  cityMonths,
   dayMonth,
   dayMonthYear,
   filterCatalog,
   fittingItems,
   hasTripPartner,
   isBrowsing,
+  moveName,
+  nextCityQuestion,
   quickFiltered,
   starterEvents,
   topCities,
@@ -206,5 +209,46 @@ describe("search first", () => {
     expect(fits.map((i) => i.event.id)).toEqual(
       items.filter((i) => !i.inRoute && i.compat.status !== "blocked").map((i) => i.event.id),
     );
+  });
+});
+
+describe("the questions after a city (Alon 01.11)", () => {
+  const show = ev(1, "הופעה", "2027-05-12", PARIS);
+  const match = ev(2, "פריז - ליון", "2027-05-20", PARIS, "sports_event");
+  const later = ev(3, "הופעה אחרת", "2027-07-02", PARIS);
+  const catalog = [later, show, match, ev(4, "ברלין", "2027-05-13", BERLIN)];
+  const f = { query: "", month: "", kind: "all" as const, city: "פריז" };
+
+  it("lists the city's months in order, with how many", () => {
+    expect(cityMonths(catalog, "פריז")).toEqual([
+      { month: "2027-05", count: 2 },
+      { month: "2027-07", count: 1 },
+    ]);
+  });
+
+  it("asks the month, then the kind, then nothing", () => {
+    expect(nextCityQuestion(catalog, f)).toBe("month");
+    expect(nextCityQuestion(catalog, { ...f, month: "2027-05" })).toBe("kind");
+    expect(nextCityQuestion(catalog, { ...f, month: "2027-05", kind: "music" })).toBeNull();
+  });
+
+  it("skips a question with one possible answer, or one answered 'לא משנה'", () => {
+    expect(nextCityQuestion(catalog, { ...f, month: "2027-07" })).toBeNull();
+    expect(nextCityQuestion([show], f)).toBeNull();
+    expect(nextCityQuestion(catalog, f, { month: true })).toBe("kind");
+    expect(nextCityQuestion(catalog, f, { month: true, kind: true })).toBeNull();
+  });
+
+  it("asks nothing without a city, or over a search", () => {
+    expect(nextCityQuestion(catalog, { ...f, city: "" })).toBeNull();
+    expect(nextCityQuestion(catalog, { ...f, query: "הופעה" })).toBeNull();
+  });
+});
+
+describe("moveName", () => {
+  it("names a move by the stays it joins", () => {
+    const route = [celine, chelsea];
+    expect(moveName(route, `${celine.id}>${chelsea.id}`)).toBe("פריז - לונדון");
+    expect(moveName(route, "nope")).toBe("");
   });
 });

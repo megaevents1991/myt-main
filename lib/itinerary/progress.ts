@@ -150,8 +150,7 @@ export function livePerTraveller(state: ItineraryState, s: ItinerarySettings): n
 
 /**
  * Each piece's estimate, per traveller - what `progressivePrice` counts for a piece the customer
- * has not picked yet (`estimateParts` with no flight quote). The summary's rows are each picked
- * piece against its own estimate here (`summaryAdditions`, lib/itinerary/summaryRows.ts).
+ * has not picked yet (`estimateParts` with no flight quote).
  */
 export function pieceEstimates(state: Pick<ItineraryState, "route" | "dates">, s: ItinerarySettings): EstimateParts {
   return estimateParts(state.route, state.dates, s, null);

@@ -118,7 +118,7 @@ export function SelfBuild() {
       </div>
 
       {/* The trip: first on a phone (the only thing there), the inline-end column from 1024px. */}
-      <TripPanel className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto myt-scroll" />
+      <TripPanel className="relative z-10 -mt-14 lg:sticky lg:top-24 lg:mt-0 lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto myt-scroll" />
     </div>
   );
 }

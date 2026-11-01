@@ -19,6 +19,7 @@ export type CompatReason =
   | { code: "gap_too_long"; days: number; from: string }
   | { code: "long_gap"; days: number }
   | { code: "same_city" }
+  | { code: "same_hub"; from: string; to: string }
   | { code: "best" }
   | { code: "fits" };
 

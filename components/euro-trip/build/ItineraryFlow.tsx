@@ -8,7 +8,7 @@ import { AlarmClockCheck, X } from "lucide-react";
 import { OrderContinueBar, type ContinueSlot } from "@/app/order/OrderContinueBar";
 import { Stepper } from "@/components/ui/Stepper";
 import { ticketReady } from "@/lib/itinerary/adapter";
-import { stayCityName } from "@/lib/itinerary/builder";
+import { moveName, stayCityName } from "@/lib/itinerary/builder";
 import { stays } from "@/lib/itinerary/dates";
 import { flightPartsOf, partDone } from "@/lib/itinerary/flightParts";
 import { flowSteps, stepForIndex, stepperIndex } from "@/lib/itinerary/flowSteps";
@@ -23,6 +23,7 @@ import { SelfBuild } from "./SelfBuild";
 import { StepSkeleton } from "./StepSkeleton";
 import { TicketSubSteps } from "./TicketSubSteps";
 import { TripHeader } from "./TripHeader";
+import { TripQuoteWait } from "./TripQuoteWait";
 
 // The builder lands on the planner (a ready trip: on its first event's tickets), and most planner
 // visits end there: the later steps bring the order flow's live ticket step (seat maps), the
@@ -47,6 +48,11 @@ const SummaryStep = dynamic(() => import("./SummaryStep").then((m) => m.SummaryS
   ssr: false,
   loading: () => <StepSkeleton label="טוענים את הסיכום..." side tabs={false} />,
 });
+
+/** Long enough for the wait not to flash, and never less: the search flags settle over a few commits. */
+const QUOTE_WAIT_MIN_MS = 900;
+/** Past this the tickets open anyway, the bar says the price is still on its way. */
+const QUOTE_WAIT_MAX_MS = 60_000;
 
 /**
  * The flights step, alive from the moment the planner is left (see ItineraryFlow). Its wrapper also
@@ -234,7 +240,7 @@ export function ItineraryFlow() {
             ? `בחרו כרטיסים ל${openEvent.name}`
             : "בחרו כרטיסים לכל האירועים"
       : step === "build"
-        ? "בחר והמשך לכרטיסים"
+        ? "המשיכו לבחירת כרטיסים"
         : step === "tickets"
           ? nextEvent >= 0
             ? `המשך לכרטיסים ל${route[nextEvent].name}`
@@ -242,7 +248,7 @@ export function ItineraryFlow() {
           : step === "flights"
             ? lastPart
               ? "בחר והמשך למלונות"
-              : `המשך למעבר ${state.activeFlightPart + 1}`
+              : `המשך למעבר ${moveName(route, flightParts[state.activeFlightPart + 1]?.key ?? "")}`
             : "בחר והמשך לסיכום";
 
   const onPrimary = () => {
@@ -306,6 +312,32 @@ export function ItineraryFlow() {
   const quoted = progress.flights && progress.hotels;
   const quotePending = !quoted && (flightsSearching || (progress.flights && hotelsSearching));
   const priceText = step === "build" ? "" : quotePending ? "מחשבים מחיר מדויק…" : undefined;
+
+  // Alon 01.11: no editing options before there is a price - leaving the planner (or opening a ready
+  // trip) waits on `TripQuoteWait` until the first quote is in. A later change on the tickets step
+  // (the party's +/-) keeps the step on screen: the customer is mid-pick, the bar says it is working.
+  const [lastStep, setLastStep] = useState(step);
+  const [waiting, setWaiting] = useState(false);
+  const [waitStart, setWaitStart] = useState(0);
+  if (lastStep !== step) {
+    setLastStep(step);
+    if (step === "tickets" && lastStep === "build" && !quoted) {
+      setWaiting(true);
+      setFlightsSearching(true);
+    } else if (step !== "tickets") setWaiting(false);
+  }
+  useEffect(() => {
+    if (!waiting) return;
+    setWaitStart(Date.now());
+    const cap = window.setTimeout(() => setWaiting(false), QUOTE_WAIT_MAX_MS);
+    return () => window.clearTimeout(cap);
+  }, [waiting]);
+  useEffect(() => {
+    if (!waiting || quotePending) return;
+    const left = Math.max(QUOTE_WAIT_MIN_MS / 3, waitStart + QUOTE_WAIT_MIN_MS - Date.now());
+    const timer = window.setTimeout(() => setWaiting(false), left);
+    return () => window.clearTimeout(timer);
+  }, [waiting, quotePending, waitStart]);
   // One city: the regular step's own "לא צריך מלון", beside the continue button (the cards say it per city).
   const onlyStay = stayList.length === 1 ? stayList[0] : null;
   const skip =
@@ -329,11 +361,9 @@ export function ItineraryFlow() {
   return (
     <>
       <Stepper currentStep={current} steps={flowSteps()} hideSteps={step === "build"} onStepperClick={onStepperClick} />
-      {step === "tickets" ? (
-        // The live ticket step draws the open event's band itself (EventDataHeader, from the
-        // adapter's event), exactly as on /order - so no trip header here: the trip's events as the
-        // tickets step's sub-steps, and a quiet way back to the planner at the row's end (a ready
-        // trip opens here, this is its first screen).
+      {step === "tickets" && !waiting ? (
+        // No trip header here: the open event's band with the trip's events as its sub-steps and a
+        // quiet way back to the planner (a ready trip opens here, this is its first screen).
         <TicketSubSteps />
       ) : (
         <TripHeader />
@@ -376,14 +406,14 @@ export function ItineraryFlow() {
             </button>
           </div>
         )}
-        <StepBody state={state} />
+        {waiting ? <TripQuoteWait /> : <StepBody state={state} />}
         {quoting && <FlightsPane shown={step === "flights"} onSearching={setFlightsSearching} />}
         {hotelsMounted && <HotelsPane shown={step === "hotels"} onNoHotel={onNoHotel} />}
       </div>
       {/* The order flow's sticky continue bar (app/order/OrderForm.tsx), steps before the summary.
-          Not on an empty builder: there is no trip to price yet (the bar would say $0). On the
-          planner it is the phone's: from lg the side panel (TripPanel) carries the trip's CTA. */}
-      {step !== "summary" && route.length > 0 && (
+          Not while the first quote is on its way. On the planner it is the phone's, and only once
+          there is somewhere to go: from lg the side panel (TripPanel) carries the trip's CTA. */}
+      {step !== "summary" && !waiting && (step === "build" ? enough : route.length > 0) && (
         <div
           className={cn(
             "sticky bottom-0 z-40 w-full border-t border-border bg-background/85 backdrop-blur",

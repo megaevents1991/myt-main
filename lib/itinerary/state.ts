@@ -16,6 +16,7 @@
  */
 import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.types";
 import { clampTripDates, defaultTripDates, moves, stays } from "./dates";
+import { canFlyDirect, directOrigin, flyDirect } from "./direct";
 import { composeFlight, fittingPicks, flightPartsOf } from "./flightParts";
 import { eventDay, eventPoint, stayPoint } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
@@ -45,6 +46,11 @@ export type ItineraryState = {
   tickets: Record<number, OrderTicket | undefined>;
   /** Keys of the moves made by train (`TripDates.moves` keys). */
   train: string[];
+  /**
+   * The events flown to directly (lib/itinerary/direct.ts), by event id, each with its row as sold -
+   * `route` holds the flown version, this one brings it back.
+   */
+  directEvents: Record<number, Event>;
   flight: ItineraryFlight | null;
   /** The flight picked for each part of the trip (`FlightPart.key`). */
   flightParts: Record<string, ItineraryFlight | undefined>;
@@ -68,6 +74,7 @@ export const INITIAL_ITINERARY_STATE: ItineraryState = {
   pax: DEFAULT_TRAVELLERS,
   tickets: {},
   train: [],
+  directEvents: {},
   flight: null,
   flightParts: {},
   hotels: {},
@@ -88,6 +95,8 @@ export type ItineraryAction =
   | { type: "setTicket"; eventId: number; ticket: OrderTicket | undefined }
   | { type: "setEventData"; event: Event }
   | { type: "toggleTrain"; key: string }
+  /** Fly straight to the event's own city, or back to the flight city and its train. */
+  | { type: "setDirect"; id: number; on: boolean }
   | { type: "setFlight"; flight: ItineraryFlight | null }
   /** One part's pick (null = none any more); the trip's flight is composed from the parts. */
   | { type: "setFlightPart"; key: string; flight: ItineraryFlight | null }
@@ -190,6 +199,12 @@ function withRoute(state: ItineraryState, next: Event[]): ItineraryState {
   };
 }
 
+/** The route as sold: every direct flight undone. A change of route starts from it. */
+const asSold = (state: ItineraryState): ItineraryState =>
+  Object.keys(state.directEvents).length
+    ? { ...state, route: state.route.map((e) => state.directEvents[e.id] ?? e), directEvents: {} }
+    : state;
+
 /**
  * Where the trip goes and sleeps for this event: what its dates, stays and legs hang on. The
  * coordinates count too - moving a venue can make two neighbours one city (or two).
@@ -215,21 +230,24 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
       // order flow's first step; the planner (custom) and anything shorter open on build.
       const ready = action.mode === "route" && action.route.length >= MIN_TRIP_EVENTS;
       const step: ItineraryStep = ready ? "tickets" : "build";
-      return { ...withRoute({ ...state, route: [], step }, action.route), mode: action.mode };
+      return { ...withRoute({ ...state, route: [], directEvents: {}, step }, action.route), mode: action.mode };
     }
 
     case "addEvent": {
       if (state.route.some((e) => e.id === action.event.id)) return state;
-      if (!isAddable(compatibility(state.route, action.event, action.settings))) return state;
-      return withRoute(state, [...state.route, action.event]);
+      const sold = asSold(state);
+      if (!isAddable(compatibility(sold.route, action.event, action.settings))) return state;
+      return withRoute(sold, [...sold.route, action.event]);
     }
 
-    case "removeEvent":
+    case "removeEvent": {
       if (!state.route.some((e) => e.id === action.id)) return state;
+      const sold = asSold(state);
       return withRoute(
-        state,
-        state.route.filter((e) => e.id !== action.id),
+        sold,
+        sold.route.filter((e) => e.id !== action.id),
       );
+    }
 
     case "setMode":
       return state.mode === action.mode ? state : { ...state, mode: action.mode };
@@ -255,10 +273,36 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
     case "setEventData": {
       const old = state.route.find((e) => e.id === action.event.id);
       if (!old) return state;
-      const route = state.route.map((e) => (e.id === action.event.id ? action.event : e));
+      // A fresher row of an event flown to directly stays flown.
+      const origin = state.directEvents[action.event.id];
+      const sold = origin ? directOrigin(origin, action.event) : null;
+      const directEvents = sold ? { ...state.directEvents, [action.event.id]: sold } : state.directEvents;
+      const fresh = sold ? flyDirect(sold) : action.event;
+      const route = state.route.map((e) => (e.id === fresh.id ? fresh : e));
       // Fresher data for the same trip (live prices): the picks stay.
-      if (shapeOf(old) === shapeOf(action.event)) return { ...state, route };
-      return withRoute(state, route);
+      if (shapeOf(old) === shapeOf(fresh)) return { ...state, route, directEvents };
+      return withRoute({ ...state, directEvents }, route);
+    }
+
+    case "setDirect": {
+      const event = state.route.find((e) => e.id === action.id);
+      if (!event) return state;
+      const origin = state.directEvents[action.id];
+      if (action.on === !!origin) return state;
+      if (action.on && !canFlyDirect(state.route, event)) return state;
+      const next = action.on ? flyDirect(event) : origin;
+      const directEvents = { ...state.directEvents };
+      if (action.on) directEvents[action.id] = event;
+      else delete directEvents[action.id];
+      // Another landing and another hotel: flights and hotels are searched again, the view stays put.
+      return {
+        ...withRoute(
+          { ...state, directEvents },
+          state.route.map((e) => (e.id === action.id ? next : e)),
+        ),
+        activeEvent: state.activeEvent,
+        activeFlightPart: state.activeFlightPart,
+      };
     }
 
     case "toggleTrain": {

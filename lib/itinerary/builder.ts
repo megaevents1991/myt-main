@@ -4,8 +4,8 @@
  */
 import type { Event } from "@/lib/app.types";
 import { cityName, defaultCity, eventCityName, hasEventCity } from "@/lib/events/lodging";
-import { stays } from "./dates";
-import { dayDiff, eventDay, eventKind, haversineKm, sameCity } from "./geo";
+import { moves, stays } from "./dates";
+import { dayDiff, eventDay, eventKind, haversineKm, sameEventCity } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import type { Compat, CompatStatus } from "./types";
@@ -38,6 +38,12 @@ export function tripCities(route: Event[]): string[] {
   return list
     .map((stay) => stayCityName(stay.events[0]))
     .filter((name, i, all) => i === 0 || name !== all[i - 1]);
+}
+
+/** A move, by the stays it joins: "לונדון - דיסלדורף". Empty when the route has no such move. */
+export function moveName(route: Event[], key: string): string {
+  const m = moves(route).find((x) => x.key === key);
+  return m ? `${stayCityName(m.a)} - ${stayCityName(m.b)}` : "";
 }
 
 /** Display order of a compatibility answer: the best fits first, the blocked last. */
@@ -134,6 +140,40 @@ export function topCities(catalog: Event[], n: number): { city: string; count: n
 }
 
 /**
+ * "יש חודש מועדף?" after a city was picked (Alon 01.11): the months that city has events in, in
+ * order, with how many.
+ */
+export function cityMonths(catalog: Event[], city: string): { month: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const e of catalog) {
+    if (eventCityName(e) !== city) continue;
+    const month = eventDay(e).slice(0, 7);
+    counts.set(month, (counts.get(month) ?? 0) + 1);
+  }
+  return [...counts]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, count]) => ({ month, count }));
+}
+
+/**
+ * The next question for a customer who started from a city, or null: its month first, then what
+ * they came for. A question with one possible answer is not asked: a city with a single month has
+ * no month to choose, and when the city and month hold one kind there is no kind to choose.
+ * `skipped`: the customer answered "לא משנה" / "הכל" - there is no filter to tell that by.
+ */
+export function nextCityQuestion(
+  catalog: Event[],
+  f: CatalogFilter,
+  skipped: { month?: boolean; kind?: boolean } = {},
+): "month" | "kind" | null {
+  if (!f.city || f.query.trim()) return null;
+  if (!f.month && !skipped.month && cityMonths(catalog, f.city).length > 1) return "month";
+  if (f.kind !== "all" || skipped.kind) return null;
+  const kinds = new Set(filterCatalog(catalog, f).map(eventKind));
+  return kinds.size > 1 ? "kind" : null;
+}
+
+/**
  * A first event to start from: the site's most wanted (`is_prioritized`) first, then the soonest -
  * one show per name, so an artist with five dates does not fill the row.
  */
@@ -183,6 +223,6 @@ export type QuickFilter = { kind: CatalogKind; sameCity: boolean };
 export function quickFiltered(items: CatalogItem[], route: Event[], q: QuickFilter): CatalogItem[] {
   return items.filter(
     ({ event }) =>
-      (q.kind === "all" || eventKind(event) === q.kind) && (!q.sameCity || route.some((r) => sameCity(r, event))),
+      (q.kind === "all" || eventKind(event) === q.kind) && (!q.sameCity || route.some((r) => sameEventCity(r, event))),
   );
 }

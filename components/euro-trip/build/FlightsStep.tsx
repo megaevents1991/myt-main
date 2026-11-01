@@ -16,7 +16,8 @@ import {
   FLIGHTS_PAGE,
   basePerTraveller,
   canSearch,
-  groundNote,
+  groundNoteShort,
+  moveOptions,
   pricedFlight,
   searchKey,
   searchOutcome,
@@ -24,7 +25,6 @@ import {
   sortFlights,
   tabTags,
   trainHours,
-  trainNote,
   type FlightSort,
   type SearchView,
 } from "@/lib/itinerary/flightsView";
@@ -246,14 +246,16 @@ function SortTabs({ value, onChange }: { value: FlightSort; onChange: (s: Flight
   );
 }
 
-/** The price of the chosen flight is being checked (`key` = the search it came from). */
-type PickState = { key: string; id: string; status: "pricing" | "failed" };
+/** The check of a chosen flight said it cannot be sold (`key` = the search it came from). */
+type PickState = { key: string; id: string; status: "failed" };
 
 /**
  * One part of the trip's flights: its own search (`useFlightSearch`), its recommended flight
  * arriving picked, and - while it is the part on screen - the regular flow's list: הטוב ביותר /
- * הזול ביותר / ישראלי over the cards. A pick is priced through `/api/flights/pricing` (as the order
- * summary does) before it counts.
+ * הזול ביותר / ישראלי over the cards. A move lists its non-stop flights alone, without the tabs
+ * (`moveOptions`, Alon 01.11). A pick counts at once, at the search's price (Alon 01.11: "למה הוא בודק
+ * כאן מחיר אם כבר הכל מתומחר?"): `/api/flights/pricing` runs behind it for the fare's penalties and
+ * never changes the total. When it says the offer cannot be sold, the pick goes and the card says so.
  *
  * Mounted from the moment the customer leaves the planner, on screen or not (Dor 31.10: "מחיר מדויק
  * כבר בשלב של בחירת כרטיס 1"): the recommended pick is the price on the continue bar. Off screen it
@@ -279,8 +281,10 @@ function PartPane({
 
   // Callbacks that run after a fetch read the provider through a ref (its actions are re-made per render).
   const latest = useRef(api);
+  const shownRef = useRef(shown);
   useLayoutEffect(() => {
     latest.current = api;
+    shownRef.current = shown;
   });
 
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -308,8 +312,12 @@ function PartPane({
   );
 
   const flights = search.flights;
-  const sorted = useMemo(() => sortFlights(flights, sort), [flights, sort]);
-  const { bestId, cheapestId } = useMemo(() => tabTags(flights, sort), [flights, sort]);
+  const isMove = part.kind === "move";
+  const sorted = useMemo(
+    () => (isMove ? moveOptions(sortFlights(flights, "best")) : sortFlights(flights, sort)),
+    [flights, sort, isMove],
+  );
+  const { bestId, cheapestId } = useMemo(() => tabTags(isMove ? sorted : flights, isMove ? "best" : sort), [flights, sorted, sort, isMove]);
   const base = useMemo(() => basePerTraveller(flights, pax), [flights, pax]);
 
   const choose = async (f: ItineraryFlight) => {
@@ -318,7 +326,8 @@ function PartPane({
     pricing.current?.abort();
     const ctrl = new AbortController();
     pricing.current = ctrl;
-    setPick({ key, id: f.id, status: "pricing" });
+    setPick(null);
+    latest.current.setFlightPart(part.key, f);
     let status = 0;
     let body: unknown = null;
     try {
@@ -337,12 +346,13 @@ function PartPane({
     if (ctrl.signal.aborted) return;
     pricing.current = null;
     const priced = pricedFlight(f, status, body, []);
-    if (!priced) {
-      setPick({ key, id: f.id, status: "failed" });
+    if (priced) {
+      latest.current.setFlightPart(part.key, priced);
       return;
     }
-    setPick(null);
-    latest.current.setFlightPart(part.key, priced);
+    setPick({ key, id: f.id, status: "failed" });
+    latest.current.setFlightPart(part.key, null);
+    if (!shownRef.current) latest.current.showNotice("אחת הטיסות שבחרתם כבר לא זמינה. בחרו טיסה אחרת בשלב הטיסות.");
   };
 
   const pickNow = pick && pick.key === search.key ? pick : null;
@@ -359,7 +369,7 @@ function PartPane({
     if (best) void chooseRef.current(best);
   }, [search.view, search.key, flights, selectedId, pick]);
 
-  const searching = !part.byTrain && (search.view === "loading" || search.view === "retrying" || !!pickNow && pickNow.status === "pricing");
+  const searching = !part.byTrain && (search.view === "loading" || search.view === "retrying");
   useEffect(() => {
     onView(part.key, searching);
   }, [onView, part.key, searching]);
@@ -367,10 +377,12 @@ function PartPane({
 
   if (!shown) return null;
 
+  const noDirect = isMove && sorted.length > 0 && sorted.every((f) => f.legs.some((l) => l.stops.length > 1));
+
   // "הצג עוד" counts per (search, tab), and never hides the flight already chosen.
   const pageAt = `${search.key}|${sort}`;
   const count = page.at === pageAt ? page.count : FLIGHTS_PAGE;
-  const chosenId = pickNow?.status === "pricing" ? pickNow.id : selectedId;
+  const chosenId = selectedId;
   const selectedAt = chosenId ? sorted.findIndex((f) => f.id === chosenId) : -1;
   const visible = sorted.slice(0, Math.max(count, selectedAt + 1));
 
@@ -413,7 +425,10 @@ function PartPane({
       case "ok":
         body = (
           <>
-            <SortTabs value={sort} onChange={setSort} />
+            {!isMove && <SortTabs value={sort} onChange={setSort} />}
+            {isMove && noDirect && (
+              <p className="m-0 text-xs text-muted-foreground">אין טיסה ישירה בתאריך הזה. אלו הטיסות עם עצירה.</p>
+            )}
             {pickNow?.status === "failed" && part.kind === "main" && (
               <p role="alert" className="m-0 text-center text-sm font-bold text-destructive">
                 לא הצלחנו לאמת את הטיסה - נסו שוב או בחרו טיסה אחרת
@@ -452,10 +467,9 @@ function PartPane({
                       pax={pax}
                       basePrice={base ?? f.price / pax}
                       selected={f.id === selectedId}
-                      pricing={pickNow?.id === f.id && pickNow.status === "pricing"}
                       failed={pickNow?.id === f.id && pickNow.status === "failed"}
-                      isBest={f.id === bestId}
-                      isCheapest={f.id === cheapestId}
+                      isBest={sorted.length > 1 && f.id === bestId}
+                      isCheapest={sorted.length > 1 && f.id === cheapestId}
                       onSelect={(chosen) => void choose(chosen)}
                     />
                   ),
@@ -480,41 +494,39 @@ function PartPane({
   );
 }
 
-/** "אגיע עצמאית" - a switch: the move leaves the flights (or comes back to them). */
+/**
+ * "אגיע עצמאית" - a small switch under the move's date (Alon 01.11: "עם הטוגל צמוד אליו בקטן וזהו"):
+ * the move leaves the flights, or comes back to them.
+ */
 function TrainSwitch({ hop, on, onToggle }: { hop: TrainLeg; on: boolean; onToggle: () => void }) {
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-brand-aqua/40 bg-brand-aqua/10 px-3.5 py-3 text-sm leading-relaxed text-foreground">
-      <p className="m-0 flex items-start gap-2.5">
-        <TrainFront className="mt-0.5 size-4 shrink-0 text-forest dark:text-brand-aqua" aria-hidden />
-        <span>{trainNote(hop)}</span>
-      </p>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        onClick={onToggle}
-        className={cn(
-          "inline-flex w-fit items-center gap-2 rounded-full border bg-background py-1 pe-3 ps-1 text-xs font-bold text-foreground transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow",
-          on ? "border-brand-aqua/60" : "border-border hover:border-forest dark:hover:border-glow",
-        )}
-      >
-        <span aria-hidden className={cn("relative h-[18px] w-[30px] shrink-0 rounded-full transition-colors", on ? "bg-brand-aqua" : "bg-muted")}>
-          <span
-            className={cn(
-              "absolute top-[2px] size-[14px] rounded-full bg-white shadow-sm transition-[inset-inline-start] duration-200",
-              on ? "start-[14px]" : "start-[2px]",
-            )}
-          />
-        </span>
-        אגיע עצמאית, בלי טיסה
-      </button>
-      {on && (
-        <p className="m-0 text-xs text-muted-foreground">
-          בכוחות עצמכם, לא כלול במחיר · כ-{trainHours(hop.km)} שעות
-        </p>
-      )}
-    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onToggle}
+      className="flex w-fit items-center gap-1.5 rounded-full text-start text-xs font-semibold text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow"
+    >
+      <span aria-hidden className={cn("relative h-4 w-7 shrink-0 rounded-full transition-colors", on ? "bg-brand-aqua" : "bg-foreground/20")}>
+        <span
+          className={cn(
+            "absolute top-[2px] size-3 rounded-full bg-white shadow-sm transition-[inset-inline-start] duration-200",
+            on ? "start-[14px]" : "start-[2px]",
+          )}
+        />
+      </span>
+      {on ? `הגעה עצמאית, כ-${trainHours(hop.km)} שעות ברכבת, לא כלול` : "אגיע עצמאית, בלי טיסה"}
+    </button>
+  );
+}
+
+/** One small line over a part's list: how an event a flight does not land next to is reached. */
+function GroundLine({ text }: { text: string }) {
+  return (
+    <p className="m-0 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <TrainFront className="size-3.5 shrink-0" aria-hidden />
+      {text}
+    </p>
   );
 }
 
@@ -522,8 +534,9 @@ function TrainSwitch({ hop, on, onToggle }: { hop: TrainLeg; on: boolean; onTogg
  * "Build Your Euro Trip" - the flights step, cut like the tickets step (Dor 31.10): a part for the
  * way there and back and one per move between flight cities (`flightPartsOf`), each searched,
  * picked and shown on its own in the regular flow's look; a trip with no move is just the regular
- * step, with no sub-steps at all. A move also offers "אגיע עצמאית" and the train's note. A
- * sub-location (Manchester, from London) has no flight of its own: it says so over the list.
+ * step, with no sub-steps at all. A move also offers "אגיע עצמאית". A sub-location (Manchester, from
+ * London) has no flight of its own: one small line over the part that lands next to it says so. The
+ * head of the step stays low, the flights are what the customer came for (Alon 01.11).
  *
  * `shown` = the flights step is on screen. It is mounted hidden from the moment the planner is left,
  * so the trip's price is real from the first ticket on. `onSearching` tells the flow whether any part
@@ -585,38 +598,37 @@ export function FlightsStep({
     };
   });
 
-  const notes = [...new Set(route.flatMap((e) => {
-    const g = groundLink(e);
-    return g ? [groundNote(g)] : [];
-  }))];
+  // The way to a sub-location, said only over the part that lands next to it.
+  const groundOf = (p: FlightPart): string[] => {
+    const events = p.kind === "main" ? [route[0], route[route.length - 1]] : moves(route).filter((m) => m.key === p.key).map((m) => m.b);
+    return [
+      ...new Set(
+        events.flatMap((e) => {
+          const g = e ? groundLink(e) : null;
+          return g ? [groundNoteShort(g)] : [];
+        }),
+      ),
+    ];
+  };
   const openLeg = allLegs.length;
 
   return (
     <section
       aria-labelledby="trip-flights-title"
       hidden={!shown}
-      className={cn("mx-auto flex w-full max-w-4xl flex-col gap-3", !shown && "hidden")}
+      className={cn("mx-auto flex w-full max-w-4xl flex-col gap-2", !shown && "hidden")}
     >
       {shown && (
         <>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-baseline gap-x-2">
             <PanelTitle>
               <span id="trip-flights-title">{parts.length > 1 ? "טיסות ומעברים" : "טיסות"}</span>
             </PanelTitle>
-            <p className="m-0 text-sm text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {openLeg === 2 ? "הלוך וחזור" : `${openLeg} טיסות`} · {pax === 1 ? "נוסע אחד" : `${pax} נוסעים`} · המחירים לנוסע
-            </p>
+            </span>
           </div>
           {parts.length > 1 && <SubStepsRow items={items} label="חלקי הטיסות" words={PART_WORDS} onOpen={setActiveFlightPart} />}
-          {notes.map((note) => (
-            <p
-              key={note}
-              className="m-0 flex items-start gap-2.5 rounded-xl border border-brand-aqua/40 bg-brand-aqua/10 px-3.5 py-3 text-sm leading-relaxed text-foreground"
-            >
-              <TrainFront className="mt-0.5 size-4 shrink-0 text-forest dark:text-brand-aqua" aria-hidden />
-              {note}
-            </p>
-          ))}
         </>
       )}
       {parts.map((p, i) => {
@@ -627,19 +639,21 @@ export function FlightsStep({
             {p.kind === "main" ? (
               <TripDateRange route={route} dates={dates} onCommit={setDates} />
             ) : (
-              <>
-                {moveRange && (
-                  <DateStepper
-                    label={`מעבר ל${moveCity(p.key)}`}
-                    value={p.legs[0].date}
-                    range={moveRange}
-                    icon={<Route className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-                    onChange={(day) => setDates(applyDatePick(route, dates, p.key, day))}
-                  />
-                )}
-                {hop && <TrainSwitch hop={hop} on={p.byTrain} onToggle={() => toggleTrain(p.key)} />}
-              </>
+              moveRange && (
+                <DateStepper
+                  label={`מעבר ל${moveCity(p.key)}`}
+                  value={p.legs[0].date}
+                  range={moveRange}
+                  icon={<Route className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+                  onChange={(day) => setDates(applyDatePick(route, dates, p.key, day))}
+                >
+                  {hop && <TrainSwitch hop={hop} on={p.byTrain} onToggle={() => toggleTrain(p.key)} />}
+                </DateStepper>
+              )
             )}
+            {groundOf(p).map((line) => (
+              <GroundLine key={line} text={line} />
+            ))}
           </PartPane>
         );
       })}

@@ -311,5 +311,8 @@ export function ShowMore({ hidden, onClick }: { hidden: number; onClick: () => v
 /** "לילה אחד" / "N לילות". */
 export const nightsLabel = (n: number): string => (n === 1 ? "לילה אחד" : `${n} לילות`);
 
+/** The tickets step's band of the open event - on a phone the page opens scrolled to it. */
+export const TICKET_BAND_ID = "trip-event-band";
+
 /** The hotels step's card of one stay - the flow scrolls to it when the summary opens that stay. */
 export const stayCardId = (stayKey: string): string => `trip-stay-${stayKey}`;

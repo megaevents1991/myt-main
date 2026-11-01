@@ -7,7 +7,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
-import { dayDiff, eventDay, eventPoint, haversineKm, sameCity, sameHub } from "./geo";
+import { dayDiff, eventDay, eventPoint, haversineKm, sameCity, sameEventCity, sameHub } from "./geo";
 import type { ItinerarySettings } from "./settings";
 import type { Compat } from "./types";
 
@@ -34,6 +34,8 @@ type Neighbour = {
   /** Whole days between the two events, always >= 0. */
   days: number;
   sameCity: boolean;
+  /** Played in one city (a Manchester match slept in London is `sameCity`, not this). */
+  sameEventCity: boolean;
   /** One flight city: a sub-location, a train away. */
   sameHub: boolean;
 };
@@ -45,6 +47,7 @@ const measure = (candidate: Event, n: Event): Neighbour => {
     km: same ? 0 : haversineKm(eventPoint(candidate), eventPoint(n)),
     days: Math.abs(dayDiff(eventDay(candidate), eventDay(n))),
     sameCity: same,
+    sameEventCity: sameEventCity(candidate, n),
     sameHub: sameHub(candidate, n),
   };
 };
@@ -64,13 +67,15 @@ const maxBy = (list: Neighbour[], key: (n: Neighbour) => number): Neighbour =>
  *  6. another city with no free day in between           -> blocked `no_move_day`
  *  7. more than `maxGapDays` apart                       -> blocked `gap_too_long`
  *  8. more than `okGapDays` apart                        -> warn `long_gap`
- *  9. every neighbour in the same city                   -> same `same_city`
- * 10. farthest <= `bestKm` and every gap <= 3 days       -> best `best`
- * 11. otherwise                                          -> ok `fits`
+ *  9. every neighbour played in the same city            -> same `same_city`
+ * 10. every neighbour a train away, no flight            -> same `same_hub`
+ * 11. farthest <= `bestKm` and every gap <= 3 days       -> best `best`
+ * 12. otherwise                                          -> ok `fits`
  * `km` / `nearCity` on an addable answer describe the farthest neighbour. Distances are measured
  * between the events' own cities (`eventPoint`) and named by them (`eventCityName`), so a match
  * played in Manchester and sold as a flight to London is "מנצ'סטר", 605 km from Paris (not London's 343).
- * Only `same_city` looks at the stay points: events whose travellers sleep in one city share a hotel.
+ * Only `km` looks at the stay points: events whose travellers sleep in one city share a hotel. The
+ * words never do: a Manchester match next to a London show is not "באותה עיר" (Alon 01.11).
  */
 export function compatibility(route: Event[], candidate: Event, s: ItinerarySettings): Compat {
   if (route.length >= s.maxEvents) return { status: "blocked", reason: { code: "full", max: s.maxEvents } };
@@ -112,8 +117,16 @@ export function compatibility(route: Event[], candidate: Event, s: ItinerarySett
   if (longest.days > s.okGapDays) {
     return { status: "warn", reason: { code: "long_gap", days: longest.days }, ...near };
   }
-  if (neighbours.every((n) => n.sameCity)) {
+  if (neighbours.every((n) => n.sameEventCity)) {
     return { status: "same", reason: { code: "same_city" }, ...near };
+  }
+  if (neighbours.every((n) => n.sameEventCity || n.sameCity || n.sameHub)) {
+    const other = neighbours.find((n) => !n.sameEventCity);
+    return {
+      status: "same",
+      reason: { code: "same_hub", from: eventCityName(candidate), to: other?.city ?? "" },
+      ...near,
+    };
   }
   if (farthest.km <= s.bestKm && longest.days <= BEST_MAX_GAP_DAYS) {
     return { status: "best", reason: { code: "best" }, ...near };
@@ -144,6 +157,8 @@ export function describeCompat(c: Compat): string {
       return `אפשרי - ${r.days} ימים בין האירועים`;
     case "same_city":
       return "באותה עיר - בלי טיסה נוספת";
+    case "same_hub":
+      return `רכבת ל${r.to}, בלי טיסה נוספת`;
     case "best":
       return "מומלץ - קרוב וזורם";
     case "fits":

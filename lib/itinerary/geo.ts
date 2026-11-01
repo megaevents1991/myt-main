@@ -49,6 +49,14 @@ export function sameCity(a: Event, b: Event): boolean {
 }
 
 /**
+ * The two events are played in one city. Not the same as sleeping in one (`sameCity`): a Manchester
+ * match slept in London shares a hotel with a London show, and still needs a train (Alon 01.11).
+ */
+export function sameEventCity(a: Event, b: Event): boolean {
+  return haversineKm(eventPoint(a), eventPoint(b)) <= SAME_CITY_KM;
+}
+
+/**
  * One flight city (`location.city_iata`): a Manchester or Liverpool match sold as a flight to
  * London is a sub-location of London - a train away, no flight and no change of country between.
  */

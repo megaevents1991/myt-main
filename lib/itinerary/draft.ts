@@ -37,6 +37,8 @@ export type ItineraryDraftForm = { travellers: TravellersInput; termsAccepted: b
 
 /** What comes back: the trip's shape (a `Partial` of the state, flight and hotels never), the held categories and the form. */
 export type RestoredDraft = Pick<ItineraryState, "route" | "mode" | "dates" | "pax" | "train" | "step"> & {
+  /** Events the customer flies to directly (`setDirect` applies them: the route here is as sold). */
+  direct: number[];
   held: Record<number, HeldTicket>;
   form: ItineraryDraftForm | null;
   /** The step the draft was saved on (the flow reopens on `step`): past the tickets = there are picks to make again. */
@@ -82,6 +84,7 @@ export function serializeDraft(
     dates: state.dates,
     pax: state.pax,
     train: state.train,
+    direct: Object.keys(state.directEvents).map(Number),
     step: state.step,
     tickets,
     form: extra.form ?? null,
@@ -150,6 +153,10 @@ export function parseDraft(raw: string | null, now: number, catalog: Map<number,
     ? [...new Set(parsed.train.filter((k): k is string => typeof k === "string" && moveKeys.has(k)))]
     : [];
 
+  const direct = Array.isArray(parsed.direct)
+    ? [...new Set(parsed.direct.filter((id): id is number => route.some((e) => e.id === id)))]
+    : [];
+
   const stored = isRecord(parsed.tickets) ? parsed.tickets : {};
   const held: Record<number, HeldTicket> = {};
   for (const e of route) {
@@ -164,6 +171,7 @@ export function parseDraft(raw: string | null, now: number, catalog: Map<number,
     dates: clampTripDates(route, parseDates(parsed.dates)),
     pax,
     train,
+    direct,
     step: route.length >= MIN_TRIP_EVENTS && savedStep !== "build" ? "tickets" : "build",
     held,
     form: parseForm(parsed.form, pax),

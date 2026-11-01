@@ -3,6 +3,7 @@ import type { FlightSegment, ItineraryFlight } from "../app.types";
 import type { TrainLeg, TripLeg } from "../itinerary/types";
 import { validateFlightRequest, type FlightLeg } from "../itinerary/flightOffers";
 import {
+  moveOptions,
   FLIGHTS_PAGE,
   INCLUDED_BAND_USD,
   basePerTraveller,
@@ -392,5 +393,20 @@ describe("legTitle", () => {
   });
   it("has no title for a row the card could not tie to a leg of the trip", () => {
     expect(legTitle(undefined)).toBeNull();
+  });
+});
+
+describe("moveOptions (Alon 01.11)", () => {
+  const flight = (id: string, segments: number) =>
+    ({ id, price: 100, legs: [{ stops: Array.from({ length: segments }), duration: "PT2H" }] }) as unknown as ItineraryFlight;
+
+  it("offers the non-stop flights alone, however many", () => {
+    const list = [flight("a", 1), flight("b", 2), flight("c", 1), flight("d", 1), flight("e", 1), flight("f", 1)];
+    expect(moveOptions(list).map((f) => f.id)).toEqual(["a", "c", "d", "e", "f"]);
+  });
+
+  it("offers every flight on a day with no non-stop", () => {
+    const list = [flight("a", 2), flight("b", 3)];
+    expect(moveOptions(list)).toEqual(list);
   });
 });

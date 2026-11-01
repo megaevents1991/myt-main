@@ -91,6 +91,8 @@ export type TripSubmission = {
   pax: number;
   /** Moves made by train (`TripDates.moves` keys). */
   train: string[];
+  /** Events flown to directly (lib/itinerary/direct.ts): the server applies them to its own rows. */
+  direct: number[];
   tickets: Record<number, OrderTicket>;
   flight: ItineraryFlight;
   /** The hotel of each stay, by `Stay.key`. */
@@ -260,6 +262,10 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
   const train = trainRaw.map(String);
   if (new Set(train).size !== train.length) return no("train repeats a move");
 
+  const directRaw = raw.direct ?? [];
+  if (!Array.isArray(directRaw) || !directRaw.every((id) => route.includes(id as number))) return no("direct");
+  const direct = [...new Set(directRaw as number[])];
+
   if (!isObj(raw.tickets)) return no("tickets");
   const tickets: Record<number, OrderTicket> = {};
   for (const id of route) {
@@ -325,6 +331,7 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
       dates,
       pax,
       train,
+      direct,
       tickets,
       flight,
       hotels,
@@ -917,6 +924,7 @@ export function submissionFromState(
     dates: state.dates,
     pax: state.pax,
     train: state.train,
+    direct: Object.keys(state.directEvents).map(Number),
     tickets,
     flight: state.flight,
     hotels,
@@ -987,11 +995,13 @@ export function escalatePriceChange(action: HoldAction, consecutive: number): Ho
 
 /**
  * Which trip a hold was for: the route (in order), the dates (depart, return, every move), the
- * party and the train moves. NOT the step, the tickets, the flight, the hotels or the event rows -
- * a "the price changed" bounce itself changes those (fresh rows, the tickets step, the re-picks),
- * and the next attempt is still the same trip.
+ * party, the train moves and the direct flights. NOT the step, the tickets, the flight, the hotels
+ * or the event rows - a "the price changed" bounce itself changes those (fresh rows, the tickets
+ * step, the re-picks), and the next attempt is still the same trip.
  */
-export function tripKey(state: Pick<ItineraryState, "route" | "dates" | "pax" | "train">): string {
+export function tripKey(
+  state: Pick<ItineraryState, "route" | "dates" | "pax" | "train"> & Partial<Pick<ItineraryState, "directEvents">>,
+): string {
   const moveDays = Object.keys(state.dates.moves)
     .sort()
     .map((k) => `${k}=${state.dates.moves[k]}`);
@@ -1002,6 +1012,7 @@ export function tripKey(state: Pick<ItineraryState, "route" | "dates" | "pax" | 
     moveDays,
     state.pax,
     [...state.train].sort(),
+    Object.keys(state.directEvents ?? {}).sort(),
   ]);
 }
 

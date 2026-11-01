@@ -230,6 +230,13 @@ describe("parseSubmission - the request's shape", () => {
     }
   });
 
+  it("takes the direct flights of the route's own events, and only those", () => {
+    expect(parsed(wire(full)).direct).toEqual([]);
+    expect(parsed({ ...wire(full), direct: [702, 702] }).direct).toEqual([702]);
+    expect(parseSubmission({ ...wire(full), direct: [999] }, 3).ok).toBe(false);
+    expect(parseSubmission({ ...wire(full), direct: "702" }, 3).ok).toBe(false);
+  });
+
   it("refuses one event, a duplicate, more than the settings allow, and ids that are not ids", () => {
     expect(parseSubmission(wire(full, { route: [618] }), 3).ok).toBe(false);
     expect(parseSubmission(wire(full, { route: [618, 618] }), 3).ok).toBe(false);

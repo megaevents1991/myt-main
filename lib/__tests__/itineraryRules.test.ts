@@ -300,10 +300,11 @@ describe("compatibility on a two-city event (flight city vs event city)", () => 
     expect(ok.nearCity).toBe("מנצ'סטר");
   });
 
-  it("a flight-city stay makes a London event the same city (both sleep in London)", () => {
+  it("a flight-city stay shares a hotel with a London event, and is still not the same city (Alon 01.11)", () => {
     const c = compatibility([mcMatch], ev(23, "קונצרט בלונדון", "2027-05-16", LONDON), S);
     expect(c.status).toBe("same");
-    expect(c.reason).toEqual({ code: "same_city" });
+    expect(c.reason).toEqual({ code: "same_hub", from: "לונדון", to: "מנצ'סטר" });
+    expect(describeCompat(c)).toBe("רכבת למנצ'סטר, בלי טיסה נוספת");
     expect(c.km).toBe(0);
   });
 
@@ -312,7 +313,7 @@ describe("compatibility on a two-city event (flight city vs event city)", () => 
       lodging_mode: "event_city_only",
     });
     const c = compatibility([manchesterStay], ev(23, "קונצרט בלונדון", "2027-05-16", LONDON), S);
-    expect(c.status).toBe("best");
+    expect(c.reason).toEqual({ code: "same_hub", from: "לונדון", to: "מנצ'סטר" });
     expect(c.km).toBe(262);
     expect(c.nearCity).toBe("מנצ'סטר");
   });

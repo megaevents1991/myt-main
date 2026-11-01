@@ -80,6 +80,8 @@ export type ItineraryApi = {
   setTicket: (eventId: number, t: OrderTicket | undefined) => void;
   setEventData: (e: Event) => void;
   toggleTrain: (key: string) => void;
+  /** Fly straight to the event's own city (`lib/itinerary/direct.ts`), or back to its train. */
+  setDirect: (id: number, on: boolean) => void;
   /** One part of the trip's flights (`lib/itinerary/flightParts.ts`). */
   setFlightPart: (key: string, f: ItineraryFlight | null) => void;
   setActiveFlightPart: (i: number) => void;
@@ -212,6 +214,7 @@ export function ItineraryProvider({
     const restored = draft && sameRouteIds(draft.route, route) ? draft : null;
     if (restored) {
       dispatch({ type: "setMode", mode: restored.mode });
+      for (const id of restored.direct) dispatch({ type: "setDirect", id, on: true });
       for (const key of restored.train) dispatch({ type: "toggleTrain", key });
       dispatch({ type: "setDates", dates: restored.dates });
       dispatch({ type: "setPax", pax: restored.pax });
@@ -321,6 +324,7 @@ export function ItineraryProvider({
       setTicket: (eventId, ticket) => dispatch({ type: "setTicket", eventId, ticket }),
       setEventData: (event) => dispatch({ type: "setEventData", event }),
       toggleTrain: (key) => dispatch({ type: "toggleTrain", key }),
+      setDirect: (id, on) => dispatch({ type: "setDirect", id, on }),
       setFlightPart: (key, flight) => dispatch({ type: "setFlightPart", key, flight }),
       setActiveFlightPart: (index) => dispatch({ type: "setActiveFlightPart", index }),
       setHotel: (stayKey, hotel) => dispatch({ type: "setHotel", stayKey, hotel }),

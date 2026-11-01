@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import type { MouseEvent } from "react";
-import { Check, Loader2, Plane } from "lucide-react";
+import { Check, Plane } from "lucide-react";
 
 import { CardWrapper } from "@/components/ui/cardWrapper";
 import { FlightMeta } from "@/components/ui/FlightCard";
@@ -34,15 +34,13 @@ function BadgeText({ badge }: { badge: PriceBadge }) {
  * One flight between two cities of the trip - the live FlightTicketCard draws an outbound and an
  * inbound, a move has one leg: its chrome (CardWrapper, selected border, the price pill against the
  * base offer, best / cheapest tags), its row (airline, day, flight number around `FlightMeta`) and
- * its bags. The whole card selects; the button says so for keyboards and shows the check of the
- * price on its way.
+ * its bags. The whole card selects, at once; the button says so for keyboards.
  */
 export function MoveFlightCard({
   flight,
   pax,
   basePrice,
   selected,
-  pricing,
   failed,
   isBest,
   isCheapest,
@@ -53,7 +51,6 @@ export function MoveFlightCard({
   /** The base offer's price per traveller. */
   basePrice: number;
   selected: boolean;
-  pricing: boolean;
   failed: boolean;
   isBest: boolean;
   isCheapest: boolean;
@@ -63,7 +60,7 @@ export function MoveFlightCard({
   const leg = flight.legs[0];
   const { metadata } = flight;
   const select = () => {
-    if (!pricing && !selected) onSelect(flight);
+    if (!selected) onSelect(flight);
   };
   const bags = [
     { src: "/icons/hand-bag.svg", size: 12, count: 1 },
@@ -148,22 +145,14 @@ export function MoveFlightCard({
               e.stopPropagation();
               select();
             }}
-            aria-busy={pricing}
-            disabled={pricing}
             className={cn(
               ADD_BUTTON,
               "inline-flex min-w-28 items-center justify-center gap-1.5 text-sm",
               selected &&
                 "border border-forest bg-transparent text-forest hover:bg-transparent hover:text-forest dark:border-glow dark:bg-transparent dark:text-glow dark:hover:bg-transparent dark:hover:text-glow",
-              pricing && "disabled:bg-main disabled:text-main-foreground dark:disabled:bg-foreground dark:disabled:text-background",
             )}
           >
-            {pricing ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                בודקים מחיר…
-              </>
-            ) : selected ? (
+            {selected ? (
               <>
                 <Check className="size-4" aria-hidden />
                 נבחרה

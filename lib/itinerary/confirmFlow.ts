@@ -46,6 +46,7 @@ import {
   type TripSubmission,
 } from "./confirm";
 import { stays } from "./dates";
+import { applyDirect } from "./direct";
 import { tripMailInput, type TripMailInput } from "./emails";
 import { findGroup, insertGroup, type DbError, type GroupDb, type GroupRow } from "./insertGroup";
 import { checkOfflineHotel, holdOfflineHotel, type OfflineHotelDb } from "./offlineHold";
@@ -128,7 +129,12 @@ export async function confirmTrip(raw: unknown, deps: ConfirmDeps): Promise<Conf
     log.warn(`${LOG} group ${sub.group}: route changed (event ${routeCheck.failure.eventId ?? "-"})`);
     return refuse(routeCheck.failure, found.filter((e): e is Event => !!e));
   }
-  const route = routeCheck.route;
+  // The landing the customer chose, on the server's own rows: legs, stays and hotels hang on it.
+  const route = applyDirect(routeCheck.route, sub.direct);
+  if (!route) {
+    log.warn(`${LOG} group ${sub.group}: a direct flight the route does not allow`, JSON.stringify(sub.direct));
+    return refuse(failure("ROUTE_CHANGED"), routeCheck.route, sub.dates);
+  }
 
   const datesFailure = checkDates(route, sub);
   if (datesFailure) {

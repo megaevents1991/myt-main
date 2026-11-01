@@ -41,19 +41,21 @@ export function tripStops(route: Event[], dates: TripDates, train: ReadonlySet<s
   if (depart) out.push({ kind: "depart", title: depart.label, day: depart.value });
   route.forEach((e, i) => {
     const prev = route[i - 1];
+    const ground = groundLink(e);
     if (prev) {
       const key = `${prev.id}>${e.id}`;
       const move = byKey.get(key);
-      if (!moveKeys.has(key)) out.push({ kind: "stay", title: `נשארים ב${stayCityName(e)}` });
-      else if (move) out.push({ kind: "move", title: move.label, day: move.value });
+      // The same hotel, but an event in another city is a way there, not "נשארים" (Alon 01.11).
+      if (!moveKeys.has(key)) {
+        if (!ground) out.push({ kind: "stay", title: `נשארים ב${stayCityName(e)}` });
+      } else if (move) out.push({ kind: "move", title: move.label, day: move.value });
     }
     // Reached by a move of its own under one flight city, the train is already said.
-    const ground = groundLink(e);
     if (ground && !(prev && moveKeys.has(`${prev.id}>${e.id}`) && sameHub(prev, e))) {
       out.push({
         kind: "ground",
-        title: `רכבת מ${ground.from} ל${ground.to}`,
-        detail: `כ-${trainHours(ground.km)} שעות · בכוחות עצמכם, לא כלול`,
+        title: `הגעה עצמאית ל${ground.to}`,
+        detail: `רכבת מ${ground.from}, כ-${trainHours(ground.km)} שעות · לא כלול`,
       });
     }
     out.push({ kind: "event", title: e.name, day: eventDay(e), city: eventCityName(e), eventId: e.id });

@@ -3,10 +3,15 @@
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 
+import { lodgingLocation } from "@/lib/events/lodging";
+import { dayMonthYear } from "@/lib/itinerary/builder";
 import { ticketSubSteps } from "@/lib/itinerary/flowSteps";
+import { eventDay } from "@/lib/itinerary/geo";
 import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
+import { TICKET_BAND_ID } from "./parts";
 import { EditRouteLink } from "./TripHeader";
+import { TripEventArt } from "./TripEventArt";
 
 /**
  * The live Stepper's three states, in its colours (components/ui/Stepper.tsx: Mantine's
@@ -26,17 +31,18 @@ type SubStepWords = { done: string; shut: string };
 const TICKET_WORDS: SubStepWords = { done: "כרטיסים נבחרו", shut: "זמין אחרי בחירת כרטיסים לאירוע הקודם" };
 
 /**
- * One event. The open one is BIG - a large circle, "אירוע n" and the event's name; every other
- * event is a small circle alone (number or check), its name in `title` and for screen readers
- * (Alon 28.10: "עיגולים של אירוע אחד אירוע שתיים - הנוכחי בגדול והשאר עיגול קטן").
+ * One sub-step. The open one is BIG - a large circle, its label and its name; every other one is a
+ * small circle alone (number or check), its name in `title` and for screen readers (Alon 28.10:
+ * "הנוכחי בגדול והשאר עיגול קטן"). `dots`: all small, the row's owner says what is open.
  */
-function SubStep({ item, words, onOpen }: { item: SubStepItem; words: SubStepWords; onOpen: () => void }) {
+function SubStep({ item, words, dots, onOpen }: { item: SubStepItem; words: SubStepWords; dots: boolean; onOpen: () => void }) {
+  const big = item.current && !dots;
   const body = (
     <>
       <span
         className={cn(
           "flex shrink-0 items-center justify-center rounded-full border-2 font-bold tabular-nums",
-          item.current ? "size-10 text-base" : "size-6 text-[11px]",
+          big ? "size-8 text-sm" : "size-6 text-[11px]",
           item.done
             ? cn(
                 MINT_RING,
@@ -51,12 +57,12 @@ function SubStep({ item, words, onOpen }: { item: SubStepItem; words: SubStepWor
         )}
         aria-hidden
       >
-        {item.done ? <Check className={item.current ? "size-5" : "size-3.5"} strokeWidth={3} /> : item.index + 1}
+        {item.done ? <Check className={big ? "size-4" : "size-3.5"} strokeWidth={3} /> : item.index + 1}
       </span>
-      {item.current ? (
+      {big ? (
         <span className="flex min-w-0 flex-col text-start">
-          <span className="whitespace-nowrap text-xs font-semibold leading-tight text-muted-foreground">{item.label}</span>
-          <span title={item.name} className="max-w-[13rem] truncate text-base font-bold leading-tight sm:max-w-[26rem]">
+          <span className="whitespace-nowrap text-[11px] font-semibold leading-tight text-muted-foreground">{item.label}</span>
+          <span title={item.name} className="max-w-[13rem] truncate text-sm font-bold leading-tight sm:max-w-[26rem]">
             {item.name}
           </span>
         </span>
@@ -69,7 +75,7 @@ function SubStep({ item, words, onOpen }: { item: SubStepItem; words: SubStepWor
       {!item.enabled && !item.current && <span className="sr-only">{words.shut}</span>}
     </>
   );
-  const box = "flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1";
+  const box = "flex min-w-0 items-center gap-2 rounded-lg px-1 py-0.5";
   const focus =
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow";
 
@@ -112,11 +118,13 @@ export function SubStepsRow({
   items,
   label,
   words = TICKET_WORDS,
+  dots = false,
   onOpen,
 }: {
   items: SubStepItem[];
   label: string;
   words?: SubStepWords;
+  dots?: boolean;
   onOpen: (index: number) => void;
 }) {
   const strip = useRef<HTMLOListElement>(null);
@@ -136,7 +144,7 @@ export function SubStepsRow({
   }, [currentIndex]);
 
   return (
-    <nav aria-label={label} className="min-w-0 sm:flex-1">
+    <nav aria-label={label} className={dots ? "shrink-0" : "min-w-0 sm:flex-1"}>
       {/* A scroller clips both ways: `p-1` keeps the focus outline and the open event's ring
           (4px out) inside it, `-mx-1` keeps the items on the page's edge. */}
       <ol
@@ -152,12 +160,12 @@ export function SubStepsRow({
               <span
                 aria-hidden
                 className={cn(
-                  "mx-1.5 h-0.5 w-5 shrink-0 rounded-full sm:mx-3 sm:w-8",
+                  dots ? "mx-0.5 h-0.5 w-3 shrink-0 rounded-full" : "mx-1.5 h-0.5 w-5 shrink-0 rounded-full sm:mx-3 sm:w-8",
                   items[item.index - 1].done ? MINT_FILL : GREY,
                 )}
               />
             )}
-            <SubStep item={item} words={words} onOpen={() => onOpen(item.index)} />
+            <SubStep item={item} words={words} dots={dots} onOpen={() => onOpen(item.index)} />
           </li>
         ))}
       </ol>
@@ -166,24 +174,37 @@ export function SubStepsRow({
 }
 
 /**
- * The tickets step's sub-steps - one per event of the trip - in a slim row under the stepper,
- * with "עריכת המסלול" at its inline end (Dor, 22.10: the events are sub-steps of "כרטיסים", not
- * steps of their own). A done event or the first one still open may be opened; nothing an event
- * holds is cleared by the visit (`setActiveEvent` moves the view only).
- * Phone: the events scroll sideways in their own strip, the edit link on its own line under it.
+ * The tickets step's band: the open event once - its art, "אירוע n", its name, date | place - with
+ * the trip's events as small circles beside it and "עריכת המסלול" under them (Alon 01.11: "במקום
+ * שיחזור על עצמו פעמיים בשתי שורות"; the live step's own band hides, TicketsStep). A done event or
+ * the first one still open may be opened; nothing an event holds is cleared by the visit
+ * (`setActiveEvent` moves the view only).
  */
 export function TicketSubSteps() {
   const { state, setActiveEvent } = useItinerary();
   const items = ticketSubSteps(state);
-  if (!items.length) return null;
+  const open = items.find((i) => i.current);
+  const event = open ? state.route[open.index] : undefined;
+  if (!open || !event) return null;
 
   return (
-    <div
-      dir="rtl"
-      className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 pt-3 sm:flex-row sm:items-center sm:gap-6 lg:px-6"
-    >
-      <SubStepsRow items={items} label="האירועים בטיול" onOpen={setActiveEvent} />
-      <EditRouteLink className="shrink-0 self-end whitespace-nowrap sm:self-auto" />
+    <div id={TICKET_BAND_ID} dir="rtl" className="w-full bg-muted">
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2 lg:px-6 lg:py-3">
+        <TripEventArt event={event} sizes="56px" className="size-12 shrink-0 rounded-full border-2 border-white shadow-sm md:size-14" />
+        <div className="flex min-w-0 flex-1 flex-col leading-tight">
+          <span className="text-[11px] font-semibold text-muted-foreground md:text-xs">{open.label}</span>
+          <h1 className="m-0 line-clamp-2 text-[15px] font-bold leading-tight md:text-xl" title={event.name}>
+            {event.name}
+          </h1>
+          <span className="mt-0.5 truncate text-xs tabular-nums md:text-sm">
+            {dayMonthYear(eventDay(event))} | {lodgingLocation(event, "event").name}
+          </span>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <SubStepsRow dots items={items} label="האירועים בטיול" onOpen={setActiveEvent} />
+          <EditRouteLink className="whitespace-nowrap text-xs" />
+        </div>
+      </div>
     </div>
   );
 }

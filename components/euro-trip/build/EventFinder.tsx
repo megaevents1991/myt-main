@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import dayjs from "dayjs";
+import "dayjs/locale/he";
 import { Search } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -9,11 +11,13 @@ import {
   catalogCities,
   catalogItems,
   catalogMonths,
+  cityMonths,
   dayMonth,
   filterCatalog,
   fittingItems,
   hasTripPartner,
   isBrowsing,
+  nextCityQuestion,
   quickFiltered,
   starterEvents,
   topCities,
@@ -22,6 +26,7 @@ import {
   type CatalogKind,
   type QuickFilter,
 } from "@/lib/itinerary/builder";
+import type { Event } from "@/lib/app.types";
 import { eventDay } from "@/lib/itinerary/geo";
 import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
@@ -40,6 +45,85 @@ const QUICK_KINDS: { value: CatalogKind; label: string }[] = [
   { value: "football", label: "כדורגל" },
 ];
 const NO_QUICK: QuickFilter = { kind: "all", sameCity: false };
+/** The answers to "מה מחפשים?" after a city and a month. */
+const COME_FOR: { value: CatalogKind; label: string }[] = [
+  { value: "music", label: "מוזיקה" },
+  { value: "football", label: "ספורט" },
+  { value: "all", label: "הכל" },
+];
+/** The city row's look (`topCities` chips): the questions after it read as its continuation. */
+const ANSWER_CHIP =
+  "flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-4 text-sm font-bold text-foreground transition-colors hover:border-primary/60 hover:bg-primary/[0.06]";
+
+/**
+ * "יש חודש מועדף?", then "מה מחפשים?" (Alon 01.11): the questions that follow a city, each a row that
+ * scrolls sideways like the cities did. The events under them narrow with every answer; nothing has
+ * to be answered. A set answer becomes one of the bar's chips, which removes itself.
+ */
+function CityQuestion({
+  catalog,
+  filter,
+  skipped,
+  onAnswer,
+  onSkip,
+}: {
+  catalog: Event[];
+  filter: CatalogFilter;
+  skipped: { month: boolean; kind: boolean };
+  onAnswer: (patch: Partial<CatalogFilter>) => void;
+  onSkip: (question: "month" | "kind") => void;
+}) {
+  const question = nextCityQuestion(catalog, filter, skipped);
+  if (!question) return null;
+  const row = "-mx-4 m-0 flex list-none gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden";
+  if (question === "month") {
+    const months = cityMonths(catalog, filter.city);
+    const firstYear = months[0]?.month.slice(0, 4);
+    return (
+      <div className="flex flex-col gap-2.5">
+        <FinderHeading>יש חודש מועדף?</FinderHeading>
+        <ul className={row}>
+          {months.map(({ month, count }) => (
+            <li key={month} className="shrink-0">
+              <button type="button" onClick={() => onAnswer({ month })} className={ANSWER_CHIP}>
+                {dayjs(`${month}-01`)
+                  .locale("he")
+                  .format(month.startsWith(firstYear) ? "MMMM" : "MMMM YY")}
+                <span className="text-xs font-semibold tabular-nums text-muted-foreground">{count}</span>
+              </button>
+            </li>
+          ))}
+          <li className="shrink-0">
+            <button type="button" onClick={() => onSkip("month")} className={ANSWER_CHIP}>
+              לא משנה
+            </button>
+          </li>
+        </ul>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2.5">
+      <FinderHeading>מה מחפשים?</FinderHeading>
+      <ul className={row}>
+        {COME_FOR.map(({ value, label }) => (
+          <li key={value} className="shrink-0">
+            <button
+              type="button"
+              onClick={() => (value === "all" ? onSkip("kind") : onAnswer({ kind: value }))}
+              className={ANSWER_CHIP}
+            >
+              {label}
+              <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                {filterCatalog(catalog, { ...filter, kind: value }).length}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function FinderHeading({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   return (
@@ -83,7 +167,8 @@ function PickedEvents() {
  * - An event in the trip (Dor 31.10: usually 20-30 fit, so no open search): "מה עוד מתאים לטריפ" -
  *   only what can join, best fit first (`fittingItems`) - under "רוצה לשלב עם: הופעה | כדורגל" and
  *   "באותה עיר"; a search icon opens the bar for anything else.
- * - Searching (a word or a filter): every match, the fitting ones first (`catalogItems`).
+ * - Searching (a word or a filter): every match, the fitting ones first (`catalogItems`). A first
+ *   event looked for by its city gets the questions that follow it (`CityQuestion`).
  * The caller draws the events (`renderItems`): cards in the planner, rows in the popup.
  */
 export function EventFinder({
@@ -110,6 +195,9 @@ export function EventFinder({
   const [suggested, setSuggested] = useState(SUGGEST_PAGE);
   const [quick, setQuick] = useState<QuickFilter>(NO_QUICK);
   const [searchOpen, setSearchOpen] = useState(false);
+  // "לא משנה" / "הכל" to a city's questions, for that city.
+  const [skipped, setSkipped] = useState({ city: "", month: false, kind: false });
+  const skippedNow = skipped.city === filter.city ? skipped : { city: filter.city, month: false, kind: false };
   const months = useMemo(() => catalogMonths(catalog), [catalog]);
   const cities = useMemo(() => catalogCities(catalog), [catalog]);
   const browsing = isBrowsing(filter);
@@ -147,6 +235,15 @@ export function EventFinder({
   if (!browsing) {
     body = results.length ? (
       <div className="flex flex-col gap-2">
+        {!route.length && (
+          <CityQuestion
+            catalog={catalog}
+            filter={filter}
+            skipped={skippedNow}
+            onAnswer={update}
+            onSkip={(question) => setSkipped({ ...skippedNow, [question]: true })}
+          />
+        )}
         <p className="m-0 text-sm text-muted-foreground" role="status">
           {results.length === 1 ? "אירוע אחד" : `${results.length} אירועים`}
         </p>

@@ -26,6 +26,20 @@ const wembley = ev(703, "קונצרט בוומבלי", "2027-05-17", WEMBLEY);
 const none: ReadonlySet<string> = new Set();
 
 describe("tripStops", () => {
+  it("an event in another city under one hotel is a way there, not 'נשארים' (Alon 01.11)", () => {
+    const show = ev(1, "בוב דילן", "2027-05-12", LONDON);
+    const match = {
+      ...ev(2, "מנצ'סטר סיטי - צ'לסי", "2027-05-15", LONDON, "sports_event"),
+      event_location: { name: "מנצ'סטר", latitude: 53.48, longitude: -2.24 },
+      lodging_mode: "choice_split",
+      lodging_default: "flight",
+    } as unknown as Event;
+    const stops = tripStops([show, match], defaultTripDates([show, match]), none);
+    expect(stops.map((s) => s.kind)).toEqual(["depart", "event", "ground", "event", "ret"]);
+    expect(stops[2]).toMatchObject({ title: "הגעה עצמאית למנצ'סטר" });
+    expect(stops.some((s) => s.title.startsWith("נשארים"))).toBe(false);
+  });
+
   it("walks the trip like the planner's panel: out, event, move, event, home - with the date rule's labels", () => {
     const route = [celine, chelsea];
     const dates = defaultTripDates(route);

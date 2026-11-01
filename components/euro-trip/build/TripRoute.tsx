@@ -14,20 +14,20 @@ const stopDetail = (s: TripStop): string | null =>
 
 /**
  * The summary's "מסלול (N ימים)" - the whole trip, stop by stop, above the rows that edit it
- * (Alon 28.10, the Mega Family tour page's route look; Dor: one row per stop). Open by default,
- * folds away on its header. Reads the trip's own state only: nothing here can be edited - every
- * change goes through the rows under it.
+ * (Alon 28.10, the Mega Family tour page's route look; Dor: one row per stop). Closed until its
+ * header is tapped, like the groups under it (Alon 01.11). Reads the trip's own state only: nothing
+ * here can be edited - every change goes through the rows under it.
  */
 export function TripRoute() {
   const { state } = useItinerary();
   const { route, dates, train } = state;
   const stops = useMemo(() => tripStops(route, dates, new Set(train)), [route, dates, train]);
   const days = tripDays(dates);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   if (!stops.length) return null;
 
   return (
-    <section dir="rtl" aria-labelledby="trip-route-title" className="border-b border-border px-4 py-4 md:px-6">
+    <section dir="rtl" aria-labelledby="trip-route-title" className="border-b border-border px-4 py-3.5 md:px-6">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

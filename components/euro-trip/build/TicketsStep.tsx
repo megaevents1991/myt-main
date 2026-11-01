@@ -3,104 +3,26 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { CircleAlert, Loader2 } from "lucide-react";
 
-import { loadTripEvents } from "@/app/euro-trip/build/actions";
 import { OrderContext } from "@/app/app.context";
 import { TicketSelection } from "@/app/order/TicketSelection";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event } from "@/lib/app.types";
 import type { HeldTicket } from "@/lib/itinerary/draft";
-import {
-  MAX_TRIP_LOAD,
-  asFullRow,
-  categorySwapNotice,
-  goneIds,
-  isFullRow,
-  ticketFromStep,
-  ticketReady,
-} from "@/lib/itinerary/adapter";
-import { cn } from "@/lib/utils";
+import { asFullRow, categorySwapNotice, isFullRow, ticketFromStep, ticketReady } from "@/lib/itinerary/adapter";
 import { useItinerary } from "./ItineraryProvider";
 import { adapterForEvent, type TicketStepCallbacks } from "./orderContextAdapter";
+import { TICKET_BAND_ID } from "./parts";
+import { useFullRows } from "./useFullRows";
 
 /**
- * The live ticket step's event band (EventDataHeader inside its full-width `bg-muted` strip), made
- * small in a trip - Dor 28.10: "the row grows, the big event title band shrinks"; the event circles
- * above already name the event. Scoped to this step's own wrapper, so /order is untouched: the
- * name drops from 3xl to lg / xl, the date line to sm, the round photo to 44-48px, the description
- * goes and the strip's padding shrinks.
+ * The live ticket step draws its own event band (EventDataHeader in a full-width `bg-muted` strip). A
+ * trip draws that line once, with the event circles in it (TicketSubSteps, Alon 01.11: the name came
+ * twice, in two rows), so the live band hides. Scoped to this step's own wrapper: /order is untouched.
  */
-const COMPACT_EVENT_BAND = cn(
-  "lg:[&_.w-screen.bg-muted]:py-2",
-  "[&_.w-screen.bg-muted_h1>span:first-child]:mb-0 [&_.w-screen.bg-muted_h1>span:first-child]:text-lg md:[&_.w-screen.bg-muted_h1>span:first-child]:text-xl",
-  "[&_.w-screen.bg-muted_h1>span:nth-child(2)]:text-sm",
-  "[&_.w-screen.bg-muted_h1~span]:hidden",
-  "[&_.w-screen.bg-muted_.size-16.rounded-full]:size-11 md:[&_.w-screen.bg-muted_.size-16.rounded-full]:size-12",
-);
+const NO_LIVE_BAND = "[&_.w-screen.bg-muted]:hidden";
 
 /** Right after the live step's own scroll (TicketSelection: 1 s after it mounts). */
 const MOBILE_SCROLL_AFTER_MS = 1050;
-
-/** The same words the route link uses for an event that left the catalog. */
-const GONE = "האירוע כבר לא זמין";
-
-/**
- * The route's events still hold the builder's slim catalog rows (lib/itinerary/slim.ts);
- * the ticket step needs them whole. One Server Action call for every slim row, when the step
- * opens (a row loaded before - the customer came back from a later step - is not loaded
- * again; never more than MAX_TRIP_LOAD per call, the action's own cap). A row that comes back
- * is swapped in (`setEventData`: same trip, so the picks stay); an asked id that does not
- * come back left the catalog - the route's notice says so and it leaves the route, unless the
- * customer already took it out while the answer was on its way.
- */
-function useFullRows(): { failed: boolean; retry: () => void } {
-  const { state, setEventData, removeEvent, showNotice } = useItinerary();
-  const key = state.route
-    .filter((e) => !isFullRow(e))
-    .slice(0, MAX_TRIP_LOAD)
-    .map((e) => e.id)
-    .join(",");
-  // The route when the answer lands, not when it was asked.
-  const route = useRef(state.route);
-  useLayoutEffect(() => {
-    route.current = state.route;
-  });
-  const [attempt, setAttempt] = useState(0);
-  const [failedFor, setFailedFor] = useState<string | null>(null);
-  // One call per (rows, attempt) - never a second one while it is answered.
-  const asked = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!key) return;
-    const ask = `${key}#${attempt}`;
-    if (asked.current === ask) return;
-    asked.current = ask;
-    setFailedFor(null);
-    const ids = key.split(",").map(Number);
-    loadTripEvents(ids)
-      .then((rows) => {
-        for (const row of rows) setEventData(asFullRow(row));
-        const gone = goneIds(
-          ids,
-          rows,
-          route.current.map((e) => e.id),
-        );
-        if (!gone.length) return;
-        showNotice(GONE);
-        for (const id of gone) removeEvent(id);
-      })
-      .catch((err) => {
-        console.error("[EuroTrip] Failed to load the trip's events:", err);
-        setFailedFor(ask);
-      });
-    // The actions only dispatch to the provider - any render's copy does the same.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, attempt]);
-
-  return {
-    failed: failedFor === `${key}#${attempt}`,
-    retry: () => setAttempt((a) => a + 1),
-  };
-}
 
 /**
  * One event's ticket step: the order flow's own TicketSelection, unchanged, reading this
@@ -155,14 +77,13 @@ function EventTicketPane({ event, lastPane }: { event: Event; lastPane: RefObjec
   // after it mounts (TicketSelection), which this one follows straight away - and which is undone
   // when the pane mounted only because +/- changed the party (the same event again: the customer
   // stays where they were).
-  const root = useRef<HTMLDivElement>(null);
   const [keepScroll] = useState(() => lastPane.current === event.id);
   useEffect(() => {
     lastPane.current = event.id;
     if (window.matchMedia("(min-width: 1024px)").matches) return;
     const from = window.scrollY;
     const timer = window.setTimeout(() => {
-      const band = root.current?.querySelector<HTMLElement>(".w-screen.bg-muted");
+      const band = document.getElementById(TICKET_BAND_ID);
       const top = band ? band.getBoundingClientRect().top + window.scrollY : 90;
       window.scrollTo({ top: keepScroll ? from : top, behavior: "smooth" });
     }, MOBILE_SCROLL_AFTER_MS);
@@ -173,7 +94,6 @@ function EventTicketPane({ event, lastPane }: { event: Event; lastPane: RefObjec
 
   return (
     <div
-      ref={root}
       onClickCapture={() => {
         touched.current = true;
       }}
@@ -238,9 +158,9 @@ export function TicketsStep() {
   const doneCount = route.filter(isDone).length;
 
   return (
-    <section aria-labelledby="trip-tickets-title" className={cn("flex flex-col gap-3", COMPACT_EVENT_BAND)}>
-      {/* Alon 28.10: no visible heading here - the event circles above and the event's own header
-          say where the customer stands. Screen readers keep the section's name and the count. */}
+    <section aria-labelledby="trip-tickets-title" className={`flex flex-col gap-3 ${NO_LIVE_BAND}`}>
+      {/* Alon 28.10: no visible heading here - the band above says where the customer stands. Screen
+          readers keep the section's name and the count. */}
       <h2 id="trip-tickets-title" className="sr-only">
         כרטיסים לכל אירוע · {doneCount} מתוך {route.length} מוכנים
       </h2>
