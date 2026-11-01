@@ -348,8 +348,46 @@ export type ZoneOffer<T extends PricedTicket = PricedTicket> = T & {
 
 const isSplit = (ticket: PricedTicket) => ticket.seating === "groups";
 
+/** Who keeps the card: the zone's toggle, then the lower price, then the one that seats the party together. */
+const beatsForCard = (a: ZoneOffer, b: ZoneOffer): boolean => {
+  if (!!a.seatingOptions !== !!b.seatingOptions) return !!a.seatingOptions;
+  if (a.price !== b.price) return a.price < b.price;
+  return a.seating === "together" && b.seating !== "together";
+};
+
 /**
- * What the ticket list shows: one supplier per zone (`cheapestSupplierPerZone`),
+ * One card per zone (Dor 01.11, event 1292: Curva Nord and Curva Sud, both
+ * TixStock, both in one zone, printed the zone's title twice, the second at
+ * +$6). A card's title IS the zone, so offers that share a `keyOf` are one card
+ * to the customer. It runs on the priced list, so a category that cannot seat
+ * this party has already left and the other simply takes the card. The map still
+ * lights every section of the zone, and a click there picks this same cheapest.
+ * A tie that nothing breaks keeps the first in the list.
+ */
+function cheapestCardPerKey<T extends ZoneOffer>(
+  tickets: T[],
+  keyOf: (ticket: T) => string,
+): T[] {
+  const best = new Map<string, T>();
+  for (const ticket of tickets) {
+    if (!ticket.zoneId) continue;
+    const key = keyOf(ticket);
+    const held = best.get(key);
+    if (!held || beatsForCard(ticket, held)) best.set(key, ticket);
+  }
+  return tickets.filter((t) => !t.zoneId || best.get(keyOf(t)) === t);
+}
+
+/**
+ * A description of its own is a card of its own: a person wrote those offers
+ * apart and the customer can tell them apart (Man City's blocks 002/007 and 005).
+ */
+const zoneAndDescription = (ticket: EventTicket): string =>
+  `${ticket.zoneId}|${ticket.description?.trim() ?? ""}`;
+
+/**
+ * What the ticket list shows: one card per zone (`cheapestCardPerKey`), from
+ * one supplier (`cheapestSupplierPerZone`),
  * except when the party is bigger than a pair and the zone's cheapest offer
  * SPLITS it (pairs + a triple) while a dearer offer in the same zone seats it
  * all TOGETHER - then the customer chooses (Alon 23.09): one card, a together /
@@ -369,7 +407,12 @@ export function zoneOffers<T extends PricedTicket>(
   qty: number,
 ): ZoneOffer<T>[] {
   const kept = cheapestSupplierPerZone(tickets, eventType);
-  if (qty <= 2) return kept.filter((t) => !t.twinOf);
+  if (qty <= 2) {
+    return cheapestCardPerKey<ZoneOffer<T>>(
+      kept.filter((t) => !t.twinOf),
+      zoneAndDescription,
+    );
+  }
 
   const cards: ZoneOffer<T>[] = kept.map((ticket) => {
     if (!ticket.zoneId || !isSplit(ticket)) return ticket;
@@ -394,8 +437,11 @@ export function zoneOffers<T extends PricedTicket>(
         : [],
     ),
   );
-  return cards.filter(
-    (card) => card.seatingOptions || (!inToggle.has(card.id) && !card.twinOf),
+  return cheapestCardPerKey(
+    cards.filter(
+      (card) => card.seatingOptions || (!inToggle.has(card.id) && !card.twinOf),
+    ),
+    zoneAndDescription,
   );
 }
 
@@ -405,6 +451,20 @@ export function zoneOffers<T extends PricedTicket>(
  */
 export const withoutTwins = <T extends PricedTicket>(tickets: T[]): T[] =>
   tickets.filter((t) => !t.twinOf);
+
+/**
+ * The cards while a supplier is down: an estimate must neither crown a winner
+ * nor hide a real offer, so each supplier keeps its card in a shared zone - but
+ * one supplier's offers in one zone are still one card, on one buffer.
+ */
+export const offersWhileSupplierDown = <T extends PricedTicket>(
+  tickets: T[],
+  eventType: EventType | undefined,
+): T[] =>
+  cheapestCardPerKey(
+    withoutTwins(tickets),
+    (ticket) => `${ticketSupplier(ticket, eventType)}|${zoneAndDescription(ticket)}`,
+  );
 
 /**
  * Ids of the tickets that win their zone: the cheapest offer in a zone that

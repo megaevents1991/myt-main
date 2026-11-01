@@ -19,6 +19,7 @@ import type { LiveTicketsOffer } from "@/lib/livetickets";
 import {
   bestPriceTicketIds,
   nearestFeasibleQuantity,
+  offersWhileSupplierDown,
   orderTicketId,
   priceTicketsForQuantity,
   withoutTwins,
@@ -639,12 +640,12 @@ export const TicketSelection = ({ initialEvent }: { initialEvent?: Event }) => {
       isTxEvent && matchedTicketIds
         ? effectiveTickets.filter((t) => isShownWithMap(t, matchedTicketIds))
         : effectiveTickets;
-    // The same zone from two suppliers: only the cheaper supplier is shown -
-    // unless one seats the party together and the other splits it; then one
-    // card carries both, with a toggle (zoneOffers).
+    // One card per zone, from the cheaper supplier - unless one seats the
+    // party together and the other splits it; then one card carries both,
+    // with a toggle (zoneOffers).
     return allSuppliersLive
       ? zoneOffers(onMap, event?.type, numberOfEventTickets)
-      : withoutTwins(onMap);
+      : offersWhileSupplierDown(onMap, event?.type);
   }, [
     isTxEvent,
     effectiveTickets,

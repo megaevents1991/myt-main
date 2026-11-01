@@ -320,7 +320,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > matching. The customer sees the zone label; the order keeps `supplier`,
 > `supplier_event_id`, `supplier_category` for ops. `confirm-order` re-checks a
 > LiveTickets ticket live (`validateLiveTicketsOffer`). Attaching a supplier is
-> always manual in the backoffice - nothing auto-matches. Tests:
+> always manual in the backoffice - nothing auto-matches. **One card per zone
+> (01.11, event 1292):** the card's title is the zone, so `zoneOffers` leaves one
+> offer per zone at this quantity - the together / split toggle, else the cheapest,
+> whichever supplier or category it is; a ticket with a description of its own keeps
+> its card, and while a supplier is down each supplier keeps one
+> (`offersWhileSupplierDown`). The map still gets every ticket. Tests:
 > `npx tsx lib/__tests__/supplier-offers.test.ts`. Pilot: hidden `is_test`
 > event 1130 (clone of 707).
 

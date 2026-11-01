@@ -3,6 +3,7 @@ import {
   bestPriceTicketIds,
   cheapestSupplierPerZone,
   nearestFeasibleQuantity,
+  offersWhileSupplierDown,
   orderTicketId,
   preferTogether,
   priceTicketsForQuantity,
@@ -411,5 +412,81 @@ assert.equal(priceTicketsForQuantity(berlinCopy, "tx_event", 2, txOnly(amsterdam
 assert.equal(nearest(2, amsterdamFeed, berlinCopy), null);
 // something already sells at the asked quantity → no rescue to offer
 assert.equal(nearest(2, [listing("CATEGORY 1", "402.2", 2)]), null);
+
+// One card per zone (Dor 01.11, event 1292): Curva Nord and Curva Sud, both TixStock,
+// both in one zone, printed the zone's title twice - the second at +$6
+const curva = (id: string, price: number, over: Partial<PricedTicket> = {}): PricedTicket => ({
+  ...ticket({ id, category: id, supplier: "tixstock", zoneId: "zone", price }),
+  seating: "together",
+  ...over,
+});
+const curvaLive = curva("live", 155, { supplier: "livetickets" });
+const cardIds = (cards: PricedTicket[]) => cards.map((t) => t.id);
+assert.deepEqual(cardIds(zoneOffers([curva("nord", 122), curva("sud", 128), curvaLive], "tx_event", 2)), ["nord"]);
+// the cheapest of the zone, wherever it sits in the list
+assert.deepEqual(cardIds(zoneOffers([curva("nord", 98), curva("sud", 86)], "tx_event", 2)), ["sud"]);
+// a tie: the first in the list, unless the other seats the party together
+assert.deepEqual(cardIds(zoneOffers([curva("nord", 140), curva("sud", 140)], "tx_event", 2)), ["nord"]);
+assert.deepEqual(
+  cardIds(zoneOffers([curva("nord", 140, { seating: "groups" }), curva("sud", 140)], "tx_event", 4)),
+  ["sud"],
+);
+// the quantity decides first: a category that cannot seat the party leaves, the other is the card
+const curvaFeed = txLive([listing("Curva Sud", "128", 4)]);
+assert.deepEqual(
+  cardIds(
+    zoneOffers(
+      priceTicketsForQuantity(
+        [ticket({ id: "nord", category: "Curva Nord", supplier: "tixstock", zoneId: "zone" }), ticket({ id: "sud", category: "Curva Sud", supplier: "tixstock", zoneId: "zone" })],
+        "tx_event",
+        4,
+        curvaFeed,
+        1.15,
+      ),
+      "tx_event",
+      4,
+    ),
+  ),
+  ["sud"],
+);
+// other zones and tickets with no zone keep their cards
+assert.deepEqual(
+  cardIds(zoneOffers([curva("nord", 122), curva("sud", 128), curva("side", 200, { zoneId: "other" }), curva("a", 90, { zoneId: undefined }), curva("b", 95, { zoneId: undefined })], "tx_event", 2)),
+  ["nord", "side", "a", "b"],
+);
+// a description of its own: a person wrote them apart (Man City's blocks, event 976)
+assert.deepEqual(
+  cardIds(zoneOffers([curva("b1", 336, { description: "בלוקים 002/007" }), curva("b2", 400, { description: "בלוק 005" })], "tx_event", 2)),
+  ["b1", "b2"],
+);
+assert.deepEqual(
+  cardIds(zoneOffers([curva("b1", 336, { description: "בלוק 005" }), curva("b2", 400, { description: " בלוק 005 " })], "tx_event", 2)),
+  ["b1"],
+);
+// the zone's toggle stays the one card, also when it opens on a dearer side than another offer there
+offers = zoneOffers(
+  [curva("nord", 122, { seating: "groups" }), curva("extra", 125, { seating: "groups" }), curva("sud", 128)],
+  "tx_event",
+  5,
+);
+assert.deepEqual(
+  offers.map((t) => [t.id, t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
+  [["sud", "sud", "nord"]],
+);
+// ...and when its together side is another supplier's
+offers = zoneOffers(
+  [curva("lt1", 400, { supplier: "livetickets", seating: "groups" }), curva("lt2", 420, { supplier: "livetickets", seating: "groups" }), curva("tx", 450)],
+  "tx_event",
+  5,
+);
+assert.deepEqual(
+  offers.map((t) => [t.id, t.seatingOptions?.together.id, t.seatingOptions?.split.id]),
+  [["tx", "tx", "lt1"]],
+);
+// a supplier down: its estimate hides no other supplier's offer, but one supplier still has one card a zone, and no twin
+assert.deepEqual(
+  cardIds(offersWhileSupplierDown([curva("nord", 122), curva("sud", 128), curvaLive, curva("nord~together", 140, { twinOf: "nord" })], "tx_event")),
+  ["nord", "live"],
+);
 
 console.log("supplier-offers: all assertions passed");
