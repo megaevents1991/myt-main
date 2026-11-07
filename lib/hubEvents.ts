@@ -3,8 +3,7 @@ import { getAllArtists } from "@/lib/artists";
 import { eventMatchesName } from "@/lib/eventNameMatch";
 import { getCachedEvents, getEventsByName } from "@/lib/eventsData";
 import { getAllFootballTeams } from "@/lib/football";
-import { supabase } from "@/lib/supabase";
-import { getEventsInCategory } from "@/lib/taxonomy";
+import { getEventsInCategory, linksByCategory, readCategoryLinks } from "@/lib/taxonomy";
 import type { EventCategory } from "@/lib/taxonomy.types";
 
 /**
@@ -113,43 +112,15 @@ export function emptyLeafIds({
   return empty;
 }
 
-/**
- * Every link row of these categories, paged. One select stops at PostgREST's
- * 1,000-row cap without a word, and the leaves hold ~3,500 links (2026-11-07):
- * an unpaged read made hubs with events look empty. Null on any failed page.
- */
-async function readCategoryLinks(categoryIds: number[]): Promise<Map<number, Set<number>> | null> {
-  const PAGE = 1000;
-  const map = new Map<number, Set<number>>();
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from("event_category_links")
-      .select("category_id,event_id")
-      .in("category_id", categoryIds)
-      .order("category_id", { ascending: true })
-      .order("event_id", { ascending: true })
-      .range(from, from + PAGE - 1);
-    if (error) {
-      console.error("readCategoryLinks failed:", JSON.stringify(error));
-      return null;
-    }
-    for (const l of data ?? []) {
-      const cid = l.category_id as number;
-      if (!map.has(cid)) map.set(cid, new Set());
-      map.get(cid)!.add(l.event_id as number);
-    }
-    if ((data ?? []).length < PAGE) return map;
-  }
-}
-
-/** emptyLeafIds over live data: the cached catalog, every leaf link, the two people lists. */
+/** emptyLeafIds over live data: the cached catalog, every leaf link (paged), the two people lists. */
 export async function readEmptyLeafIds(all: EventCategory[]): Promise<Set<number>> {
   const leafIds = all.filter((c) => isLeafHub(c, all)).map((c) => c.id);
-  const [{ events: catalog }, links, teams, artists] = await Promise.all([
+  const [{ events: catalog }, rows, teams, artists] = await Promise.all([
     getCachedEvents(),
     readCategoryLinks(leafIds),
     getAllFootballTeams().catch(() => []),
     getAllArtists().catch(() => []),
   ]);
+  const links = rows === null ? null : linksByCategory(rows);
   return emptyLeafIds({ all, catalog, links, teams, artists });
 }

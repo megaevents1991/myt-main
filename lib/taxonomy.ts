@@ -128,30 +128,59 @@ export async function getCategoryEventIdSet(slug: string): Promise<Set<number>> 
   return map.get(category.id) ?? new Set();
 }
 
+export type CategoryLink = { category_id: number; event_id: number };
+
+export const CATEGORY_LINKS_PAGE = 1000;
+
+/**
+ * Every event_category_links row of these categories, read in pages. One select
+ * stops at PostgREST's 1,000-row cap without a word, and the whole tree holds
+ * ~3,500 links (2026-11-07): the header menu saw a random 1,000 of them and
+ * dropped 10 of its 70 live categories, different ones each hour. The fixed
+ * order keeps the pages from overlapping. Null when any page fails.
+ */
+export async function readCategoryLinks(categoryIds: number[]): Promise<CategoryLink[] | null> {
+  if (!categoryIds.length) return [];
+  const rows: CategoryLink[] = [];
+  for (let from = 0; ; from += CATEGORY_LINKS_PAGE) {
+    const { data, error } = await supabase
+      .from("event_category_links")
+      .select("category_id,event_id")
+      .in("category_id", categoryIds)
+      .order("category_id", { ascending: true })
+      .order("event_id", { ascending: true })
+      .range(from, from + CATEGORY_LINKS_PAGE - 1);
+    if (error) {
+      console.error("readCategoryLinks failed:", JSON.stringify(error));
+      return null;
+    }
+    const page = (data ?? []) as CategoryLink[];
+    rows.push(...page);
+    if (page.length < CATEGORY_LINKS_PAGE) return rows;
+  }
+}
+
+/** Link rows → event_id set per category. */
+export function linksByCategory(rows: CategoryLink[]): Map<number, Set<number>> {
+  const map = new Map<number, Set<number>>();
+  for (const l of rows) {
+    if (!map.has(l.category_id)) map.set(l.category_id, new Set());
+    map.get(l.category_id)!.add(l.event_id);
+  }
+  return map;
+}
+
 /**
  * event_id sets per category, for slicing a pool of events by a group of
  * sibling categories (e.g. "which league does each deal belong to" - the
- * החבילות המשתלמות league-diversity cap). One query, no tree walk.
+ * החבילות המשתלמות league-diversity cap). No tree walk; an empty map when the
+ * read fails.
  */
 export async function getEventIdsByCategories(
   categoryIds: number[],
 ): Promise<Map<number, Set<number>>> {
-  const map = new Map<number, Set<number>>();
-  if (!categoryIds.length) return map;
-  const { data, error } = await supabase
-    .from("event_category_links")
-    .select("category_id,event_id")
-    .in("category_id", categoryIds);
-  if (error) {
-    console.error("getEventIdsByCategories failed:", JSON.stringify(error));
-    return map;
-  }
-  (data ?? []).forEach((l) => {
-    const cid = l.category_id as number;
-    if (!map.has(cid)) map.set(cid, new Set());
-    map.get(cid)!.add(l.event_id as number);
-  });
-  return map;
+  const rows = await readCategoryLinks(categoryIds);
+  return linksByCategory(rows ?? []);
 }
 
 /* ---------- tags (product feed / promotions) ---------- */
@@ -232,29 +261,24 @@ export const getNavCategories = nextCache(
     // Count only BOOKABLE packages: a category whose events are all in the
     // past (e.g. last season's ליגת האלופות) must not sit as a dead nav link.
     // Same availability rule as the category pages themselves.
-    const [linksRes, futureRes] = await Promise.all([
-      supabase
-        .from("event_category_links")
-        .select("category_id,event_id")
-        .in(
-          "category_id",
-          all.map((c) => c.id),
-        ),
+    // Every link, paged (readCategoryLinks): one select used to stop at 1,000 of
+    // ~3,500 and the menu lost a random tenth of its categories.
+    const [links, futureRes] = await Promise.all([
+      readCategoryLinks(all.map((c) => c.id)),
       readFutureEventFlags(),
     ]);
-    if (linksRes.error || futureRes.error) {
+    if (links === null || futureRes.error) {
       console.error(
         "getNavCategories failed:",
-        JSON.stringify(linksRes.error ?? futureRes.error),
+        JSON.stringify(futureRes.error ?? "event_category_links read failed"),
       );
       return [];
     }
     const futureIds = listedEventIds(futureRes.data ?? []);
     const counts = new Map<number, number>();
-    (linksRes.data ?? []).forEach((l) => {
-      if (!futureIds.has(l.event_id as number)) return;
-      const id = l.category_id as number;
-      counts.set(id, (counts.get(id) ?? 0) + 1);
+    links.forEach((l) => {
+      if (!futureIds.has(l.event_id)) return;
+      counts.set(l.category_id, (counts.get(l.category_id) ?? 0) + 1);
     });
 
     const keep = (node: EventCategoryNode): NavCategory | null => {
