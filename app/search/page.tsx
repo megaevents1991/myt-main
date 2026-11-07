@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description:
     "חפשו אירועי ספורט ומוזיקה בעולם, סננו לפי עיר, תאריך ומחיר והרכיבו חבילה.",
   alternates: { canonical: "https://www.mega-events.co.il/search" },
+  // An internal results page: crawl through it to the events, don't index it.
+  robots: { index: false, follow: true },
 };
 
 // Pick the first value when a query param arrives repeated (?cat=a&cat=b).

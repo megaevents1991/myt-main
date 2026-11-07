@@ -15,8 +15,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
 
-  // About to 308 to the /c/ twin - no metadata to build, no DB read to spend.
-  if (await cachedLegacyTwinHref("teams", slug).catch(() => null)) return {};
+  // About to 308 to the /c/ twin - no DB read to spend; the twin is the
+  // canonical (production serves this as a 200 meta-refresh, so say it here too).
+  const twin = await cachedLegacyTwinHref("teams", slug).catch(() => null);
+  if (twin) return { alternates: { canonical: `https://www.mega-events.co.il${twin}` } };
 
   try {
     const team = await getFootballTeamBySlug(slug);

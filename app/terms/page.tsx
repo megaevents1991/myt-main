@@ -1,7 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
 export const dynamic = "force-static"; // This is optional, but good for fully static pages
 export const revalidate = 3600; // Optional: revalidate every hour
+
+export const metadata: Metadata = {
+  title: "תנאי שימוש באתר - מגה איבנטס",
+  description:
+    "תנאי השימוש באתר מגה איבנטס: הזמנת חבילות לאירועי ספורט ומוזיקה בחו״ל, תשלום בכרטיס אשראי, זכויות יוצרים ושמירה על פרטיות.",
+  alternates: { canonical: "https://www.mega-events.co.il/terms" },
+};
 
 export default function TermsOfUse() {
   return (

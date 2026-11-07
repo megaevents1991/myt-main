@@ -77,12 +77,8 @@ export const metadata: Metadata = {
   category: "Travel & Events",
   classification: "Travel Agency, Event Tickets, Tourism",
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "https://www.mega-events.co.il",
-    languages: {
-      "he-IL": "https://www.mega-events.co.il",
-    },
-  },
+  // No site-wide canonical: a default here is inherited by every page without
+  // its own and points it at the homepage. Each indexable page sets its own.
   openGraph: {
     title: "מגה איבנטס. כל האירועים השווים בחו״ל במקום אחד",
     description:
@@ -117,9 +113,6 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
       "max-snippet": -1,
     },
-  },
-  verification: {
-    google: "YOUR_GOOGLE_VERIFICATION_CODE", // Replace with actual verification code
   },
   icons: {
     // New ME brand mark (SVG) for modern browsers; .ico kept as fallback.

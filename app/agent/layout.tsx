@@ -1,6 +1,10 @@
 import { ReactNode } from "react";
+import type { Metadata } from "next";
 import { getPartnerSession } from "@/lib/partner-auth";
 import { AgentNav } from "./agent-nav";
+
+// Partner-only screens: never in a search index.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 /**
  * The signed-in agent/influencer area.

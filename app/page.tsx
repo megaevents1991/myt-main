@@ -28,10 +28,16 @@ import {
   type MergedRow,
 } from "@/lib/homepage/merge";
 import type { HeroCarouselItem } from "@/components/HeroCarousel";
+import type { Metadata } from "next";
 
 // Force static generation with ISR
 export const dynamic = "force-static";
 export const revalidate = 3600; // Revalidate every hour (reduced from 24h for fresher content)
+
+// Title, description and og come from the root layout.
+export const metadata: Metadata = {
+  alternates: { canonical: "https://www.mega-events.co.il" },
+};
 
 async function getEventsForPage() {
   const events = await getCachedEvents();

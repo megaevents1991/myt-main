@@ -74,6 +74,7 @@ function visibleLines(html) {
   const stripped = body
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<title[\s\S]*?<\/title>/gi, "")
     .replace(/<template[\s\S]*?<\/template>/gi, "")
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "")
@@ -98,7 +99,10 @@ async function inspect(base, path) {
     return out;
   }
   const html = await res.text();
-  const head = html.split(/<body[\s>]/i)[0] ?? html;
+  // Next 15 streams metadata into <body> on a dynamic render for a non-bot
+  // user agent (bots get it in <head>), so read it from the whole document,
+  // minus SVGs, whose <title> elements are not the page title.
+  const head = html.replace(/<svg[\s\S]*?<\/svg>/gi, "");
   const titleM = head.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const canon = (head.match(/<link\s[^>]*rel="canonical"[^>]*>/gi) ?? []).map((t) => attr(t, "href"));
   Object.assign(out, {
