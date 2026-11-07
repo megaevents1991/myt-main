@@ -1,6 +1,7 @@
 import { getCachedEvents } from "@/lib/eventsData";
 import { getAllBlogPosts } from "@/lib/blog";
 import { getAllCategories } from "@/lib/taxonomy";
+import { readEmptyLeafIds } from "@/lib/hubEvents";
 import { slugPathOf } from "@/lib/taxonomy-tree";
 
 // Category nodes whose page only redirects (app/c/[...slug]/page.tsx: the old
@@ -111,8 +112,11 @@ export async function GET() {
     }> = [];
     try {
       const cats = await getAllCategories();
+      // Leaf hubs with nothing on sale are noindex (app/c/[...slug]/page.tsx) - not listed.
+      // A failed read marks nothing empty, so a hiccup never drops a live hub.
+      const emptyHubs = await readEmptyLeafIds(cats).catch(() => new Set<number>());
       categoryPages = cats
-        .filter((cat) => !REDIRECT_ONLY_CATEGORY_SLUGS.has(cat.slug))
+        .filter((cat) => !REDIRECT_ONLY_CATEGORY_SLUGS.has(cat.slug) && !emptyHubs.has(cat.id))
         .map((cat) => ({
           url: `${baseUrl}/c/${slugPathOf(cat, cats).join("/")}`,
           lastModified: cat.updated_at || STATIC_LASTMOD,

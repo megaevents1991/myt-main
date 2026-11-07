@@ -67,12 +67,13 @@ export async function getCategoryBySlug(
  * by nesting. Pass `includeDescendants: true` to walk the tree anyway.
  *
  * Same availability rules as the rest of the catalog: not deleted, at least
- * AVAILABILITY_WINDOW_DAYS in the future, soonest first.
+ * AVAILABILITY_WINDOW_DAYS in the future, soonest first. `failed` = a read failed, so the
+ * empty list says nothing about the category (it is not "no events").
  */
 export async function getEventsInCategory(
   slug: string,
   opts: { includeDescendants?: boolean } = {},
-): Promise<{ category: EventCategory | null; events: Event[] }> {
+): Promise<{ category: EventCategory | null; events: Event[]; failed?: true }> {
   const includeDescendants = opts.includeDescendants ?? false;
   const all = await getAllCategories();
   const category = all.find((c) => c.slug === slug) ?? null;
@@ -88,7 +89,7 @@ export async function getEventsInCategory(
     .in("category_id", categoryIds);
   if (linkErr) {
     console.error("getEventsInCategory links failed:", JSON.stringify(linkErr));
-    return { category, events: [] };
+    return { category, events: [], failed: true };
   }
   const eventIds = [...new Set((links ?? []).map((l) => l.event_id as number))];
   if (!eventIds.length) return { category, events: [] };
@@ -102,7 +103,7 @@ export async function getEventsInCategory(
     .order("date", { ascending: true });
   if (error) {
     console.error("getEventsInCategory events failed:", JSON.stringify(error));
-    return { category, events: [] };
+    return { category, events: [], failed: true };
   }
   // The rows go into the page as they are, so the backoffice's own columns come off first
   // (until 2026-10-07 every category page carried light_detail - competitor prices and our

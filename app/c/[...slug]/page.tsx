@@ -13,9 +13,7 @@ import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
 import { CmsCatalog } from "@/components/CmsCatalog";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
 import { ArtistCmsPage } from "@/components/ArtistCmsPage";
-import { getAllFootballTeams } from "@/lib/football";
-import { getAllArtists } from "@/lib/artists";
-import type { FootballTeam } from "@/lib/app.types";
+import { cmsTwinOf, hubListedEvents, isLeafHub } from "@/lib/hubEvents";
 import { DetailHero } from "@/components/DetailHero";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -50,6 +48,19 @@ export async function generateStaticParams() {
 // node's own events: one query each per render.
 const allCategories = cache(getAllCategories);
 const eventsInCategory = cache((slug: string) => getEventsInCategory(slug));
+// A team/artist leaf's CMS template - null for every other hub.
+const twinOf = cache(async (catId: number) => {
+  const all = await allCategories();
+  const cat = all.find((c) => c.id === catId);
+  return cat ? cmsTwinOf(cat, all) : null;
+});
+// The events the page lists, found the way the page finds them (lib/hubEvents).
+const listedEvents = cache(async (catId: number) => {
+  const all = await allCategories();
+  const cat = all.find((c) => c.id === catId);
+  if (!cat) return { events: [], reliable: false };
+  return hubListedEvents(cat, await twinOf(catId), eventsInCategory);
+});
 
 export async function generateMetadata({
   params,
@@ -64,7 +75,10 @@ export async function generateMetadata({
     return { title: "הקטגוריה לא נמצאה - מגה איבנטס", robots: { index: false, follow: true } };
   }
   const canonical = `https://www.mega-events.co.il/c/${slugPathOf(cat, all).join("/")}`;
-  const { events } = await eventsInCategory(cat.slug);
+  const { events, reliable } = await listedEvents(cat.id);
+  // A leaf hub with nothing on sale ("אין אירועים קרובים") stays crawlable but
+  // out of the index; only when the read is trusted, never on a failed one.
+  const empty = isLeafHub(cat, all) && reliable && events.length === 0;
   const title = hubTitle(cat.name);
   const description = hubDescription(
     cat,
@@ -78,6 +92,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical },
+    ...(empty ? { robots: { index: false, follow: true } } : {}),
     // The page's openGraph replaces the layout's whole, so it carries all of it.
     openGraph: {
       title,
@@ -105,8 +120,8 @@ export default async function TaxonomyCategoryPage(props: {
   const all = await allCategories();
   const cat = all.find((c) => c.slug === leaf);
   if (!cat) return body;
-  const { events } = await eventsInCategory(cat.slug);
-  const trail = [...ancestorsOf(cat, all), cat].map((c) => ({
+  const { events } = await listedEvents(cat.id);
+  const trail =[...ancestorsOf(cat, all), cat].map((c) => ({
     name: c.name,
     path: slugPathOf(c, all).join("/"),
   }));
@@ -206,22 +221,9 @@ async function TaxonomyCategoryBody({
   }
 
   if (parent && (parent.slug === "teams" || parent.slug === "artists")) {
-    let twin: FootballTeam | null = null;
-    try {
-      const entries =
-        parent.slug === "teams" ? await getAllFootballTeams() : await getAllArtists();
-      const en = (cat.name_english ?? "").trim().toLowerCase();
-      const he = cat.name.trim().toLowerCase();
-      twin =
-        entries.find((e) => {
-          const cmsEn = String(e.fields.nameDBenglish ?? "").trim().toLowerCase();
-          const cmsName = String(e.fields.name ?? "").trim().toLowerCase();
-          return (en && (cmsEn === en || cmsName === en)) || cmsName === he;
-        }) ?? null;
-    } catch (e) {
-      console.error("CMS twin lookup failed:", JSON.stringify(e));
-    }
-    if (twin?.fields?.name && twin.fields.nameDBenglish) {
+    // Matched by English then Hebrew name (lib/hubEvents matchCmsTwin).
+    const twin = await twinOf(cat.id);
+    if (twin) {
       return parent.slug === "teams" ? (
         <TeamCmsPage team={twin} pageContent={cat.page_content} />
       ) : (
