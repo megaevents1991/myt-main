@@ -2,8 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 
 import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
+import { computePackagePrice, isTicketOnlyEvent } from "@/lib/events/price";
+import { hubDescription, hubTitle } from "@/lib/seo/hubMeta";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
 import { CmsCatalog } from "@/components/CmsCatalog";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
@@ -41,6 +44,9 @@ export async function generateStaticParams() {
   return all.map((c) => ({ slug: slugPathOf(c, all) }));
 }
 
+// The metadata and the page body both read the node's own events: one query per render.
+const eventsInCategory = cache((slug: string) => getEventsInCategory(slug));
+
 export async function generateMetadata({
   params,
 }: {
@@ -50,15 +56,35 @@ export async function generateMetadata({
   const leaf = slug[slug.length - 1];
   const all = await getAllCategories();
   const cat = all.find((c) => c.slug === leaf);
-  if (!cat) return { title: "Category Not Found - MYT" };
-  const canonicalPath = slugPathOf(cat, all).join("/");
+  if (!cat) {
+    return { title: "הקטגוריה לא נמצאה - מגה איבנטס", robots: { index: false, follow: true } };
+  }
+  const canonical = `https://www.mega-events.co.il/c/${slugPathOf(cat, all).join("/")}`;
+  const { events } = await eventsInCategory(cat.slug);
+  const title = hubTitle(cat.name);
+  const description = hubDescription(
+    cat,
+    events.map((e) => ({
+      date: e.date,
+      price: computePackagePrice(e),
+      ticketOnly: isTicketOnlyEvent(e),
+    })),
+  );
   return {
-    title: `${cat.name} - כרטיסים וחבילות | MYT`,
-    description: cat.subtitle || `כרטיסים וחבילות ל${cat.name}`,
-    alternates: { canonical: `https://www.mega-events.co.il/c/${canonicalPath}` },
+    title,
+    description,
+    alternates: { canonical },
+    // The page's openGraph replaces the layout's whole, so it carries all of it.
     openGraph: {
-      title: cat.name,
-      ...(cat.image_url && { images: [{ url: cat.image_url, alt: cat.name }] }),
+      title,
+      description,
+      url: canonical,
+      siteName: "מגה איבנטס",
+      locale: "he_IL",
+      type: "website",
+      images: cat.image_url
+        ? [{ url: cat.image_url, alt: cat.name }]
+        : [{ url: "/og-image.png", width: 1200, height: 630, alt: "מגה איבנטס" }],
     },
   };
 }
@@ -179,7 +205,7 @@ export default async function TaxonomyCategoryPage({
   const children = all
     .filter((c) => c.parent_id === cat.id)
     .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name));
-  const { events } = await getEventsInCategory(cat.slug);
+  const { events } = await eventsInCategory(cat.slug);
   const tagsByEvent = await getTagsForEvents(events.map((e) => e.id));
 
   return (

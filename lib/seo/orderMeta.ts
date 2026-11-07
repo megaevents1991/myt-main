@@ -13,10 +13,10 @@ export type OrderMetaEvent = LodgingEvent & {
   package_mode?: Event["package_mode"];
 };
 
-const BRAND = "מגה איבנטס";
+export const BRAND = "מגה איבנטס";
 
 /** "2027-07-20" (or with a time) → "20.7.2027"; "" when it cannot be read. */
-function hebrewDate(date: string | null | undefined): string {
+export function hebrewDate(date: string | null | undefined): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(date ?? "");
   return m ? `${Number(m[3])}.${Number(m[2])}.${m[1]}` : "";
 }
