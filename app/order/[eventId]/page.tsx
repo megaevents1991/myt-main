@@ -1,6 +1,8 @@
 import { cache } from "react";
 import { computePackagePrice } from "@/lib/events/price";
 import { orderDescription, orderTitle } from "@/lib/seo/orderMeta";
+import { orderJsonLd } from "@/lib/seo/jsonld";
+import { JsonLd } from "@/components/JsonLd";
 import { getEvents } from "@/lib/eventsData";
 import { getAllArtists } from "@/lib/artists";
 import { getAllFootballTeams } from "@/lib/football";
@@ -213,6 +215,7 @@ export default async function OrderPageWithId({
         eventId={eventId}
         personLink={personLink}
       />
+      <JsonLd data={orderJsonLd(event, { price: computePackagePrice(event), available: true })} />
     </OrderErrorBoundary>
   );
 }

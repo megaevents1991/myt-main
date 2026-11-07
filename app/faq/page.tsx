@@ -1,7 +1,5 @@
 import { faqItems } from "@/components/ui/FAQ";
-import { StructuredData } from "@/components/StructuredData";
 import { FAQStructuredData } from "@/components/FAQStructuredData";
-import { getCachedEvents } from "@/lib/eventsData";
 import FAQAccordion from "@/components/ui/FAQAccordion";
 import { Metadata } from "next";
 
@@ -78,23 +76,9 @@ export const metadata: Metadata = {
   },
 };
 
-async function getEventsForStructuredData() {
-  try {
-    const events = await getCachedEvents();
-    return events;
-  } catch (error) {
-    console.error("FAQ Page: Failed to get events for structured data:", error);
-    return { events: [] };
-  }
-}
-
 export default async function FAQPage() {
-  const events = await getEventsForStructuredData();
-
   return (
     <main>
-      {/* Structured Data for enhanced SEO */}
-      <StructuredData events={events.events} />
       <FAQStructuredData faqItems={faqItems} />
 
       {/* Page Header */}

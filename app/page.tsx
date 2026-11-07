@@ -159,7 +159,7 @@ export default async function Home() {
           </h1>
         </div>
       </noscript>
-      <StructuredData events={events.events} />
+      <StructuredData />
       <ClientSideHomepage
         initialEvents={events.events}
         footballTeams={allFootballTeams}

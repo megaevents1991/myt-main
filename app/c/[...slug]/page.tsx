@@ -7,6 +7,8 @@ import { cache } from "react";
 import { getAllCategories, getEventsInCategory, getTagsForEvents } from "@/lib/taxonomy";
 import { computePackagePrice, isTicketOnlyEvent } from "@/lib/events/price";
 import { hubDescription, hubTitle } from "@/lib/seo/hubMeta";
+import { hubJsonLd } from "@/lib/seo/jsonld";
+import { JsonLd } from "@/components/JsonLd";
 import { ancestorsOf, slugPathOf } from "@/lib/taxonomy-tree";
 import { CmsCatalog } from "@/components/CmsCatalog";
 import { TeamCmsPage } from "@/components/TeamCmsPage";
@@ -44,7 +46,9 @@ export async function generateStaticParams() {
   return all.map((c) => ({ slug: slugPathOf(c, all) }));
 }
 
-// The metadata and the page body both read the node's own events: one query per render.
+// The metadata, the page body and its JSON-LD read the same categories and the
+// node's own events: one query each per render.
+const allCategories = cache(getAllCategories);
 const eventsInCategory = cache((slug: string) => getEventsInCategory(slug));
 
 export async function generateMetadata({
@@ -54,7 +58,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const leaf = slug[slug.length - 1];
-  const all = await getAllCategories();
+  const all = await allCategories();
   const cat = all.find((c) => c.slug === leaf);
   if (!cat) {
     return { title: "הקטגוריה לא נמצאה - מגה איבנטס", robots: { index: false, follow: true } };
@@ -89,14 +93,39 @@ export async function generateMetadata({
   };
 }
 
-export default async function TaxonomyCategoryPage({
+// Every kind of hub below draws its own body; the JSON-LD (breadcrumb + the
+// hub's events) goes after it, the same for all of them. A body that redirects
+// or 404s throws before it is reached.
+export default async function TaxonomyCategoryPage(props: {
+  params: Promise<{ slug: string[] }>;
+}) {
+  const body = await TaxonomyCategoryBody(props);
+  const { slug } = await props.params;
+  const leaf = decodeURIComponent(slug[slug.length - 1] ?? "");
+  const all = await allCategories();
+  const cat = all.find((c) => c.slug === leaf);
+  if (!cat) return body;
+  const { events } = await eventsInCategory(cat.slug);
+  const trail = [...ancestorsOf(cat, all), cat].map((c) => ({
+    name: c.name,
+    path: slugPathOf(c, all).join("/"),
+  }));
+  return (
+    <>
+      {body}
+      <JsonLd data={hubJsonLd(trail, events)} />
+    </>
+  );
+}
+
+async function TaxonomyCategoryBody({
   params,
 }: {
   params: Promise<{ slug: string[] }>;
 }) {
   const { slug } = await params;
   const leaf = decodeURIComponent(slug[slug.length - 1] ?? "");
-  const all = await getAllCategories();
+  const all = await allCategories();
   const cat = all.find((c) => c.slug === leaf);
   if (!cat || !cat.is_active) notFound();
 

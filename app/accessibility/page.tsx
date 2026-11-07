@@ -1,5 +1,3 @@
-import { StructuredData } from "@/components/StructuredData";
-import { getCachedEvents } from "@/lib/eventsData";
 import { Metadata } from "next";
 
 // Force static generation
@@ -69,26 +67,9 @@ export const metadata: Metadata = {
   },
 };
 
-async function getEventsForStructuredData() {
-  try {
-    const events = await getCachedEvents();
-    return events;
-  } catch (error) {
-    console.error(
-      "Accessibility Page: Failed to get events for structured data:",
-      error
-    );
-    return { events: [] };
-  }
-}
-
 export default async function AccessibilityPage() {
-  const events = await getEventsForStructuredData();
-
   return (
     <main>
-      {/* Structured Data for enhanced SEO */}
-      <StructuredData events={events.events} />
 
       {/* Page Header */}
       <header className="w-full py-8 px-4 text-white bg-main" dir="rtl">
