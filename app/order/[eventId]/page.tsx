@@ -1,5 +1,6 @@
-import { placeLabel } from "@/lib/events/lodging";
 import { cache } from "react";
+import { computePackagePrice } from "@/lib/events/price";
+import { orderDescription, orderTitle } from "@/lib/seo/orderMeta";
 import { getEvents } from "@/lib/eventsData";
 import { getAllArtists } from "@/lib/artists";
 import { getAllFootballTeams } from "@/lib/football";
@@ -53,31 +54,28 @@ export async function generateMetadata({
     const event = await loadOrderEvent(eventId);
 
     if (!event) {
+      // Unknown id, or an event inside its last 3 days (getEvents drops it):
+      // the page shows the sold-out notice, which must not be indexed.
       return {
-        title: "Event Not Found - Mega Events",
-        description: "The requested event could not be found.",
+        title: "האירוע לא נמצא - מגה איבנטס",
+        description: "האירוע שחיפשתם כבר לא זמין להזמנה באתר מגה איבנטס.",
+        robots: { index: false, follow: true },
       };
     }
 
+    const title = orderTitle(event);
+    const description = orderDescription(event, computePackagePrice(event));
+
     return {
-      title: `${event.name} - Order Tickets | Mega Events`,
-      description: `Order tickets for ${event.name}. Get your flight, hotel, and event tickets in one package. Professional service with full warranty.`,
-      keywords: [
-        event.name,
-        "tickets",
-        "order",
-        "flights",
-        "hotels",
-        "events",
-        "mega events",
-        placeLabel(event),
-        event.date,
-      ],
+      title,
+      description,
       openGraph: {
-        title: `${event.name} - Order Tickets`,
-        description: `Order tickets for ${event.name} with flights and hotels included.`,
+        title,
+        description,
         url: `https://www.mega-events.co.il/order/${eventId}`,
-        siteName: "Mega Events",
+        siteName: "מגה איבנטס",
+        locale: "he_IL",
+        type: "website",
         images: event.card_image_url ? [
           {
             url: event.card_image_url,
@@ -91,16 +89,19 @@ export async function generateMetadata({
         canonical: `https://www.mega-events.co.il/order/${eventId}`,
       },
       // QA/pilot events (and ones staff have not approved yet) are reachable by
-      // direct link only - keep them out of search engines too.
+      // direct link only - keep them out of search engines too. A sold-out
+      // event shows "כרטיסים אזלו" with no order form: crawlable, not indexed.
       ...(event.is_test || event.is_hidden
         ? { robots: { index: false, follow: false } }
-        : {}),
+        : !hasAvailableTickets(event)
+          ? { robots: { index: false, follow: true } }
+          : {}),
     };
   } catch (error) {
     console.error("Error generating metadata for order page:", error);
     return {
-      title: "Order Event Tickets - Mega Events",
-      description: "Order your event tickets with flights and hotels included.",
+      title: "הזמנת חבילה לאירוע - מגה איבנטס",
+      description: "חבילות לאירועי ספורט ומוזיקה בחו״ל: כרטיס, טיסה ומלון.",
     };
   }
 }
