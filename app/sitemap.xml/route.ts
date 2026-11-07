@@ -1,8 +1,11 @@
 import { getCachedEvents } from "@/lib/eventsData";
-import { getArtistSlugs } from "@/lib/artists";
-import { getFootballTeamSlugs } from "@/lib/football";
+import { getAllBlogPosts } from "@/lib/blog";
 import { getAllCategories } from "@/lib/taxonomy";
 import { slugPathOf } from "@/lib/taxonomy-tree";
+
+// Category nodes whose page only redirects (app/c/[...slug]/page.tsx: the old
+// leagues/genres pickers now live on the /c/football and /c/music hubs).
+const REDIRECT_ONLY_CATEGORY_SLUGS = new Set(["leagues", "genres"]);
 
 export async function GET() {
   try {
@@ -31,16 +34,22 @@ export async function GET() {
         priority: 0.8,
       },
       {
-        url: `${baseUrl}/artists`,
+        url: `${baseUrl}/blog`,
         lastModified: STATIC_LASTMOD,
         changeFrequency: "weekly",
-        priority: 0.8,
+        priority: 0.6,
       },
       {
-        url: `${baseUrl}/football`,
+        url: `${baseUrl}/privacy`,
         lastModified: STATIC_LASTMOD,
-        changeFrequency: "weekly",
-        priority: 0.8,
+        changeFrequency: "monthly",
+        priority: 0.3,
+      },
+      {
+        url: `${baseUrl}/accessibility`,
+        lastModified: STATIC_LASTMOD,
+        changeFrequency: "monthly",
+        priority: 0.3,
       },
       {
         url: `${baseUrl}/terms`,
@@ -70,42 +79,26 @@ export async function GET() {
       priority: 0.9,
     }));
 
-    // Fetch artists from Contentful with error handling
-    let artistPages: Array<{
-      url: string;
-      lastModified: string;
-      changeFrequency: string;
-      priority: number;
-    }> = [];
-    try {
-      const slugs = await getArtistSlugs();
-      artistPages = slugs.map((slug) => ({
-        url: `${baseUrl}/artists/${slug}`,
-        lastModified: STATIC_LASTMOD,
-        changeFrequency: "weekly",
-        priority: 0.8,
-      }));
-    } catch (error) {
-      console.error("Error fetching artists for sitemap:", error);
-    }
+    // No /artists/<slug> or /football/<slug>: those legacy routes only redirect
+    // to their /c/ twin (docs/LEGACY-ROUTES-TODO.md), which is listed below.
 
-    // Fetch football teams from Contentful with error handling
-    let footballPages: Array<{
+    // Active blog posts (same list and URL as app/blog/page.tsx).
+    let blogPages: Array<{
       url: string;
       lastModified: string;
       changeFrequency: string;
       priority: number;
     }> = [];
     try {
-      const slugs = await getFootballTeamSlugs();
-      footballPages = slugs.map((slug) => ({
-        url: `${baseUrl}/football/${slug}`,
+      const posts = await getAllBlogPosts();
+      blogPages = posts.map((post) => ({
+        url: `${baseUrl}/blog/${post.sys.id}`,
         lastModified: STATIC_LASTMOD,
-        changeFrequency: "weekly",
-        priority: 0.8,
+        changeFrequency: "monthly",
+        priority: 0.6,
       }));
     } catch (error) {
-      console.error("Error fetching football teams for sitemap:", error);
+      console.error("Error fetching blog posts for sitemap:", error);
     }
 
     // Taxonomy category pages (/c/football/premier-league...) - canonical
@@ -118,12 +111,14 @@ export async function GET() {
     }> = [];
     try {
       const cats = await getAllCategories();
-      categoryPages = cats.map((cat) => ({
-        url: `${baseUrl}/c/${slugPathOf(cat, cats).join("/")}`,
-        lastModified: cat.updated_at || STATIC_LASTMOD,
-        changeFrequency: "weekly",
-        priority: 0.8,
-      }));
+      categoryPages = cats
+        .filter((cat) => !REDIRECT_ONLY_CATEGORY_SLUGS.has(cat.slug))
+        .map((cat) => ({
+          url: `${baseUrl}/c/${slugPathOf(cat, cats).join("/")}`,
+          lastModified: cat.updated_at || STATIC_LASTMOD,
+          changeFrequency: "weekly",
+          priority: 0.8,
+        }));
     } catch (error) {
       console.error("Error fetching taxonomy categories for sitemap:", error);
     }
@@ -131,8 +126,7 @@ export async function GET() {
     const allPages = [
       ...staticPages,
       ...eventPages,
-      ...artistPages,
-      ...footballPages,
+      ...blogPages,
       ...categoryPages,
     ];
 

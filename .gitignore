@@ -57,3 +57,7 @@ bash.exe.stackdump
 
 # Git Bash crash dumps
 *.stackdump
+
+# SEO regression snapshots (scripts/seo-check.mjs)
+.seo-check/
+.seo-shots/
