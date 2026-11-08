@@ -1640,8 +1640,13 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                   <section key={key} aria-labelledby="music-events-heading">
                     <SectionHeading id="music-events-heading" title={section.title ?? "אירועים נוספים"} />
                     {/* Stacked list - one column on mobile, grid on desktop. Minimal
-                        no-image cards (same as the search page). No carousel. */}
-                    <div className="grid gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
+                        no-image cards (same as the search page). No carousel.
+                        items-start (08.11, Dor: "כרטיס בלי לא צריך להיות גדול יותר"): every card
+                        body is the same height already (two title lines, fixed slots), so a cell
+                        must not stretch - else a card with no "לכל האירועים" strip grew by the
+                        strip's height beside one that has it (Lazio - Lecce 562px, its neighbours
+                        512px, the button 50px lower). The strip stays the only extra. */}
+                    <div className="grid items-start gap-4 grid-cols-1 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8"
                          role="list"
                          aria-label="רשימת הופעות נוספות">
                       {musicEvents.slice(0, visibleMusicCount).map((event) => (
@@ -1660,7 +1665,8 @@ export function ClientSideHomepage({ initialEvents, footballTeams, allFootballTe
                       ))}
                       {/* Search-prompt card - smaller, same design, appended at the end */}
                       <div
-                        className="rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
+                        // self-stretch: the grid is items-start for the event cards; this card keeps the cell's full height, as before.
+                        className="self-stretch rounded-lg shadow-lg flex flex-col hover:shadow-xl hover:outline hover:outline-main dark:hover:outline-foreground/40 cursor-pointer"
                         onClick={handleSearchPromptClick}
                         role="button"
                         tabIndex={0}
