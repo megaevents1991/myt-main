@@ -78,7 +78,7 @@ export default async function PrivacyPage() {
             מדיניות פרטיות - MegaEvents
           </h1>
           <p className="text-lg max-w-2xl mx-auto">
-            עדכון אחרון: 10.08.2025
+            עדכון אחרון: 08.11.2026
           </p>
         </div>
       </header>
@@ -104,6 +104,7 @@ export default async function PrivacyPage() {
                 <li>כתובת אימייל</li>
                 <li>מספר טלפון</li>
                 <li>מידע על הזמנות שבוצעו (אירועים, טיסות, מלונות)</li>
+                <li>הודעות WhatsApp בינך לבין הנציגים שלנו - תוכן ההודעה, מספר הטלפון והשם המוצג ב-WhatsApp</li>
               </ul>
               <div className="bg-blue-50 border-r-4 border-blue-400 p-4 mb-6">
                 <p className="text-gray-700">
@@ -133,6 +134,7 @@ export default async function PrivacyPage() {
               </p>
               <ol className="list-decimal list-inside space-y-3 text-gray-700">
                 <li>מתן השירותים שהזמנת - רכישת חבילות תיירות, לינה, טיסות ואירועים.</li>
+                <li>מענה לפניות ועדכונים על הזמנה שביצעת או ביקשת, גם בהודעות WhatsApp.</li>
                 <li>שיווק והצעות מותאמות אישית - אך רק אם נתת הסכמה מראש (double opt-in).</li>
                 <li>ניתוח סטטיסטי לשיפור חוויית המשתמש באתר ובשירותים.</li>
               </ol>
@@ -150,7 +152,14 @@ export default async function PrivacyPage() {
                 <li>ספקי תשלום (PCI compliant) - אין לנו גישה למידע הפיננסי.</li>
                 <li>ספקי שירותי אנליטיקה (Google Analytics, Mixpanel).</li>
                 <li>ספקי שירותי שיווק - רק אם תסכים לקבל דיוור שיווקי בעתיד.</li>
+                <li>Meta Platforms (פלטפורמת WhatsApp Business) - לשליחת הודעות WhatsApp וקבלתן.</li>
+                <li>ספקי תשתית ואחסון בענן (Vercel, Supabase) - שמאחסנים ומעבדים את המידע עבורנו בלבד.</li>
               </ul>
+              <div className="bg-blue-50 border-r-4 border-blue-400 p-4 mb-6">
+                <p className="text-gray-700">
+                  <strong>הודעות WhatsApp:</strong> נשלח לך הודעות WhatsApp רק בנוגע לפנייה או להזמנה שלך, או כשביקשת שנעדכן אותך. הודעות שיווקיות יישלחו רק אם הסכמת לכך מראש. ניתן להפסיק לקבל מאיתנו הודעות בכל עת - השיבו &quot;הסר&quot; להודעה.
+                </p>
+              </div>
               <p className="text-gray-700">
                 אנו מתחייבים לא לשתף את המידע שלך עם צדדים אחרים ללא הסכמתך, למעט דרישות חוקיות.
               </p>
