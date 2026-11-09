@@ -322,6 +322,56 @@
     transform: translateX(260%) rotate(18deg);
   }
 }
+/* MEGA CLUB (D17): the member card arrives once - it lifts into place, one sheen crosses it, the lines under it
+   follow. Reduced motion: the card is simply there. */
+@keyframes club-card-in {
+  from {
+    opacity: 0;
+    transform: perspective(700px) translateY(10px) scale(0.94) rotateX(16deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes club-sheen {
+  from {
+    transform: translateX(130%);
+  }
+  to {
+    transform: translateX(-130%);
+  }
+}
+@keyframes club-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.club-card-in {
+  animation: club-card-in 640ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: 50% 60%;
+}
+.club-sheen {
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.6) 50%, transparent 65%);
+  animation: club-sheen 950ms 420ms ease-out both;
+}
+.club-fade-up {
+  animation: club-fade-up 420ms 560ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .club-card-in,
+  .club-fade-up {
+    animation: none;
+  }
+  .club-sheen {
+    display: none;
+  }
+}
 /* Wordmark ⇄ MΣ-mark morph: each layer is visible half the loop, hands over
    with a soft scale + blur crossfade. Second layer runs the same animation
    with a -50% phase delay. */

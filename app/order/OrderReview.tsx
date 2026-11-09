@@ -77,14 +77,17 @@ import {
   type ClubMode,
 } from "@/components/order/club/ClubModal";
 import { ClubInline, type ClubInlineState } from "@/components/order/club/ClubInline";
+import { ClubCard } from "@/components/order/club/ClubCard";
 import {
   clearClubCookie,
   postClub,
   trackClubApplied,
   trackClubJoin,
   writeClubCookie,
+  writeClubHandoff,
   type ClubOk,
 } from "@/components/order/club/clubClient";
+import { clubHandoffFor } from "@/lib/club/confirm";
 import { Review } from "./OrderSummary/Review";
 import {
   ReadyPackageShowcase,
@@ -1932,6 +1935,26 @@ export default function OrderReview({
     try {
       const result = await submitOrder(updatedFormData, payNow, onlySave);
 
+      // MEGA CLUB (D17): what the confirmation page shows of the club, carried in
+      // this tab over the payment page - the order read returns no contact details.
+      writeClubHandoff(
+        clubHandoffFor({
+          orderId: result.id,
+          now: Date.now(),
+          onlySave,
+          surface: clubSurfaceNow,
+          clubPriceApplied: isClubCouponApplied && couponWins,
+          savedUsd: couponDiscountUsd,
+          cookie: clubCookie,
+          joined: clubJoined
+            ? { memberNo: clubJoined.memberNo, returning: clubJoined.returning }
+            : null,
+          lead: lead ?? null,
+          eventId: event?.id ?? null,
+          perTicketUsd: clubConfig?.amountPerTicket ?? null,
+        })
+      );
+
       orderStage("CONFIRMED", {
         // TO DO: temp workaround as order stage doesn't work (router.push?)
         data: {
@@ -2167,9 +2190,53 @@ export default function OrderReview({
   const penText = selectedFlight ? getPenText(selectedFlight) : "";
   // Coupon - hidden on any partner-link visit, agent mode included (partner
   // terms and coupons don't mix). One row, printed in one of two places.
+  // D17: the tick joined in this visit and the member price is the one that
+  // counts - the box turns into the member card itself.
+  const clubCardShown =
+    clubSurfaceNow === "club" && isClubCouponApplied && couponWins && !!clubJoined;
   const couponRow = !arrivedViaPartner && (
     <div dir="rtl" className="px-6 py-4 border-t border-border">
-      {appliedCoupon && couponStatus === "applied" ? (
+      {appliedCoupon && couponStatus === "applied" && clubCardShown && clubJoined ? (
+        <div className="flex flex-col gap-2">
+          <ClubCard
+            memberNo={clubJoined.memberNo}
+            name={clubCookie?.name ?? null}
+            size="compact"
+            reveal
+          />
+          <div className="club-fade-up flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="h-4 w-4 shrink-0 text-success"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.6}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              {CLUB_COPY.appliedLine(couponDiscountUsd)}
+            </span>
+            <button
+              type="button"
+              onClick={removeCoupon}
+              className="text-sm text-muted-foreground underline shrink-0"
+            >
+              הסרה
+            </button>
+          </div>
+          {!clubJoined.returning && clubJoined.email ? (
+            <p className="club-fade-up text-[13px] text-muted-foreground">
+              {CLUB_COPY.mailSentBefore}
+              <bdi dir="ltr">{clubJoined.email}</bdi>
+              {CLUB_COPY.mailSentAfter}
+            </p>
+          ) : null}
+        </div>
+      ) : appliedCoupon && couponStatus === "applied" ? (
         <div className="flex items-center justify-between gap-2">
           <span
             className={cn(
@@ -2261,7 +2328,7 @@ export default function OrderReview({
           )}
         </>
       )}
-      {clubSurfaceNow === "club" && isClubCouponApplied && clubJoined && (
+      {clubSurfaceNow === "club" && isClubCouponApplied && clubJoined && !clubCardShown && (
         <p className="mt-1 text-[13px] text-muted-foreground">
           {CLUB_COPY.inlineJoined(clubJoined.memberNo)}
           {!clubJoined.returning && clubJoined.email ? (

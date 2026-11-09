@@ -9,6 +9,10 @@ import { OrderData, Flight } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
+import { ClubConfirmation } from "@/components/order/club/ClubConfirmation";
+import { readClubHandoffInTab } from "@/components/order/club/clubClient";
+import { clubConfirmationView, type ClubHandoff } from "@/lib/club/confirm";
+import { readClubCookie, type ClubCookie } from "@/lib/club/rules";
 
 type PaymentStatus = "success" | "error" | "pending";
 
@@ -76,6 +80,15 @@ export default function ConfirmationPage() {
   const [orderId, promoCode, status] = Array.isArray(params)
     ? params
     : [params, "dummy_code", undefined];
+
+  // MEGA CLUB (D17): what this tab carried over the payment page, read once.
+  const [club, setClub] = useState<{ handoff: ClubHandoff | null; cookie: ClubCookie | null } | null>(null);
+  useEffect(() => {
+    setClub({
+      handoff: readClubHandoffInTab(String(orderId ?? "")),
+      cookie: readClubCookie(typeof document === "undefined" ? null : document.cookie),
+    });
+  }, [orderId]);
 
   const getOrderData = async () => {
     const response = await fetch(`/api/confirm-order/${orderId}`, {
@@ -375,6 +388,19 @@ export default function ConfirmationPage() {
     partnerTrackingCode,
   } = orderConfirmationData;
 
+  const clubView = club
+    ? clubConfirmationView({
+        handoff: club.handoff,
+        isHold,
+        paymentFailed: isPaid === "error",
+        cookie: club.cookie,
+      })
+    : null;
+  const clubBlock =
+    club?.handoff && clubView ? (
+      <ClubConfirmation view={clubView} handoff={club.handoff} />
+    ) : null;
+
   const orderSummary = (
     <>
       {!isHold && (
@@ -396,6 +422,8 @@ export default function ConfirmationPage() {
       )}
 
       {isHold && <OrderRecoverySection />}
+
+      {clubView !== "offer" && clubBlock}
 
       <div
         dir="rtl"
@@ -430,6 +458,8 @@ export default function ConfirmationPage() {
           {hotel !== "ללא מלון" && <DetailRow label="Hotel:" value={hotel} />}
         </div>
       </div>
+
+      {clubView === "offer" && clubBlock}
 
       <Link href="/" className="mt-6">
         <Button className="w-full" aria-label="חזור לעמוד הבית">חזור לדף הבית</Button>

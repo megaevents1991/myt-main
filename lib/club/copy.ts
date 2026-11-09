@@ -43,6 +43,17 @@ export const CLUB_COPY = {
   inlineMember: "כבר חברים? הפעלה עם המייל",
   inlineJoined: (memberNo: number) => `מס׳ חבר ${memberNo}`,
   inlineNotYet: "רגע, מחיר החבר עוד מופעל. נסו שוב בעוד שנייה.",
+  /** D17: the confirmation page - the card after the order, or the offer for next time. */
+  confirmSaved: (savedUsd: number) => `מחיר החבר חסך לכם ${usd(savedUsd)} בהזמנה הזאת, ויופעל לבד בהזמנה הבאה.`,
+  confirmNext: "מחיר החבר יופעל לבד בהזמנה הבאה שלכם.",
+  confirmMail: "קוד החבר מחכה לכם במייל.",
+  confirmMemberTitle: "תודה שאתם חברי MEGA CLUB",
+  confirmMemberSaved: (savedUsd: number) => `מחיר החבר חסך לכם ${usd(savedUsd)} בהזמנה הזאת.`,
+  offerTitle: "בהזמנה הבאה: מחיר חבר",
+  offerText: (perTicketUsd: number) => `הצטרפו בחינם ל-MEGA CLUB וקבלו ${usd(perTicketUsd)} פחות לכל נוסע בחבילה הבאה.`,
+  offerCta: "הצטרפות בחינם",
+  /** "נצרף אתכם עם <email>" - the address is printed after it, isolated (bdi). */
+  offerWith: "נצרף אתכם עם ",
   pageApplied: "מחיר החבר יופעל לבד בהזמנה הבאה שלכם במכשיר הזה.",
   pageCta: "לאירועים באתר",
   pagePerks: ["ראשונים לשמוע על אירועים חדשים", "מבצעים לחברים בלבד", "מחיר חבר על כל הזמנה של חבילה, בכל פעם"],

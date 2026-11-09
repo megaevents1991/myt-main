@@ -215,6 +215,13 @@ describe("joinClub", () => {
     expect(f.logs[0].source).toBe("checkout_row");
   });
 
+  it("a join from the confirmation page is recorded as such (D17)", async () => {
+    const f = fake();
+    await joinClub({ ...join, method: "confirmation" }, ctx, f);
+    expect(f.logs[0].source).toBe("checkout_confirmation");
+    expect((f as unknown as { lastRow: NewClubMember }).lastRow.source).toBe("checkout_confirmation");
+  });
+
   it("refuses a join without consent and writes nothing", async () => {
     const f = fake();
     expect(await joinClub({ ...join, consent: false }, ctx, f)).toEqual({ ok: false, kind: "invalid" });

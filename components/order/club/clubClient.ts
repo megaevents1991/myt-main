@@ -3,6 +3,7 @@
 import { trackEvent } from "@/lib/mixpanel";
 import { CLUB_COOKIE, CLUB_COOKIE_DAYS, serializeClubCookie, type ClubCookie } from "@/lib/club/rules";
 import type { ClubAnswer } from "@/lib/club/join";
+import { CLUB_HANDOFF_KEY, readClubHandoff, type ClubHandoff } from "@/lib/club/confirm";
 
 export type ClubOk = Extract<ClubAnswer, { ok: true }>;
 
@@ -24,6 +25,24 @@ export function clearClubCookie(): void {
   }
 }
 
+/** D17: what this tab carries over the payment page to the confirmation page (null = carry nothing). */
+export function writeClubHandoff(h: ClubHandoff | null): void {
+  try {
+    if (h) sessionStorage.setItem(CLUB_HANDOFF_KEY, JSON.stringify(h));
+    else sessionStorage.removeItem(CLUB_HANDOFF_KEY);
+  } catch {
+    /* a blocked storage only means no club block after the order */
+  }
+}
+
+export function readClubHandoffInTab(orderId: string): ClubHandoff | null {
+  try {
+    return readClubHandoff(sessionStorage.getItem(CLUB_HANDOFF_KEY), orderId, Date.now());
+  } catch {
+    return null;
+  }
+}
+
 function pushDataLayer(payload: Record<string, unknown>): void {
   try {
     const w = window as unknown as { dataLayer?: Record<string, unknown>[] };
@@ -34,7 +53,7 @@ function pushDataLayer(payload: Record<string, unknown>): void {
   }
 }
 
-export function trackClubJoin(method: "popup" | "row" | "page" | "inline", returning: boolean): void {
+export function trackClubJoin(method: "popup" | "row" | "page" | "inline" | "confirmation", returning: boolean): void {
   pushDataLayer({ event: "club_join", club_method: method, returning });
   try {
     trackEvent("Club_Join", { method, returning });

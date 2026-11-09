@@ -48,7 +48,7 @@ export type NewClubMember = {
   last_name: string | null;
   coupon_id: number;
   coupon_code: string;
-  source: "checkout_popup" | "checkout_row" | "checkout_inline" | "site_page";
+  source: "checkout_popup" | "checkout_row" | "checkout_inline" | "checkout_confirmation" | "site_page";
   source_path: string | null;
   event_id: number | null;
   utm: UtmCookie | null;
@@ -206,7 +206,9 @@ export async function joinClub(input: unknown, ctx: ClubCtx, deps: ClubDeps): Pr
         ? "checkout_inline"
         : body.method === "page"
           ? "site_page"
-          : "checkout_popup";
+          : body.method === "confirmation"
+            ? "checkout_confirmation"
+            : "checkout_popup";
   const eventId = typeof body.eventId === "number" && Number.isInteger(body.eventId) && body.eventId > 0 ? body.eventId : null;
 
   const settings = await enabledSettings(deps);
