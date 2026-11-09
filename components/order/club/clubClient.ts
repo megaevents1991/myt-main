@@ -34,7 +34,7 @@ function pushDataLayer(payload: Record<string, unknown>): void {
   }
 }
 
-export function trackClubJoin(method: "popup" | "row" | "page", returning: boolean): void {
+export function trackClubJoin(method: "popup" | "row" | "page" | "inline", returning: boolean): void {
   pushDataLayer({ event: "club_join", club_method: method, returning });
   try {
     trackEvent("Club_Join", { method, returning });

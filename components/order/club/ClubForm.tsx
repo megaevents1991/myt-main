@@ -29,8 +29,6 @@ export function ClubForm({
   context,
   onApplied,
   onDone,
-  continueLabel = null,
-  onContinue,
 }: {
   initialMode: ClubMode;
   prefill: { email: string; phone: string; firstName: string; lastName: string };
@@ -40,9 +38,6 @@ export function ClubForm({
   onApplied(a: ClubOk, how: "join" | "lookup", name: string | null): ClubAppliedResult;
   /** "חזרה להזמנה" in the order; the page links to the site instead. */
   onDone?(): void;
-  /** D14: the popup interrupted the way to payment - "פעם הבאה" and the card's button carry that click on. */
-  continueLabel?: string | null;
-  onContinue?(): void;
 }) {
   const [view, setView] = useState<View>(initialMode);
   const [email, setEmail] = useState(prefill.email);
@@ -190,11 +185,6 @@ export function ClubForm({
                 {busy ? "..." : CLUB_COPY.cta}
               </Button>
             </form>
-            {continueLabel && onContinue && (
-              <Button type="button" variant="outline" size="lg" className="w-full font-bold" onClick={onContinue}>
-                {CLUB_COPY.later}
-              </Button>
-            )}
             <button
               type="button"
               className={linkCls}
@@ -260,11 +250,6 @@ export function ClubForm({
                 {busy ? "..." : CLUB_COPY.memberCta}
               </Button>
             </form>
-            {continueLabel && onContinue && (
-              <Button type="button" variant="outline" size="lg" className="w-full font-bold" onClick={onContinue}>
-                {CLUB_COPY.later}
-              </Button>
-            )}
             <button
               type="button"
               className={linkCls}
@@ -304,10 +289,6 @@ export function ClubForm({
             {context === "page" ? (
               <Button asChild size="lg" className="w-full font-bold">
                 <Link href="/">{CLUB_COPY.pageCta}</Link>
-              </Button>
-            ) : continueLabel && onContinue ? (
-              <Button type="button" size="lg" className="w-full font-bold" onClick={onContinue}>
-                {continueLabel}
               </Button>
             ) : (
               <Button type="button" size="lg" className="w-full font-bold" onClick={onDone}>

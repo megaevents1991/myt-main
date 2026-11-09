@@ -35,10 +35,14 @@ export const CLUB_COPY = {
   mailSentBefore: "שלחנו ל-",
   mailSentAfter: " מייל עם קוד החבר",
   backToOrder: "חזרה להזמנה",
-  /** D14: the popup came on the way to payment - these carry the interrupted click on. */
-  continuePay: "המשך לתשלום מאובטח",
-  continueOrder: "המשך להזמנה",
-  later: "פעם הבאה",
+  /** D16: the one-tick card above the payment button. */
+  inlineTitle: (savedUsd: number) => `הצטרפו בחינם וחסכו ${usd(savedUsd)} בהזמנה הזאת`,
+  inlineTitleNoAmount: "הצטרפו בחינם וקבלו מחיר חבר בהזמנה הזאת",
+  inlineWaiting: "נצרף אתכם עם המייל והטלפון של הנוסע הראשון, ברגע שימולאו.",
+  inlineBusy: "מצרפים אתכם...",
+  inlineMember: "כבר חברים? הפעלה עם המייל",
+  inlineJoined: (memberNo: number) => `מס׳ חבר ${memberNo}`,
+  inlineNotYet: "רגע, מחיר החבר עוד מופעל. נסו שוב בעוד שנייה.",
   pageApplied: "מחיר החבר יופעל לבד בהזמנה הבאה שלכם במכשיר הזה.",
   pageCta: "לאירועים באתר",
   pagePerks: ["ראשונים לשמוע על אירועים חדשים", "מבצעים לחברים בלבד", "מחיר חבר על כל הזמנה של חבילה, בכל פעם"],

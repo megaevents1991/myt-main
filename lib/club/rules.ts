@@ -153,3 +153,16 @@ export function shouldAutoApply(v: {
   return v.surface === "club" && v.slotEmpty && !v.flightSkipped && v.cookie !== null;
 }
 
+
+/**
+ * D16: the summary's MEGA CLUB box joins with the first passenger's email and phone - the key of the details to join
+ * with now, or null (box not ticked, details not valid yet, or exactly these details were already tried).
+ */
+export function inlineJoinKey(v: { wants: boolean; email: unknown; phone: unknown; triedKey: string | null }): string | null {
+  if (!v.wants) return null;
+  const email = cleanEmail(v.email);
+  const phone = cleanPhone(v.phone);
+  if (!email || !phone) return null;
+  const key = `${email}|${phone}`;
+  return key === v.triedKey ? null : key;
+}

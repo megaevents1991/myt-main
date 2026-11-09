@@ -4,6 +4,7 @@ import {
   MEMBER_CODE_ALPHABET,
   cleanEmail,
   cleanPhone,
+  inlineJoinKey,
   clubCouponQty,
   clubSurface,
   couponFitsOrder,
@@ -166,3 +167,19 @@ describe("copy", () => {
   });
 });
 
+
+describe("inlineJoinKey (D16: the tick joins with the first passenger's details)", () => {
+  const ok = { wants: true, email: " Dana@Gmail.com ", phone: "050-123-4567", triedKey: null as string | null };
+  it("joins once the box is ticked and the details are valid", () =>
+    expect(inlineJoinKey(ok)).toBe("dana@gmail.com|0501234567"));
+  it("waits while the box is not ticked", () => expect(inlineJoinKey({ ...ok, wants: false })).toBeNull());
+  it("waits for a valid email and phone", () => {
+    expect(inlineJoinKey({ ...ok, email: "dana@" })).toBeNull();
+    expect(inlineJoinKey({ ...ok, phone: "123" })).toBeNull();
+    expect(inlineJoinKey({ ...ok, email: "" })).toBeNull();
+  });
+  it("never tries the same details twice", () => {
+    expect(inlineJoinKey({ ...ok, triedKey: "dana@gmail.com|0501234567" })).toBeNull();
+    expect(inlineJoinKey({ ...ok, phone: "0501234568", triedKey: "dana@gmail.com|0501234567" })).toBe("dana@gmail.com|0501234568");
+  });
+});

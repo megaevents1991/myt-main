@@ -21,8 +21,6 @@ export function ClubModal({
   eventId,
   method,
   onApplied,
-  continueLabel,
-  onContinue,
 }: {
   open: boolean;
   initialMode: ClubMode;
@@ -31,9 +29,6 @@ export function ClubModal({
   eventId: number | null;
   method: "popup" | "row";
   onApplied(a: ClubOk, how: "join" | "lookup", name: string | null): ClubAppliedResult;
-  /** D14: set when the popup interrupted the way to payment - "פעם הבאה" and the card's button carry it on. */
-  continueLabel?: string | null;
-  onContinue?(): void;
 }) {
   return (
     <Modal
@@ -65,8 +60,6 @@ export function ClubModal({
         context="order"
         onApplied={onApplied}
         onDone={onClose}
-        continueLabel={continueLabel ?? null}
-        onContinue={onContinue}
       />
     </Modal>
   );

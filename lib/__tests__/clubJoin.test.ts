@@ -432,6 +432,15 @@ describe("leaveClub (D13)", () => {
   });
 });
 
+describe("joinClub from the summary's card (D16)", () => {
+  it("is recorded as the inline card", async () => {
+    const f = fake();
+    expect((await joinClub({ ...join, method: "inline" }, ctx, f)).ok).toBe(true);
+    expect(f.logs[0].source).toBe("checkout_inline");
+    expect((f as unknown as { lastRow: NewClubMember }).lastRow.source).toBe("checkout_inline");
+  });
+});
+
 describe("joinClub from the /club page (D15)", () => {
   it("is recorded as the site page, with no event", async () => {
     const f = fake();

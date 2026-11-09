@@ -66,6 +66,7 @@ import { CLUB_COPY } from "@/lib/club/copy";
 import {
   clubCouponQty,
   clubSurface,
+  inlineJoinKey,
   readClubCookie,
   shouldAutoApply,
   type ClubCookie,
@@ -75,10 +76,12 @@ import {
   type ClubAppliedResult,
   type ClubMode,
 } from "@/components/order/club/ClubModal";
-import { ClubRow } from "@/components/order/club/ClubRow";
+import { ClubInline, type ClubInlineState } from "@/components/order/club/ClubInline";
 import {
   clearClubCookie,
+  postClub,
   trackClubApplied,
+  trackClubJoin,
   writeClubCookie,
   type ClubOk,
 } from "@/components/order/club/clubClient";
@@ -763,9 +766,11 @@ export default function OrderReview({
   // lands neither popup starts its timer. A failed read = club off = today's popup.
   const [clubConfig, setClubConfig] = useState<{
     enabled: boolean;
-    popupDelaySeconds: number;
+    /** D16: the member price per ticket, shown on the summary's card before joining. */
+    amountPerTicket: number | null;
   } | null>(null);
   const [clubCookie, setClubCookie] = useState<ClubCookie | null>(null);
+  const [clubNotice, setClubNotice] = useState<string | null>(null);
   const [clubModal, setClubModal] = useState<{
     open: boolean;
     mode: ClubMode;
@@ -776,16 +781,16 @@ export default function OrderReview({
     let alive = true;
     fetch("/api/club/config")
       .then((r) => r.json())
-      .then((c: { enabled?: unknown; popupDelaySeconds?: unknown }) => {
+      .then((c: { enabled?: unknown; amountPerTicket?: unknown }) => {
         if (!alive) return;
-        const delay = Number(c?.popupDelaySeconds);
+        const amount = Number(c?.amountPerTicket);
         setClubConfig({
           enabled: c?.enabled === true,
-          popupDelaySeconds: Number.isFinite(delay) && delay >= 5 ? delay : 22,
+          amountPerTicket: Number.isFinite(amount) && amount > 0 ? amount : null,
         });
       })
       .catch(() => {
-        if (alive) setClubConfig({ enabled: false, popupDelaySeconds: 22 });
+        if (alive) setClubConfig({ enabled: false, amountPerTicket: null });
       });
     return () => {
       alive = false;
@@ -1390,29 +1395,30 @@ export default function OrderReview({
     clubSurfaceNow,
   ]);
 
-  // MEGA CLUB on the way to payment (D14, Dor 09.11: "לקפיץ את זה בסוף ההזמנה
-  // לפני שעוברים לפיצול הזמנה או תשלום מאובטח"). Once per order (this tab, this
-  // event): handleSubmit opens the popup instead of going on, and keeps the
-  // click it interrupted so "פעם הבאה" - or a join - carries straight on.
-  const clubAskedRef = useRef(false);
-  const pendingSubmitRef = useRef<{ payNow: boolean; onlySave: boolean } | null>(null);
-  const clubAskKey = `myt:club-asked:${event?.id ?? ""}`;
-  const clubAlreadyAsked = () => {
-    if (clubAskedRef.current) return true;
-    try {
-      return !!sessionStorage.getItem(clubAskKey);
-    } catch {
-      return false;
+  // MEGA CLUB one-tick card (D16, replaces the popup): the box joins with the
+  // first passenger's email and phone - at once when they are valid, else as
+  // soon as they are; nothing here ever blocks the payment button.
+  const [clubWants, setClubWants] = useState(false);
+  const [clubInline, setClubInline] = useState<ClubInlineState>("idle");
+  const [clubJoined, setClubJoined] = useState<{ memberNo: number; email: string; returning: boolean } | null>(null);
+  const clubTriedKeyRef = useRef<string | null>(null);
+  const clubJoinRef = useRef<(key: string) => void>(() => {});
+  const lead = passengers[0];
+  useEffect(() => {
+    if (clubSurfaceNow !== "club" || isClubCouponApplied || clubInline === "busy") return;
+    const key = inlineJoinKey({
+      wants: clubWants,
+      email: lead?.email,
+      phone: lead?.phone,
+      triedKey: clubTriedKeyRef.current,
+    });
+    if (!key) {
+      setClubInline((s) => (clubWants && s === "idle" ? "waiting" : !clubWants && s === "waiting" ? "idle" : s));
+      return;
     }
-  };
-  const markClubAsked = () => {
-    clubAskedRef.current = true;
-    try {
-      sessionStorage.setItem(clubAskKey, "1");
-    } catch {
-      /* the ref still keeps it to once per page */
-    }
-  };
+    const t = window.setTimeout(() => clubJoinRef.current(key), 600);
+    return () => window.clearTimeout(t);
+  }, [clubWants, lead?.email, lead?.phone, clubSurfaceNow, isClubCouponApplied, clubInline]);
 
   const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];
@@ -1787,18 +1793,10 @@ export default function OrderReview({
       return;
     }
 
-    // MEGA CLUB (D14): on the way to secure payment or "לפצל תשלום / דברו עם
-    // נציג" - not a 24 h hold - a visitor who is not a member yet gets the club
-    // once. The click is kept; ClubModal carries it on.
-    if (
-      clubSurfaceNow === "club" &&
-      !onlySave &&
-      !clubPopupBlockedRef.current &&
-      !clubAlreadyAsked()
-    ) {
-      markClubAsked();
-      pendingSubmitRef.current = { payNow, onlySave };
-      setClubModal({ open: true, mode: "join", method: "popup" });
+    // MEGA CLUB (D16): a join from the summary's box still running would change
+    // the price under this click - stop once and say so; never anything else.
+    if (clubInline === "busy") {
+      setClubNotice(CLUB_COPY.inlineNotYet);
       return;
     }
 
@@ -2131,19 +2129,33 @@ export default function OrderReview({
     return { applied: true, savedUsd: clubUsd };
   };
 
-  // The click the club popup interrupted (D14) - "פעם הבאה", or a join, carries it on.
-  const pendingSubmit = pendingSubmitRef.current;
-  const continuePendingSubmit = () => {
-    const pending = pendingSubmitRef.current;
-    pendingSubmitRef.current = null;
-    setClubModal((m) => ({ ...m, open: false }));
-    if (pending) {
-      void handleSubmit(
-        { preventDefault() {} } as React.FormEvent,
-        pending.payNow,
-        pending.onlySave
-      );
-    }
+  // D16: the box's join - the answer goes through handleClubApplied like the
+  // popup's, so the remembered member and the no-stacking rule are the same.
+  clubJoinRef.current = (key: string) => {
+    clubTriedKeyRef.current = key;
+    setClubInline("busy");
+    setClubNotice(null);
+    void postClub("/api/club/join", {
+      email: lead?.email,
+      phone: lead?.phone,
+      consent: true,
+      firstName: lead?.firstName || undefined,
+      lastName: lead?.lastName || undefined,
+      eventId: event?.id ?? null,
+      method: "inline",
+      hp: "",
+    }).then((a) => {
+      if (!a.ok) {
+        setClubInline(a.kind === "invalid" ? "invalid" : a.kind === "rate_limited" ? "rate_limited" : "error");
+        if (a.kind !== "invalid") setClubWants(false);
+        return;
+      }
+      const result = handleClubApplied(a, "join", a.returning ? null : a.firstName);
+      trackClubJoin("inline", a.returning);
+      setClubJoined({ memberNo: a.memberNo, email: String(lead?.email ?? "").trim(), returning: a.returning });
+      setClubInline(result.applied ? "idle" : "kept_better");
+      setClubNotice(null);
+    });
   };
 
   // "להחליף למחיר חבר": the customer asked for it, so it replaces the other code.
@@ -2249,15 +2261,48 @@ export default function OrderReview({
           )}
         </>
       )}
-      {clubSurfaceNow === "club" && (
-        <ClubRow
-          memberPriceApplied={isClubCouponApplied}
+      {clubSurfaceNow === "club" && isClubCouponApplied && clubJoined && (
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {CLUB_COPY.inlineJoined(clubJoined.memberNo)}
+          {!clubJoined.returning && clubJoined.email ? (
+            <>
+              {" · "}
+              {CLUB_COPY.mailSentBefore}
+              <bdi dir="ltr">{clubJoined.email}</bdi>
+              {CLUB_COPY.mailSentAfter}
+            </>
+          ) : null}
+        </p>
+      )}
+      {clubSurfaceNow === "club" && !isClubCouponApplied && (
+        <ClubInline
+          savedUsd={
+            clubConfig?.amountPerTicket
+              ? getCouponDiscountUsd(
+                  {
+                    discountType: "fixed",
+                    discountValue: clubConfig.amountPerTicket,
+                    perPerson: true,
+                  },
+                  baseTotalUsd,
+                  numberOfEventTickets
+                )
+              : null
+          }
+          wants={clubWants}
+          onWantsChange={(v) => {
+            setClubWants(v);
+            if (v) clubTriedKeyRef.current = null;
+            setClubInline("idle");
+          }}
+          state={clubInline}
           otherCouponApplied={!!appliedCoupon && couponStatus === "applied"}
           rememberedMember={!!clubCookie}
-          onOpen={(mode) => setClubModal({ open: true, mode, method: "row" })}
           onSwap={swapToMemberPrice}
+          onMember={() => setClubModal({ open: true, mode: "member", method: "row" })}
         />
       )}
+      {clubNotice && <p role="status" className="mt-2 text-[13px] font-medium text-foreground">{clubNotice}</p>}
     </div>
   );
   // A ready package's price per traveller - the same figure the price summary
@@ -2337,18 +2382,7 @@ export default function OrderReview({
           open={clubModal.open}
           initialMode={clubModal.mode}
           method={clubModal.method}
-          onClose={() => {
-            pendingSubmitRef.current = null;
-            setClubModal((m) => ({ ...m, open: false }));
-          }}
-          continueLabel={
-            clubModal.open && pendingSubmit
-              ? pendingSubmit.payNow
-                ? CLUB_COPY.continuePay
-                : CLUB_COPY.continueOrder
-              : null
-          }
-          onContinue={continuePendingSubmit}
+          onClose={() => setClubModal((m) => ({ ...m, open: false }))}
           prefill={{
             email: passengers[0]?.email ?? "",
             phone: passengers[0]?.phone ?? "",
