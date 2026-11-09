@@ -152,3 +152,24 @@ export function shouldAutoApply(v: {
 }): boolean {
   return v.surface === "club" && v.slotEmpty && !v.flightSkipped && v.cookie !== null;
 }
+
+/** D14: how long the visitor must stop typing before the popup may open - longer while the cursor is still in a field. */
+export const CLUB_TYPING_PAUSE_MS = 2500;
+export const CLUB_FIELD_PAUSE_MS = 6000;
+
+/**
+ * D14: the club popup comes in the order. It opens once the delay since the summary was ready has passed, at the first
+ * pause in typing - a click or a typed word never cancels it (the old trigger did, so a visitor who filled the form
+ * never saw it), but it never takes the keyboard mid-word.
+ */
+export function clubPopupDue(v: {
+  now: number;
+  readyAt: number;
+  delayMs: number;
+  lastInputAt: number | null;
+  fieldFocused: boolean;
+}): boolean {
+  if (v.now - v.readyAt < v.delayMs) return false;
+  const pause = v.fieldFocused ? CLUB_FIELD_PAUSE_MS : CLUB_TYPING_PAUSE_MS;
+  return v.lastInputAt == null ? !v.fieldFocused || v.now - v.readyAt >= v.delayMs + pause : v.now - v.lastInputAt >= pause;
+}

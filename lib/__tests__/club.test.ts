@@ -4,6 +4,7 @@ import {
   MEMBER_CODE_ALPHABET,
   cleanEmail,
   cleanPhone,
+  clubPopupDue,
   clubCouponQty,
   clubSurface,
   couponFitsOrder,
@@ -163,5 +164,24 @@ describe("copy", () => {
   it("names the club MEGA CLUB", () => {
     expect(CLUB_COPY.title).toBe("הצטרפו ל-MEGA CLUB");
     expect(CLUB_COPY.ticketOnly).toBe("מחיר חבר תקף בהזמנת חבילה עם טיסה");
+  });
+});
+
+describe("clubPopupDue (D14: the popup comes in the order, never mid-typing)", () => {
+  const base = { readyAt: 0, delayMs: 22_000, lastInputAt: null as number | null, fieldFocused: false };
+  it("waits for the delay", () => {
+    expect(clubPopupDue({ ...base, now: 21_999 })).toBe(false);
+    expect(clubPopupDue({ ...base, now: 22_000 })).toBe(true);
+  });
+  it("a click or a typed word does not cancel it - it only waits for a pause", () => {
+    expect(clubPopupDue({ ...base, now: 30_000, lastInputAt: 29_000 })).toBe(false);
+    expect(clubPopupDue({ ...base, now: 30_000, lastInputAt: 27_400 })).toBe(true);
+  });
+  it("while the cursor is still in a field it waits longer", () => {
+    expect(clubPopupDue({ ...base, now: 30_000, lastInputAt: 27_000, fieldFocused: true })).toBe(false);
+    expect(clubPopupDue({ ...base, now: 30_000, lastInputAt: 23_900, fieldFocused: true })).toBe(true);
+  });
+  it("a field focused with nothing typed yet waits the longer pause from the start", () => {
+    expect(clubPopupDue({ ...base, now: 22_000, fieldFocused: true, lastInputAt: 20_000 })).toBe(false);
   });
 });

@@ -47,7 +47,7 @@ export default async function ClubUnsubscribePage({
   const token = typeof t === "string" ? t : "";
   const member = await maskedFor(token);
   return (
-    <main dir="rtl" className="mx-auto flex min-h-[60vh] max-w-lg flex-col gap-5 px-4 py-16 text-right">
+    <div dir="rtl" className="mx-auto flex min-h-[60vh] max-w-lg flex-col gap-5 px-4 py-16 text-right">
       <div
         className="w-fit rounded-xl px-4 py-2 text-lg font-bold tracking-widest text-forest"
         style={{ background: CLUB_GRADIENT }}
@@ -71,6 +71,6 @@ export default async function ClubUnsubscribePage({
           <ClubPreferences token={token} subscribed={!member.unsubscribed} />
         </>
       )}
-    </main>
+    </div>
   );
 }

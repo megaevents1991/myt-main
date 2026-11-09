@@ -12,7 +12,8 @@ export function ClubCard({
   since,
   className = "",
 }: {
-  memberNo: number;
+  /** null = the preview on the /club page: no number yet. */
+  memberNo: number | null;
   name?: string | null;
   since?: Date;
   className?: string;
@@ -24,7 +25,7 @@ export function ClubCard({
       dir="rtl"
       className={`relative w-full overflow-hidden rounded-2xl p-5 text-forest shadow-[0_12px_28px_-10px_rgba(37,211,176,0.55)] ${className}`}
       style={{ background: CLUB_GRADIENT, aspectRatio: "1.7 / 1" }}
-      aria-label={`${CLUB_COPY.brand} ${CLUB_COPY.memberTag} ${memberNo}`}
+      aria-label={memberNo == null ? CLUB_COPY.brand : `${CLUB_COPY.brand} ${CLUB_COPY.memberTag} ${memberNo}`}
     >
       <div
         aria-hidden
@@ -46,13 +47,15 @@ export function ClubCard({
           <div className="min-w-0">
             <div className="text-xs font-semibold opacity-75">{CLUB_COPY.memberTag}</div>
             <div dir="ltr" className="text-right text-2xl font-extrabold tabular-nums tracking-wider">
-              {memberNo}
+              {memberNo ?? "• • • •"}
             </div>
             {name ? <div className="mt-0.5 truncate text-sm font-semibold">{name}</div> : null}
           </div>
-          <div className="shrink-0 text-xs font-semibold opacity-75">
-            {CLUB_COPY.since} <span dir="ltr">{mmYY}</span>
-          </div>
+          {memberNo != null && (
+            <div className="shrink-0 text-xs font-semibold opacity-75">
+              {CLUB_COPY.since} <span dir="ltr">{mmYY}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

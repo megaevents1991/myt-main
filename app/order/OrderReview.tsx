@@ -65,6 +65,7 @@ import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { CLUB_COPY } from "@/lib/club/copy";
 import {
   clubCouponQty,
+  clubPopupDue,
   clubSurface,
   readClubCookie,
   shouldAutoApply,
@@ -1340,7 +1341,7 @@ export default function OrderReview({
       isPercentageAffiliateDiscount ||
       flightSkipped ||
       !clubConfig ||
-      clubSurfaceNow === "none"
+      clubSurfaceNow !== "legacy_popup"
     )
       return;
 
@@ -1354,23 +1355,15 @@ export default function OrderReview({
       }
     };
 
-    // Start one-shot inactivity timer from when the page is ready for interaction.
-    // Same trigger for both doors: the club's popup (its delay from the
-    // backoffice) or today's discount popup (partner-link visits, club off).
-    const isClub = clubSurfaceNow === "club";
+    // Today's discount popup (partner-link visits, club off): the one-shot
+    // inactivity timer, unchanged - the first interaction cancels it.
     inactivityTimeoutRef.current = window.setTimeout(() => {
       if (!hasInteractedRef.current) {
-        if (isClub) {
-          // A member this device knows, or a member price already on: no popup.
-          if (!clubPopupBlockedRef.current)
-            setClubModal({ open: true, mode: "join", method: "popup" });
-          return;
-        }
         // Capture the initial discount when opening the modal
         initialAffDiscountRef.current = affiliateDiscountPerTicketUsd;
         setSpecialOfferOpen(true);
       }
-    }, isClub ? clubConfig.popupDelaySeconds * 1000 : 22000);
+    }, 22000);
 
     // Listen broadly for interactions on the page
     document.addEventListener("click", handleUserInteraction, true);
@@ -1397,6 +1390,63 @@ export default function OrderReview({
     clubConfig,
     clubSurfaceNow,
   ]);
+
+  // MEGA CLUB popup in the order (D14, Dor 09.11: "מילאתי הזמנה ולא נתקלתי בפופ
+  // אפ"). Once per order (this tab, this event): the backoffice's delay after the
+  // summary is ready, then the first pause in typing (clubPopupDue). A click never
+  // cancels it; a member this device knows, a member price already on, or the
+  // popup opened from the row does.
+  const clubPopupShownRef = useRef(false);
+  useEffect(() => {
+    if (clubModal.open) clubPopupShownRef.current = true;
+  }, [clubModal.open]);
+  useEffect(() => {
+    if (openModal || !clubConfig || clubSurfaceNow !== "club" || clubPopupShownRef.current) return;
+    const key = `myt:club-popup:${event?.id ?? ""}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+    } catch {
+      /* no storage: the ref still keeps it to once per page */
+    }
+    const readyAt = Date.now();
+    const delayMs = clubConfig.popupDelaySeconds * 1000;
+    let lastInputAt: number | null = null;
+    const onInput = () => {
+      lastInputAt = Date.now();
+    };
+    const isTextField = (el: Element | null) =>
+      !!el &&
+      (el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        (el as HTMLElement).isContentEditable);
+    document.addEventListener("keydown", onInput, true);
+    document.addEventListener("input", onInput, true);
+    const tick = window.setInterval(() => {
+      if (clubPopupShownRef.current) return window.clearInterval(tick);
+      const due = clubPopupDue({
+        now: Date.now(),
+        readyAt,
+        delayMs,
+        lastInputAt,
+        fieldFocused: isTextField(document.activeElement),
+      });
+      if (!due) return;
+      clubPopupShownRef.current = true;
+      window.clearInterval(tick);
+      if (clubPopupBlockedRef.current) return;
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {
+        /* see above */
+      }
+      setClubModal({ open: true, mode: "join", method: "popup" });
+    }, 500);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener("keydown", onInput, true);
+      document.removeEventListener("input", onInput, true);
+    };
+  }, [openModal, clubConfig, clubSurfaceNow, event?.id]);
 
   const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];

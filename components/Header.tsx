@@ -21,6 +21,7 @@ import { MYT } from "@/components/ui/myt";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { AgentConnectedBadge } from "@/components/AgentConnectedBadge";
 import { cn } from "@/lib/utils";
+import { CLUB_COPY } from "@/lib/club/copy";
 
 type NavLink = { href: string; label: string; children?: NavLink[] };
 
@@ -30,6 +31,8 @@ type NavLink = { href: string; label: string; children?: NavLink[] };
 const staticNavLinks: NavLink[] = [
   { href: "/faq", label: "שאלות נפוצות" },
   { href: "/about", label: "אודות" },
+  // MEGA CLUB's door in the menu (members-club spec D15, Dor 09.11).
+  { href: "/club", label: CLUB_COPY.menu },
 ];
 
 // Nav-only relabels for category roots whose DB name is too long for the bar
