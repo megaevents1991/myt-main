@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { CLUB_UNSUBSCRIBE_COPY as C } from "@/lib/club/copy";
 import { maskEmail } from "@/lib/club/rules";
 import { CLUB_DB_DEADLINE_MS } from "@/lib/club/settings-server";
+import { CLUB_GRADIENT } from "@/components/order/club/ClubCard";
 import { UnsubscribeButton } from "./UnsubscribeButton";
 
 export const dynamic = "force-dynamic";
@@ -42,20 +43,23 @@ export default async function ClubUnsubscribePage({
   return (
     <main dir="rtl" className="mx-auto flex min-h-[60vh] max-w-lg flex-col gap-5 px-4 py-16 text-right">
       <div
-        className="w-fit rounded-xl px-4 py-2 text-lg font-bold tracking-widest text-[#0A1A14]"
-        style={{ background: "linear-gradient(135deg,#5BFF95 0%,#25D3B0 100%)" }}
+        className="w-fit rounded-xl px-4 py-2 text-lg font-bold tracking-widest text-forest"
+        style={{ background: CLUB_GRADIENT }}
         dir="ltr"
       >
         MEGA CLUB
       </div>
-      <h1 className="text-2xl font-bold text-[#0A1A14]">{C.title}</h1>
+      <h1 className="text-2xl font-bold text-foreground">{C.title}</h1>
       {!member ? (
-        <p className="text-base text-gray-700">{C.notFound}</p>
+        <p className="text-base text-muted-foreground">{C.notFound}</p>
       ) : member.unsubscribed ? (
-        <p className="text-lg font-semibold text-[#0A1A14]">{C.done}</p>
+        <p className="text-lg font-semibold text-foreground">{C.done}</p>
       ) : (
         <>
-          <p className="text-base text-gray-700">{C.lead(member.masked)}</p>
+          <p className="text-base text-muted-foreground">
+            {C.leadBefore}
+            <bdi dir="ltr">{member.masked}</bdi>.
+          </p>
           <UnsubscribeButton token={token} />
         </>
       )}

@@ -31,7 +31,9 @@ export const CLUB_COPY = {
   since: "מאז",
   appliedLine: (savedUsd: number) => `מחיר חבר הופעל: ${usd(savedUsd)} פחות על ההזמנה הזאת`,
   everyOrder: (perTicketUsd: number) => `${usd(perTicketUsd)} לכל נוסע, ככה בכל הזמנה שלכם`,
-  mailSent: (email: string) => `שלחנו ל-${email} מייל עם קוד החבר`,
+  /** "שלחנו ל-<email> מייל עם קוד החבר" - the address is printed between the two, isolated (bdi). */
+  mailSentBefore: "שלחנו ל-",
+  mailSentAfter: " מייל עם קוד החבר",
   backToOrder: "חזרה להזמנה",
   rowTitle: "MEGA CLUB",
   rowSub: "חברים מקבלים מחיר חבר",
@@ -40,6 +42,8 @@ export const CLUB_COPY = {
   applied: "מחיר חבר הופעל",
   appliedFor: (name: string) => `מחיר חבר הופעל, ${name}`,
   swap: "להחליף למחיר חבר",
+  keptBetter: "הקופון שכבר הפעלתם שווה יותר, אז הוא נשאר. מחיר החבר יחכה לכם בהזמנה הבאה.",
+  appliedTotal: (savedUsd: number) => `מחיר חבר הופעל - ${usd(savedUsd)} פחות`,
   ticketOnly: "מחיר חבר תקף בהזמנת חבילה עם טיסה",
   notFound: "לא מצאנו את המייל הזה במועדון",
   error: "משהו השתבש, נסו שוב",
@@ -51,7 +55,8 @@ export const CLUB_COPY = {
 /** The unsubscribe page and its answer (spec §8). */
 export const CLUB_UNSUBSCRIBE_COPY = {
   title: "הסרה מהעדכונים של MEGA CLUB",
-  lead: (masked: string) => `העדכונים והמבצעים נשלחים ל-${masked}.`,
+  /** "העדכונים והמבצעים נשלחים ל-<masked>." - the address is printed after it, isolated (bdi). */
+  leadBefore: "העדכונים והמבצעים נשלחים ל-",
   button: "הסרה מהעדכונים",
   done: "הוסרת מהעדכונים. מחיר החבר נשאר שלך.",
   notFound: "הקישור הזה כבר לא פעיל.",

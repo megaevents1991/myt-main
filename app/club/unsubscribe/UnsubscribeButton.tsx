@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CLUB_UNSUBSCRIBE_COPY as C } from "@/lib/club/copy";
 
 export function UnsubscribeButton({ token }: { token: string }) {
@@ -21,19 +22,18 @@ export function UnsubscribeButton({ token }: { token: string }) {
     }
   }
 
-  if (state === "done") return <p className="text-lg font-semibold text-[#0A1A14]">{C.done}</p>;
-  if (state === "gone") return <p className="text-base text-gray-700">{C.notFound}</p>;
+  if (state === "done") return <p role="status" className="text-lg font-semibold text-foreground">{C.done}</p>;
+  if (state === "gone") return <p role="status" className="text-base text-muted-foreground">{C.notFound}</p>;
   return (
     <div className="flex flex-col items-start gap-3">
-      <button
-        type="button"
-        onClick={go}
-        disabled={state === "busy"}
-        className="rounded-full bg-[#0A1A14] px-6 py-3 text-base font-bold text-[#5BFF95] disabled:opacity-60"
-      >
+      <Button type="button" size="lg" className="font-bold" onClick={go} disabled={state === "busy"}>
         {state === "busy" ? "..." : C.button}
-      </button>
-      {state === "error" && <p className="text-sm text-red-700">{C.error}</p>}
+      </Button>
+      {state === "error" && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {C.error}
+        </p>
+      )}
     </div>
   );
 }

@@ -62,6 +62,26 @@ import {
   normalizeCouponCode,
 } from "@/lib/coupon.utils";
 import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
+import { CLUB_COPY } from "@/lib/club/copy";
+import {
+  clubCouponQty,
+  clubSurface,
+  readClubCookie,
+  shouldAutoApply,
+  type ClubCookie,
+} from "@/lib/club/rules";
+import {
+  ClubModal,
+  type ClubAppliedResult,
+  type ClubMode,
+} from "@/components/order/club/ClubModal";
+import { ClubRow } from "@/components/order/club/ClubRow";
+import {
+  clearClubCookie,
+  trackClubApplied,
+  writeClubCookie,
+  type ClubOk,
+} from "@/components/order/club/clubClient";
 import { Review } from "./OrderSummary/Review";
 import {
   ReadyPackageShowcase,
@@ -735,8 +755,42 @@ export default function OrderReview({
     null
   );
   const [couponStatus, setCouponStatus] = useState<
-    "idle" | "checking" | "invalid" | "applied" | "expired"
+    "idle" | "checking" | "invalid" | "applied" | "expired" | "club_ticket_only"
   >("idle");
+
+  // MEGA CLUB (backoffice spec 2026-11-09-members-club-design.md). The switch and
+  // the popup delay come from the backoffice; null = not loaded yet, and until it
+  // lands neither popup starts its timer. A failed read = club off = today's popup.
+  const [clubConfig, setClubConfig] = useState<{
+    enabled: boolean;
+    popupDelaySeconds: number;
+  } | null>(null);
+  const [clubCookie, setClubCookie] = useState<ClubCookie | null>(null);
+  const [clubModal, setClubModal] = useState<{
+    open: boolean;
+    mode: ClubMode;
+    method: "popup" | "row";
+  }>({ open: false, mode: "join", method: "popup" });
+  useEffect(() => {
+    setClubCookie(readClubCookie(document.cookie));
+    let alive = true;
+    fetch("/api/club/config")
+      .then((r) => r.json())
+      .then((c: { enabled?: unknown; popupDelaySeconds?: unknown }) => {
+        if (!alive) return;
+        const delay = Number(c?.popupDelaySeconds);
+        setClubConfig({
+          enabled: c?.enabled === true,
+          popupDelaySeconds: Number.isFinite(delay) && delay >= 5 ? delay : 22,
+        });
+      })
+      .catch(() => {
+        if (alive) setClubConfig({ enabled: false, popupDelaySeconds: 22 });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Keep what is typed here for this browser tab (order draft): a refresh, or
   // an edit of another step, must not ask for the travellers again. Cleared
@@ -846,13 +900,18 @@ export default function OrderReview({
   );
 
   // Per-person coupons (influencer codes) multiply by the travellers, like
-  // the follower discount on a tracking link does.
+  // the follower discount on a tracking link does. A MEGA CLUB code counts event
+  // tickets - the quantity confirm-order charges it by (clubCouponQty).
   const couponDiscountUsd = useMemo(
     () =>
       appliedCoupon
-        ? getCouponDiscountUsd(appliedCoupon, baseTotalUsd, numberOfPersons)
+        ? getCouponDiscountUsd(
+            appliedCoupon,
+            baseTotalUsd,
+            clubCouponQty(appliedCoupon, numberOfPersons, numberOfEventTickets)
+          )
         : 0,
-    [appliedCoupon, baseTotalUsd, numberOfPersons]
+    [appliedCoupon, baseTotalUsd, numberOfPersons, numberOfEventTickets]
   );
 
   // No stacking: coupon applies only when it beats the affiliate discount.
@@ -991,23 +1050,39 @@ export default function OrderReview({
     ? couponDiscountUsd
     : affiliateDiscountTotalUsd;
 
+  // The validate route's answer as the client keeps it; null = not usable.
+  const fetchCoupon = useCallback(
+    async (code: string): Promise<AppliedCoupon | null> => {
+      const response = await fetch(
+        `/api/coupons/validate?code=${encodeURIComponent(code)}&eventId=${
+          event?.id ?? ""
+        }`
+      );
+      const data = await response.json();
+      if (!data?.discountType) return null;
+      return {
+        code: data.code || code,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+        perPerson: data.perPerson === true,
+        source: typeof data.source === "string" ? data.source : null,
+      };
+    },
+    [event?.id]
+  );
+
   const validateCoupon = useCallback(
     async (code: string) => {
       setCouponStatus("checking");
       try {
-        const response = await fetch(
-          `/api/coupons/validate?code=${encodeURIComponent(code)}&eventId=${
-            event?.id ?? ""
-          }`
-        );
-        const data = await response.json();
-        if (data?.discountType) {
-          setAppliedCoupon({
-            code: data.code || code,
-            discountType: data.discountType,
-            discountValue: data.discountValue,
-            perPerson: data.perPerson === true,
-          });
+        const coupon = await fetchCoupon(code);
+        if (coupon && coupon.source === "club" && flightSkipped) {
+          // A member price is for a package with a flight (D12); confirm-order
+          // refuses it on the same rule.
+          setAppliedCoupon(null);
+          setCouponStatus("club_ticket_only");
+        } else if (coupon) {
+          setAppliedCoupon(coupon);
           setCouponStatus("applied");
         } else {
           setAppliedCoupon(null);
@@ -1019,7 +1094,7 @@ export default function OrderReview({
         setCouponStatus("invalid");
       }
     },
-    [event?.id]
+    [fetchCoupon, flightSkipped]
   );
 
   const applyCoupon = useCallback(async () => {
@@ -1193,6 +1268,67 @@ export default function OrderReview({
     return !blockedSubstrings.some((s) => name.includes(s));
   }, [event?.name_english]);
 
+  // Which door this visit gets: the club, today's popup, or neither (spec §4).
+  const clubSurfaceNow = clubSurface({
+    enabled: clubConfig?.enabled === true,
+    isAgentVisitor,
+    arrivedViaPartner,
+    flightSkipped,
+    isPercentageAffiliateDiscount,
+    isSpecialOfferAllowed,
+  });
+  const isClubCouponApplied =
+    appliedCoupon?.source === "club" && couponStatus === "applied";
+  const clubPopupBlockedRef = useRef(false);
+  clubPopupBlockedRef.current = isClubCouponApplied || !!clubCookie;
+
+  // A member code never rides a ticket-only order (the step can be changed
+  // after the code went in).
+  useEffect(() => {
+    if (flightSkipped && appliedCoupon?.source === "club") {
+      setAppliedCoupon(null);
+      setCouponStatus("club_ticket_only");
+    }
+  }, [flightSkipped, appliedCoupon]);
+
+  // A member this device remembers gets the member price by itself - only into
+  // an empty slot, never on a ticket-only order (spec §5.5). Asked of the
+  // validate route like any code; a code that no longer works forgets the cookie.
+  const clubAutoTriedRef = useRef(false);
+  const couponSlotRef = useRef({ empty: true });
+  couponSlotRef.current.empty = !appliedCoupon && couponStatus === "idle";
+  useEffect(() => {
+    if (!clubConfig || clubAutoTriedRef.current) return;
+    clubAutoTriedRef.current = true;
+    const cookie = readClubCookie(document.cookie);
+    if (
+      !cookie ||
+      !shouldAutoApply({
+        surface: clubSurfaceNow,
+        slotEmpty: couponSlotRef.current.empty,
+        flightSkipped,
+        cookie,
+      })
+    )
+      return;
+    void (async () => {
+      try {
+        const coupon = await fetchCoupon(cookie.code);
+        if (!coupon || coupon.source !== "club") {
+          clearClubCookie();
+          setClubCookie(null);
+          return;
+        }
+        if (!couponSlotRef.current.empty) return; // the customer typed a code meanwhile
+        setAppliedCoupon(coupon);
+        setCouponStatus("applied");
+        trackClubApplied("cookie");
+      } catch {
+        /* no member price this time; the row still offers it */
+      }
+    })();
+  }, [clubConfig, clubSurfaceNow, flightSkipped, fetchCoupon]);
+
   // Inactivity detection for special offer (desktop + mobile)
   useEffect(() => {
     // Only for non-agent bookings, only when initial info modal is closed, and if offer is allowed.
@@ -1202,7 +1338,9 @@ export default function OrderReview({
       openModal ||
       !isSpecialOfferAllowed ||
       isPercentageAffiliateDiscount ||
-      flightSkipped
+      flightSkipped ||
+      !clubConfig ||
+      clubSurfaceNow === "none"
     )
       return;
 
@@ -1216,14 +1354,23 @@ export default function OrderReview({
       }
     };
 
-    // Start one-shot inactivity timer (30s) from when the page is ready for interaction
+    // Start one-shot inactivity timer from when the page is ready for interaction.
+    // Same trigger for both doors: the club's popup (its delay from the
+    // backoffice) or today's discount popup (partner-link visits, club off).
+    const isClub = clubSurfaceNow === "club";
     inactivityTimeoutRef.current = window.setTimeout(() => {
       if (!hasInteractedRef.current) {
+        if (isClub) {
+          // A member this device knows, or a member price already on: no popup.
+          if (!clubPopupBlockedRef.current)
+            setClubModal({ open: true, mode: "join", method: "popup" });
+          return;
+        }
         // Capture the initial discount when opening the modal
         initialAffDiscountRef.current = affiliateDiscountPerTicketUsd;
         setSpecialOfferOpen(true);
       }
-    }, 22000);
+    }, isClub ? clubConfig.popupDelaySeconds * 1000 : 22000);
 
     // Listen broadly for interactions on the page
     document.addEventListener("click", handleUserInteraction, true);
@@ -1247,6 +1394,8 @@ export default function OrderReview({
     affiliateDiscountPerTicketUsd,
     isPercentageAffiliateDiscount,
     flightSkipped,
+    clubConfig,
+    clubSurfaceNow,
   ]);
 
   const setErrors = (requireAllPassengers = false) => {
@@ -1912,6 +2061,51 @@ export default function OrderReview({
     }
   };
 
+  // MEGA CLUB: a join or a lookup answered with the member code. The code goes in
+  // through the ordinary coupon path (no-stacking, confirm-order, coupon_code all
+  // unchanged). A coupon already applied that is worth more stays.
+  const handleClubApplied = (
+    a: ClubOk,
+    _how: "join" | "lookup",
+    name: string | null
+  ): ClubAppliedResult => {
+    const club: AppliedCoupon = {
+      code: a.code,
+      discountType: a.discountType,
+      discountValue: a.discountValue,
+      perPerson: true,
+      source: "club",
+    };
+    const keepName =
+      name ?? (clubCookie?.code === a.code ? clubCookie.name ?? null : null);
+    const cookie: ClubCookie = keepName
+      ? { v: 1, code: a.code, no: a.memberNo, name: keepName }
+      : { v: 1, code: a.code, no: a.memberNo };
+    writeClubCookie(cookie);
+    setClubCookie(cookie);
+    const clubUsd = getCouponDiscountUsd(club, baseTotalUsd, numberOfEventTickets);
+    if (flightSkipped) return { applied: false, savedUsd: clubUsd };
+    const otherUsd =
+      appliedCoupon && couponStatus === "applied" && appliedCoupon.source !== "club"
+        ? getCouponDiscountUsd(
+            appliedCoupon,
+            baseTotalUsd,
+            clubCouponQty(appliedCoupon, numberOfPersons, numberOfEventTickets)
+          )
+        : 0;
+    if (otherUsd > clubUsd) return { applied: false, savedUsd: clubUsd };
+    setAppliedCoupon(club);
+    setCouponInput("");
+    setCouponStatus("applied");
+    return { applied: true, savedUsd: clubUsd };
+  };
+
+  // "להחליף למחיר חבר": the customer asked for it, so it replaces the other code.
+  const swapToMemberPrice = () => {
+    if (!clubCookie) return;
+    void validateCoupon(clubCookie.code).then(() => trackClubApplied("cookie"));
+  };
+
   const penText = selectedFlight ? getPenText(selectedFlight) : "";
   // Coupon - hidden on any partner-link visit, agent mode included (partner
   // terms and coupons don't mix). One row, printed in one of two places.
@@ -1919,8 +2113,26 @@ export default function OrderReview({
     <div dir="rtl" className="px-6 py-4 border-t border-border">
       {appliedCoupon && couponStatus === "applied" ? (
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium text-success">
-            {couponWins ? (
+          <span
+            className={cn(
+              "text-sm font-medium",
+              couponWins && appliedCoupon.source === "club"
+                ? "text-foreground"
+                : "text-success"
+            )}
+          >
+            {couponWins && appliedCoupon.source === "club" ? (
+              <>
+                <span
+                  dir="ltr"
+                  className="font-extrabold tracking-[0.12em] text-forest dark:text-glow"
+                >
+                  {CLUB_COPY.brand}
+                </span>{" "}
+                · {CLUB_COPY.appliedTotal(couponDiscountUsd)}
+                {clubCookie?.name ? `, ${clubCookie.name}` : ""}
+              </>
+            ) : couponWins ? (
               <>
                 קופון {appliedCoupon.code} הופעל - הנחת{" "}
                 <span dir="ltr" className="tabular-nums">
@@ -1986,7 +2198,19 @@ export default function OrderReview({
               הקופון כבר אינו בתוקף - המחיר עודכן
             </p>
           )}
+          {couponStatus === "club_ticket_only" && (
+            <p className="text-sm text-red-500 mt-1">{CLUB_COPY.ticketOnly}</p>
+          )}
         </>
+      )}
+      {clubSurfaceNow === "club" && (
+        <ClubRow
+          memberPriceApplied={isClubCouponApplied}
+          otherCouponApplied={!!appliedCoupon && couponStatus === "applied"}
+          rememberedMember={!!clubCookie}
+          onOpen={(mode) => setClubModal({ open: true, mode, method: "row" })}
+          onSwap={swapToMemberPrice}
+        />
       )}
     </div>
   );
@@ -2061,6 +2285,23 @@ export default function OrderReview({
         }
         iconType="Gift"
       />
+      {/* MEGA CLUB - in place of the popup above for everyone the club is for */}
+      {clubSurfaceNow === "club" && (
+        <ClubModal
+          open={clubModal.open}
+          initialMode={clubModal.mode}
+          method={clubModal.method}
+          onClose={() => setClubModal((m) => ({ ...m, open: false }))}
+          prefill={{
+            email: passengers[0]?.email ?? "",
+            phone: passengers[0]?.phone ?? "",
+            firstName: passengers[0]?.firstName ?? "",
+            lastName: passengers[0]?.lastName ?? "",
+          }}
+          eventId={event?.id ?? null}
+          onApplied={handleClubApplied}
+        />
+      )}
       {/* Order submission failed - nothing was charged; offer retry + WhatsApp */}
       <Modal
         title={
