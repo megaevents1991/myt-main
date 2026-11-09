@@ -7,6 +7,8 @@ export type AppliedCoupon = {
   discountValue: number;
   /** Fixed discount × persons (influencer coupons). Absent/false = once per order. */
   perPerson?: boolean;
+  /** 'club' = a MEGA CLUB member code: counts event tickets, needs a flight (lib/club/rules.ts). */
+  source?: string | null;
 };
 
 /**

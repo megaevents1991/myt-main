@@ -408,6 +408,8 @@ export type Coupon = {
   per_person?: boolean | null;
   /** Set on the one auto-built coupon of an affiliate partner (its tracking code). */
   influencer_partner_code?: string | null;
+  /** 'club' = a MEGA CLUB member's personal code (backoffice migration 20261109104145); null = any other coupon. */
+  source?: string | null;
   is_active: boolean;
   created_at: string;
 };

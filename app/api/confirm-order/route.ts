@@ -7,6 +7,7 @@ import { offerIncludesCheckedBag } from "@/lib/flights/elal";
 import { isMegaEventsFlight } from "@/lib/flights/company";
 import { findValidCoupon, incrementCouponUse } from "@/lib/coupons";
 import { getCouponDiscountUsd } from "@/lib/coupon.utils";
+import { couponFitsOrder } from "@/lib/club/rules";
 import { consumeOldestLiveVoucher } from "@/lib/partner-vouchers";
 import {
   validateOrderData,
@@ -232,6 +233,17 @@ export async function POST(req: Request) {
           code: validatedData.coupon_code,
           eventId: validatedData.event_id,
         }),
+      );
+      return NextResponse.json({ error: "COUPON_INVALID" }, { status: 409 });
+    }
+    // A MEGA CLUB member price is for a package with a flight (D12). A
+    // ticket-only order sends flight_order_info = {}, so the test is the
+    // outbound leg. The summary refuses it on the same rule; this is the race /
+    // crafted-request guard.
+    if (!couponFitsOrder(coupon.source, !!validatedData.flight_order_info?.outbound)) {
+      console.error(
+        "Coupon rejected at confirm-order - member code without a flight:",
+        JSON.stringify({ code: validatedData.coupon_code, eventId: validatedData.event_id }),
       );
       return NextResponse.json({ error: "COUPON_INVALID" }, { status: 409 });
     }
