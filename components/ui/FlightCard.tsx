@@ -19,6 +19,8 @@ type FlightTicketCardProps = {
   minPrice: number;
   isBest?: boolean;
   isCheapest?: boolean;
+  /** The inbound's airline when it is another ticket's (a trip's pair of one-ways); else `metadata`. */
+  inboundMetadata?: Flight["metadata"];
 } & Flight;
 
 const stopsMap: { [key: number]: string } = {
@@ -183,6 +185,7 @@ export const FlightTicketCard = memo(
     minPrice,
     isBest,
     isCheapest,
+    inboundMetadata,
   }: FlightTicketCardProps) => {
     const isSelected = selectedFlightId === flightId;
     const priceToShow = formatPrice(price - minPrice);
@@ -197,7 +200,7 @@ export const FlightTicketCard = memo(
             <div className="w-full lg:w-5/6 mt-2 lg:mt-0">
               <FlightCard {...outbound} metadata={metadata} />
               <div className="border w-full my-2"></div>
-              <FlightCard {...inbound} metadata={metadata} />
+              <FlightCard {...inbound} metadata={inboundMetadata ?? metadata} />
             </div>
             <div className="border-l hidden lg:block border h-32 mx-4"></div>{" "}
             {/* Desktop pricing element */}

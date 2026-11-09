@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Event, FlightSegment, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
+import type { Event, Flight, FlightSegment, ItineraryFlight, OrderHotel, OrderTicket } from "../app.types";
 import {
   PAYMENTS_LIVE,
   UUID_V4_RE,
@@ -707,6 +707,19 @@ describe("the emails", () => {
     expect(text).toContain("LYTLV");
     expect(text).toContain("Hotel l");
     expect(text).toMatch(/no payment link/i);
+  });
+
+  it("a way out and home on two one-way tickets: ops are told to buy two, every leg names its airline", () => {
+    const ticket = (name: string, iata: string, price: number) =>
+      ({ ...input.flight, airline: iata, price, metadata: { name, iata, country: "", logo: "" } }) as unknown as Flight;
+    const pair = { ...input, flight: { ...input.flight, oneWays: [ticket("Arkia", "IZ", 474), ticket("Wizz Air", "W6", 666)] as [Flight, Flight] } };
+    const { text } = tripOpsMail(pair);
+    expect(text).toContain("TWO ONE-WAY TICKETS (direct-only search): out Arkia $474, home Wizz Air $666");
+    const { html } = tripHoldMail(pair);
+    expect(html).toContain("Arkia");
+    expect(html).toContain("Wizz Air");
+    // Without a pair the email names one airline, as before.
+    expect(tripOpsMail(input).text).not.toContain("ONE-WAY");
   });
 });
 

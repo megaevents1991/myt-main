@@ -63,9 +63,10 @@ export const groundNoteShort = (g: { from: string; to: string; km: number }): st
  * The "ישראלי" tab - the live flight step's own filter (`lib/flightFilter.ts`): the airline the
  * card shows is one of `ISRAELI_AIRLINE_CODES` (the ticketing carrier; for Hahn Air, whoever
  * operates the first flight - `getFlightCarrierCodes`). The tab means the same in both flows.
+ * A pair of one-way tickets (`oneWays`) is Israeli only when both halves are.
  */
 export const isIsraeliFlight = (f: ItineraryFlight): boolean =>
-  getFlightCarrierCodes(f).some((code) => ISRAELI_AIRLINE_CODES.includes(code));
+  (f.oneWays ?? [f]).every((t) => getFlightCarrierCodes(t).some((code) => ISRAELI_AIRLINE_CODES.includes(code)));
 
 /** Stops over every leg of the trip. */
 const totalStops = (f: ItineraryFlight): number =>
@@ -279,11 +280,33 @@ export function pricedFlight(
   body: unknown,
   trains: TrainLeg[],
 ): ItineraryFlight | null {
-  if (status !== 200 || typeof body !== "object" || body === null) return null;
-  const { penalties } = body as { penalties?: unknown };
+  return pricedTickets(flight, [{ status, body }], trains);
+}
+
+/**
+ * `pricedFlight` over every ticket of the flight - one answer per offer, in `pricingOffers` order. A
+ * pair of one-ways sells only when BOTH tickets can be sold; their penalties are kept one after the
+ * other, each under its way.
+ */
+export function pricedTickets(
+  flight: ItineraryFlight,
+  answers: { status: number; body: unknown }[],
+  trains: TrainLeg[],
+): ItineraryFlight | null {
+  if (!answers.length || answers.some((a) => a.status !== 200 || typeof a.body !== "object" || a.body === null)) return null;
+  const texts = answers.map((a) => {
+    const { penalties } = a.body as { penalties?: unknown };
+    return typeof penalties === "string" ? penalties : "";
+  });
+  const heads = ["הלוך", "חזור"];
+  const penalties =
+    answers.length === 1 ? texts[0] : texts.map((t, i) => (t ? `${heads[i] ?? ""}: ${t}` : "")).filter(Boolean).join("\n");
   return {
     ...flight,
-    ...(typeof penalties === "string" && penalties ? { penalties } : {}),
+    ...(penalties ? { penalties } : {}),
     trainLegs: trains.map((t) => ({ from: t.fromName, to: t.toName, date: t.date })),
   };
 }
+
+/** The offers a pick is priced by: a pair's two tickets, else the flight's one. */
+export const pricingOffers = (f: ItineraryFlight): FlightOffer[] => (f.oneWays ? f.oneWays.map((t) => t.offer) : [f.offer]);

@@ -267,6 +267,12 @@ export type ItineraryFlight = Flight & {
   trainLegs: { from: string; to: string; date: string }[];
   /** The between-cities flights, each its own offer (the trip's `offer` is the way out and home). */
   moveFlights?: Flight[];
+  /**
+   * The way out and the way home as TWO one-way tickets - a pair the direct-only filter made
+   * (`lib/itinerary/directPairs.ts`) when one ticket had no direct flight both ways. `offer` is then
+   * the way out's; ops buy both.
+   */
+  oneWays?: [Flight, Flight];
 };
 
 /**

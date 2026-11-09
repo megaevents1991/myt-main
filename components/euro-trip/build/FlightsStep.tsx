@@ -11,15 +11,17 @@ import { cityName } from "@/lib/events/lodging";
 import { groundLink } from "@/lib/itinerary/builder";
 import { applyDatePick } from "@/lib/itinerary/datePick";
 import { moves, stays, trainLegs, tripDateBounds, tripLegs } from "@/lib/itinerary/dates";
+import { directOutcome } from "@/lib/itinerary/directPairs";
 import type { FlightLeg } from "@/lib/itinerary/flightOffers";
-import { flightPartsOf, partDone, pickFits, type FlightPart } from "@/lib/itinerary/flightParts";
+import { MAIN_PART, flightPartsOf, partDone, pickFits, type FlightPart } from "@/lib/itinerary/flightParts";
 import {
   FLIGHTS_PAGE,
   basePerTraveller,
   canSearch,
   groundNoteShort,
   moveOptions,
-  pricedFlight,
+  pricedTickets,
+  pricingOffers,
   searchKey,
   searchOutcome,
   searchView,
@@ -27,6 +29,7 @@ import {
   tabTags,
   trainHours,
   type FlightSort,
+  type SearchOutcome,
   type SearchView,
 } from "@/lib/itinerary/flightsView";
 import type { TrainLeg } from "@/lib/itinerary/types";
@@ -46,8 +49,6 @@ const BUSY_RETRY_MS = 2500;
 const ANSWER_TTL_MS = 15 * 60_000;
 /** Answers kept: every part of a trip, and a date moved back and forth. */
 const ANSWERS_KEPT = 10;
-/** No direct-only filter in phase 1. */
-const NON_STOP = false;
 /** Where a part's dates change: the field over its list. */
 const DATES_FIELD_HINT = "שנו את התאריך בשדה למעלה";
 
@@ -71,12 +72,46 @@ const keepAnswer = (key: string, flights: ItineraryFlight[]) => {
 type SearchResult = { key: string; view: SearchView; flights: ItineraryFlight[] };
 type StepView = SearchView | "loading" | "unsearchable";
 
+/** One search of `/api/itinerary/flights`, as the step reads its answer. */
+async function askFlights(legs: FlightLeg[], pax: number, nonStop: boolean, signal: AbortSignal): Promise<SearchOutcome> {
+  let status = 0;
+  let body: unknown = null;
+  try {
+    const res = await fetch("/api/itinerary/flights", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ legs, adults: pax, nonStop }),
+      signal,
+    });
+    status = res.status;
+    body = await res.json().catch(() => null);
+  } catch (err) {
+    if (!signal.aborted) console.error("[EuroTrip] Flight search failed:", err);
+  }
+  return searchOutcome(status, body);
+}
+
 /**
- * One search per (legs, party): debounced, the previous one aborted, a 429 retried once.
+ * A part's answer. "טיסות ישירות בלבד" on the way there and back is three non-stop searches at
+ * once - the round trip, the way out, the way home - merged with the one-ways paired
+ * (`directOutcome`): one ticket often has no direct flight both ways when each way alone has one.
+ */
+async function askPart(legs: FlightLeg[], pax: number, nonStop: boolean, signal: AbortSignal): Promise<SearchOutcome> {
+  if (!nonStop || legs.length !== 2) return askFlights(legs, pax, nonStop, signal);
+  const [roundTrip, out, home] = await Promise.all([
+    askFlights(legs, pax, true, signal),
+    askFlights([legs[0]], pax, true, signal),
+    askFlights([legs[1]], pax, true, signal),
+  ]);
+  return directOutcome(roundTrip, out, home, pax);
+}
+
+/**
+ * One search per (legs, party, direct-only): debounced, the previous one aborted, a 429 retried once.
  * `onFresh` runs when a NEW answer lands (not a kept one) - its flight ids are new.
  */
-function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, onFresh: () => void) {
-  const key = searchable ? searchKey(legs, pax, NON_STOP) : null;
+function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, nonStop: boolean, onFresh: () => void) {
+  const key = searchable ? searchKey(legs, pax, nonStop) : null;
   const [result, setResult] = useState<SearchResult | null>(null);
   const [attempt, setAttempt] = useState(0);
   const onFreshRef = useRef(onFresh);
@@ -94,23 +129,8 @@ function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, on
     const ctrl = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const run = async (retried: boolean) => {
-      let status = 0;
-      let body: unknown = null;
-      try {
-        const res = await fetch("/api/itinerary/flights", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ legs, adults: pax, nonStop: NON_STOP }),
-          signal: ctrl.signal,
-        });
-        status = res.status;
-        body = await res.json().catch(() => null);
-      } catch (err) {
-        if (ctrl.signal.aborted) return;
-        console.error("[EuroTrip] Flight search failed:", err);
-      }
+      const outcome = await askPart(legs, pax, nonStop, ctrl.signal);
       if (ctrl.signal.aborted) return;
-      const outcome = searchOutcome(status, body);
       const view = searchView(outcome, retried);
       if (view === "retrying") {
         setResult({ key, view, flights: [] });
@@ -127,7 +147,7 @@ function useFlightSearch(legs: FlightLeg[], pax: number, searchable: boolean, on
       clearTimeout(timer);
       ctrl.abort();
     };
-    // `key` is made of `legs` and `pax`: a new key is a new search, the same key is not.
+    // `key` is made of `legs`, `pax` and `nonStop`: a new key is a new search, the same key is not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, attempt]);
 
@@ -265,11 +285,14 @@ type PickState = { key: string; id: string; status: "failed" };
 function PartPane({
   part,
   shown,
+  nonStop = false,
   onView,
   children,
 }: {
   part: FlightPart;
   shown: boolean;
+  /** "טיסות ישירות בלבד" (the way there and back only). */
+  nonStop?: boolean;
   /** How this part's search stands (the flow's "still working out the price"). */
   onView: (key: string, searching: boolean) => void;
   /** Over the list: the dates, the train switch. */
@@ -292,7 +315,7 @@ function PartPane({
   const searchable = !part.byTrain && canSearch(part.legs, pax, todayIso);
 
   // A new answer has new flight ids: a flight picked from an older one no longer points into the list.
-  const search = useFlightSearch(part.legs, pax, searchable, () => {
+  const search = useFlightSearch(part.legs, pax, searchable, nonStop, () => {
     if (latest.current.state.flightParts[part.key]) latest.current.setFlightPart(part.key, null);
   });
 
@@ -329,24 +352,28 @@ function PartPane({
     pricing.current = ctrl;
     setPick(null);
     latest.current.setFlightPart(part.key, f);
-    let status = 0;
-    let body: unknown = null;
+    let answers: { status: number; body: unknown }[] = [];
     try {
-      // The order summary's call (app/order/OrderForm.tsx): the whole offer, whatever its legs.
-      const res = await fetch("/api/flights/pricing", {
-        method: "POST",
-        body: JSON.stringify({ flightOffer: f.offer, virtual: false, eventId: latest.current.state.route[0]?.id, fareUpgraded: false }),
-        signal: ctrl.signal,
-      });
-      status = res.status;
-      body = await res.json().catch(() => null);
+      // The order summary's call (app/order/OrderForm.tsx): the whole offer, whatever its legs - and
+      // a pair of one-ways is two tickets, each priced on its own.
+      const eventId = latest.current.state.route[0]?.id;
+      answers = await Promise.all(
+        pricingOffers(f).map(async (flightOffer) => {
+          const res = await fetch("/api/flights/pricing", {
+            method: "POST",
+            body: JSON.stringify({ flightOffer, virtual: false, eventId, fareUpgraded: false }),
+            signal: ctrl.signal,
+          });
+          return { status: res.status, body: await res.json().catch(() => null) };
+        }),
+      );
     } catch (err) {
       if (ctrl.signal.aborted) return;
       console.error("[EuroTrip] Flight pricing failed:", err);
     }
     if (ctrl.signal.aborted) return;
     pricing.current = null;
-    const priced = pricedFlight(f, status, body, []);
+    const priced = pricedTickets(f, answers, []);
     if (priced) {
       latest.current.setFlightPart(part.key, priced);
       return;
@@ -395,7 +422,15 @@ function PartPane({
         body = (
           <FlightLoadingTransition
             className="min-h-72 translate-y-0 sm:translate-y-0 lg:translate-y-0"
-            title={search.view === "retrying" ? "עומס זמני, מנסים שוב…" : part.kind === "main" ? "מחפשים טיסות הלוך חזור" : "מחפשים טיסה בין הערים"}
+            title={
+              search.view === "retrying"
+                ? "עומס זמני, מנסים שוב…"
+                : part.kind === "main"
+                  ? nonStop
+                    ? "מחפשים טיסות ישירות הלוך חזור"
+                    : "מחפשים טיסות הלוך חזור"
+                  : "מחפשים טיסה בין הערים"
+            }
             subtitle={search.view === "retrying" ? "עוד כמה שניות" : "כמה שניות"}
           />
         );
@@ -405,7 +440,14 @@ function PartPane({
         body = <OrderIssueState title="אי אפשר לחפש טיסות לתאריכים האלה" subtitle={DATES_FIELD_HINT} />;
         break;
       case "empty":
-        body = <OrderIssueState title="לא מצאנו טיסות לתאריכים האלה - נסו להזיז יום" subtitle={DATES_FIELD_HINT} />;
+        body = nonStop ? (
+          <OrderIssueState
+            title="אין טיסות ישירות בשני הכיוונים בתאריכים האלה"
+            subtitle="אפשר לכבות את 'טיסות ישירות בלבד' או להזיז יום בשדה למעלה"
+          />
+        ) : (
+          <OrderIssueState title="לא מצאנו טיסות לתאריכים האלה - נסו להזיז יום" subtitle={DATES_FIELD_HINT} />
+        );
         break;
       case "busy":
         body = (
@@ -446,21 +488,27 @@ function PartPane({
                 {visible.map((f) =>
                   part.kind === "main" ? (
                     // The regular flow's own card (Dor 31.10: "כרטיס רגיל"): an outbound and an inbound.
-                    <MemoizedFlightCard
-                      key={f.id}
-                      {...f}
-                      minPrice={Math.ceil(base ?? f.price / pax)}
-                      isLoading={false}
-                      price={Math.ceil(f.price / pax)}
-                      flightId={f.id}
-                      selectedFlightId={chosenId}
-                      onClick={(id: string) => {
-                        const chosen = flights.find((x) => x.id === id);
-                        if (chosen && id !== chosenId) void choose(chosen);
-                      }}
-                      isBest={f.id === bestId}
-                      isCheapest={f.id === cheapestId}
-                    />
+                    // A pair of one-ways draws each way's own airline and says it is two tickets.
+                    <div key={f.id} className="flex flex-col gap-1">
+                      <MemoizedFlightCard
+                        {...f}
+                        minPrice={Math.ceil(base ?? f.price / pax)}
+                        isLoading={false}
+                        price={Math.ceil(f.price / pax)}
+                        flightId={f.id}
+                        selectedFlightId={chosenId}
+                        onClick={(id: string) => {
+                          const chosen = flights.find((x) => x.id === id);
+                          if (chosen && id !== chosenId) void choose(chosen);
+                        }}
+                        isBest={f.id === bestId}
+                        isCheapest={f.id === cheapestId}
+                        inboundMetadata={f.oneWays?.[1].metadata}
+                      />
+                      {f.oneWays && (
+                        <p className="m-0 px-2 text-[11px] text-muted-foreground">הלוך וחזור בשני כרטיסים נפרדים</p>
+                      )}
+                    </div>
                   ) : (
                     <MoveFlightCard
                       key={f.id}
@@ -521,6 +569,32 @@ function TrainSwitch({ hop, on, onToggle }: { hop: TrainLeg; on: boolean; onTogg
   );
 }
 
+/**
+ * "טיסות ישירות בלבד" under the way there and back (Dor 09.11) - the regular flow's "טיסה ישירה"
+ * filter, searched by Amadeus itself: off = every flight, as before.
+ */
+function DirectSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onToggle}
+      className="flex w-fit items-center gap-1.5 rounded-full text-start text-xs font-semibold text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest dark:focus-visible:outline-glow"
+    >
+      <span aria-hidden className={cn("relative h-4 w-7 shrink-0 rounded-full transition-colors", on ? "bg-brand-aqua" : "bg-foreground/20")}>
+        <span
+          className={cn(
+            "absolute top-[2px] size-3 rounded-full bg-white shadow-sm transition-[inset-inline-start] duration-200",
+            on ? "start-[14px]" : "start-[2px]",
+          )}
+        />
+      </span>
+      טיסות ישירות בלבד
+    </button>
+  );
+}
+
 /** One small line over a part's list: how an event a flight does not land next to is reached. */
 function GroundLine({ text }: { text: string }) {
   return (
@@ -550,8 +624,15 @@ export function FlightsStep({
   shown?: boolean;
   onSearching?: (searching: boolean) => void;
 }) {
-  const { state, setDates, toggleTrain, setActiveFlightPart } = useItinerary();
+  const { state, setDates, toggleTrain, setActiveFlightPart, setFlightPart } = useItinerary();
   const { route, dates, pax, train, flightParts } = state;
+  // "טיסות ישירות בלבד" on the way there and back. The step lives from the planner on, so this
+  // lasts the visit; a switch is a new search, so the pick made under the other answer goes.
+  const [nonStop, setNonStop] = useState(false);
+  const toggleNonStop = () => {
+    setNonStop((v) => !v);
+    setFlightPart(MAIN_PART, null);
+  };
   const trainSet = useMemo(() => new Set(train), [train]);
   const parts = useMemo(() => flightPartsOf(route, dates, trainSet), [route, dates, trainSet]);
   const allLegs = useMemo(() => tripLegs(route, dates, new Set()), [route, dates]);
@@ -641,9 +722,12 @@ export function FlightsStep({
         const hop = hops.get(p.key);
         const moveRange = bounds.moves[p.key];
         return (
-          <PartPane key={p.key} part={p} shown={shown && i === active} onView={onView}>
+          <PartPane key={p.key} part={p} shown={shown && i === active} nonStop={p.kind === "main" && nonStop} onView={onView}>
             {p.kind === "main" ? (
-              <TripDateRange route={route} dates={dates} onCommit={setDates} />
+              <>
+                <TripDateRange route={route} dates={dates} onCommit={setDates} />
+                <DirectSwitch on={nonStop} onToggle={toggleNonStop} />
+              </>
             ) : (
               moveRange && (
                 <DateStepper

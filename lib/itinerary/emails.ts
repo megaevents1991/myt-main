@@ -18,6 +18,7 @@ import { roomsLabel } from "@/lib/events/readyPackage";
 import { dayMonth, dayMonthYear, stayCityName } from "./builder";
 import type { GroupRowInsert, RowEventInfo, TripSubmission } from "./confirm";
 import { stays, trainLegs } from "./dates";
+import { legAirlines } from "./directPairs";
 import { dayDiff, eventDay } from "./geo";
 import { offlineHotelIds } from "./offlineHold";
 import type { LivePrice } from "./progress";
@@ -158,15 +159,25 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
   });
 
   const f = i.flight;
+  const carriers = legAirlines(f);
   const flights = [
     line(`Airline: ${f.metadata?.name || f.airline || "N/A"}`),
     line(`Price for the party: $${f.price} (${f.numOfTravelers} travellers) - the full offer is on reservation ${seq1 ? ref(seq1) : "seq 1"}`),
+    ...(f.oneWays
+      ? [
+          line(
+            `TWO ONE-WAY TICKETS (direct-only search): out ${f.oneWays[0].metadata?.name || f.oneWays[0].airline} $${f.oneWays[0].price}, home ${
+              f.oneWays[1].metadata?.name || f.oneWays[1].airline
+            } $${f.oneWays[1].price} - both offers are in flight_order_info.oneWays`,
+          ),
+        ]
+      : []),
     ...(f.legs ?? []).map(
       (leg, k) =>
         line(
           `${k + 1}. ${leg.departureAirport} -> ${leg.arrivalAirport}  ${legTime(leg.departureTime)} -> ${legTime(leg.arrivalTime)}  ${
             leg.flightNumber || "N/A"
-          }  ${stopsText(leg)}`,
+          }  ${stopsText(leg)}${carriers[k] ? `  ${carriers[k]}` : ""}`,
         ),
     ),
     ...i.trainLegs.map((t) => line(`Train (customer's own, NOT included): ${t.fromName} -> ${t.toName} on ${t.date}`)),
@@ -260,15 +271,16 @@ export function tripHoldMail(i: TripMailInput): { subject: string; html: string 
     )} · ${esc(t.zone_label || t.category)} × ${esc(t.number_of_ticket)}`;
   });
 
-  const airline = i.flight.metadata?.name || i.flight.airline || "";
+  // Every leg under its own airline: a move, or a half of a pair of one-ways, is another ticket.
+  const carriers = legAirlines(i.flight);
   const flights = [
     ...(i.flight.legs ?? []).map(
-      (leg) =>
+      (leg, k) =>
         `<span dir="ltr" style="unicode-bidi: embed;">${esc(leg.departureAirport)} → ${esc(leg.arrivalAirport)}</span> · ${esc(
           dayMonthYear(leg.departureTime.slice(0, 10)),
         )} <span dir="ltr" style="unicode-bidi: embed;">${esc(leg.departureTime.slice(11, 16))}</span>${
           leg.flightNumber ? ` · <span dir="ltr" style="unicode-bidi: embed;">${esc(leg.flightNumber)}</span>` : ""
-        }${airline ? ` · ${esc(airline)}` : ""}`,
+        }${carriers[k] ? ` · ${esc(carriers[k])}` : ""}`,
     ),
     ...i.trainLegs.map(
       (t) => `הגעה עצמאית: ${esc(t.fromName)} ← ${esc(t.toName)} · ${esc(dayMonth(t.date))} · בכוחות עצמכם, לא כלול במחיר`,

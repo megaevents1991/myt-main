@@ -28,6 +28,7 @@ import { sendTripSuggestion } from "@/app/euro-trip/build/actions";
 import { dayMonth, moveName, stayCityName, tripCities } from "@/lib/itinerary/builder";
 import type { HeldAnswer } from "@/lib/itinerary/confirm";
 import { eventGrounds, moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
+import { airlineLabel } from "@/lib/itinerary/directPairs";
 import { flightPartsOf } from "@/lib/itinerary/flightParts";
 import { groundNote, trainRowText } from "@/lib/itinerary/flightsView";
 import { dayDiff, eventDay, sameHub } from "@/lib/itinerary/geo";
@@ -169,7 +170,7 @@ function LegLine({ leg }: { leg: FlightSegment }) {
  * leg with the live `FlightMeta`.
  */
 function PartFlights({ title, flight, when }: { title: string; flight: ItineraryFlight; when: string }) {
-  const airline = flight.metadata?.name || flight.airline;
+  const airline = airlineLabel(flight);
   return (
     <div>
       <h3 className="hidden text-lg font-bold md:block">{title}</h3>
@@ -355,7 +356,7 @@ function TripReview({
     return {
       id: `flights-${part.key}`,
       primary: title,
-      secondary: part.byTrain ? "הגעה עצמאית" : f ? f.metadata?.name || f.airline : "עוד לא נבחרה טיסה",
+      secondary: part.byTrain ? "הגעה עצמאית" : f ? airlineLabel(f) : "עוד לא נבחרה טיסה",
       when,
       icon: part.byTrain ? <TrainFront className="size-[18px]" /> : <FaPlane />,
       content:
@@ -536,6 +537,24 @@ function TripReview({
       <GroundLines />
     </>,
     rows(hotelItems),
+  );
+}
+
+/**
+ * The trip's saving, said as one (Alon 09.11: "מזה הנחת 403 דולר?"; Dor: "חשוב להראות חיסכון"): what
+ * booking the events together takes off our markups (`markupDiscount`) for the party, already in
+ * the total above. Nothing for no saving.
+ */
+function TripSaving({ usd, events }: { usd: number; events: number }) {
+  if (!(usd > 0)) return null;
+  return (
+    <p className="m-0 border-b border-border px-6 py-2 text-sm font-semibold text-success">
+      הנחת טריפ: חסכתם{" "}
+      <span className="tabular-nums" dir="ltr">
+        ${usd.toLocaleString("en-US")}
+      </span>{" "}
+      על הזמנת {events === 2 ? "שני" : events} האירועים יחד. כבר כלול במחיר.
+    </p>
   );
 }
 
@@ -1055,15 +1074,20 @@ export function SummaryStep({
                 )}
               </div>
               {price ? (
-                <PriceSummary
-                  finalPurchasePrice={price.total}
-                  finalPurchasePriceILS={0}
-                  recommendedPriceAllPax={0}
-                  numberOfPersons={pax}
-                  agentCommission={0}
-                  affDiscount={Math.round(price.discount * pax)}
-                  isNumberOfPersonsEqual={false}
-                />
+                <>
+                  {/* The live summary's "כולל הנחת $X" is a coupon's / partner's; a trip says what its
+                      saving is (Alon 09.11: "מזה הנחת 403 דולר?"). */}
+                  <PriceSummary
+                    finalPurchasePrice={price.total}
+                    finalPurchasePriceILS={0}
+                    recommendedPriceAllPax={0}
+                    numberOfPersons={pax}
+                    agentCommission={0}
+                    affDiscount={0}
+                    isNumberOfPersonsEqual={false}
+                  />
+                  <TripSaving usd={Math.round(price.discount * pax)} events={route.length} />
+                </>
               ) : (
                 <EstimateStrip total={estimate.total} perTraveller={estimate.perTraveller} />
               )}
