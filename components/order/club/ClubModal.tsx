@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@mantine/core";
+import { X } from "lucide-react";
 import { CLUB_COPY } from "@/lib/club/copy";
 import { ClubForm, type ClubAppliedResult, type ClubMode } from "./ClubForm";
 import type { ClubOk } from "./clubClient";
@@ -20,6 +21,8 @@ export function ClubModal({
   eventId,
   method,
   onApplied,
+  continueLabel,
+  onContinue,
 }: {
   open: boolean;
   initialMode: ClubMode;
@@ -28,6 +31,9 @@ export function ClubModal({
   eventId: number | null;
   method: "popup" | "row";
   onApplied(a: ClubOk, how: "join" | "lookup", name: string | null): ClubAppliedResult;
+  /** D14: set when the popup interrupted the way to payment - "פעם הבאה" and the card's button carry it on. */
+  continueLabel?: string | null;
+  onContinue?(): void;
 }) {
   return (
     <Modal
@@ -36,15 +42,21 @@ export function ClubModal({
       centered
       size="sm"
       radius="lg"
-      withCloseButton
-      closeButtonProps={{ "aria-label": CLUB_COPY.close }}
-      title={
-        <span dir="ltr" className="text-sm font-extrabold tracking-[0.2em] text-forest dark:text-glow">
-          {CLUB_COPY.brand}
-        </span>
-      }
-      styles={{ header: { paddingBottom: 0 } }}
+      withCloseButton={false}
+      styles={{ body: { paddingTop: 12 } }}
     >
+      {/* Dor 09.11: a clear X at the top RIGHT (physical, not the RTL end), with the wordmark on the left. */}
+      <div dir="ltr" className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-extrabold tracking-[0.2em] text-forest dark:text-glow">{CLUB_COPY.brand}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={CLUB_COPY.close}
+          className="-mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-5 w-5" aria-hidden />
+        </button>
+      </div>
       <ClubForm
         initialMode={initialMode}
         prefill={prefill}
@@ -53,6 +65,8 @@ export function ClubModal({
         context="order"
         onApplied={onApplied}
         onDone={onClose}
+        continueLabel={continueLabel ?? null}
+        onContinue={onContinue}
       />
     </Modal>
   );

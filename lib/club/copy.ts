@@ -35,6 +35,10 @@ export const CLUB_COPY = {
   mailSentBefore: "שלחנו ל-",
   mailSentAfter: " מייל עם קוד החבר",
   backToOrder: "חזרה להזמנה",
+  /** D14: the popup came on the way to payment - these carry the interrupted click on. */
+  continuePay: "המשך לתשלום מאובטח",
+  continueOrder: "המשך להזמנה",
+  later: "פעם הבאה",
   pageApplied: "מחיר החבר יופעל לבד בהזמנה הבאה שלכם במכשיר הזה.",
   pageCta: "לאירועים באתר",
   pagePerks: ["ראשונים לשמוע על אירועים חדשים", "מבצעים לחברים בלבד", "מחיר חבר על כל הזמנה של חבילה, בכל פעם"],

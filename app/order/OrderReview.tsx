@@ -65,7 +65,6 @@ import { influencerPrimaryCode, readUtmCookieFromHeader } from "@/lib/utm";
 import { CLUB_COPY } from "@/lib/club/copy";
 import {
   clubCouponQty,
-  clubPopupDue,
   clubSurface,
   readClubCookie,
   shouldAutoApply,
@@ -1391,62 +1390,29 @@ export default function OrderReview({
     clubSurfaceNow,
   ]);
 
-  // MEGA CLUB popup in the order (D14, Dor 09.11: "מילאתי הזמנה ולא נתקלתי בפופ
-  // אפ"). Once per order (this tab, this event): the backoffice's delay after the
-  // summary is ready, then the first pause in typing (clubPopupDue). A click never
-  // cancels it; a member this device knows, a member price already on, or the
-  // popup opened from the row does.
-  const clubPopupShownRef = useRef(false);
-  useEffect(() => {
-    if (clubModal.open) clubPopupShownRef.current = true;
-  }, [clubModal.open]);
-  useEffect(() => {
-    if (openModal || !clubConfig || clubSurfaceNow !== "club" || clubPopupShownRef.current) return;
-    const key = `myt:club-popup:${event?.id ?? ""}`;
+  // MEGA CLUB on the way to payment (D14, Dor 09.11: "לקפיץ את זה בסוף ההזמנה
+  // לפני שעוברים לפיצול הזמנה או תשלום מאובטח"). Once per order (this tab, this
+  // event): handleSubmit opens the popup instead of going on, and keeps the
+  // click it interrupted so "פעם הבאה" - or a join - carries straight on.
+  const clubAskedRef = useRef(false);
+  const pendingSubmitRef = useRef<{ payNow: boolean; onlySave: boolean } | null>(null);
+  const clubAskKey = `myt:club-asked:${event?.id ?? ""}`;
+  const clubAlreadyAsked = () => {
+    if (clubAskedRef.current) return true;
     try {
-      if (sessionStorage.getItem(key)) return;
+      return !!sessionStorage.getItem(clubAskKey);
     } catch {
-      /* no storage: the ref still keeps it to once per page */
+      return false;
     }
-    const readyAt = Date.now();
-    const delayMs = clubConfig.popupDelaySeconds * 1000;
-    let lastInputAt: number | null = null;
-    const onInput = () => {
-      lastInputAt = Date.now();
-    };
-    const isTextField = (el: Element | null) =>
-      !!el &&
-      (el.tagName === "INPUT" ||
-        el.tagName === "TEXTAREA" ||
-        (el as HTMLElement).isContentEditable);
-    document.addEventListener("keydown", onInput, true);
-    document.addEventListener("input", onInput, true);
-    const tick = window.setInterval(() => {
-      if (clubPopupShownRef.current) return window.clearInterval(tick);
-      const due = clubPopupDue({
-        now: Date.now(),
-        readyAt,
-        delayMs,
-        lastInputAt,
-        fieldFocused: isTextField(document.activeElement),
-      });
-      if (!due) return;
-      clubPopupShownRef.current = true;
-      window.clearInterval(tick);
-      if (clubPopupBlockedRef.current) return;
-      try {
-        sessionStorage.setItem(key, "1");
-      } catch {
-        /* see above */
-      }
-      setClubModal({ open: true, mode: "join", method: "popup" });
-    }, 500);
-    return () => {
-      window.clearInterval(tick);
-      document.removeEventListener("keydown", onInput, true);
-      document.removeEventListener("input", onInput, true);
-    };
-  }, [openModal, clubConfig, clubSurfaceNow, event?.id]);
+  };
+  const markClubAsked = () => {
+    clubAskedRef.current = true;
+    try {
+      sessionStorage.setItem(clubAskKey, "1");
+    } catch {
+      /* the ref still keeps it to once per page */
+    }
+  };
 
   const setErrors = (requireAllPassengers = false) => {
     const allErrors = [...validationErrors];
@@ -1821,6 +1787,21 @@ export default function OrderReview({
       return;
     }
 
+    // MEGA CLUB (D14): on the way to secure payment or "לפצל תשלום / דברו עם
+    // נציג" - not a 24 h hold - a visitor who is not a member yet gets the club
+    // once. The click is kept; ClubModal carries it on.
+    if (
+      clubSurfaceNow === "club" &&
+      !onlySave &&
+      !clubPopupBlockedRef.current &&
+      !clubAlreadyAsked()
+    ) {
+      markClubAsked();
+      pendingSubmitRef.current = { payNow, onlySave };
+      setClubModal({ open: true, mode: "join", method: "popup" });
+      return;
+    }
+
     setIsPayNow(payNow);
     setPaymentMethod(payNow ? "credit_card" : "phone_order");
     setIsSubmitting(true);
@@ -2150,6 +2131,21 @@ export default function OrderReview({
     return { applied: true, savedUsd: clubUsd };
   };
 
+  // The click the club popup interrupted (D14) - "פעם הבאה", or a join, carries it on.
+  const pendingSubmit = pendingSubmitRef.current;
+  const continuePendingSubmit = () => {
+    const pending = pendingSubmitRef.current;
+    pendingSubmitRef.current = null;
+    setClubModal((m) => ({ ...m, open: false }));
+    if (pending) {
+      void handleSubmit(
+        { preventDefault() {} } as React.FormEvent,
+        pending.payNow,
+        pending.onlySave
+      );
+    }
+  };
+
   // "להחליף למחיר חבר": the customer asked for it, so it replaces the other code.
   const swapToMemberPrice = () => {
     if (!clubCookie) return;
@@ -2341,7 +2337,18 @@ export default function OrderReview({
           open={clubModal.open}
           initialMode={clubModal.mode}
           method={clubModal.method}
-          onClose={() => setClubModal((m) => ({ ...m, open: false }))}
+          onClose={() => {
+            pendingSubmitRef.current = null;
+            setClubModal((m) => ({ ...m, open: false }));
+          }}
+          continueLabel={
+            clubModal.open && pendingSubmit
+              ? pendingSubmit.payNow
+                ? CLUB_COPY.continuePay
+                : CLUB_COPY.continueOrder
+              : null
+          }
+          onContinue={continuePendingSubmit}
           prefill={{
             email: passengers[0]?.email ?? "",
             phone: passengers[0]?.phone ?? "",
