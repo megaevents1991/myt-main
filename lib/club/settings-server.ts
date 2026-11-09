@@ -9,8 +9,8 @@ export const CLUB_DB_DEADLINE_MS = 3000;
 let cached: { at: number; value: ClubSettings } | null = null;
 
 /** Any failure (table missing before the migration, a slow DB) = the club is off = today's popup (Review Focus 4). */
-export async function getClubSettings(now = Date.now()): Promise<ClubSettings> {
-  if (cached && now - cached.at < CACHE_MS) return cached.value;
+export async function getClubSettings(now = Date.now(), opts: { fresh?: boolean } = {}): Promise<ClubSettings> {
+  if (!opts.fresh && cached && now - cached.at < CACHE_MS) return cached.value;
   let value: ClubSettings;
   try {
     const { data, error } = await supabase

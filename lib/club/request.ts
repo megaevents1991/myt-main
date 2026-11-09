@@ -27,6 +27,25 @@ export function clubCtx(request: Request, body?: Record<string, unknown> | null)
   };
 }
 
+/**
+ * A join or lookup must come from our own page. A cross-site page can POST text/plain with mode "no-cors" and skip the
+ * CORS preflight (request.json() never looks at the type), so: JSON only, and a browser's Sec-Fetch-Site / Origin must
+ * name this host. A request with neither header (curl, server to server) is let through - the rate limit still counts it.
+ */
+export function isOwnSiteJsonPost(request: Request): boolean {
+  if (!(request.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) return false;
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  try {
+    return !!host && new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function readJson(request: Request): Promise<Record<string, unknown> | null> {
   try {
     const body: unknown = await request.json();

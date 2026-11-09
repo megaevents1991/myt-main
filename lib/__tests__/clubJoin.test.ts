@@ -34,6 +34,7 @@ function member(over: Partial<ClubMember> = {}): ClubMember {
     status: "active",
     marketing: "subscribed",
     unsubscribe_token: "0123456789abcdef0123456789abcdef",
+    discount_value: 50,
     ...over,
   };
 }
@@ -44,6 +45,8 @@ function fake(opts: {
   existing?: ClubMember[];
   memberClash?: ClubMember;
   couponClashes?: number;
+  /** insertMember throws: "committed" = the row landed anyway (a timeout after the commit), "lost" = it did not. */
+  insertThrows?: "committed" | "lost";
   mail?: "ok" | "reject" | "fail";
 } = {}): Fake {
   let nextCoupon = 500;
@@ -85,6 +88,11 @@ function fake(opts: {
       f.coupons = f.coupons.filter((c) => c.id !== id);
     },
     async insertMember(row: NewClubMember) {
+      if (opts.insertThrows) {
+        if (opts.insertThrows === "committed")
+          f.members.push(member({ id: "m-late", member_no: 1042, email: row.email, coupon_code: row.coupon_code }));
+        throw new Error("canceling statement due to user request");
+      }
       if (opts.memberClash) {
         f.members.push(opts.memberClash);
         return { clash: true };
@@ -276,6 +284,32 @@ describe("joinClub", () => {
     const f = fake({ couponClashes: 3 });
     expect(await joinClub(join, ctx, f)).toEqual({ ok: false, kind: "error" });
     expect(f.members).toEqual([]);
+  });
+
+  it("a member insert that timed out after committing is the join: its code is kept", async () => {
+    const f = fake({ insertThrows: "committed" });
+    const a = await joinClub(join, ctx, f);
+    expect(a).toMatchObject({ ok: true, code: "MEGADDDDDD", memberNo: 1042, returning: false });
+    expect(f.deletedCoupons).toEqual([]);
+    expect(f.logs.map((l) => l.action)).toEqual(["join"]);
+  });
+
+  it("a member insert that failed outright deletes its code", async () => {
+    const f = fake({ insertThrows: "lost" });
+    expect(await joinClub(join, ctx, f)).toEqual({ ok: false, kind: "error" });
+    expect(f.deletedCoupons).toEqual([500]);
+  });
+
+  it("a member whose code is gone is never handed a dead code", async () => {
+    const f = fake({ existing: [member({ discount_value: null })] });
+    expect(await joinClub(join, ctx, f)).toEqual({ ok: false, kind: "error" });
+    expect(await lookupClub({ email: "dana@gmail.com", hp: "" }, ctx, f)).toEqual({ ok: false, kind: "error" });
+  });
+
+  it("a returning member is answered with their own code's amount", async () => {
+    const f = fake({ existing: [member({ discount_value: 80 })] });
+    expect(await joinClub(join, ctx, f)).toMatchObject({ ok: true, discountValue: 80, returning: true });
+    expect(await lookupClub({ email: "dana@gmail.com", hp: "" }, ctx, f)).toMatchObject({ ok: true, discountValue: 80 });
   });
 
   it("a refused mail never fails the join", async () => {

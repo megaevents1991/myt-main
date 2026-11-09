@@ -8,7 +8,17 @@ import type { ClubDeps, ClubLogInsert, ClubMember, MailResult, NewClubMember } f
 import { CLUB_MAIL_FROM, welcomeMail } from "@/lib/club/mail";
 import { CLUB_DB_DEADLINE_MS, getClubSettings } from "@/lib/club/settings-server";
 
-const MEMBER_COLUMNS = "id, member_no, email, first_name, coupon_code, status, marketing, unsubscribe_token";
+const MEMBER_COLUMNS =
+  "id, member_no, email, first_name, coupon_code, status, marketing, unsubscribe_token, coupon:coupons!club_members_coupon_id_fkey(discount_value)";
+
+type MemberRow = Omit<ClubMember, "discount_value"> & { coupon: { discount_value: number } | null };
+
+/** The embedded coupon row gives the member's own amount; no row = the code is dead (null). */
+function toMember(row: MemberRow | null): ClubMember | null {
+  if (!row) return null;
+  const { coupon, ...rest } = row;
+  return { ...rest, discount_value: coupon ? Number(coupon.discount_value) : null };
+}
 const PROD_SITE = "https://www.mega-events.co.il";
 
 const deadline = () => AbortSignal.timeout(CLUB_DB_DEADLINE_MS);
@@ -78,7 +88,8 @@ async function sendWelcomeMail(m: ClubMember, siteUrl: string): Promise<MailResu
 
 export function clubDeps(opts: { siteUrl: string }): ClubDeps {
   return {
-    settings: () => getClubSettings(),
+    // A join writes the amount into the new code: read it fresh, never from the page's 60 s cache.
+    settings: () => getClubSettings(Date.now(), { fresh: true }),
 
     async countRecent(ip, actions, sinceIso) {
       const { count, error } = await supabase
@@ -100,7 +111,7 @@ export function clubDeps(opts: { siteUrl: string }): ClubDeps {
         .abortSignal(deadline())
         .maybeSingle();
       if (error) fail(error, "club member by email");
-      return (data as ClubMember | null) ?? null;
+      return toMember(data as MemberRow | null);
     },
 
     async memberByToken(token) {
@@ -111,7 +122,7 @@ export function clubDeps(opts: { siteUrl: string }): ClubDeps {
         .abortSignal(deadline())
         .maybeSingle();
       if (error) fail(error, "club member by token");
-      return (data as ClubMember | null) ?? null;
+      return toMember(data as MemberRow | null);
     },
 
     async memberById(id) {
@@ -122,7 +133,7 @@ export function clubDeps(opts: { siteUrl: string }): ClubDeps {
         .abortSignal(deadline())
         .maybeSingle();
       if (error) fail(error, "club member by id");
-      return (data as ClubMember | null) ?? null;
+      return toMember(data as MemberRow | null);
     },
 
     async insertCoupon(code, amount) {
@@ -148,7 +159,11 @@ export function clubDeps(opts: { siteUrl: string }): ClubDeps {
     },
 
     async deleteCoupon(id) {
-      // Only the orphan of a join that lost its race - a code no member holds and no order used yet.
+      // Only the orphan of a join that lost its race - a code no member holds and no order used yet. A member row that
+      // landed after a timed-out insert keeps its code: look before deleting.
+      const held = await supabase.from("club_members").select("id").eq("coupon_id", id).abortSignal(deadline()).maybeSingle();
+      if (held.error) fail(held.error, "orphan member code check");
+      if (held.data) return;
       const { error } = await supabase.from("coupons").delete().eq("id", id).eq("source", "club").abortSignal(deadline());
       if (error) fail(error, "orphan member code delete");
     },
@@ -162,7 +177,7 @@ export function clubDeps(opts: { siteUrl: string }): ClubDeps {
         .single();
       if (error?.code === "23505") return { clash: true };
       if (error || !data) fail(error, "club member insert");
-      return data as ClubMember;
+      return toMember(data as unknown as MemberRow) as ClubMember;
     },
 
     async markUnsubscribed(id, at) {

@@ -36,6 +36,8 @@ export type ClubMember = {
   status: string;
   marketing: string;
   unsubscribe_token: string;
+  /** The member's own code's amount (coupons.discount_value); null = the coupon row is gone, the code is dead. */
+  discount_value: number | null;
 };
 
 export type NewClubMember = {
@@ -104,6 +106,7 @@ function honeypotEmpty(v: unknown): boolean {
   return v === undefined || v === null || v === "";
 }
 
+/** The member's own code's amount is what validate and confirm-order will charge - never a cached setting. */
 function answer(m: ClubMember, amount: number, returning: boolean, firstName: string | null): ClubAnswer {
   return {
     ok: true,
@@ -111,7 +114,7 @@ function answer(m: ClubMember, amount: number, returning: boolean, firstName: st
     memberNo: m.member_no,
     firstName,
     discountType: "fixed",
-    discountValue: amount,
+    discountValue: m.discount_value ?? amount,
     perPerson: true,
     returning,
   };
@@ -203,6 +206,10 @@ export async function joinClub(input: unknown, ctx: ClubCtx, deps: ClubDeps): Pr
     const amount = settings.discount_per_traveler_usd;
     const rejoin = async (m: ClubMember): Promise<ClubAnswer> => {
       if (m.status !== "active") return { ok: false, kind: "removed" };
+      if (m.discount_value == null) {
+        console.error("club: member", m.member_no, "has no code row - not handing out a dead code");
+        return { ok: false, kind: "error" };
+      }
       // Never touch names, phone or the mail status here: anyone who knows the email can send this (spec §8.3).
       await safeLog(deps, { member_id: m.id, action: "rejoin", ip: ctx.ip, user_agent: ctx.userAgent, source });
       return answer(m, amount, true, null);
@@ -245,8 +252,16 @@ export async function joinClub(input: unknown, ctx: ClubCtx, deps: ClubDeps): Pr
         consent_version: CLUB_CONSENT_VERSION,
       });
     } catch (e) {
-      await deps.deleteCoupon(coupon.id).catch((err) => console.error("club: orphan coupon left:", coupon?.id, err));
-      throw e;
+      // A deadline cancels the request, not the insert: the row may have landed. Never delete a code a member holds
+      // (Review: a member whose code was deleted under them is handed a dead code on every later visit).
+      const holder = await deps.memberByEmail(email).catch(() => null);
+      if (holder && holder.coupon_code === coupon.code) {
+        made = holder;
+      } else {
+        await deps.deleteCoupon(coupon.id).catch((err) => console.error("club: orphan coupon left:", coupon?.id, err));
+        if (holder) return await rejoin(holder);
+        throw e;
+      }
     }
 
     if (isClash(made)) {
@@ -285,6 +300,10 @@ export async function lookupClub(input: unknown, ctx: ClubCtx, deps: ClubDeps): 
 
   try {
     const m = await deps.memberByEmail(email);
+    if (m && m.status === "active" && m.discount_value == null) {
+      console.error("club: member", m.member_no, "has no code row - not handing out a dead code");
+      return { ok: false, kind: "error" };
+    }
     if (!m || m.status !== "active") {
       await safeLog(deps, { member_id: null, action: "lookup_miss", ip: ctx.ip, user_agent: ctx.userAgent, source });
       return { ok: false, kind: "not_found" };
