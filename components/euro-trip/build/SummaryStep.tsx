@@ -543,17 +543,18 @@ function TripReview({
 /**
  * The trip's saving, said as one (Alon 09.11: "מזה הנחת 403 דולר?"; Dor: "חשוב להראות חיסכון"): what
  * booking the events together takes off our markups (`markupDiscount`) for the party, already in
- * the total above. Nothing for no saving.
+ * the total above. Never "הנחה" (Dor 09.11: "אולי זה לא הנחה - אלא חסכת - בגלל שהוא חיבר את הטריפ
+ * הוא חסך כסף"): the customer saved by joining the events into one trip. Nothing for no saving.
  */
 function TripSaving({ usd, events }: { usd: number; events: number }) {
   if (!(usd > 0)) return null;
   return (
     <p className="m-0 border-b border-border px-6 py-2 text-sm font-semibold text-success">
-      הנחת טריפ: חסכתם{" "}
+      חסכתם{" "}
       <span className="tabular-nums" dir="ltr">
         ${usd.toLocaleString("en-US")}
       </span>{" "}
-      על הזמנת {events === 2 ? "שני" : events} האירועים יחד. כבר כלול במחיר.
+      כי חיברתם {events === 2 ? "שני" : events} אירועים לטריפ אחד. החיסכון כבר כלול במחיר.
     </p>
   );
 }
