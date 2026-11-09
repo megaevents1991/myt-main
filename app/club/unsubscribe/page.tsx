@@ -4,7 +4,7 @@ import { CLUB_UNSUBSCRIBE_COPY as C } from "@/lib/club/copy";
 import { maskEmail } from "@/lib/club/rules";
 import { CLUB_DB_DEADLINE_MS } from "@/lib/club/settings-server";
 import { CLUB_GRADIENT } from "@/components/order/club/ClubCard";
-import { UnsubscribeButton } from "./UnsubscribeButton";
+import { ClubPreferences } from "./ClubPreferences";
 
 export const dynamic = "force-dynamic";
 
@@ -16,17 +16,23 @@ export const metadata: Metadata = {
 const TOKEN_RE = /^[a-f0-9]{16,64}$/i;
 
 /** The masked address of the token's member, or null (unknown token, unreadable DB). Never the whole email. */
-async function maskedFor(token: string): Promise<{ masked: string; unsubscribed: boolean } | null> {
+async function maskedFor(
+  token: string,
+): Promise<{ masked: string; unsubscribed: boolean; status: string } | null> {
   if (!TOKEN_RE.test(token)) return null;
   try {
     const { data, error } = await supabase
       .from("club_members")
-      .select("email, marketing")
+      .select("email, marketing, status")
       .eq("unsubscribe_token", token)
       .abortSignal(AbortSignal.timeout(CLUB_DB_DEADLINE_MS))
       .maybeSingle();
     if (error || !data) return null;
-    return { masked: maskEmail(String(data.email)), unsubscribed: data.marketing === "unsubscribed" };
+    return {
+      masked: maskEmail(String(data.email)),
+      unsubscribed: data.marketing === "unsubscribed",
+      status: String(data.status),
+    };
   } catch {
     return null;
   }
@@ -50,17 +56,19 @@ export default async function ClubUnsubscribePage({
         MEGA CLUB
       </div>
       <h1 className="text-2xl font-bold text-foreground">{C.title}</h1>
-      {!member ? (
+      {!member || member.status === "removed" ? (
         <p className="text-base text-muted-foreground">{C.notFound}</p>
-      ) : member.unsubscribed ? (
-        <p className="text-lg font-semibold text-foreground">{C.done}</p>
+      ) : member.status === "left" ? (
+        <p className="text-lg font-semibold text-foreground">{C.leftDone}</p>
       ) : (
         <>
-          <p className="text-base text-muted-foreground">
-            {C.leadBefore}
-            <bdi dir="ltr">{member.masked}</bdi>.
-          </p>
-          <UnsubscribeButton token={token} />
+          {!member.unsubscribed && (
+            <p className="text-base text-muted-foreground">
+              {C.leadBefore}
+              <bdi dir="ltr">{member.masked}</bdi>.
+            </p>
+          )}
+          <ClubPreferences token={token} subscribed={!member.unsubscribed} />
         </>
       )}
     </main>

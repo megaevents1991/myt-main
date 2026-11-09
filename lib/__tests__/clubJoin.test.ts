@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   joinClub,
+  leaveClub,
   lookupClub,
   resendWelcome,
   unsubscribeClub,
@@ -22,6 +23,8 @@ type Fake = ClubDeps & {
   logs: ClubLogInsert[];
   welcome: { id: string; result: { ok: boolean } }[];
   unsubscribed: string[];
+  left: string[];
+  reactivated: string[];
 };
 
 function member(over: Partial<ClubMember> = {}): ClubMember {
@@ -58,6 +61,8 @@ function fake(opts: {
     logs: [],
     welcome: [],
     unsubscribed: [],
+    left: [],
+    reactivated: [],
     async settings() {
       if (opts.settings === "throw") throw new Error("db down");
       return opts.settings ?? ON;
@@ -113,6 +118,19 @@ function fake(opts: {
       f.unsubscribed.push(id);
       const m = f.members.find((x) => x.id === id);
       if (m) m.marketing = "unsubscribed";
+    },
+    async markLeft(id) {
+      f.left.push(id);
+      const m = f.members.find((x) => x.id === id);
+      if (m) {
+        m.status = "left";
+        m.marketing = "unsubscribed";
+      }
+    },
+    async reactivateMember(id) {
+      f.reactivated.push(id);
+      const m = f.members.find((x) => x.id === id);
+      if (m) m.status = "active";
     },
     async log(row) {
       f.logs.push(row);
@@ -374,6 +392,53 @@ describe("unsubscribeClub", () => {
   it("an unknown or malformed token is not found", async () => {
     expect(await unsubscribeClub("nope", ctx, fake())).toEqual({ ok: false, kind: "not_found" });
     expect(await unsubscribeClub("../../etc", ctx, fake())).toEqual({ ok: false, kind: "not_found" });
+  });
+});
+
+describe("leaveClub (D13)", () => {
+  const T = "0123456789abcdef0123456789abcdef";
+  it("leaves: the code goes off, the updates stop, logged as left", async () => {
+    const f = fake({ existing: [member()] });
+    expect(await leaveClub(T, ctx, f)).toEqual({ ok: true });
+    expect(f.left).toEqual(["m-1"]);
+    expect(f.logs.map((l) => [l.action, l.source])).toEqual([["left", "link"]]);
+  });
+  it("leaving twice changes nothing", async () => {
+    const f = fake({ existing: [member({ status: "left", marketing: "unsubscribed" })] });
+    expect(await leaveClub(T, ctx, f)).toEqual({ ok: true });
+    expect(f.left).toEqual([]);
+    expect(f.logs).toEqual([]);
+  });
+  it("a member staff removed is left as staff left them", async () => {
+    const f = fake({ existing: [member({ status: "removed" })] });
+    expect(await leaveClub(T, ctx, f)).toEqual({ ok: true });
+    expect(f.left).toEqual([]);
+  });
+  it("an unknown or malformed token is not found", async () => {
+    expect(await leaveClub("nope", ctx, fake())).toEqual({ ok: false, kind: "not_found" });
+    expect(await leaveClub(T, ctx, fake())).toEqual({ ok: false, kind: "not_found" });
+  });
+  it("a member who left and joins again is a member again, updates still off", async () => {
+    const f = fake({ existing: [member({ status: "left", marketing: "unsubscribed" })] });
+    const a = await joinClub(join, ctx, f);
+    expect(a).toMatchObject({ ok: true, code: "MEGAK7Q2XP", returning: true, firstName: null });
+    expect(f.reactivated).toEqual(["m-1"]);
+    expect(f.members[0].marketing).toBe("unsubscribed");
+    expect(f.coupons).toEqual([]);
+  });
+  it("a member who left is not found by the lookup", async () => {
+    const f = fake({ existing: [member({ status: "left" })] });
+    expect(await lookupClub({ email: "dana@gmail.com", hp: "" }, ctx, f)).toEqual({ ok: false, kind: "not_found" });
+  });
+});
+
+describe("joinClub from the /club page (D15)", () => {
+  it("is recorded as the site page, with no event", async () => {
+    const f = fake();
+    const a = await joinClub({ ...join, method: "page", eventId: undefined }, ctx, f);
+    expect(a.ok).toBe(true);
+    expect(f.logs[0].source).toBe("site_page");
+    expect((f as unknown as { lastRow: NewClubMember }).lastRow).toMatchObject({ source: "site_page", event_id: null });
   });
 });
 

@@ -190,6 +190,37 @@ export function clubDeps(opts: { siteUrl: string }): ClubDeps {
       if (error) fail(error, "club unsubscribe");
     },
 
+    async markLeft(id, at) {
+      const iso = at.toISOString();
+      const read = await supabase.from("club_members").select("coupon_id, unsubscribed_at").eq("id", id).abortSignal(deadline()).maybeSingle();
+      if (read.error) fail(read.error, "club member read before leaving");
+      const patch: Record<string, string> = { status: "left", removed_at: iso, marketing: "unsubscribed", updated_at: iso };
+      if (!read.data?.unsubscribed_at) Object.assign(patch, { unsubscribed_at: iso, unsubscribe_source: "link" });
+      const { error } = await supabase.from("club_members").update(patch).eq("id", id).abortSignal(deadline());
+      if (error) fail(error, "club leave");
+      if (read.data?.coupon_id != null) {
+        const c = await supabase.from("coupons").update({ is_active: false }).eq("id", read.data.coupon_id).eq("source", "club").abortSignal(deadline());
+        if (c.error) fail(c.error, "member code switch off");
+      }
+    },
+
+    async reactivateMember(id) {
+      const now = new Date().toISOString();
+      const read = await supabase.from("club_members").select("coupon_id").eq("id", id).abortSignal(deadline()).maybeSingle();
+      if (read.error) fail(read.error, "club member read before rejoining");
+      const { error } = await supabase
+        .from("club_members")
+        .update({ status: "active", removed_at: null, updated_at: now })
+        .eq("id", id)
+        .eq("status", "left")
+        .abortSignal(deadline());
+      if (error) fail(error, "club rejoin");
+      if (read.data?.coupon_id != null) {
+        const c = await supabase.from("coupons").update({ is_active: true }).eq("id", read.data.coupon_id).eq("source", "club").abortSignal(deadline());
+        if (c.error) fail(c.error, "member code switch on");
+      }
+    },
+
     async log(row: ClubLogInsert) {
       const { error } = await supabase.from("club_log").insert(row).abortSignal(deadline());
       if (error) fail(error, `club log ${row.action}`);

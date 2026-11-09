@@ -58,7 +58,14 @@ export const CLUB_UNSUBSCRIBE_COPY = {
   /** "העדכונים והמבצעים נשלחים ל-<masked>." - the address is printed after it, isolated (bdi). */
   leadBefore: "העדכונים והמבצעים נשלחים ל-",
   button: "הסרה מהעדכונים",
+  stayNote: "תישארו חברי MEGA CLUB, ומחיר החבר נשאר שלכם.",
   done: "הוסרת מהעדכונים. מחיר החבר נשאר שלך.",
+  leaveIntro: "רוצים לעזוב את המועדון לגמרי?",
+  leaveLink: "עזיבת המועדון",
+  leaveWarn: "עזיבה מבטלת את מחיר החבר בכל ההזמנות הבאות, וגם את העדכונים.",
+  leaveConfirm: "כן, לעזוב את המועדון",
+  leaveCancel: "ביטול",
+  leftDone: "עזבת את MEGA CLUB ומחיר החבר בוטל. אפשר להצטרף שוב בכל הזמנה.",
   notFound: "הקישור הזה כבר לא פעיל.",
   error: "משהו השתבש, נסו שוב",
 } as const;

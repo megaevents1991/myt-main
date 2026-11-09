@@ -48,7 +48,7 @@ export type NewClubMember = {
   last_name: string | null;
   coupon_id: number;
   coupon_code: string;
-  source: "checkout_popup" | "checkout_row";
+  source: "checkout_popup" | "checkout_row" | "site_page";
   source_path: string | null;
   event_id: number | null;
   utm: UtmCookie | null;
@@ -61,7 +61,7 @@ export type NewClubMember = {
 
 export type ClubLogInsert = {
   member_id: string | null;
-  action: "join" | "rejoin" | "lookup" | "lookup_miss" | "unsubscribe";
+  action: "join" | "rejoin" | "lookup" | "lookup_miss" | "unsubscribe" | "left";
   consent_text?: string;
   consent_version?: string;
   ip: string | null;
@@ -81,6 +81,10 @@ export type ClubDeps = {
   deleteCoupon(id: number): Promise<void>;
   insertMember(row: NewClubMember): Promise<ClubMember | { clash: true }>;
   markUnsubscribed(id: string, at: Date): Promise<void>;
+  /** D13: the member leaves - status left, updates off, the member code switched off. */
+  markLeft(id: string, at: Date): Promise<void>;
+  /** D13: a member who left joins again - status active, the code back on; the mail status is never touched. */
+  reactivateMember(id: string): Promise<void>;
   log(row: ClubLogInsert): Promise<void>;
   sendWelcome(m: ClubMember): Promise<MailResult>;
   markWelcome(id: string, result: MailResult): Promise<void>;
@@ -195,7 +199,7 @@ export async function joinClub(input: unknown, ctx: ClubCtx, deps: ClubDeps): Pr
   const email = cleanEmail(body.email);
   const phone = cleanPhone(body.phone);
   if (!email || !phone || body.consent !== true || !honeypotEmpty(body.hp)) return { ok: false, kind: "invalid" };
-  const source = body.method === "row" ? "checkout_row" : "checkout_popup";
+  const source = body.method === "row" ? "checkout_row" : body.method === "page" ? "site_page" : "checkout_popup";
   const eventId = typeof body.eventId === "number" && Number.isInteger(body.eventId) && body.eventId > 0 ? body.eventId : null;
 
   const settings = await enabledSettings(deps);
@@ -205,7 +209,9 @@ export async function joinClub(input: unknown, ctx: ClubCtx, deps: ClubDeps): Pr
   try {
     const amount = settings.discount_per_traveler_usd;
     const rejoin = async (m: ClubMember): Promise<ClubAnswer> => {
-      if (m.status !== "active") return { ok: false, kind: "removed" };
+      // A member who left chose to; joining again is choosing back (D13). Staff "Remove" stays refused.
+      if (m.status === "left") await deps.reactivateMember(m.id);
+      else if (m.status !== "active") return { ok: false, kind: "removed" };
       if (m.discount_value == null) {
         console.error("club: member", m.member_no, "has no code row - not handing out a dead code");
         return { ok: false, kind: "error" };
@@ -333,6 +339,26 @@ export async function unsubscribeClub(
     return { ok: true };
   } catch (e) {
     console.error("club: unsubscribe failed:", e);
+    return { ok: false, kind: "error" };
+  }
+}
+
+/** D13: leaving the club from the unsubscribe page - the updates stop and the member code goes off. */
+export async function leaveClub(
+  token: unknown,
+  ctx: ClubCtx,
+  deps: ClubDeps,
+): Promise<{ ok: true } | { ok: false; kind: "not_found" | "error" }> {
+  if (typeof token !== "string" || !TOKEN_RE.test(token)) return { ok: false, kind: "not_found" };
+  try {
+    const m = await deps.memberByToken(token);
+    if (!m) return { ok: false, kind: "not_found" };
+    if (m.status !== "active") return { ok: true }; // already left, or removed by staff: nothing to do
+    await deps.markLeft(m.id, ctx.now);
+    await safeLog(deps, { member_id: m.id, action: "left", ip: ctx.ip, user_agent: ctx.userAgent, source: "link" });
+    return { ok: true };
+  } catch (e) {
+    console.error("club: leave failed:", e);
     return { ok: false, kind: "error" };
   }
 }
