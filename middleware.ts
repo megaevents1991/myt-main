@@ -94,6 +94,8 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith("/api/") &&
     // Feed routes set their own Cache-Control (Meta fetches them on a schedule).
     !pathname.startsWith("/feeds/") &&
+    // A MEGA CLUB page is one member's (the unsubscribe link) - never a shared cache.
+    !pathname.startsWith("/club/") &&
     !pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)
   ) {
     // Allow browser to cache but must revalidate with server

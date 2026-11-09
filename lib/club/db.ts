@@ -1,0 +1,196 @@
+// MEGA CLUB - the real deps of lib/club/join.ts over the service client. Server only. Every call carries a 3 s
+// deadline (a slow DB answers the page an error, never holds it); explicit columns; the tables are the backoffice's
+// (migration 20261109104145_members_club.sql).
+import { randomInt } from "crypto";
+import nodemailer from "nodemailer";
+import { supabase } from "@/lib/supabase";
+import type { ClubDeps, ClubLogInsert, ClubMember, MailResult, NewClubMember } from "@/lib/club/join";
+import { CLUB_MAIL_FROM, welcomeMail } from "@/lib/club/mail";
+import { CLUB_DB_DEADLINE_MS, getClubSettings } from "@/lib/club/settings-server";
+
+const MEMBER_COLUMNS = "id, member_no, email, first_name, coupon_code, status, marketing, unsubscribe_token";
+const PROD_SITE = "https://www.mega-events.co.il";
+
+const deadline = () => AbortSignal.timeout(CLUB_DB_DEADLINE_MS);
+
+type PgError = { code?: string; message: string } | null;
+
+function fail(error: PgError, what: string): never {
+  console.error(`club-db: ${what} failed`, JSON.stringify(error));
+  throw new Error(`${what} failed: ${error?.message ?? "unknown"}`);
+}
+
+/**
+ * Where the mail's links point. Production always names www.mega-events.co.il; a preview or a local run points at
+ * itself, so the unsubscribe link of a test mail works on the build that sent it.
+ */
+export function clubSiteUrl(requestOrigin: string | null): string {
+  if (process.env.VERCEL_ENV === "production" || !requestOrigin) return PROD_SITE;
+  try {
+    const u = new URL(requestOrigin);
+    return u.protocol === "https:" || u.hostname === "localhost" ? u.origin : PROD_SITE;
+  } catch {
+    return PROD_SITE;
+  }
+}
+
+async function sendWelcomeMail(m: ClubMember, siteUrl: string): Promise<MailResult> {
+  const user = process.env.EMAIL_SERVER_USER || "";
+  const pass = process.env.EMAIL_SERVER_PASSWORD || "";
+  if (!user || !pass) return { ok: false, error: "mail is not configured on this build (EMAIL_SERVER_*)" };
+  const unsubscribePage = `${siteUrl}/club/unsubscribe?t=${encodeURIComponent(m.unsubscribe_token)}`;
+  const oneClick = `${siteUrl}/api/club/unsubscribe?t=${encodeURIComponent(m.unsubscribe_token)}`;
+  const mail = welcomeMail({
+    memberNo: m.member_no,
+    code: m.coupon_code,
+    firstName: m.first_name,
+    unsubscribeUrl: unsubscribePage,
+    siteUrl,
+  });
+  const transporter = nodemailer.createTransport({
+    host: "smtp.zeptomail.com",
+    port: 587,
+    auth: { user, pass },
+    connectionTimeout: 3500,
+    greetingTimeout: 3500,
+    socketTimeout: 4000,
+  });
+  try {
+    await transporter.sendMail({
+      from: CLUB_MAIL_FROM,
+      replyTo: process.env.SALES_REP_EMAIL,
+      to: m.email,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      headers: {
+        "List-Unsubscribe": `<${oneClick}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    });
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("club: welcome mail refused:", msg);
+    return { ok: false, error: msg.slice(0, 500) };
+  }
+}
+
+export function clubDeps(opts: { siteUrl: string }): ClubDeps {
+  return {
+    settings: () => getClubSettings(),
+
+    async countRecent(ip, actions, sinceIso) {
+      const { count, error } = await supabase
+        .from("club_log")
+        .select("id", { count: "exact", head: true })
+        .eq("ip", ip)
+        .in("action", actions)
+        .gte("at", sinceIso)
+        .abortSignal(deadline());
+      if (error) fail(error, "club rate-limit count");
+      return count ?? 0;
+    },
+
+    async memberByEmail(emailKey) {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select(MEMBER_COLUMNS)
+        .eq("email", emailKey)
+        .abortSignal(deadline())
+        .maybeSingle();
+      if (error) fail(error, "club member by email");
+      return (data as ClubMember | null) ?? null;
+    },
+
+    async memberByToken(token) {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select(MEMBER_COLUMNS)
+        .eq("unsubscribe_token", token)
+        .abortSignal(deadline())
+        .maybeSingle();
+      if (error) fail(error, "club member by token");
+      return (data as ClubMember | null) ?? null;
+    },
+
+    async memberById(id) {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select(MEMBER_COLUMNS)
+        .eq("id", id)
+        .abortSignal(deadline())
+        .maybeSingle();
+      if (error) fail(error, "club member by id");
+      return (data as ClubMember | null) ?? null;
+    },
+
+    async insertCoupon(code, amount) {
+      const { data, error } = await supabase
+        .from("coupons")
+        .insert({
+          code,
+          discount_type: "fixed",
+          discount_value: amount,
+          per_person: true,
+          is_active: true,
+          source: "club",
+          event_id: null,
+          max_uses: null,
+          valid_until: null,
+        })
+        .select("id")
+        .abortSignal(deadline())
+        .single();
+      if (error?.code === "23505") return { clash: true };
+      if (error || !data) fail(error, "member code insert");
+      return { id: Number(data.id) };
+    },
+
+    async deleteCoupon(id) {
+      // Only the orphan of a join that lost its race - a code no member holds and no order used yet.
+      const { error } = await supabase.from("coupons").delete().eq("id", id).eq("source", "club").abortSignal(deadline());
+      if (error) fail(error, "orphan member code delete");
+    },
+
+    async insertMember(row: NewClubMember) {
+      const { data, error } = await supabase
+        .from("club_members")
+        .insert(row)
+        .select(MEMBER_COLUMNS)
+        .abortSignal(deadline())
+        .single();
+      if (error?.code === "23505") return { clash: true };
+      if (error || !data) fail(error, "club member insert");
+      return data as ClubMember;
+    },
+
+    async markUnsubscribed(id, at) {
+      const iso = at.toISOString();
+      const { error } = await supabase
+        .from("club_members")
+        .update({ marketing: "unsubscribed", unsubscribed_at: iso, unsubscribe_source: "link", updated_at: iso })
+        .eq("id", id)
+        .abortSignal(deadline());
+      if (error) fail(error, "club unsubscribe");
+    },
+
+    async log(row: ClubLogInsert) {
+      const { error } = await supabase.from("club_log").insert(row).abortSignal(deadline());
+      if (error) fail(error, `club log ${row.action}`);
+    },
+
+    sendWelcome: (m) => sendWelcomeMail(m, opts.siteUrl),
+
+    async markWelcome(id, result) {
+      const now = new Date().toISOString();
+      const patch = result.ok
+        ? { welcome_sent_at: now, welcome_error: null, updated_at: now }
+        : { welcome_error: result.error.slice(0, 500), updated_at: now };
+      const { error } = await supabase.from("club_members").update(patch).eq("id", id).abortSignal(deadline());
+      if (error) fail(error, "welcome mail record");
+    },
+
+    randomInt: (max) => randomInt(max),
+  };
+}
