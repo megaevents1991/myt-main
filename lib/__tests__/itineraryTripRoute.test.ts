@@ -26,14 +26,36 @@ const wembley = ev(703, "קונצרט בוומבלי", "2027-05-17", WEMBLEY);
 const none: ReadonlySet<string> = new Set();
 
 describe("tripStops", () => {
-  it("an event in another city under one hotel is a way there, not 'נשארים' (Alon 01.11)", () => {
-    const show = ev(1, "בוב דילן", "2027-05-12", LONDON);
-    const match = {
-      ...ev(2, "מנצ'סטר סיטי - צ'לסי", "2027-05-15", LONDON, "sports_event"),
-      event_location: { name: "מנצ'סטר", latitude: 53.48, longitude: -2.24 },
-      lodging_mode: "choice_split",
+  const MANCHESTER = { name: "מנצ'סטר", latitude: 53.48, longitude: -2.24 };
+  const manchesterMatch = (id: number, date: string, lodging_mode = "choice_split") =>
+    ({
+      ...ev(id, "מנצ'סטר סיטי - צ'לסי", date, LONDON, "sports_event"),
+      event_location: MANCHESTER,
+      lodging_mode,
       lodging_default: "flight",
-    } as unknown as Event;
+      split_default_nights: 1,
+    }) as unknown as Event;
+
+  it("a Manchester match next to London sleeps in Manchester: a train move, not 'נשארים' (Dor 09.11)", () => {
+    const show = ev(1, "בוב דילן", "2027-05-12", LONDON);
+    const match = manchesterMatch(2, "2027-05-15");
+    const stops = tripStops([show, match], defaultTripDates([show, match]), none);
+    expect(stops.map((s) => s.kind)).toEqual(["depart", "event", "move", "event", "ret"]);
+    expect(stops[2]).toMatchObject({ title: "רכבת למנצ'סטר", day: "2027-05-15" });
+    expect(stops.some((s) => s.title.startsWith("נשארים"))).toBe(false);
+  });
+
+  it("London, Manchester, London: two train moves, the hotel in Manchester for the match's night", () => {
+    const route = [ev(1, "טוטנהאם", "2027-05-12", LONDON, "sports_event"), manchesterMatch(2, "2027-05-15"), ev(3, "ארסנל", "2027-05-19", LONDON, "sports_event")];
+    const stops = tripStops(route, defaultTripDates(route), none);
+    expect(stops.map((s) => s.kind)).toEqual(["depart", "event", "move", "event", "move", "event", "ret"]);
+    expect(stops[2]).toMatchObject({ title: "רכבת למנצ'סטר", day: "2027-05-15" });
+    expect(stops[4]).toMatchObject({ title: "רכבת ללונדון", day: "2027-05-16" });
+  });
+
+  it("an event whose hotel stays in its flight city is still a way there, not 'נשארים' (Alon 01.11)", () => {
+    const show = ev(1, "בוב דילן", "2027-05-12", LONDON);
+    const match = manchesterMatch(2, "2027-05-15", "flight_city");
     const stops = tripStops([show, match], defaultTripDates([show, match]), none);
     expect(stops.map((s) => s.kind)).toEqual(["depart", "event", "ground", "event", "ret"]);
     expect(stops[2]).toMatchObject({ title: "הגעה עצמאית למנצ'סטר" });

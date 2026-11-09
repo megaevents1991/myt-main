@@ -6,8 +6,8 @@
 import type { Event } from "@/lib/app.types";
 import { isSportsEvent } from "@/lib/search";
 import {
-  defaultCity,
   lodgingLocation,
+  offeredCities,
   type LodgingCity,
   type LodgingPoint,
 } from "@/lib/events/lodging";
@@ -17,6 +17,13 @@ const MS_PER_DAY = 86_400_000;
 
 /** Stay points within this distance count as the same city (spec §4). */
 export const SAME_CITY_KM = 30;
+
+/**
+ * Two neighbours under one flight city, each sleeping where it is played, at most this far apart
+ * share ONE hotel - the first one's (Dor 09.11: a Liverpool match and a Manchester match, 50 km,
+ * "משאיר את הלינה איפה שהמשחק הראשון מבין השתיים"). London - Manchester (262 km) is two hotels.
+ */
+export const SHARED_STAY_KM = 80;
 
 type LatLon = { latitude: number; longitude: number };
 
@@ -37,15 +44,41 @@ export function eventPoint(e: Event) {
   return e.event_location ?? e.location;
 }
 
-/** Where the traveller sleeps by default: the hotel step's opening city for this event. */
+/**
+ * The city a TRIP sleeps in for this event: where it is played whenever its hotel may be there
+ * (Dor 09.11 - London, Manchester, London is a split: a Manchester match gets a Manchester hotel,
+ * a Liverpool match a Liverpool one), else its flight city. Not the event's own package default
+ * (`defaultCity`): a single-event order still opens on the flight city with a split on offer.
+ */
+export function tripStayCity(e: Event): LodgingCity {
+  return offeredCities(e).includes("event") ? "event" : "flight";
+}
+
+/** Where the traveller sleeps for this event on a trip (`tripStayCity`). */
 export function stayPoint(e: Event): { point: LodgingPoint; city: LodgingCity } {
-  const city = defaultCity(e);
+  const city = tripStayCity(e);
   return { point: lodgingLocation(e, city), city };
 }
 
 /** Two events share a city when their stay points are within 30 km. */
 export function sameCity(a: Event, b: Event): boolean {
   return haversineKm(stayPoint(a).point, stayPoint(b).point) <= SAME_CITY_KM;
+}
+
+/**
+ * `b` sleeps in `a`'s hotel: the same city (`sameCity`), or two sub-locations of one flight city
+ * a short train apart (`SHARED_STAY_KM`: Liverpool and Manchester) - the stay is `a`'s, the first.
+ */
+export function shareStay(a: Event, b: Event): boolean {
+  if (sameCity(a, b)) return true;
+  const pa = stayPoint(a);
+  const pb = stayPoint(b);
+  return (
+    sameHub(a, b) &&
+    pa.city === "event" &&
+    pb.city === "event" &&
+    haversineKm(pa.point, pb.point) <= SHARED_STAY_KM
+  );
 }
 
 /**

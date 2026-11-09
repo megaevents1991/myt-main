@@ -5,8 +5,8 @@
  * The hub's filters over the cards are in ./hubView.
  */
 import type { Event } from "@/lib/app.types";
-import { cityName, defaultCity, eventCityName } from "@/lib/events/lodging";
-import { tripCities } from "./builder";
+import { eventCityName } from "@/lib/events/lodging";
+import { stayCityName, tripCities } from "./builder";
 import { defaultTripDates, stays } from "./dates";
 import { dayDiff, eventDay, eventKind } from "./geo";
 import { estimateItinerary } from "./price";
@@ -69,11 +69,11 @@ export function toRouteCard(route: Event[], s: ItinerarySettings): RouteCardData
   const trip = sortRoute(route);
   const d = defaultTripDates(trip);
   const list = stays(trip, d);
-  // A stay's city as the hotel step names it (the hub's city filter: a Manchester match slept in
-  // London is found by both). Neighbouring stays always differ by place, but two places may carry
-  // one name - it is named once, not "לונדון ← לונדון".
+  // A stay's city as the hotel step names it (a Manchester match sleeps in Manchester since 09.11).
+  // Neighbouring stays always differ by place, but two places may carry one name - it is named
+  // once, not "לונדון ← לונדון".
   const cities = list
-    .map((stay) => cityName(stay.events[0], defaultCity(stay.events[0])))
+    .map((stay) => stayCityName(stay.events[0]))
     .filter((name, i, all) => i === 0 || name !== all[i - 1]);
   const { perTraveller, saving } = estimateItinerary(trip, d, s, null);
   const kinds = [...new Set(trip.map(eventKind))];

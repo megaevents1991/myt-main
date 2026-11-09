@@ -6,8 +6,9 @@ import { DollarSign, Route, ShieldCheck, Star, TrainFront, type LucideIcon } fro
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { MemoizedFlightCard } from "@/components/ui/FlightCard";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
-import type { ItineraryFlight } from "@/lib/app.types";
-import { groundLink, stayCityName } from "@/lib/itinerary/builder";
+import type { Event, ItineraryFlight } from "@/lib/app.types";
+import { cityName } from "@/lib/events/lodging";
+import { groundLink } from "@/lib/itinerary/builder";
 import { applyDatePick } from "@/lib/itinerary/datePick";
 import { moves, stays, trainLegs, tripDateBounds, tripLegs } from "@/lib/itinerary/dates";
 import type { FlightLeg } from "@/lib/itinerary/flightOffers";
@@ -575,10 +576,11 @@ export function FlightsStep({
   }, [anyWorking, onSearching]);
 
   const list = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
-  const moveCity = (key: string): string => {
-    const m = moves(route).find((x) => x.key === key);
-    return m ? stayCityName(m.b) : "";
-  };
+  // A flight is named by the city its airport serves: a Manchester stay still flies home from London.
+  const airport = (e: Event | undefined): string => (e ? cityName(e, "flight") : "");
+  const out = airport(route[0]);
+  const home = airport(route[route.length - 1]);
+  const moveCity = (key: string): string => airport(moves(route).find((x) => x.key === key)?.b);
   const items: SubStepItem[] = parts.map((p, i) => {
     const hop = hops.get(p.key);
     return {
@@ -586,9 +588,9 @@ export function FlightsStep({
       label: p.kind === "main" ? "הלוך חזור" : `מעבר ${i}`,
       name:
         p.kind === "main"
-          ? list.length > 1
-            ? `ל${stayCityName(list[0].events[0])}, חזרה מ${stayCityName(list[list.length - 1].events[0])}`
-            : `ל${stayCityName(route[0])}`
+          ? out === home
+            ? `ל${out}`
+            : `ל${out}, חזרה מ${home}`
           : hop
             ? `${hop.fromName} ← ${hop.toName}`
             : moveCity(p.key),
@@ -598,9 +600,13 @@ export function FlightsStep({
     };
   });
 
-  // The way to a sub-location, said only over the part that lands next to it.
+  // The way from the airport to a stay away from it (Manchester from London), said only over the
+  // part that lands there or leaves from there: the first stay and the last one, a move's next stay.
   const groundOf = (p: FlightPart): string[] => {
-    const events = p.kind === "main" ? [route[0], route[route.length - 1]] : moves(route).filter((m) => m.key === p.key).map((m) => m.b);
+    const events =
+      p.kind === "main"
+        ? [list[0]?.events[0], list[list.length - 1]?.events[0]]
+        : moves(route).filter((m) => m.key === p.key).map((m) => m.b);
     return [
       ...new Set(
         events.flatMap((e) => {

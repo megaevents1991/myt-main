@@ -10,11 +10,11 @@
  */
 import type { Event } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
-import { groundLink, stayCityName } from "./builder";
+import { stayCityName } from "./builder";
 import { datePickSteps } from "./datePick";
 import { trainHours } from "./flightsView";
-import { dayDiff, eventDay, sameHub } from "./geo";
-import { moves } from "./dates";
+import { dayDiff, eventDay } from "./geo";
+import { eventGrounds, moves, stayHeads } from "./dates";
 import type { TripDates } from "./types";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -35,23 +35,25 @@ export function tripStops(route: Event[], dates: TripDates, train: ReadonlySet<s
   const steps = dated ? datePickSteps(route, dates, train) : [];
   const byKey = new Map(steps.map((s) => [s.key, s]));
   const moveKeys = new Set(moves(route).map((m) => m.key));
+  const grounds = eventGrounds(route, train);
+  const heads = stayHeads(route);
   const out: TripStop[] = [];
 
   const depart = byKey.get("depart");
   if (depart) out.push({ kind: "depart", title: depart.label, day: depart.value });
   route.forEach((e, i) => {
     const prev = route[i - 1];
-    const ground = groundLink(e);
+    // A stay reached by train has its move row; `eventGrounds` leaves those out.
+    const ground = grounds.get(e.id);
     if (prev) {
       const key = `${prev.id}>${e.id}`;
       const move = byKey.get(key);
       // The same hotel, but an event in another city is a way there, not "נשארים" (Alon 01.11).
       if (!moveKeys.has(key)) {
-        if (!ground) out.push({ kind: "stay", title: `נשארים ב${stayCityName(e)}` });
+        if (!ground) out.push({ kind: "stay", title: `נשארים ב${stayCityName(heads.get(e.id) ?? e)}` });
       } else if (move) out.push({ kind: "move", title: move.label, day: move.value });
     }
-    // Reached by a move of its own under one flight city, the train is already said.
-    if (ground && !(prev && moveKeys.has(`${prev.id}>${e.id}`) && sameHub(prev, e))) {
+    if (ground) {
       out.push({
         kind: "ground",
         title: `הגעה עצמאית ל${ground.to}`,

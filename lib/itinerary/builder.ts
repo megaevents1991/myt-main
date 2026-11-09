@@ -3,9 +3,9 @@
  * no clock. The components render these lists; every rule comes from `rules.ts`.
  */
 import type { Event } from "@/lib/app.types";
-import { cityName, defaultCity, eventCityName, hasEventCity } from "@/lib/events/lodging";
-import { moves } from "./dates";
-import { dayDiff, eventDay, eventKind, haversineKm, sameEventCity } from "./geo";
+import { cityName, eventCityName, hasEventCity } from "@/lib/events/lodging";
+import { moves, stayHeads } from "./dates";
+import { dayDiff, eventDay, eventKind, haversineKm, sameEventCity, stayPoint } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import type { Compat, CompatStatus } from "./types";
@@ -16,8 +16,12 @@ export const dayMonthYear = (day: string): string => `${day.slice(8, 10)}/${day.
 /** `YYYY-MM-DD` -> `DD/MM`. */
 export const dayMonth = (day: string): string => `${day.slice(8, 10)}/${day.slice(5, 7)}`;
 
-/** The city the traveller sleeps in for this event, as the hotel step names it ("לונדון"). */
-export const stayCityName = (e: Event): string => cityName(e, defaultCity(e));
+/**
+ * The city a stay that starts with this event sleeps in, as the hotel step names it ("לונדון",
+ * "מנצ'סטר" for a Manchester match - `stayPoint`). Pass a stay's first event (`stays()[i].events[0]`,
+ * `stayHeads`): a Liverpool match sharing a Manchester stay sleeps in Manchester.
+ */
+export const stayCityName = (e: Event): string => cityName(e, stayPoint(e).city);
 
 /**
  * A sub-location's way there: the flight lands in one city and the event is in another (Manchester,
@@ -39,10 +43,17 @@ export function tripCities(route: Event[]): string[] {
     .filter((name, i, all) => i === 0 || name !== all[i - 1]);
 }
 
-/** A move, by the stays it joins: "לונדון - דיסלדורף". Empty when the route has no such move. */
-export function moveName(route: Event[], key: string): string {
+/**
+ * A move's name: a flight's by the airports' cities ("לונדון - דיסלדורף": a flight from a Manchester
+ * stay still leaves London), one the customer makes by train (`byTrain`) by the stays it joins.
+ * Empty when the route has no such move.
+ */
+export function moveName(route: Event[], key: string, byTrain = false): string {
   const m = moves(route).find((x) => x.key === key);
-  return m ? `${stayCityName(m.a)} - ${stayCityName(m.b)}` : "";
+  if (!m) return "";
+  if (!byTrain) return `${cityName(m.a, "flight")} - ${cityName(m.b, "flight")}`;
+  const from = stayHeads(route).get(m.a.id) ?? m.a;
+  return `${stayCityName(from)} - ${stayCityName(m.b)}`;
 }
 
 /** Display order of a compatibility answer: the best fits first, the blocked last. */

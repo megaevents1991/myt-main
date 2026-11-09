@@ -25,9 +25,9 @@ import type { Event, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/ap
 import { lodgingLocation } from "@/lib/events/lodging";
 import { ticketReady } from "@/lib/itinerary/adapter";
 import { sendTripSuggestion } from "@/app/euro-trip/build/actions";
-import { dayMonth, groundLink, moveName, stayCityName, tripCities } from "@/lib/itinerary/builder";
+import { dayMonth, moveName, stayCityName, tripCities } from "@/lib/itinerary/builder";
 import type { HeldAnswer } from "@/lib/itinerary/confirm";
-import { moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
+import { eventGrounds, moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import { flightPartsOf } from "@/lib/itinerary/flightParts";
 import { groundNote, trainRowText } from "@/lib/itinerary/flightsView";
 import { dayDiff, eventDay, sameHub } from "@/lib/itinerary/geo";
@@ -200,16 +200,18 @@ function GroundLines() {
     return trainLegs(route, dates, new Set(keys));
   }, [route, dates]);
   const lines = useMemo(() => {
-    const said = new Set(groundHops.map((t) => t.toName));
+    // A stay reached by a train move is in `groundHops`; these are the ways to an event the trip
+    // does not cover (from the airport, or a day trip from the hotel).
+    const grounds = eventGrounds(route, new Set(state.train));
     return [
       ...new Set(
         route.flatMap((e) => {
-          const g = groundLink(e);
-          return g && !said.has(g.to) ? [groundNote(g)] : [];
+          const g = grounds.get(e.id);
+          return g ? [groundNote(g)] : [];
         }),
       ),
     ];
-  }, [route, groundHops]);
+  }, [route, state.train]);
   if (!groundHops.length && !lines.length) return null;
   return (
     <div className="flex flex-col gap-1 border-t border-border px-4 py-2 md:px-6" dir="rtl">
@@ -345,7 +347,7 @@ function TripReview({
 
   const flightItems: ReviewItem[] = parts.map((part, i) => {
     const f = state.flightParts[part.key];
-    const name = moveName(route, part.key);
+    const name = moveName(route, part.key, part.byTrain);
     const hop = hops.get(part.key);
     const title = part.kind === "main" ? "טיסות הלוך חזור" : part.byTrain ? `מעבר ${name}` : `טיסת מעבר ${name}`;
     const when =

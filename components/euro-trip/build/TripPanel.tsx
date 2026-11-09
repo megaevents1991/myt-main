@@ -5,9 +5,9 @@ import { BedDouble, PlaneLanding, PlaneTakeoff, Plus, Route, TrainFront, X } fro
 
 import { cn } from "@/lib/utils";
 import { eventCityName } from "@/lib/events/lodging";
-import { dayMonth, groundLink, stayCityName } from "@/lib/itinerary/builder";
+import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { applyDatePick, datePickSteps, type DatePickStep } from "@/lib/itinerary/datePick";
-import { moves } from "@/lib/itinerary/dates";
+import { eventGrounds, moves, stayHeads } from "@/lib/itinerary/dates";
 import { canFlyDirect, eventCityAirport } from "@/lib/itinerary/direct";
 import { trainHours } from "@/lib/itinerary/flightsView";
 import { eventDay, sameHub } from "@/lib/itinerary/geo";
@@ -87,6 +87,9 @@ export function TripPanel({ className }: { className?: string }) {
   const departStep = stepByKey.get("depart");
   const retStep = stepByKey.get("ret");
   const moveKeys = new Set(moves(route).map((m) => m.key));
+  // The way to an event the customer makes alone: a train from the hotel, or from the airport.
+  const grounds = eventGrounds(route, new Set(train));
+  const heads = stayHeads(route);
   const enough = route.length >= MIN_TRIP_EVENTS;
   const open = Array.from({ length: Math.max(0, settings.maxEvents - route.length) }, (_, k) => route.length + k);
 
@@ -132,7 +135,7 @@ export function TripPanel({ className }: { className?: string }) {
           const prev = route[i - 1];
           const moveKey = prev ? `${prev.id}>${e.id}` : "";
           const moveStep = stepByKey.get(moveKey);
-          const ground = groundLink(e);
+          const ground = grounds.get(e.id);
           const byGround = !!prev && !moveKeys.has(moveKey);
           const direct = !!directEvents[e.id];
           const canDirect = direct || canFlyDirect(route, e);
@@ -152,7 +155,7 @@ export function TripPanel({ className }: { className?: string }) {
                         </span>
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">נשארים ב{stayCityName(e)}</span>
+                      <span className="text-muted-foreground">נשארים ב{stayCityName(heads.get(e.id) ?? e)}</span>
                     )}
                   </li>
                 ))}

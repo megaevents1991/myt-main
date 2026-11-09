@@ -4,14 +4,17 @@
  * so a DST change never moves one.
  *
  * The shape of a trip (spec §5), on the route sorted by event day:
- *  - consecutive events in the same city (`sameCity`) share one stay and have no move;
+ *  - an event that sleeps where the stay before it sleeps (`shareStay`: the same city, or Liverpool
+ *    after Manchester) joins that stay and has no move;
  *  - every other consecutive pair is a MOVE, keyed `${a.id}>${b.id}`, with its own day;
  *  - stays run back to back: depart -> move 1 -> move 2 -> ... -> return.
- * Whatever `clampTripDates` returns keeps every stay at least one night.
+ * A Manchester match sleeps in Manchester (`tripStayCity`), so London, Manchester, London is three
+ * stays and two moves by train (Dor 09.11). Whatever `clampTripDates` returns keeps every stay at
+ * least one night.
  */
 import type { Event } from "@/lib/app.types";
-import { shortPlace } from "@/lib/events/lodging";
-import { eventDay, eventPoint, haversineKm, sameCity, sameHub, stayPoint } from "./geo";
+import { cityName, eventCityName, shortPlace } from "@/lib/events/lodging";
+import { eventDay, eventPoint, haversineKm, SAME_CITY_KM, sameHub, shareStay, stayPoint } from "./geo";
 import { sortRoute } from "./rules";
 import type { Stay, TrainLeg, TripDates, TripLeg } from "./types";
 
@@ -36,15 +39,16 @@ const clampDay = (v: string, [lo, hi]: [string, string]): string => (v < lo ? lo
 export type TripMove = { key: string; a: Event; b: Event };
 
 /**
- * The route cut into stays (`runs`, consecutive events in one city) and the moves between
- * them (`moves[i]` leaves `runs[i]` and arrives at `runs[i + 1]`). Stays and moves come from
- * this one pass, so they can never disagree.
+ * The route cut into stays (`runs`: each event joins the stay before it when it sleeps there -
+ * `shareStay` against the stay's FIRST event, whose city the stay is) and the moves between them
+ * (`moves[i]` leaves `runs[i]` and arrives at `runs[i + 1]`). Stays and moves come from this one
+ * pass, so they can never disagree.
  */
 function layout(route: Event[]) {
   const runs: Event[][] = [];
   for (const e of sortRoute(route)) {
     const run = runs[runs.length - 1];
-    if (run && sameCity(run[run.length - 1], e)) run.push(e);
+    if (run && shareStay(run[0], e)) run.push(e);
     else runs.push([e]);
   }
   const moves: TripMove[] = runs.slice(1).map((next, i) => {
@@ -55,15 +59,29 @@ function layout(route: Event[]) {
   return { runs, moves };
 }
 
-/** The day a move leaves: the one in the dates, else the day after event A. */
-const moveDay = (d: TripDates, m: TripMove): string => dayOr(d.moves[m.key], addDays(eventDay(m.a), 1));
+/**
+ * A move's day when the customer has not picked one: the day after event A - except the train into
+ * a sub-location's own hotel under one flight city (London -> a Manchester match), which takes the
+ * event's split nights, as its single-event order does (`split_default_nights`: 1 = the match's
+ * night, else that and the night before), never before the day after A.
+ */
+function defaultMoveDay(m: TripMove): string {
+  const after = addDays(eventDay(m.a), 1);
+  if (!sameHub(m.a, m.b) || stayPoint(m.b).city !== "event") return after;
+  const nights = Number(m.b.split_default_nights) === 1 ? 1 : 2;
+  const day = addDays(eventDay(m.b), 1 - nights);
+  return day > after ? day : after;
+}
 
-/** Consecutive events, in trip order, that are not in the same city: the trip's moves. */
+/** The day a move leaves: the one in the dates, else its default (`defaultMoveDay`). */
+const moveDay = (d: TripDates, m: TripMove): string => dayOr(d.moves[m.key], defaultMoveDay(m));
+
+/** Consecutive events, in trip order, that do not share a stay: the trip's moves. */
 export function moves(route: Event[]): TripMove[] {
   return layout(route).moves;
 }
 
-/** depart = first event - 1, return = last event + 1, each move = the day after event A. */
+/** depart = first event - 1, return = last event + 1, each move its default (`defaultMoveDay`). */
 export function defaultTripDates(route: Event[]): TripDates {
   const { runs, moves: ms } = layout(route);
   if (runs.length === 0) return { depart: "", ret: "", moves: {} };
@@ -73,8 +91,48 @@ export function defaultTripDates(route: Event[]): TripDates {
   return {
     depart: addDays(eventDay(first), -1),
     ret: addDays(eventDay(last), 1),
-    moves: Object.fromEntries(ms.map((m) => [m.key, addDays(eventDay(m.a), 1)])),
+    moves: Object.fromEntries(ms.map((m) => [m.key, defaultMoveDay(m)])),
   };
+}
+
+/** Each event's stay, as the stay's first event (the one whose city the stay sleeps in). */
+export function stayHeads(route: Event[]): Map<number, Event> {
+  return new Map(layout(route).runs.flatMap((run) => run.map((e): [number, Event] => [e.id, run[0]])));
+}
+
+/** A way on the ground the trip does not include: a train from `from` to `to`. */
+export type Ground = { from: string; to: string; km: number };
+
+/**
+ * The way to each event that the customer makes alone (Dor 09.11), keyed by event id:
+ *  - an event played away from the hotel it sleeps in - a Liverpool match from the Manchester stay
+ *    it shares, a two-city event whose hotel stays in its flight city: from the stay's city;
+ *  - the first event of a stay that sleeps away from its own airport, when a flight lands there -
+ *    the trip's first stay, or a move flight: "נוחתים בלונדון", then the train to Manchester.
+ * A stay reached by a train move (under one flight city, or by the customer's choice - `train`) has
+ * none: the move's own row says the train. An event in its stay's city has none.
+ */
+export function eventGrounds(route: Event[], train: ReadonlySet<string>): Map<number, Ground> {
+  const { runs, moves: ms } = layout(route);
+  const out = new Map<number, Ground>();
+  runs.forEach((run, i) => {
+    const stay = stayPoint(run[0]).point;
+    const into = i > 0 ? ms[i - 1] : undefined;
+    const flownIn = !into || (!sameHub(into.a, into.b) && !train.has(into.key));
+    run.forEach((e, j) => {
+      const at = eventPoint(e);
+      const away = haversineKm(stay, at);
+      if (away > SAME_CITY_KM) {
+        out.set(e.id, { from: shortPlace(stay.name), to: eventCityName(e), km: away });
+        return;
+      }
+      const fromAirport = haversineKm(e.location, stay);
+      if (j === 0 && flownIn && fromAirport > SAME_CITY_KM) {
+        out.set(e.id, { from: cityName(e, "flight"), to: eventCityName(e), km: fromAirport });
+      }
+    });
+  });
+  return out;
 }
 
 /**
@@ -125,8 +183,9 @@ export function clampTripDates(route: Event[], d: TripDates): TripDates {
 }
 
 /**
- * One stay per run of same-city events. `key` = the first event's id; the stay point is that
- * event's default lodging city. Check-in / check-out are the trip's depart, move days and return.
+ * One stay per run of events that sleep in one place (`layout`). `key` = the first event's id; the
+ * stay point is that event's trip city (`stayPoint`: a Manchester match's is Manchester). Check-in /
+ * check-out are the trip's depart, move days and return.
  */
 export function stays(route: Event[], d: TripDates): Stay[] {
   const { runs, moves: ms } = layout(route);

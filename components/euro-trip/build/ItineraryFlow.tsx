@@ -266,7 +266,7 @@ export function ItineraryFlow() {
           : step === "flights"
             ? lastPart
               ? "בחר והמשך למלונות"
-              : `המשך למעבר ${moveName(route, flightParts[state.activeFlightPart + 1]?.key ?? "")}`
+              : `המשך למעבר ${moveName(route, flightParts[state.activeFlightPart + 1]?.key ?? "", flightParts[state.activeFlightPart + 1]?.byTrain)}`
             : "בחר והמשך לסיכום";
 
   const onPrimary = () => {
