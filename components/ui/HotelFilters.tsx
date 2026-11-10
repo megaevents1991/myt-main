@@ -101,7 +101,9 @@ export const HotelFilters = ({
   const marks = [
     {
       value: minPrice,
-      label: <>&#36;{minPrice - basePrice}</>,
+      // Whole dollars: a Euro Trip stay's base is prorated to its nights (cents), and
+      // integer - cents printed "$-478.33000000000004".
+      label: <>&#36;{Math.round(minPrice - basePrice)}</>,
     },
     {
       value: maxPrice,
@@ -196,7 +198,7 @@ export const HotelFilters = ({
           min={minPrice}
           max={maxPrice + 2}
           step={5}
-          label={(value) => value - basePrice}
+          label={(value) => Math.round(value - basePrice)}
           value={value}
           styles={{
             bar: { backgroundColor: themeColor },
