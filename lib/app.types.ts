@@ -78,6 +78,9 @@ export type Event = {
   // QA-only events: orderable by direct /order/{id} link, excluded from every
   // listing, search, category and feed surface.
   is_test?: boolean;
+  // Which TixStock environment a test event books in - honoured only with is_test
+  // (2026-11-09 TixStock booking design). Synced with backoffice types/app.types.ts.
+  tixstock_booking?: "sandbox_site" | "sandbox_office" | null;
   // Built by the backoffice's tour uploader and not yet approved by staff:
   // absent / false = open. A hidden event is on no listing (`isListedEvent`), not
   // in the Meta feed, and confirm-order refuses it (`isHiddenForCheckout`,
@@ -549,6 +552,9 @@ export type OrderTicket = Omit<EventTicket, "colorOnTheMap"> & {
   // The customer picked between "all together" and "pairs + a triple" for the
   // same zone (two suppliers, lib/supplier-offers.ts `zoneOffers`).
   seatingChoice?: "together" | "split";
+  // Set only by the sandbox ticket step of a TixStock test event
+  // (app/order/sandbox): the exact listing the customer's card showed.
+  tixstock?: { listingId: string; italian: boolean; singleSeats: boolean };
 };
 
 /**
