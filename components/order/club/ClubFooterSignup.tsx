@@ -65,9 +65,12 @@ export function ClubFooterSignup() {
     };
   }, [near]);
 
-  // A join elsewhere (the order, /club) or a partner's link changes the answer: read both again on every page.
+  // A join elsewhere (the order, /club) or a partner's link changes the answer: read both again on every page. The
+  // footer outlives a client navigation, so this page's "welcome" line is dropped too - a new member's next page shows
+  // nothing, and never on /order or /confirmation.
   useEffect(() => {
     if (!near) return;
+    setDone(null);
     setMember(readClubCookie(document.cookie));
     setPartnerCode(influencerPrimaryCode(readUtmCookieFromHeader(document.cookie)));
   }, [near, pathname]);
