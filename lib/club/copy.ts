@@ -63,6 +63,13 @@ export const CLUB_COPY = {
   pageOther: "לא אתם? כניסה עם מייל אחר",
   pageClosed: "ההצטרפות למועדון סגורה כרגע.",
   menu: "הצטרפות למועדון",
+  /** D19 (Tom 11.11): the site footer's sign-up form. */
+  footerTitle: "הצטרפו ל-MEGA CLUB",
+  footerSub: "מועדון החברים של מגה איבנטס, בחינם: ראשונים לשמוע על אירועים חדשים, ומחיר חבר על כל הזמנה של חבילה.",
+  footerCta: "הצטרפות בחינם",
+  footerJoined: (memberNo: number) => `ברוכים הבאים ל-MEGA CLUB! מס׳ חבר ${memberNo}. קוד החבר מחכה לכם במייל.`,
+  footerWelcomeBack: (memberNo: number) =>
+    `אתם כבר חברי MEGA CLUB (מס׳ חבר ${memberNo}). מחיר החבר יופעל לבד בהזמנה במכשיר הזה.`,
   rowTitle: "MEGA CLUB",
   rowSub: "חברים מקבלים מחיר חבר",
   rowJoin: "הצטרפות",

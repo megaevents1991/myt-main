@@ -8,6 +8,7 @@ import {
   clubCouponQty,
   clubSurface,
   couponFitsOrder,
+  footerClubShows,
   maskEmail,
   newMemberCode,
   parseClubCookie,
@@ -181,5 +182,28 @@ describe("inlineJoinKey (D16: the tick joins with the first passenger's details)
   it("never tries the same details twice", () => {
     expect(inlineJoinKey({ ...ok, triedKey: "dana@gmail.com|0501234567" })).toBeNull();
     expect(inlineJoinKey({ ...ok, phone: "0501234568", triedKey: "dana@gmail.com|0501234567" })).toBe("dana@gmail.com|0501234568");
+  });
+});
+
+describe("footerClubShows (D19: the footer form)", () => {
+  const ok = { enabled: true, member: null, partnerCode: null, path: "/" };
+  it("shows on an ordinary page for a visitor who is not a member", () => {
+    expect(footerClubShows(ok)).toBe(true);
+    expect(footerClubShows({ ...ok, path: "/c/music/artists/oasis" })).toBe(true);
+    expect(footerClubShows({ ...ok, path: "/orders-help" })).toBe(true);
+  });
+  it("not while the club is off", () => expect(footerClubShows({ ...ok, enabled: false })).toBe(false));
+  it("not for a member this device knows", () =>
+    expect(footerClubShows({ ...ok, member: { v: 1, code: "MEGAABCDEF", no: 1042 } })).toBe(false));
+  it("not for a visitor who came through a partner's link", () =>
+    expect(footerClubShows({ ...ok, partnerCode: "AVIRAN" })).toBe(false));
+  it("the form's answers name the member number", () => {
+    expect(CLUB_COPY.footerJoined(1042)).toBe("ברוכים הבאים ל-MEGA CLUB! מס׳ חבר 1042. קוד החבר מחכה לכם במייל.");
+    expect(CLUB_COPY.footerWelcomeBack(1042)).toContain("מס׳ חבר 1042");
+  });
+  it("not where the club already has its own place", () => {
+    for (const path of ["/order/812", "/order", "/club", "/club/unsubscribe", "/confirmation/9001", "/agent", "/agent/credit", "/partner/x"]) {
+      expect(footerClubShows({ ...ok, path })).toBe(false);
+    }
   });
 });

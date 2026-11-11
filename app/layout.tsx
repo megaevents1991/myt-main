@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { SocialLinks } from "@/components/ui/SocialLinks";
 import { FooterMarquee } from "@/components/ui/FooterMarquee";
+import { ClubFooterSignup } from "@/components/order/club/ClubFooterSignup";
 import { getNavCategories } from "@/lib/taxonomy";
 
 // Body face. Assistant mirrors the Figma body (Inter) feel while rendering Hebrew
@@ -219,6 +220,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               <footer className="w-full border-t border-main-foreground/10 bg-main px-4 pb-12 pt-8 text-main-foreground md:px-6 print:hidden">
                 <FooterMarquee />
                 <div className="container mx-auto">
+                  <ClubFooterSignup />
                   <p className="mb-6 text-sm text-main-foreground/80">
                     לידיעתך, באתר זה נעשה שימוש בקבצי Cookies. המשך גלישה באתר
                     מהווה הסכמה לשימוש זה. למידע נוסף ניתן לעיין במדיניות

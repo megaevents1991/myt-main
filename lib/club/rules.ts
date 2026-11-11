@@ -153,6 +153,25 @@ export function shouldAutoApply(v: {
   return v.surface === "club" && v.slotEmpty && !v.flightSkipped && v.cookie !== null;
 }
 
+/** Pages that already give the club a place of their own (or are a partner's), so the footer adds no second form. */
+const FOOTER_CLUB_HIDDEN_PATHS = ["/order", "/club", "/confirmation", "/agent", "/partner"];
+
+/**
+ * D19 (Tom 11.11): the site footer's sign-up form. Shown to a visitor who is not a member on this device, while the club
+ * is on, except to a visitor who came through a partner's link (the club stays out of a partner's audience, as at the
+ * order) and on the pages the club or a partner already has. An agent signed in is not looked up here: that read
+ * re-checks the backoffice login on every page, and the order page keeps the club from an agent anyway.
+ */
+export function footerClubShows(v: {
+  enabled: boolean;
+  member: ClubCookie | null;
+  partnerCode: string | null;
+  path: string;
+}): boolean {
+  if (!v.enabled || v.member || v.partnerCode) return false;
+  return !FOOTER_CLUB_HIDDEN_PATHS.some((p) => v.path === p || v.path.startsWith(`${p}/`));
+}
+
 
 /**
  * D16: the summary's MEGA CLUB box joins with the first passenger's email and phone - the key of the details to join

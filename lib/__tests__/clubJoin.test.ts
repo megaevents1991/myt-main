@@ -458,6 +458,16 @@ describe("joinClub from the /club page (D15)", () => {
   });
 });
 
+describe("joinClub from the site footer (D19)", () => {
+  it("is recorded as the footer, with no event", async () => {
+    const f = fake();
+    const a = await joinClub({ ...join, method: "footer", eventId: undefined }, ctx, f);
+    expect(a.ok).toBe(true);
+    expect(f.logs[0].source).toBe("site_footer");
+    expect((f as unknown as { lastRow: NewClubMember }).lastRow).toMatchObject({ source: "site_footer", event_id: null });
+  });
+});
+
 describe("resendWelcome", () => {
   it("sends and records the result", async () => {
     const f = fake({ existing: [member()] });

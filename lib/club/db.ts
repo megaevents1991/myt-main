@@ -54,6 +54,7 @@ async function sendWelcomeMail(m: ClubMember, siteUrl: string): Promise<MailResu
     memberNo: m.member_no,
     code: m.coupon_code,
     firstName: m.first_name,
+    email: m.email,
     unsubscribeUrl: unsubscribePage,
     siteUrl,
   });
