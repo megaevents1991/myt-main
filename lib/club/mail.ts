@@ -39,6 +39,8 @@ export function welcomeMail(m: {
   const subject = c.subject;
   const site = esc(m.siteUrl);
   const unsub = esc(m.unsubscribeUrl);
+  // Our wordmark in forest, as a PNG from the sending site: Gmail and Outlook drop SVG (Tom 11.11).
+  const logo = esc(`${m.siteUrl}/brand/logo-wordmark-forest.png`);
 
   const html = `<!doctype html>
 <html lang="he" dir="rtl">
@@ -67,10 +69,15 @@ export function welcomeMail(m: {
 <tr><td colspan="2" style="padding:22px 22px 0;text-align:right;color:#0A1A14;">
 <div style="font-size:15px;word-break:break-all;" dir="ltr">${esc(m.email)}</div>
 </td></tr>
-<tr><td colspan="2" style="padding:16px 22px 20px;text-align:right;color:#0A1A14;">
+<tr>
+<td style="padding:16px 22px 20px;text-align:right;vertical-align:bottom;color:#0A1A14;">
 <div style="font-size:13px;font-weight:bold;">${esc(c.codeLabel)}</div>
 <div style="margin-top:2px;font-size:28px;font-weight:bold;letter-spacing:4px;font-family:'Courier New',monospace;" dir="ltr">${esc(m.code)}</div>
-</td></tr>
+</td>
+<td style="padding:16px 22px 24px;text-align:left;vertical-align:bottom;">
+<img src="${logo}" width="110" height="16" alt="מגה איבנטס" style="display:block;margin-left:0;margin-right:auto;border:0;width:110px;height:16px;">
+</td>
+</tr>
 </table>
 </td></tr>
 <tr><td style="padding:4px 28px 0;text-align:right;">

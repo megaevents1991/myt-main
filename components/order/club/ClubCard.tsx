@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { CLUB_COPY } from "@/lib/club/copy";
 
 /** Mockup version C's mint-to-teal. Constant in light and dark: it is the card's own material, text on it is forest. */
@@ -69,11 +70,22 @@ export function ClubCard({
             </div>
             {name ? <div className={`mt-0.5 truncate font-semibold ${compact ? "text-[13px]" : "text-sm"}`}>{name}</div> : null}
           </div>
-          {memberNo != null && showSince && (
-            <div className={`shrink-0 font-semibold opacity-75 ${compact ? "text-[11px]" : "text-xs"}`}>
-              {CLUB_COPY.since} <span dir="ltr">{mmYY}</span>
-            </div>
-          )}
+          {/* Our wordmark in the bottom corner, like an issuer's mark (Tom 11.11); the join date sits above it. */}
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {memberNo != null && showSince && (
+              <div className={`font-semibold opacity-75 ${compact ? "text-[11px]" : "text-xs"}`}>
+                {CLUB_COPY.since} <span dir="ltr">{mmYY}</span>
+              </div>
+            )}
+            <Image
+              src="/brand/logo-wordmark-forest.svg"
+              alt="מגה איבנטס"
+              width={297}
+              height={43}
+              unoptimized
+              className={`w-auto ${compact ? "h-3" : "h-4"}`}
+            />
+          </div>
         </div>
       </div>
     </div>

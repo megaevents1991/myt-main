@@ -45,6 +45,14 @@ describe("welcomeMail (Tom's wording, D18)", () => {
     expect(mail.text).toContain("קוד קופון ממבר: MEGAK7Q2XP");
   });
 
+  it("the card wears our logo - a PNG from the site, since mail clients drop SVG (Tom 11.11)", () => {
+    expect(mail.html).toContain(
+      '<img src="https://www.mega-events.co.il/brand/logo-wordmark-forest.png" width="110" height="16" alt="מגה איבנטס"',
+    );
+    const preview = welcomeMail({ ...input, siteUrl: "https://preview.example.app" });
+    expect(preview.html).toContain('src="https://preview.example.app/brand/logo-wordmark-forest.png"');
+  });
+
   it("stays a sign-up mail: no price, no amount, no link but the site and the unsubscribe page", () => {
     const shown = mail.html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ");
     for (const s of [shown, mail.text, mail.subject]) {
