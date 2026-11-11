@@ -18,7 +18,8 @@ export type TicketPageFile = {
   kind: string;
   row: string | null;
   seat: string | null;
-  /** Only a link the customer opens himself (a mobile ticket). A stored file is served by the file route. */
+  /** A link the customer opens himself: a mobile ticket, or a file the seller sent as a URL. Always http(s).
+   *  Absent = a stored file, served by the file route. */
   url?: string;
 };
 
@@ -74,9 +75,10 @@ export async function loadTicketPage(token: string, deps: TicketPageDeps): Promi
     for (const f of await deps.loadFiles(booking.id)) {
       if (f.kind === "proof") continue;
       const file: TicketPageFile = { id: f.id, kind: f.kind, row: f.row, seat: f.seat };
-      if (f.kind === "mobile_link") {
-        // The link is a seller's text: only an http(s) URL is ever handed to the page (never `javascript:` /
-        // `data:`), and a mobile ticket with no link to open is not listed.
+      // A row with a link has no file stored behind our own route: a mobile ticket always, and a PDF or a letter
+      // the seller sent as a URL instead of as bytes. The link is a seller's text - only an http(s) URL is ever
+      // handed to the page (never `javascript:` / `data:`), and a row with nothing safe to open is not listed.
+      if (f.kind === "mobile_link" || f.url) {
         const url = safeHttpUrl(f.url);
         if (!url) continue;
         file.url = url;

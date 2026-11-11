@@ -103,6 +103,24 @@ describe("the ticket page", () => {
     expect(page?.files).toEqual([{ id: "m5", kind: "mobile_link", row: "5", seat: "16", url: "https://tickets.example/ok" }]);
   });
 
+  it("a ticket the seller sent as a link (not as a file) opens at that link, never at our file route", async () => {
+    // TixStock fills `file` with the PDF's bytes or with a URL. A URL has nothing stored behind our own route -
+    // a link to it there is a 404 for the customer.
+    const { deps } = world({ released: true });
+    const loadFiles: typeof deps.loadFiles = async () => [
+      { id: "p1", kind: "pdf", row: "5", seat: "12", url: "https://cdn.example/ticket-12.pdf" },
+      { id: "p2", kind: "pdf", row: "5", seat: "13", url: null },
+      { id: "p3", kind: "pdf", row: "5", seat: "14", url: "javascript:alert(1)" },
+      { id: "a1", kind: "additional", row: null, seat: null, url: "https://cdn.example/letter.pdf" },
+    ];
+    const page = await loadTicketPage(TOKEN, { ...deps, loadFiles });
+    expect(page?.files).toEqual([
+      { id: "p1", kind: "pdf", row: "5", seat: "12", url: "https://cdn.example/ticket-12.pdf" },
+      { id: "p2", kind: "pdf", row: "5", seat: "13" },
+      { id: "a1", kind: "additional", row: null, seat: null, url: "https://cdn.example/letter.pdf" },
+    ]);
+  });
+
   it("an external transfer says so: the seller sends the tickets himself", async () => {
     const { deps } = world({
       released: true,

@@ -54,8 +54,8 @@ function Tickets({ page, token }: { page: TicketPageData; token: string }) {
         <li key={file.id}>
           <a
             className="font-bold underline underline-offset-4"
-            // `file.url` exists only on a mobile ticket and is always an http(s) URL (`safeHttpUrl`, in
-            // `loadTicketPage`); every other file is served by our own route.
+            // `file.url` exists only on a row with no stored file (a mobile ticket, a file sent as a URL) and is
+            // always an http(s) URL (`safeHttpUrl`, in `loadTicketPage`); a stored file is served by our own route.
             href={file.url ?? `/api/ticket-file/${token}/${file.id}`}
             target="_blank"
             rel="noopener noreferrer"
