@@ -9,12 +9,17 @@
 // without either: lib/__tests__/tixstockSiteHold.test.ts. Nothing here throws into its caller.
 import type { TixStockListing } from "@/lib/tixstock.types";
 import { isExcludedSection } from "@/lib/tixstock-feed";
-import type { TixstockCall } from "./client";
+import { holdExpired, type TixstockCall } from "./client";
 import {
   attendeeIssues,
+  buildOrderRequest,
   isSandboxBookingEvent,
+  ourOrderId,
+  readListingSnapshot,
   siteBooksAfterPayment,
+  ticketPageUrl,
   type AttendeeInput,
+  type BookingStatus,
   type Buyer,
   type EventFlags,
   type ListingSnapshot,
@@ -253,4 +258,225 @@ export function buyerFromOrder(o: {
     email: text(o.main_contact_email),
     phone: text(o.main_contact_phone_number),
   };
+}
+
+// ─────────────────────────────── after the payment ───────────────────────────────
+
+/** A site booking row, as the payment half reads it. */
+export type SiteBookingRow = {
+  id: string;
+  reservation_id: number;
+  status: BookingStatus;
+  hold_id: string | null;
+  listing_id: string;
+  quantity: number;
+  /** The listing as booked (`ListingSnapshot`), as stored. */
+  listing: unknown;
+  price_per_ticket: number | null;
+  buyer: unknown;
+  attendees: unknown;
+  customer_token: string;
+  link_email_sent_at: string | null;
+  tixstock_order_id?: string | null;
+  order_currency?: string | null;
+  order_total?: number | null;
+  last_error?: string | null;
+};
+
+export type SitePaymentDeps = {
+  now(): Date;
+  /** The reservation's newest `source = site` booking; null when it has none (every real order). */
+  loadSiteBooking(reservationId: number): Promise<SiteBookingRow | null>;
+  /**
+   * Compare-and-set, in ONE statement: the row moves only if it still has `from`; `patch` rides with the move.
+   * False = someone else moved it first.
+   */
+  moveStatus(id: string, from: BookingStatus, to: BookingStatus, atIso: string, patch?: Record<string, unknown>): Promise<boolean>;
+  hold(listingId: string, qty: number): Promise<TixstockCall<{ holdId: string }>>;
+  release(holdId: string, qty: number): Promise<TixstockCall<true>>;
+  addOrder(
+    holdId: string,
+    qty: number,
+    body: Record<string, unknown>,
+  ): Promise<TixstockCall<{ orderId: string; status: string; currency: string | null; total: number | null }>>;
+  updateOrder(orderId: string, body: Record<string, unknown>): Promise<TixstockCall<{ status: string }>>;
+  /** The event's name as the reservation keeps it, for the link e-mail. */
+  loadEventName(reservationId: number): Promise<string>;
+  /** Takes the booking's one link e-mail (`link_email_sent_at` null -> atIso); false when it is taken. */
+  claimLinkEmail(id: string, atIso: string): Promise<boolean>;
+  unclaimLinkEmail(id: string, atIso: string): Promise<void>;
+  sendTicketLinkEmail(to: string, eventName: string, url: string): Promise<void>;
+};
+
+export type SiteBookingOutcome = "none" | "busy" | "approved" | "sale_on_hold" | "uncertain" | "failed";
+
+const readBuyer = (v: unknown): Buyer => {
+  const o: Record<string, unknown> = v !== null && typeof v === "object" && !Array.isArray(v) ? { ...v } : {};
+  return { first_name: text(o.first_name), last_name: text(o.last_name), email: text(o.email), phone: text(o.phone) };
+};
+
+/** The attendees as the hold stored them (already shaped and judged there); the order body judges them again. */
+const storedAttendees = (v: unknown): AttendeeInput[] => {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((raw): AttendeeInput[] => {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const o: Record<string, unknown> = { ...raw };
+    const attendee: AttendeeInput = { first_name: text(o.first_name), last_name: text(o.last_name) };
+    if (text(o.passport)) attendee.passport = text(o.passport);
+    if (text(o.nationality)) attendee.nationality = text(o.nationality);
+    if (text(o.dob)) attendee.dob = text(o.dob);
+    if (o.gender === "M" || o.gender === "F") attendee.gender = o.gender;
+    if (text(o.birth_place)) attendee.birth_place = text(o.birth_place);
+    return [attendee];
+  });
+};
+
+const why = (r: TixstockCall<unknown>): string =>
+  r.ok ? "" : r.kind === "refused" ? `refused ${r.status}: ${r.message}`.slice(0, 300) : `no answer: ${r.detail}`.slice(0, 300);
+
+/**
+ * The customer paid (the card gateway confirmed it): order the held tickets as `Sale on Hold`, then approve, then
+ * send the ticket-page link. Called by BOTH payment callers of every payment, one after the other - so the first
+ * step is a claim (`on_hold` -> `ordering`, one compare-and-set): whoever does not get it answers `busy` and calls
+ * nothing. The claim is a status, never a timer - a claim a second caller could take again is a second orders/add,
+ * and TixStock says a repeated orders/add can create a second order.
+ *
+ * - A hold that ran out (the customer took over ten minutes to pay) answers orders/add with "Resource Not Found":
+ *   the same listing is held ONCE more and ordered. Only on that answer, only on the first attempt.
+ * - An orders/add nobody answered is `uncertain`: no release, no retry, no further call - staff settle it.
+ * - Any other refusal releases the hold and the row is `failed`; staff book the order from the backoffice.
+ * - A row whose hold was already released (a failed payment, then a successful one) is claimed from `released`
+ *   and gets a new hold first.
+ *
+ * Never throws.
+ */
+export async function bookSiteOrderAfterPayment(orderId: string, deps: SitePaymentDeps): Promise<SiteBookingOutcome> {
+  const reservationId = Number(orderId);
+  if (!Number.isInteger(reservationId) || reservationId < 1) return "none";
+
+  try {
+    const row = await deps.loadSiteBooking(reservationId);
+    if (!row) return "none";
+    if (row.status !== "on_hold" && row.status !== "released") return "busy";
+
+    const at = deps.now();
+    const atIso = at.toISOString();
+    if (!(await deps.moveStatus(row.id, row.status, "ordering", atIso, { attempt_started_at: atIso }))) return "busy";
+
+    const fail = async (lastError: string, holdToRelease: string | null): Promise<SiteBookingOutcome> => {
+      console.error(`${LOG} the paid order was not booked`, { reservationId, booking: row.id, lastError });
+      await deps.moveStatus(row.id, "ordering", "failed", deps.now().toISOString(), { last_error: lastError });
+      if (holdToRelease) {
+        const released = await deps.release(holdToRelease, row.quantity);
+        if (!released.ok) console.error(`${LOG} release not confirmed`, { booking: row.id });
+      }
+      return "failed";
+    };
+
+    const snapshot = readListingSnapshot(row.listing);
+    const buyer = readBuyer(row.buyer);
+    const pricePerTicket = Number(row.price_per_ticket);
+    const request = buildOrderRequest({
+      status: "Sale on Hold",
+      at,
+      reservationId,
+      bookingId: row.id,
+      buyer,
+      attendees: storedAttendees(row.attendees),
+      quantity: row.quantity,
+      italian: snapshot.italian,
+      listing: { generalAdmission: snapshot.generalAdmission, row: snapshot.row ?? "", pricePerTicket },
+    });
+    // A row claimed from `released` holds nothing; one claimed from `on_hold` still names its hold.
+    const firstHold = row.status === "on_hold" ? row.hold_id : null;
+    if (!request.ok) return fail(`order_body_${request.kind}`, firstHold);
+    if (!Number.isFinite(pricePerTicket) || pricePerTicket <= 0) return fail("order_body_price", firstHold);
+
+    // The hold the order is placed on, and whether it is one this call placed (a replacement is never replaced).
+    let holdId = firstHold;
+    let replaced = false;
+    if (!holdId) {
+      const fresh = await deps.hold(row.listing_id, row.quantity);
+      if (!fresh.ok) return fail(`hold_again: ${why(fresh)}`, null);
+      holdId = fresh.data.holdId;
+      replaced = true;
+    }
+
+    let answer = await deps.addOrder(holdId, row.quantity, request.body);
+    if (!answer.ok && answer.kind === "refused" && holdExpired(answer) && !replaced) {
+      const fresh = await deps.hold(row.listing_id, row.quantity);
+      if (!fresh.ok) return fail(`hold_expired, hold_again: ${why(fresh)}`, null);
+      holdId = fresh.data.holdId;
+      replaced = true;
+      answer = await deps.addOrder(holdId, row.quantity, request.body);
+    }
+
+    if (!answer.ok && answer.kind === "no_answer") {
+      // TixStock may have created the order: nothing is released, nothing is tried again.
+      console.error(`${LOG} orders/add was not answered - uncertain`, { reservationId, booking: row.id });
+      await deps.moveStatus(row.id, "ordering", "uncertain", deps.now().toISOString(), {
+        last_error: why(answer),
+        ...(replaced ? { hold_id: holdId } : {}),
+      });
+      return "uncertain";
+    }
+    if (!answer.ok) return fail(`orders_add: ${why(answer)}`, holdId);
+
+    const { orderId: tixstockOrderId, currency, total } = answer.data;
+    const expected = round2(pricePerTicket * row.quantity);
+    if ((currency ?? "USD").toUpperCase() !== "USD" || (total !== null && Math.abs(total - expected) > 0.01)) {
+      console.warn("tixstock_order_total_mismatch", JSON.stringify({ booking: row.id, reservationId, expected, currency, total }));
+    }
+    await deps.moveStatus(row.id, "ordering", "sale_on_hold", deps.now().toISOString(), {
+      tixstock_order_id: tixstockOrderId,
+      order_currency: currency,
+      order_total: total,
+      ...(replaced ? { hold_id: holdId } : {}),
+    });
+
+    // The payment check is the gateway's own answer, read before this function was called: approve at once.
+    const approved = await deps.updateOrder(ourOrderId(reservationId, row.id), { order_status: "Approved" });
+    if (!approved.ok) {
+      // The backoffice sweep approves a paid `sale_on_hold` order on its next run.
+      console.warn(`${LOG} approve not done - left as sale_on_hold for the sweep`, { booking: row.id, why: why(approved) });
+      return "sale_on_hold";
+    }
+    const approvedAt = deps.now().toISOString();
+    await deps.moveStatus(row.id, "sale_on_hold", "approved", approvedAt);
+
+    // The ticket-page link: one sender at a time (the claim); a failed send gives the claim back for the sweep.
+    if (buyer.email && row.customer_token && (await deps.claimLinkEmail(row.id, approvedAt))) {
+      try {
+        await deps.sendTicketLinkEmail(buyer.email, await deps.loadEventName(reservationId), ticketPageUrl(row.customer_token));
+      } catch (e) {
+        await deps.unclaimLinkEmail(row.id, approvedAt);
+        console.error(`${LOG} link email failed`, { booking: row.id, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return "approved";
+  } catch (e) {
+    // The row keeps whatever status the last successful write gave it; an `ordering` row that nobody finishes is
+    // turned into `uncertain` by the backoffice sweep.
+    console.error(`${LOG} after-payment booking failed:`, e instanceof Error ? e.message : String(e));
+    return "failed";
+  }
+}
+
+/**
+ * The payment did not succeed: the site's open hold goes back (`on_hold` -> `released`, then the release itself).
+ * A later successful payment of the same order is booked through `released` -> `ordering`. Never throws.
+ */
+export async function releaseSiteHoldFor(orderId: string, deps: SitePaymentDeps): Promise<void> {
+  const reservationId = Number(orderId);
+  if (!Number.isInteger(reservationId) || reservationId < 1) return;
+  try {
+    const row = await deps.loadSiteBooking(reservationId);
+    if (!row || row.status !== "on_hold") return;
+    if (!(await deps.moveStatus(row.id, "on_hold", "released", deps.now().toISOString()))) return;
+    if (!row.hold_id) return;
+    const released = await deps.release(row.hold_id, row.quantity);
+    if (!released.ok) console.warn(`${LOG} release not confirmed (the hold runs out by itself)`, { booking: row.id });
+  } catch (e) {
+    console.error(`${LOG} release after a failed payment did not run:`, e instanceof Error ? e.message : String(e));
+  }
 }

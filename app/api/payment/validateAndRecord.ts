@@ -1,4 +1,5 @@
 import { convert } from "xmlbuilder2";
+import { after } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { sendUserEmail } from "@/app/api/sendUserEmail";
 import { resolveHandledBy } from "@/app/api/confirm-order/utils";
@@ -92,6 +93,10 @@ export async function validateAndRecordPayment({
     );
   }
 
+  // TixStock SANDBOX test orders only (the hidden test checkout of TixStock's health check): set from the
+  // reservation read below, so a real payment costs no extra query and runs none of the block before `return`.
+  let sandboxOrder = false;
+
   // 2. Customer email - non-fatal by design.
   try {
     const { data } = await supabase
@@ -102,6 +107,8 @@ export async function validateAndRecordPayment({
       .single();
 
     const orderData = data as OrderData | null;
+    sandboxOrder =
+      (orderData?.event_order_info as { tixstock_sandbox?: boolean } | undefined)?.tixstock_sandbox === true;
 
     if (orderData && !orderData.confirmation_email_sent) {
       await sendUserEmail({
@@ -147,6 +154,26 @@ export async function validateAndRecordPayment({
       "Confirmation email failed (payment already recorded):",
       JSON.stringify({ orderId, error: String(emailError) }),
     );
+  }
+
+  // 3. A TixStock sandbox test order: after the answer has gone out, order the held tickets (paid) or give the hold
+  // back (not paid). Loaded on demand and inside its own try/catch - an `after()` that threw would turn this
+  // request into a 500 and show "error" to a customer who paid. The Paid write and the email above ran first.
+  if (sandboxOrder) {
+    try {
+      after(async () => {
+        try {
+          const booking = await import("@/lib/tixstock-booking/site-booking");
+          const { realSitePaymentDeps } = await import("@/lib/tixstock-booking/site-booking-deps");
+          if (isSuccess) await booking.bookSiteOrderAfterPayment(orderId, realSitePaymentDeps());
+          else await booking.releaseSiteHoldFor(orderId, realSitePaymentDeps());
+        } catch (e) {
+          console.error("[tixstock-site-booking]", String(e));
+        }
+      });
+    } catch (e) {
+      console.error("[tixstock-site-booking] after() failed", String(e));
+    }
   }
 
   return { isSuccess };

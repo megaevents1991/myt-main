@@ -7,8 +7,10 @@ import { supabase } from "@/lib/supabase";
 import { supplierEventId } from "@/lib/suppliers";
 import type { TixStockListing } from "@/lib/tixstock.types";
 import type { TixstockCall } from "./client";
-import type { SiteHoldDeps } from "./site-booking";
+import { isBookingStatus } from "./rules";
+import type { SiteBookingRow, SiteHoldDeps, SitePaymentDeps } from "./site-booking";
 import { sandboxClient } from "./site-env";
+import { sendTicketLinkEmail } from "./ticket-link-email";
 
 const NO_CLIENT = { ok: false, kind: "no_answer", detail: "no sandbox client (env not set)" } as const;
 
@@ -65,5 +67,108 @@ export function realSiteHoldDeps(): SiteHoldDeps {
     },
 
     newToken: () => randomBytes(32).toString("base64url"),
+  };
+}
+
+const SITE_BOOKING_COLUMNS =
+  "id, reservation_id, status, hold_id, listing_id, quantity, listing, price_per_ticket, buyer, attendees, customer_token, link_email_sent_at";
+
+export function realSitePaymentDeps(): SitePaymentDeps {
+  return {
+    now: () => new Date(),
+
+    async loadSiteBooking(reservationId) {
+      const { data, error } = await supabase
+        .from("ticket_bookings")
+        .select(SITE_BOOKING_COLUMNS)
+        .eq("reservation_id", reservationId)
+        .eq("source", "site")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(`ticket_bookings read failed: ${error.message}`);
+      if (!data) return null;
+      if (!isBookingStatus(data.status)) throw new Error(`ticket_bookings row ${String(data.id)} has an unknown status`);
+      const row: SiteBookingRow = {
+        id: String(data.id),
+        reservation_id: Number(data.reservation_id),
+        status: data.status,
+        hold_id: typeof data.hold_id === "string" ? data.hold_id : null,
+        listing_id: String(data.listing_id),
+        quantity: Number(data.quantity),
+        listing: data.listing,
+        // A numeric column arrives as a number or a string, by the driver's mood.
+        price_per_ticket: data.price_per_ticket === null ? null : Number(data.price_per_ticket),
+        buyer: data.buyer,
+        attendees: data.attendees,
+        customer_token: String(data.customer_token),
+        link_email_sent_at: typeof data.link_email_sent_at === "string" ? data.link_email_sent_at : null,
+      };
+      return row;
+    },
+
+    async moveStatus(id, from, to, atIso, patch) {
+      const { data, error } = await supabase
+        .from("ticket_bookings")
+        .update({ ...(patch ?? {}), status: to, updated_at: atIso, ...(to === "approved" ? { approved_at: atIso } : {}) })
+        .eq("id", id)
+        .eq("status", from)
+        .select("id");
+      if (error) throw new Error(`ticket_bookings status change failed: ${error.message}`);
+      return (data ?? []).length > 0;
+    },
+
+    async hold(listingId, qty) {
+      const client = sandboxClient();
+      return client ? client.hold(listingId, qty) : NO_CLIENT;
+    },
+
+    async release(holdId, qty) {
+      const client = sandboxClient();
+      return client ? client.release(holdId, qty) : NO_CLIENT;
+    },
+
+    async addOrder(holdId, qty, body) {
+      const client = sandboxClient();
+      return client ? client.addOrder(holdId, qty, body) : NO_CLIENT;
+    },
+
+    async updateOrder(orderId, body) {
+      const client = sandboxClient();
+      return client ? client.updateOrder(orderId, body) : NO_CLIENT;
+    },
+
+    async loadEventName(reservationId) {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("event_order_info")
+        .eq("id", reservationId)
+        .maybeSingle();
+      if (error) console.error("[tixstock-site-booking] reservation read failed:", JSON.stringify(error));
+      const name: unknown = data?.event_order_info?.name;
+      return typeof name === "string" ? name : "";
+    },
+
+    async claimLinkEmail(id, atIso) {
+      const { data, error } = await supabase
+        .from("ticket_bookings")
+        .update({ link_email_sent_at: atIso })
+        .eq("id", id)
+        .is("link_email_sent_at", null)
+        .select("id");
+      if (error) throw new Error(`ticket_bookings link email claim failed: ${error.message}`);
+      return (data ?? []).length > 0;
+    },
+
+    async unclaimLinkEmail(id, atIso) {
+      const { error } = await supabase
+        .from("ticket_bookings")
+        .update({ link_email_sent_at: null })
+        .eq("id", id)
+        .eq("link_email_sent_at", atIso);
+      if (error) console.error("[tixstock-site-booking] link email unclaim failed:", JSON.stringify(error));
+    },
+
+    sendTicketLinkEmail,
   };
 }
