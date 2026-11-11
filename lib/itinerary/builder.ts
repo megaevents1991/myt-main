@@ -44,6 +44,18 @@ export function tripCities(route: Event[]): string[] {
 }
 
 /**
+ * Where the plane stands on the planner's flight path, in hops from the first stop: over the first
+ * stop while nothing is picked, halfway to the next open stop after every pick, over the last stop
+ * once the trip is full - so every event added or removed moves it (Dor 11.11: until then it stood
+ * still on the first pick and on the last).
+ */
+export function planeSpot(picked: number, stops: number): number {
+  const last = Math.max(1, stops - 1);
+  if (picked <= 0) return 0;
+  return picked > last ? last : picked - 0.5;
+}
+
+/**
  * A move's name: a flight's by the airports' cities ("לונדון - דיסלדורף": a flight from a Manchester
  * stay still leaves London), one the customer makes by train (`byTrain`) by the stays it joins.
  * Empty when the route has no such move.

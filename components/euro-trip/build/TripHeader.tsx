@@ -3,7 +3,7 @@
 import { ChevronLeft, Plane } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { dayMonth, dayMonthYear, tripCities } from "@/lib/itinerary/builder";
+import { dayMonth, dayMonthYear, planeSpot, tripCities } from "@/lib/itinerary/builder";
 import { dayDiff } from "@/lib/itinerary/geo";
 import { TripEventArt } from "./TripEventArt";
 import { useItinerary } from "./ItineraryProvider";
@@ -51,12 +51,11 @@ function RouteHops() {
   const stops = Math.max(settings.maxEvents, route.length, 2);
   const hop = 100 / (stops - 1);
   const path = Array.from({ length: stops - 1 }, (_, i) => `Q ${hop * i + hop / 2} 2 ${hop * (i + 1)} 34`).join(" ");
-  // The plane flies the hop to the next stop still open.
-  const at = Math.min(route.length, stops - 1);
-  const planeHop = Math.max(0, at - 1);
+  // The plane's place as a share of the path: every event picked or removed moves it.
+  const flown = planeSpot(route.length, stops) / (stops - 1);
 
   return (
-    <div className="relative w-full lg:max-w-sm" aria-hidden>
+    <div className="relative w-full overflow-x-clip lg:max-w-sm" aria-hidden>
       <div className="absolute inset-x-[22px] top-0 h-12">
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="size-full overflow-visible" fill="none">
           <path
@@ -68,10 +67,19 @@ function RouteHops() {
             vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <Plane
-          className="absolute top-[-4px] size-4 fill-primary text-primary"
-          style={{ right: `${hop * planeHop + hop / 2}%`, transform: "translateX(50%) rotate(-135deg)" }}
-        />
+        {/* The plane flies to its place: it rides the left edge of a track as wide as the path, so a
+            transform in % moves it by the path's own width (no layout, smooth while the list under it
+            re-renders). The track waits on the right - the page's start side, where overflow cannot
+            scroll; physical sides on purpose, like the path's drawing. */}
+        <div
+          className="pointer-events-none absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.77,0,0.175,1)] motion-reduce:transition-none"
+          style={{ transform: `translateX(${(1 - flown) * 100}%)` }}
+        >
+          <Plane
+            className="absolute left-0 top-[-4px] size-4 fill-primary text-primary"
+            style={{ transform: "translateX(-50%) rotate(-135deg)" }}
+          />
+        </div>
       </div>
       <ol className="relative m-0 flex list-none items-end justify-between p-0 pt-5">
         {Array.from({ length: stops }, (_, i) => {

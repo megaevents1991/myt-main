@@ -15,6 +15,7 @@ import {
   isBrowsing,
   moveName,
   nextCityQuestion,
+  planeSpot,
   quickFiltered,
   starterEvents,
   topCities,
@@ -255,5 +256,20 @@ describe("moveName", () => {
     const route = [celine, chelsea];
     expect(moveName(route, `${celine.id}>${chelsea.id}`)).toBe("פריז - לונדון");
     expect(moveName(route, "nope")).toBe("");
+  });
+});
+
+describe("the plane on the planner's flight path (Dor 11.11)", () => {
+  it("moves with every event picked: over the first stop, halfway to each open stop, over the last", () => {
+    expect([0, 1, 2, 3].map((n) => planeSpot(n, 3))).toEqual([0, 0.5, 1.5, 2]);
+  });
+
+  it("a trip of two events is one hop", () => {
+    expect([0, 1, 2].map((n) => planeSpot(n, 2))).toEqual([0, 0.5, 1]);
+  });
+
+  it("never leaves the path", () => {
+    expect(planeSpot(-1, 3)).toBe(0);
+    expect(planeSpot(5, 3)).toBe(2);
   });
 });
