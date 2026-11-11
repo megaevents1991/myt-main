@@ -5,10 +5,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2, Copy, Link2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { OrderData, Flight } from "@/lib/app.types";
 import dayjs from "dayjs";
 import { ReferFriend } from "@/components/ReferFriend";
 import { trackEvent } from "@/lib/mixpanel";
+
+// TixStock SANDBOX test orders only (`event_order_info.tixstock_sandbox`): loaded and mounted for them alone, so a
+// real order's confirmation page downloads nothing new and makes no new request.
+const SandboxTicketsBlock = dynamic(() => import("../SandboxTicketsBlock").then((m) => m.SandboxTicketsBlock));
 
 type PaymentStatus = "success" | "error" | "pending";
 
@@ -70,6 +75,8 @@ export default function ConfirmationPage() {
   const [orderConfirmationData, setOrderConfirmationData] =
     useState<OrderConfirmationData>({} as OrderConfirmationData);
   const [copySuccess, setCopySuccess] = useState(false);
+  // True only for an order of the hidden TixStock test checkout (the marker its summary adds).
+  const [sandboxOrder, setSandboxOrder] = useState(false);
 
   const { params } = useParams();
 
@@ -159,6 +166,10 @@ export default function ConfirmationPage() {
     try {
       const orderData = await getOrderData();
       if (orderData && orderData.event_order_info) {
+        // Server-only marker, not on the shared OrderData type: a narrow cast at this one read site.
+        setSandboxOrder(
+          (orderData.event_order_info as { tixstock_sandbox?: boolean }).tixstock_sandbox === true,
+        );
         if (isPaid === "success") {
           trackAnalyticsEvent(orderData);
         }
@@ -418,6 +429,7 @@ export default function ConfirmationPage() {
           />
           <DetailRow label="Location:" value={eventLocation} />
           <DetailRow label="Tickets:" value={`(x${quantity}) ${ticketType}`} ltr />
+          {sandboxOrder && typeof orderId === "string" && <SandboxTicketsBlock orderId={orderId} />}
           {flights ? (
             <>
               <DetailRow label="Airline:" value={airline} ltr />
