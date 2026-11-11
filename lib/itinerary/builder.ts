@@ -44,15 +44,54 @@ export function tripCities(route: Event[]): string[] {
 }
 
 /**
- * Where the plane stands on the planner's flight path, in hops from the first stop: over the first
- * stop while nothing is picked, halfway to the next open stop after every pick, over the last stop
- * once the trip is full - so every event added or removed moves it (Dor 11.11: until then it stood
- * still on the first pick and on the last).
+ * The planner's flight path as the header draws it: every hop between two stops is one arc in a
+ * box `box` high - down at `base` on the stops, pulled up toward `control` between them.
+ */
+export const FLIGHT_PATH = { box: 40, base: 34, control: 2 } as const;
+
+/** How far from a stop the plane waits, in hops: clear of the stop's picture on a phone too, still beside it. */
+const PLANE_APRON = 0.25;
+
+/**
+ * Where the plane stands on that path, in hops from the first stop: beside the first stop while
+ * nothing is picked, on the top of the hop to the next open stop after every pick, beside the last
+ * stop once the trip is full - so every event added or removed moves it (Dor 11.11: until then it
+ * stood still on the first pick and on the last).
  */
 export function planeSpot(picked: number, stops: number): number {
   const last = Math.max(1, stops - 1);
-  if (picked <= 0) return 0;
-  return picked > last ? last : picked - 0.5;
+  if (picked <= 0) return PLANE_APRON;
+  return picked > last ? last - PLANE_APRON : picked - 0.5;
+}
+
+/**
+ * The plane ON the path at a spot: `along` the path's width and `down` its box (shares of each), and
+ * the `tilt` of its nose in degrees - up while it climbs out of a stop, down on the way into the next.
+ */
+export type PlanePose = { along: number; down: number; tilt: number };
+
+/** `slope` = the box's height over one hop's width, as drawn on screen (the tilt needs real sizes). */
+export function planePose(spot: number, stops: number, slope: number): PlanePose {
+  const hops = Math.max(1, stops - 1);
+  const s = Math.min(Math.max(spot, 0), hops);
+  const t = s - Math.min(Math.floor(s), hops - 1);
+  const { box, base, control } = FLIGHT_PATH;
+  // The arc's height at t: base - dip * t(1 - t).
+  const dip = 2 * (base - control);
+  return {
+    along: s / hops,
+    down: (base - dip * t * (1 - t)) / box,
+    tilt: (Math.atan(((dip * (1 - 2 * t)) / box) * slope) * 180) / Math.PI,
+  };
+}
+
+/**
+ * A flight from one spot to another as the poses on its way, close enough together to draw the
+ * arcs - and the turn at a stop it passes (Dor 11.11: the plane flies the path, not a straight line).
+ */
+export function flightPoses(from: number, to: number, stops: number, slope: number): PlanePose[] {
+  const steps = Math.max(6, Math.round(Math.abs(to - from) * 20));
+  return Array.from({ length: steps + 1 }, (_, k) => planePose(from + ((to - from) * k) / steps, stops, slope));
 }
 
 /**

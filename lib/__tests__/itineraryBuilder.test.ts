@@ -11,10 +11,12 @@ import {
   dayMonthYear,
   filterCatalog,
   fittingItems,
+  flightPoses,
   hasTripPartner,
   isBrowsing,
   moveName,
   nextCityQuestion,
+  planePose,
   planeSpot,
   quickFiltered,
   starterEvents,
@@ -260,16 +262,73 @@ describe("moveName", () => {
 });
 
 describe("the plane on the planner's flight path (Dor 11.11)", () => {
-  it("moves with every event picked: over the first stop, halfway to each open stop, over the last", () => {
-    expect([0, 1, 2, 3].map((n) => planeSpot(n, 3))).toEqual([0, 0.5, 1.5, 2]);
+  it("moves with every event picked: beside the first stop, on the top of each open hop, beside the last", () => {
+    expect([0, 1, 2, 3].map((n) => planeSpot(n, 3))).toEqual([0.25, 0.5, 1.5, 1.75]);
   });
 
   it("a trip of two events is one hop", () => {
-    expect([0, 1, 2].map((n) => planeSpot(n, 2))).toEqual([0, 0.5, 1]);
+    expect([0, 1, 2].map((n) => planeSpot(n, 2))).toEqual([0.25, 0.5, 0.75]);
   });
 
   it("never leaves the path", () => {
-    expect(planeSpot(-1, 3)).toBe(0);
-    expect(planeSpot(5, 3)).toBe(2);
+    expect(planeSpot(-1, 3)).toBe(0.25);
+    expect(planeSpot(5, 3)).toBe(1.75);
+  });
+});
+
+describe("the plane rides the arcs (Dor 11.11)", () => {
+  const SLOPE = 0.3;
+
+  it("sits on the top of a hop, level", () => {
+    const top = planePose(0.5, 3, SLOPE);
+    expect(top.along).toBeCloseTo(0.25);
+    expect(top.down).toBeCloseTo(0.45);
+    expect(top.tilt).toBeCloseTo(0);
+  });
+
+  it("is down at a stop: nose up on the way out of it, down on the way into the last", () => {
+    const mid = planePose(1, 3, SLOPE);
+    expect(mid.along).toBeCloseTo(0.5);
+    expect(mid.down).toBeCloseTo(0.85);
+    expect(mid.tilt).toBeGreaterThan(20);
+    const last = planePose(2, 3, SLOPE);
+    expect(last.along).toBeCloseTo(1);
+    expect(last.down).toBeCloseTo(0.85);
+    expect(last.tilt).toBeCloseTo(-mid.tilt);
+  });
+
+  it("climbs and comes down by the same curve", () => {
+    const up = planePose(0.2, 3, SLOPE);
+    const down = planePose(0.8, 3, SLOPE);
+    expect(up.down).toBeCloseTo(down.down);
+    expect(up.tilt).toBeGreaterThan(0);
+    expect(down.tilt).toBeCloseTo(-up.tilt);
+    // Between a stop and the top of its hop.
+    expect(up.down).toBeGreaterThan(0.45);
+    expect(up.down).toBeLessThan(0.85);
+  });
+
+  it("stays on the path whatever it is asked", () => {
+    expect(planePose(-3, 3, SLOPE).along).toBe(0);
+    expect(planePose(9, 3, SLOPE).along).toBe(1);
+  });
+
+  it("a flight between two hops goes down to the stop between them and up again", () => {
+    const poses = flightPoses(0.5, 1.5, 3, SLOPE);
+    expect(poses[0]).toEqual(planePose(0.5, 3, SLOPE));
+    expect(poses[poses.length - 1]).toEqual(planePose(1.5, 3, SLOPE));
+    const lowest = poses.reduce((a, b) => (b.down > a.down ? b : a));
+    expect(lowest.along).toBeCloseTo(0.5);
+    expect(lowest.down).toBeCloseTo(0.85);
+    // Close enough together to draw the curve.
+    expect(poses.length).toBeGreaterThanOrEqual(17);
+  });
+
+  it("a short flight still draws its curve, and a flight back is the same road", () => {
+    const out = flightPoses(0.2, 0.5, 3, SLOPE);
+    expect(out.length).toBeGreaterThanOrEqual(7);
+    expect(out.every((p, i) => i === 0 || p.down < out[i - 1].down)).toBe(true);
+    const back = flightPoses(0.5, 0.2, 3, SLOPE);
+    expect(back.map((p) => p.down.toFixed(6))).toEqual([...out].reverse().map((p) => p.down.toFixed(6)));
   });
 });
