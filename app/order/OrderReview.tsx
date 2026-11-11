@@ -83,6 +83,13 @@ import {
   readOrderForm,
   writeOrderForm,
 } from "@/lib/order/draftStorage";
+// TixStock sandbox test events only (`is_test` + `tixstock_booking`): on a real event `sandboxSummaryState` is
+// `none` and nothing that reads it runs.
+import dynamic from "next/dynamic";
+import type { AttendeeInput } from "@/lib/tixstock-booking/rules";
+import { attendeesForRequest, attendeesReady, sandboxSummaryState } from "@/lib/tixstock-booking/summary";
+
+const AttendeeFields = dynamic(() => import("./sandbox/AttendeeFields").then((m) => m.AttendeeFields));
 
 const TermsError = () => (
   <p className="text-sm text-red-500 text-center mt-1">
@@ -240,6 +247,12 @@ export default function OrderReview({
   const [submitFailReason, setSubmitFailReason] = useState<
     "generic" | "supplier" | "hotel" | "closed"
   >("generic");
+  // TixStock sandbox test events only: the listing the ticket step's card carried and - at an Italian venue - the
+  // travellers' identity details. `none` on every real event. The details live in this state alone: they are never
+  // written to sessionStorage (`writeOrderForm` does not know them), so a refresh empties them.
+  const sandboxSummary = sandboxSummaryState(event, eventTicket);
+  const [attendeeExtras, setAttendeeExtras] = useState<Array<Partial<AttendeeInput> | undefined>>([]);
+  const [attendeeErrorsShown, setAttendeeErrorsShown] = useState(false);
   const {
     affId,
     affDiscount,
@@ -1493,6 +1506,10 @@ export default function OrderReview({
         if (body?.error === "EVENT_NOT_OPEN") {
           throw new Error("EVENT_NOT_OPEN");
         }
+        // TixStock sandbox test event: the listing the card showed is gone or dearer (confirm-order's hold).
+        if (body?.error === "TICKET_UNAVAILABLE") {
+          throw new Error("TICKET_UNAVAILABLE");
+        }
       }
       // Coupon died between "apply" and "pay" (expired/exhausted) - surface
       // it so the customer sees the corrected price instead of a silent fail.
@@ -1573,6 +1590,14 @@ export default function OrderReview({
       onlySave = false;
     }
     setTermsCheckboxTouched(true);
+    // TixStock sandbox test event: a ticket with no listing cannot be held at the pay click. Back to the ticket
+    // step through the notice a ticket that went off sale gets; nothing is sent.
+    if (sandboxSummary.kind === "pick_again") {
+      setSubmitFailReason("supplier");
+      setSubmitFailed(true);
+      return;
+    }
+    if (sandboxSummary.kind === "ready" && sandboxSummary.italian) setAttendeeErrorsShown(true);
 
     // Set errors based on the action type
     // For 24h hold (onlySave=true), only require main contact
@@ -1619,6 +1644,17 @@ export default function OrderReview({
     // submitting before it resolves would persist/charge a 0 amount.
     if (!Number.isFinite(finalPurchasePriceILS) || finalPurchasePriceILS <= 0) {
       console.error("ILS total not ready yet - submit blocked, try again");
+      return;
+    }
+
+    // TixStock sandbox test event at an Italian venue: a card payment waits for every traveller's identity details -
+    // the pay click holds the tickets and the order that follows names the attendees.
+    if (
+      sandboxSummary.kind === "ready" &&
+      payNow &&
+      !attendeesReady(attendeesForRequest(passengers, attendeeExtras, sandboxSummary.italian), sandboxSummary.italian)
+    ) {
+      passengerDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
@@ -1752,7 +1788,18 @@ export default function OrderReview({
     };
 
     try {
-      const result = await submitOrder(updatedFormData, payNow, onlySave);
+      // TixStock sandbox test event: the listing to hold, the attendees, and the marker the confirmation page and
+      // the payment hook read. A real order's body is `updatedFormData`, exactly as before.
+      const orderBody =
+        sandboxSummary.kind === "ready"
+          ? {
+              ...updatedFormData,
+              event_order_info: { ...updatedFormData.event_order_info, tixstock_sandbox: true },
+              tixstock_listing_id: sandboxSummary.listingId,
+              tixstock_attendees: attendeesForRequest(passengers, attendeeExtras, sandboxSummary.italian),
+            }
+          : updatedFormData;
+      const result = await submitOrder(orderBody, payNow, onlySave);
 
       orderStage("CONFIRMED", {
         // TO DO: temp workaround as order stage doesn't work (router.push?)
@@ -1821,6 +1868,9 @@ export default function OrderReview({
           "לא ניתן להשתמש באפשרות זו - יש להתחבר מחדש לאזור הסוכן ולנסות שוב.",
         );
       } else if (error instanceof Error && error.message === "PRICE_VALIDATION_FAILED") {
+        setSubmitFailReason("supplier");
+        setSubmitFailed(true);
+      } else if (error instanceof Error && error.message === "TICKET_UNAVAILABLE") {
         setSubmitFailReason("supplier");
         setSubmitFailed(true);
       } else if (error instanceof Error && error.message === "HOTEL_NOT_REFUNDABLE") {
@@ -2377,6 +2427,31 @@ export default function OrderReview({
                     isNumberOfPersonsEqual={isNumberOfPersonsEqual}
                     addOnsTotalUsd={bagAddOnsUsd}
                   />
+                )}
+                {sandboxSummary.kind === "pick_again" && (
+                  <div
+                    className="mb-3 rounded-lg border border-red-300 bg-red-50 p-4 text-right text-red-900 dark:bg-red-950 dark:text-red-100"
+                    role="alert"
+                    data-sandbox-pick-again
+                  >
+                    <div className="font-bold">צריך לבחור את הכרטיס מחדש</div>
+                    <div className="text-sm">
+                      הכרטיס שבהזמנה כבר לא משויך להצעה של הספק. חזרו לבחירת הכרטיסים ובחרו שוב.
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-2 font-bold"
+                      onClick={() => (onEditStep ?? setStep)(1)}
+                    >
+                      חזרה לבחירת הכרטיסים
+                    </Button>
+                  </div>
+                )}
+                {sandboxSummary.kind === "ready" && sandboxSummary.singleSeats && (
+                  <p className="mb-3 text-right text-sm font-bold text-red-600" data-sandbox-single-seats>
+                    ייתכן שהמושבים לא יהיו צמודים
+                  </p>
                 )}
                 {readyPackage ? (
                   <ReadyPackageShowcase
@@ -3112,6 +3187,21 @@ export default function OrderReview({
                                 )}
                             </div>
                           </fieldset>
+                          {sandboxSummary.kind === "ready" && sandboxSummary.italian && (
+                            <AttendeeFields
+                              index={index}
+                              value={attendeeExtras[index] ?? {}}
+                              showErrors={attendeeErrorsShown}
+                              disabled={isSubmitting}
+                              onChange={(next) =>
+                                setAttendeeExtras((prev) => {
+                                  const copy = [...prev];
+                                  copy[index] = next;
+                                  return copy;
+                                })
+                              }
+                            />
+                          )}
                           {index === 0 && (
                             <>
                               <div className="space-y-1">
