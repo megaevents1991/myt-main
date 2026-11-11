@@ -25,6 +25,8 @@ import {
   withDeadline,
 } from "@/lib/ticket-cost";
 import { insertReservation } from "@/lib/reservation-insert";
+// Types only: the module itself is loaded on demand, by an order that carries a listing id (sandbox test events).
+import type { HeldListing, SiteHoldDeps } from "@/lib/tixstock-booking/site-booking";
 import { isHiddenForCheckout } from "@/lib/events/hidden";
 import {
   trackServerSideEvent,
@@ -382,6 +384,44 @@ export async function POST(req: Request) {
     TICKET_COST_DEADLINE_MS,
   );
 
+  // TixStock SANDBOX test events only (the hidden test checkout of TixStock's health check). An order carries
+  // `tixstock_listing_id` only from that checkout's summary: every real order skips this block at the `if`.
+  // It stands here, after every check that can still refuse the order, so no hold is left behind by a 400.
+  let siteHeld: {
+    held: HeldListing;
+    api: typeof import("@/lib/tixstock-booking/site-booking");
+    deps: SiteHoldDeps;
+  } | null = null;
+  if (orderDetails.tixstock_listing_id != null) {
+    try {
+      const api = await import("@/lib/tixstock-booking/site-booking");
+      const { realSiteHoldDeps } = await import("@/lib/tixstock-booking/site-booking-deps");
+      const deps = realSiteHoldDeps();
+      const siteHold = await api.prepareSiteHold(
+        {
+          listingId: orderDetails.tixstock_listing_id,
+          attendees: orderDetails.tixstock_attendees,
+          eventId: Number(validatedData.event_id),
+          quantity: Number(validatedData.event_order_info.number_of_ticket),
+          payNow: !!payNow,
+          chargedPerTicketUsd: Number(validatedData.event_order_info.price_per_ticket),
+        },
+        deps,
+      );
+      if (siteHold.kind === "unavailable") {
+        return NextResponse.json({ error: "TICKET_UNAVAILABLE" }, { status: 400 });
+      }
+      if (siteHold.kind === "bad_attendees") {
+        return NextResponse.json({ error: "Invalid order data" }, { status: 400 });
+      }
+      if (siteHold.kind === "held") siteHeld = { held: siteHold.held, api, deps };
+    } catch (e) {
+      // A test order is never taken to payment without its hold.
+      console.error("[tixstock-site-booking] hold block failed:", e instanceof Error ? e.message : String(e));
+      return NextResponse.json({ error: "TICKET_UNAVAILABLE" }, { status: 400 });
+    }
+  }
+
   const reservationPayload = {
     main_contact_first_name: validatedData.main_contact_first_name,
     main_contact_last_name: validatedData.main_contact_last_name,
@@ -468,9 +508,22 @@ export async function POST(req: Request) {
       "Error inserting into reservations table:",
       JSON.stringify(data),
     );
+    // TixStock sandbox test event: the reservation was not stored, so the tickets held above go back.
+    if (siteHeld) await siteHeld.api.releaseHeld(siteHeld.held, siteHeld.deps);
     return NextResponse.json(
       { error: "Failed to confirm order" },
       { status: 500 },
+    );
+  }
+
+  // TixStock sandbox test event: the booking row of the hold placed above (the hold is released if the row cannot
+  // be stored). Never throws.
+  if (siteHeld && id) {
+    await siteHeld.api.recordSiteHold(
+      Number(id),
+      siteHeld.held,
+      siteHeld.api.buyerFromOrder(validatedData),
+      siteHeld.deps,
     );
   }
 
