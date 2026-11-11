@@ -2,7 +2,7 @@
 // tickets. The page is found by the booking's `customer_token` alone - never by an order id - and lists a file only
 // once the booking's tickets were released to the customer. Pure: every read goes through `TicketPageDeps`
 // (the real ones: ticket-page-deps.ts). Test: lib/__tests__/tixstockTicketPage.test.ts.
-import { readListingSnapshot, type BookingStatus } from "./rules";
+import { readListingSnapshot, safeHttpUrl, type BookingStatus } from "./rules";
 
 /** `randomBytes(32).toString("base64url")`: 43 characters of the base64url alphabet. */
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -58,6 +58,7 @@ export type TicketPageDeps = {
 /**
  * The page of one token. Null = no such page: a value that is not a token (no read is made for it), an unknown
  * token, or a booking TixStock cancelled. A seller's proof of transfer is staff's to see, never listed here.
+ * The ONLY `url` a file carries out of here is an http(s) one (`safeHttpUrl`), so the page may put it in an `href`.
  */
 export async function loadTicketPage(token: string, deps: TicketPageDeps): Promise<TicketPageData | null> {
   if (!isTicketToken(token)) return null;
@@ -73,7 +74,13 @@ export async function loadTicketPage(token: string, deps: TicketPageDeps): Promi
     for (const f of await deps.loadFiles(booking.id)) {
       if (f.kind === "proof") continue;
       const file: TicketPageFile = { id: f.id, kind: f.kind, row: f.row, seat: f.seat };
-      if (f.kind === "mobile_link" && f.url) file.url = f.url;
+      if (f.kind === "mobile_link") {
+        // The link is a seller's text: only an http(s) URL is ever handed to the page (never `javascript:` /
+        // `data:`), and a mobile ticket with no link to open is not listed.
+        const url = safeHttpUrl(f.url);
+        if (!url) continue;
+        file.url = url;
+      }
       files.push(file);
     }
   }

@@ -90,6 +90,19 @@ describe("the ticket page", () => {
     ]);
   });
 
+  it("a mobile link is listed only when it is an http(s) link: a seller's text never becomes a script on our page", async () => {
+    const { deps } = world({ released: true });
+    const loadFiles: typeof deps.loadFiles = async () => [
+      { id: "m1", kind: "mobile_link", row: "5", seat: "12", url: "javascript:alert(document.cookie)" },
+      { id: "m2", kind: "mobile_link", row: "5", seat: "13", url: " JaVaScRiPt:alert(1)" },
+      { id: "m3", kind: "mobile_link", row: "5", seat: "14", url: "data:text/html,<script>alert(1)</script>" },
+      { id: "m4", kind: "mobile_link", row: "5", seat: "15", url: null },
+      { id: "m5", kind: "mobile_link", row: "5", seat: "16", url: "https://tickets.example/ok" },
+    ];
+    const page = await loadTicketPage(TOKEN, { ...deps, loadFiles });
+    expect(page?.files).toEqual([{ id: "m5", kind: "mobile_link", row: "5", seat: "16", url: "https://tickets.example/ok" }]);
+  });
+
   it("an external transfer says so: the seller sends the tickets himself", async () => {
     const { deps } = world({
       released: true,
