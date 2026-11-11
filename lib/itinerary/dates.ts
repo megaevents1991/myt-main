@@ -136,6 +136,38 @@ export function eventGrounds(route: Event[], train: ReadonlySet<string>): Map<nu
 }
 
 /**
+ * The way BACK to the airport that the customer makes alone, keyed by the flight it is made for:
+ * `"ret"` (the flight home) or a flown move's key. Dor 11.11 - Manchester, London, Liverpool flew
+ * home "from London" out of a Liverpool hotel and no screen said the train back; `eventGrounds`
+ * only ever told the way IN. A stay that sleeps away from its own airport and is left by a flight:
+ * the flight home, or a move between two flight cities the customer did not take over (`train`).
+ * A stay left by train has none - that move's own row says it.
+ */
+export function leaveGrounds(route: Event[], train: ReadonlySet<string>): Map<string, Ground> {
+  const { runs, moves: ms } = layout(route);
+  const out = new Map<string, Ground>();
+  runs.forEach((run, i) => {
+    const move = i < ms.length ? ms[i] : undefined;
+    if (move && (sameHub(move.a, move.b) || train.has(move.key))) return;
+    const stay = stayPoint(run[0]).point;
+    // The flight leaves the flight city of the stay's last event (`tripLegs`).
+    const last = run[run.length - 1];
+    const km = haversineKm(stay, last.location);
+    if (km > SAME_CITY_KM) out.set(move ? move.key : "ret", { from: shortPlace(stay.name), to: cityName(last, "flight"), km });
+  });
+  return out;
+}
+
+/** `leaveGrounds` in trip order, each with the day its flight leaves: the move's day, or the return. */
+export function leaveWays(route: Event[], d: TripDates, train: ReadonlySet<string>): (Ground & { key: string; date: string })[] {
+  const ms = layout(route).moves;
+  return [...leaveGrounds(route, train)].map(([key, g]) => {
+    const move = ms.find((m) => m.key === key);
+    return { ...g, key, date: move ? moveDay(d, move) : d.ret };
+  });
+}
+
+/**
  * The range each date may take: depart [first - 3, first], return [last + 1, last + 3], a move
  * [A + 1, B - 1] - nobody changes city on the day of a show (Dor 31.10) - or [A + 1, B] within one
  * flight city (`sameHub`: the train from London to a Manchester match may be that morning's). They
@@ -252,4 +284,14 @@ export function trainLegs(route: Event[], d: TripDates, train: ReadonlySet<strin
       },
     ];
   });
+}
+
+/**
+ * Every move made on the ground, in trip order: the train between two stays under one flight city
+ * (London - Manchester: there is no flight to pick) and the moves the customer took over (`train`).
+ * What the mails list - the summary draws the two kinds apart.
+ */
+export function ownTrains(route: Event[], d: TripDates, train: ReadonlySet<string>): TrainLeg[] {
+  const hub = layout(route).moves.filter((m) => sameHub(m.a, m.b)).map((m) => m.key);
+  return trainLegs(route, d, new Set([...train, ...hub]));
 }

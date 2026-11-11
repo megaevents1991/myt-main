@@ -7,11 +7,12 @@
  * data the browser never needs). `canSearch` repeats that file's `validateFlightRequest` rules
  * so the step never sends a search the route would refuse; a test keeps the two in step.
  */
-import type { FlightSegment, ItineraryFlight } from "@/lib/app.types";
+import type { Event, FlightSegment, ItineraryFlight } from "@/lib/app.types";
 import { ISRAELI_AIRLINE_CODES, getFlightCarrierCodes } from "@/lib/flightCarriers";
-import { dayMonth } from "./builder";
+import { dayMonth, groundLink } from "./builder";
+import { leaveGrounds, moves, stays } from "./dates";
 import type { FlightLeg } from "./flightOffers";
-import type { TrainLeg, TripLeg } from "./types";
+import type { TrainLeg, TripDates, TripLeg } from "./types";
 
 /** Cards rendered before "הצג עוד" (a search can bring ~250 offers). */
 export const FLIGHTS_PAGE = 20;
@@ -54,6 +55,52 @@ export const groundNote = (g: { from: string; to: string; km: number }): string 
 /** The same way there in one small line over a flights list (Alon 01.11: "ההערה כאן גדולה מדי"). */
 export const groundNoteShort = (g: { from: string; to: string; km: number }): string =>
   `ל${g.to} ברכבת מ${g.from}, כ-${trainHours(g.km)} שעות, הגעה עצמאית`;
+
+/** "הטיסה חזרה" for the flight home, "הטיסה" for a move's. */
+const leavingFlight = (home: boolean): string => (home ? "הטיסה חזרה" : "הטיסה");
+
+/**
+ * The way back to the airport (`leaveGrounds`): "הטיסה חזרה יוצאת מלונדון - רכבת מליברפול, כ-2.2
+ * שעות, בכוחות עצמכם (לא כלול)." It leads with where the flight leaves from: Dor 11.11 read a
+ * flight home out of London under a Liverpool hotel as a flight from the wrong place.
+ */
+export const leaveNote = (g: { from: string; to: string; km: number }, home: boolean): string =>
+  `${leavingFlight(home)} יוצאת מ${g.to} - רכבת מ${g.from}, כ-${trainHours(g.km)} שעות, בכוחות עצמכם (לא כלול).`;
+
+/** The same in one small line over a flights list. */
+export const leaveNoteShort = (g: { from: string; to: string; km: number }, home: boolean): string =>
+  `${leavingFlight(home)} יוצאת מ${g.to}: רכבת מ${g.from}, כ-${trainHours(g.km)} שעות, הגעה עצמאית`;
+
+/**
+ * The small lines over one part's flights list: the ways on the ground its flights leave out.
+ *  - `הלוך חזור`: from the airport to the first stay, and back to the airport before the flight home
+ *    (`leaveGrounds`); a last stay at its own airport keeps the way to its event instead.
+ *  - a move: back to the airport it leaves from, then on from where it lands.
+ * Until 11.11 the last stay's line was always its way IN ("לליברפול ברכבת מלונדון") - under a
+ * flight home that is the wrong direction.
+ */
+export function partGroundNotes(
+  route: Event[],
+  dates: TripDates,
+  train: ReadonlySet<string>,
+  part: { key: string; kind: "main" | "move" },
+): string[] {
+  const list = stays(route, dates);
+  if (!list.length) return [];
+  const leaves = leaveGrounds(route, train);
+  const wayIn = (e: Event | undefined): string[] => {
+    const g = e ? groundLink(e) : null;
+    return g ? [groundNoteShort(g)] : [];
+  };
+  if (part.kind === "main") {
+    const back = leaves.get("ret");
+    const lines = [...wayIn(list[0].events[0]), ...(back ? [leaveNoteShort(back, true)] : wayIn(list[list.length - 1].events[0]))];
+    return [...new Set(lines)];
+  }
+  const back = leaves.get(part.key);
+  const move = moves(route).find((m) => m.key === part.key);
+  return [...new Set([...(back ? [leaveNoteShort(back, false)] : []), ...wayIn(move?.b)])];
+}
 
 // ---------------------------------------------------------------------------------------------
 // Sort tabs

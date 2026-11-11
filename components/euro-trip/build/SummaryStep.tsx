@@ -27,10 +27,10 @@ import { ticketReady } from "@/lib/itinerary/adapter";
 import { sendTripSuggestion } from "@/app/euro-trip/build/actions";
 import { dayMonth, moveName, stayCityName, tripCities } from "@/lib/itinerary/builder";
 import type { HeldAnswer } from "@/lib/itinerary/confirm";
-import { eventGrounds, moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
+import { eventGrounds, leaveGrounds, moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import { airlineLabel } from "@/lib/itinerary/directPairs";
 import { flightPartsOf } from "@/lib/itinerary/flightParts";
-import { groundNote, trainRowText } from "@/lib/itinerary/flightsView";
+import { groundNote, leaveNote, trainRowText } from "@/lib/itinerary/flightsView";
 import { dayDiff, eventDay, sameHub } from "@/lib/itinerary/geo";
 import { SUMMARY_HOLD_SECONDS, canContinue, livePrice, progressivePrice } from "@/lib/itinerary/progress";
 import { stayHotelReady, stayRanges } from "@/lib/itinerary/stayAdapter";
@@ -202,15 +202,18 @@ function GroundLines() {
   }, [route, dates]);
   const lines = useMemo(() => {
     // A stay reached by a train move is in `groundHops`; these are the ways to an event the trip
-    // does not cover (from the airport, or a day trip from the hotel).
-    const grounds = eventGrounds(route, new Set(state.train));
+    // does not cover (from the airport, or a day trip from the hotel), then the ways back to the
+    // airport before a flight (Dor 11.11: a Liverpool hotel, a flight home from London).
+    const train = new Set(state.train);
+    const grounds = eventGrounds(route, train);
     return [
-      ...new Set(
-        route.flatMap((e) => {
+      ...new Set([
+        ...route.flatMap((e) => {
           const g = grounds.get(e.id);
           return g ? [groundNote(g)] : [];
         }),
-      ),
+        ...[...leaveGrounds(route, train)].map(([key, g]) => leaveNote(g, key === "ret")),
+      ]),
     ];
   }, [route, state.train]);
   if (!groundHops.length && !lines.length) return null;

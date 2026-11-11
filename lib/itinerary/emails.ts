@@ -17,8 +17,9 @@ import type { Event, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/ap
 import { roomsLabel } from "@/lib/events/readyPackage";
 import { dayMonth, dayMonthYear, stayCityName } from "./builder";
 import type { GroupRowInsert, RowEventInfo, TripSubmission } from "./confirm";
-import { stays, trainLegs } from "./dates";
+import { eventGrounds, leaveWays, ownTrains, stays, type Ground } from "./dates";
 import { legAirlines } from "./directPairs";
+import { trainHours } from "./flightsView";
 import { dayDiff, eventDay } from "./geo";
 import { offlineHotelIds } from "./offlineHold";
 import type { LivePrice } from "./progress";
@@ -46,8 +47,15 @@ export type TripMailInput = {
   pax: number;
   rows: TripMailRow[];
   flight: ItineraryFlight;
-  /** The moves the customer makes by train (not included). */
+  /**
+   * Every move made on the ground (not included): the train between two stays under one flight
+   * city, and the moves the customer took over (`ownTrains`).
+   */
   trainLegs: TrainLeg[];
+  /** The ways to an event the trip leaves out: from the airport, or from the hotel (`eventGrounds`). */
+  grounds: Ground[];
+  /** The ways back to the airport before a flight, with the flight's day (`leaveGrounds`). */
+  leaves: (Ground & { date: string })[];
   /** One hotel per stay, with the city and the reservation it is on. */
   hotels: { city: string; hotel: OrderHotel; onRow: number | null }[];
   /** The cities the customer needs no hotel in ("לא צריך מלון"). */
@@ -73,7 +81,9 @@ export function tripMailInput(i: {
 }): TripMailInput {
   const { sub, route, rows } = i;
   const travellers = fitTravellers(sub.travellers, sub.pax);
-  const hotels = stays(route, sub.dates).flatMap((stay) => {
+  const train = new Set(sub.train);
+  const list = stays(route, sub.dates);
+  const hotels = list.flatMap((stay) => {
     const hotel = sub.hotels[stay.key];
     if (!hotel) return [];
     const at = route.findIndex((e) => e.id === stay.events[0].id);
@@ -96,9 +106,11 @@ export function tripMailInput(i: {
       shareIls: rows[k].final_purchase_price_ils,
     })),
     flight: sub.flight,
-    trainLegs: trainLegs(route, sub.dates, new Set(sub.train)),
+    trainLegs: ownTrains(route, sub.dates, train),
+    grounds: [...eventGrounds(route, train).values()],
+    leaves: leaveWays(route, sub.dates, train),
     hotels,
-    noHotelCities: stays(route, sub.dates)
+    noHotelCities: list
       .filter((stay) => sub.skippedStays.includes(stay.key))
       .map((stay) => stayCityName(stay.events[0])),
     totalUsd: i.price.total,
@@ -181,6 +193,10 @@ export function tripOpsMail(i: TripMailInput): { subject: string; text: string }
         ),
     ),
     ...i.trainLegs.map((t) => line(`Train (customer's own, NOT included): ${t.fromName} -> ${t.toName} on ${t.date}`)),
+    ...i.grounds.map((g) => line(`Own way to the event (NOT included): ${g.from} -> ${g.to}, about ${trainHours(g.km)}h by train`)),
+    ...i.leaves.map((g) =>
+      line(`Own way back to the airport (NOT included): ${g.from} -> ${g.to}, about ${trainHours(g.km)}h by train, before the flight on ${g.date}`),
+    ),
   ];
 
   const hotels = i.hotels.flatMap(({ city, hotel, onRow }) => [
@@ -284,6 +300,13 @@ export function tripHoldMail(i: TripMailInput): { subject: string; html: string 
     ),
     ...i.trainLegs.map(
       (t) => `הגעה עצמאית: ${esc(t.fromName)} ← ${esc(t.toName)} · ${esc(dayMonth(t.date))} · בכוחות עצמכם, לא כלול במחיר`,
+    ),
+    ...i.grounds.map(
+      (g) => `הגעה עצמאית ל${esc(g.to)}: רכבת מ${esc(g.from)}, כ-${trainHours(g.km)} שעות · בכוחות עצמכם, לא כלול במחיר`,
+    ),
+    ...i.leaves.map(
+      (g) =>
+        `חזרה עצמאית ל${esc(g.to)}: רכבת מ${esc(g.from)}, כ-${trainHours(g.km)} שעות · ${esc(dayMonth(g.date))}, לפני הטיסה · בכוחות עצמכם, לא כלול במחיר`,
     ),
   ];
 

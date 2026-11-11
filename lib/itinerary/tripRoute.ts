@@ -14,7 +14,7 @@ import { stayCityName } from "./builder";
 import { datePickSteps } from "./datePick";
 import { trainHours } from "./flightsView";
 import { dayDiff, eventDay } from "./geo";
-import { eventGrounds, moves, stayHeads } from "./dates";
+import { eventGrounds, leaveGrounds, moves, stayHeads, type Ground } from "./dates";
 import type { TripDates } from "./types";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +24,10 @@ export type TripStop =
   | { kind: "depart" | "move" | "ret"; title: string; day: string }
   /** Two events in one city back to back: no move, the stay goes on. */
   | { kind: "stay"; title: string }
-  /** A sub-location: the train from the flight city to the event's (Manchester, from London). */
+  /**
+   * A sub-location: the train from the flight city to the event's (Manchester, from London), or back
+   * from a stay to the airport its flight leaves from (Liverpool to London, before the flight home).
+   */
   | { kind: "ground"; title: string; detail: string }
   | { kind: "event"; title: string; day: string; city: string; eventId: number };
 
@@ -36,8 +39,15 @@ export function tripStops(route: Event[], dates: TripDates, train: ReadonlySet<s
   const byKey = new Map(steps.map((s) => [s.key, s]));
   const moveKeys = new Set(moves(route).map((m) => m.key));
   const grounds = eventGrounds(route, train);
+  const leaves = leaveGrounds(route, train);
   const heads = stayHeads(route);
   const out: TripStop[] = [];
+  const trainRow = (g: Ground): string => `רכבת מ${g.from}, כ-${trainHours(g.km)} שעות · לא כלול`;
+  /** The way back to the airport, before the flight it is made for (Dor 11.11). */
+  const leave = (key: string) => {
+    const g = leaves.get(key);
+    if (g) out.push({ kind: "ground", title: `חזרה עצמאית ל${g.to}`, detail: trainRow(g) });
+  };
 
   const depart = byKey.get("depart");
   if (depart) out.push({ kind: "depart", title: depart.label, day: depart.value });
@@ -51,19 +61,19 @@ export function tripStops(route: Event[], dates: TripDates, train: ReadonlySet<s
       // The same hotel, but an event in another city is a way there, not "נשארים" (Alon 01.11).
       if (!moveKeys.has(key)) {
         if (!ground) out.push({ kind: "stay", title: `נשארים ב${stayCityName(heads.get(e.id) ?? e)}` });
-      } else if (move) out.push({ kind: "move", title: move.label, day: move.value });
+      } else if (move) {
+        leave(key);
+        out.push({ kind: "move", title: move.label, day: move.value });
+      }
     }
-    if (ground) {
-      out.push({
-        kind: "ground",
-        title: `הגעה עצמאית ל${ground.to}`,
-        detail: `רכבת מ${ground.from}, כ-${trainHours(ground.km)} שעות · לא כלול`,
-      });
-    }
+    if (ground) out.push({ kind: "ground", title: `הגעה עצמאית ל${ground.to}`, detail: trainRow(ground) });
     out.push({ kind: "event", title: e.name, day: eventDay(e), city: eventCityName(e), eventId: e.id });
   });
   const ret = byKey.get("ret");
-  if (ret) out.push({ kind: "ret", title: ret.label, day: ret.value });
+  if (ret) {
+    leave("ret");
+    out.push({ kind: "ret", title: ret.label, day: ret.value });
+  }
   return out;
 }
 

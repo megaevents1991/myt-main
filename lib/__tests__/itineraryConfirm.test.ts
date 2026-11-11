@@ -679,6 +679,26 @@ describe("the emails", () => {
     expect(html).not.toContain("ברכבת");
   });
 
+  it("every way the customer makes alone is in both mails: to an event, and back to the airport (Dor 11.11)", () => {
+    const ways = {
+      ...input,
+      trainLegs: [{ key: "1>2", fromName: "מנצ'סטר", toName: "לונדון", date: "2027-05-13", km: 262 }],
+      grounds: [{ from: "לונדון", to: "מנצ'סטר", km: 262 }],
+      leaves: [{ from: "ליברפול", to: "לונדון", km: 287, date: "2027-05-21" }],
+    };
+    const { html } = tripHoldMail(ways);
+    // The mail escapes an apostrophe (מנצ'סטר).
+    expect(html).toContain("הגעה עצמאית: מנצ&#39;סטר ← לונדון · 13/05 · בכוחות עצמכם, לא כלול במחיר");
+    expect(html).toContain("הגעה עצמאית למנצ&#39;סטר: רכבת מלונדון, כ-2.0 שעות · בכוחות עצמכם, לא כלול במחיר");
+    expect(html).toContain("חזרה עצמאית ללונדון: רכבת מליברפול, כ-2.2 שעות · 21/05, לפני הטיסה · בכוחות עצמכם, לא כלול במחיר");
+    const { text } = tripOpsMail(ways);
+    expect(text).toContain("Own way to the event (NOT included): לונדון -> מנצ'סטר, about 2.0h by train");
+    expect(text).toContain("Own way back to the airport (NOT included): ליברפול -> לונדון, about 2.2h by train, before the flight on 2027-05-21");
+    // A trip with no such way says nothing of the kind.
+    expect(tripHoldMail(input).html).not.toContain("חזרה עצמאית");
+    expect(tripOpsMail(input).text).not.toContain("Own way");
+  });
+
   it("escapes what comes from outside (event names, hotels, the customer)", () => {
     const evil = tripMailInput({
       sub: { ...sub, travellers: { ...sub.travellers, contact: { ...sub.travellers.contact, firstName: "<script>" } } },

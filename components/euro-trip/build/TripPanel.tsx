@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { eventCityName } from "@/lib/events/lodging";
 import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { applyDatePick, datePickSteps, type DatePickStep } from "@/lib/itinerary/datePick";
-import { eventGrounds, moves, stayHeads } from "@/lib/itinerary/dates";
+import { eventGrounds, leaveGrounds, moves, stayHeads } from "@/lib/itinerary/dates";
 import { canFlyDirect, eventCityAirport } from "@/lib/itinerary/direct";
 import { trainHours } from "@/lib/itinerary/flightsView";
 import { eventDay, sameHub } from "@/lib/itinerary/geo";
@@ -89,6 +89,8 @@ export function TripPanel({ className }: { className?: string }) {
   const moveKeys = new Set(moves(route).map((m) => m.key));
   // The way to an event the customer makes alone: a train from the hotel, or from the airport.
   const grounds = eventGrounds(route, new Set(train));
+  // The way back to the airport before a flight, from a stay that sleeps away from it (Dor 11.11).
+  const leaves = leaveGrounds(route, new Set(train));
   const heads = stayHeads(route);
   const enough = route.length >= MIN_TRIP_EVENTS;
   const open = Array.from({ length: Math.max(0, settings.maxEvents - route.length) }, (_, k) => route.length + k);
@@ -113,6 +115,22 @@ export function TripPanel({ className }: { className?: string }) {
       />
     </li>
   );
+
+  const leaveRow = (key: string) => {
+    const g = leaves.get(key);
+    if (!g) return null;
+    return (
+      <li className="relative flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-border bg-card py-1 pe-3 ps-4 text-[13px] font-bold">
+        {rowIcon(<TrainFront className="size-4" />)}
+        <span className="flex min-w-0 flex-col leading-tight">
+          חזרה עצמאית ל{g.to}
+          <span className="text-xs font-medium text-muted-foreground">
+            רכבת מ{g.from}, כ-{trainHours(g.km)} שעות · לא כלול
+          </span>
+        </span>
+      </li>
+    );
+  };
 
   return (
     <section className={cn(PANEL, "flex flex-col gap-2 rounded-3xl shadow-xl", className)} aria-labelledby="trip-panel-heading">
@@ -141,6 +159,7 @@ export function TripPanel({ className }: { className?: string }) {
           const canDirect = direct || canFlyDirect(route, e);
           return (
             <Fragment key={e.id}>
+              {prev && moveKeys.has(moveKey) && leaveRow(moveKey)}
               {prev &&
                 (moveKeys.has(moveKey) ? (
                   moveStep && dateRow(moveStep, sameHub(prev, e) ? <TrainFront className="size-4" /> : <Route className="size-4" />)
@@ -232,6 +251,7 @@ export function TripPanel({ className }: { className?: string }) {
           );
         })}
 
+        {retStep && leaveRow("ret")}
         {retStep && dateRow(retStep, <PlaneLanding className="size-4" />)}
       </ol>
 

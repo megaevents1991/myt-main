@@ -8,9 +8,8 @@ import { MemoizedFlightCard } from "@/components/ui/FlightCard";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
 import type { Event, ItineraryFlight } from "@/lib/app.types";
 import { cityName } from "@/lib/events/lodging";
-import { groundLink } from "@/lib/itinerary/builder";
 import { applyDatePick } from "@/lib/itinerary/datePick";
-import { moves, stays, trainLegs, tripDateBounds, tripLegs } from "@/lib/itinerary/dates";
+import { moves, trainLegs, tripDateBounds, tripLegs } from "@/lib/itinerary/dates";
 import { directOutcome } from "@/lib/itinerary/directPairs";
 import type { FlightLeg } from "@/lib/itinerary/flightOffers";
 import { MAIN_PART, flightPartsOf, partDone, pickFits, type FlightPart } from "@/lib/itinerary/flightParts";
@@ -18,8 +17,8 @@ import {
   FLIGHTS_PAGE,
   basePerTraveller,
   canSearch,
-  groundNoteShort,
   moveOptions,
+  partGroundNotes,
   pricedTickets,
   pricingOffers,
   searchKey,
@@ -656,7 +655,6 @@ export function FlightsStep({
     onSearching?.(anyWorking);
   }, [anyWorking, onSearching]);
 
-  const list = useMemo(() => (route.length ? stays(route, dates) : []), [route, dates]);
   // A flight is named by the city its airport serves: a Manchester stay still flies home from London.
   const airport = (e: Event | undefined): string => (e ? cityName(e, "flight") : "");
   const out = airport(route[0]);
@@ -681,22 +679,9 @@ export function FlightsStep({
     };
   });
 
-  // The way from the airport to a stay away from it (Manchester from London), said only over the
-  // part that lands there or leaves from there: the first stay and the last one, a move's next stay.
-  const groundOf = (p: FlightPart): string[] => {
-    const events =
-      p.kind === "main"
-        ? [list[0]?.events[0], list[list.length - 1]?.events[0]]
-        : moves(route).filter((m) => m.key === p.key).map((m) => m.b);
-    return [
-      ...new Set(
-        events.flatMap((e) => {
-          const g = e ? groundLink(e) : null;
-          return g ? [groundNoteShort(g)] : [];
-        }),
-      ),
-    ];
-  };
+  // The ways on the ground a part's flights leave out (Manchester from London; back to London
+  // before the flight home), said only over that part - `partGroundNotes`.
+  const groundOf = (p: FlightPart): string[] => partGroundNotes(route, dates, trainSet, p);
   const openLeg = allLegs.length;
 
   return (

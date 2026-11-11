@@ -22,6 +22,8 @@ import {
   tabTags,
   trainBackOffered,
   groundNote,
+  leaveNote,
+  leaveNoteShort,
   trainNote,
   trainHours,
   trainRowText,
@@ -123,6 +125,13 @@ describe("the train's words", () => {
     expect(groundNote({ from: "לונדון", to: "מנצ'סטר", km: 262 })).toBe(
       "האירוע במנצ'סטר - רכבת מלונדון, כ-2.0 שעות, בכוחות עצמכם (לא כלול).",
     );
+  });
+
+  it("the way back to the airport says where the flight leaves from (Dor 11.11)", () => {
+    const g = { from: "ליברפול", to: "לונדון", km: 287 };
+    expect(leaveNote(g, true)).toBe("הטיסה חזרה יוצאת מלונדון - רכבת מליברפול, כ-2.2 שעות, בכוחות עצמכם (לא כלול).");
+    expect(leaveNote(g, false)).toBe("הטיסה יוצאת מלונדון - רכבת מליברפול, כ-2.2 שעות, בכוחות עצמכם (לא כלול).");
+    expect(leaveNoteShort(g, true)).toBe("הטיסה חזרה יוצאת מלונדון: רכבת מליברפול, כ-2.2 שעות, הגעה עצמאית");
   });
 });
 

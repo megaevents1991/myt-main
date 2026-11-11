@@ -15,7 +15,7 @@ import type { Event, OrderHotel } from "@/lib/app.types";
 import { cityName, lodgingLocation, type StaySegment } from "@/lib/events/lodging";
 import { getRoomParams } from "@/lib/getRoomParams";
 import { dayMonth, groundLink, stayCityName } from "@/lib/itinerary/builder";
-import { moves, stays, tripLegs } from "@/lib/itinerary/dates";
+import { leaveGrounds, moves, stays, tripLegs } from "@/lib/itinerary/dates";
 import { trainHours } from "@/lib/itinerary/flightsView";
 import { dayDiff, haversineKm, sameHub } from "@/lib/itinerary/geo";
 import {
@@ -54,7 +54,7 @@ type StayView = {
    * and the city a flight lands in (the airport's - `cityName(.., "flight")`, the trip's one label
    * rule; a Manchester stay flown to London reads "טיסה ללונדון").
    */
-  arrival: { day: string; flown: boolean; airport: string; train: boolean } | null;
+  arrival: { key: string; day: string; flown: boolean; airport: string; train: boolean } | null;
 };
 
 /** How a stay's search ended without a hotel: the search failed, or the city has none for these nights. */
@@ -265,6 +265,7 @@ export function HotelsStep({
         searchKey: `${stay.key}|${range[0]}|${range[1]}|${roomsKey(rooms)}`,
         arrival: move
           ? {
+              key: move.key,
               day: stay.from,
               flown: flown.has(move.key),
               airport: cityName(stay.events[0], "flight"),
@@ -274,6 +275,9 @@ export function HotelsStep({
       };
     });
   }, [flight, route, dates, train, pax]);
+  // The way back to the airport before a flight, from a stay that sleeps away from it (Dor 11.11:
+  // a trip ending in a Liverpool hotel flies home from London).
+  const leaves = useMemo(() => leaveGrounds(route, new Set(train)), [route, train]);
 
   // The searches' answers for the step's life, by `searchKey` (the swap reads them too).
   const cache = useRef(new Map<string, HotelsData>());
@@ -432,6 +436,16 @@ export function HotelsStep({
   }
   if (!views.length) return null;
 
+  const leaveLine = (key: string, day: string, home: boolean) => {
+    const g = leaves.get(key);
+    if (!g) return null;
+    return (
+      <p className="m-0 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+        <TrainFront className="size-3.5 shrink-0" aria-hidden />
+        {`${dayMonth(day)} · רכבת ל${g.to} ${home ? "לטיסה חזרה" : "לטיסה"}, כ-${trainHours(g.km)} שעות, בכוחות עצמכם`}
+      </p>
+    );
+  };
   const doneCount = views.filter((v) => ready(v) || skipped(v)).length;
   const firstGround = route[0] ? groundLink(route[0]) : null;
   const onlyView = views[0];
@@ -476,6 +490,7 @@ export function HotelsStep({
         const moveGround = v.arrival?.train ? groundBetween(v, views) : null;
         return (
           <Fragment key={v.stay.key}>
+            {v.arrival?.flown && leaveLine(v.arrival.key, v.arrival.day, false)}
             {v.arrival && (
               <p className="m-0 flex items-center gap-1.5 text-[13px] text-muted-foreground">
                 {v.arrival.flown ? (
@@ -533,6 +548,7 @@ export function HotelsStep({
           </Fragment>
         );
       })}
+      {leaveLine("ret", views[views.length - 1].range[1], true)}
       {swap && swapView && (
         <SegmentHotelModal
           opened={swapOpen}

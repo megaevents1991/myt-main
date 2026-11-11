@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Event } from "../app.types";
 import { moveName, stayCityName } from "../itinerary/builder";
-import { defaultTripDates, eventGrounds, moves, stayHeads, stays, tripLegs } from "../itinerary/dates";
+import { defaultTripDates, eventGrounds, leaveGrounds, leaveWays, moves, ownTrains, stayHeads, stays, tripLegs } from "../itinerary/dates";
+import { partGroundNotes } from "../itinerary/flightsView";
 import { shareStay, stayPoint, tripStayCity } from "../itinerary/geo";
 
 // Dor 09.11: in a trip a Manchester / Liverpool match sleeps where it is played; two such matches a
@@ -98,6 +99,91 @@ describe("eventGrounds", () => {
   it("an event played away from a hotel kept in its flight city is a day trip from it", () => {
     const route = [ev(1, "2027-05-12", LONDON), sub(2, "2027-05-15", MANCHESTER, { lodging_mode: "flight_city" })];
     expect(eventGrounds(route, none).get(2)).toMatchObject({ from: "לונדון", to: "מנצ'סטר" });
+  });
+});
+
+describe("leaveGrounds", () => {
+  // Dor 11.11: Manchester, London, Liverpool flew home "from London" out of a Liverpool hotel and
+  // no screen said the train back.
+  it("a trip that ends in a Liverpool hotel says the train back to London before the flight home", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", LONDON), sub(3, "2027-05-20", LIVERPOOL)];
+    const leave = leaveGrounds(route, none);
+    expect([...leave.keys()]).toEqual(["ret"]);
+    expect(leave.get("ret")).toMatchObject({ from: "ליברפול", to: "לונדון" });
+    expect(leave.get("ret")?.km).toBeGreaterThan(250);
+    // The way in was already said: the flight lands in London, the first hotel is in Manchester.
+    expect(eventGrounds(route, none).get(1)).toMatchObject({ from: "לונדון", to: "מנצ'סטר" });
+  });
+
+  it("a trip that ends where its flight leaves has none", () => {
+    const route = [ev(1, "2027-05-12", LONDON), sub(2, "2027-05-15", MANCHESTER), ev(3, "2027-05-19", LONDON)];
+    expect(leaveGrounds(route, none).size).toBe(0);
+    // A hotel kept in the flight city is already at the airport's city.
+    const kept = [ev(1, "2027-05-12", PARIS), sub(2, "2027-05-16", MANCHESTER, { lodging_mode: "flight_city" })];
+    expect(leaveGrounds(kept, none).size).toBe(0);
+  });
+
+  it("a shared stay is left from its own city: Liverpool then Manchester sleep in Liverpool", () => {
+    const route = [sub(1, "2027-05-12", LIVERPOOL), sub(2, "2027-05-15", MANCHESTER)];
+    expect(leaveGrounds(route, none).get("ret")).toMatchObject({ from: "ליברפול", to: "לונדון" });
+  });
+
+  it("a flight between two countries leaves from the airport too; the customer's own train does not", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", PARIS)];
+    const key = moves(route)[0].key;
+    expect(leaveGrounds(route, none).get(key)).toMatchObject({ from: "מנצ'סטר", to: "לונדון" });
+    expect(leaveGrounds(route, new Set([key])).has(key)).toBe(false);
+  });
+
+  it("leaveWays: in trip order, each on the day its flight leaves", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", PARIS), sub(3, "2027-05-20", LIVERPOOL)];
+    const d = defaultTripDates(route);
+    const key = moves(route)[0].key;
+    expect(leaveWays(route, d, none).map((w) => `${w.key} ${w.from}>${w.to} ${w.date}`)).toEqual([
+      `${key} מנצ'סטר>לונדון ${d.moves[key]}`,
+      `ret ליברפול>לונדון ${d.ret}`,
+    ]);
+  });
+});
+
+describe("ownTrains", () => {
+  it("every move made on the ground, in trip order: under one flight city, and the customer's own choice", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", LONDON), sub(3, "2027-05-20", LIVERPOOL)];
+    const d = defaultTripDates(route);
+    expect(ownTrains(route, d, none).map((t) => `${t.fromName}>${t.toName} ${t.date}`)).toEqual([
+      "מנצ'סטר>לונדון 2027-05-13",
+      "לונדון>ליברפול 2027-05-19",
+    ]);
+    const abroad = [ev(1, "2027-05-12", PARIS), ev(2, "2027-05-16", LONDON)];
+    expect(ownTrains(abroad, defaultTripDates(abroad), none)).toEqual([]);
+    expect(ownTrains(abroad, defaultTripDates(abroad), new Set(["1>2"])).map((t) => t.key)).toEqual(["1>2"]);
+  });
+});
+
+describe("partGroundNotes (the small lines over a part's flights)", () => {
+  const main = { key: "main", kind: "main" as const };
+
+  it("Manchester, London, Liverpool: the way in from London, and the flight home leaves London", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", LONDON), sub(3, "2027-05-20", LIVERPOOL)];
+    expect(partGroundNotes(route, defaultTripDates(route), none, main)).toEqual([
+      "למנצ'סטר ברכבת מלונדון, כ-2.0 שעות, הגעה עצמאית",
+      "הטיסה חזרה יוצאת מלונדון: רכבת מליברפול, כ-2.2 שעות, הגעה עצמאית",
+    ]);
+  });
+
+  it("a trip that ends in London says nothing about the way back", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", LONDON)];
+    expect(partGroundNotes(route, defaultTripDates(route), none, main)).toEqual(["למנצ'סטר ברכבת מלונדון, כ-2.0 שעות, הגעה עצמאית"]);
+  });
+
+  it("a move out of a Manchester hotel leaves London; the next stay's way is the move's too", () => {
+    const route = [sub(1, "2027-05-12", MANCHESTER), ev(2, "2027-05-16", PARIS), sub(3, "2027-05-20", LIVERPOOL)];
+    const [first, second] = moves(route);
+    const d = defaultTripDates(route);
+    expect(partGroundNotes(route, d, none, { key: first.key, kind: "move" })).toEqual([
+      "הטיסה יוצאת מלונדון: רכבת ממנצ'סטר, כ-2.0 שעות, הגעה עצמאית",
+    ]);
+    expect(partGroundNotes(route, d, none, { key: second.key, kind: "move" })).toEqual(["לליברפול ברכבת מלונדון, כ-2.2 שעות, הגעה עצמאית"]);
   });
 });
 
