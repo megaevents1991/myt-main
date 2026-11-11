@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { TicketSelection } from "./TicketSelection";
 import { FlightSelection } from "./FlightSelection";
 import { HotelSelection } from "./HotelSelection";
@@ -24,6 +25,11 @@ import { getTotalMarkup, isTicketOnlyEvent } from "@/lib/events/price";
 import { defaultCity, lodgingLocation } from "@/lib/events/lodging";
 import { storedOrderPastFlight } from "@/lib/order/draftStorage";
 import type { OrderPartnerSession } from "@/lib/partner-auth/session";
+import { isSandboxBookingEvent } from "@/lib/tixstock-booking/rules";
+
+// The ticket step of TixStock's hidden sandbox test events (`is_test` + `tixstock_booking`). Loaded on demand,
+// so a real event's page never downloads it; every real event keeps `TicketSelection`.
+const SandboxTicketStep = dynamic(() => import("./sandbox/SandboxTicketStep").then((m) => m.SandboxTicketStep));
 
 const shortenTicketCategory = (category: string): string => {
   // Return text up to the first comma if comma exists
@@ -635,7 +641,7 @@ export const OrderForm = ({
       <div className={`${readyPackage && step === 4 ? "max-w-[1760px]" : "max-w-7xl"} mx-auto px-2 pt-3`}>
         {/* Partner badge moved into the Stepper header row (one badge, symmetric
             with the MegaEvents wordmark). */}
-        {step === 1 && <TicketSelection initialEvent={event} />}
+        {step === 1 && (isSandboxBookingEvent(event) ? <SandboxTicketStep initialEvent={event} /> : <TicketSelection initialEvent={event} />)}
         {step === 2 && <FlightSelection />}
         {step === 3 && <HotelSelection />}
         {step === 4 && (
