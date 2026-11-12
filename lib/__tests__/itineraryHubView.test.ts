@@ -15,6 +15,7 @@ const ev = (id: number, name: string, day: string, cityName: string) => ({
 const card = (over: Partial<RouteCardData>): RouteCardData => ({
   ids: [1, 2],
   title: "פריז ← לונדון",
+  heading: "סלין דיון ← צ'לסי",
   events: [ev(1, "a", "2027-05-12", "פריז"), ev(2, "b", "2027-05-15", "לונדון")],
   cities: ["פריז", "לונדון"],
   nights: 5,

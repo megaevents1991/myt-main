@@ -14,6 +14,9 @@ import { cn } from "@/lib/utils";
  * שאפשר לערוך פה"). The caller sends every change through the provider's `setDates` - the reducer
  * clamps it again. A date whose range is one day has no control: it is just said.
  * `children`: a small line under the row (the flights step's "אגיע עצמאית").
+ * `own`: a way the customer makes alone (the train from London to Manchester) - the dashed look of
+ * the planner's other own-way rows and `note` ("רכבת מלונדון, כ-2.0 שעות · לא כלול") under the label,
+ * so it never reads as a train we sell beside the flight rows (Alon 12.11).
  */
 export function DateStepper({
   label,
@@ -21,6 +24,8 @@ export function DateStepper({
   range: [min, max],
   onChange,
   icon,
+  note,
+  own = false,
   children,
   className,
 }: {
@@ -29,6 +34,8 @@ export function DateStepper({
   range: [string, string];
   onChange: (day: string) => void;
   icon?: ReactNode;
+  note?: string;
+  own?: boolean;
   children?: ReactNode;
   className?: string;
 }) {
@@ -38,11 +45,18 @@ export function DateStepper({
   // "אם אין איך להזיז את המעבר - שיהיה לא לחיץ").
   const fixed = min >= max;
   return (
-    <div className={cn("relative flex flex-col gap-1.5 rounded-xl border border-border bg-background py-1.5 pe-1.5 ps-4", className)}>
+    <div
+      className={cn(
+        "relative flex flex-col gap-1.5 rounded-xl border border-border py-1.5 pe-1.5 ps-4",
+        own ? "border-dashed bg-card" : "bg-background",
+        className,
+      )}
+    >
       <div className="flex min-h-9 items-center gap-2 text-[13px] font-bold">
         {icon}
         <span className="min-w-0 flex-1 leading-tight">
           {label}
+          {note && <span className="mt-0.5 block text-xs font-medium text-muted-foreground">{note}</span>}
           {fixed ? (
             <span className="sr-only"> - תאריך קבוע</span>
           ) : (

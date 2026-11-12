@@ -133,10 +133,10 @@ describe("defaultTripDates", () => {
 });
 
 describe("tripDateBounds", () => {
-  it("depart [first - 3, first], return [last + 1, last + 3], move [a + 1, b - 1]", () => {
+  it("depart [first - 3, first - 1] (no flight on a show's day), return [last + 1, last + 3], move [a + 1, b - 1]", () => {
     const route = [celine, chelsea];
     expect(tripDateBounds(route, defaultTripDates(route))).toEqual({
-      depart: ["2027-05-09", "2027-05-12"],
+      depart: ["2027-05-09", "2027-05-11"],
       ret: ["2027-05-16", "2027-05-18"],
       moves: { "618>702": ["2027-05-13", "2027-05-14"] },
     });
@@ -175,7 +175,7 @@ describe("clampTripDates", () => {
       moves: { "618>702": "2027-05-20" },
     });
     expect(clamped).toEqual({
-      depart: "2027-05-12",
+      depart: "2027-05-11",
       ret: "2027-05-16",
       moves: { "618>702": "2027-05-14" },
     });
@@ -195,7 +195,7 @@ describe("clampTripDates", () => {
   });
 
   it("keeps the edges of every range (they are valid)", () => {
-    const edges: TripDates = { depart: "2027-05-12", ret: "2027-05-16", moves: { "618>702": "2027-05-14" } };
+    const edges: TripDates = { depart: "2027-05-11", ret: "2027-05-16", moves: { "618>702": "2027-05-14" } };
     expect(clampTripDates(route, edges)).toEqual(edges);
   });
 

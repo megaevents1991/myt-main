@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useItinerary } from "./ItineraryProvider";
 import { adapterForStay } from "./orderContextAdapter";
 import { ADD_BUTTON, PanelTitle, nightsLabel, stayCardId } from "./parts";
+import { TripStayChoices } from "./TripStayChoices";
 
 /** One stay as the step shows and searches it. */
 type StayView = {
@@ -456,6 +457,10 @@ export function HotelsStep({
   if (views.length === 1 && regularOpened) {
     return (
       <section aria-label="מלון" className={cn(!shown && "hidden")} hidden={!shown}>
+        {/* One hotel for a Manchester + Liverpool trip: the split is offered here (Alon 12.11). */}
+        <div className="mx-auto w-full max-w-7xl px-4 pb-1 pt-3 lg:px-6">
+          <TripStayChoices />
+        </div>
         {skipped(onlyView) ? <SkippedStay view={onlyView} onBack={() => skipStay(onlyView.stay.key, false)} /> : <RegularHotelStep view={onlyView} />}
       </section>
     );
@@ -477,6 +482,7 @@ export function HotelsStep({
           מתוך {views.length} נבחרו
         </p>
       </div>
+      <TripStayChoices />
       {firstGround && views[0].stay.city === "event" && (
         <p className="m-0 flex items-center gap-1.5 text-[13px] text-muted-foreground">
           <TrainFront className="size-3.5 shrink-0" aria-hidden />

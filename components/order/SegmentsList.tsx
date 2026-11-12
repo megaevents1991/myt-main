@@ -407,7 +407,19 @@ export const SegmentHotelModal = ({
             )}
           </div>
         </div>
-        {loading && <Skeleton visible className="h-40" />}
+        {/* A search can wait its turn behind the supplier's per-minute limit - a bare grey block read
+            as "no results" (Alon 12.11, the trip's hotel swap): say it is searching. */}
+        {loading && (
+          <div role="status" className="flex flex-col gap-3">
+            <p className="m-0 flex items-center justify-center gap-2 py-2 text-[14px] font-semibold text-muted-foreground">
+              <Loader size="xs" color="gray" aria-hidden />
+              מחפשים מלונות לתאריכים שלכם...
+            </p>
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} visible height={150} radius="md" />
+            ))}
+          </div>
+        )}
         {!loading && search && (all?.length ?? 0) === 0 && (
           <OrderIssueState
             className="min-h-40"

@@ -238,6 +238,16 @@ describe("parseSubmission - the request's shape", () => {
     expect(parseSubmission({ ...wire(full), direct: "702" }, 3).ok).toBe(false);
   });
 
+  it("takes where the trip sleeps for the route's own events, and only 'event' or 'flight' (Alon 12.11)", () => {
+    expect(parsed(wire(full)).stays).toEqual({});
+    const { stays: _none, ...older } = wire(full);
+    expect(parsed(older).stays).toEqual({});
+    expect(parsed({ ...wire(full), stays: { 702: "flight" } }).stays).toEqual({ 702: "flight" });
+    expect(parseSubmission({ ...wire(full), stays: { 999: "flight" } }, 3).ok).toBe(false);
+    expect(parseSubmission({ ...wire(full), stays: { 702: "airport" } }, 3).ok).toBe(false);
+    expect(parseSubmission({ ...wire(full), stays: ["flight"] }, 3).ok).toBe(false);
+  });
+
   it("refuses one event, a duplicate, more than the settings allow, and ids that are not ids", () => {
     expect(parseSubmission(wire(full, { route: [618] }), 3).ok).toBe(false);
     expect(parseSubmission(wire(full, { route: [618, 618] }), 3).ok).toBe(false);
@@ -1033,7 +1043,8 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
       lodging_mode: "choice_split",
       lodging_default: "flight",
     } as unknown as Event;
-    const getEvent = async (id: number) => [celine, chelsea, manchester].find((e) => e.id === id);
+    const londonBefore = ev(704, "ארסנל - ברייטון", "2027-05-12", LONDON, 250, 150);
+    const getEvent = async (id: number) => [celine, chelsea, manchester, coldplay, londonBefore].find((e) => e.id === id);
     const flownLegs = [
       seg("TLV", "CDG", "2027-05-11T05:40:00", "2027-05-11T09:55:00"),
       seg("CDG", "MAN", "2027-05-13T13:05:00", "2027-05-13T13:45:00"),
@@ -1062,15 +1073,23 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
 
     it("refuses a direct flight the route does not allow, before anything is written", async () => {
       const { deps, inserted } = setup({ getEvent });
-      // Beside a London concert the way to Manchester is the train.
-      const beside: ItineraryState = {
+      // Between two London shows no flight reaches Manchester: the way there and back is the train.
+      const between: ItineraryState = {
         ...full,
-        route: [manchester, coldplay],
-        dates: defaultTripDates([manchester, coldplay]),
-        tickets: { 800: ticket("t800", 150), 703: ticket("t703", 150) },
-        hotels: { 800: londonHotel },
+        route: [londonBefore, manchester, coldplay],
+        dates: defaultTripDates([londonBefore, manchester, coldplay]),
+        tickets: { 704: ticket("t704", 150), 800: ticket("t800", 150), 703: ticket("t703", 150) },
+        hotels: { 704: londonHotel },
       };
-      const answer = await confirmTrip(wire(beside, { direct: [800] }), deps);
+      const answer = await confirmTrip(wire(between, { direct: [800] }), deps);
+      expect(answer.body).toMatchObject({ error: "ROUTE_CHANGED" });
+      expect(inserted).toHaveLength(0);
+    });
+
+    it("refuses a place to sleep the event does not offer, before anything is written (Alon 12.11)", async () => {
+      const { deps, inserted } = setup({ getEvent });
+      // Paris has no second city to sleep in.
+      const answer = await confirmTrip(wire(trip, { stays: { 618: "event" } }), deps);
       expect(answer.body).toMatchObject({ error: "ROUTE_CHANGED" });
       expect(inserted).toHaveLength(0);
     });

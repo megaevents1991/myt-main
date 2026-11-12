@@ -3,7 +3,8 @@ import type { Event } from "../app.types";
 import { moveName, stayCityName } from "../itinerary/builder";
 import { defaultTripDates, eventGrounds, leaveGrounds, leaveWays, moves, ownTrains, stayHeads, stays, tripLegs } from "../itinerary/dates";
 import { partGroundNotes } from "../itinerary/flightsView";
-import { shareStay, stayPoint, tripStayCity } from "../itinerary/geo";
+import { shareStay, stayPickOf, stayPoint, tripStayCity, withStayPick } from "../itinerary/geo";
+import { applyStayPicks, stayChoices, stayPicksOf } from "../itinerary/stayChoice";
 
 // Dor 09.11: in a trip a Manchester / Liverpool match sleeps where it is played; two such matches a
 // short train apart share the first one's hotel.
@@ -193,5 +194,53 @@ describe("moveName", () => {
     expect(moveName(route, "1>2")).toBe("פריז - לונדון");
     expect(moveName(route, "1>2", true)).toBe("פריז - מנצ'סטר");
     expect(moveName(route, "9>9")).toBe("");
+  });
+});
+
+describe("the customer chooses where to sleep (Alon 12.11, the hotels step)", () => {
+  const london1 = ev(1, "2027-05-12", LONDON);
+  const city = sub(2, "2027-05-15", MANCHESTER);
+  const london3 = ev(3, "2027-05-19", LONDON);
+
+  it("offers a Manchester match its own city or London; nothing for a one-city event", () => {
+    const choices = stayChoices([london1, city, london3]);
+    expect(choices.map((c) => c.event.id)).toEqual([2]);
+    expect(choices[0].options.map((o) => o.label)).toEqual(["מלון במנצ'סטר", "מלון בלונדון"]);
+    expect(choices[0].current).toBe("event");
+  });
+
+  it("London, Manchester, London slept all in London: one hotel, the match a day trip by train", () => {
+    const route = applyStayPicks([london1, city, london3], { 2: "flight" })!;
+    const d = defaultTripDates(route);
+    expect(stays(route, d).map((s) => [stayCityName(s.events[0]), s.from, s.to])).toEqual([["לונדון", "2027-05-11", "2027-05-20"]]);
+    expect(moves(route)).toEqual([]);
+    expect(eventGrounds(route, none).get(2)).toMatchObject({ from: "לונדון", to: "מנצ'סטר" });
+    expect(stayChoices(route)[0].current).toBe("flight");
+    expect(stayPicksOf(route)).toEqual({ 2: "flight" });
+  });
+
+  it("Manchester then Liverpool: one Manchester hotel by default, or split into two, or London", () => {
+    const liverpool = sub(4, "2027-05-18", LIVERPOOL);
+    const route = [city, liverpool];
+    const choice = stayChoices(route).find((c) => c.event.id === 4)!;
+    expect(choice.options.map((o) => o.label)).toEqual(["מלון אחד במנצ'סטר", "מלון בליברפול", "מלון בלונדון"]);
+    expect(choice.current).toBe("shared");
+    expect(stays(route, defaultTripDates(route))).toHaveLength(1);
+
+    const split = applyStayPicks(route, { 4: "event" })!;
+    const d = defaultTripDates(split);
+    expect(stays(split, d).map((s) => stayCityName(s.events[0]))).toEqual(["מנצ'סטר", "ליברפול"]);
+    // Under one flight city the way between them is the customer's own train.
+    expect(ownTrains(split, d, none).map((t) => `${t.fromName}>${t.toName}`)).toEqual(["מנצ'סטר>ליברפול"]);
+    expect(stayChoices(split).find((c) => c.event.id === 4)?.current).toBe("event");
+  });
+
+  it("refuses a pick the event does not offer; going back to the default drops the mark", () => {
+    expect(applyStayPicks([london1, city], { 1: "event" })).toBeNull();
+    expect(applyStayPicks([london1, sub(5, "2027-05-15", MANCHESTER, { lodging_mode: "flight_city" })], { 5: "event" })).toBeNull();
+    const picked = withStayPick(city, "flight");
+    expect(stayPickOf(picked)).toBe("flight");
+    expect(withStayPick(picked, undefined).event_location).toEqual(city.event_location);
+    expect(withStayPick(city, undefined)).toBe(city);
   });
 });

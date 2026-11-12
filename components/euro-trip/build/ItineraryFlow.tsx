@@ -261,7 +261,7 @@ export function ItineraryFlow() {
         ? "המשיכו לבחירת כרטיסים"
         : step === "tickets"
           ? nextEvent >= 0
-            ? `המשך לכרטיסים ל${route[nextEvent].name}`
+            ? `מעבר לאירוע ${nextEvent + 1}`
             : "בחר והמשך לטיסות"
           : step === "flights"
             ? lastPart

@@ -168,7 +168,8 @@ export function leaveWays(route: Event[], d: TripDates, train: ReadonlySet<strin
 }
 
 /**
- * The range each date may take: depart [first - 3, first], return [last + 1, last + 3], a move
+ * The range each date may take: depart [first - 3, first - 1] - nobody flies in on the day of the
+ * first show (Alon 12.11: "אי אפשר לטוס ביום מופע") - return [last + 1, last + 3], a move
  * [A + 1, B - 1] - nobody changes city on the day of a show (Dor 31.10) - or [A + 1, B] within one
  * flight city (`sameHub`: the train from London to a Manchester match may be that morning's). They
  * depend on the route alone (`_d` is accepted so the call reads like `clampTripDates`). Inside these
@@ -184,7 +185,7 @@ export function tripDateBounds(
   const lastRun = runs[runs.length - 1];
   const last = eventDay(lastRun[lastRun.length - 1]);
   return {
-    depart: [addDays(first, -3), first],
+    depart: [addDays(first, -3), addDays(first, -1)],
     ret: [addDays(last, 1), addDays(last, 3)],
     moves: Object.fromEntries(
       ms.map((m): [string, [string, string]] => {
@@ -248,7 +249,8 @@ export function tripLegs(route: Event[], d: TripDates, train: ReadonlySet<string
   const last = lastRun[lastRun.length - 1];
   const legs: TripLeg[] = [{ kind: "out", from: HOME_IATA, to: first.location.city_iata, date: d.depart }];
   for (const m of ms) {
-    if (m.a.location.city_iata === m.b.location.city_iata || train.has(m.key)) continue;
+    // One flight city - also a Manchester match flown to directly next to London (`sameHub`).
+    if (sameHub(m.a, m.b) || train.has(m.key)) continue;
     legs.push({
       kind: "mid",
       from: m.a.location.city_iata,

@@ -34,6 +34,7 @@ import {
 } from "@/lib/itinerary/draftStorage";
 import { priorHoldFor, type HeldMarker } from "@/lib/itinerary/heldMarker";
 import { describeCompat } from "@/lib/itinerary/rules";
+import type { StayPick } from "@/lib/itinerary/geo";
 import type { ItinerarySettings } from "@/lib/itinerary/settings";
 import {
   INITIAL_ITINERARY_STATE,
@@ -82,6 +83,8 @@ export type ItineraryApi = {
   toggleTrain: (key: string) => void;
   /** Fly straight to the event's own city (`lib/itinerary/direct.ts`), or back to its train. */
   setDirect: (id: number, on: boolean) => void;
+  /** Where the trip sleeps for the event (`lib/itinerary/stayChoice.ts`); null = the default. */
+  setStay: (id: number, pick: StayPick | null) => void;
   /** One part of the trip's flights (`lib/itinerary/flightParts.ts`). */
   setFlightPart: (key: string, f: ItineraryFlight | null) => void;
   setActiveFlightPart: (i: number) => void;
@@ -215,6 +218,7 @@ export function ItineraryProvider({
     if (restored) {
       dispatch({ type: "setMode", mode: restored.mode });
       for (const id of restored.direct) dispatch({ type: "setDirect", id, on: true });
+      for (const [id, pick] of Object.entries(restored.stays)) dispatch({ type: "setStay", id: Number(id), pick });
       for (const key of restored.train) dispatch({ type: "toggleTrain", key });
       dispatch({ type: "setDates", dates: restored.dates });
       dispatch({ type: "setPax", pax: restored.pax });
@@ -325,6 +329,7 @@ export function ItineraryProvider({
       setEventData: (event) => dispatch({ type: "setEventData", event }),
       toggleTrain: (key) => dispatch({ type: "toggleTrain", key }),
       setDirect: (id, on) => dispatch({ type: "setDirect", id, on }),
+      setStay: (id, pick) => dispatch({ type: "setStay", id, pick }),
       setFlightPart: (key, flight) => dispatch({ type: "setFlightPart", key, flight }),
       setActiveFlightPart: (index) => dispatch({ type: "setActiveFlightPart", index }),
       setHotel: (stayKey, hotel) => dispatch({ type: "setHotel", stayKey, hotel }),

@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import { eventCityName } from "@/lib/events/lodging";
 import { dayMonth, stayCityName } from "@/lib/itinerary/builder";
 import { applyDatePick, datePickSteps, type DatePickStep } from "@/lib/itinerary/datePick";
-import { eventGrounds, leaveGrounds, moves, stayHeads } from "@/lib/itinerary/dates";
-import { canFlyDirect, eventCityAirport } from "@/lib/itinerary/direct";
+import { eventGrounds, leaveGrounds, moves, ownTrains, stayHeads, type Ground } from "@/lib/itinerary/dates";
+import { canFlyDirect, directCityName } from "@/lib/itinerary/direct";
 import { trainHours } from "@/lib/itinerary/flightsView";
 import { eventDay, sameHub } from "@/lib/itinerary/geo";
 import { MIN_TRIP_EVENTS } from "@/lib/itinerary/state";
@@ -92,6 +92,9 @@ export function TripPanel({ className }: { className?: string }) {
   // The way back to the airport before a flight, from a stay that sleeps away from it (Dor 11.11).
   const leaves = leaveGrounds(route, new Set(train));
   const heads = stayHeads(route);
+  // The moves made on the ground (London -> a Manchester match, or one the customer took over): the
+  // date row says the train and that it is not included (Alon 12.11).
+  const ownMoves = new Map(ownTrains(route, dates, new Set(train)).map((t) => [t.key, t]));
   const enough = route.length >= MIN_TRIP_EVENTS;
   const open = Array.from({ length: Math.max(0, settings.maxEvents - route.length) }, (_, k) => route.length + k);
 
@@ -101,13 +104,15 @@ export function TripPanel({ className }: { className?: string }) {
     heading.current?.focus();
   }, [picker.opened]);
 
-  const dateRow = (s: DatePickStep, icon: ReactNode) => (
+  const dateRow = (s: DatePickStep, icon: ReactNode, note?: string) => (
     <li>
       <DateStepper
         label={s.label}
         value={s.value}
         range={[s.min, s.max]}
         icon={rowIcon(icon)}
+        own={!!note}
+        note={note}
         onChange={(day) => {
           setDates(applyDatePick(route, dates, s.key, day));
           setSaid(`${s.label} ${dayMonth(day)}`);
@@ -116,20 +121,22 @@ export function TripPanel({ className }: { className?: string }) {
     </li>
   );
 
+  /** A way the customer makes alone, on a dashed row: "הגעה עצמאית ל..." / "חזרה עצמאית ל...". */
+  const groundRow = (title: string, g: Ground) => (
+    <li className="relative flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-border bg-card py-1 pe-3 ps-4 text-[13px] font-bold">
+      {rowIcon(<TrainFront className="size-4" />)}
+      <span className="flex min-w-0 flex-col leading-tight">
+        {title}
+        <span className="text-xs font-medium text-muted-foreground">
+          רכבת מ{g.from}, כ-{trainHours(g.km)} שעות · לא כלול
+        </span>
+      </span>
+    </li>
+  );
+
   const leaveRow = (key: string) => {
     const g = leaves.get(key);
-    if (!g) return null;
-    return (
-      <li className="relative flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-border bg-card py-1 pe-3 ps-4 text-[13px] font-bold">
-        {rowIcon(<TrainFront className="size-4" />)}
-        <span className="flex min-w-0 flex-col leading-tight">
-          חזרה עצמאית ל{g.to}
-          <span className="text-xs font-medium text-muted-foreground">
-            רכבת מ{g.from}, כ-{trainHours(g.km)} שעות · לא כלול
-          </span>
-        </span>
-      </li>
-    );
+    return g ? groundRow(`חזרה עצמאית ל${g.to}`, g) : null;
   };
 
   return (
@@ -154,7 +161,7 @@ export function TripPanel({ className }: { className?: string }) {
           const moveKey = prev ? `${prev.id}>${e.id}` : "";
           const moveStep = stepByKey.get(moveKey);
           const ground = grounds.get(e.id);
-          const byGround = !!prev && !moveKeys.has(moveKey);
+          const ownMove = ownMoves.get(moveKey);
           const direct = !!directEvents[e.id];
           const canDirect = direct || canFlyDirect(route, e);
           return (
@@ -162,22 +169,25 @@ export function TripPanel({ className }: { className?: string }) {
               {prev && moveKeys.has(moveKey) && leaveRow(moveKey)}
               {prev &&
                 (moveKeys.has(moveKey) ? (
-                  moveStep && dateRow(moveStep, sameHub(prev, e) ? <TrainFront className="size-4" /> : <Route className="size-4" />)
+                  moveStep &&
+                  (ownMove
+                    ? dateRow(
+                        moveStep,
+                        <TrainFront className="size-4" />,
+                        `רכבת מ${ownMove.fromName}, כ-${trainHours(ownMove.km)} שעות · לא כלול`,
+                      )
+                    : dateRow(moveStep, sameHub(prev, e) ? <TrainFront className="size-4" /> : <Route className="size-4" />))
                 ) : (
-                  <li className="relative flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-border bg-card py-1 pe-3 ps-4 text-[13px] font-bold">
-                    {rowIcon(ground ? <TrainFront className="size-4" /> : <BedDouble className="size-4" />)}
-                    {ground ? (
-                      <span className="flex min-w-0 flex-col leading-tight">
-                        הגעה עצמאית ל{ground.to}
-                        <span className="text-xs font-medium text-muted-foreground">
-                          רכבת מ{ground.from}, כ-{trainHours(ground.km)} שעות · לא כלול
-                        </span>
-                      </span>
-                    ) : (
+                  !ground && (
+                    <li className="relative flex min-h-11 items-center gap-2 rounded-xl border border-dashed border-border bg-card py-1 pe-3 ps-4 text-[13px] font-bold">
+                      {rowIcon(<BedDouble className="size-4" />)}
                       <span className="text-muted-foreground">נשארים ב{stayCityName(heads.get(e.id) ?? e)}</span>
-                    )}
-                  </li>
+                    </li>
+                  )
                 ))}
+              {/* Every way the customer makes alone is a row of its own, also the first one - from the
+                  airport the flight lands at to the city the stay sleeps in (Alon 12.11). */}
+              {ground && groundRow(`הגעה עצמאית ל${ground.to}`, ground)}
               <li className="relative rounded-2xl bg-card">
                 <div className="flex min-h-[60px] items-center gap-2.5 rounded-2xl border-[1.5px] border-primary/60 bg-primary/[0.08] p-2">
                   <TripEventArt event={e} sizes="44px" className="size-11 shrink-0 rounded-full border-2 border-white" />
@@ -188,14 +198,8 @@ export function TripPanel({ className }: { className?: string }) {
                     <span className="text-[12.5px] text-muted-foreground">
                       <span className="tabular-nums">{dayMonth(eventDay(e))}</span> · {eventCityName(e)}
                     </span>
-                    {ground && !byGround && (
-                      <span className="mt-0.5 flex items-center gap-1 text-[12px] text-muted-foreground">
-                        <TrainFront className="size-3.5 shrink-0" aria-hidden />
-                        רכבת מ{ground.from}, כ-{trainHours(ground.km)} שעות
-                      </span>
-                    )}
                     {canDirect && (
-                      <DirectSwitch city={eventCityName(e)} on={direct} onToggle={() => setDirect(e.id, !direct)} />
+                      <DirectSwitch city={directCityName(e) ?? eventCityName(e)} on={direct} onToggle={() => setDirect(e.id, !direct)} />
                     )}
                   </div>
                   <button

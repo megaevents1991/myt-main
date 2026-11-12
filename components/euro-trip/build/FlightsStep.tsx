@@ -6,12 +6,13 @@ import { DollarSign, Route, ShieldCheck, Star, TrainFront, type LucideIcon } fro
 import { FlightLoadingTransition } from "@/components/ui/FlightLoadingTransition";
 import { MemoizedFlightCard } from "@/components/ui/FlightCard";
 import { OrderIssueState } from "@/components/ui/OrderIssueState";
-import type { Event, ItineraryFlight } from "@/lib/app.types";
+import type { Event, FlightSearchCriteria, ItineraryFlight } from "@/lib/app.types";
 import { cityName } from "@/lib/events/lodging";
 import { applyDatePick } from "@/lib/itinerary/datePick";
 import { moves, trainLegs, tripDateBounds, tripLegs } from "@/lib/itinerary/dates";
 import { directOutcome } from "@/lib/itinerary/directPairs";
 import type { FlightLeg } from "@/lib/itinerary/flightOffers";
+import { filterAirlines, filterFloor, filterTripFlights, openFilter, withCriteria, type TripFlightFilter } from "@/lib/itinerary/flightFilters";
 import { MAIN_PART, flightPartsOf, partDone, pickFits, type FlightPart } from "@/lib/itinerary/flightParts";
 import {
   FLIGHTS_PAGE,
@@ -39,6 +40,7 @@ import { MoveFlightCard } from "./MoveFlightCard";
 import { PanelTitle, ShowMore } from "./parts";
 import { SubStepsRow, type SubStepItem } from "./TicketSubSteps";
 import { TripDateRange } from "./TripDateRange";
+import { TripFlightFiltersButton, TripFlightFiltersPanel } from "./TripFlightFilters";
 
 /** A change of legs / party waits this long before it searches (the previous search is aborted). */
 const SEARCH_DEBOUNCE_MS = 400;
@@ -336,11 +338,20 @@ function PartPane({
 
   const flights = search.flights;
   const isMove = part.kind === "move";
+  // The round trip's filters (Alon 12.11), for the search on screen only: a new search starts open.
+  // A move lists its few non-stop flights alone - nothing to filter there.
+  const [filterSet, setFilterSet] = useState<{ at: string; f: TripFlightFilter } | null>(null);
+  const filterNow = !isMove && search.key && filterSet?.at === search.key ? filterSet.f : null;
+  const limits = useMemo(() => (isMove ? null : openFilter(flights)), [flights, isMove]);
+  const filtered = useMemo(() => filterTripFlights(flights, filterNow), [flights, filterNow]);
   const sorted = useMemo(
-    () => (isMove ? moveOptions(sortFlights(flights, "best")) : sortFlights(flights, sort)),
-    [flights, sort, isMove],
+    () => (isMove ? moveOptions(sortFlights(flights, "best")) : sortFlights(filtered, sort)),
+    [flights, filtered, sort, isMove],
   );
-  const { bestId, cheapestId } = useMemo(() => tabTags(isMove ? sorted : flights, isMove ? "best" : sort), [flights, sorted, sort, isMove]);
+  const { bestId, cheapestId } = useMemo(
+    () => tabTags(isMove ? sorted : filtered, isMove ? "best" : sort),
+    [filtered, sorted, sort, isMove],
+  );
   const base = useMemo(() => basePerTraveller(flights, pax), [flights, pax]);
 
   const choose = async (f: ItineraryFlight) => {
@@ -384,6 +395,31 @@ function PartPane({
 
   const pickNow = pick && pick.key === search.key ? pick : null;
   const selectedId = pickFits(part, picked, pax) ? picked.id : undefined;
+
+  // A filter narrows the list; a pick it leaves out gives way to the best flight still in it, as the
+  // regular flight step does - the price on the bar is always a flight on screen.
+  const onFilter = (c: FlightSearchCriteria) => {
+    const start = filterNow ?? limits;
+    if (!start || !search.key) return;
+    const next = withCriteria(start, c);
+    setFilterSet({ at: search.key, f: next });
+    const list = filterTripFlights(flights, next);
+    if (selectedId && list.some((f) => f.id === selectedId)) return;
+    const best = sortFlights(list, "best")[0];
+    if (best) void choose(best);
+  };
+  const filterProps =
+    limits && base !== null
+      ? {
+          filter: filterNow ?? limits,
+          limits,
+          ...filterFloor(flights),
+          base,
+          pax,
+          airlines: filterAirlines(flights),
+          onChange: onFilter,
+        }
+      : null;
 
   // The recommended flight ("★ הטוב ביותר", the default tab's first) arrives picked while nothing is
   // picked; a customer's own pick or a failed check is never overridden (the card says so, and the
@@ -464,10 +500,20 @@ function PartPane({
           />
         );
         break;
-      case "ok":
-        body = (
+      case "ok": {
+        const list = (
           <>
-            {!isMove && <SortTabs value={sort} onChange={setSort} />}
+            {!isMove &&
+              (filterProps ? (
+                <div className="flex items-stretch gap-2">
+                  <TripFlightFiltersButton key={search.key} active={!!filterNow} {...filterProps} />
+                  <div className="min-w-0 flex-1">
+                    <SortTabs value={sort} onChange={setSort} />
+                  </div>
+                </div>
+              ) : (
+                <SortTabs value={sort} onChange={setSort} />
+              ))}
             {isMove && noDirect && (
               <p className="m-0 text-xs text-muted-foreground">אין טיסה ישירה בתאריך הזה. אלו הטיסות עם עצירה.</p>
             )}
@@ -477,11 +523,24 @@ function PartPane({
               </p>
             )}
             {sorted.length === 0 ? (
-              <OrderIssueState
-                className="mt-2"
-                title="אין טיסות של חברות תעופה ישראליות לתאריכים האלה"
-                subtitle="בטאב 'הטוב ביותר' מחכות כל שאר הטיסות."
-              />
+              filterNow && filtered.length === 0 ? (
+                <div className="mt-2 flex flex-col items-center gap-2 py-6 text-center">
+                  <p className="m-0 text-sm font-bold">אין טיסות שמתאימות לסינון</p>
+                  <button
+                    type="button"
+                    onClick={() => setFilterSet(null)}
+                    className="text-sm font-bold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  >
+                    ניקוי הסינון
+                  </button>
+                </div>
+              ) : (
+                <OrderIssueState
+                  className="mt-2"
+                  title="אין טיסות של חברות תעופה ישראליות לתאריכים האלה"
+                  subtitle="בטאב 'הטוב ביותר' מחכות כל שאר הטיסות."
+                />
+              )
             ) : (
               <div role="region" aria-label="רשימת טיסות" className="flex flex-col gap-6 py-3 lg:gap-4">
                 {visible.map((f) =>
@@ -530,7 +589,17 @@ function PartPane({
             )}
           </>
         );
+        // From 1024px the filters stand beside the list, as in the regular flight step.
+        body = filterProps ? (
+          <div className="lg:grid lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] lg:items-start lg:gap-6">
+            <TripFlightFiltersPanel key={search.key} {...filterProps} />
+            <div className="flex min-w-0 flex-col gap-3">{list}</div>
+          </div>
+        ) : (
+          list
+        );
         break;
+      }
     }
   }
 

@@ -3,6 +3,7 @@
  * no clock. The components render these lists; every rule comes from `rules.ts`.
  */
 import type { Event } from "@/lib/app.types";
+import { fixturePair } from "@/lib/eventNameMatch";
 import { cityName, eventCityName, hasEventCity } from "@/lib/events/lodging";
 import { moves, stayHeads } from "./dates";
 import { dayDiff, eventDay, eventKind, haversineKm, sameEventCity, stayPoint } from "./geo";
@@ -34,13 +35,36 @@ export function groundLink(e: Event): { from: string; to: string; km: number } |
 
 /**
  * Where the trip's events are, in order ("פריז", "לונדון"), each city named once while the trip
- * stays in it - the builder header's title and the hub's route card. A Manchester match sold as a
- * flight to London is "מנצ'סטר", wherever the customer sleeps for it (Alon 01.11).
+ * stays in it. A Manchester match sold as a flight to London is "מנצ'סטר", wherever the customer
+ * sleeps for it (Alon 01.11). The trip's TITLE names the events since 12.11 (`tripTitle`).
  */
 export function tripCities(route: Event[]): string[] {
   return sortRoute(route)
     .map(eventCityName)
     .filter((name, i, all) => i === 0 || name !== all[i - 1]);
+}
+
+/**
+ * What a trip calls one of its events: the home side of a match (the site's one fixture splitter,
+ * `fixturePair`: "ליגת האלופות: מנצ'סטר סיטי - נאפולי" is "מנצ'סטר סיטי"), the act of a show
+ * ("U2"). A match name that is not two sides, and every show, keeps its own name.
+ */
+export function eventHeadline(e: Event): string {
+  const home = eventKind(e) === "football" ? fixturePair(e.name)?.[0] : undefined;
+  return (home ?? e.name).trim();
+}
+
+/**
+ * The trip's title, in trip order: each event by its headline (`eventHeadline`) - "מנצ'סטר סיטי ←
+ * ליברפול", "אואזיס ← U2 ← מנצ'סטר יונייטד" (Alon 12.11: "הייתי שם את שם הקבוצה הביתית בכל משחק").
+ * The same name twice in a row (two U2 nights) is said once. The header, the hub's ready-trip
+ * cards, the summary and the WhatsApp text; the hub's city filter still reads the cities.
+ */
+export function tripTitle(route: Event[]): string {
+  return sortRoute(route)
+    .map(eventHeadline)
+    .filter((name, i, all) => i === 0 || name !== all[i - 1])
+    .join(" ← ");
 }
 
 /**

@@ -73,6 +73,7 @@ describe("toRouteCard", () => {
     const card = toRouteCard([celine, chelsea], S);
     expect(card.ids).toEqual([618, 702]);
     expect(card.title).toBe("פריז ← לונדון");
+    expect(card.heading).toBe("סלין דיון ← צ'לסי");
     expect(card.cities).toEqual(["פריז", "לונדון"]);
     expect(card.nights).toBe(5);
     expect(card.stays).toBe(2);

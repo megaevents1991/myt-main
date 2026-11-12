@@ -45,13 +45,42 @@ export function eventPoint(e: Event) {
 }
 
 /**
- * The city a TRIP sleeps in for this event: where it is played whenever its hotel may be there
- * (Dor 09.11 - London, Manchester, London is a split: a Manchester match gets a Manchester hotel,
- * a Liverpool match a Liverpool one), else its flight city. Not the event's own package default
- * (`defaultCity`): a single-event order still opens on the flight city with a split on offer.
+ * Where the customer chose to sleep for this event on the hotels step (Alon 12.11, lib/itinerary/
+ * stayChoice.ts): its own city or its flight city. Carried on the event itself, like a direct flight
+ * (`event_location.trip_stay`), so every rule that reads the route - stays, moves, the ways on the
+ * ground, the server's own rows - follows it. Absent = the trip's default.
+ */
+export type StayPick = LodgingCity;
+
+export function stayPickOf(e: Event): StayPick | undefined {
+  const at = e.event_location;
+  if (!at || !("trip_stay" in at)) return undefined;
+  return at.trip_stay === "event" || at.trip_stay === "flight" ? at.trip_stay : undefined;
+}
+
+/** The event with the customer's pick on it, or with none (`undefined`). Same object when nothing changes. */
+export function withStayPick(e: Event, pick: StayPick | undefined): Event {
+  if (stayPickOf(e) === pick || !e.event_location) return e;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the old pick is dropped on purpose
+  const { trip_stay: _drop, ...place } = { trip_stay: undefined, ...e.event_location };
+  // A field of the trip's own on the event's place (not in the shared `Event` type): set through a
+  // variable, the way `flyDirect` adds `location.hub_iata`.
+  const picked = { ...place, trip_stay: pick };
+  return { ...e, event_location: pick ? picked : place };
+}
+
+/**
+ * The city a TRIP sleeps in for this event: the customer's pick when the event offers it, else
+ * where it is played whenever its hotel may be there (Dor 09.11 - London, Manchester, London is a
+ * split: a Manchester match gets a Manchester hotel, a Liverpool match a Liverpool one), else its
+ * flight city. Not the event's own package default (`defaultCity`): a single-event order still
+ * opens on the flight city with a split on offer.
  */
 export function tripStayCity(e: Event): LodgingCity {
-  return offeredCities(e).includes("event") ? "event" : "flight";
+  const offered = offeredCities(e);
+  const pick = stayPickOf(e);
+  if (pick && offered.includes(pick)) return pick;
+  return offered.includes("event") ? "event" : "flight";
 }
 
 /** Where the traveller sleeps for this event on a trip (`tripStayCity`). */
@@ -67,10 +96,12 @@ export function sameCity(a: Event, b: Event): boolean {
 
 /**
  * `b` sleeps in `a`'s hotel: the same city (`sameCity`), or two sub-locations of one flight city
- * a short train apart (`SHARED_STAY_KM`: Liverpool and Manchester) - the stay is `a`'s, the first.
+ * a short train apart (`SHARED_STAY_KM`: Liverpool and Manchester) - the stay is `a`'s, the first -
+ * unless the customer chose where `b` sleeps (Alon 12.11: "ספליט מנצ'סטר / ליברפול").
  */
 export function shareStay(a: Event, b: Event): boolean {
   if (sameCity(a, b)) return true;
+  if (stayPickOf(b)) return false;
   const pa = stayPoint(a);
   const pb = stayPoint(b);
   return (
@@ -90,12 +121,25 @@ export function sameEventCity(a: Event, b: Event): boolean {
 }
 
 /**
- * One flight city (`location.city_iata`): a Manchester or Liverpool match sold as a flight to
- * London is a sub-location of London - a train away, no flight and no change of country between.
+ * The flight city the event is SOLD under (`location.city_iata`), also once a direct flight lands it
+ * elsewhere: `flyDirect` keeps it as `location.hub_iata` (a Manchester match flown to MAN is still a
+ * London-hub event, a train from a London show - Alon 12.11).
+ */
+export function hubIata(e: Event): string | undefined {
+  const loc = e.location;
+  if (!loc) return undefined;
+  if ("hub_iata" in loc && typeof loc.hub_iata === "string" && loc.hub_iata) return loc.hub_iata;
+  return loc.city_iata;
+}
+
+/**
+ * One flight city (`hubIata`): a Manchester or Liverpool match sold as a flight to London is a
+ * sub-location of London - a train away, no flight and no change of country between. Still so when
+ * the customer flies to Manchester directly: the way on to London is the train.
  */
 export function sameHub(a: Event, b: Event): boolean {
-  const hub = a.location?.city_iata;
-  return !!hub && hub === b.location?.city_iata;
+  const hub = hubIata(a);
+  return !!hub && hub === hubIata(b);
 }
 
 /** The event's calendar day, `YYYY-MM-DD`. */

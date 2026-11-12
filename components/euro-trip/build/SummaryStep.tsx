@@ -25,7 +25,7 @@ import type { Event, FlightSegment, ItineraryFlight, OrderHotel } from "@/lib/ap
 import { lodgingLocation } from "@/lib/events/lodging";
 import { ticketReady } from "@/lib/itinerary/adapter";
 import { sendTripSuggestion } from "@/app/euro-trip/build/actions";
-import { dayMonth, moveName, stayCityName, tripCities } from "@/lib/itinerary/builder";
+import { dayMonth, moveName, stayCityName, tripTitle } from "@/lib/itinerary/builder";
 import type { HeldAnswer } from "@/lib/itinerary/confirm";
 import { eventGrounds, leaveGrounds, moves, stays, trainLegs, tripLegs } from "@/lib/itinerary/dates";
 import { airlineLabel } from "@/lib/itinerary/directPairs";
@@ -648,7 +648,7 @@ function HoldConfirmation({ held }: { held: HeldAnswer }) {
         </p>
       )}
       <p className="m-0 text-sm tabular-nums text-muted-foreground">
-        {tripCities(route).join(" ← ")} · {dayMonth(dates.depart)}–{dayMonth(dates.ret)} ·{" "}
+        {tripTitle(route)} · {dayMonth(dates.depart)}–{dayMonth(dates.ret)} ·{" "}
         {pax === 1 ? "נוסע אחד" : `${pax} נוסעים`}
         {price && (
           <>
@@ -790,7 +790,7 @@ export function SummaryStep({
 
   const payOpen = settings.paymentsEnabled && !!onPay;
   const contactOnly = !payOpen && !HOLD_ENABLED;
-  const whatsAppText = `היי, אשמח להזמין טיול ${tripCities(route).join(" - ")} (${dayMonth(dates.depart)}-${dayMonth(
+  const whatsAppText = `היי, אשמח להזמין טיול ${tripTitle(route).split(" ← ").join(" - ")} (${dayMonth(dates.depart)}-${dayMonth(
     dates.ret,
   )}) ל-${pax === 1 ? "נוסע אחד" : `${pax} נוסעים`}`;
 

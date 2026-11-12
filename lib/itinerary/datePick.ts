@@ -25,12 +25,14 @@ export type DatePickStep = {
 };
 
 /**
- * The dates to pick, in trip order: `טיסה הלוך ל<city>`, then `מעבר ל<city>` per move (plus
- * ` (עצמאית)` when `train` has it; `רכבת ל<city>` under one flight city - Manchester from London has
- * no flight), then `חזרה מ<city>`. THE one source of the trip's date labels
+ * The dates to pick, in trip order: `טיסה הלוך ל<city>`, then `מעבר ל<city>` per move flown, or
+ * `הגעה עצמאית ל<city>` for one made on the ground - under one flight city (Manchester from London
+ * has no flight) or taken over by the customer (`train`) - then `חזרה מ<city>`. Never "רכבת ל...":
+ * next to the flight rows it read as a train we sell (Alon 12.11). THE one source of the trip's date labels
  * (the flights step's calendar and the planner's panel). A flight lands where the airport is: the
  * departure and the return name the FLIGHT city of the first / last stay's first event (a
- * Manchester match sold as a flight to London reads `טיסה הלוך ללונדון` / `חזרה מלונדון`); a move
+ * Manchester match sold as a flight to London reads `טיסה הלוך ללונדון` / `חזרה מלונדון`; the return
+ * names the stay's LAST event's, as `tripLegs` flies it); a move
  * names the stay it moves to, like the hotels step (`stayCityName`). Values come from the dates
  * clamped for this route, so each one sits inside its own range.
  */
@@ -38,7 +40,13 @@ export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlyS
   const list = stays(route, dates);
   if (list.length === 0) return [];
   const city = (i: number): string => stayCityName(list[i].events[0]);
-  const airport = (i: number): string => cityName(list[i].events[0], "flight");
+  // The flight out lands at the first stay's first event's airport; the flight home leaves from the
+  // last stay's LAST event's (`tripLegs`) - a Liverpool match flown home from Manchester while it
+  // sleeps in the Manchester match's hotel is "חזרה ממנצ'סטר", not its stay's London.
+  const airport = (i: number, at: "first" | "last" = "first"): string => {
+    const events = list[i].events;
+    return cityName(at === "first" ? events[0] : events[events.length - 1], "flight");
+  };
   const bounds = tripDateBounds(route, dates);
   const value = clampTripDates(route, dates);
 
@@ -57,9 +65,7 @@ export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlyS
     steps.push({
       key: m.key,
       kind: "move",
-      label: sameHub(m.a, m.b)
-        ? `רכבת ל${city(i + 1)}`
-        : `מעבר ל${city(i + 1)}${train.has(m.key) ? " (עצמאית)" : ""}`,
+      label: sameHub(m.a, m.b) || train.has(m.key) ? `הגעה עצמאית ל${city(i + 1)}` : `מעבר ל${city(i + 1)}`,
       value: value.moves[m.key],
       min,
       max,
@@ -68,7 +74,7 @@ export function datePickSteps(route: Event[], dates: TripDates, train: ReadonlyS
   steps.push({
     key: "ret",
     kind: "ret",
-    label: `חזרה מ${airport(list.length - 1)}`,
+    label: `חזרה מ${airport(list.length - 1, "last")}`,
     value: value.ret,
     min: bounds.ret[0],
     max: bounds.ret[1],

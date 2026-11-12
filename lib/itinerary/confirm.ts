@@ -33,9 +33,11 @@ import { tierMarkups } from "./price";
 import { offlineHotelColumns } from "./offlineHold";
 import { hotelPerTraveller, livePrice, type LivePrice } from "./progress";
 import { compatibility, isAddable, sortRoute } from "./rules";
+import type { StayPick } from "./geo";
 import type { ItinerarySettings } from "./settings";
 import { INITIAL_ITINERARY_STATE, MAX_TRAVELLERS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "./state";
 import { skippedStayPerTraveller, stayHotelReady, stayRanges } from "./stayAdapter";
+import { stayPicksOf } from "./stayChoice";
 import { parseSuggestion, type TripSuggestion } from "./suggestion";
 import {
   fitTravellers,
@@ -93,6 +95,11 @@ export type TripSubmission = {
   train: string[];
   /** Events flown to directly (lib/itinerary/direct.ts): the server applies them to its own rows. */
   direct: number[];
+  /**
+   * Where the trip sleeps for an event, by id (lib/itinerary/stayChoice.ts, the hotels step's "איפה
+   * ישנים?"): the server applies them to its own rows after the direct flights.
+   */
+  stays: Record<number, StayPick>;
   tickets: Record<number, OrderTicket>;
   flight: ItineraryFlight;
   /** The hotel of each stay, by `Stay.key`. */
@@ -266,6 +273,17 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
   if (!Array.isArray(directRaw) || !directRaw.every((id) => route.includes(id as number))) return no("direct");
   const direct = [...new Set(directRaw as number[])];
 
+  // Absent on a client from before 12.11: the trip's defaults.
+  const staysRaw = raw.stays ?? {};
+  if (!isObj(staysRaw)) return no("stays");
+  const stayEntries = Object.entries(staysRaw);
+  if (stayEntries.length > MAX_TRIP_LOAD) return no("stays");
+  const stayPicks: Record<number, StayPick> = {};
+  for (const [id, pick] of stayEntries) {
+    if (!route.includes(Number(id)) || (pick !== "event" && pick !== "flight")) return no("stays");
+    stayPicks[Number(id)] = pick;
+  }
+
   if (!isObj(raw.tickets)) return no("tickets");
   const tickets: Record<number, OrderTicket> = {};
   for (const id of route) {
@@ -332,6 +350,7 @@ export function parseSubmission(raw: unknown, maxEvents: number): ParsedSubmissi
       pax,
       train,
       direct,
+      stays: stayPicks,
       tickets,
       flight,
       hotels,
@@ -925,6 +944,7 @@ export function submissionFromState(
     pax: state.pax,
     train: state.train,
     direct: Object.keys(state.directEvents).map(Number),
+    stays: stayPicksOf(state.route),
     tickets,
     flight: state.flight,
     hotels,
@@ -1013,6 +1033,7 @@ export function tripKey(
     state.pax,
     [...state.train].sort(),
     Object.keys(state.directEvents ?? {}).sort(),
+    Object.entries(stayPicksOf(state.route)).sort(([a], [b]) => Number(a) - Number(b)),
   ]);
 }
 

@@ -22,6 +22,8 @@ import {
   starterEvents,
   topCities,
   tripCities,
+  tripTitle,
+  eventHeadline,
 } from "../itinerary/builder";
 import { eventKind, sameCity } from "../itinerary/geo";
 
@@ -63,6 +65,26 @@ describe("dates on screen", () => {
   it("prints DD/MM/YY and DD/MM from a day", () => {
     expect(dayMonthYear("2027-05-12")).toBe("12/05/27");
     expect(dayMonth("2027-05-12")).toBe("12/05");
+  });
+});
+
+describe("tripTitle (Alon 12.11: the home side of a match, the act of a show)", () => {
+  it("names a match by its home side and a show by its act, in trip order", () => {
+    expect(tripTitle([chelsea, celine])).toBe("סלין דיון ← צ'לסי");
+    expect(eventHeadline(madrid)).toBe("ריאל מדריד");
+  });
+
+  it("drops a competition prefix and keeps a name that is not two sides", () => {
+    const cl = ev(1067, "ליגת האלופות: אינטר מילאן - ליברפול", "2027-05-20", PARIS, "sports_event");
+    expect(eventHeadline(cl)).toBe("אינטר מילאן");
+    expect(eventHeadline(ev(1, "גמר הגביע", "2027-05-20", PARIS, "sports_event"))).toBe("גמר הגביע");
+  });
+
+  it("never splits a show's name on its dash, and says the same act once in a row", () => {
+    const show = ev(2, "מיוז - סיבוב הופעות", "2027-05-20", PARIS);
+    expect(eventHeadline(show)).toBe("מיוז - סיבוב הופעות");
+    expect(tripTitle([gracieAms, gracieBer])).toBe("גרייסי אברמס");
+    expect(tripTitle([])).toBe("");
   });
 });
 

@@ -18,10 +18,11 @@ import type { Event, ItineraryFlight, OrderHotel, OrderTicket } from "@/lib/app.
 import { clampTripDates, defaultTripDates, moves, stays } from "./dates";
 import { canFlyDirect, directOrigin, flyDirect } from "./direct";
 import { composeFlight, fittingPicks, flightPartsOf } from "./flightParts";
-import { eventDay, eventPoint, stayPoint } from "./geo";
+import { eventDay, eventPoint, stayPickOf, stayPoint, withStayPick, type StayPick } from "./geo";
 import { compatibility, isAddable, sortRoute } from "./rules";
 import type { ItinerarySettings } from "./settings";
 import { hotelsForFlight } from "./stayAdapter";
+import { stayPicksFor } from "./stayChoice";
 import type { Compat, TripDates } from "./types";
 
 export const ITINERARY_STEPS = ["build", "tickets", "flights", "hotels", "summary"] as const;
@@ -97,6 +98,11 @@ export type ItineraryAction =
   | { type: "toggleTrain"; key: string }
   /** Fly straight to the event's own city, or back to the flight city and its train. */
   | { type: "setDirect"; id: number; on: boolean }
+  /**
+   * Where the trip sleeps for the event (lib/itinerary/stayChoice.ts): its own city, its flight city,
+   * or `null` - the default (Dor 09.11). The pick rides on the route's event.
+   */
+  | { type: "setStay"; id: number; pick: StayPick | null }
   | { type: "setFlight"; flight: ItineraryFlight | null }
   /** One part's pick (null = none any more); the trip's flight is composed from the parts. */
   | { type: "setFlightPart"; key: string; flight: ItineraryFlight | null }
@@ -199,11 +205,42 @@ function withRoute(state: ItineraryState, next: Event[]): ItineraryState {
   };
 }
 
-/** The route as sold: every direct flight undone. A change of route starts from it. */
+/**
+ * The route as sold: every direct flight and every choice of where to sleep undone. A change of route
+ * starts from it.
+ */
 const asSold = (state: ItineraryState): ItineraryState =>
-  Object.keys(state.directEvents).length
-    ? { ...state, route: state.route.map((e) => state.directEvents[e.id] ?? e), directEvents: {} }
+  Object.keys(state.directEvents).length || state.route.some((e) => stayPickOf(e))
+    ? { ...state, route: state.route.map((e) => state.directEvents[e.id] ?? withStayPick(e, undefined)), directEvents: {} }
     : state;
+
+/**
+ * The same trip slept elsewhere (`setStay`): stays and moves change, the flights do not - a choice
+ * of hotel city never moves a flight (it only ever changes trains under one flight city). Dates and
+ * train moves are kept where they still exist, the flight picks that still fit stay, and a hotel
+ * stays only on a stay that is still there (`recomposed` then keeps those still on their nights).
+ */
+function reshaped(state: ItineraryState, next: Event[]): ItineraryState {
+  const route = sortRoute(next);
+  const def = defaultTripDates(route);
+  const kept = Object.fromEntries(
+    Object.keys(def.moves).flatMap((k) => (state.dates.moves[k] ? [[k, state.dates.moves[k]]] : [])),
+  );
+  const dates = clampTripDates(route, { depart: state.dates.depart, ret: state.dates.ret, moves: { ...def.moves, ...kept } });
+  const moveKeys = new Set(moves(route).map((m) => m.key));
+  const train = state.train.filter((k) => moveKeys.has(k));
+  const stayKeys = new Set(stays(route, dates).map((s) => s.key));
+  const parts = flightPartsOf(route, dates, new Set(train));
+  return recomposed({
+    ...state,
+    route,
+    dates,
+    train,
+    hotels: Object.fromEntries(Object.entries(state.hotels).filter(([k]) => stayKeys.has(k))),
+    skippedStays: state.skippedStays.filter((k) => stayKeys.has(k)),
+    flightParts: fittingPicks(parts, state.flightParts, state.pax),
+  });
+}
 
 /**
  * Where the trip goes and sleeps for this event: what its dates, stays and legs hang on. The
@@ -273,11 +310,11 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
     case "setEventData": {
       const old = state.route.find((e) => e.id === action.event.id);
       if (!old) return state;
-      // A fresher row of an event flown to directly stays flown.
+      // A fresher row of an event flown to directly stays flown, and keeps where the trip sleeps for it.
       const origin = state.directEvents[action.event.id];
-      const sold = origin ? directOrigin(origin, action.event) : null;
+      const sold = origin ? withStayPick(directOrigin(origin, action.event), undefined) : null;
       const directEvents = sold ? { ...state.directEvents, [action.event.id]: sold } : state.directEvents;
-      const fresh = sold ? flyDirect(sold) : action.event;
+      const fresh = withStayPick(sold ? flyDirect(sold) : action.event, stayPickOf(old));
       const route = state.route.map((e) => (e.id === fresh.id ? fresh : e));
       // Fresher data for the same trip (live prices): the picks stay.
       if (shapeOf(old) === shapeOf(fresh)) return { ...state, route, directEvents };
@@ -290,9 +327,11 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
       const origin = state.directEvents[action.id];
       if (action.on === !!origin) return state;
       if (action.on && !canFlyDirect(state.route, event)) return state;
-      const next = action.on ? flyDirect(event) : origin;
+      // Another landing offers other cities to sleep in: the event's own choice starts over.
+      const plain = withStayPick(event, undefined);
+      const next = action.on ? flyDirect(plain) : origin;
       const directEvents = { ...state.directEvents };
-      if (action.on) directEvents[action.id] = event;
+      if (action.on) directEvents[action.id] = plain;
       else delete directEvents[action.id];
       // Another landing and another hotel: flights and hotels are searched again, the view stays put.
       return {
@@ -303,6 +342,16 @@ export function itineraryReducer(state: ItineraryState, action: ItineraryAction)
         activeEvent: state.activeEvent,
         activeFlightPart: state.activeFlightPart,
       };
+    }
+
+    case "setStay": {
+      const event = state.route.find((e) => e.id === action.id);
+      if (!event) return state;
+      const pick = action.pick ?? undefined;
+      if (pick && !stayPicksFor(event).includes(pick)) return state;
+      const next = withStayPick(event, pick);
+      if (next === event) return state;
+      return reshaped(state, state.route.map((e) => (e.id === action.id ? next : e)));
     }
 
     case "toggleTrain": {

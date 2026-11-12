@@ -11,7 +11,7 @@ import {
   flightPoses,
   planePose,
   planeSpot,
-  tripCities,
+  tripTitle,
   type PlanePose,
 } from "@/lib/itinerary/builder";
 import { dayDiff } from "@/lib/itinerary/geo";
@@ -165,7 +165,7 @@ function PlannerHero() {
   const { state, settings } = useItinerary();
   const { route, dates } = state;
   const datesValid = route.length > 0 && DAY_RE.test(dates.depart) && DAY_RE.test(dates.ret);
-  const cities = tripCities(route).join(" ← ");
+  const cities = tripTitle(route);
   const count = route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`;
 
   return (
@@ -192,8 +192,9 @@ function PlannerHero() {
   );
 }
 
-/** The cities' line stays on one line whatever their number (Dor 01.11): the longer it is, the smaller. */
+/** The title stays on one line whatever its length (Dor 01.11): the longer it is, the smaller. */
 function titleSize(title: string): string {
+  if (title.length > 42) return "whitespace-nowrap text-[13px] sm:text-lg md:text-2xl";
   if (title.length > 34) return "whitespace-nowrap text-[15px] sm:text-xl md:text-3xl";
   if (title.length > 26) return "whitespace-nowrap text-[17px] sm:text-2xl md:text-3xl";
   return "whitespace-nowrap text-xl sm:text-2xl md:text-3xl";
@@ -211,7 +212,7 @@ export function TripHeader() {
   if (step === "build") return <PlannerHero />;
   const datesValid = route.length > 0 && DAY_RE.test(dates.depart) && DAY_RE.test(dates.ret);
   const count = route.length === 1 ? "אירוע אחד" : `${route.length} אירועים`;
-  const cities = tripCities(route).join(" ← ");
+  const cities = tripTitle(route);
 
   return (
     <div dir="rtl" className="w-full bg-muted px-4 py-2 lg:py-4">

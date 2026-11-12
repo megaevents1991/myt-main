@@ -158,7 +158,7 @@ export function describeCompat(c: Compat): string {
     case "same_city":
       return "באותה עיר - בלי טיסה נוספת";
     case "same_hub":
-      return `רכבת ל${r.to}, בלי טיסה נוספת`;
+      return `הגעה עצמאית ל${r.to}, בלי טיסה נוספת`;
     case "best":
       return "מומלץ - קרוב וזורם";
     case "fits":

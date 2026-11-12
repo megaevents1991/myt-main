@@ -6,7 +6,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { eventCityName } from "@/lib/events/lodging";
-import { stayCityName, tripCities } from "./builder";
+import { stayCityName, tripCities, tripTitle } from "./builder";
 import { defaultTripDates, stays } from "./dates";
 import { dayDiff, eventDay, eventKind } from "./geo";
 import { estimateItinerary } from "./price";
@@ -28,8 +28,13 @@ export type RouteCardArt = {
 export type RouteCardData = {
   /** The events' ids in trip order - what `/euro-trip/build?events=` opens. */
   ids: number[];
-  /** The events' cities joined " ← " ("פריז ← לונדון"). */
+  /** The events' cities joined " ← " ("פריז ← לונדון"): the pill on the art, beside its plane. */
   title: string;
+  /**
+   * The events by their home side / act ("סלין דיון ← צ'לסי", `tripTitle`): the card's heading, as
+   * the trip's own header names it (Alon 12.11). A staff trip leads with its own title instead.
+   */
+  heading: string;
   events: { id: number; name: string; day: string; cityName: string; art: RouteCardArt }[];
   /** The stays' city names in trip order (a city named once while the trip stays in it). */
   cities: string[];
@@ -81,6 +86,7 @@ export function toRouteCard(route: Event[], s: ItinerarySettings): RouteCardData
   return {
     ids: trip.map((e) => e.id),
     title: tripCities(trip).join(" ← "),
+    heading: tripTitle(trip),
     events: trip.map((e) => ({
       id: e.id,
       name: e.name,

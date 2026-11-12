@@ -42,7 +42,7 @@ describe("tripStops", () => {
     const stops = tripStops([show, match], defaultTripDates([show, match]), none);
     // The trip ends in the Manchester hotel and flies home from London: the train back is a row (Dor 11.11).
     expect(stops.map((s) => s.kind)).toEqual(["depart", "event", "move", "event", "ground", "ret"]);
-    expect(stops[2]).toMatchObject({ title: "רכבת למנצ'סטר", day: "2027-05-15" });
+    expect(stops[2]).toMatchObject({ title: "הגעה עצמאית למנצ'סטר", day: "2027-05-15" });
     expect(stops[4]).toMatchObject({ title: "חזרה עצמאית ללונדון", detail: "רכבת ממנצ'סטר, כ-2.0 שעות · לא כלול" });
     expect(stops.some((s) => s.title.startsWith("נשארים"))).toBe(false);
   });
@@ -51,8 +51,8 @@ describe("tripStops", () => {
     const route = [ev(1, "טוטנהאם", "2027-05-12", LONDON, "sports_event"), manchesterMatch(2, "2027-05-15"), ev(3, "ארסנל", "2027-05-19", LONDON, "sports_event")];
     const stops = tripStops(route, defaultTripDates(route), none);
     expect(stops.map((s) => s.kind)).toEqual(["depart", "event", "move", "event", "move", "event", "ret"]);
-    expect(stops[2]).toMatchObject({ title: "רכבת למנצ'סטר", day: "2027-05-15" });
-    expect(stops[4]).toMatchObject({ title: "רכבת ללונדון", day: "2027-05-16" });
+    expect(stops[2]).toMatchObject({ title: "הגעה עצמאית למנצ'סטר", day: "2027-05-15" });
+    expect(stops[4]).toMatchObject({ title: "הגעה עצמאית ללונדון", day: "2027-05-16" });
   });
 
   it("Manchester, London, Liverpool: the train back to London stands before the flight home (Dor 11.11)", () => {
@@ -101,7 +101,7 @@ describe("tripStops", () => {
     const dates = defaultTripDates(route);
     const train = new Set([moves(route)[0].key]);
     const move = tripStops(route, dates, train).find((s) => s.kind === "move");
-    expect(move?.title).toContain("(עצמאית)");
+    expect(move?.title).toBe("הגעה עצמאית ללונדון");
   });
 
   it("undated trip: the events alone; no route at all for no events", () => {

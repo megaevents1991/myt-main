@@ -175,7 +175,7 @@ describe("staffRouteCards", () => {
 
 /** A bare card: the merge reads the ids and nothing else. */
 const card = (ids: number[], staffTitle?: string): RouteCardData =>
-  ({ ids, title: ids.join(","), events: [], cities: [], nights: 0, stays: 0, perTraveller: 0, saving: null, kinds: [], firstDay: "", ...(staffTitle ? { staffTitle } : {}) }) as RouteCardData;
+  ({ ids, title: ids.join(","), heading: "", events: [], cities: [], nights: 0, stays: 0, perTraveller: 0, saving: null, kinds: [], firstDay: "", ...(staffTitle ? { staffTitle } : {}) }) as RouteCardData;
 
 describe("mergeRouteCards", () => {
   it("puts staff first and drops the auto card with the same events", () => {

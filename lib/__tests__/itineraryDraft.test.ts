@@ -87,7 +87,7 @@ describe("serializeDraft / parseDraft - a refresh keeps the trip", () => {
   it("never stores a price, a flight or a hotel", () => {
     const raw = JSON.parse(serializeDraft(state, NOW, { form: { travellers, termsAccepted: true } }));
     expect(Object.keys(raw).sort()).toEqual(
-      ["dates", "direct", "form", "mode", "pax", "route", "savedAt", "step", "tickets", "train", "v"].sort(),
+      ["dates", "direct", "form", "mode", "pax", "route", "savedAt", "stays", "step", "tickets", "train", "v"].sort(),
     );
     expect(raw.route).toEqual([618, 702]);
     expect(raw.tickets).toEqual({

@@ -94,7 +94,7 @@ describe("datePickSteps", () => {
     expect(steps.map((s) => s.label)).toEqual([
       "טיסה הלוך לפריז",
       "מעבר ללונדון",
-      "מעבר לאמסטרדם (עצמאית)",
+      "הגעה עצמאית לאמסטרדם",
       "חזרה מאמסטרדם",
     ]);
     expect(steps).toHaveLength(4);

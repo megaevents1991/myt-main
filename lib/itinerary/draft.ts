@@ -14,8 +14,10 @@
  */
 import type { Event, OrderTicket } from "@/lib/app.types";
 import { clampTripDates, moves } from "./dates";
+import type { StayPick } from "./geo";
 import { sortRoute } from "./rules";
 import { ITINERARY_STEPS, MAX_TRAVELLERS, MIN_TRIP_EVENTS, type ItineraryState, type ItineraryStep } from "./state";
+import { applyStayPicks, stayPicksOf } from "./stayChoice";
 import { fitTravellers, type TravellersInput } from "./travellers";
 import type { TripDates } from "./types";
 
@@ -39,6 +41,8 @@ export type ItineraryDraftForm = { travellers: TravellersInput; termsAccepted: b
 export type RestoredDraft = Pick<ItineraryState, "route" | "mode" | "dates" | "pax" | "train" | "step"> & {
   /** Events the customer flies to directly (`setDirect` applies them: the route here is as sold). */
   direct: number[];
+  /** Where the trip sleeps for an event, by id (`setStay` applies them after the direct flights). */
+  stays: Record<number, StayPick>;
   held: Record<number, HeldTicket>;
   form: ItineraryDraftForm | null;
   /** The step the draft was saved on (the flow reopens on `step`): past the tickets = there are picks to make again. */
@@ -85,6 +89,7 @@ export function serializeDraft(
     pax: state.pax,
     train: state.train,
     direct: Object.keys(state.directEvents).map(Number),
+    stays: stayPicksOf(state.route),
     step: state.step,
     tickets,
     form: extra.form ?? null,
@@ -157,6 +162,14 @@ export function parseDraft(raw: string | null, now: number, catalog: Map<number,
     ? [...new Set(parsed.direct.filter((id): id is number => route.some((e) => e.id === id)))]
     : [];
 
+  // A draft from before 12.11 has none: the trip's defaults.
+  const stays: Record<number, StayPick> = {};
+  if (isRecord(parsed.stays)) {
+    for (const [id, pick] of Object.entries(parsed.stays)) {
+      if ((pick === "event" || pick === "flight") && route.some((e) => e.id === Number(id))) stays[Number(id)] = pick;
+    }
+  }
+
   const stored = isRecord(parsed.tickets) ? parsed.tickets : {};
   const held: Record<number, HeldTicket> = {};
   for (const e of route) {
@@ -168,10 +181,12 @@ export function parseDraft(raw: string | null, now: number, catalog: Map<number,
   return {
     route,
     mode: parsed.mode === "route" ? "route" : "custom",
-    dates: clampTripDates(route, parseDates(parsed.dates)),
+    // Against the trip as slept: a split adds its own move, and its day is the customer's too.
+    dates: clampTripDates(applyStayPicks(route, stays) ?? route, parseDates(parsed.dates)),
     pax,
     train,
     direct,
+    stays,
     step: route.length >= MIN_TRIP_EVENTS && savedStep !== "build" ? "tickets" : "build",
     held,
     form: parseForm(parsed.form, pax),

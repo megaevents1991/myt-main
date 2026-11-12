@@ -33,7 +33,7 @@ export function RouteCard({
   const pill = data.cities.length > 1 ? data.title : `${data.title} · ${tickets} אירועים`;
   // The link's name starts with the visible heading (WCAG 2.5.3 label-in-name): a staff title
   // leads, the events follow as before.
-  const label = `${data.staffTitle ? `${data.staffTitle} - ` : ""}${names} - ${data.title}, ${data.nights} לילות`;
+  const label = `${data.staffTitle ?? data.heading} - ${names} - ${data.title}, ${data.nights} לילות`;
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -77,7 +77,7 @@ export function RouteCard({
           {/* Body */}
           <div className="flex flex-1 flex-col p-4 text-start" dir="rtl">
             <h3 className="line-clamp-2 min-h-[2lh] text-lg font-bold leading-tight" title={names}>
-              {data.staffTitle ?? names}
+              {data.staffTitle ?? data.heading}
             </h3>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {data.events.map((e, i) => (

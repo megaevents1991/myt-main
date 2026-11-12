@@ -304,7 +304,7 @@ describe("compatibility on a two-city event (flight city vs event city)", () => 
     const c = compatibility([mcMatch], ev(23, "קונצרט בלונדון", "2027-05-16", LONDON), S);
     expect(c.status).toBe("same");
     expect(c.reason).toEqual({ code: "same_hub", from: "לונדון", to: "מנצ'סטר" });
-    expect(describeCompat(c)).toBe("רכבת למנצ'סטר, בלי טיסה נוספת");
+    expect(describeCompat(c)).toBe("הגעה עצמאית למנצ'סטר, בלי טיסה נוספת");
     expect(c.km).toBe(0);
   });
 

@@ -197,6 +197,18 @@ export function EventFinder({
   const [searchOpen, setSearchOpen] = useState(false);
   // "לא משנה" / "הכל" to a city's questions, for that city.
   const [skipped, setSkipped] = useState({ city: "", month: false, kind: false });
+  // A pick ends the search that found it (Alon 12.11: "אחרי בחירת אירוע שיעיף את הפילטורים"): the
+  // finder goes back to what fits the trip now, instead of a city's list where nothing fits any more.
+  // Adjusted during render, React's way for state that follows a prop - no effect, no extra paint.
+  const [seenEvents, setSeenEvents] = useState(route.length);
+  if (route.length !== seenEvents) {
+    setSeenEvents(route.length);
+    if (route.length > seenEvents) {
+      setFilter(NO_FILTER);
+      setSearchOpen(false);
+      setVisible(LIST_PAGE);
+    }
+  }
   const skippedNow = skipped.city === filter.city ? skipped : { city: filter.city, month: false, kind: false };
   const months = useMemo(() => catalogMonths(catalog), [catalog]);
   const cities = useMemo(() => catalogCities(catalog), [catalog]);
