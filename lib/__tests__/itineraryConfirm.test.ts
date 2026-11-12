@@ -1071,6 +1071,53 @@ describe("M7 - confirmTrip: the steps' order, with the database handed in", () =
       expect(inserted[0]).toHaveLength(2);
     });
 
+    /** A trip ready to hold: one ticket per event, a flight on the trip's own days, a hotel per stay. */
+    const ready = (state: ItineraryState, from: string, to: string): ItineraryState => {
+      const out = seg("TLV", from, `${state.dates.depart}T09:00:00`, `${state.dates.depart}T13:00:00`);
+      const home = seg(to, "TLV", `${state.dates.ret}T22:40:00`, `${state.dates.ret}T23:55:00`);
+      return {
+        ...state,
+        tickets: Object.fromEntries(state.route.map((e) => [e.id, ticket(`t${e.id}`, e.id === 618 ? 210 : 150)])),
+        flight: { ...flight, price: 1000, legs: [out, home], outbound: out, inbound: home } as ItineraryFlight,
+        hotels: Object.fromEntries(stays(state.route, state.dates).map((st, i) => [st.key, hotel(`h${i}`, "500", st.from, st.to)])),
+      };
+    };
+    const base = (route: Event[]): ItineraryState => ({ ...full, route, dates: defaultTripDates(route), tickets: {}, hotels: {}, flight: null });
+
+    it("holds a Manchester match flown to directly beside a London show - the way on is the train (Alon 12.11)", async () => {
+      const { deps, inserted } = setup({ getEvent });
+      const flownBeside = itineraryReducer(base([manchester, coldplay]), { type: "setDirect", id: 800, on: true });
+      expect(flownBeside.directEvents[800]).toBeDefined();
+      const answer = await confirmTrip(wire(ready(flownBeside, "MAN", "LHR")), deps);
+      expect(answer.status).toBe(200);
+      expect(inserted[0]).toHaveLength(2);
+    });
+
+    it("holds a trip slept all in London: one hotel, the Manchester match a day trip (Alon 12.11)", async () => {
+      const { deps, inserted } = setup({ getEvent });
+      const inLondon = itineraryReducer(base([londonBefore, manchester]), { type: "setStay", id: 800, pick: "flight" });
+      expect(stays(inLondon.route, inLondon.dates)).toHaveLength(1);
+      const sent = wire(ready(inLondon, "LHR", "LHR"));
+      expect(sent.stays).toEqual({ 800: "flight" });
+      const answer = await confirmTrip(sent, deps);
+      expect(answer.status).toBe(200);
+      expect(inserted[0]).toHaveLength(2);
+      // The same trip sent without the pick is another trip (three stays): refused, nothing written.
+      const { deps: again, inserted: none } = setup({ getEvent });
+      const { stays: _pick, ...unpicked } = sent;
+      const refused = await confirmTrip({ ...unpicked, group: "8a7b0e4c-5d2f-4a1b-9c3e-6f8d7a2b1c0e" }, again);
+      expect(refused.body).toMatchObject({ error: "ROUTE_CHANGED" });
+      expect(none).toHaveLength(0);
+    });
+
+    it("holds the trip between two London shows when it takes the train - the refusal below is the direct flight's", async () => {
+      const { deps, inserted } = setup({ getEvent });
+      const between = base([londonBefore, manchester, coldplay]);
+      const answer = await confirmTrip(wire(ready(between, "LHR", "LHR")), deps);
+      expect(answer.status).toBe(200);
+      expect(inserted[0]).toHaveLength(3);
+    });
+
     it("refuses a direct flight the route does not allow, before anything is written", async () => {
       const { deps, inserted } = setup({ getEvent });
       // Between two London shows no flight reaches Manchester: the way there and back is the train.

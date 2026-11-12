@@ -102,14 +102,22 @@ export function sameCity(a: Event, b: Event): boolean {
 export function shareStay(a: Event, b: Event): boolean {
   if (sameCity(a, b)) return true;
   if (stayPickOf(b)) return false;
-  const pa = stayPoint(a);
-  const pb = stayPoint(b);
   return (
     sameHub(a, b) &&
-    pa.city === "event" &&
-    pb.city === "event" &&
-    haversineKm(pa.point, pb.point) <= SHARED_STAY_KM
+    sleepsInSubLocation(a) &&
+    sleepsInSubLocation(b) &&
+    haversineKm(stayPoint(a).point, stayPoint(b).point) <= SHARED_STAY_KM
   );
+}
+
+/**
+ * The trip sleeps in the event's sub-location, away from its hub city: in the event's own city, or
+ * in the airport city a direct flight landed it in (`flyDirect`: a Manchester match flown to MAN
+ * sleeps in Manchester as its flight city - still not London, so a Liverpool match after it still
+ * shares that hotel; Dor's 09.11 rule holds with the direct flight on).
+ */
+export function sleepsInSubLocation(e: Event): boolean {
+  return stayPoint(e).city === "event" || hubIata(e) !== e.location?.city_iata;
 }
 
 /**

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Event } from "@/lib/app.types";
 import { applyDirect, canFlyDirect, directCityName, directOrigin, eventCityAirport, flyDirect } from "../itinerary/direct";
 import { datePickSteps } from "../itinerary/datePick";
+import { stayChoices } from "../itinerary/stayChoice";
 import { defaultTripDates, eventGrounds, leaveGrounds, moves, stays, tripLegs } from "../itinerary/dates";
 import { INITIAL_ITINERARY_STATE, itineraryReducer, type ItineraryState } from "../itinerary/state";
 
@@ -64,6 +65,19 @@ describe("flying straight to a sub-location", () => {
     // Home from Manchester when it closes the trip: the train back to the airport.
     const last = flyDirect(ev(8, "2026-12-12", LONDON, { event_location: LIVERPOOL, lodging_mode: "choice_split", lodging_default: "flight" }));
     expect(leaveGrounds([dylan, last], new Set()).get("ret")).toMatchObject({ from: "ליברפול", to: "מנצ'סטר" });
+  });
+
+  it("a Manchester match flown to directly still shares its hotel with the Liverpool match after it (Dor 09.11)", () => {
+    const after = ev(10, "2026-12-15", LONDON, { event_location: LIVERPOOL, lodging_mode: "choice_split", lodging_default: "flight" });
+    const route = [flyDirect(city), after];
+    const dates = defaultTripDates(route);
+    expect(stays(route, dates)).toHaveLength(1);
+    expect(stays(route, dates)[0].point.name).toBe("מנצ'סטר");
+    const choice = stayChoices(route).find((c) => c.event.id === 10);
+    expect(choice?.current).toBe("shared");
+    expect(choice?.options.map((o) => o.pick)).toEqual(["shared", "event", "flight"]);
+    // The way out lands in Manchester, the way home leaves London - the Liverpool match is a day trip.
+    expect(tripLegs(route, dates, new Set()).map((l) => `${l.from}>${l.to}`)).toEqual(["TLV>MAN", "LON>TLV"]);
   });
 
   it("a Liverpool match flown home from Manchester, in the Manchester match's hotel, says the return from Manchester", () => {

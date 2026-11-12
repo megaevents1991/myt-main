@@ -14,7 +14,7 @@
  */
 import type { Event } from "@/lib/app.types";
 import { cityName, eventCityName, shortPlace } from "@/lib/events/lodging";
-import { eventDay, eventPoint, haversineKm, SAME_CITY_KM, sameHub, shareStay, stayPoint } from "./geo";
+import { eventDay, eventPoint, haversineKm, SAME_CITY_KM, sameHub, shareStay, sleepsInSubLocation, stayPoint } from "./geo";
 import { sortRoute } from "./rules";
 import type { Stay, TrainLeg, TripDates, TripLeg } from "./types";
 
@@ -67,7 +67,7 @@ function layout(route: Event[]) {
  */
 function defaultMoveDay(m: TripMove): string {
   const after = addDays(eventDay(m.a), 1);
-  if (!sameHub(m.a, m.b) || stayPoint(m.b).city !== "event") return after;
+  if (!sameHub(m.a, m.b) || !sleepsInSubLocation(m.b)) return after;
   const nights = Number(m.b.split_default_nights) === 1 ? 1 : 2;
   const day = addDays(eventDay(m.b), 1 - nights);
   return day > after ? day : after;

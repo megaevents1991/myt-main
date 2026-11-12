@@ -341,6 +341,8 @@ function PartPane({
   // The round trip's filters (Alon 12.11), for the search on screen only: a new search starts open.
   // A move lists its few non-stop flights alone - nothing to filter there.
   const [filterSet, setFilterSet] = useState<{ at: string; f: TripFlightFilter } | null>(null);
+  // Bumped by "ניקוי הסינון": the filters' own controls (sliders, hour chips) start over with the list.
+  const [filterRun, setFilterRun] = useState(0);
   const filterNow = !isMove && search.key && filterSet?.at === search.key ? filterSet.f : null;
   const limits = useMemo(() => (isMove ? null : openFilter(flights)), [flights, isMove]);
   const filtered = useMemo(() => filterTripFlights(flights, filterNow), [flights, filterNow]);
@@ -506,7 +508,7 @@ function PartPane({
             {!isMove &&
               (filterProps ? (
                 <div className="flex items-stretch gap-2">
-                  <TripFlightFiltersButton key={search.key} active={!!filterNow} {...filterProps} />
+                  <TripFlightFiltersButton key={`${search.key}|${filterRun}`} active={!!filterNow} {...filterProps} />
                   <div className="min-w-0 flex-1">
                     <SortTabs value={sort} onChange={setSort} />
                   </div>
@@ -528,7 +530,10 @@ function PartPane({
                   <p className="m-0 text-sm font-bold">אין טיסות שמתאימות לסינון</p>
                   <button
                     type="button"
-                    onClick={() => setFilterSet(null)}
+                    onClick={() => {
+                      setFilterSet(null);
+                      setFilterRun((n) => n + 1);
+                    }}
                     className="text-sm font-bold text-muted-foreground underline underline-offset-2 hover:text-foreground"
                   >
                     ניקוי הסינון
@@ -592,7 +597,7 @@ function PartPane({
         // From 1024px the filters stand beside the list, as in the regular flight step.
         body = filterProps ? (
           <div className="lg:grid lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] lg:items-start lg:gap-6">
-            <TripFlightFiltersPanel key={search.key} {...filterProps} />
+            <TripFlightFiltersPanel key={`${search.key}|${filterRun}`} {...filterProps} />
             <div className="flex min-w-0 flex-col gap-3">{list}</div>
           </div>
         ) : (
