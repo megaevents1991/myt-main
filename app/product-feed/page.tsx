@@ -156,6 +156,9 @@ export default async function ProductFeedPage({
     getActivityItems(),
   ]);
   const inStock = items.filter((i) => i.availability === "in stock").length;
+  // The videos Meta receives (video[0].url) - only the activities feed carries them.
+  const withVideo = activities.items.filter((a) => a.video_url);
+  const videos: Record<number, string> = Object.fromEntries(withVideo.map((a) => [a.id, a.video_url]));
   const xmlUrl = `${FEED_SITE_ORIGIN}/feeds/meta-catalog.xml`;
 
   // Groups with something to fix open first; the drops that are on purpose
@@ -285,7 +288,7 @@ export default async function ProductFeedPage({
           &apos;העלה לפיד עכשיו&apos; בעורך האירוע מעדכן אותו מיד.
         </p>
 
-        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-2xl border border-gray-200 p-4 text-center">
             <div className="text-3xl font-extrabold text-gray-900">
               {activities.items.length}
@@ -304,7 +307,43 @@ export default async function ProductFeedPage({
             </div>
             <div className="text-xs text-gray-500">אירועים שנבדקו</div>
           </div>
+          <div className="rounded-2xl border border-gray-200 p-4 text-center">
+            <div className="text-3xl font-extrabold text-gray-900">{withVideo.length}</div>
+            <div className="text-xs text-gray-500">עם סרטון</div>
+          </div>
         </div>
+
+        {withVideo.length > 0 && (
+          <details open className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <summary className="cursor-pointer text-sm font-bold text-gray-900">
+              סרטונים שנשלחים למטא{" "}
+              <span className="font-normal text-gray-500">({withVideo.length})</span>
+            </summary>
+            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+              {withVideo.map((a) => (
+                <li key={a.id} className="rounded-lg border border-gray-200 bg-white p-2 text-xs text-gray-900">
+                  <video
+                    src={a.video_url}
+                    controls
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="aspect-[4/5] w-full rounded-md bg-black object-cover"
+                  />
+                  <div className="mt-1 font-semibold">
+                    <span className="font-normal text-gray-500" dir="ltr">
+                      #{a.id}
+                    </span>{" "}
+                    {a.title}
+                  </div>
+                  <a href={a.video_url} target="_blank" rel="noopener" className="font-semibold text-main hover:underline">
+                    פתח את הקובץ
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         {activities.skipped.length === 0 ? (
           <p className="text-sm font-semibold text-green-700">
@@ -334,7 +373,7 @@ export default async function ProductFeedPage({
       </div>
 
       {/* Preview */}
-      <FeedTable items={items} />
+      <FeedTable items={items} videos={videos} />
     </div>
     </div>
   );

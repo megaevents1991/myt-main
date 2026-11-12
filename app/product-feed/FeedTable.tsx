@@ -13,13 +13,16 @@ import type { FeedItem } from "@/lib/feed/metaCatalog";
  */
 type ImageFilter = "all" | "campaign" | "original";
 type StockFilter = "all" | "in" | "out";
+type VideoFilter = "all" | "video";
 
 const BUTTON = "rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors";
 const ON = "border-main bg-main text-white";
 const OFF = "border-gray-200 bg-white text-gray-900 hover:bg-gray-50";
 
-export function FeedTable({ items }: { items: FeedItem[] }) {
+/** `videos` = event id -> the video file Meta receives (the activities feed's video[0].url). */
+export function FeedTable({ items, videos }: { items: FeedItem[]; videos: Record<number, string> }) {
   const [query, setQuery] = useState("");
+  const [video, setVideo] = useState<VideoFilter>("all");
   const [image, setImage] = useState<ImageFilter>("all");
   const [stock, setStock] = useState<StockFilter>("all");
 
@@ -30,6 +33,7 @@ export function FeedTable({ items }: { items: FeedItem[] }) {
       if (image === "original" && it.has_campaign) return false;
       if (stock === "in" && it.availability !== "in stock") return false;
       if (stock === "out" && it.availability === "in stock") return false;
+      if (video === "video" && !videos[it.id]) return false;
       if (!q) return true;
       return (
         String(it.id).includes(q) ||
@@ -38,9 +42,10 @@ export function FeedTable({ items }: { items: FeedItem[] }) {
         it.custom_labels.some((l) => l.toLowerCase().includes(q))
       );
     });
-  }, [items, query, image, stock]);
+  }, [items, query, image, stock, video, videos]);
 
   const noCampaign = items.filter((it) => !it.has_campaign).length;
+  const videoCount = items.filter((it) => videos[it.id]).length;
 
   return (
     <>
@@ -73,6 +78,14 @@ export function FeedTable({ items }: { items: FeedItem[] }) {
             אזל
           </button>
         </div>
+        <div className="flex gap-2">
+          <button type="button" className={`${BUTTON} ${video === "all" ? ON : OFF}`} onClick={() => setVideo("all")}>
+            עם ובלי סרטון
+          </button>
+          <button type="button" className={`${BUTTON} ${video === "video" ? ON : OFF}`} onClick={() => setVideo("video")}>
+            עם סרטון ({videoCount})
+          </button>
+        </div>
       </div>
 
       <p className="mb-2 text-sm text-gray-500">
@@ -85,6 +98,7 @@ export function FeedTable({ items }: { items: FeedItem[] }) {
             <tr className="border-b border-gray-200 bg-gray-50 text-right text-xs text-gray-500">
               <th className="px-3 py-2">id</th>
               <th className="px-3 py-2">image</th>
+              <th className="px-3 py-2">video</th>
               <th className="px-3 py-2">title</th>
               <th className="px-3 py-2">price</th>
               <th className="px-3 py-2">availability</th>
@@ -115,6 +129,21 @@ export function FeedTable({ items }: { items: FeedItem[] }) {
                       {it.has_campaign ? "קמפיין" : "מקורי"}
                     </span>
                   </a>
+                </td>
+                <td className="px-3 py-2">
+                  {videos[it.id] ? (
+                    <a href={videos[it.id]} target="_blank" rel="noopener" className="block" title="הסרטון שנשלח למטא">
+                      <video
+                        src={videos[it.id]}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="h-20 w-16 rounded-md border border-gray-200 bg-black object-cover"
+                      />
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="max-w-[320px] px-3 py-2 text-gray-900">{it.title}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-gray-900" dir="ltr">
